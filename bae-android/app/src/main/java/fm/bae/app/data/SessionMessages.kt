@@ -10,6 +10,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 private val logger = BaeLogger("bae.SessionMessages")
@@ -75,6 +76,18 @@ class SessionMessages internal constructor(
                 }
             }, action)
         }
+    }
+
+    /**
+     * Run [play], something the person played, in the session. What it did
+     * shows as a snackbar when it has a line (nothing to play, the start track
+     * gone, what it left out); its failure shows with Retry.
+     */
+    fun play(
+        operation: String,
+        play: suspend () -> BridgePlayOutcome,
+    ) {
+        perform(operation) { show(errors.display(play())) }
     }
 
     /**

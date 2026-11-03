@@ -250,7 +250,7 @@ private fun buildAlbumDetailCallbacks(
         startTrackId: String?,
         shuffled: Boolean,
     ) {
-        scope.launch(CoroutineName(operation(release))) {
+        session.messages.play(operation(release)) {
             session.appHandle.playRelease(release.id, startTrackId, shuffled)
         }
     }

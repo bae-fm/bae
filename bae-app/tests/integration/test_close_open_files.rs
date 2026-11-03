@@ -37,7 +37,11 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         .expect("start the library's services");
     let mut progress = services.subscribe_playback_progress();
 
-    services.playback_play_release(imported.release_id.clone(), None, false);
+    let played = services
+        .playback_play_release(imported.release_id.clone(), None, false)
+        .await
+        .expect("the play is answered");
+    assert_eq!(played, bae_playback::PlayOutcome::Playing);
     assert!(
         bae_playback::test_capture::wait_until_playing(
             &mut progress,

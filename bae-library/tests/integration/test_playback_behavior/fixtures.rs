@@ -340,12 +340,13 @@ impl SidePauseTestFixture {
         bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
     }
 
-    pub(super) fn play_release_from(&self, track_id: &str) {
-        self.playback_handle.play_release(
-            self.release_id.clone(),
-            Some(track_id.to_string()),
-            false,
-        );
+    pub(super) async fn play_release_from(&self, track_id: &str) {
+        let played = self
+            .playback_handle
+            .play_release(self.release_id.clone(), Some(track_id.to_string()), false)
+            .await
+            .expect("the play is answered");
+        assert_eq!(played, bae_playback::PlayOutcome::Playing);
     }
 
     /// Seek to 200 ms before the end of the 5 s track. Commands run in order, so
@@ -370,7 +371,7 @@ impl SidePauseTestFixture {
     }
 
     pub(super) async fn play_track_and_wait(&mut self, track_id: &str) {
-        self.play_release_from(track_id);
+        self.play_release_from(track_id).await;
         self.wait_for_playing_track(
             track_id,
             Duration::from_secs(5),

@@ -10,6 +10,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
@@ -76,5 +77,7 @@ class BridgeActionTest {
         override fun display(error: BridgeException) = DisplayError("localized bridge error", error.diagnosticDetail)
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
+
+        override fun display(outcome: BridgePlayOutcome): DisplayError? = null
     }
 }

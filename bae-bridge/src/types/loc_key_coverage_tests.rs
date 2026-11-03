@@ -393,6 +393,15 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.extend(bridge_sync_retry_outcome_key(&outcome));
     }
+    for outcome in [
+        BridgePlayOutcome::Playing,
+        BridgePlayOutcome::PlayingWithoutReleases { release_ids: vec!["rel-1".to_string()] },
+        BridgePlayOutcome::PlayingWithoutTracks { track_ids: vec!["track-1".to_string()] },
+        BridgePlayOutcome::NothingToPlay,
+        BridgePlayOutcome::StartMissing,
+    ] {
+        keys.extend(bridge_play_outcome_key(&outcome));
+    }
 
     for instruction in [
         BridgeProviderSignOut::RemoveAppAccess { provider: BridgeCloudProvider::Dropbox },

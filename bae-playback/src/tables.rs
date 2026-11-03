@@ -9,6 +9,7 @@
 
 mod now;
 mod queue;
+mod queue_fill;
 mod queue_reads;
 mod resume;
 mod timeline;
@@ -18,10 +19,8 @@ mod track_display;
 pub use now::now_playing;
 pub use now::subscribe_now_playing;
 pub use now::{playback_level, PlaybackNowRow};
-pub use queue::{
-    settle_playback_queue, ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables,
-    ReleaseStart, ShuffleChange,
-};
+pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables, ShuffleChange};
+pub use queue_fill::{ContextFill, ContextFilled, LeftOut, ReleaseStart};
 pub use queue_reads::queue_value;
 pub use queue_reads::subscribe_queue_addition;
 #[cfg(any(test, feature = "test-utils"))]

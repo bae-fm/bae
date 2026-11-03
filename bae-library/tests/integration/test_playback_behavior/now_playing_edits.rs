@@ -10,11 +10,12 @@ async fn playing_first_track(fixture: &PlaybackTestFixture) -> String {
         .expect("read the first track's release")
         .release_id;
     let mut progress = fixture.playback_handle.subscribe_progress();
-    fixture.playback_handle.play_release(
-        release_id.clone(),
-        Some(fixture.track_ids[0].clone()),
-        false,
-    );
+    let played = fixture
+        .playback_handle
+        .play_release(release_id.clone(), Some(fixture.track_ids[0].clone()), false)
+        .await
+        .expect("the play is answered");
+    assert_eq!(played, bae_playback::PlayOutcome::Playing);
     assert!(
         bae_playback::test_capture::wait_until_playing(
             &mut progress,

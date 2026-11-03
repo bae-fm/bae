@@ -1,6 +1,7 @@
 package fm.bae.app
 
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
@@ -15,5 +16,11 @@ internal object NoErrorDisplays : ErrorDisplays {
             is BridgeSyncRetryOutcome.Synced -> null
             is BridgeSyncRetryOutcome.Failed -> display(outcome.error)
             else -> DisplayError("not synced")
+        }
+
+    override fun display(outcome: BridgePlayOutcome) =
+        when (outcome) {
+            BridgePlayOutcome.Playing -> null
+            else -> DisplayError("not everything played")
         }
 }

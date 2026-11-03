@@ -19,6 +19,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
@@ -94,6 +95,8 @@ class AlbumDeletionTest {
         override fun display(error: BridgeException) = DisplayError("couldn't delete", error.diagnosticDetail)
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
+
+        override fun display(outcome: BridgePlayOutcome): DisplayError? = null
     }
 
     private class DeletingHandle(

@@ -65,7 +65,11 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     let services =
         crate::test_services::start_services(&library).await.expect("the services start");
 
-    services.playback_play_release(release.id.clone(), Some(track_ids[0].clone()), false);
+    let played = services
+        .playback_play_release(release.id.clone(), Some(track_ids[0].clone()), false)
+        .await
+        .expect("the play is answered");
+    assert_eq!(played, bae_playback::PlayOutcome::Playing);
 
     (services, track_ids, temp_dir)
 }

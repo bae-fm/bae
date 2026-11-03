@@ -6,10 +6,12 @@ import android.icu.text.NumberFormat
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeS3PrefixProblem
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
+import uniffi.bae_bridge.bridgePlayOutcomeKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonLine
 import uniffi.bae_bridge.bridgeSyncRetryOutcomeKey
 import java.text.DateFormat
@@ -145,6 +147,26 @@ fun Context.displayError(outcome: BridgeSyncRetryOutcome): DisplayError? =
     }
 
 /**
+ * What a play shows, or null when it played everything it named. The lines for
+ * what it left out take how many, formatted for the locale.
+ */
+fun Context.displayError(outcome: BridgePlayOutcome): DisplayError? {
+    val key = bridgePlayOutcomeKey(outcome) ?: return null
+    val line =
+        when (outcome) {
+            is BridgePlayOutcome.PlayingWithoutReleases -> coreString(key, mapOf("count" to outcome.releaseIds.size))
+
+            is BridgePlayOutcome.PlayingWithoutTracks -> coreString(key, mapOf("count" to outcome.trackIds.size))
+
+            BridgePlayOutcome.Playing,
+            BridgePlayOutcome.NothingToPlay,
+            BridgePlayOutcome.StartMissing,
+            -> coreString(key)
+        }
+    return DisplayError(line)
+}
+
+/**
  * Resolves a typed error event to what a person is shown. Production binds a
  * [Context] ([LocaleErrorDisplays]); unit tests pass a fixed one so the reducer
  * stays plain-JVM-testable.
@@ -158,6 +180,9 @@ interface ErrorDisplays {
 
     /** Null when the retry synced, or its failure has nothing to show. */
     fun display(outcome: BridgeSyncRetryOutcome): DisplayError?
+
+    /** Null when the play played everything it named. */
+    fun display(outcome: BridgePlayOutcome): DisplayError?
 }
 
 /** The production resolver: renders for the device locale via the Core catalog. */
@@ -169,6 +194,8 @@ class LocaleErrorDisplays(
     override fun display(error: BridgeException) = context.displayError(error)
 
     override fun display(outcome: BridgeSyncRetryOutcome) = context.displayError(outcome)
+
+    override fun display(outcome: BridgePlayOutcome) = context.displayError(outcome)
 }
 
 /**

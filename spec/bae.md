@@ -3011,6 +3011,18 @@ removable, reorderable and skipped to on its own.
 | Clear Up Next | empties Up Next only |
 | Clear playing from | drops what's playing from; the current track plays on, then Up Next, then playback stops |
 
+Every play (a release, several, a list of tracks, the library shuffled)
+answers whoever asked with what it did, and the app shows it in words unless
+it played everything named:
+
+| Answer | Meaning |
+|---|---|
+| Playing | everything named plays |
+| Playing without releases | those of several releases that hold no tracks are left out, named in order; the line says how many |
+| Playing without tracks | those tracks of a list the library doesn't hold are left out, named in order; the line says how many |
+| Nothing to play | what was named holds no tracks; the queue is as it was |
+| Start track gone | the track to start from is no longer on the release or in the library, or the list has none at its index; the queue is as it was |
+
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
 one loaded to play next is let go. This holds whichever device deleted it:

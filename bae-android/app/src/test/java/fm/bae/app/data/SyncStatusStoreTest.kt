@@ -7,6 +7,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecord
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
@@ -20,6 +21,8 @@ class SyncStatusStoreTest {
             override fun display(error: BridgeException) = DisplayError("line for $error", "detail of $error")
 
             override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
+
+            override fun display(outcome: BridgePlayOutcome): DisplayError? = null
         }
 
     private val failure = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")

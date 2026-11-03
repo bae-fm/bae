@@ -237,26 +237,46 @@ forward! { async this => {
     fn retry_downloads() -> () {
         Ok(this.services.retry_downloads().await?)
     }
+
+    // =========================================================================
+    // Playback: each play answers with what it did
+    // =========================================================================
+
+    /// Play a release from `start_track_id`, or from its first track, or
+    /// shuffled.
+    fn play_release(
+        release_id: String,
+        start_track_id: Option<String>,
+        shuffle: bool,
+    ) -> crate::types::BridgePlayOutcome {
+        let played =
+            this.services.playback_play_release(release_id, start_track_id, shuffle).await?;
+        Ok(crate::types::BridgePlayOutcome::from_core(played))
+    }
+
+    /// Play several releases one after another, in the order given.
+    fn play_releases(release_ids: Vec<String>) -> crate::types::BridgePlayOutcome {
+        let played = this.services.playback_play_releases(release_ids).await?;
+        Ok(crate::types::BridgePlayOutcome::from_core(played))
+    }
+
+    /// Play `track_ids` in that order, from the one at `start_index`.
+    fn play_tracks(track_ids: Vec<String>, start_index: u32) -> crate::types::BridgePlayOutcome {
+        let played = this.services.playback_play_tracks(track_ids, start_index as usize).await?;
+        Ok(crate::types::BridgePlayOutcome::from_core(played))
+    }
+
+    /// Play the whole library in a new shuffle.
+    fn play_library_shuffled() -> crate::types::BridgePlayOutcome {
+        let played = this.services.playback_play_library_shuffled().await?;
+        Ok(crate::types::BridgePlayOutcome::from_core(played))
+    }
 } }
 
 forward! { sync this => {
     // =========================================================================
     // Playback
     // =========================================================================
-
-    /// Play a release from `start_track_id`, or from its first track.
-    fn play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) {
-        this.services
-            .playback_play_release(release_id, start_track_id, shuffle);
-    }
-
-    fn play_releases(release_ids: Vec<String>) {
-        this.services.playback_play_releases(release_ids);
-    }
-
-    fn play_library_shuffled() {
-        this.services.playback_play_library_shuffled();
-    }
 
     fn pause() {
         this.services.playback_pause();

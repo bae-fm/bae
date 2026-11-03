@@ -35,7 +35,7 @@ use crate::error::PlaybackError;
 use crate::preview_player::PreviewPlayer;
 use crate::progress::emit_progress;
 use crate::progress::{PlaybackProgress, PlaybackProgressHandle};
-use crate::tables::{ContextFill, ContextFilled, PlaybackResumeRow, ReleaseStart};
+use crate::tables::{ContextFill, ContextFilled, LeftOut, PlaybackResumeRow, ReleaseStart};
 use bae_audio::DecodeError;
 use bae_db::DbAudioSegmentRole;
 use bae_db::ResolvedTrackAudio;
@@ -88,8 +88,11 @@ use crate::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
     DecodeFailureReport, DecoderSetup,
 };
+use api::PlayReply;
 pub(crate) use api::{dispatch_command, PlaybackCommand};
-pub use api::{LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackState};
+pub use api::{
+    LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseReason, PlaybackState,
+};
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use library_follow::LibraryFollow;
@@ -537,9 +540,9 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
     match command {
         PlaybackCommand::Play(_) => Some(PlaybackCommandKind::Play),
         PlaybackCommand::PlayRelease { .. } => Some(PlaybackCommandKind::PlayRelease),
-        PlaybackCommand::PlayReleases(_) => Some(PlaybackCommandKind::PlayReleases),
+        PlaybackCommand::PlayReleases { .. } => Some(PlaybackCommandKind::PlayReleases),
         PlaybackCommand::PlayTracks { .. } => Some(PlaybackCommandKind::PlayTracks),
-        PlaybackCommand::PlayLibraryShuffled => Some(PlaybackCommandKind::PlayLibraryShuffled),
+        PlaybackCommand::PlayLibraryShuffled(_) => Some(PlaybackCommandKind::PlayLibraryShuffled),
         PlaybackCommand::Next => Some(PlaybackCommandKind::Next),
         PlaybackCommand::Previous => Some(PlaybackCommandKind::Previous),
         PlaybackCommand::Seek(_) | PlaybackCommand::SeekByRatio(_) => {
@@ -596,9 +599,9 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
     match command {
         PlaybackCommand::Play(_)
         | PlaybackCommand::PlayRelease { .. }
-        | PlaybackCommand::PlayReleases(_)
+        | PlaybackCommand::PlayReleases { .. }
         | PlaybackCommand::PlayTracks { .. }
-        | PlaybackCommand::PlayLibraryShuffled
+        | PlaybackCommand::PlayLibraryShuffled(_)
         | PlaybackCommand::Pause
         | PlaybackCommand::Stop
         | PlaybackCommand::Next

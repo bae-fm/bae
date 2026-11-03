@@ -23,116 +23,40 @@ impl PlaybackService {
             PlaybackCommand::Play(track_id) => {
                 self.handle_play(track_id).await;
             }
-            PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle } => {
+            PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle, reply } => {
                 // A shuffled play starts wherever the shuffle puts first.
                 let start = match (shuffle, start_track_id) {
                     (true, _) => ReleaseStart::Shuffled,
                     (false, None) => ReleaseStart::First,
                     (false, Some(track_id)) => ReleaseStart::Track(track_id),
                 };
-                let fill = ContextFill::Release { release_id: release_id.clone(), start };
-                match self.playback_queue.play(fill).await {
-                    Ok(ContextFilled::Playing { current, track_count }) => {
-                        self.start_filled_context(
-                            current.track_id,
-                            PlaybackStartSource::Release,
-                            track_count,
-                        )
-                        .await;
-                    }
-                    Ok(ContextFilled::NoTracks) => {
-                        warn!("PlayRelease: release {release_id} has no tracks");
-                    }
-                    // A named track the release no longer has — an edit removed
-                    // it since the caller read it — plays nothing rather than
-                    // some other track.
-                    Ok(ContextFilled::StartMissing) => {
-                        error!(
-                            "PlayRelease: the track to start from is not on release {release_id}"
-                        );
-                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                    }
-                    Err(e) => {
-                        error!("Failed to play release {release_id}: {e}");
-                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                    }
-                }
+                let fill = ContextFill::Release { release_id, start };
+                let played =
+                    self.play_filled("PlayRelease", fill, PlaybackStartSource::Release).await;
+                answer_play(reply, played);
             }
-            PlaybackCommand::PlayReleases(release_ids) => {
+            PlaybackCommand::PlayReleases { release_ids, reply } => {
                 // The source names exactly the releases that have tracks.
-                match self.playback_queue.play(ContextFill::Releases(release_ids)).await {
-                    Ok(ContextFilled::Playing { current, track_count }) => {
-                        self.start_filled_context(
-                            current.track_id,
-                            PlaybackStartSource::Releases,
-                            track_count,
-                        )
-                        .await;
-                    }
-                    Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
-                        warn!("PlayReleases: no playable releases; nothing to play");
-                    }
-                    Err(e) => {
-                        error!("PlayReleases: couldn't fill the queue: {e}");
-                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                    }
-                }
+                let fill = ContextFill::Releases(release_ids);
+                let played =
+                    self.play_filled("PlayReleases", fill, PlaybackStartSource::Releases).await;
+                answer_play(reply, played);
             }
-            PlaybackCommand::PlayTracks { track_ids, start_index } => {
-                let named = track_ids.len();
+            PlaybackCommand::PlayTracks { track_ids, start_index, reply } => {
                 let fill = ContextFill::Tracks { track_ids, start: start_index };
-                match self.playback_queue.play(fill).await {
-                    Ok(ContextFilled::Playing { current, track_count }) => {
-                        if track_count < named {
-                            warn!(
-                                "PlayTracks: {} of {named} tracks are not in the library; \
-                                 they are left out",
-                                named - track_count
-                            );
-                        }
-                        self.start_filled_context(
-                            current.track_id,
-                            PlaybackStartSource::Tracks,
-                            track_count,
-                        )
-                        .await;
-                    }
-                    // A start the list doesn't have, or a track the library
-                    // no longer holds, plays nothing rather than some other
-                    // track.
-                    Ok(ContextFilled::StartMissing) => {
-                        error!(
-                            "PlayTracks: no track in the library to start from at {start_index} of {named}"
-                        );
-                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                    }
-                    Ok(ContextFilled::NoTracks) => {
-                        warn!("PlayTracks: no tracks named; nothing to play");
-                    }
-                    Err(e) => {
-                        error!("PlayTracks: couldn't fill the queue: {e}");
-                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                    }
-                }
+                let played =
+                    self.play_filled("PlayTracks", fill, PlaybackStartSource::Tracks).await;
+                answer_play(reply, played);
             }
-            PlaybackCommand::PlayLibraryShuffled => {
-                match self.playback_queue.play(ContextFill::LibraryShuffled).await {
-                    Ok(ContextFilled::Playing { current, track_count }) => {
-                        self.start_filled_context(
-                            current.track_id,
-                            PlaybackStartSource::LibraryShuffled,
-                            track_count,
-                        )
-                        .await;
-                    }
-                    Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
-                        warn!("PlayLibraryShuffled: the library has no tracks; nothing to play");
-                    }
-                    Err(e) => {
-                        error!("PlayLibraryShuffled: couldn't fill the queue: {e}");
-                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
-                    }
-                }
+            PlaybackCommand::PlayLibraryShuffled(reply) => {
+                let played = self
+                    .play_filled(
+                        "PlayLibraryShuffled",
+                        ContextFill::LibraryShuffled,
+                        PlaybackStartSource::LibraryShuffled,
+                    )
+                    .await;
+                answer_play(reply, played);
             }
             PlaybackCommand::Pause => {
                 self.pause();
@@ -348,5 +272,56 @@ impl PlaybackService {
             }
         }
         ControlFlow::Continue(())
+    }
+}
+
+impl PlaybackService {
+    /// Fill the queue with what `fill` names and start its first track, saying
+    /// what the play did. A play that names nothing to play, or a start that is
+    /// gone (an edit removed the track since the caller read it), leaves the
+    /// queue as it was and plays nothing rather than some other track.
+    async fn play_filled(
+        &mut self,
+        command: &str,
+        fill: ContextFill,
+        source: PlaybackStartSource,
+    ) -> Result<PlayOutcome, PlayError> {
+        match self.playback_queue.play(fill).await {
+            Ok(ContextFilled::Playing { current, track_count, left_out }) => {
+                self.start_filled_context(current.track_id, source, track_count).await;
+                Ok(match left_out {
+                    LeftOut::Nothing => PlayOutcome::Playing,
+                    LeftOut::Releases(ids) => {
+                        warn!("{command}: left out releases without tracks: {ids:?}");
+                        PlayOutcome::PlayingWithoutReleases(ids)
+                    }
+                    LeftOut::Tracks(ids) => {
+                        warn!("{command}: left out tracks the library lacks: {ids:?}");
+                        PlayOutcome::PlayingWithoutTracks(ids)
+                    }
+                })
+            }
+            Ok(ContextFilled::NoTracks) => {
+                warn!("{command}: nothing to play");
+                Ok(PlayOutcome::NothingToPlay)
+            }
+            Ok(ContextFilled::StartMissing) => {
+                warn!("{command}: the track to start from is gone");
+                Ok(PlayOutcome::StartMissing)
+            }
+            Err(e) => {
+                error!("{command}: couldn't fill the queue: {e}");
+                self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+                Err(PlayError::Queue(e))
+            }
+        }
+    }
+}
+
+/// Tell a play's caller what it did. A caller that stopped waiting has no one
+/// to tell.
+fn answer_play(reply: PlayReply, played: Result<PlayOutcome, PlayError>) {
+    if reply.send(played).is_err() {
+        debug!("a play answered a caller that stopped waiting");
     }
 }

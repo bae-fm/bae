@@ -10,6 +10,7 @@ import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import fm.bae.app.BaeLogger
 import fm.bae.fastvalues.LatestStream
 import kotlinx.coroutines.CoroutineName
@@ -23,8 +24,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackSourceKind
@@ -701,8 +704,43 @@ class BaeCorePlayer(
             logger.error("asked to play $mediaId at $index of ${mediaItems.size}, which names no track")
             return Futures.immediateFailedFuture<Unit>(IllegalArgumentException("no track to play at $index"))
         }
-        appHandle.playRelease(track.releaseId, track.trackId, false)
-        return Futures.immediateVoidFuture()
+        val played = SettableFuture.create<Unit>()
+        scope.launch(CoroutineName("play ${track.trackId}")) {
+            try {
+                answer(played, appHandle.playRelease(track.releaseId, track.trackId, false))
+            } catch (e: BridgeException) {
+                logger.error("playing $mediaId failed", e)
+                played.setException(e)
+            }
+        }
+        return played
+    }
+
+    /** A controller's play succeeds when something plays, and fails when nothing does. */
+    private fun answer(
+        played: SettableFuture<Unit>,
+        outcome: BridgePlayOutcome,
+    ) {
+        when (outcome) {
+            BridgePlayOutcome.Playing -> {
+                played.set(Unit)
+            }
+
+            is BridgePlayOutcome.PlayingWithoutReleases -> {
+                logger.warning("playing without releases that hold no tracks: ${outcome.releaseIds}")
+                played.set(Unit)
+            }
+
+            is BridgePlayOutcome.PlayingWithoutTracks -> {
+                logger.warning("playing without tracks the library lacks: ${outcome.trackIds}")
+                played.set(Unit)
+            }
+
+            BridgePlayOutcome.NothingToPlay, BridgePlayOutcome.StartMissing -> {
+                logger.warning("a controller's play played nothing: $outcome")
+                played.setException(IllegalStateException("nothing played: $outcome"))
+            }
+        }
     }
 
     override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {

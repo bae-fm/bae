@@ -524,10 +524,10 @@ impl AppServices {
     #[cfg(any(test, feature = "test-utils"))]
     delegate_async!(manager, is_sync_configured => is_sync_configured() -> Result<bool, bae_library::LibraryError>);
 
-    delegate_sync!(playback, playback_play_release => play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) -> ());
-    delegate_sync!(playback, playback_play_releases => play_releases(release_ids: Vec<String>) -> ());
-    delegate_sync!(playback, playback_play_tracks => play_tracks(track_ids: Vec<String>, start_index: usize) -> ());
-    delegate_sync!(playback, playback_play_library_shuffled => play_library_shuffled() -> ());
+    delegate_async!(playback, playback_play_release => play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
+    delegate_async!(playback, playback_play_releases => play_releases(release_ids: Vec<String>) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
+    delegate_async!(playback, playback_play_tracks => play_tracks(track_ids: Vec<String>, start_index: usize) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
+    delegate_async!(playback, playback_play_library_shuffled => play_library_shuffled() -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
     delegate_sync!(playback, playback_pause => pause() -> ());
     delegate_sync!(playback, playback_resume => resume() -> ());
     delegate_sync!(playback, playback_cancel_side_pause_countdown => cancel_side_pause_countdown() -> ());

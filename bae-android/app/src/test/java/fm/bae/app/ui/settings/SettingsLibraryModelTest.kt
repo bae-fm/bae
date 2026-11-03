@@ -21,6 +21,7 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.BridgeRequestedProfileState
@@ -169,6 +170,8 @@ class SettingsLibraryModelTest {
             if (error is BridgeException.Cancelled) null else DisplayError("couldn't reach storage")
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
+
+        override fun display(outcome: BridgePlayOutcome): DisplayError? = null
     }
 
     private class SettingsHandle(

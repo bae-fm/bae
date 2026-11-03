@@ -465,7 +465,9 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
 #[tokio::test]
 async fn play_library_shuffled_plays_a_shuffled_library_context() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
-        fixture.playback_handle.play_library_shuffled();
+        let outcome =
+            fixture.playback_handle.play_library_shuffled().await.expect("the play is answered");
+        assert_eq!(outcome, bae_playback::PlayOutcome::Playing);
         fixture
             .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
             .await
@@ -481,12 +483,48 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
     .await;
 }
 
+/// A list of tracks plays in the order sent from the start index, and its
+/// caller learns which of the tracks it sent the library doesn't hold: those
+/// are left out, not silently lost.
+#[tokio::test]
+async fn play_tracks_tells_its_caller_which_tracks_it_left_out() {
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        let first = fixture.track_ids[0].clone();
+        let third = fixture.track_ids[2].clone();
+        let missing = "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string();
+
+        let played = fixture
+            .playback_handle
+            .play_tracks(vec![third.clone(), missing.clone(), first.clone()], 2)
+            .await
+            .expect("the tracks play");
+
+        assert_eq!(played, bae_playback::PlayOutcome::PlayingWithoutTracks(vec![missing]));
+        fixture
+            .wait_for_state(
+                |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
+                Duration::from_secs(5),
+            )
+            .await
+            .expect("the start index's track plays");
+        let value = fixture.playback_handle.queue_value().await.expect("queue value");
+        assert_eq!(
+            value.context.expect("a list context").source,
+            bae_playback::ContextSource::Tracks
+        );
+    })
+    .await;
+}
+
+/// An empty library plays nothing, and the caller is told there is nothing to
+/// play.
 #[tokio::test]
 async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
     let (library, _temp) = empty_test_library().await;
     let (handle, _capture_rx) = start_capture_service(&library).await;
     let mut progress = handle.subscribe_progress();
-    handle.play_library_shuffled();
+    let outcome = handle.play_library_shuffled().await.expect("the play is answered");
+    assert_eq!(outcome, bae_playback::PlayOutcome::NothingToPlay);
     let played = wait_for_state_on(
         &mut progress,
         |s| matches!(s, PlaybackState::Playing { .. }),
@@ -747,7 +785,12 @@ async fn play_release_starts_at_the_named_track() {
             .expect("the first track plays");
         let release_id = current_release_id(&fixture.playback_handle).await;
 
-        fixture.playback_handle.play_release(release_id, Some(third.clone()), false);
+        let played = fixture
+            .playback_handle
+            .play_release(release_id, Some(third.clone()), false)
+            .await
+            .expect("the play is answered");
+        assert_eq!(played, bae_playback::PlayOutcome::Playing);
 
         fixture
             .wait_for_state(
@@ -761,8 +804,8 @@ async fn play_release_starts_at_the_named_track() {
 }
 
 /// A track the release does not have — an edit removed it after the caller
-/// read it — starts nothing: some other track of the release is not what was
-/// asked for.
+/// read it — starts nothing, since some other track of the release is not what
+/// was asked for, and the caller is told the track to start from is gone.
 #[tokio::test]
 async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
@@ -781,12 +824,17 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
             fixture.playback_handle.queue_upcoming().await.expect("queue upcoming"),
         );
 
-        fixture.playback_handle.play_release(
-            release_id,
-            Some("7a4c2c2e-5d0b-4f55-9c1b-0f2f6b7f3a11".to_string()),
-            false,
-        );
+        let played = fixture
+            .playback_handle
+            .play_release(
+                release_id,
+                Some("7a4c2c2e-5d0b-4f55-9c1b-0f2f6b7f3a11".to_string()),
+                false,
+            )
+            .await
+            .expect("the play is answered");
 
+        assert_eq!(played, bae_playback::PlayOutcome::StartMissing);
         // Starting a track emits its Loading while the command is handled.
         let events = fixture.settled_events().await;
         let other_track: Vec<_> = states_in(&events)

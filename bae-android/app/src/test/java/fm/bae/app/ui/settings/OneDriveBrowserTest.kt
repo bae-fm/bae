@@ -21,6 +21,7 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeStorageFolder
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -152,6 +153,8 @@ class OneDriveBrowserTest {
         override fun display(error: BridgeException) = DisplayError("couldn't reach OneDrive")
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
+
+        override fun display(outcome: BridgePlayOutcome): DisplayError? = null
     }
 
     /** A OneDrive whose folders answer each listing in turn from [listings]. */

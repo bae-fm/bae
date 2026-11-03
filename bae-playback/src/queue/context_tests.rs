@@ -320,17 +320,21 @@ async fn play_releases_concatenates_tracks_in_input_order() {
     assert_eq!(f.context_order().await, names(&["t3", "t1", "t2"]));
 }
 
-/// A release with no tracks (deleted, or never existed) is skipped; the remaining
-/// releases still play in order.
+/// A release with no tracks (deleted, or never existed) is skipped and named
+/// as left out; the remaining releases still play in order.
 #[tokio::test]
 async fn play_releases_skips_a_release_without_tracks() {
     let mut f = fixture(&[("two", &["t1"]), ("one", &["t2", "t3"])]).await;
-    f.play_fill(ContextFill::Releases(vec![
-        f.id("two"),
-        "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string(),
-        f.id("one"),
-    ]))
-    .await;
+    let missing = "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string();
+    let filled = f
+        .queue
+        .play(ContextFill::Releases(vec![f.id("two"), missing.clone(), f.id("one")]))
+        .await
+        .unwrap();
+    let crate::tables::ContextFilled::Playing { left_out, .. } = filled else {
+        panic!("the releases play: {filled:?}");
+    };
+    assert_eq!(left_out, crate::tables::LeftOut::Releases(vec![missing]));
     assert_eq!(f.value().await.context.unwrap().source, ContextSource::Releases);
     assert_eq!(f.context_order().await, names(&["t1", "t2", "t3"]));
 }
@@ -363,16 +367,22 @@ async fn play_tracks_plays_the_list_in_order_from_the_start_index() {
     assert_eq!(f.previous(0).await, Some("b1".into()), "the start is the second a1, not the first");
 }
 
-/// A track the library doesn't hold is left out, and the start still names
-/// the entry the list put at its index.
+/// A track the library doesn't hold is left out, the fill names it, and the
+/// start still names the entry the list put at its index.
 #[tokio::test]
 async fn play_tracks_leaves_out_a_track_the_library_lacks() {
     let mut f = fixture(&[("r1", &["a1", "a2", "a3"])]).await;
+    let missing = "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string();
     let mut list = f.ids(&["a1", "a2", "a3"]);
-    list.insert(1, "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string());
+    list.insert(1, missing.clone());
 
-    assert_eq!(f.play_fill(ContextFill::Tracks { track_ids: list, start: 2 }).await, "a2");
+    let filled = f.queue.play(ContextFill::Tracks { track_ids: list, start: 2 }).await.unwrap();
 
+    let crate::tables::ContextFilled::Playing { current, left_out, .. } = filled else {
+        panic!("the list plays: {filled:?}");
+    };
+    assert_eq!(f.name(&current.track_id), "a2");
+    assert_eq!(left_out, crate::tables::LeftOut::Tracks(vec![missing]));
     assert_eq!(f.context_order().await, names(&["a1", "a2", "a3"]));
     assert_eq!(f.upcoming().await, names(&["a3"]));
 }

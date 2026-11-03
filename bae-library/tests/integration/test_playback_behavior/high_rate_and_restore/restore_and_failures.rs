@@ -16,7 +16,8 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
 
     let (handle, _capture_rx) = start_capture_service(&lib.library).await;
     let mut progress_rx = handle.subscribe_progress();
-    handle.play_release(release_id, None, true);
+    let played = handle.play_release(release_id, None, true).await.expect("the play is answered");
+    assert_eq!(played, bae_playback::PlayOutcome::Playing);
     let playing = wait_for_state_on(
         &mut progress_rx,
         |s| matches!(s, PlaybackState::Playing { .. }),

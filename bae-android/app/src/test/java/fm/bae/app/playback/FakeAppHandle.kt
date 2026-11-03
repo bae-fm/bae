@@ -41,6 +41,7 @@ import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgePlaylist
@@ -250,12 +251,13 @@ internal open class FakeAppHandle(
         searchSubscriptions[subscription].emit(Result.failure(error))
     }
 
-    override fun playRelease(
+    override suspend fun playRelease(
         releaseId: String,
         startTrackId: String?,
         shuffle: Boolean,
-    ) {
+    ): BridgePlayOutcome {
         playReleaseCalls.add(Triple(releaseId, startTrackId, shuffle))
+        return BridgePlayOutcome.Playing
     }
 
     /** Closing the fake releases nothing. */
@@ -361,13 +363,14 @@ internal open class FakeAppHandle(
         unfaked("nextTrack")
     }
 
-    override fun playLibraryShuffled() {
-        unfaked("playLibraryShuffled")
-    }
+    override suspend fun playLibraryShuffled(): BridgePlayOutcome = unfaked("playLibraryShuffled")
 
-    override fun playReleases(releaseIds: List<String>) {
-        unfaked("playReleases")
-    }
+    override suspend fun playReleases(releaseIds: List<String>): BridgePlayOutcome = unfaked("playReleases")
+
+    override suspend fun playTracks(
+        trackIds: List<String>,
+        startIndex: UInt,
+    ): BridgePlayOutcome = unfaked("playTracks")
 
     override fun previewPlay(target: BridgePreviewTarget) {
         unfaked("previewPlay")

@@ -81,7 +81,7 @@ internal fun LibraryBrowser(
                 state = state,
                 collapse = { collapse.value },
                 onShuffleLibrary = {
-                    session.messages.perform("play the library shuffled") { session.appHandle.playLibraryShuffled() }
+                    session.messages.play("play the library shuffled") { session.appHandle.playLibraryShuffled() }
                 },
                 onSettings = onSettings,
                 syncActivity = {

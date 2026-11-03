@@ -73,9 +73,9 @@ pub use queue_values::{
 pub use repeat_mode::RepeatMode;
 pub use replay_gain::replay_gain_linear;
 pub use service::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
-    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
-    PlaybackTrackSide,
+    LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseBoundary,
+    PlaybackPauseReason, PlaybackService, PlaybackSideCountdown, PlaybackSidePausePrompt,
+    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use timeline::{StreamPosition, TrackTimeline};

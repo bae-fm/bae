@@ -15,6 +15,37 @@ pub enum PlaybackPauseReason {
     SideEnded(PlaybackSidePausePrompt),
 }
 
+/// What a play command did, as its caller is told.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlayOutcome {
+    /// Playing everything the play named.
+    Playing,
+    /// Playing, without the releases named that hold no tracks, listed in the
+    /// order named.
+    PlayingWithoutReleases(Vec<String>),
+    /// Playing, without the tracks of the list that the library doesn't hold,
+    /// listed in the list's order.
+    PlayingWithoutTracks(Vec<String>),
+    /// What the play named holds no tracks: a release without any, releases
+    /// none of which has any, an empty library or an empty list.
+    NothingToPlay,
+    /// The track to start from is gone: no longer on the release, or no longer
+    /// in the library, or the list has no track at the start index.
+    StartMissing,
+}
+
+/// Why a play command has no outcome to tell.
+#[derive(Debug, thiserror::Error)]
+pub enum PlayError {
+    #[error("couldn't fill the queue: {0}")]
+    Queue(#[source] bae_db::DbError),
+    #[error("the playback service stopped before it answered the play")]
+    Stopped(#[source] oneshot::error::RecvError),
+}
+
+/// Where a play command's answer goes.
+pub(crate) type PlayReply = oneshot::Sender<Result<PlayOutcome, PlayError>>;
+
 #[derive(Debug)]
 pub(crate) enum PlaybackCommand {
     Play(String),
@@ -23,20 +54,26 @@ pub(crate) enum PlaybackCommand {
         release_id: String,
         start_track_id: Option<String>,
         shuffle: bool,
+        reply: PlayReply,
     },
     /// Play several releases in order as one context, from the first track.
-    /// Releases with no playable tracks are skipped, none left is a no-op, and a
-    /// single one left plays exactly like `PlayRelease`.
-    PlayReleases(Vec<String>),
+    /// Releases with no tracks are left out and named in the answer, none left
+    /// plays nothing, and a single one left plays exactly like `PlayRelease`.
+    PlayReleases {
+        release_ids: Vec<String>,
+        reply: PlayReply,
+    },
     /// Play tracks in the order given as one context, from the one at
-    /// `start_index`. Tracks the library does not hold are left out; a start
-    /// index past the list or naming such a track plays nothing.
+    /// `start_index`. Tracks the library does not hold are left out and named
+    /// in the answer; a start index past the list or naming such a track plays
+    /// nothing.
     PlayTracks {
         track_ids: Vec<String>,
         start_index: usize,
+        reply: PlayReply,
     },
-    /// Play the whole library in a new shuffle; an empty library is a no-op.
-    PlayLibraryShuffled,
+    /// Play the whole library in a new shuffle; an empty library plays nothing.
+    PlayLibraryShuffled(PlayReply),
     Pause,
     Resume,
     /// The prompt's Close: stop a running side-pause countdown and stay paused
@@ -276,17 +313,49 @@ impl PlaybackHandle {
     pub fn play(&self, track_id: String) {
         self.dispatch(PlaybackCommand::Play(track_id));
     }
-    pub fn play_release(&self, release_id: String, start_track_id: Option<String>, shuffle: bool) {
-        self.dispatch(PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle });
+    /// Send the play `command` builds around its reply, and wait for what it
+    /// did. Commands run in order, so every one sent before has run.
+    async fn play_answered(
+        &self,
+        command: impl FnOnce(PlayReply) -> PlaybackCommand,
+    ) -> Result<PlayOutcome, PlayError> {
+        let (reply, answer) = oneshot::channel();
+        self.dispatch(command(reply));
+        answer.await.map_err(PlayError::Stopped)?
     }
-    pub fn play_releases(&self, release_ids: Vec<String>) {
-        self.dispatch(PlaybackCommand::PlayReleases(release_ids));
+    /// Play a release from `start_track_id`, or from its first track, or
+    /// shuffled, and say what it did.
+    pub async fn play_release(
+        &self,
+        release_id: String,
+        start_track_id: Option<String>,
+        shuffle: bool,
+    ) -> Result<PlayOutcome, PlayError> {
+        self.play_answered(|reply| PlaybackCommand::PlayRelease {
+            release_id,
+            start_track_id,
+            shuffle,
+            reply,
+        })
+        .await
     }
-    pub fn play_tracks(&self, track_ids: Vec<String>, start_index: usize) {
-        self.dispatch(PlaybackCommand::PlayTracks { track_ids, start_index });
+    /// Play several releases one after another, and say what it did.
+    pub async fn play_releases(&self, release_ids: Vec<String>) -> Result<PlayOutcome, PlayError> {
+        self.play_answered(|reply| PlaybackCommand::PlayReleases { release_ids, reply }).await
     }
-    pub fn play_library_shuffled(&self) {
-        self.dispatch(PlaybackCommand::PlayLibraryShuffled);
+    /// Play `track_ids` in that order from the one at `start_index`, and say
+    /// what it did.
+    pub async fn play_tracks(
+        &self,
+        track_ids: Vec<String>,
+        start_index: usize,
+    ) -> Result<PlayOutcome, PlayError> {
+        self.play_answered(|reply| PlaybackCommand::PlayTracks { track_ids, start_index, reply })
+            .await
+    }
+    /// Play the whole library in a new shuffle, and say what it did.
+    pub async fn play_library_shuffled(&self) -> Result<PlayOutcome, PlayError> {
+        self.play_answered(PlaybackCommand::PlayLibraryShuffled).await
     }
     pub fn pause(&self) {
         self.dispatch(PlaybackCommand::Pause);

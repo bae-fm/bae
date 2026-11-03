@@ -446,7 +446,9 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 
     // Playing a release persists the row: current is the first track, and the
     // queue plays from the release.
-    handle.play_release(release_id.clone(), None, false);
+    let played =
+        handle.play_release(release_id.clone(), None, false).await.expect("the play is answered");
+    assert_eq!(played, bae_playback::PlayOutcome::Playing);
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {

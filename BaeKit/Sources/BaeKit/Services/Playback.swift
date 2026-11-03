@@ -19,16 +19,19 @@ public final class Playback: Sendable, Observable {
     /// Set the repeat mode to an absolute value. Every caller sends the mode it
     /// wants; a cycling button passes `mode.next` computed from what it renders.
     public let setRepeatMode: @Sendable (_ mode: BridgeRepeatMode) -> Void
+    /// Play a release from a track, from its first track, or shuffled. What
+    /// the play did shows on the app's error surface when it has a line: the
+    /// release holds no tracks, or the track to start from is gone.
     public let playRelease:
         @Sendable (
             _ releaseId: String, _ startTrackId: String?, _ shuffle: Bool
         ) -> Void
     /// Play several releases as one context, concatenated in the given order.
-    /// A single release behaves exactly like `playRelease`; core skips any
-    /// release whose tracks can't be loaded.
+    /// A single release behaves exactly like `playRelease`; core leaves out
+    /// any release without tracks, and the line says how many.
     public let playReleases: @Sendable (_ releaseIds: [String]) -> Void
-    /// Play the whole library in a freshly seeded shuffle. An empty library is a
-    /// no-op (logged in core).
+    /// Play the whole library in a freshly seeded shuffle. An empty library
+    /// plays nothing, and the line says so.
     public let playLibraryShuffled: @Sendable () -> Void
     public let setPauseBetweenSides:
         @Sendable (_ enabled: Bool) async throws -> Void
@@ -90,7 +93,12 @@ public final class Playback: Sendable, Observable {
         self.setShowRemainingTime = setShowRemainingTime
     }
 
-    public convenience init(handle: any AppHandleProtocol) {
+    /// Transport over `handle`. A play's outcome or failure that has a line
+    /// goes to `show`.
+    public convenience init(
+        handle: any AppHandleProtocol,
+        show: @escaping @MainActor @Sendable (DisplayError) -> Void
+    ) {
         self.init(
             pause: { handle.pause() },
             resume: { handle.resume() },
@@ -101,15 +109,23 @@ public final class Playback: Sendable, Observable {
             setVolume: { handle.setVolume(volume: $0) },
             setMuted: { handle.setMuted(muted: $0) },
             setRepeatMode: { handle.setRepeatMode(mode: $0) },
-            playRelease: {
-                handle.playRelease(
-                    releaseId: $0,
-                    startTrackId: $1,
-                    shuffle: $2
-                )
+            playRelease: { releaseId, startTrackId, shuffle in
+                Self.answer(show) {
+                    try await handle.playRelease(
+                        releaseId: releaseId,
+                        startTrackId: startTrackId,
+                        shuffle: shuffle
+                    )
+                }
             },
-            playReleases: { handle.playReleases(releaseIds: $0) },
-            playLibraryShuffled: { handle.playLibraryShuffled() },
+            playReleases: { releaseIds in
+                Self.answer(show) {
+                    try await handle.playReleases(releaseIds: releaseIds)
+                }
+            },
+            playLibraryShuffled: {
+                Self.answer(show) { try await handle.playLibraryShuffled() }
+            },
             setPauseBetweenSides: {
                 try await handle.setPauseBetweenSides(enabled: $0)
             },
@@ -120,6 +136,26 @@ public final class Playback: Sendable, Observable {
                 try await handle.setShowRemainingTime(enabled: $0)
             }
         )
+    }
+
+    /// Run `play` and show what it did, or why it couldn't say: a play
+    /// that played everything it named shows nothing.
+    private static func answer(
+        _ show: @escaping @MainActor @Sendable (DisplayError) -> Void,
+        _ play: @escaping @Sendable () async throws -> BridgePlayOutcome
+    ) {
+        Task { @MainActor in
+            do {
+                if let shown = try await play().shown {
+                    show(shown)
+                }
+            }
+            catch {
+                if let shown = DisplayError(error) {
+                    show(shown)
+                }
+            }
+        }
     }
 
     #if DEBUG

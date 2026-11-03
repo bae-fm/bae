@@ -28,6 +28,7 @@ import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.MembersSubscription
@@ -150,6 +151,8 @@ class MembersModelTest {
             if (error is BridgeException.Cancelled) null else DisplayError("couldn't reach storage")
 
         override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
+
+        override fun display(outcome: BridgePlayOutcome): DisplayError? = null
     }
 
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")

@@ -17,6 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 /**
@@ -41,6 +42,16 @@ class SessionMessagesTest {
         checkNotNull(shown?.retry).invoke()
         assertEquals(2, runs)
         assertNull("a retry that succeeds shows nothing", next())
+    }
+
+    @Test
+    fun aPlayWhoseStartTrackIsGoneSaysSoAndOneThatPlayedSaysNothing() {
+        messages.play("play an album from a track") { BridgePlayOutcome.StartMissing }
+
+        assertEquals(DisplayError("not everything played"), next()?.error)
+
+        messages.play("play an album") { BridgePlayOutcome.Playing }
+        assertNull("a play that played everything shows nothing", next())
     }
 
     @Test
