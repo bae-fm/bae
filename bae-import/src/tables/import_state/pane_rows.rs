@@ -8,8 +8,13 @@
 //! differ; which groups a candidate save writes, and under what checks, is
 //! `preparation_rows`'s to say.
 
+mod provenance;
 mod values;
 mod writes;
+
+pub(crate) use provenance::{
+    insert_provenance, read_provenance, store_provenance, StoredProvenance, PROVENANCE_COLUMNS,
+};
 
 use super::verdict_rows::unreadable;
 use super::*;

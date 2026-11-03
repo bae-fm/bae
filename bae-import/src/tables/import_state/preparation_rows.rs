@@ -285,7 +285,7 @@ pub(super) fn save_preparation_on(
             (&prep.metadata.draft, prep.author),
         )?;
         if stored.metadata.provenance != prep.metadata.provenance {
-            super::rows::store_provenance(sql, content_hash, prep.metadata.provenance.as_ref())?;
+            pane_rows::store_provenance(sql, content_hash, prep.metadata.provenance.as_ref())?;
         }
         if stored.metadata.cover != prep.metadata.cover {
             match &prep.metadata.cover {
@@ -301,7 +301,7 @@ pub(super) fn save_preparation_on(
         // draft, its source and its cover whole.
         pane_rows::insert_draft(sql, content_hash, &prep.metadata.draft, prep.author)?;
         if let Some(provenance) = &prep.metadata.provenance {
-            super::rows::insert_provenance(sql, content_hash, provenance)?;
+            pane_rows::insert_provenance(sql, content_hash, provenance)?;
         }
         if let Some(cover) = &prep.metadata.cover {
             crate::tables::candidate_state_rows::save_cover(sql, content_hash, cover)?;

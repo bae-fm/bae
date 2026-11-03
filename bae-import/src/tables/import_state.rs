@@ -33,13 +33,12 @@ pub(super) use file_decision_rows::{load_candidate_file_edits_on, store_file_edi
 pub use import_commit::ImportCommitError;
 pub(crate) use import_commit::{ImportCommitGuard, ImportRows, NewArtistImages};
 pub(super) use pane_rows::{cover_read_columns, insert_draft, load_pane_rows_on, read_cover};
+pub(super) use pane_rows::{read_provenance, PROVENANCE_COLUMNS};
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, RunVerdictSaved, ScannedCandidateKey,
 };
-pub(super) use rows::{
-    load_states_on, read_provenance, read_release_link, PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS,
-};
+pub(super) use rows::{load_states_on, read_release_link, RELEASE_LINK_COLUMNS};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
@@ -50,9 +49,12 @@ pub(super) use standing_rows::{
 
 use crate::folder_scanner::StoredCandidateEdits;
 use crate::CandidateKey;
-use rows::{insert_provenance, load_states_rows_on};
+use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::records::LookupRef;
+use rows::load_states_rows_on;
 use std::collections::HashSet;
 use std::path::Path;
+use std::str::FromStr;
 use verdict_rows::{delete_verdict, store_verdict};
 
 pub(crate) use pane_rows::insert_file_tags_draft;
@@ -84,6 +86,12 @@ impl ImportTables {
             .process(|(process, content_hash)| Ok(process()?.remove(&content_hash)))
             .await
     }
+}
+
+/// A stored release a pick names; a catalog bae does not fetch from names
+/// none.
+fn lookup_reference(catalog: String, key: String) -> Result<LookupRef, DbError> {
+    Ok(LookupRef::new(LookupCatalog::from_str(&catalog).map_err(DbError::Message)?, key))
 }
 
 #[cfg(test)]
