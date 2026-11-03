@@ -83,6 +83,15 @@ fn recorded_conflict_on<Q: QueryOne>(sql: &Q, hash: &str) -> Result<RecordedConf
     .ok_or_else(|| DbError::Message(format!("candidate {hash} has no label identity conflict")))
 }
 
+/// Forget every label identity answer given for `content_hash`.
+pub(super) fn delete_choices_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_label_identity_choice WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    Ok(())
+}
+
 fn record_choice_on(
     sql: &CovenWrite<'_>,
     hash: &str,

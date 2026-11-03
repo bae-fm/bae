@@ -59,6 +59,13 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
     }
 }
 
+/// Delete the draft of `content_hash`: its source and every row below it
+/// hang off the draft row and go with it.
+pub(super) fn delete_draft(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+    sql.execute("DELETE FROM import_candidate_edit WHERE content_hash = ?", [content_hash])?;
+    Ok(())
+}
+
 /// The draft row of a candidate that has none yet, with everything hanging
 /// off it: its album artists, its mediums, its tracks and their values.
 pub(crate) fn insert_draft(

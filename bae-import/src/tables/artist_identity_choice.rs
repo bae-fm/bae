@@ -79,6 +79,15 @@ pub(super) fn require_revision<Q: QueryOne>(
     Ok(())
 }
 
+/// Forget every artist identity answer given for `content_hash`.
+pub(super) fn delete_choices_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_artist_identity_choice WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    Ok(())
+}
+
 pub(super) fn record_choice_on(
     sql: &CovenWrite<'_>,
     hash: &str,

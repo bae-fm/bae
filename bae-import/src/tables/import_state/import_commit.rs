@@ -174,26 +174,16 @@ fn delete_what_the_import_spent_on(
     match guard {
         ImportCommitGuard::Candidate { expectation, .. } => {
             let content_hash = expectation.candidate.content_hash.as_str();
-            for table in [
-                "import_candidate_verdict",
-                "import_candidate_lookup_choices",
-                "import_candidate_session",
-                "import_candidate_artist_identity_choice",
-                "import_candidate_label_identity_choice",
-                "import_candidate_album_pick",
-                // The draft takes its source and every row below it.
-                "import_candidate_edit",
-                // The cover takes its copies and its fetched bytes.
-                "import_candidate_cover",
-                // The link takes its partners and its albums.
-                "import_candidate_release_link",
-            ] {
-                sql.execute(
-                    &format!("DELETE FROM {table} WHERE content_hash = ?"),
-                    [content_hash],
-                )?;
-            }
-            Ok(())
+            delete_verdict(sql, content_hash)?;
+            super::lookup_choice_rows::delete_lookup_choices(sql, content_hash)?;
+            super::session_rows::delete_session(sql, content_hash)?;
+            crate::tables::artist_identity_choice::delete_choices_on(sql, content_hash)?;
+            crate::tables::label_identity_choice::delete_choices_on(sql, content_hash)?;
+            super::album_pick_rows::delete_album_pick(sql, content_hash)?;
+            super::pane_rows::delete_draft(sql, content_hash)?;
+            // The cover takes its copies and its fetched bytes.
+            super::pane_rows::delete_cover(sql, content_hash)?;
+            super::release_link_rows::store_release_link(sql, content_hash, None)
         }
         #[cfg(test)]
         ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),

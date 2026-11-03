@@ -17,6 +17,12 @@ pub(crate) fn load_album_pick_on(
     .map_err(DbError::from)
 }
 
+/// Leave the candidate `content_hash` to the album its records name.
+pub(super) fn delete_album_pick(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+    sql.execute("DELETE FROM import_candidate_album_pick WHERE content_hash = ?", [content_hash])?;
+    Ok(())
+}
+
 impl ImportTables {
     /// The album picked for the candidate `content_hash`, if one is.
     pub(crate) async fn candidate_album_pick(
@@ -46,10 +52,7 @@ impl ImportTables {
                      ON CONFLICT (content_hash) DO UPDATE SET album_id = excluded.album_id",
                         params![content_hash, album_id],
                     )?,
-                    None => sql.execute(
-                        "DELETE FROM import_candidate_album_pick WHERE content_hash = ?",
-                        params![content_hash],
-                    )?,
+                    None => return delete_album_pick(&sql, &content_hash),
                 };
                 Ok(())
             })

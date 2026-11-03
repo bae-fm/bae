@@ -361,6 +361,12 @@ pub(super) fn load_session_on(
 }
 
 /// Store `session` whole for `content_hash`, inside the caller's write.
+/// Forget where the pane of `content_hash` was.
+pub(super) fn delete_session(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+    sql.execute("DELETE FROM import_candidate_session WHERE content_hash = ?", [content_hash])?;
+    Ok(())
+}
+
 fn save_session_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,

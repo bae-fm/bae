@@ -80,6 +80,19 @@ impl StoredLookupChoices {
 /// connection the caller holds — its own transaction, or a candidate save's.
 /// A hash no candidate row stands under has nothing to hold a decision, and
 /// the write says so rather than landing nowhere.
+/// Forget what the person let the lookups of `content_hash` use; the barcode
+/// and catalog lists hang off the choices row and go with it.
+pub(super) fn delete_lookup_choices(
+    sql: &CovenWrite<'_>,
+    content_hash: &str,
+) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_lookup_choices WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    Ok(())
+}
+
 pub(super) fn replace_lookup_choices_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
