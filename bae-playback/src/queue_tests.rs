@@ -8,17 +8,17 @@ use crate::ContextSource;
 use bae_db::Database;
 use std::collections::HashMap;
 
-struct Fixture {
-    _home: tempfile::TempDir,
-    db: Database,
-    queue: PlaybackQueue,
-    ids: HashMap<String, String>,
-    names: HashMap<String, String>,
+pub(super) struct Fixture {
+    pub(super) _home: tempfile::TempDir,
+    pub(super) db: Database,
+    pub(super) queue: PlaybackQueue,
+    pub(super) ids: HashMap<String, String>,
+    pub(super) names: HashMap<String, String>,
 }
 
 /// A library holding `releases`, each `(release name, track names)` with its
 /// tracks in that order, and an empty queue over it.
-async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
+pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     use bae_db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
     let home = tempfile::TempDir::new().unwrap();
     let db = Database::new_test(
@@ -65,56 +65,56 @@ async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
 }
 
 /// One release `r1` holding `tracks`.
-async fn release(tracks: &[&str]) -> Fixture {
+pub(super) async fn release(tracks: &[&str]) -> Fixture {
     fixture(&[("r1", tracks)]).await
 }
 
 /// `r1` holding `tracks`, the context lane's, and `r2` holding `manual`, the
 /// tracks the tests queue in Up Next.
-async fn release_and_manual(tracks: &[&str], manual: &[&str]) -> Fixture {
+pub(super) async fn release_and_manual(tracks: &[&str], manual: &[&str]) -> Fixture {
     fixture(&[("r1", tracks), ("r2", manual)]).await
 }
 
 impl Fixture {
-    fn id(&self, name: &str) -> String {
+    pub(super) fn id(&self, name: &str) -> String {
         self.ids[name].clone()
     }
 
-    fn ids(&self, names: &[&str]) -> Vec<String> {
+    pub(super) fn ids(&self, names: &[&str]) -> Vec<String> {
         names.iter().map(|name| self.id(name)).collect()
     }
 
-    fn name(&self, id: &str) -> String {
+    pub(super) fn name(&self, id: &str) -> String {
         self.names[id].clone()
     }
 
     /// Play `r1` from where `start` says.
-    async fn play(&mut self, start: ReleaseStart) -> String {
+    pub(super) async fn play(&mut self, start: ReleaseStart) -> String {
         self.play_fill(ContextFill::Release { release_id: self.id("r1"), start }).await
     }
 
     /// Play `r1` from the named track.
-    async fn play_from(&mut self, track: &str) -> String {
+    pub(super) async fn play_from(&mut self, track: &str) -> String {
         self.play(ReleaseStart::Track(self.id(track))).await
     }
 
-    async fn play_fill(&mut self, fill: ContextFill) -> String {
+    pub(super) async fn play_fill(&mut self, fill: ContextFill) -> String {
         match self.queue.play(fill).await.unwrap() {
             crate::tables::ContextFilled::Playing { current, .. } => self.name(&current.track_id),
             other => panic!("the fill plays nothing: {other:?}"),
         }
     }
 
-    async fn add(&mut self, tracks: &[&str]) {
+    pub(super) async fn add(&mut self, tracks: &[&str]) {
         self.queue.add_to_queue(self.ids(tracks)).await.unwrap();
     }
 
-    async fn value(&self) -> crate::ResolvedQueueSnapshot {
+    pub(super) async fn value(&self) -> crate::ResolvedQueueSnapshot {
         crate::tables::queue_value(&self.db).await.unwrap()
     }
 
     /// Up Next's entries then the context lane's upcoming ones.
-    async fn upcoming_entries(&self) -> Vec<QueueEntry> {
+    pub(super) async fn upcoming_entries(&self) -> Vec<QueueEntry> {
         let value = self.value().await;
         let context = crate::tables::queue_upcoming(&self.db).await.unwrap();
         value
@@ -126,27 +126,27 @@ impl Fixture {
     }
 
     /// The flat play order after the current track, by name.
-    async fn upcoming(&self) -> Vec<String> {
+    pub(super) async fn upcoming(&self) -> Vec<String> {
         self.upcoming_entries().await.iter().map(|entry| self.name(&entry.track_id)).collect()
     }
 
     /// The current track then the upcoming ones, by name.
-    async fn full_order(&self) -> Vec<String> {
+    pub(super) async fn full_order(&self) -> Vec<String> {
         let mut order = vec![self.current()];
         order.extend(self.upcoming().await);
         order
     }
 
-    fn current(&self) -> String {
+    pub(super) fn current(&self) -> String {
         self.name(self.queue.current_track_id().expect("a current track"))
     }
 
-    fn current_name(&self) -> Option<String> {
+    pub(super) fn current_name(&self) -> Option<String> {
         self.queue.current_track_id().map(|id| self.name(id))
     }
 
     /// Every track of the context lane, played or not, by name.
-    async fn context_order(&self) -> Vec<String> {
+    pub(super) async fn context_order(&self) -> Vec<String> {
         crate::tables::PlaybackQueueTables::new(self.db.clone())
             .context_order()
             .await
@@ -156,12 +156,12 @@ impl Fixture {
             .collect()
     }
 
-    async fn manual_ids(&self) -> Vec<QueueEntryId> {
+    pub(super) async fn manual_ids(&self) -> Vec<QueueEntryId> {
         self.value().await.manual.iter().map(|item| item.entry_id.parse().unwrap()).collect()
     }
 
     /// The first upcoming entry playing the named track.
-    async fn entry(&self, track: &str) -> QueueEntryId {
+    pub(super) async fn entry(&self, track: &str) -> QueueEntryId {
         let id = self.id(track);
         self.upcoming_entries()
             .await
@@ -171,14 +171,14 @@ impl Fixture {
             .id
     }
 
-    async fn next(&mut self) -> Option<String> {
+    pub(super) async fn next(&mut self) -> Option<String> {
         match self.queue.next_entry().await.unwrap() {
             NextEntry::Play(track) | NextEntry::RepeatCurrent(track) => Some(self.name(&track)),
             NextEntry::Stop => None,
         }
     }
 
-    async fn previous(&mut self, at_ms: i64) -> Option<String> {
+    pub(super) async fn previous(&mut self, at_ms: i64) -> Option<String> {
         match self.queue.previous_action(TrackTime::from_millis(at_ms)).await.unwrap() {
             PreviousAction::PlayPrevious(track) => Some(self.name(&track)),
             PreviousAction::RestartCurrent => None,
@@ -187,24 +187,469 @@ impl Fixture {
 
     /// Everything the queue screens and the tables show, to tell that an
     /// operation changed nothing.
-    async fn shown(&self) -> (crate::ResolvedQueueSnapshot, Vec<String>, Vec<String>) {
+    pub(super) async fn shown(&self) -> (crate::ResolvedQueueSnapshot, Vec<String>, Vec<String>) {
         (self.value().await, self.upcoming().await, self.context_order_or_empty().await)
     }
 
-    async fn context_order_or_empty(&self) -> Vec<String> {
+    pub(super) async fn context_order_or_empty(&self) -> Vec<String> {
         self.context_order().await
     }
 }
 
-fn names(names: &[&str]) -> Vec<String> {
+pub(super) fn names(names: &[&str]) -> Vec<String> {
     names.iter().map(|name| name.to_string()).collect()
 }
 
-fn sorted(mut names: Vec<String>) -> Vec<String> {
+pub(super) fn sorted(mut names: Vec<String>) -> Vec<String> {
     names.sort();
     names
 }
 
-include!("queue_tests/mutation.rs");
-include!("queue_tests/persistence.rs");
-include!("queue_tests/projection.rs");
+#[tokio::test]
+async fn test_add_to_queue_fills_manual_lane() {
+    let mut f = release(&["a", "b", "c"]).await;
+    f.add(&["a", "b", "c"]).await;
+    assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
+}
+
+#[tokio::test]
+async fn test_add_to_queue_gives_duplicates_distinct_ids() {
+    let mut f = release(&["a"]).await;
+    f.add(&["a", "a"]).await;
+    let ids = f.manual_ids().await;
+    assert_eq!(ids.len(), 2);
+    assert_ne!(ids[0].clone(), ids[1].clone(), "duplicate tracks get distinct ids");
+}
+
+/// A track the library does not hold is left out, and the count says so.
+#[tokio::test]
+async fn test_add_to_queue_leaves_out_tracks_the_library_lacks() {
+    let mut f = release(&["a"]).await;
+    let added =
+        f.queue.add_to_queue(vec![f.id("a"), uuid::Uuid::new_v4().to_string()]).await.unwrap();
+    assert_eq!(added, 1);
+    assert_eq!(f.upcoming().await, names(&["a"]));
+}
+
+#[tokio::test]
+async fn test_add_next_preserves_order() {
+    let mut f = release(&["a", "b", "x"]).await;
+    f.add(&["x"]).await;
+    f.queue.add_next(f.ids(&["a", "b"])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["a", "b", "x"]));
+}
+
+#[tokio::test]
+async fn test_remove_by_entry_id() {
+    let mut f = release(&["a", "b", "c"]).await;
+    f.add(&["a", "b", "c"]).await;
+    let b_id = f.manual_ids().await[1].clone();
+    let removed = f.queue.remove(b_id).await.unwrap();
+    assert_eq!(removed.map(|e| f.name(&e.track_id)), Some("b".into()));
+    assert_eq!(f.upcoming().await, names(&["a", "c"]));
+}
+
+/// The same track enqueued twice, removing one instance by its id leaves the
+/// other instance — and its id — intact.
+#[tokio::test]
+async fn test_remove_one_duplicate_keeps_the_other() {
+    let mut f = release(&["dup"]).await;
+    f.add(&["dup", "dup"]).await;
+    let ids = f.manual_ids().await;
+    let removed = f.queue.remove(ids[0].clone()).await.unwrap().expect("first instance removed");
+    assert_eq!(removed.id, ids[0].clone());
+    assert_eq!(f.manual_ids().await, vec![ids[1].clone()], "the other instance's id survives");
+}
+
+#[tokio::test]
+async fn test_remove_unknown_id_is_noop() {
+    let mut f = release(&["a"]).await;
+    f.add(&["a"]).await;
+    let before = f.shown().await;
+    assert_eq!(f.queue.remove(QueueEntryId::Manual(i64::MAX)).await.unwrap(), None);
+    assert_eq!(f.upcoming().await, names(&["a"]));
+    assert_eq!(f.shown().await, before, "an unknown id changes nothing");
+}
+
+#[tokio::test]
+async fn test_reorder_forward() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let ids = f.manual_ids().await;
+    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap());
+    assert_eq!(f.upcoming().await, names(&["b", "a", "c", "d"]));
+}
+
+#[tokio::test]
+async fn test_reorder_to_end() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.reorder(ids[0].clone(), None).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["b", "c", "d", "a"]));
+}
+
+#[tokio::test]
+async fn test_reorder_backward() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.reorder(ids[2].clone(), Some(ids[0].clone())).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["c", "a", "b", "d"]));
+}
+
+/// A reorder over a lane with gaps — entries removed from between — keeps
+/// every survivor's place.
+#[tokio::test]
+async fn test_reorder_across_gaps() {
+    let mut f = release(&["a", "b", "c", "d", "e"]).await;
+    f.add(&["a", "b", "c", "d", "e"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.remove(ids[1].clone()).await.unwrap();
+    f.queue.remove(ids[3].clone()).await.unwrap();
+    f.queue.reorder(ids[0].clone(), Some(ids[4].clone())).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["c", "a", "e"]));
+    f.queue.reorder(ids[4].clone(), Some(ids[2].clone())).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["e", "c", "a"]));
+}
+
+#[tokio::test]
+async fn test_reorder_before_self_is_noop() {
+    let mut f = release(&["a", "b", "c"]).await;
+    f.add(&["a", "b", "c"]).await;
+    let ids = f.manual_ids().await;
+    f.queue.reorder(ids[1].clone(), Some(ids[1].clone())).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
+}
+
+#[tokio::test]
+async fn test_reorder_unknown_source_is_noop() {
+    let mut f = release(&["a", "b"]).await;
+    f.add(&["a", "b"]).await;
+    assert!(!f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap());
+    assert_eq!(f.upcoming().await, names(&["a", "b"]));
+}
+
+#[tokio::test]
+async fn test_clear_up_next_empties_manual_keeps_context() {
+    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1", "m2"]).await;
+    f.play_from("t1").await;
+    f.add(&["m1", "m2"]).await;
+    f.queue.clear_up_next().await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["t2", "t3"]));
+}
+
+#[tokio::test]
+async fn test_skip_to_manual_drains_prefix() {
+    let mut f = release(&["a", "b", "c", "d"]).await;
+    f.add(&["a", "b", "c", "d"]).await;
+    let c_id = f.manual_ids().await[2].clone();
+    let entry = f.queue.skip_to(c_id).await.unwrap();
+    assert_eq!(entry.map(|e| f.name(&e.track_id)), Some("c".into()));
+    assert_eq!(f.upcoming().await, names(&["d"]));
+    assert_eq!(f.current(), "c");
+}
+
+#[tokio::test]
+async fn test_skip_to_unknown_id_is_noop() {
+    let mut f = release(&["a"]).await;
+    f.add(&["a"]).await;
+    assert_eq!(f.queue.skip_to(QueueEntryId::Manual(i64::MAX)).await.unwrap(), None);
+    assert_eq!(f.upcoming().await, names(&["a"]));
+}
+
+/// Removing one of a track's two context entries by its id leaves the other,
+/// with its id, where it was.
+#[tokio::test]
+async fn test_remove_one_context_duplicate_keeps_the_other() {
+    let mut f = release(&["a1", "a2"]).await;
+    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r1")])).await;
+    let upcoming = f.upcoming_entries().await;
+    assert_eq!(f.upcoming().await, names(&["a2", "a1", "a2"]));
+    let removed =
+        f.queue.remove(upcoming[0].id.clone()).await.unwrap().expect("the first a2 removed");
+    assert_eq!(removed, upcoming[0]);
+    assert_eq!(f.upcoming_entries().await, upcoming[1..].to_vec());
+}
+
+/// The queue lives in its tables, so a queue taken up again over them — a
+/// restart — has the same lanes in the same order, the same playing track
+/// and the same history: a shuffled lane keeps the order it was shuffled in.
+#[tokio::test]
+async fn test_restore_takes_up_the_stored_order() {
+    let mut f = release_and_manual(&["t1", "t2", "t3", "t4", "t5"], &["m1"]).await;
+    f.play(ReleaseStart::Shuffled).await;
+    f.next().await;
+    f.next().await;
+    f.add(&["m1"]).await;
+    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
+    let current = f.queue.current().cloned();
+    let lane = f.context_order().await;
+    let value = f.value().await;
+
+    let mut restored = PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(f.db.clone()));
+    restored.restore(current.clone()).await.unwrap();
+    f.queue = restored;
+
+    assert_eq!(f.queue.current().cloned(), current);
+    assert_eq!(f.queue.repeat_mode(), RepeatMode::Context);
+    assert_eq!(f.context_order().await, lane, "the shuffled order survives");
+    assert_eq!(f.value().await, value);
+    assert!(f.value().await.has_previous, "the history survives");
+    assert_eq!(f.previous(1_000).await.as_deref(), Some(lane[1].as_str()));
+}
+
+#[tokio::test]
+async fn test_skip_to_context_tail_moves_cursor() {
+    let mut f = release(&["t1", "t2", "t3", "t4"]).await;
+    f.play_from("t1").await;
+    let t3 = f.entry("t3").await;
+    let entry = f.queue.skip_to(t3).await.unwrap();
+    assert_eq!(entry.map(|e| f.name(&e.track_id)), Some("t3".into()));
+    assert_eq!(f.current(), "t3");
+    assert_eq!(f.upcoming().await, names(&["t4"]));
+}
+
+#[tokio::test]
+async fn test_remove_context_tail_entry() {
+    let mut f = release(&["t1", "t2", "t3"]).await;
+    f.play_from("t1").await;
+    let t2 = f.entry("t2").await;
+    let removed = f.queue.remove(t2).await.unwrap();
+    assert_eq!(removed.map(|e| f.name(&e.track_id)), Some("t2".into()));
+    assert_eq!(f.upcoming().await, names(&["t3"]));
+}
+
+#[tokio::test]
+async fn test_reorder_context_tail_keeps_cursor() {
+    let mut f = release(&["t1", "t2", "t3", "t4"]).await;
+    f.play_from("t1").await;
+    let (t2, t3) = (f.entry("t2").await, f.entry("t3").await);
+    f.queue.reorder(t3, Some(t2)).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["t3", "t2", "t4"]));
+    assert_eq!(f.current(), "t1", "the playing track stays playing");
+}
+
+/// Moving the playing context row carries it: what follows it afterwards is
+/// what follows its new place.
+#[tokio::test]
+async fn test_reorder_of_the_playing_context_row_moves_the_cursor_with_it() {
+    let mut f = release(&["t1", "t2", "t3", "t4"]).await;
+    f.play_from("t2").await;
+    let playing = f.queue.current().unwrap().id.clone();
+    let t4 = f.entry("t4").await;
+    f.queue.reorder(playing, Some(t4)).await.unwrap();
+    assert_eq!(f.context_order().await, names(&["t1", "t3", "t2", "t4"]));
+    assert_eq!(f.upcoming().await, names(&["t4"]));
+    assert_eq!(f.previous(1_000).await, Some("t3".into()));
+}
+
+#[tokio::test]
+async fn test_reorder_cross_lane_is_noop() {
+    let mut f = release_and_manual(&["t1", "t2"], &["m1"]).await;
+    f.play_from("t1").await;
+    f.add(&["m1"]).await;
+    let manual = f.manual_ids().await[0].clone();
+    let context = f.entry("t2").await;
+    assert!(!f.queue.reorder(manual, Some(context)).await.unwrap());
+    assert_eq!(f.upcoming().await, names(&["m1", "t2"]));
+}
+
+#[tokio::test]
+async fn test_insert_at_middle() {
+    let mut f = release(&["a", "b", "c", "x", "y"]).await;
+    f.add(&["a", "b", "c"]).await;
+    f.queue.insert_at(1, f.ids(&["x", "y"])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["a", "x", "y", "b", "c"]));
+}
+
+#[tokio::test]
+async fn test_insert_at_beyond_end_clamps() {
+    let mut f = release(&["a", "x"]).await;
+    f.add(&["a"]).await;
+    f.queue.insert_at(999, f.ids(&["x"])).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["a", "x"]));
+}
+
+/// Removing the playing context row clears the current entry, and the row
+/// after it is still the one that plays next: no track is passed over.
+#[tokio::test]
+async fn test_removing_the_playing_context_row_keeps_the_next_one_upcoming() {
+    let mut f = release(&["t1", "t2", "t3"]).await;
+    f.play_from("t2").await;
+    let playing = f.queue.current().unwrap().id.clone();
+
+    f.queue.remove(playing).await.unwrap();
+
+    assert_eq!(f.current_name(), None, "removing the playing row clears current");
+    assert_eq!(f.upcoming().await, names(&["t3"]), "t3 still plays next");
+    assert_eq!(f.next().await, Some("t3".into()));
+    assert_eq!(f.previous(1_000).await, Some("t1".into()));
+}
+
+/// The library deleting the playing track forgets it as current; the queue's
+/// rows of it left with the track.
+#[tokio::test]
+async fn test_forget_deleted_current() {
+    let mut f = release(&["t1", "t2"]).await;
+    f.play_from("t1").await;
+    let other: std::collections::HashSet<String> = [f.id("t2")].into();
+    assert!(!f.queue.forget_deleted_current(&other));
+    assert_eq!(f.current(), "t1");
+    let playing: std::collections::HashSet<String> = [f.id("t1")].into();
+    assert!(f.queue.forget_deleted_current(&playing));
+    assert_eq!(f.current_name(), None);
+}
+
+/// The value keeps the two lanes separate: Up Next is its own list, the
+/// context is its not-yet-played tail.
+#[tokio::test]
+async fn test_value_keeps_manual_and_context_separate() {
+    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1", "m2"]).await;
+    f.play_from("t1").await;
+    f.add(&["m1", "m2"]).await;
+
+    let value = f.value().await;
+    let manual: Vec<String> = value.manual.iter().map(|i| f.name(&i.track_id)).collect();
+    assert_eq!(manual, names(&["m1", "m2"]));
+    let context = value.context.expect("a release is playing");
+    assert_eq!(
+        crate::tables::queue_upcoming(&f.db)
+            .await
+            .unwrap()
+            .iter()
+            .map(|i| f.name(&i.track_id))
+            .collect::<Vec<_>>(),
+        names(&["t2", "t3"])
+    );
+    assert!(!context.shuffled);
+    assert_eq!(context.source, ContextSource::Release(f.id("r1")));
+    assert_eq!(context.source_title.as_deref(), Some("Album Title"));
+}
+
+/// No context → no context section; Up Next still shows on its own.
+#[tokio::test]
+async fn test_value_with_no_context() {
+    let mut f = release(&["m1", "m2"]).await;
+    f.add(&["m1", "m2"]).await;
+    let value = f.value().await;
+    assert!(value.context.is_none());
+    assert_eq!(value.manual.len(), 2);
+    assert!(value.has_next);
+    assert!(!value.has_previous);
+}
+
+#[tokio::test]
+async fn test_has_next_and_has_previous() {
+    let mut f = release(&["t1", "t2"]).await;
+    let empty = f.value().await;
+    assert!(!empty.has_next && !empty.has_previous);
+    f.play_from("t1").await;
+    let first = f.value().await;
+    assert!(first.has_next && !first.has_previous);
+    f.next().await;
+    let last = f.value().await;
+    assert!(!last.has_next && last.has_previous);
+    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
+    assert!(f.value().await.has_next, "repeat always has a next track");
+}
+
+/// The context lane's tracks are read in windows by offset from the playing
+/// track, each read with the tail's length.
+#[tokio::test]
+async fn test_offset_windows_read_with_the_tail_length() {
+    let tracks: Vec<String> = (0..130).map(|i| format!("t{i:03}")).collect();
+    let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
+    let mut f = release(&refs).await;
+    f.play_from("t000").await;
+
+    let windows = bae_db::LibraryPageWindows::from([
+        bae_db::LibraryPageWindow { offset: 0, limit: 3 },
+        bae_db::LibraryPageWindow { offset: 100, limit: 20 },
+        bae_db::LibraryPageWindow { offset: 125, limit: 20 },
+    ]);
+    let mut live = crate::tables::subscribe_queue_upcoming(&f.db, windows);
+    let read = live.next().await.expect("the query stays open").result.unwrap();
+    let window_tracks: Vec<Vec<String>> = read
+        .windows
+        .iter()
+        .map(|w| w.items.iter().map(|i| f.name(&i.track_id)).collect())
+        .collect();
+    assert_eq!(window_tracks[0], tracks[1..4].to_vec());
+    assert_eq!(window_tracks[1], tracks[101..121].to_vec());
+    assert_eq!(
+        window_tracks[2],
+        tracks[126..130].to_vec(),
+        "a window past the end holds what remains"
+    );
+    assert_eq!(read.upcoming_total, 129);
+}
+
+/// Reordering a context entry with `before = None` moves it to the end of the
+/// lane while the playing track stays playing.
+#[tokio::test]
+async fn test_reorder_context_to_end() {
+    let mut f = release(&["t1", "t2", "t3", "t4"]).await;
+    f.play_from("t1").await;
+    let t2 = f.entry("t2").await;
+    f.queue.reorder(t2, None).await.unwrap();
+    assert_eq!(f.upcoming().await, names(&["t3", "t4", "t2"]));
+    assert_eq!(f.current(), "t1");
+}
+
+/// The queue screens follow a play's fill, Clear Up Next and Clear playing
+/// from, which are bulk writes, as they follow every other change: each
+/// reaches the live queries reading the lanes.
+#[tokio::test]
+async fn test_the_queue_screens_follow_a_play_and_the_clears() {
+    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1"]).await;
+    let mut value = crate::tables::subscribe_queue_value(&f.db);
+    let mut upcoming = crate::tables::subscribe_queue_upcoming(
+        &f.db,
+        bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow { offset: 0, limit: 10 }]),
+    );
+    let wait = std::time::Duration::from_secs(10);
+    macro_rules! value_until {
+        ($check:expr) => {
+            tokio::time::timeout(wait, async {
+                loop {
+                    let read = value.next().await.expect("the query stays open").unwrap();
+                    if $check(&read) {
+                        break;
+                    }
+                }
+            })
+            .await
+            .expect("the queue value follows the write")
+        };
+    }
+    macro_rules! upcoming_until {
+        ($total:expr) => {
+            tokio::time::timeout(wait, async {
+                loop {
+                    let read = upcoming.next().await.expect("the query stays open").result.unwrap();
+                    if read.upcoming_total == $total {
+                        break;
+                    }
+                }
+            })
+            .await
+            .expect("the upcoming windows follow the write")
+        };
+    }
+    upcoming_until!(0);
+
+    f.play_from("t1").await;
+    upcoming_until!(2);
+    f.add(&["m1"]).await;
+    value_until!(|read: &crate::ResolvedQueueSnapshot| read.manual.len() == 1);
+
+    f.queue.clear_up_next().await.unwrap();
+    value_until!(
+        |read: &crate::ResolvedQueueSnapshot| read.manual.is_empty() && read.context.is_some()
+    );
+
+    f.queue.clear_playing_from().await.unwrap();
+    upcoming_until!(0);
+    value_until!(|read: &crate::ResolvedQueueSnapshot| read.context.is_none());
+}

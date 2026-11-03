@@ -1,136 +1,7 @@
-#[tokio::test]
-async fn test_add_to_queue_fills_manual_lane() {
-    let mut f = release(&["a", "b", "c"]).await;
-    f.add(&["a", "b", "c"]).await;
-    assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
-}
-
-#[tokio::test]
-async fn test_add_to_queue_gives_duplicates_distinct_ids() {
-    let mut f = release(&["a"]).await;
-    f.add(&["a", "a"]).await;
-    let ids = f.manual_ids().await;
-    assert_eq!(ids.len(), 2);
-    assert_ne!(ids[0].clone(), ids[1].clone(), "duplicate tracks get distinct ids");
-}
-
-/// A track the library does not hold is left out, and the count says so.
-#[tokio::test]
-async fn test_add_to_queue_leaves_out_tracks_the_library_lacks() {
-    let mut f = release(&["a"]).await;
-    let added =
-        f.queue.add_to_queue(vec![f.id("a"), uuid::Uuid::new_v4().to_string()]).await.unwrap();
-    assert_eq!(added, 1);
-    assert_eq!(f.upcoming().await, names(&["a"]));
-}
-
-#[tokio::test]
-async fn test_add_next_preserves_order() {
-    let mut f = release(&["a", "b", "x"]).await;
-    f.add(&["x"]).await;
-    f.queue.add_next(f.ids(&["a", "b"])).await.unwrap();
-    assert_eq!(f.upcoming().await, names(&["a", "b", "x"]));
-}
-
-#[tokio::test]
-async fn test_remove_by_entry_id() {
-    let mut f = release(&["a", "b", "c"]).await;
-    f.add(&["a", "b", "c"]).await;
-    let b_id = f.manual_ids().await[1].clone();
-    let removed = f.queue.remove(b_id).await.unwrap();
-    assert_eq!(removed.map(|e| f.name(&e.track_id)), Some("b".into()));
-    assert_eq!(f.upcoming().await, names(&["a", "c"]));
-}
-
-/// The same track enqueued twice, removing one instance by its id leaves the
-/// other instance — and its id — intact.
-#[tokio::test]
-async fn test_remove_one_duplicate_keeps_the_other() {
-    let mut f = release(&["dup"]).await;
-    f.add(&["dup", "dup"]).await;
-    let ids = f.manual_ids().await;
-    let removed = f.queue.remove(ids[0].clone()).await.unwrap().expect("first instance removed");
-    assert_eq!(removed.id, ids[0].clone());
-    assert_eq!(f.manual_ids().await, vec![ids[1].clone()], "the other instance's id survives");
-}
-
-#[tokio::test]
-async fn test_remove_unknown_id_is_noop() {
-    let mut f = release(&["a"]).await;
-    f.add(&["a"]).await;
-    let before = f.shown().await;
-    assert_eq!(f.queue.remove(QueueEntryId::Manual(i64::MAX)).await.unwrap(), None);
-    assert_eq!(f.upcoming().await, names(&["a"]));
-    assert_eq!(f.shown().await, before, "an unknown id changes nothing");
-}
-
-#[tokio::test]
-async fn test_reorder_forward() {
-    let mut f = release(&["a", "b", "c", "d"]).await;
-    f.add(&["a", "b", "c", "d"]).await;
-    let ids = f.manual_ids().await;
-    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap());
-    assert_eq!(f.upcoming().await, names(&["b", "a", "c", "d"]));
-}
-
-#[tokio::test]
-async fn test_reorder_to_end() {
-    let mut f = release(&["a", "b", "c", "d"]).await;
-    f.add(&["a", "b", "c", "d"]).await;
-    let ids = f.manual_ids().await;
-    f.queue.reorder(ids[0].clone(), None).await.unwrap();
-    assert_eq!(f.upcoming().await, names(&["b", "c", "d", "a"]));
-}
-
-#[tokio::test]
-async fn test_reorder_backward() {
-    let mut f = release(&["a", "b", "c", "d"]).await;
-    f.add(&["a", "b", "c", "d"]).await;
-    let ids = f.manual_ids().await;
-    f.queue.reorder(ids[2].clone(), Some(ids[0].clone())).await.unwrap();
-    assert_eq!(f.upcoming().await, names(&["c", "a", "b", "d"]));
-}
-
-/// A reorder over a lane with gaps — entries removed from between — keeps
-/// every survivor's place.
-#[tokio::test]
-async fn test_reorder_across_gaps() {
-    let mut f = release(&["a", "b", "c", "d", "e"]).await;
-    f.add(&["a", "b", "c", "d", "e"]).await;
-    let ids = f.manual_ids().await;
-    f.queue.remove(ids[1].clone()).await.unwrap();
-    f.queue.remove(ids[3].clone()).await.unwrap();
-    f.queue.reorder(ids[0].clone(), Some(ids[4].clone())).await.unwrap();
-    assert_eq!(f.upcoming().await, names(&["c", "a", "e"]));
-    f.queue.reorder(ids[4].clone(), Some(ids[2].clone())).await.unwrap();
-    assert_eq!(f.upcoming().await, names(&["e", "c", "a"]));
-}
-
-#[tokio::test]
-async fn test_reorder_before_self_is_noop() {
-    let mut f = release(&["a", "b", "c"]).await;
-    f.add(&["a", "b", "c"]).await;
-    let ids = f.manual_ids().await;
-    f.queue.reorder(ids[1].clone(), Some(ids[1].clone())).await.unwrap();
-    assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
-}
-
-#[tokio::test]
-async fn test_reorder_unknown_source_is_noop() {
-    let mut f = release(&["a", "b"]).await;
-    f.add(&["a", "b"]).await;
-    assert!(!f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap());
-    assert_eq!(f.upcoming().await, names(&["a", "b"]));
-}
-
-#[tokio::test]
-async fn test_clear_up_next_empties_manual_keeps_context() {
-    let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1", "m2"]).await;
-    f.play_from("t1").await;
-    f.add(&["m1", "m2"]).await;
-    f.queue.clear_up_next().await.unwrap();
-    assert_eq!(f.upcoming().await, names(&["t2", "t3"]));
-}
+use super::*;
+use crate::queue::tests::*;
+use crate::tables::{ContextFill, ReleaseStart};
+use crate::ContextSource;
 
 /// Clearing the context lane drops its rows, its history, and its label
 /// while the playing track keeps playing — the lane it came from is gone,
@@ -175,27 +46,6 @@ async fn test_clear_playing_from_with_no_context_is_noop() {
     assert_eq!(f.shown().await, before, "nothing to clear");
     assert_eq!(f.upcoming().await, names(&["m1"]));
 }
-
-#[tokio::test]
-async fn test_skip_to_manual_drains_prefix() {
-    let mut f = release(&["a", "b", "c", "d"]).await;
-    f.add(&["a", "b", "c", "d"]).await;
-    let c_id = f.manual_ids().await[2].clone();
-    let entry = f.queue.skip_to(c_id).await.unwrap();
-    assert_eq!(entry.map(|e| f.name(&e.track_id)), Some("c".into()));
-    assert_eq!(f.upcoming().await, names(&["d"]));
-    assert_eq!(f.current(), "c");
-}
-
-#[tokio::test]
-async fn test_skip_to_unknown_id_is_noop() {
-    let mut f = release(&["a"]).await;
-    f.add(&["a"]).await;
-    assert_eq!(f.queue.skip_to(QueueEntryId::Manual(i64::MAX)).await.unwrap(), None);
-    assert_eq!(f.upcoming().await, names(&["a"]));
-}
-
-// -- context ---------------------------------------------------------------
 
 #[tokio::test]
 async fn test_play_release_sets_current_and_upcoming() {
@@ -268,27 +118,6 @@ async fn test_play_release_shuffled_keeps_all_tracks() {
     assert!(f.value().await.context.unwrap().shuffled);
 }
 
-/// A repeating shuffled lane loops a freshly shuffled order each pass. Twelve
-/// tracks, so two passes in the same order is one chance in 479,001,600.
-#[tokio::test]
-async fn test_context_repeat_shuffled_loops_a_reshuffled_order() {
-    let tracks: Vec<String> = (1..=12).map(|i| format!("t{i}")).collect();
-    let track_refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
-    let mut f = release(&track_refs).await;
-    f.play(ReleaseStart::Shuffled).await;
-    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
-    let first_pass = f.full_order().await;
-    for _ in 0..first_pass.len() - 1 {
-        f.next().await;
-    }
-    assert!(f.next().await.is_some(), "the pass loops");
-    let second_pass = f.full_order().await;
-
-    assert_eq!(sorted(first_pass.clone()), sorted(second_pass.clone()));
-    assert_ne!(first_pass, second_pass, "each pass is shuffled anew");
-    assert!(!f.value().await.has_previous, "the new pass starts at its first track");
-}
-
 /// Unshuffling after a repeat wrap puts every upcoming row back in the order
 /// the lane had when shuffle turned on.
 #[tokio::test]
@@ -318,29 +147,6 @@ async fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
     );
 }
 
-/// A sequential lane under `Context` repeat wraps to its first row in the
-/// same order, carrying the session's removals and reorders into the next
-/// pass.
-#[tokio::test]
-async fn test_context_repeat_sequential_wrap_carries_edits_into_the_next_pass() {
-    let mut f = release(&["t1", "t2", "t3", "t4"]).await;
-    f.play_from("t1").await;
-    let (t2, t3, t4) = (f.entry("t2").await, f.entry("t3").await, f.entry("t4").await);
-    f.queue.remove(t2).await.unwrap();
-    f.queue.reorder(t4, Some(t3)).await.unwrap();
-    assert_eq!(f.context_order().await, names(&["t1", "t4", "t3"]));
-
-    f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
-    assert_eq!(f.next().await, Some("t4".into()));
-    assert_eq!(f.next().await, Some("t3".into()));
-    assert_eq!(f.next().await, Some("t1".into()));
-    assert_eq!(
-        f.context_order().await,
-        names(&["t1", "t4", "t3"]),
-        "the wrap replays the edited lane, not the source"
-    );
-}
-
 /// A `Library` play holds every library track, shuffled, and its source is
 /// the library; unshuffling puts it in the library's own order.
 #[tokio::test]
@@ -365,8 +171,6 @@ async fn test_library_play_holds_all_tracks_in_library_order() {
         .collect();
     assert_eq!(f.upcoming().await, library_order);
 }
-
-// -- shuffle toggle --------------------------------------------------------
 
 /// Turning shuffle on is surgery on the upcoming tail alone: the current row
 /// and the history before it stay where they were, and every unplayed row
@@ -531,27 +335,12 @@ async fn play_releases_skips_a_release_without_tracks() {
     assert_eq!(f.context_order().await, names(&["t1", "t2", "t3"]));
 }
 
-/// The same track queued twice in Up Next plays twice.
+/// With nothing playing there is no context to reorder: no context appears
+/// and no track becomes current.
 #[tokio::test]
-async fn test_a_track_queued_twice_plays_twice() {
-    let mut f = release_and_manual(&["t1"], &["dup"]).await;
-    f.play_from("t1").await;
-    f.add(&["dup", "dup"]).await;
-    assert_eq!(f.next().await, Some("dup".into()));
-    assert_eq!(f.next().await, Some("dup".into()));
-    assert_eq!(f.next().await, None);
-}
-
-/// Removing one of a track's two context entries by its id leaves the other,
-/// with its id, where it was.
-#[tokio::test]
-async fn test_remove_one_context_duplicate_keeps_the_other() {
-    let mut f = release(&["a1", "a2"]).await;
-    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r1")])).await;
-    let upcoming = f.upcoming_entries().await;
-    assert_eq!(f.upcoming().await, names(&["a2", "a1", "a2"]));
-    let removed =
-        f.queue.remove(upcoming[0].id.clone()).await.unwrap().expect("the first a2 removed");
-    assert_eq!(removed, upcoming[0]);
-    assert_eq!(f.upcoming_entries().await, upcoming[1..].to_vec());
+async fn test_set_shuffle_with_no_context_is_noop() {
+    let mut f = release(&["t1"]).await;
+    f.queue.set_shuffle(true).await.unwrap();
+    assert!(f.value().await.context.is_none());
+    assert_eq!(f.current_name(), None);
 }
