@@ -5,6 +5,15 @@ same thing the same way. A new word, or a new meaning for one, goes here in
 the commit that puts it on screen. [bae.md](bae.md) states what bae does; this
 file states what it calls things.
 
+## Capitalization
+
+Sentence case everywhere: capitalize the first word and proper names only
+("Rename library", "Sign in to Dropbox…", "Show in Finder"). This covers
+buttons, titles of windows, sheets, dialogs and pages, settings rows, field
+labels and notes, on every platform. The one exception is the macOS menu
+bar's menus and items, which use title case as every Mac app's do ("Rename
+Library…", "Open Library"). "bae" itself is always lowercase.
+
 ## The library and where it lives
 
 - **Library.** One catalog and its files. A synced library is kept in
@@ -28,9 +37,9 @@ file states what it calls things.
   storage in step. On screen it is "Sync", never "Cloud home".
 - **Signed out.** This device has no working sign-in for storage: none is
   saved, or the one it had expired. The status names the storage ("Signed out
-  of Dropbox"), on the Library page's Sync row too, and so does the button: "Sign In to Dropbox…" (Android "Sign in
-  to Dropbox"), and for OneDrive and iCloud the same. S3 has no sign-in; its
-  button is "Enter Access Key…".
+  of Dropbox"), on the Library page's Sync row too, and so does the button:
+  "Sign in to Dropbox…" (Android "Sign in to Dropbox"), and for OneDrive and
+  iCloud the same. S3 has no sign-in; its button is "Enter access key…".
 - **Storage access was denied.** This device is signed in, but that account
   isn't allowed into the storage folder or bucket. Signing in again doesn't fix
   it; the person who manages the storage does.
