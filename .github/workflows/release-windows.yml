@@ -38,10 +38,6 @@ jobs:
     runs-on: ${{ matrix.arch.runner }}
     needs: calculate-version
     env:
-      # Overrides .cargo/config.toml's repo-wide sccache wrapper: wrapping
-      # rustc flattens its response file, and ffmpeg-sys-next's argument list
-      # then exceeds Windows' 32K limit (os error 206).
-      RUSTC_WRAPPER: ""
       BAE_ENVIRONMENT: production
       BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
       BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}
@@ -88,6 +84,9 @@ jobs:
         with:
           toolchain: "1.95.0"
           targets: ${{ matrix.arch.target }}
+
+      - name: Setup sccache
+        uses: ./.github/actions/setup-windows-sccache
 
       - name: Set LIBCLANG_PATH (LLVM pre-installed on both Windows runners)
         shell: pwsh
