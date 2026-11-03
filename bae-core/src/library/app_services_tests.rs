@@ -386,7 +386,7 @@ async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_clo
         .await
         .expect("the subscription ends");
     assert!(
-        matches!(ended, Err(crate::live_query::LiveValuesError::Cancelled)),
+        matches!(ended, Err(bae_db::live_query::LiveValuesError::Cancelled)),
         "the subscription heard from the closed store: {ended:?}"
     );
 }

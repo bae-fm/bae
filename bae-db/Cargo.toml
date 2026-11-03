@@ -33,6 +33,8 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 # The locks people and history writes take.
 tokio = { workspace = true, features = ["sync"] }
+# The cancellation that ends a live query with the library.
+tokio-util = { workspace = true }
 # Row ids, and the ids derived from catalog ids.
 uuid = { workspace = true, features = ["v4", "v5"] }
 chrono = { workspace = true, features = ["serde"] }

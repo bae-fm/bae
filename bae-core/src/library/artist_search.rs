@@ -27,7 +27,7 @@ pub struct ArtistSearchSnapshot {
 
 /// A live artist search whose text and windows change in place.
 pub struct LiveArtistSearch {
-    query: crate::live_query::CancellableLiveQuery<
+    query: bae_db::live_query::CancellableLiveQuery<
         ArtistSearchView,
         crate::library::views::ArtistSearchProjection,
     >,
@@ -41,7 +41,7 @@ pub struct LiveArtistSearch {
 
 impl LiveArtistSearch {
     pub(crate) fn new(
-        query: crate::live_query::CancellableLiveQuery<
+        query: bae_db::live_query::CancellableLiveQuery<
             ArtistSearchView,
             crate::library::views::ArtistSearchProjection,
         >,

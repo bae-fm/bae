@@ -19,10 +19,10 @@ pub use values::{LiveValues, LiveValuesError};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
 /// ended.
-pub(crate) struct LiveQueryCancelled;
+pub struct LiveQueryCancelled;
 
 /// A reconfigurable live query and the cancellation that ends it.
-pub(crate) struct CancellableLiveQuery<Request, Projection> {
+pub struct CancellableLiveQuery<Request, Projection> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<Request>>>,
     query: tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<Request, Projection>>>,
     cancellation: CancellationToken,
@@ -37,8 +37,8 @@ where
     Request: Clone + PartialEq + Send + Sync + 'static,
     Projection: Clone + PartialEq + Send + 'static,
 {
-    /// `query`, ended by [`Self::cancel`] or by `cancellation`.
-    pub(crate) fn new(
+    /// `query`, ended by `cancel` or by `cancellation`.
+    pub fn new(
         query: coven::ReconfigurableLiveQuery<Request, Projection>,
         cancellation: CancellationToken,
     ) -> Self {
@@ -53,7 +53,7 @@ where
 
     /// A handle that counts the query's runs.
     #[cfg(feature = "test-utils")]
-    pub(crate) fn runs(&self) -> coven::LiveQueryRuns {
+    pub fn runs(&self) -> coven::LiveQueryRuns {
         self.runs.clone()
     }
 
@@ -63,7 +63,7 @@ where
         clippy::map_err_ignore,
         reason = "coven refuses a request only because its query is gone, which is this cancellation"
     )]
-    pub(crate) fn set(&self, request: Request) -> Result<u64, LiveQueryCancelled> {
+    pub fn set(&self, request: Request) -> Result<u64, LiveQueryCancelled> {
         if self.cancellation.is_cancelled() {
             return Err(LiveQueryCancelled);
         }
@@ -79,7 +79,7 @@ where
 
     /// The next value, its revision, and why it was produced — or the end of
     /// the subscription. Query errors are events, not the end.
-    pub(crate) async fn next(
+    pub async fn next(
         &self,
     ) -> Result<coven::ReconfigurableLiveQueryEvent<Request, Projection>, LiveQueryCancelled> {
         tokio::select! {
@@ -103,7 +103,7 @@ impl<Request, Projection> CancellableLiveQuery<Request, Projection> {
     }
 
     /// Cancel, then drop the query once no read holds it.
-    pub(crate) async fn close(&self) {
+    pub async fn close(&self) {
         self.cancel();
         self.query.lock().await.take();
     }

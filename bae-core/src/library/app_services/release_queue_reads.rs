@@ -45,7 +45,7 @@ impl AppServices {
     /// one after each write that changes them.
     pub fn subscribe_download_counts(
         &self,
-    ) -> crate::live_query::LiveValues<crate::library::ReleaseQueueCounts> {
+    ) -> bae_db::live_query::LiveValues<crate::library::ReleaseQueueCounts> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_download_counts())
     }

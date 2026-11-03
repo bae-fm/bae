@@ -39,8 +39,8 @@ impl ImportServiceHandle {
     /// processed progress. Closing the library ends it.
     pub fn subscribe_folder_scans(
         &self,
-    ) -> crate::live_query::LiveValues<crate::import::FolderScanProgress> {
-        crate::live_query::LiveValues::new(
+    ) -> bae_db::live_query::LiveValues<crate::import::FolderScanProgress> {
+        bae_db::live_query::LiveValues::new(
             self.tables.subscribe_folder_scan_progress(),
             self.closing.child_token(),
         )
@@ -49,8 +49,8 @@ impl ImportServiceHandle {
     /// How far the identifications and imports in flight have got: the
     /// first value at once, then a value after each write that moves them.
     /// Closing the library ends it.
-    pub fn subscribe_counts(&self) -> crate::live_query::LiveValues<crate::import::ImportCounts> {
-        crate::live_query::LiveValues::new(
+    pub fn subscribe_counts(&self) -> bae_db::live_query::LiveValues<crate::import::ImportCounts> {
+        bae_db::live_query::LiveValues::new(
             self.tables.subscribe_import_counts(),
             self.closing.child_token(),
         )
@@ -62,8 +62,8 @@ impl ImportServiceHandle {
     pub fn subscribe_candidate_runtime(
         &self,
         key: &crate::import::CandidateKey,
-    ) -> crate::live_query::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>> {
-        crate::live_query::LiveValues::new(
+    ) -> bae_db::live_query::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>> {
+        bae_db::live_query::LiveValues::new(
             self.tables.subscribe_candidate_runtime(key),
             self.closing.child_token(),
         )

@@ -48,8 +48,8 @@ pub enum LiveLibrarySearchError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LiveLibrarySearchError {
-    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+impl From<bae_db::live_query::LiveQueryCancelled> for LiveLibrarySearchError {
+    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }
@@ -58,7 +58,7 @@ impl From<crate::live_query::LiveQueryCancelled> for LiveLibrarySearchError {
 /// query for as long as the search field is open, instead of a new live query
 /// per keystroke.
 pub struct LiveLibrarySearch {
-    query: crate::live_query::CancellableLiveQuery<
+    query: bae_db::live_query::CancellableLiveQuery<
         Option<LibrarySearchQuery>,
         crate::library::views::LibrarySearchProjection,
     >,
@@ -71,7 +71,7 @@ pub struct LiveLibrarySearch {
 
 impl LiveLibrarySearch {
     pub(crate) fn new(
-        query: crate::live_query::CancellableLiveQuery<
+        query: bae_db::live_query::CancellableLiveQuery<
             Option<LibrarySearchQuery>,
             crate::library::views::LibrarySearchProjection,
         >,

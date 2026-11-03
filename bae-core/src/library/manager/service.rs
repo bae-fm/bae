@@ -222,12 +222,12 @@ impl LibraryManager {
     pub(crate) fn until_closed<Request, Projection>(
         &self,
         query: coven::ReconfigurableLiveQuery<Request, Projection>,
-    ) -> crate::live_query::CancellableLiveQuery<Request, Projection>
+    ) -> bae_db::live_query::CancellableLiveQuery<Request, Projection>
     where
         Request: Clone + PartialEq + Send + Sync + 'static,
         Projection: Clone + PartialEq + Send + 'static,
     {
-        crate::live_query::CancellableLiveQuery::new(query, self.tasks.closing.child_token())
+        bae_db::live_query::CancellableLiveQuery::new(query, self.tasks.closing.child_token())
     }
 
     /// `query`'s values for a surface to pull, which closing the library ends
@@ -237,8 +237,8 @@ impl LibraryManager {
     pub(crate) fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
         query: coven::LiveQuery<T>,
-    ) -> crate::live_query::LiveValues<T> {
-        crate::live_query::LiveValues::new(query, self.tasks.closing.child_token())
+    ) -> bae_db::live_query::LiveValues<T> {
+        bae_db::live_query::LiveValues::new(query, self.tasks.closing.child_token())
     }
 
     /// A file operation owns its rollback even when its caller disappears. A

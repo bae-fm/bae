@@ -79,7 +79,7 @@ macro_rules! delegate_sync {
 /// cancels or the library closes.
 macro_rules! delegate_values {
     ($name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $value:ty) => {
-        pub fn $name(&self, $($arg: $ty),*) -> crate::live_query::LiveValues<$value> {
+        pub fn $name(&self, $($arg: $ty),*) -> bae_db::live_query::LiveValues<$value> {
             let manager = &self.inner.manager;
             manager.values_until_closed(manager.$target($($arg),*))
         }
@@ -269,7 +269,7 @@ impl AppServices {
 
     /// The library's preferences as the settings screens read them: the
     /// first value at once, then one after each write that changes them.
-    pub fn subscribe_config(&self) -> crate::live_query::LiveValues<bae_preferences::Config> {
+    pub fn subscribe_config(&self) -> bae_db::live_query::LiveValues<bae_preferences::Config> {
         self.inner.manager.subscribe_config()
     }
 
@@ -278,7 +278,7 @@ impl AppServices {
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
         &self,
         part: impl Fn(bae_preferences::Preferences) -> T + Send + Sync + 'static,
-    ) -> crate::live_query::LiveValues<T> {
+    ) -> bae_db::live_query::LiveValues<T> {
         self.inner.manager.follow_preferences(part)
     }
 
@@ -525,7 +525,7 @@ impl AppServices {
     /// operation when coven holds one.
     pub fn subscribe_invites(
         &self,
-    ) -> crate::live_query::LiveValues<Vec<crate::people::OpenInvite>> {
+    ) -> bae_db::live_query::LiveValues<Vec<crate::people::OpenInvite>> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
@@ -699,7 +699,7 @@ impl AppServices {
     // in one go.
     pub fn subscribe_sync_activity(
         &self,
-    ) -> crate::live_query::LiveValues<crate::library::SyncActivity> {
+    ) -> bae_db::live_query::LiveValues<crate::library::SyncActivity> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_sync_activity())
     }
 
@@ -709,7 +709,7 @@ impl AppServices {
 
     /// Whether the person paused uploads: the first value at once, then one
     /// after each change.
-    pub fn subscribe_uploads_paused(&self) -> crate::live_query::LiveValues<bool> {
+    pub fn subscribe_uploads_paused(&self) -> bae_db::live_query::LiveValues<bool> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_uploads_paused())
     }
 

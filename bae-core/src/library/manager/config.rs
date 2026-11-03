@@ -59,7 +59,7 @@ impl LibraryManager {
     /// library and its directory: the first value at once, then one after
     /// each write that changes them, until the surface cancels or the library
     /// closes.
-    pub fn subscribe_config(&self) -> crate::live_query::LiveValues<bae_preferences::Config> {
+    pub fn subscribe_config(&self) -> bae_db::live_query::LiveValues<bae_preferences::Config> {
         let store_id = self.database.store_id();
         let library_path = self.library_path();
         self.values_until_closed(bae_preferences::subscribe_preferences(&self.database).process(
@@ -75,7 +75,7 @@ impl LibraryManager {
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
         &self,
         part: impl Fn(bae_preferences::Preferences) -> T + Send + Sync + 'static,
-    ) -> crate::live_query::LiveValues<T> {
+    ) -> bae_db::live_query::LiveValues<T> {
         self.values_until_closed(
             bae_preferences::subscribe_preferences(&self.database)
                 .process(move |prefs| Ok(part(prefs))),

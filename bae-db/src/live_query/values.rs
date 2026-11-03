@@ -24,7 +24,7 @@ pub struct LiveValues<T> {
 }
 
 impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
-    pub(crate) fn new(query: coven::LiveQuery<T>, cancellation: CancellationToken) -> Self {
+    pub fn new(query: coven::LiveQuery<T>, cancellation: CancellationToken) -> Self {
         Self { query: tokio::sync::Mutex::new(Some(query)), cancellation }
     }
 

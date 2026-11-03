@@ -955,6 +955,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-util",
  "tracing",
  "uuid",
 ]
@@ -964,6 +965,7 @@ name = "bae-desktop"
 version = "0.1.0"
 dependencies = [
  "bae-core",
+ "bae-db",
  "bae-diagnostics",
  "bae-mcp",
  "bae-preferences",

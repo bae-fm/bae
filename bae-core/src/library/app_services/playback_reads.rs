@@ -14,7 +14,7 @@ impl AppServices {
     /// [`subscribe_playback_positions`](Self::subscribe_playback_positions).
     pub fn subscribe_playback_values(
         &self,
-    ) -> crate::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
+    ) -> bae_db::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_now_playing())
     }
@@ -47,7 +47,7 @@ impl AppServices {
     /// once, then one each time playback leaves the line it holds.
     pub fn subscribe_playback_timeline(
         &self,
-    ) -> crate::live_query::LiveValues<bae_playback::PlaybackTimeline> {
+    ) -> bae_db::live_query::LiveValues<bae_playback::PlaybackTimeline> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_playback_timeline())
     }
@@ -56,7 +56,7 @@ impl AppServices {
     /// once, then one after each write that changes it.
     pub fn subscribe_cast_devices(
         &self,
-    ) -> crate::live_query::LiveValues<Vec<bae_playback::renderer::CastDevice>> {
+    ) -> bae_db::live_query::LiveValues<Vec<bae_playback::renderer::CastDevice>> {
         self.inner.manager.values_until_closed(self.inner.cast_picker.subscribe())
     }
 

@@ -402,10 +402,10 @@ impl CastController {
                         #[cfg(test)]
                         controller.setting_applied.send_replace(Some(enabled));
                     }
-                    Err(bae_core::live_query::LiveValuesError::Query(error)) => {
+                    Err(bae_db::live_query::LiveValuesError::Query(error)) => {
                         warn!("couldn't read whether casting is on: {error}");
                     }
-                    Err(bae_core::live_query::LiveValuesError::Cancelled) => {
+                    Err(bae_db::live_query::LiveValuesError::Cancelled) => {
                         debug!("cast setting watcher stopped: the library closed");
                         break;
                     }

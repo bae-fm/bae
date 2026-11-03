@@ -1,8 +1,9 @@
 //! bae's library store: the `Database` over coven's handle and the entry
 //! points every read and write runs through, the schema (its one migration,
 //! the synced tables and the SQL functions it declares), the library's
-//! records and the row writers that keep them, list windows, and the people,
-//! collections and history a library holds.
+//! records and the row writers that keep them, list windows, the cancellable
+//! live queries a surface pulls values from, and the people, collections and
+//! history a library holds.
 
 pub mod admin_change;
 pub mod client;
@@ -12,6 +13,7 @@ mod error;
 pub use error::DbError;
 pub mod history;
 pub mod identity;
+pub mod live_query;
 pub mod membership;
 pub mod migrations;
 mod models;

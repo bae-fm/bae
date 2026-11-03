@@ -1,7 +1,7 @@
 //! The album grid's multi-selection, read through one live query whose ids
 //! change as the selection does.
 
-use crate::live_query::CancellableLiveQuery;
+use bae_db::live_query::CancellableLiveQuery;
 use std::collections::BTreeSet;
 
 /// One value the subscription delivered: the ids it read, and those of them
@@ -21,8 +21,8 @@ pub enum LiveAlbumSelectionError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LiveAlbumSelectionError {
-    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+impl From<bae_db::live_query::LiveQueryCancelled> for LiveAlbumSelectionError {
+    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }

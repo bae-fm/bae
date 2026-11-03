@@ -1,7 +1,7 @@
 //! Whether the releases an import pane offers are already in the library,
 //! read through one live query whose checks change as the offers do.
 
-use crate::live_query::CancellableLiveQuery;
+use bae_db::live_query::CancellableLiveQuery;
 use bae_db::{LibraryCheck, LibraryStatus};
 use std::collections::BTreeSet;
 
@@ -22,8 +22,8 @@ pub enum LiveLibraryStatusError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LiveLibraryStatusError {
-    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+impl From<bae_db::live_query::LiveQueryCancelled> for LiveLibraryStatusError {
+    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }

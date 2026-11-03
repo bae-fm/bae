@@ -20,7 +20,7 @@ use crate::import::selection::{SelectedRows, SelectionChange};
 use crate::import::tables::{ImportTables, SelectionWrite};
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::CancellationToken;
-use crate::live_query::CancellableLiveQuery;
+use bae_db::live_query::CancellableLiveQuery;
 use bae_db::DbError;
 use bae_db::LibraryPageWindows;
 
@@ -37,8 +37,8 @@ pub enum LiveImportListError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LiveImportListError {
-    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+impl From<bae_db::live_query::LiveQueryCancelled> for LiveImportListError {
+    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }

@@ -1,4 +1,4 @@
-use crate::live_query::CancellableLiveQuery;
+use bae_db::live_query::CancellableLiveQuery;
 use bae_db::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 use std::sync::Arc;
 
@@ -56,8 +56,8 @@ pub enum LiveLibraryBrowseError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LiveLibraryBrowseError {
-    fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
+impl From<bae_db::live_query::LiveQueryCancelled> for LiveLibraryBrowseError {
+    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }
