@@ -85,11 +85,11 @@ impl LibraryManager {
             .map_err(LibraryError::TransferCode)
     }
 
-    pub async fn get_members(&self) -> Result<crate::sync::membership::Membership, LibraryError> {
+    pub async fn get_members(&self) -> Result<crate::db::membership::Membership, LibraryError> {
         Ok(self.database.membership().await?)
     }
 
-    pub fn subscribe_members(&self) -> coven::LiveQuery<crate::sync::membership::Membership> {
+    pub fn subscribe_members(&self) -> coven::LiveQuery<crate::db::membership::Membership> {
         self.database.subscribe_membership()
     }
 
@@ -110,7 +110,7 @@ impl LibraryManager {
     pub fn subscribe_added_device(
         &self,
         watch: crate::sync::membership::AddedDeviceWatch,
-    ) -> coven::LiveQuery<Option<crate::sync::membership::ActiveDevice>> {
+    ) -> coven::LiveQuery<Option<crate::db::membership::ActiveDevice>> {
         let sync_often = self.database.sync_often(ADD_DEVICE_SYNC_INTERVAL);
         self.subscribe_members().process(move |membership| {
             // The subscription owns the request; dropping it ends the request.
@@ -123,7 +123,7 @@ impl LibraryManager {
     /// dismisses its outcome, live (§5.6).
     pub fn subscribe_admin_changes(
         &self,
-    ) -> coven::LiveQuery<Vec<crate::sync::admin_change::AdminChange>> {
+    ) -> coven::LiveQuery<Vec<crate::db::admin_change::AdminChange>> {
         self.database.subscribe_admin_changes()
     }
 

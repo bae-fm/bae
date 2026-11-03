@@ -3,7 +3,7 @@
 //! can sync and those that lost access, each list in device-id order.
 
 use super::*;
-use crate::sync::membership::{
+use crate::db::membership::{
     ActiveDevice, FormerDevice, FormerDeviceState, Membership, MembershipMember,
 };
 use rusqlite::types::Type;

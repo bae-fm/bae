@@ -2,7 +2,7 @@
 //! their journaled operations until the person dismisses each outcome
 //! (§5.6).
 
-use crate::sync::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
+use crate::db::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 use crate::sync::test_devices::run_two_device_test;
 
 /// Robin renames the library on her laptop while it is offline. The rename

@@ -8,7 +8,6 @@
 // unchanged. Cloud file operations use the exact stored file reference.
 pub use coven::{decode_code_info, restore_from_code};
 
-pub mod admin_change;
 pub mod membership;
 pub mod restore_code;
 

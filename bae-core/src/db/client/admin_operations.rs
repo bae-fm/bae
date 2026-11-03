@@ -4,7 +4,7 @@
 //! acknowledges a change's outcome deletes its row.
 
 use super::*;
-use crate::sync::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
+use crate::db::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 use rusqlite::types::Type;
 
 /// What an admin change changes, as its `admin_operations` row holds it.

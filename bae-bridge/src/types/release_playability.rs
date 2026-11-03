@@ -21,7 +21,7 @@ mirror_enum! {
 }
 
 /// The other device a release's audio is on. Mirrors
-/// `bae_core::album_detail::OtherDevice`.
+/// `bae_core::db::OtherDevice`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeOtherDevice {
     Active { name: String },
@@ -29,7 +29,7 @@ pub enum BridgeOtherDevice {
 }
 
 mirror_enum! {
-    BridgeOtherDevice = bae_core::album_detail::OtherDevice,
+    BridgeOtherDevice = bae_core::db::OtherDevice,
     from_core: pub fn,
     variants: {
         Active { name },

@@ -49,7 +49,7 @@ pub use artist::*;
 pub use composer::*;
 pub use file_kind::{FileKind, FilePlace};
 pub(crate) use playability::release_playability;
-pub use playability::{OtherDevice, ReleasePlayability};
+pub use playability::ReleasePlayability;
 pub use release::*;
 pub use search::*;
 pub use storage::*;
@@ -361,7 +361,8 @@ mod tests {
     /// imported offers nothing to upload.
     #[test]
     fn local_without_its_originals_here_offers_nothing() {
-        let elsewhere = OnOtherDevice(OtherDevice::Active { name: "Device A".to_string() });
+        let elsewhere =
+            OnOtherDevice(crate::db::OtherDevice::Active { name: "Device A".to_string() });
         assert_eq!(
             available_storage_actions(Local, &elsewhere, false, true),
             Vec::<ReleaseStorageAction>::new(),

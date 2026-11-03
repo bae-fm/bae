@@ -1,8 +1,7 @@
 //! Whether this device can play a release now, decided from what the library
 //! records of where its files are.
 
-use crate::db::DbUnstoredAudio;
-use crate::sync::membership::FormerDeviceState;
+use crate::db::{DbUnstoredAudio, OtherDevice};
 
 /// Whether this device can play a release now, and why not.
 ///
@@ -18,17 +17,6 @@ pub enum ReleasePlayability {
     /// Audio on another device only: it plays here once that device moves it
     /// to the cloud.
     OnOtherDevice(OtherDevice),
-}
-
-/// The other device a file is on, as coven's registration of it reads.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OtherDevice {
-    /// A device of the library, by its name.
-    Active { name: String },
-    /// A device that lost access to the library, by its name: removed, or
-    /// replaced when it was reset. Its files stay on it, and no device can
-    /// move them to the cloud any more.
-    Former { name: String, state: FormerDeviceState },
 }
 
 /// The playability of a release from what the library records this device

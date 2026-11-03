@@ -144,7 +144,7 @@ pub fn invite_shown(invite: &coven::Invite) -> InviteShown {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Person {
     pub profile: Option<PersonProfile>,
-    pub membership: crate::sync::membership::MembershipMember,
+    pub membership: crate::db::membership::MembershipMember,
 }
 
 #[derive(Debug, thiserror::Error)]

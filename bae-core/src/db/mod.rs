@@ -1,8 +1,10 @@
+pub mod admin_change;
 pub(crate) mod client;
 pub mod credits;
 mod error;
 pub use error::DbError;
 pub mod identity;
+pub mod membership;
 pub mod migrations;
 mod models;
 pub(crate) mod schema;

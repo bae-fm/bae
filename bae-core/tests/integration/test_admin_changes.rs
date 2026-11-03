@@ -2,7 +2,7 @@
 //! operation until the person dismisses it (§5.6).
 
 use super::test_people::{new_member, on_app_runtime, Household};
-use bae_core::sync::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
+use bae_core::db::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 
 /// Robin approves Rowan's request on her laptop. The approval is listed as
 /// letting Rowan in, by the name her invite gave him, and is done once her

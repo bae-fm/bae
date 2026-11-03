@@ -389,9 +389,9 @@ impl UnstoredRow {
 
     /// The device the file is on, which is not this one: removed when its
     /// registration says so or its person was removed from the library.
-    fn other_device(&self) -> Result<crate::album_detail::OtherDevice, DbError> {
-        use crate::album_detail::OtherDevice;
-        use crate::sync::membership::FormerDeviceState;
+    fn other_device(&self) -> Result<crate::db::OtherDevice, DbError> {
+        use crate::db::membership::FormerDeviceState;
+        use crate::db::OtherDevice;
         let (Some(name), Some(state), Some(member_removed)) =
             (self.name.clone(), self.state.as_deref(), self.member_removed)
         else {

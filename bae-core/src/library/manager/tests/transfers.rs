@@ -634,7 +634,7 @@ async fn check_playability(
 
     assert_eq!(
         playability(elsewhere.id.clone()).await,
-        ReleasePlayability::OnOtherDevice(crate::album_detail::OtherDevice::Active {
+        ReleasePlayability::OnOtherDevice(crate::db::OtherDevice::Active {
             name: "Device A".to_string()
         })
     );

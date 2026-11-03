@@ -99,9 +99,20 @@ pub struct DbSendingUploads {
 pub enum DbUnstoredAudio {
     /// No original here: the file is on another device, as coven's
     /// registration of that device reads.
-    Elsewhere(crate::album_detail::OtherDevice),
+    Elsewhere(OtherDevice),
     /// This device's original, as coven records it.
     Original,
+}
+
+/// The other device a file is on, as coven's registration of it reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OtherDevice {
+    /// A device of the library, by its name.
+    Active { name: String },
+    /// A device that lost access to the library, by its name: removed, or
+    /// replaced when it was reset. Its files stay on it, and no device can
+    /// move them to the cloud any more.
+    Former { name: String, state: crate::db::membership::FormerDeviceState },
 }
 
 /// A track row with its resolved artist rows (many-to-many join from the DB).

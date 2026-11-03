@@ -239,7 +239,7 @@ pulled_values! {
 pulled_values! {
     /// The store's members and their devices.
     MembersSubscription:
-        bae_core::sync::membership::Membership => crate::types::BridgeMembership,
+        bae_core::db::membership::Membership => crate::types::BridgeMembership,
     converted by crate::types::BridgeMembership::from_core,
     built by members
 }
@@ -258,9 +258,9 @@ pulled_values! {
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     AdminChangesSubscription:
-        Vec<bae_core::sync::admin_change::AdminChange>
+        Vec<bae_core::db::admin_change::AdminChange>
             => Vec<crate::types::BridgeAdminChange>,
-    converted by |changes: Vec<bae_core::sync::admin_change::AdminChange>| {
+    converted by |changes: Vec<bae_core::db::admin_change::AdminChange>| {
         changes.into_iter().map(crate::types::BridgeAdminChange::from_core).collect::<Vec<_>>()
     },
     built by admin_changes
@@ -270,9 +270,9 @@ pulled_values! {
     /// This person's device that joined after Add Device made its code; none
     /// until one does.
     AddedDeviceSubscription:
-        Option<bae_core::sync::membership::ActiveDevice>
+        Option<bae_core::db::membership::ActiveDevice>
             => Option<crate::types::BridgeActiveDevice>,
-    converted by |device: Option<bae_core::sync::membership::ActiveDevice>| {
+    converted by |device: Option<bae_core::db::membership::ActiveDevice>| {
         device.map(crate::types::BridgeActiveDevice::from_core)
     },
     built by added_device
