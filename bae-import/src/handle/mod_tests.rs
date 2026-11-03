@@ -1,8 +1,10 @@
 //! The handle's shared fixtures: an import service over a fresh store, folders
 //! stored as a scan stores them under a watched root, the handle and key a
-//! pane's controls address, and catalog answers picked into the draft.
+//! pane's controls address, and catalog answers picked into the draft. A
+//! claimed import's queued status is published at once.
 
 use super::*;
+use crate::identification::tests::*;
 use crate::test_import::TestImport;
 use crate::PendingStanding;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
@@ -15,6 +17,7 @@ use bae_identify::LookupChoiceEdit;
 use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use std::path::Path;
+use std::time::Duration;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -769,4 +772,33 @@ pub(super) async fn store_two_pressings(
 pub(super) fn album() -> AlbumLink {
     AlbumLink::new([MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, ALBUM)])
         .expect("one album")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn claiming_an_import_publishes_queued_status_immediately() {
+    let fixture = Fixture::new("import-queued-status").await;
+    let candidate = fixture.disc_id_candidate("Album Title");
+    fixture.scan(1).await;
+    let mut changes = fixture.import.every_runtime_change_for_test();
+
+    fixture
+        .import
+        .claim_candidate_for_import(&crate::CandidateKey::folder(&candidate), "import-1")
+        .await;
+
+    let change = tokio::time::timeout(Duration::from_secs(1), changes.recv())
+        .await
+        .expect("the queued status is published")
+        .expect("runtime changes remain open");
+    assert!(matches!(
+        change,
+        crate::CandidateRuntimeChange::Updated { key, runtime }
+            if key == crate::CandidateKey::folder(&candidate)
+                && runtime.import
+                    == Some(crate::ImportInFlight {
+                        step: crate::ImportStep::Preparing(
+                            crate::PrepareStep::Queued
+                        ),
+                    })
+    ));
 }

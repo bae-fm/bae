@@ -7,7 +7,9 @@ use super::*;
 use crate::candidates::CandidateFiles;
 use crate::candidates::ImportInFlight;
 use crate::folder_scanner::{CategorizedFiles, InvalidCandidate};
+use crate::identification::tests::*;
 use crate::types::{ImportPhase, ImportProgress, PrepareStep};
+use crate::IdentifyRunId;
 use crate::ImportStep;
 use std::path::PathBuf;
 
@@ -432,4 +434,45 @@ async fn a_candidate_leaving_or_reshaped_ends_its_work() {
             );
         }
     }
+}
+
+/// A candidate's standing ends with it: a folder whose answer failed to
+/// save, removed and found again with the same files, starts with no
+/// standing — no failure on its row.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_folder_removed_and_found_again_starts_with_no_standing() {
+    let fixture = Fixture::new("standing-ends-with-its-candidate").await;
+    fixture.set_identify_automatically(false).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.scan(1).await;
+    let files =
+        crate::CandidateFiles { content_hash: fixture.content_hash(&dir), file_edit_revision: 0 };
+    let failure = crate::SaveFailure::NotWritten { error: "the disk is full".to_string() };
+    fixture
+        .import
+        .fail_identification(&key, IdentifyRunId::for_test(1), &files, failure.clone())
+        .await
+        .unwrap();
+    assert_eq!(
+        fixture.identification_status(&key).await,
+        Some(crate::IdentificationStatus::FinalizationFailed { failure })
+    );
+
+    let away = fixture.root.with_file_name("away-from-the-watched-folder");
+    std::fs::rename(&dir, &away).unwrap();
+    fixture.rescan(&fixture.import, 0).await;
+    assert_eq!(
+        fixture.identification_status(&key).await,
+        None,
+        "the scan that dropped the folder ended its standing"
+    );
+    std::fs::rename(&away, &dir).unwrap();
+    fixture.rescan(&fixture.import, 1).await;
+    assert_eq!(fixture.content_hash(&dir), files.content_hash, "the same files");
+
+    assert_eq!(fixture.identification_status(&key).await, None);
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
+    let (_, live) = &page_rows(&next_page(&list).await)[&key];
+    assert_eq!(live.facts.identification, None, "the row shows no failure");
 }

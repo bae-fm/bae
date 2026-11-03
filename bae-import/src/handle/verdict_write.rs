@@ -121,3 +121,7 @@ impl ImportServiceHandle {
         Ok(Some(candidate))
     }
 }
+
+#[cfg(test)]
+#[path = "verdict_write_tests.rs"]
+mod tests;

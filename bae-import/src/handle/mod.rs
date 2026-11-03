@@ -23,6 +23,7 @@ mod identification;
 mod import;
 mod list;
 mod lookup_choices;
+mod picks;
 mod scan;
 mod search;
 mod session;

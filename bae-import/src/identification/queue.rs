@@ -5,10 +5,14 @@ use super::*;
 use std::collections::VecDeque;
 use tokio::task::JoinSet;
 
+mod finish;
 mod reactions;
+mod requests;
 
 use bae_util::task_failure::TaskFailed;
-use reactions::{finish, handle_events};
+use finish::finish;
+use reactions::handle_events;
+use requests::request;
 
 /// One candidate on the queue, and which admission put it there.
 struct QueuedCandidate {
@@ -323,17 +327,6 @@ impl Queue {
         self.jobs.iter().position(|job| matches!(job.state, JobState::Waiting))
     }
 
-    /// Where a request goes: behind earlier waiting requests, ahead of every
-    /// waiting automatic job.
-    fn request_position(&self) -> usize {
-        self.jobs
-            .iter()
-            .position(|job| {
-                matches!(job.state, JobState::Waiting) && job.admission() == Admission::Automatic
-            })
-            .unwrap_or(self.jobs.len())
-    }
-
     /// Stop every run the queue has going, at shutdown.
     async fn cancel_every_run(&self, context: &Context) {
         for job in &self.jobs {
@@ -536,15 +529,6 @@ pub(super) async fn admit(
     }
 }
 
-/// A person asked for this candidate to be identified now.
-async fn request(context: &Context, queue: &mut Queue, candidate_key: crate::CandidateKey) {
-    let Some(candidate) = answerable_candidate(context, &candidate_key).await else {
-        warn!("identification: cannot identify {candidate_key}: no answer can be stored for it");
-        return;
-    };
-    admit(context, queue, vec![candidate], Admission::Requested).await;
-}
-
 /// Start what the queue has room for.
 async fn fill_slots(context: &Context, queue: &mut Queue) {
     while let Some(index) = queue.next_waiting() {
@@ -602,3 +586,7 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         queue.jobs[index].state = JobState::Running { representative: key, run };
     }
 }
+
+#[cfg(test)]
+#[path = "queue_tests.rs"]
+mod tests;

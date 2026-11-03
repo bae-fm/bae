@@ -1,11 +1,20 @@
 //! What a pass stores and announces of what it read: each file read only
 //! when it is new or changed, the tags stored for unchanged tracks kept, a
 //! candidate seeded from its files' tags, and an unchanged folder announcing
-//! nothing.
+//! nothing. A release is identified on its own only when a pass first finds
+//! it while automatic identification is on, and changed files retire its
+//! result.
 
 use super::*;
+use crate::extraction::ArtworkAnalysis;
+use crate::extraction::ArtworkAnalyzer;
+use crate::identification::tests::*;
 use crate::service::tests::*;
+use bae_catalogs::test_releases::mb_release_json;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 use std::sync::Mutex;
+use std::time::Duration;
 
 /// A pass that reads two disc folders as one release probes each disc's audio
 /// once: the release reuses the facts the disc folders were read with.
@@ -572,4 +581,241 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         }
     }
     panic!("the seeded candidate was not announced");
+}
+
+// A release is queued on its own only when a scan first finds it while the
+// setting is on.
+
+/// A release found while the setting is on is identified; one found after it
+/// was turned off is not.
+#[tokio::test(flavor = "multi_thread")]
+async fn only_a_release_found_while_automatic_is_on_is_identified_on_its_own() {
+    let fixture = Fixture::new("found-while-on").await;
+    let on = fixture.disc_id_candidate("Found While On");
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.scan(1).await;
+
+    fixture.set_identify_automatically(false).await;
+    let off = fixture.disc_id_candidate("Found While Off");
+    std::fs::write(off.join("notes.txt"), "a candidate of its own").unwrap();
+    fixture.rescan(&fixture.import, 2).await;
+    fixture.drain_automatic().await;
+
+    assert!(
+        fixture.identified_for(&on).await.is_some(),
+        "the release found while identification ran on its own is identified"
+    );
+    assert!(
+        fixture.identified_for(&off).await.is_none(),
+        "the release found after it was turned off waits for a person"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        1,
+        "one release was asked about: {:?}",
+        fixture.provider.requests()
+    );
+}
+
+/// Turning the setting on queues no candidate found while it was off.
+#[tokio::test(flavor = "multi_thread")]
+async fn turning_automatic_identification_on_queues_no_candidate_already_found() {
+    let fixture = Fixture::new("on-reaches-back-to-nothing").await;
+    let dir = fixture.disc_id_candidate("Album");
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.set_identify_automatically(false).await;
+    fixture.scan(1).await;
+    fixture.drain_automatic().await;
+
+    fixture.set_identify_automatically(true).await;
+    fixture.drain_automatic().await;
+
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        0,
+        "nothing was asked about the candidate found while it was off: {:?}",
+        fixture.provider.requests()
+    );
+    assert!(fixture.identified_for(&dir).await.is_none());
+}
+
+/// A rescan queues no candidate it had found, even with new files in its
+/// folder.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_rescan_queues_no_candidate_it_had_found() {
+    let fixture = Fixture::new("rescan-queues-nothing").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.set_identify_automatically(false).await;
+    fixture.scan(1).await;
+    let files_before = fixture
+        .import
+        .answerable_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is answerable")
+        .files
+        .content_hash();
+    fixture.set_identify_automatically(true).await;
+    fixture.drain_automatic().await;
+
+    fixture.rescan(&fixture.import, 1).await;
+    std::fs::write(dir.join("notes.txt"), "a file added under the same folder").unwrap();
+    fixture.rescan(&fixture.import, 1).await;
+    fixture.drain_automatic().await;
+
+    let files_after = fixture
+        .import
+        .answerable_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the rescanned candidate is answerable")
+        .files
+        .content_hash();
+    assert_ne!(
+        files_before, files_after,
+        "the rescan stored the folder's new files under the same candidate"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        0,
+        "no rescan queued the candidate: {:?}",
+        fixture.provider.requests()
+    );
+    assert!(fixture.identified_for(&dir).await.is_none());
+}
+
+/// The launch scan queues no stored candidate, even one found while the
+/// setting was on whose run the last session never started.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_relaunch_queues_no_candidate_the_library_stored() {
+    let fixture = Fixture::new("relaunch-queues-nothing").await;
+    let dir = fixture.disc_id_candidate("Album");
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.scan(1).await;
+    fixture.import.stop_and_join();
+
+    let import = fixture.parts.start().await.unwrap();
+    let identification = import.start_identification_queue();
+    fixture.rescan(&import, 1).await;
+    tokio::time::timeout(Duration::from_secs(30), identification.automatic_drained_for_test())
+        .await
+        .expect("the relaunched queue drains");
+
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        0,
+        "the relaunch queued nothing: {:?}",
+        fixture.provider.requests()
+    );
+    assert!(fixture.identified_for(&dir).await.is_none());
+    assert!(
+        import.candidate_runtime(&crate::CandidateKey::folder(&dir)).await.unwrap().is_none(),
+        "nothing is waiting either"
+    );
+    identification.stop();
+    import.stop_and_join();
+}
+
+/// A takeover queues only a release new to the parent.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_takeover_queues_only_a_release_new_to_the_parent() {
+    let fixture = Fixture::new("takeover-queues-only-new").await;
+    let inner = fixture.root.join("Inner");
+    let known = fixture.disc_id_candidate("Inner/Album");
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.set_identify_automatically(false).await;
+    fixture.import.add_watched_folder(inner.clone()).await.unwrap();
+    fixture.read_root(&fixture.import, &inner).await;
+    fixture.await_listed(&fixture.import, 1).await;
+    fixture.set_identify_automatically(true).await;
+
+    let new = fixture.disc_id_candidate("New Album");
+    std::fs::write(new.join("notes.txt"), "a candidate of its own").unwrap();
+    fixture.import.add_watched_folder(fixture.root.clone()).await.unwrap();
+    // Answered once the parent's read, which follows the takeover, is over.
+    fixture.read_root(&fixture.import, &fixture.root).await;
+    fixture.await_listed(&fixture.import, 2).await;
+    fixture.drain_automatic().await;
+
+    assert!(
+        fixture.identified_for(&known).await.is_none(),
+        "the candidate the inner folder had found waits for a person"
+    );
+    assert!(
+        fixture.identified_for(&new).await.is_some(),
+        "the release new to the parent is identified on its own"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        1,
+        "one release was asked about: {:?}",
+        fixture.provider.requests()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
+    let fixture = Fixture::new("automatic-off").await;
+    let calls = Arc::new(AtomicUsize::new(0));
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(CountingAnalyzer { calls: Arc::clone(&calls) }));
+    let dir = fixture.barcode_candidate("Candidate");
+    fixture.set_identify_automatically(false).await;
+    fixture.scan(1).await;
+
+    fixture.drain_automatic().await;
+
+    assert_eq!(calls.load(Ordering::Relaxed), 0, "OCR must not run");
+    assert!(fixture.provider.requests().is_empty(), "no provider request may run");
+    assert!(fixture.identified_for(&dir).await.is_none());
+}
+
+/// Files that changed retire the result they were read from. The candidate is
+/// the one the library already found, so nothing identifies it again on its
+/// own: it waits, unanswered, for a person to ask.
+#[tokio::test(flavor = "multi_thread")]
+async fn changed_files_retire_the_result_and_wait_for_a_person() {
+    let fixture = Fixture::new("changed-files-wait").await;
+    let dir = fixture.disc_id_candidate("Candidate");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route("/discid/", 200, discid_json("mb-changed", "rg-changed", &[probed, 0]));
+    fixture.provider.route(
+        "/release/mb-changed?",
+        200,
+        mb_release_json("mb-changed", "rg-changed", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+    fixture.drain_automatic().await;
+    assert!(fixture.identified_for(&dir).await.is_some());
+
+    let asked = fixture.provider.count_containing("/discid/");
+
+    std::fs::write(dir.join("notes.txt"), "the folder changed").unwrap();
+    fixture.rescan(&fixture.import, 1).await;
+    fixture.drain_automatic().await;
+
+    assert!(fixture.identified_for(&dir).await.is_none(), "the files it has now have no result");
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        asked,
+        "nothing asked about the changed candidate on its own: {:?}",
+        fixture.provider.requests()
+    );
+
+    fixture.start_explicit_lookup(&dir);
+    fixture.await_identified_row(&dir).await;
+}
+
+struct CountingAnalyzer {
+    calls: Arc<AtomicUsize>,
+}
+
+impl ArtworkAnalyzer for CountingAnalyzer {
+    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        ArtworkAnalysis::empty()
+    }
 }

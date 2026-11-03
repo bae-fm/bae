@@ -1,7 +1,9 @@
-//! The pane's session: its parts read back as written, and a pane command's
-//! failure stored until the next command.
+//! The pane's session: its parts read back as written, a pane command's
+//! failure stored until the next command, and identification's results asked
+//! for: a stored verdict shown as it stood, else a run owed.
 
 use crate::handle::tests::*;
+use crate::identification::tests::*;
 use crate::{
     ImportError, MetadataPresentation, PaneCommand, PaneFailure, PaneMove, PaneOutcome, SearchForm,
     SearchTab,
@@ -104,4 +106,63 @@ async fn clearing_the_failure_of_a_key_with_no_candidate_is_nothing() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     handle.clear_pane_failure(&crate::CandidateKey::reidentify("release-1")).await.unwrap();
     shut_down(handle).await;
+}
+
+/// Asking for identification's results for a candidate with a stored verdict
+/// shows that verdict as it stood, the picked release still the draft's, and
+/// asks nothing of the providers: no run is owed.
+#[tokio::test(flavor = "multi_thread")]
+async fn automatic_shows_a_stored_verdict_without_asking_again() {
+    let fixture = Fixture::new("automatic-stored").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
+    fixture.archive("mb-automatic-1", "rg-automatic-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-automatic-1", "rg-automatic-1").await;
+    let asked = fixture.provider.requests().len();
+
+    assert!(!fixture.import.open_automatic(&key).await.unwrap(), "a stored verdict owes no run");
+
+    assert_eq!(fixture.provider.requests().len(), asked);
+    let pane = fixture.pane(&dir).await.expect("the candidate reads back");
+    assert_eq!(pane.draft().unwrap().session.presentation, crate::MetadataPresentation::FindOnline);
+    assert_eq!(
+        pane.draft().unwrap().session.find_online_section,
+        crate::FindOnlineSection::Automatic
+    );
+    assert!(
+        !matches!(pane.resumed_identify_state, bae_identify::IdentifyState::Idle),
+        "the stored verdict is what shows"
+    );
+    assert!(
+        matches!(
+            &pane.draft().unwrap().metadata_provenance,
+            Some(crate::MetadataProvenance::ExternalRelease { record, .. })
+                if record.key == "mb-automatic-1"
+        ),
+        "the saved pick stays the draft's, for the pane to mark"
+    );
+}
+
+/// With no stored verdict, asking for identification's results owes a run.
+#[tokio::test(flavor = "multi_thread")]
+async fn automatic_with_no_stored_verdict_owes_a_run() {
+    let fixture = Fixture::new("automatic-first").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.scan(1).await;
+
+    assert!(fixture.import.open_automatic(&key).await.unwrap());
+    assert_eq!(
+        fixture
+            .pane(&dir)
+            .await
+            .expect("the candidate reads back")
+            .draft()
+            .unwrap()
+            .session
+            .presentation,
+        crate::MetadataPresentation::FindOnline
+    );
 }

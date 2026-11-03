@@ -151,4 +151,5 @@ pub(crate) fn start(
 }
 
 #[cfg(test)]
-mod tests;
+#[path = "identification_tests.rs"]
+pub(crate) mod tests;

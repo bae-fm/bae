@@ -1,11 +1,14 @@
 //! The draft's metadata source: reading the files' tags, picking a release,
 //! clearing the draft, keeping it over a lookup, and unlinking — what each
-//! replaces, what it keeps, and the link it leaves.
+//! replaces, what it keeps, and the link it leaves. A draft write leaves
+//! identification's result standing and starts no run.
 
 use super::*;
 use crate::handle::tests::*;
+use crate::identification::tests::*;
 use crate::{CandidateEditField, MetadataAuthor, NeedsYouReason, PendingStanding};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
+use bae_catalogs::test_releases::mb_release_json;
 use bae_catalogs::test_releases::seed_discogs_pressing;
 use bae_catalogs::test_releases::seed_discogs_pressing_printed_with;
 use bae_catalogs::test_releases::seed_mb_release_with_catalog;
@@ -462,4 +465,48 @@ async fn editing_or_clearing_the_draft_keeps_the_link() {
     assert_eq!(cleared.draft().unwrap().release_link, Some(linked_to("linked-then-edited")));
     assert_eq!(standing(&handle, &key).await, PendingStanding::Identified);
     shut_down(handle).await;
+}
+
+/// Clearing the draft, and reading the folder's tags back into it, say
+/// nothing about what identification concluded: the result stands, the file
+/// revision it is keyed on does not move, and no new run starts.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_draft_write_leaves_the_result_and_starts_no_run() {
+    for name in ["clear-metadata", "reset-to-tags"] {
+        let fixture = Fixture::new(name).await;
+        let dir = fixture.disc_id_candidate("Candidate");
+        let key = crate::CandidateKey::folder(&dir);
+        let probed = fixture.probed_total_ms(&dir);
+        fixture.provider.route(
+            "/discid/",
+            200,
+            discid_json("mb-draft-write", "rg-draft-write", &[probed, 0]),
+        );
+        fixture.provider.route(
+            "/release/mb-draft-write?",
+            200,
+            mb_release_json("mb-draft-write", "rg-draft-write", &[probed, 0]),
+        );
+        fixture.scan(1).await;
+        fixture.drain_automatic().await;
+        let settled = fixture.stored_for(&dir).await.expect("identification stores a result");
+        let asked = fixture.provider.count_containing("/discid/");
+
+        if name == "clear-metadata" {
+            fixture.import.clear_candidate_metadata(key).await.unwrap();
+        } else {
+            fixture.import.select_candidate_file_tags(key).await.unwrap();
+        }
+
+        let after = fixture.stored_for(&dir).await.expect("the candidate is still stored");
+        assert_eq!(after.identify, settled.identify, "{name} left the result alone");
+        assert_eq!(
+            after.file_edits.revision, settled.file_edits.revision,
+            "{name} did not move the file revision the result is keyed on"
+        );
+
+        fixture.drain_automatic().await;
+
+        assert_eq!(fixture.provider.count_containing("/discid/"), asked, "{name} started no run");
+    }
 }

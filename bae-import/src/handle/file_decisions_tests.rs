@@ -1,9 +1,12 @@
-//! File decisions: a sheet's disc read again redraws the draft over the
-//! settled audio, keeps each retained track's values, and settles every folder
-//! holding the same files.
+//! File decisions: ignoring a CUE sheet, clearing one and binding it again, and
+//! a sheet's disc read again redraw the draft over the settled audio, keep each
+//! retained track's values, and settle every folder holding the same files. A
+//! claimed candidate refuses them, and restating one changes nothing.
 
 use super::*;
 use crate::handle::tests::*;
+use crate::identification::tests::*;
+use std::path::PathBuf;
 
 /// Applying a release writes every value into the draft; a file decision
 /// after it keeps each retained track's composers, works and stated length,
@@ -228,4 +231,307 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     }
 
     shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
+    let fixture = Fixture::new("cue-audio-replacement").await;
+    let dir = fixture.seed_cue_album("Album");
+    fixture.scan(1).await;
+    let hash = fixture.content_hash(&dir);
+    let before = crate::preparation::import_preparation(&fixture.tables(), &hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(before.tracks.len(), 5);
+    let unchanged = before
+        .tracks
+        .iter()
+        .filter(|track| matches!(track.edit.file, crate::AudioFile::Standalone { .. }))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    fixture
+        .import
+        .set_sheet_disc(
+            crate::CandidateKey::folder(&dir),
+            "Test Album.cue".to_string(),
+            crate::folder_scanner::SheetDisc::Ignored,
+        )
+        .await
+        .unwrap();
+
+    let after = crate::preparation::import_preparation(&fixture.tables(), &hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(after.tracks.len(), 3, "one image plus two loose tracks");
+    assert!(after
+        .tracks
+        .iter()
+        .all(|track| matches!(track.edit.file, crate::AudioFile::Standalone { .. })));
+    for track in unchanged {
+        assert!(after.tracks.contains(&track), "unaffected tracks retain identity and metadata");
+    }
+    assert_eq!(after.album_title, before.album_title);
+    let image = after
+        .tracks
+        .iter()
+        .find(|track| {
+            matches!(&track.edit.file,
+                crate::AudioFile::Standalone { file_id } if file_id == "Test Album.flac"
+            )
+        })
+        .unwrap();
+    assert!(!image.edit.title.is_empty());
+    fixture
+        .import
+        .set_sheet_disc(
+            crate::CandidateKey::folder(&dir),
+            "Test Album.cue".into(),
+            crate::folder_scanner::SheetDisc::Disc { number: 1 },
+        )
+        .await
+        .unwrap();
+    let restored = crate::preparation::import_preparation(&fixture.tables(), &hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(restored.tracks.len(), 5);
+    let slices = restored
+        .tracks
+        .iter()
+        .filter(|track| matches!(track.edit.file, crate::AudioFile::SheetSlice { .. }))
+        .collect::<Vec<_>>();
+    assert_eq!(slices.len(), 3);
+    assert_eq!(slices[0].edit.title, "Track One (Silence)");
+    assert!(restored.tracks.iter().all(|track| track.edit.id != image.edit.id));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_claimed_candidate_refuses_sheet_decisions() {
+    let fixture = Fixture::new("claimed-file-decisions").await;
+    let dir = fixture.seed_cue_album("Album");
+    fixture.scan(1).await;
+    fixture.archive("mb-claimed-1", "rg-claimed-1", &[500, 500]).await;
+    fixture.store_settled_verdict(&dir, "mb-claimed-1", "rg-claimed-1").await;
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.import.claim_candidate_for_import(&key, "import-1").await;
+
+    for result in [
+        fixture
+            .import
+            .set_sheet_disc(
+                key.clone(),
+                "Test Album.cue".to_string(),
+                crate::folder_scanner::SheetDisc::Disc { number: 1 },
+            )
+            .await,
+        fixture
+            .import
+            .set_sheet_binding(
+                key.clone(),
+                "Test Album.cue".to_string(),
+                "Test Album.flac".to_string(),
+                Some("Test Album.flac".to_string()),
+            )
+            .await,
+    ] {
+        assert!(matches!(result, Err(crate::ImportError::CandidateImportInProgress)));
+    }
+}
+
+/// Clearing a sheet's binding and then naming its audio again is the ordinary
+/// way back from "Describes nothing". The second decision lands like the
+/// first: the sheet carves its container again and the pane redraws from it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cleared_sheet_can_be_bound_again() {
+    let fixture = Fixture::new("rebind-after-clear").await;
+    let dir = fixture.seed_cue_album("Album");
+    fixture.scan(1).await;
+    fixture.archive("mb-rebind-1", "rg-rebind-1", &[500, 500]).await;
+    fixture.store_settled_verdict(&dir, "mb-rebind-1", "rg-rebind-1").await;
+    let key = crate::CandidateKey::folder(&dir);
+
+    fixture
+        .import
+        .set_sheet_binding(
+            key.clone(),
+            "Test Album.cue".to_string(),
+            "Test Album.flac".to_string(),
+            None,
+        )
+        .await
+        .unwrap();
+    // The release was found while identification ran on its own, and the
+    // person's decision ends its identification before a run starts.
+    fixture.drain_automatic().await;
+    assert!(
+        fixture.identified_for(&dir).await.is_none(),
+        "the cleared binding left the found release unanswered"
+    );
+    let options = fixture
+        .import
+        .sheet_binding_options(key.clone(), "Test Album.cue".to_string())
+        .await
+        .unwrap();
+    assert!(
+        options[0].options.iter().any(|option| option.file_id == "Test Album.flac"
+            && option.offer == crate::folder_scanner::SheetBindingOffer::Offered),
+        "the picker offers the container after the clear: {options:?}"
+    );
+
+    fixture
+        .import
+        .set_sheet_binding(
+            key.clone(),
+            "Test Album.cue".to_string(),
+            "Test Album.flac".to_string(),
+            Some("Test Album.flac".to_string()),
+        )
+        .await
+        .expect("a cleared sheet binds again");
+
+    let pane = fixture.pane(&dir).await.expect("the candidate reads back");
+    let bound = pane
+        .candidate
+        .files
+        .track_sheets()
+        .find(|sheet| sheet.file.relative_path == "Test Album.cue")
+        .expect("the sheet is still a sheet")
+        .binding
+        .audio_files()
+        .map(|files| files.iter().map(|file| file.file_id.clone()).collect::<Vec<_>>());
+    assert_eq!(bound, Some(vec!["Test Album.flac".to_string()]));
+
+    // The draft grew with the slots: three blank tracks for three loose files
+    // became the sheet's three entries plus the two loose files, each with a
+    // mapping of its own.
+    let preparation =
+        crate::preparation::import_preparation(&fixture.tables(), &fixture.content_hash(&dir))
+            .await
+            .unwrap()
+            .expect("the rebound candidate is prepared");
+    assert_eq!(preparation.draft.tracks.len(), 5);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
+    let fixture = Fixture::new("cue-disc-change").await;
+    let dir = fixture.seed_cue_album("Album");
+    fixture.scan(1).await;
+    let hash = fixture.content_hash(&dir);
+    let key = crate::CandidateKey::folder(&dir);
+    let before = crate::preparation::import_preparation(&fixture.tables(), &hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    fixture
+        .import
+        .set_sheet_disc(
+            key,
+            "Test Album.cue".into(),
+            crate::folder_scanner::SheetDisc::Disc { number: 2 },
+        )
+        .await
+        .unwrap();
+    let after = crate::preparation::import_preparation(&fixture.tables(), &hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(after.mediums.len(), 2, "the loose audio and the sheet's disc");
+    for original in before.tracks {
+        let actual = after.tracks.iter().find(|track| track.edit.id == original.edit.id).unwrap();
+        assert_eq!(actual.edit.title, original.edit.title);
+        assert_eq!(actual.edit.file, original.edit.file);
+        if matches!(actual.edit.file, crate::AudioFile::SheetSlice { .. }) {
+            // The loose audio, which names no disc, is the first medium;
+            // the sheet's slices are the second.
+            assert_eq!(actual.place.medium.get(), 2);
+        }
+    }
+}
+
+/// The disc menu and the role picker fire on every selection, including of
+/// the item already in force. A decision that re-states what is already true
+/// writes nothing — above all it does not clear the stored verdict, which
+/// would re-identify a folder whose shape did not change and blank the pane
+/// over it.
+#[tokio::test(flavor = "multi_thread")]
+async fn restating_a_file_decision_changes_nothing() {
+    let fixture = Fixture::new("edit-noop").await;
+    let dir = fixture.seed_cue_album("Album");
+    fixture.scan(1).await;
+    fixture.archive("mb-noop-1", "rg-noop-1", &[500, 500]).await;
+    fixture.store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1").await;
+    let key = crate::CandidateKey::folder(&dir);
+    let mut events = fixture.import.every_event();
+
+    // The sheet already carves disc one and already binds its own container.
+    fixture
+        .import
+        .set_sheet_disc(
+            key.clone(),
+            "Test Album.cue".to_string(),
+            crate::folder_scanner::SheetDisc::Disc { number: 1 },
+        )
+        .await
+        .unwrap();
+    fixture
+        .import
+        .set_sheet_binding(
+            key.clone(),
+            "Test Album.cue".to_string(),
+            "Test Album.flac".to_string(),
+            Some("Test Album.flac".to_string()),
+        )
+        .await
+        .unwrap();
+
+    let row = fixture.stored_for(&dir).await.expect("the candidate's row remains");
+    assert!(row.identify.is_some(), "a re-stated decision must not clear the stored verdict");
+    assert!(
+        !drain_events(&mut events).iter().any(|event| matches!(
+            event,
+            ImportEvent::Scan(ScanEvent::CandidateBindingChanged { .. })
+        )),
+        "and must not announce a changed candidate"
+    );
+
+    // A genuinely different decision still lands and still clears.
+    fixture
+        .import
+        .set_sheet_disc(
+            key,
+            "Test Album.cue".to_string(),
+            crate::folder_scanner::SheetDisc::Ignored,
+        )
+        .await
+        .unwrap();
+    assert!(
+        fixture.stored_for(&dir).await.is_none_or(|row| row.identify.is_none()),
+        "a real change clears the verdict as before"
+    );
+}
+
+impl Fixture {
+    /// Copy the whole cue_flac fixture into `<root>/<name>` and return it.
+    fn seed_cue_album(&self, name: &str) -> PathBuf {
+        let dir = self.root.join(name);
+        std::fs::create_dir_all(&dir).unwrap();
+        for file in [
+            "Test Album.cue",
+            "Test Album.flac",
+            "02 Test Artist - Track Two (White Noise).flac",
+            "03 Test Artist - Track Three (Brown Noise).flac",
+        ] {
+            copy_fixture(&bae_audio::test_fixtures::cue_flac_dir().join(file), &dir.join(file));
+        }
+        dir
+    }
 }

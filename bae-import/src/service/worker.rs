@@ -136,3 +136,7 @@ impl ImportService {
         ImportServiceHandle::new(worker, watcher, services, runtime, runtime_handle)
     }
 }
+
+#[cfg(test)]
+#[path = "worker_tests.rs"]
+mod tests;

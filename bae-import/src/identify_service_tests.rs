@@ -1,9 +1,18 @@
+//! The identify driver: a run's start over the sources it reads once, the
+//! snapshots it reads, its cancel and its end, and what the step that ends it
+//! keeps.
+
 use super::*;
+use crate::identification::tests::*;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::LookupRef;
+use bae_catalogs::test_releases::{
+    discogs_release_json, discogs_search_json, mb_barcode_search_json, mb_release_json,
+};
 use bae_db::Database;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::IdentifyState;
+use bae_identify::TerminalVerdict;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -405,74 +414,78 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     );
 }
 
-/// A cancelled run's lookup ends where it stands — here, waiting between
-/// retries on a provider that never answers — rather than running on.
-#[tokio::test]
-async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
-    struct Dropped(Option<tokio::sync::oneshot::Sender<()>>);
-    impl Drop for Dropped {
-        fn drop(&mut self) {
-            let _ = self.0.take().map(|tx| tx.send(()));
-        }
-    }
-    let (dropped_tx, dropped_rx) = tokio::sync::oneshot::channel();
-    let (started_tx, started_rx) = tokio::sync::oneshot::channel();
-    let token = CancellationToken::new();
-    let (event_tx, _event_rx) = mpsc::unbounded_channel();
-    spawn_until_cancelled(
-        &tokio::runtime::Handle::current(),
-        &bae_diagnostics::Diagnostics::noop(),
-        &token,
-        &event_tx,
-        async move {
-            let _guard = Dropped(Some(dropped_tx));
-            #[expect(
-                clippy::let_underscore_must_use,
-                reason = "the test is waiting on the start; a gone receiver has already failed it"
-            )]
-            let _ = started_tx.send(());
-            std::future::pending::<()>().await;
-        },
+/// A run reads the sources this library asks once, at its start. So the run
+/// that replaces it is what a switched-off source reaches — the replacement
+/// asks what is left, and the source nobody asks any more is not asked again.
+/// This is the restart `AppServices::set_metadata_source_enabled` starts for
+/// every key `IdentifyServiceHandle::running_keys` names.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
+    let fixture = Fixture::new("restart-drops-a-source").await;
+    fixture.use_discogs().await;
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
+    let dir = fixture.barcode_candidate("From Barcode");
+    let key = crate::CandidateKey::folder(&dir);
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/release?",
+        200,
+        mb_barcode_search_json(&[("mb-drop-1", "rg-drop-1", PAIRED_BARCODE)]),
     );
-    started_rx.await.expect("the lookup starts");
-    token.cancel();
-    tokio::time::timeout(Duration::from_secs(2), dropped_rx)
-        .await
-        .expect("the lookup is dropped once its run is cancelled")
-        .expect("the guard reports its drop");
-}
-
-/// A lookup that panics is reported, and ends its run as broken: the driver
-/// waiting on its answer hears the run broke, and ends it there.
-#[tokio::test]
-async fn a_lookup_that_panics_ends_its_run_as_broken() {
-    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
-    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
-    let (event_tx, mut event_rx) = mpsc::unbounded_channel();
-    spawn_until_cancelled(
-        &tokio::runtime::Handle::current(),
-        &diagnostics,
-        &CancellationToken::new(),
-        &event_tx,
-        async {
-            tokio::task::yield_now().await;
-            panic!("the lookup broke");
-        },
+    fixture.provider.route(
+        "/release/mb-drop-1?",
+        200,
+        mb_release_json("mb-drop-1", "rg-drop-1", &[probed, 0]),
     );
+    fixture.provider.route(
+        "/database/search",
+        200,
+        discogs_search_json("70000201", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
+    );
+    fixture.provider.route("/releases/70000201", 200, discogs_release_json("70000201"));
+    fixture.musicbrainz.seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release("70000201".to_string()),
+        None,
+    )]);
+    // Hold MusicBrainz's answer, so the run is genuinely still asking when the
+    // source is switched off rather than racing a run that already settled.
+    fixture.provider.hold("/release?");
+    // Identified only when asked: nothing found here is identified on its own.
+    fixture.set_identify_automatically(false).await;
+    fixture.scan(1).await;
 
-    let event = tokio::time::timeout(Duration::from_secs(5), event_rx.recv())
-        .await
-        .expect("the run hears the lookup end")
-        .expect("the driver's channel is open");
-    let IdentifyEvent::Broke { failure } = event else {
-        panic!("a panicked lookup breaks its run, got {event:?}");
+    let mut events = fixture.import.every_event();
+    fixture.start_explicit_lookup_and_await_run(&dir).await;
+    let asked_both = await_run_state(&mut events, &key, |_, _| true).await;
+    fixture.provider.wait_for_request("/database/search", 1).await;
+
+    fixture
+        .parts
+        .edit_preferences(|prefs| {
+            prefs.identification.catalogs.set(bae_catalogs::catalog::LookupCatalog::Discogs, false);
+        })
+        .await;
+    fixture.identification().rerun_identify(key.clone());
+    await_run_state(&mut events, &key, |run, _| run != asked_both).await;
+    fixture.provider.release();
+
+    let row = fixture.await_identified_row(&dir).await;
+    let verdict = identify_result(&row).verdict.clone();
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } = &verdict
+    else {
+        panic!("expected a Found verdict, got {verdict:?}");
     };
-    assert_eq!(failure.detail, "run an identify lookup panicked: the lookup broke");
     assert_eq!(
-        bugs.reports(),
-        vec![(
-            "run an identify lookup".to_string(),
-            "run an identify lookup panicked: the lookup broke".to_string()
-        )]
+        matches.iter().map(|result| result.source).collect::<Vec<_>>(),
+        vec![bae_catalogs::catalog::LookupCatalog::MusicBrainz],
+        "the run that stored the answer asked only the source still switched on"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("/database/search"),
+        1,
+        "and Discogs was asked once, by the run that started while it was on: {:?}",
+        fixture.provider.requests()
     );
 }

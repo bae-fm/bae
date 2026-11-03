@@ -1,13 +1,16 @@
 //! An import's commit: the release's rows, written in the transaction that
-//! checks the candidate still is what the import was prepared from.
+//! checks the candidate still is what the import was prepared from. The row
+//! reads as importing until that write.
 
 use super::super::*;
 use super::temp_db;
+use crate::identification::tests::*;
 use bae_db::test_fixtures::{
     ALBUM_A, ARTIST_ALBUM, ARTIST_COMPOSER, RELEASE_A, RELEASE_ROLE_A, TRACK_A, TRACK_ROLE_A,
     TRACK_WORK_A, WORK_A,
 };
 use bae_util::content_type::ContentType;
+use std::time::Duration;
 
 fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
     crate::folder_scanner::ScannedAudio {
@@ -333,4 +336,68 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         .await
     .unwrap();
     assert_eq!(track_role_count, 1);
+}
+
+/// An import reads as importing in every delivery until the one in which its
+/// release takes the row to Done: no delivery shows the row on Found with its
+/// import ended, gone from Found with no release, or on Done still importing.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_import_reads_as_importing_until_its_release_is_written() {
+    let fixture = Fixture::importing("standing-import-to-done").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.identify_ready(&dir, "mb-standing-import", "rg-standing-import").await;
+
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
+    let initial = next_page(&list).await;
+    assert!(!page_rows(&initial)[&key].1.facts.importing());
+    assert_eq!(initial.summary.counts.done, 0);
+    // The pane reads where the candidate stands and whether this device
+    // imported it in one read; it is followed beside the list so no read of
+    // it is passed over.
+    let mut pane = fixture.import.subscribe_candidate(Some(key.clone()));
+    pane.next().await.expect("the query stays open").result.unwrap();
+    let pane_saw_both = tokio::spawn(async move {
+        loop {
+            let detail = pane
+                .next()
+                .await
+                .expect("the query stays open")
+                .result
+                .unwrap()
+                .expect("the candidate stays stored")
+                .resolve();
+            if detail.is_added() {
+                return detail.live.facts.importing();
+            }
+        }
+    });
+
+    fixture.import.start_import(&key).await.unwrap();
+    let mut importing = 0;
+    loop {
+        let snapshot = next_page(&list).await;
+        match page_rows(&snapshot).remove(&key) {
+            Some((_, live)) if live.facts.importing() => importing += 1,
+            Some((_, live)) => assert_eq!(
+                importing, 0,
+                "a delivery shows the row on Found with its import ended: {live:?}"
+            ),
+            None => {
+                assert!(importing > 0, "the import read as importing");
+                assert_eq!(
+                    snapshot.summary.counts.done, 1,
+                    "the row left Found without its release"
+                );
+                break;
+            }
+        }
+    }
+    assert!(
+        !tokio::time::timeout(Duration::from_secs(20), pane_saw_both)
+            .await
+            .expect("the pane reads the release")
+            .expect("the pane is followed to the end"),
+        "a read shows the release beside the import still going"
+    );
 }

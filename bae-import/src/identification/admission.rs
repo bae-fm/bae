@@ -81,3 +81,7 @@ pub(super) async fn candidate_run_start(
     };
     Ok(CandidateRunStart { choices: state.lookup_choices, title_search })
 }
+
+#[cfg(test)]
+#[path = "admission_tests.rs"]
+mod tests;

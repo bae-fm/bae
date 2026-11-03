@@ -6,6 +6,7 @@ use crate::{Findings, NarrowedOut};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::SourceTracks;
+use bae_catalogs::test_releases::mb_release_json;
 
 fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResult {
     MetadataResult {
@@ -355,4 +356,24 @@ fn ruled_out_by_the_folder(matches: Vec<MetadataResult>) -> TerminalVerdict {
     };
     findings.medium_conflict = Some(crate::MediumConflict::NotCdAudio);
     TerminalVerdict::Found { findings, track_count, ledger }
+}
+
+/// A source's lengths never keep a match from being auto-importable. The
+/// release parsed here states lengths that match nothing about the rip, and
+/// all the rule reads off it is the count: three tracks, as the folder holds.
+#[test]
+fn the_lengths_a_source_states_do_not_decide() {
+    let payloads = bae_catalogs::payloads::ReleasePayloads::for_test(
+        bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
+        mb_release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
+        Vec::new(),
+    );
+    let audio = bae_catalogs::reading::ReadAudio::of_lengths(&[400_000, 500_000, 600_000]);
+    let source = bae_catalogs::reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
+    assert_eq!(source, SourceTracks::Listed { count: 3 });
+    assert_eq!(
+        VerdictSummary::of(&found(vec![result("mb-1", Some(source))], 3), false).judgement(),
+        (true, None),
+        "the counts agree, whatever the lengths"
+    );
 }

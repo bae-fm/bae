@@ -507,3 +507,130 @@ fn seed_labelled_mb_release(
 pub fn seed_mb_release_with_front(fakes: &FakeCatalogs, release_id: &str, catalog_number: &str) {
     seed_labelled_mb_release(fakes, release_id, catalog_number, true);
 }
+
+/// A MusicBrainz release as the disc-ID and release-lookup endpoints return it: one medium
+/// whose tracks carry `length`, which is what makes the disc-ID path free.
+pub fn mb_release_json(release_id: &str, group_id: &str, track_lengths: &[u64]) -> String {
+    let tracks: Vec<String> = track_lengths
+        .iter()
+        .enumerate()
+        .map(|(i, length)| {
+            format!(
+                r#"{{"position":{},"number":"{}","title":"Track {}","length":{length}}}"#,
+                i + 1,
+                i + 1,
+                i + 1
+            )
+        })
+        .collect();
+    format!(
+        r#"{{"id":"{release_id}","title":"Album","artist-credit":[{{"name":"Artist"}}],
+            "release-group":{{"id":"{group_id}"}},
+            "media":[{{"tracks":[{}]}}],"relations":[],
+            "cover-art-archive":{{"front":false,"darkened":false}}}}"#,
+        tracks.join(",")
+    )
+}
+
+/// A MusicBrainz search hit as `ws/2/release?query=…` returns it: no `media`, hence no
+/// count, so the auto-import check has nothing to check until the lead is settled.
+pub fn mb_search_json(release_id: &str, group_id: &str) -> String {
+    format!(
+        r#"{{"releases":[{{"id":"{release_id}","title":"Album",
+            "artist-credit":[{{"name":"Artist"}}],
+            "release-group":{{"id":"{group_id}"}},"label-info":[]}}]}}"#
+    )
+}
+
+/// The same, for hits that state the barcode they were found by — what pairs
+/// a MusicBrainz release with the Discogs record of the same pressing, and
+/// what tells two different pressings apart.
+pub fn mb_barcode_search_json(releases: &[(&str, &str, &str)]) -> String {
+    mb_barcode_search_json_placed(
+        &releases
+            .iter()
+            .map(|(release_id, group_id, barcode)| (*release_id, *group_id, *barcode, ""))
+            .collect::<Vec<_>>(),
+    )
+}
+
+/// The same, each release stating the country it was released in; an empty
+/// country states none.
+pub fn mb_barcode_search_json_placed(releases: &[(&str, &str, &str, &str)]) -> String {
+    let releases: Vec<String> = releases
+        .iter()
+        .map(|(release_id, group_id, barcode, country)| {
+            format!(
+                r#"{{"id":"{release_id}","title":"Album",
+                    "artist-credit":[{{"name":"Artist"}}],
+                    "release-group":{{"id":"{group_id}"}},
+                    "country":"{country}",
+                    "barcode":"{barcode}","label-info":[]}}"#
+            )
+        })
+        .collect();
+    format!(r#"{{"releases":[{}]}}"#, releases.join(","))
+}
+
+/// A Discogs search hit as `database/search?barcode=…` returns it. The title
+/// is the "Artist - Album" form Discogs answers with, which is what decides
+/// whether this lands on the same album card as the MusicBrainz result.
+pub fn discogs_search_json(release_id: &str, barcode: &str) -> String {
+    format!(
+        r#"{{"results":[{{"id":{release_id},"type":"release",
+            "title":"Artist - Album","year":"1996","barcode":["{barcode}"]}}]}}"#
+    )
+}
+
+/// A one-track Discogs release with no master, as `releases/{id}` returns it.
+pub fn discogs_release_json(release_id: &str) -> String {
+    serde_json::json!({
+        "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
+        "title": "Album",
+        "year": 1996,
+        "formats": [{ "name": "CD" }],
+        "artists": [{ "id": 1, "name": "Artist" }],
+        "tracklist": [{
+            "position": "1",
+            "title": "Track 1",
+            "duration": "0:01",
+            "type_": "track",
+            "artists": [],
+        }],
+    })
+    .to_string()
+}
+
+/// A MusicBrainz release under a title and artist of its own — for a test that has to tell
+/// two releases apart by what a row shows.
+pub fn mb_titled_release_json(
+    release_id: &str,
+    group_id: &str,
+    title: &str,
+    artist: &str,
+) -> String {
+    format!(
+        r#"{{"id":"{release_id}","title":"{title}",
+            "artist-credit":[{{"name":"{artist}"}}],
+            "release-group":{{"id":"{group_id}"}},
+            "media":[{{"tracks":[
+                {{"position":1,"number":"1","title":"Track Title 1","length":180000}},
+                {{"position":2,"number":"2","title":"Track Title 2","length":180000}}
+            ]}}],"relations":[],
+            "cover-art-archive":{{"front":true,"darkened":false}}}}"#
+    )
+}
+
+/// [`mb_release_json`] for a release that carries `catalog_number`.
+pub fn mb_release_json_with_catalog(
+    release_id: &str,
+    group_id: &str,
+    track_lengths: &[u64],
+    catalog_number: &str,
+) -> String {
+    let mut release: serde_json::Value =
+        serde_json::from_str(&mb_release_json(release_id, group_id, track_lengths))
+            .expect("release fixture parses");
+    release["label-info"] = serde_json::json!([{ "catalog-number": catalog_number }]);
+    release.to_string()
+}

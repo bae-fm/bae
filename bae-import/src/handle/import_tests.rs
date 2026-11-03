@@ -1,10 +1,12 @@
 //! Starting an import: the claim one import holds on a candidate, the checks
 //! the start makes of its files and tags, what the import commits from the
-//! draft, and the artist pictures the import that creates those artists
-//! fetches before it writes anything.
+//! draft, the artist pictures the import that creates those artists fetches
+//! before it writes anything, and an automatic import that cannot start
+//! recorded as its failed import.
 
 use super::*;
 use crate::handle::tests::*;
+use crate::identification::tests::*;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::test_releases::seed_mb_release_with_works;
 use bae_catalogs::test_releases::seed_two_track_discogs_release;
@@ -850,4 +852,94 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
             .map(|record| record.key()),
         Some("mw222")
     );
+}
+
+/// An automatic start the import path refuses is the candidate's failed
+/// import, shown where one that failed while running is, with nothing claimed.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import() {
+    let fixture = Fixture::new("auto-import-refused").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.identify_ready(&dir, "mb-refused", "rg-refused").await;
+    // A remote cover whose stored bytes are gone is a broken candidate no
+    // import starts from.
+    let hash = fixture.content_hash(&dir);
+    fixture
+        .preparations
+        .set_cover(
+            &hash,
+            &crate::CoverSelection::Remote(
+                bae_catalogs::remote_image::RemoteImageSet::original(
+                    "https://example.invalid/cover".to_string(),
+                ),
+                bae_catalogs::catalog::Catalog::MusicBrainz,
+            ),
+            Some(&bae_catalogs::remote_image::RemoteImage {
+                bytes: vec![1, 2, 3],
+                content_type: bae_util::content_type::ContentType::Jpeg,
+            }),
+        )
+        .await
+        .unwrap();
+    fixture
+        .database
+        .execute_for_test(
+            "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
+            vec![hash],
+        )
+        .await
+        .unwrap();
+
+    let error = fixture
+        .import
+        .import_identified(&key)
+        .await
+        .expect_err("a remote cover without its bytes does not start an import");
+
+    let failure = fixture
+        .import_failure(&dir)
+        .await
+        .expect("the refused start is the candidate's failed import");
+    assert_eq!(failure.reason, crate::ImportFailureReason::error(error.to_string()));
+    assert!(
+        fixture
+            .import
+            .candidate_runtime(&key)
+            .await
+            .unwrap()
+            .is_none_or(|runtime| runtime.import.is_none()),
+        "nothing claims the candidate"
+    );
+}
+
+/// An import that already owns the candidate is not a failure of the
+/// automatic one: it says how it goes itself.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_automatic_import_behind_another_import_records_no_failure() {
+    let fixture = Fixture::new("auto-import-behind").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.identify_ready(&dir, "mb-behind", "rg-behind").await;
+    fixture.import.claim_candidate_for_import(&key, "import-1").await;
+
+    let error = fixture
+        .import
+        .import_identified(&key)
+        .await
+        .expect_err("a candidate an import owns is not imported again");
+
+    assert!(matches!(error, crate::ImportError::CandidateImportInProgress), "{error}");
+    assert_eq!(fixture.import_failure(&dir).await, None);
+}
+
+impl Fixture {
+    /// The failed import `dir`'s pane shows, if any.
+    async fn import_failure(&self, dir: &Path) -> Option<crate::ImportFailure> {
+        self.tables()
+            .load_import_candidate_pane_rows(&self.content_hash(dir))
+            .await
+            .unwrap()
+            .failure
+    }
 }

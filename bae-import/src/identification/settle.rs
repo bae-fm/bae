@@ -381,3 +381,7 @@ async fn settle_lead(
         pressing_year,
     })
 }
+
+#[cfg(test)]
+#[path = "settle_tests.rs"]
+mod tests;

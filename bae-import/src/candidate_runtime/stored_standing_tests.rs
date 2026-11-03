@@ -1,7 +1,9 @@
 //! Each owner's change to a candidate's identification, decided from the one
-//! stored.
+//! stored, and the row of a run reading its pick.
 
 use super::*;
+use crate::identification::tests::*;
+use std::time::Duration;
 
 fn files(revision: u64) -> CandidateFiles {
     CandidateFiles { content_hash: "hash-1".to_string(), file_edit_revision: revision }
@@ -156,4 +158,65 @@ fn a_cancel_ends_a_run_or_an_answer_and_nothing_else() {
     }
     assert_eq!(IdentificationChange::Withdraw.applied(queued().as_ref()), None);
     assert_eq!(IdentificationChange::Withdraw.applied(failed().as_ref()), failed());
+}
+
+/// The row of a run reading its pick is Identified, counted under Identified
+/// and not In Progress, shows no lookup at work, and offers importing beside
+/// cancelling the run and skipping; its pane shows the pick being read until
+/// it is stored.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_row_whose_pick_is_being_read_is_identified() {
+    let fixture = Fixture::new("reading-the-pick-row").await;
+    fixture.set_identify_automatically(false).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.route_disc_id_match(&dir, "mb-row", "rg-row", 2);
+    fixture.provider.hold("/release/mb-row?");
+    fixture.scan(1).await;
+    let list = list_subscription(&fixture, page_window(0, 50)).await;
+    let initial = next_page(&list).await;
+    assert_eq!(counted(&initial, crate::PendingFilter::Identified), 0);
+
+    fixture.start_explicit_lookup(&dir);
+    let reading = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            let snapshot = next_page(&list).await;
+            if page_live(&snapshot)[&key].facts.identification
+                == Some(crate::IdentificationStatus::ReadingPick { import_asked: false })
+            {
+                return snapshot;
+            }
+        }
+    })
+    .await
+    .expect("the row reads as its pick being read");
+
+    let live = &page_live(&reading)[&key];
+    assert_eq!(live.standing, Some(crate::PendingStanding::Identified));
+    assert_eq!(live.identifying(), None, "an Identified row shows no lookup at work");
+    assert_eq!(
+        live.actions,
+        vec![
+            crate::CandidateAction::Import,
+            crate::CandidateAction::CancelIdentification,
+            crate::CandidateAction::Skip,
+            crate::CandidateAction::RevealFolder
+        ]
+    );
+    assert_eq!(counted(&reading, crate::PendingFilter::Identified), 1);
+    assert_eq!(counted(&reading, crate::PendingFilter::InProgress), 0);
+    let pane_reads_pick = || async {
+        fixture
+            .import
+            .load_candidate(&key)
+            .await
+            .unwrap()
+            .expect("the pane reads the candidate")
+            .live
+            .reading_pick()
+    };
+    assert!(pane_reads_pick().await, "the pane shows the pick being read");
+
+    fixture.finish_reading().await;
+    assert!(!pane_reads_pick().await, "once the pick is stored, the pane shows none being read");
 }

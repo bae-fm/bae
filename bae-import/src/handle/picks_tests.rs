@@ -1,13 +1,20 @@
-//! Picking a release: what a pick of a paired pressing stores and reads, the
-//! catalog reads it reports, and a pick running to its end once asked for.
+//! Picking a release: the release a pick reads (a settled lead's stored
+//! release offline, a release a Disc ID answer named read in full, one outside
+//! the verdict archived), what a pick of a paired pressing stores and reads,
+//! the catalog reads it reports, a pick running to its end once asked for, and
+//! a picked release left for the person to import.
 
 use super::*;
 use crate::handle::tests::*;
+use crate::identification::tests::*;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
+use bae_catalogs::rate_limiter::CallPriority;
 use bae_catalogs::test_releases::seed_two_track_discogs_release;
 use bae_catalogs::test_releases::seed_two_track_discogs_release_in;
 use bae_catalogs::test_releases::seed_two_track_mb_release;
+use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_util::test_channels::HANG_GUARD;
+use std::time::Duration;
 
 /// A pick is a person's decision about the folder, so it runs to its end once
 /// asked for: the bridge drops the call's future when the person looks at
@@ -488,4 +495,318 @@ async fn a_pick_of_a_held_release_tells_no_read() {
             None,
         ]
     );
+}
+
+/// Explicitly applying a settled release whose group failed to fetch fetches
+/// the release again, parent and all. Opening the resulting candidate reads
+/// the stored release offline.
+#[tokio::test(flavor = "multi_thread")]
+async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offline() {
+    let fixture = Fixture::new("offline-open").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
+
+    // The stored pressing names its group as missing; both can be fetched.
+    fixture.provider.route(
+        "/release/mb-offline-1?",
+        200,
+        mb_release_json("mb-offline-1", "rg-offline-1", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release-group/rg-offline-1?",
+        200,
+        serde_json::json!({
+            "id": "rg-offline-1", "title": "Album", "relations": [],
+            "first-release-date": "1981"
+        })
+        .to_string(),
+    );
+    fixture.archive_missing_its_group("mb-offline-1", "rg-offline-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-offline-1", "rg-offline-1").await;
+    let before = fixture.provider.requests().len();
+
+    fixture
+        .import
+        .select_candidate_release(
+            crate::CandidateKey::folder(&dir),
+            bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+                    "mb-offline-1".to_string(),
+                ),
+                partners: vec![],
+            },
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .expect("a settled candidate opens once its release is fetched again");
+
+    let after_apply = fixture.provider.requests().len();
+    let stored = fixture.stored_release("mb-offline-1").await.expect("the release stays stored");
+    assert!(stored.unfetched.is_empty(), "the group fetched this time: {:?}", stored.unfetched);
+    let detail = fixture.pane(&dir).await.expect("the picked candidate reads back");
+    assert_eq!(
+        fixture.provider.requests().len(),
+        after_apply,
+        "reading the candidate does not fetch metadata"
+    );
+    let link = detail
+        .draft()
+        .unwrap()
+        .release_link
+        .as_ref()
+        .and_then(crate::ReleaseLink::pressing)
+        .expect("the pick names a release");
+    assert_eq!(link.record.key, "mb-offline-1");
+    let edit = detail.draft().unwrap().metadata_draft.clone();
+    assert_eq!(edit.tracks.len(), 2);
+    assert_eq!(edit.album_title, "Album");
+    assert_eq!(
+        detail
+            .draft()
+            .unwrap()
+            .remote_covers
+            .iter()
+            .map(|cover| cover.image.url.as_str())
+            .collect::<Vec<_>>(),
+        vec![format!("{}/release-group/rg-offline-1/front", bae_catalogs::remote_image::ARCHIVE)],
+        "the pressing states no front image of its own, so the album's is the \
+         only option — stored with the draft when it was applied, not asked for"
+    );
+    let requested = &fixture.provider.requests()[before..];
+    assert_eq!(requested.len(), 3, "{requested:?}");
+    assert!(requested[0].starts_with("/ws/2/release/mb-offline-1?"), "{requested:?}");
+    assert_eq!(
+        &requested[1..],
+        &[
+            "/ws/2/release-group/rg-offline-1?inc=artist-credits+url-rels&fmt=json".to_string(),
+            "/release-group/rg-offline-1/front".to_string(),
+        ],
+        "selection fetches the release again, parent and all, then the cover"
+    );
+}
+
+/// A settled lead whose release is not stored is a broken invariant, not a
+/// cold cache. Picking it fails loudly, and stores no pick — so nothing is
+/// left naming a release the pane could not draw.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_settled_lead_with_no_stored_release_fails_loud() {
+    let fixture = Fixture::new("offline-miss").await;
+    let dir = fixture.disc_id_candidate("Album");
+    fixture.scan(1).await;
+    fixture.store_settled_lead_without_its_pick(&dir, "mb-missing-1", "rg-missing-1").await;
+
+    let error = fixture
+        .import
+        .select_candidate_release(
+            crate::CandidateKey::folder(&dir),
+            bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+                    "mb-missing-1".to_string(),
+                ),
+                partners: vec![],
+            },
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .expect_err("a settled lead with nothing archived must not silently re-fetch");
+
+    assert!(
+        matches!(&error, crate::ImportError::Internal { detail }
+            if detail.contains("mb-missing-1")),
+        "unexpected error: {error}"
+    );
+}
+
+/// A pick identification never made — another pressing on the list, a manual
+/// search hit — fetches, and archives what it fetched, so opening it again is
+/// local too.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
+    let fixture = Fixture::new("manual-pick").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.scan(1).await;
+    fixture.provider.route(
+        "/release/mb-manual-1?",
+        200,
+        mb_release_json("mb-manual-1", "rg-manual-1", &[probed, 0]),
+    );
+
+    assert!(
+        fixture.stored_release("mb-manual-1").await.is_none(),
+        "nothing has fetched this release yet"
+    );
+
+    let pick = || bae_identify::PressingLink {
+        record: bae_catalogs::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+            "mb-manual-1".to_string(),
+        ),
+        partners: vec![],
+    };
+    fixture
+        .import
+        .select_candidate_release(
+            crate::CandidateKey::folder(&dir),
+            pick(),
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .expect("a manual pick fetches");
+
+    assert!(
+        fixture.stored_release("mb-manual-1").await.is_some(),
+        "and archives the release it fetched"
+    );
+
+    // Re-picking it costs nothing.
+    let before = fixture.provider.requests().len();
+    fixture
+        .import
+        .select_candidate_release(
+            crate::CandidateKey::folder(&dir),
+            pick(),
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .expect("re-picking reads what the first pick archived");
+    assert_eq!(
+        fixture.provider.requests().len(),
+        before,
+        "the second pick reached the wire: {:?}",
+        fixture.provider.requests()
+    );
+}
+
+/// Picking a release the run read from its Disc ID answer asks for the
+/// release itself before anything applies it, and stores the release a
+/// complete read from scratch stores: its annotation among its notes.
+#[tokio::test(flavor = "multi_thread")]
+async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
+    let (fixture, dir) = two_pressings_fixture("disc-id-pick").await;
+    fixture.scan(1).await;
+    fixture.drain_automatic().await;
+    assert_eq!(fixture.count_release_lookups("mb-disc-de"), 0);
+    let release = bae_catalogs::records::LookupRef::new(
+        bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+        "mb-disc-de",
+    );
+
+    fixture
+        .import
+        .select_candidate_release(
+            crate::CandidateKey::folder(&dir),
+            bae_identify::PressingLink { record: release.clone(), partners: vec![] },
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .expect("the pick applies the release");
+
+    assert_eq!(fixture.count_release_lookups("mb-disc-de"), 1, "{:?}", fixture.provider.requests());
+    let picked = fixture.stored_release("mb-disc-de").await.expect("the pick stores its release");
+    assert_eq!(picked.notes, vec!["club edition".to_string(), "Matrix: A1".to_string()]);
+
+    let scratch = Fixture::new("disc-id-complete").await;
+    route_two_pressings(&scratch, fixture.probed_total_ms(&dir));
+    let (complete, _) =
+        scratch.import.read_pick(&release, &[], CallPriority::Interactive).await.unwrap();
+    assert_eq!(picked, complete.release);
+}
+
+/// A release a person picks from their typed search is their choice, and
+/// theirs to import, whatever the setting says.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_picked_from_a_typed_search_is_not_imported() {
+    let fixture = Fixture::new("auto-import-typed-search").await;
+    fixture.set_identify_automatically(false).await;
+    fixture.set_import_when_identified(true).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route("/release?", 200, mb_search_json("mb-typed", "rg-typed"));
+    fixture.provider.route(
+        "/release/mb-typed?",
+        200,
+        mb_release_json("mb-typed", "rg-typed", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+    // The queue is running while the person searches and picks.
+    fixture.identification();
+    let mut events = fixture.import.every_event();
+
+    fixture
+        .import
+        .start_candidate_search(
+            key.clone(),
+            bae_catalogs::search::SearchQuery::General {
+                artist: "Artist".to_string(),
+                album: "Album".to_string(),
+            },
+        )
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            let landed = fixture
+                .import
+                .candidate_runtime(&key)
+                .await
+                .unwrap()
+                .and_then(|runtime| runtime.search)
+                .is_some_and(|search| {
+                    matches!(
+                        search.source(bae_catalogs::catalog::LookupCatalog::MusicBrainz),
+                        Some(crate::SourceSearch::Done { .. })
+                    )
+                });
+            if landed {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the typed search lands its MusicBrainz results");
+    fixture
+        .import
+        .select_candidate_release(
+            key.clone(),
+            bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+                    "mb-typed".to_string(),
+                ),
+                partners: vec![],
+            },
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .expect("the person's pick applies");
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+        .await
+        .expect("the queue has nothing left to do");
+
+    assert_no_import(&fixture, &mut events, &key, "the person picked from their typed search")
+        .await;
+}
+
+impl Fixture {
+    /// Store a release whose group failed to fetch.
+    async fn archive_missing_its_group(
+        &self,
+        release_id: &str,
+        group_id: &str,
+        track_lengths: &[u64],
+    ) {
+        let mut release = stored_pressing(release_id, group_id, track_lengths);
+        release.unfetched.push(bae_catalogs::source_release::UnfetchedDocument {
+            document: bae_catalogs::records::PayloadSource::MusicBrainzReleaseGroup,
+            key: group_id.to_string(),
+            reason: bae_catalogs::source_release::UnfetchedReason::Failed,
+        });
+        self.tables().save_source_release(&release).await.unwrap();
+    }
 }
