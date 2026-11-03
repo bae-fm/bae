@@ -1526,6 +1526,12 @@ reported and stops for the session, as it does when the library closes.
   answers: the same label (the two merged, §2.3), the Discogs id's label,
   the MusicBrainz id's label, a new label carrying neither id, or changing
   the pressing or match.
+- **An answer belongs to its source.** An artist or label answer, and the
+  failed import a conflict left, hold for the credits and labels they were
+  given for. Editing the draft keeps them; changing what the draft is read
+  from (another pressing or match, the files' tags, unlinking) or clearing
+  it discards both, so a conflict the new source brings is the person's to
+  decide again.
 - **Identifying a library release again.** A release already in the library
   can be identified again from its own files; its Disc IDs come from the rip
   logs and CUE sheets this device holds of it, and its track lengths from its

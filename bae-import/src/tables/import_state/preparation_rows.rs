@@ -241,14 +241,16 @@ pub(super) fn save_preparation_on(
         || stored.metadata.provenance != prep.metadata.provenance
         || prep.metadata.draft.release_edit().is_blank()
     {
-        // An answer belongs to these source credits. Changing their source
-        // requires the person to decide any new conflict.
+        // An answer belongs to these source credits and labels. Changing
+        // their source requires the person to decide any new conflict.
         crate::tables::artist_identity_choice::delete_choices_on(sql, content_hash)?;
-        super::failure_rows::delete_conflict_failure_on(
-            sql,
+        crate::tables::label_identity_choice::delete_choices_on(sql, content_hash)?;
+        for identity in [
             super::failure_rows::ConflictIdentity::Artist,
-            content_hash,
-        )?;
+            super::failure_rows::ConflictIdentity::Label,
+        ] {
+            super::failure_rows::delete_conflict_failure_on(sql, identity, content_hash)?;
+        }
     }
 
     if stored.identification != prep.identification {

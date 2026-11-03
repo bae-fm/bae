@@ -153,3 +153,83 @@ async fn the_neither_and_one_label_answers_decide_the_import() {
     assert_eq!(ids_of(&placed(&db).await), [Some("by-discogs")]);
     assert_eq!(stored_label(&db, "by-discogs").await.musicbrainz_label_id, None);
 }
+
+/// A failed import of `content_hash` that stopped on the conflict over
+/// `by-discogs` and `by-musicbrainz`.
+fn label_identity_failure() -> crate::ImportFailure {
+    let existing =
+        |label_id: &str, musicbrainz: Option<&str>, discogs: Option<&str>| bae_db::ExistingLabel {
+            label_id: label_id.to_string(),
+            name: "Label Name".to_string(),
+            musicbrainz_label_id: musicbrainz.map(str::to_string),
+            discogs_label_id: discogs.map(str::to_string),
+        };
+    crate::ImportFailure {
+        reason: crate::ImportFailureReason::error("the label identities disagree"),
+        failed_at: bae_db::test_fixtures::fixed_now(),
+        identity_conflict: Some(crate::IdentityConflict::Label(bae_db::LabelIdentityConflict {
+            incoming_label_name: "Label Name".to_string(),
+            discogs_label_id: "7190".to_string(),
+            musicbrainz_label_id: "mb-label".to_string(),
+            discogs_label: existing("by-discogs", None, Some("7190")),
+            musicbrainz_label: existing("by-musicbrainz", Some("mb-label"), None),
+        })),
+    }
+}
+
+/// Save `content_hash`'s draft as read from its files' tags, a source other
+/// than the one it was read from.
+async fn change_source(tables: &ImportTables, content_hash: &str) {
+    let mut prep =
+        tables.load_candidate_preparation(content_hash).await.unwrap().unwrap().stored().unwrap();
+    let expected = crate::tables::CandidateSaveExpectation {
+        edit_revision: prep.file_edits.revision,
+        metadata_revision: prep.metadata_revision,
+        scanned: None,
+    };
+    prep.author = crate::MetadataAuthor::Person;
+    prep.metadata.provenance = Some(crate::MetadataProvenance::FileMetadata);
+    prep.metadata_revision += 1;
+    tables.save_candidate_preparation(prep, expected, Default::default()).await.unwrap();
+}
+
+/// An answer belongs to the source credits it was given for, as an artist's
+/// does: a save that changes where the draft is read from discards the
+/// candidate's label answers, and the failure a label conflict left with them.
+#[tokio::test]
+async fn changing_the_source_discards_a_label_answer_and_its_failure() {
+    let (db, _tmp) = library().await;
+    add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
+    add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
+    let tables = ImportTables::new(db.clone());
+    let (_, hash) = crate::tables::import_state::tests::stored_pane_candidate(&db).await;
+    let answers = |db: Database, hash: String| async move {
+        db.read(move |sql| {
+            crate::tables::label_identity_choice::label_answers_on(&sql, &hash, &[conflicting()])
+        })
+        .await
+        .unwrap()
+        .len()
+    };
+    tables.save_import_candidate_failure(&hash, 0, &label_identity_failure()).await.unwrap();
+    tables
+        .choose_import_label_identity(
+            &hash,
+            0,
+            crate::LabelIdentityConflictChoice::DiscogsLabel,
+            &coven::UuidIds,
+        )
+        .await
+        .unwrap();
+    assert_eq!(answers(db.clone(), hash.clone()).await, 1);
+
+    change_source(&tables, &hash).await;
+    assert_eq!(answers(db.clone(), hash.clone()).await, 0, "the answer went with its source");
+
+    tables.save_import_candidate_failure(&hash, 0, &label_identity_failure()).await.unwrap();
+    change_source(&tables, &hash).await;
+    assert!(
+        tables.load_import_candidate_pane_rows(&hash).await.unwrap().failure.is_none(),
+        "the failure went with its source"
+    );
+}
