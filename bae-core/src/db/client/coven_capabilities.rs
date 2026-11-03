@@ -399,20 +399,6 @@ impl Database {
         Ok(invite)
     }
 
-    /// This device's open invites, each with the pending record of its
-    /// operation when coven holds one, live from coven's `coven_invites` and
-    /// `coven_pending` in one read.
-    pub(crate) fn subscribe_invites(&self) -> coven::LiveQuery<Vec<crate::people::OpenInvite>> {
-        self.inner.handle.subscribe(|sql| {
-            let records = sql.query("SELECT record, cause FROM coven_pending", [], |row| {
-                let mut record = row.get::<_, coven::PendingRecord>(0)?;
-                record.cause = row.get(1)?;
-                Ok(record)
-            })?;
-            Ok(crate::people::OpenInvite::held_by(coven::Invite::list(sql)?, &records))
-        })
-    }
-
     /// Approve a sent invite's request: the write journals the approval,
     /// which a pass binds, and records it to show by the name the invite
     /// gave its person (§5.6).
