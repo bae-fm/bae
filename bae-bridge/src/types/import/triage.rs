@@ -58,7 +58,7 @@ impl BridgeInvalidReason {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeInvalidReason = bae_core::import::InvalidReason,
+    BridgeInvalidReason = bae_import::InvalidReason,
     from_core: pub(crate) fn,
     variants: {
         SameName { name },
@@ -75,7 +75,7 @@ pub fn bridge_invalid_reason_key(reason: BridgeInvalidReason) -> String {
 
 /// Why one audio file can't be played; the UI localizes it through
 /// `bridge_audio_damage_key`. Mirrors
-/// `bae_core::import::folder_scanner::AudioDamage`.
+/// `bae_import::folder_scanner::AudioDamage`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeAudioDamage {
     /// It holds no bytes.
@@ -95,7 +95,7 @@ impl BridgeAudioDamage {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeAudioDamage = bae_core::import::folder_scanner::AudioDamage,
+    BridgeAudioDamage = bae_import::folder_scanner::AudioDamage,
     from_core: pub(crate) fn,
     variants: { Empty, Unreadable },
 }
@@ -107,7 +107,7 @@ pub fn bridge_audio_damage_key(damage: BridgeAudioDamage) -> String {
 }
 
 /// What a skipped folder's tags call the release. Mirrors
-/// `bae_core::import::folder_scanner::SkippedTags`.
+/// `bae_import::folder_scanner::SkippedTags`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSkippedTags {
     pub album_title: String,
@@ -116,7 +116,7 @@ pub struct BridgeSkippedTags {
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeSkippedTags = bae_core::import::folder_scanner::SkippedTags,
+    BridgeSkippedTags = bae_import::folder_scanner::SkippedTags,
     from_core: pub(crate) fn,
     fields: { album_title, artist },
 }
@@ -146,7 +146,7 @@ pub struct BridgeInvalidCandidate {
 }
 
 /// A folder that failed validation, as the pane looking into it reads it.
-/// Mirrors `bae_core::import::InvalidCandidateDetail`.
+/// Mirrors `bae_import::InvalidCandidateDetail`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInvalidCandidateDetail {
@@ -238,7 +238,7 @@ pub fn bridge_network_folder_watch_key() -> String {
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_network_folder_check_minutes() -> u32 {
-    bae_core::import::check_period_minutes()
+    bae_import::check_period_minutes()
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -248,7 +248,7 @@ pub enum BridgeFolderScanStatus {
     Failed { error: String },
 }
 
-// ── Sidebar triage: mirrors of `bae_core::import::triage` ─────────────────
+// ── Sidebar triage: mirrors of `bae_import::triage` ─────────────────
 
 /// The sidebar's three tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -292,7 +292,7 @@ pub enum BridgeCandidateAction {
 
 /// Where one Found row stands: its state, and why a row that needs the
 /// person does, and how bae broke for a row in error. Mirrors
-/// `bae_core::import::PendingStanding`.
+/// `bae_import::PendingStanding`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgePendingStanding {
     NotLookedUp,
@@ -340,7 +340,7 @@ pub enum BridgeMediumMismatch {
 }
 
 /// The one badge a Found row waiting on the person wears: what it says, and
-/// how it reads. Mirrors `bae_core::import::PendingBadge` and its tone.
+/// how it reads. Mirrors `bae_import::PendingBadge` and its tone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeRowBadge {
     pub says: BridgePendingBadge,
@@ -348,7 +348,7 @@ pub struct BridgeRowBadge {
 }
 
 /// What the badge of a Found row waiting on the person says. Mirrors
-/// `bae_core::import::PendingBadge`.
+/// `bae_import::PendingBadge`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgePendingBadge {
     /// The lookup left the answer to the person, for this reason.
@@ -363,7 +363,7 @@ pub enum BridgePendingBadge {
     ImportError,
 }
 
-/// How a badge reads at a glance. Mirrors `bae_core::import::BadgeTone`.
+/// How a badge reads at a glance. Mirrors `bae_import::BadgeTone`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeBadgeTone {
     /// An answer is the person's to give.
@@ -389,7 +389,7 @@ pub struct BridgeSelectionOffer {
 }
 
 /// What the import list's selection holds and can be told to do. Mirrors
-/// `bae_core::import::selection::SelectionSummary`.
+/// `bae_import::selection::SelectionSummary`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionSummary {
     pub count: u64,
@@ -399,7 +399,7 @@ pub struct BridgeSelectionSummary {
 }
 
 /// The one selected row of the import list. Mirrors
-/// `bae_core::import::selection::SingleSelection`.
+/// `bae_import::selection::SingleSelection`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeSingleSelection {
     Candidate {
@@ -413,13 +413,13 @@ pub enum BridgeSingleSelection {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeSingleSelection = bae_core::import::selection::SingleSelection,
+    BridgeSingleSelection = bae_import::selection::SingleSelection,
     from_core: pub(crate) fn,
     variants: { Candidate { key: (into) }, InvalidCandidate { key: (into) } },
 }
 
 /// How a person changed the selection by pointing at rows. Mirrors
-/// `bae_core::import::selection::SelectionChange`.
+/// `bae_import::selection::SelectionChange`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSelectionChange {
     /// Select exactly these rows, and nothing else.
@@ -450,21 +450,21 @@ pub struct BridgeSelectionActionFailure {
 pub fn bridge_candidate_selection_offers(
     members: Vec<BridgeSelectionMember>,
 ) -> Vec<BridgeSelectionOffer> {
-    let parts: Vec<bae_core::import::triage::SelectionPart> = members
+    let parts: Vec<bae_import::triage::SelectionPart> = members
         .into_iter()
-        .map(|member| bae_core::import::triage::SelectionPart {
+        .map(|member| bae_import::triage::SelectionPart {
             actions: member.actions.into_iter().map(BridgeCandidateAction::into_core).collect(),
             count: 1,
         })
         .collect();
-    bae_core::import::triage::selection_offers(&parts)
+    bae_import::triage::selection_offers(&parts)
         .into_iter()
         .map(BridgeSelectionOffer::from_core)
         .collect()
 }
 
 impl BridgeSelectionOffer {
-    pub(crate) fn from_core(offer: bae_core::import::triage::SelectionOffer) -> Self {
+    pub(crate) fn from_core(offer: bae_import::triage::SelectionOffer) -> Self {
         Self {
             action: BridgeCandidateAction::from_core(offer.action),
             count: offer.count,
@@ -562,7 +562,7 @@ pub enum BridgeMetadataProvenance {
 }
 
 /// What a candidate is linked to in the catalogs, independent of its draft.
-/// Mirrors `bae_core::import::ReleaseLink`.
+/// Mirrors `bae_import::ReleaseLink`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseLink {
     /// The pressing picked for the folder.
@@ -574,12 +574,12 @@ pub enum BridgeReleaseLink {
 
 #[cfg(feature = "desktop")]
 impl BridgeReleaseLink {
-    pub(crate) fn from_core(link: bae_core::import::ReleaseLink) -> Self {
+    pub(crate) fn from_core(link: bae_import::ReleaseLink) -> Self {
         match link {
-            bae_core::import::ReleaseLink::Pressing(pressing) => {
+            bae_import::ReleaseLink::Pressing(pressing) => {
                 Self::Pressing { link: BridgePressingLink::from_core(pressing) }
             }
-            bae_core::import::ReleaseLink::Album(album) => Self::Album {
+            bae_import::ReleaseLink::Album(album) => Self::Album {
                 albums: album
                     .albums()
                     .iter()
@@ -637,14 +637,14 @@ pub enum BridgeMetadataAuthor {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeMetadataAuthor = bae_core::import::MetadataAuthor,
+    BridgeMetadataAuthor = bae_import::MetadataAuthor,
     from_core: pub(crate) fn,
     variants: { Nobody, Prefill, Identification, Person },
 }
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeMetadataProvenance = bae_core::import::MetadataProvenance,
+    BridgeMetadataProvenance = bae_import::MetadataProvenance,
     from_core: pub(crate) fn,
     variants: {
         ExternalRelease {
@@ -671,7 +671,7 @@ pub enum BridgeTriageReading {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeTriageReading = bae_core::import::triage::TriageReading,
+    BridgeTriageReading = bae_import::triage::TriageReading,
     from_core: pub(crate) fn,
     variants: {
         Unidentified,

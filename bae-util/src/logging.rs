@@ -163,7 +163,7 @@ mod tests {
     /// the other test's events are dropped or kept by the wrong filter.
     macro_rules! emit_probe_lines {
         () => {{
-            tracing::debug!(target: "bae_core::import", "first-party debug");
+            tracing::debug!(target: "bae_import::service", "first-party debug");
             tracing::debug!(target: "bae_catalogs::search", "first-party library debug");
             tracing::debug!(target: "coven_database::live_query", "coven debug");
             tracing::debug!(target: "sqlite3_parser::lexer", "dependency debug");

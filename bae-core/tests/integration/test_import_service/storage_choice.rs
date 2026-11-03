@@ -17,16 +17,16 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
             None,
             &[TaggedTrack { filename: "01 Track.flac", title: "Track", track_number: 1 }],
         );
-        keys.push(bae_core::import::CandidateKey::folder(&album));
+        keys.push(bae_import::CandidateKey::folder(&album));
     }
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     // The scan reads both folders at once, so either can be found first.
-    let mut unfound: std::collections::HashSet<&bae_core::import::CandidateKey> =
+    let mut unfound: std::collections::HashSet<&bae_import::CandidateKey> =
         keys.iter().collect();
     wait_for_scan_event(&mut scan_rx, "both albums", |event| {
         if let ScanEvent::FolderCandidate { candidate: c, .. } = event {
-            unfound.remove(&bae_core::import::CandidateKey::folder(&c.path));
+            unfound.remove(&bae_import::CandidateKey::folder(&c.path));
         }
         unfound.is_empty()
     })
@@ -38,7 +38,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     f.library_manager.set_import_to_cloud(true).await.unwrap();
     f.library_manager.set_import_pinned(true).await.unwrap();
     let outcome = import_outcome(&f, &keys[0]).await;
-    let bae_core::import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
+    let bae_import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
     };
     // The import stages its files to be kept here: no entry of the download
@@ -73,7 +73,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     assert!(
         matches!(
             import_outcome(&f, &keys[1]).await,
-            bae_core::import::ImportProgress::Complete { .. }
+            bae_import::ImportProgress::Complete { .. }
         ),
         "the local choice completes the release where it is"
     );
@@ -82,12 +82,12 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
 /// Start `key`'s import and return its first `Complete` or `RemoteUploadQueued`.
 async fn import_outcome(
     f: &ImportFixture,
-    key: &bae_core::import::CandidateKey,
-) -> bae_core::import::ImportProgress {
+    key: &bae_import::CandidateKey,
+) -> bae_import::ImportProgress {
     let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     match support::wait_for_import_end(&mut progress_rx).await {
-        bae_core::import::ImportProgress::Failed { error, .. } => {
+        bae_import::ImportProgress::Failed { error, .. } => {
             panic!("the import of {key} failed: {error}")
         }
         outcome => outcome,

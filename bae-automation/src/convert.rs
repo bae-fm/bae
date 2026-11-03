@@ -238,8 +238,8 @@ mirror_enum! {
 /// A label row as an agent types it: a name and a number. The core gives the
 /// row back the ids of the row it was, while it keeps that row's name.
 impl AutomationLabelRow {
-    pub(crate) fn into_core(self) -> bae_core::import::RawLabelEdit {
-        bae_core::import::RawLabelEdit {
+    pub(crate) fn into_core(self) -> bae_import::RawLabelEdit {
+        bae_import::RawLabelEdit {
             name: self.name,
             catalog_number: self.catalog_number,
             ..Default::default()
@@ -248,13 +248,13 @@ impl AutomationLabelRow {
 }
 
 mirror_enum! {
-    AutomationEvidenceSignal = bae_core::import::EvidenceSignal,
+    AutomationEvidenceSignal = bae_import::EvidenceSignal,
     from_core: pub(crate) fn,
     variants: { Barcode, DiscId },
 }
 
 mirror_struct! {
-    AutomationFileEvidence = bae_core::import::FileEvidence,
+    AutomationFileEvidence = bae_import::FileEvidence,
     from_core: pub(crate) fn,
     fields: {
         signal: (AutomationEvidenceSignal),
@@ -398,7 +398,7 @@ mirror_struct! {
 }
 
 impl AutomationReleaseUserEdit {
-    pub(crate) fn from_core(edit: bae_core::import::ReleaseUserEdit) -> Self {
+    pub(crate) fn from_core(edit: bae_import::ReleaseUserEdit) -> Self {
         Self {
             album_title: edit.album_title,
             album_artist_assignments: edit
@@ -412,8 +412,8 @@ impl AutomationReleaseUserEdit {
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::import::ReleaseUserEdit {
-        bae_core::import::ReleaseUserEdit {
+    pub(crate) fn into_core(self) -> bae_import::ReleaseUserEdit {
+        bae_import::ReleaseUserEdit {
             album_title: self.album_title,
             album_artist_assignments: self
                 .album_artist_assignments
@@ -476,7 +476,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    AutomationArtistAssignment = bae_core::import::ArtistAssignment,
+    AutomationArtistAssignment = bae_import::ArtistAssignment,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -486,14 +486,14 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    AutomationCredited = bae_core::import::Credited,
+    AutomationCredited = bae_import::Credited,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { artist: (AutomationArtistAssignment), join },
 }
 
 mirror_enum! {
-    AutomationTrackArtistAssignments = bae_core::import::TrackArtistAssignments,
+    AutomationTrackArtistAssignments = bae_import::TrackArtistAssignments,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {

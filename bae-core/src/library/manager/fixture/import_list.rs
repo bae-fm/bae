@@ -3,11 +3,11 @@
 //! as the scan and identification write their rows.
 
 use super::*;
-use crate::import::folder_scanner::{
+use bae_identify::TerminalVerdict;
+use bae_import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
     ScannedAudio, ScannedFile,
 };
-use bae_identify::TerminalVerdict;
 
 /// A watched folder of a [`LibraryFixture`] and what its last read found.
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -70,14 +70,14 @@ impl LibraryManager {
         &self,
         folders: &[FixtureWatchedFolder],
     ) -> Result<(), LibraryFixtureError> {
-        let tables = crate::import::tables::ImportTables::new(self.database.clone());
+        let tables = bae_import::tables::ImportTables::new(self.database.clone());
         let mut file_count = 0;
         for folder in folders {
             let root = bae_db::watched_path::canonical_absolute_root(Path::new(&folder.path))
                 .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
             tables.add_watched_import_folder(&root).await.map_err(LibraryError::from)?;
             let generation = tables
-                .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+                .begin_folder_scan(&root, bae_import::VolumeKind::Local)
                 .await
                 .map_err(LibraryError::from)?;
             let candidates: Vec<(FolderCandidate, FixtureCandidateState)> = folder
@@ -109,7 +109,7 @@ impl LibraryManager {
         candidate: &FolderCandidate,
         state: FixtureCandidateState,
     ) -> Result<(), LibraryFixtureError> {
-        let tables = crate::import::tables::ImportTables::new(self.database.clone());
+        let tables = bae_import::tables::ImportTables::new(self.database.clone());
         let content_hash = candidate.files.content_hash();
         let track_count = candidate.files.files.len() as u32;
         match state {
@@ -176,13 +176,13 @@ impl LibraryManager {
                     .draft
                     .release_edit();
                 draft.album_title = candidate.name.clone();
-                let preparations = crate::import::CandidatePreparations::new(self.database.clone());
+                let preparations = bae_import::CandidatePreparations::new(self.database.clone());
                 preparations
                     .replace_metadata(
                         &content_hash,
                         &candidate.key(),
                         &draft,
-                        Some(&crate::import::MetadataProvenance::ExternalRelease {
+                        Some(&bae_import::MetadataProvenance::ExternalRelease {
                             record: record.clone(),
                         }),
                         // Stored in the write whose provenance names it.
@@ -192,7 +192,7 @@ impl LibraryManager {
                 preparations
                     .replace_link(
                         &content_hash,
-                        Some(&crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
+                        Some(&bae_import::ReleaseLink::Pressing(bae_identify::PressingLink {
                             record,
                             partners: Vec::new(),
                         })),
@@ -206,8 +206,8 @@ impl LibraryManager {
                     .save_import_candidate_failure(
                         &content_hash,
                         candidate.file_edit_revision,
-                        &crate::import::ImportFailure {
-                            reason: crate::import::ImportFailureReason {
+                        &bae_import::ImportFailure {
+                            reason: bae_import::ImportFailureReason {
                                 detail: FIXTURE_IMPORT_FAILURE.to_string(),
                             },
                             failed_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
@@ -228,8 +228,8 @@ impl LibraryManager {
         candidate: &FolderCandidate,
         verdict: TerminalVerdict,
     ) -> Result<(), LibraryFixtureError> {
-        let stored = crate::import::CandidatePreparations::new(self.database.clone())
-            .store_verdict(&crate::import::tables::NewImportCandidateVerdict {
+        let stored = bae_import::CandidatePreparations::new(self.database.clone())
+            .store_verdict(&bae_import::tables::NewImportCandidateVerdict {
                 content_hash: candidate.files.content_hash(),
                 file_edit_revision: candidate.file_edit_revision,
                 candidate_key: candidate.key(),

@@ -1,0 +1,315 @@
+//! Import: watched folders and their scans, the candidates they hold and
+//! the drafts a person shapes, identification against the catalogs, and the
+//! import that writes a candidate's release into the library's store.
+
+// Every module but `error`, `session` and `types` is the
+// import pipeline (scanning, transcoding, identification), which only the
+// desktop builds carry: mobile is a sync and playback client. Of `types`, only
+// the shared domain types compile on mobile.
+#[cfg(desktop)]
+pub mod apply_steps;
+#[cfg(desktop)]
+pub mod assemble;
+#[cfg(desktop)]
+pub mod audio_layout;
+#[cfg(desktop)]
+pub mod candidate_key;
+#[cfg(desktop)]
+pub(crate) mod candidate_runtime;
+#[cfg(desktop)]
+pub mod candidate_search;
+#[cfg(desktop)]
+pub(crate) mod candidates;
+#[cfg(desktop)]
+mod catalog_sessions;
+/// Reading a catalog release against a candidate's audio, once.
+#[cfg(desktop)]
+pub mod cover_art;
+/// Reading a CUE sheet and the FLAC it describes.
+#[doc(hidden)]
+#[cfg(desktop)]
+pub mod cue_flac;
+#[cfg(desktop)]
+pub mod discid;
+#[cfg(desktop)]
+mod discid_hash;
+/// A Discogs tracklist split into the mediums its positions name.
+mod error;
+#[cfg(desktop)]
+pub mod extraction;
+#[cfg(desktop)]
+mod file_evidence;
+#[cfg(desktop)]
+mod file_identity;
+#[cfg(desktop)]
+pub(crate) mod file_metadata_seed;
+#[cfg(desktop)]
+pub mod file_tag_mapper;
+#[cfg(desktop)]
+pub(crate) mod file_tag_snapshot;
+#[cfg(desktop)]
+mod file_validation;
+#[cfg(desktop)]
+pub mod folder_scanner;
+#[cfg(desktop)]
+pub(crate) mod folder_state_commit;
+#[cfg(desktop)]
+pub mod grouping;
+#[cfg(desktop)]
+mod handle;
+#[cfg(desktop)]
+pub mod identification;
+#[cfg(desktop)]
+pub mod identify_service;
+#[cfg(desktop)]
+pub(crate) mod import_cancel;
+#[cfg(desktop)]
+mod import_failure;
+#[cfg(desktop)]
+pub mod list;
+#[cfg(desktop)]
+pub(crate) mod local_artwork;
+#[cfg(desktop)]
+mod loudness;
+#[cfg(desktop)]
+pub mod loudness_meter;
+#[cfg(desktop)]
+pub mod mapping;
+/// Which of a release's mediums a folder's audio is a rip of.
+#[cfg(desktop)]
+pub mod pane;
+#[cfg(desktop)]
+pub mod preparation;
+#[cfg(desktop)]
+pub mod preparations;
+#[cfg(desktop)]
+pub mod probe;
+/// What one reading of a source says a release is, as plain values.
+#[cfg(desktop)]
+pub mod reading_draft;
+#[cfg(desktop)]
+pub mod release_candidate;
+#[cfg(desktop)]
+mod release_reads;
+#[cfg(desktop)]
+mod remote_images;
+#[cfg(desktop)]
+pub mod selection;
+#[cfg(desktop)]
+pub mod service;
+pub mod session;
+#[cfg(desktop)]
+pub(crate) mod shared_album;
+#[cfg(desktop)]
+pub mod tables;
+#[cfg(test)]
+pub(crate) mod test_files;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_fixtures;
+#[cfg(test)]
+pub(crate) mod test_gate;
+#[cfg(all(test, desktop))]
+pub(crate) mod test_images;
+#[cfg(all(test, desktop))]
+pub(crate) mod test_import;
+#[cfg(test)]
+pub(crate) mod test_reads;
+#[cfg(desktop)]
+pub(crate) mod track_numbers;
+#[cfg(desktop)]
+pub mod triage;
+mod types;
+#[cfg(desktop)]
+pub(crate) mod volume;
+#[cfg(desktop)]
+pub mod watched_folder;
+
+#[cfg(desktop)]
+pub use volume::check_period_minutes;
+#[cfg(desktop)]
+pub use volume::VolumeKind;
+
+/// The import service's shared dependencies: the store it reads and writes,
+/// the one writer of candidates' stored state, coven's clock and id sources,
+/// the lock that serializes folder-state commits, and the channel every import
+/// event goes out on.
+///
+/// [`service::ImportService::start`] builds one and hands it to the service
+/// handle and to every folder scan, which is why it is declared here rather
+/// than in either of those modules — its fields stay private to `import`.
+#[cfg(desktop)]
+#[derive(Clone)]
+pub(crate) struct ImportServices {
+    event_tx: handle::ImportEventBus,
+    /// The library's store, which import reads and writes directly.
+    database: bae_db::Database,
+    /// Import's own tables in that store.
+    tables: tables::ImportTables,
+    /// The catalogs as this library may ask them.
+    catalogs: CatalogSessions,
+    /// The provider images candidates' covers and new artists' pictures are
+    /// fetched through.
+    remote_images: RemoteImages,
+    preparations: preparations::CandidatePreparations,
+    clock: coven::ClockRef,
+    ids: coven::IdSourceRef,
+    /// What reads a folder's audio files for their embedded tags. Held here
+    /// rather than reached for, so a test can hand the scan a reader whose
+    /// answers — and whose count of calls — it decides.
+    file_tags: std::sync::Arc<dyn file_tag_snapshot::FileTagReader>,
+    /// What lists a folder's entries for a scan. Held for the same reason as
+    /// `file_tags`: a test can hand the scan a reader that holds one folder's
+    /// listing closed, and observe what the scan has announced by then.
+    directories: std::sync::Arc<dyn folder_scanner::DirectoryReader>,
+    folder_state_commit: folder_state_commit::FolderStateCommit,
+    /// The imports between their claim and their end, which a person can
+    /// cancel: shared by the handle that claims and cancels them and the
+    /// worker that runs them.
+    import_cancels: import_cancel::ImportCancels,
+    /// Where a panic in import or scan work is reported as the bug it is.
+    diagnostics: bae_diagnostics::Diagnostics,
+    /// Cancelled when the library closes, before its store does: the live
+    /// reads import opens end with it.
+    closing: tokio_util::sync::CancellationToken,
+}
+
+#[cfg(desktop)]
+impl ImportServices {
+    pub(crate) fn new(
+        event_tx: handle::ImportEventBus,
+        database: bae_db::Database,
+        catalogs: CatalogSessions,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
+        preparations: preparations::CandidatePreparations,
+        clock: coven::ClockRef,
+        ids: coven::IdSourceRef,
+        diagnostics: bae_diagnostics::Diagnostics,
+        closing: tokio_util::sync::CancellationToken,
+    ) -> Self {
+        Self {
+            event_tx,
+            tables: tables::ImportTables::new(database.clone()),
+            database,
+            catalogs,
+            remote_images: RemoteImages::new(remote_images, diagnostics.clone()),
+            preparations,
+            clock,
+            ids,
+            file_tags: std::sync::Arc::new(file_tag_snapshot::LoftyFileTagReader),
+            directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
+            folder_state_commit: folder_state_commit::FolderStateCommit::default(),
+            import_cancels: import_cancel::ImportCancels::default(),
+            diagnostics,
+            closing,
+        }
+    }
+}
+
+#[cfg(desktop)]
+pub use apply_steps::{CatalogApplyStep, CatalogApplySteps};
+#[cfg(desktop)]
+pub use candidate_key::CandidateKey;
+#[cfg(desktop)]
+pub use candidate_runtime::CandidateRuntime;
+#[cfg(any(test, feature = "test-utils"))]
+pub use candidate_runtime::CandidateRuntimeChange;
+#[cfg(desktop)]
+pub(crate) use candidate_runtime::CandidateWork;
+#[cfg(desktop)]
+pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
+#[cfg(desktop)]
+pub use candidates::{
+    Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
+    IdentificationInFlight, IdentificationRuntime, ImportCandidateSnapshot, ImportInFlight,
+    ImportedRelease, SaveFailure, SavingAnswer, WatchedFolderScanStatus,
+};
+#[cfg(desktop)]
+pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError};
+#[cfg(desktop)]
+pub use cover_art::{CoverChoice, CoverImageSource};
+pub use error::ImportError;
+pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityConflictChoice};
+#[cfg(desktop)]
+pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use file_metadata_seed::store_scan_item;
+#[cfg(desktop)]
+pub use folder_scanner::{
+    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
+    InvalidReason, ReleaseFileScope, ReleasePart,
+};
+#[cfg(desktop)]
+pub(crate) use folder_state_commit::{FolderStateCommit, FolderStateCommitGuard};
+#[cfg(desktop)]
+pub use grouping::GroupingBlock;
+#[cfg(desktop)]
+pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
+#[cfg(desktop)]
+pub use handle::{
+    DiscogsSaveOutcome, GroupedSearchResults, ImportEvent, ImportEventBus, ImportServiceHandle,
+    ImportStart, ScanEvent,
+};
+#[cfg(desktop)]
+pub use identification::IdentificationHandle;
+#[cfg(desktop)]
+pub use identify_service::{IdentifyRunId, IdentifyServiceHandle};
+#[cfg(desktop)]
+pub use import_failure::{ImportFailure, ImportFailureReason};
+#[cfg(desktop)]
+pub use list::{
+    ActiveFolderScan, CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement,
+    CandidateStage, DraftProjection, FolderScanActivity, FolderScanProgress, ImportCandidateDetail,
+    ImportCandidateDetailProjection, ImportCandidateListLocation, ImportCounts, ImportListId,
+    ImportListItem, ImportListNarrowing, ImportListOrder, ImportListProjection, ImportListRequest,
+    ImportListSnapshot, ImportListView, ImportListWindow, ImportQueueSummary, ListedRelease,
+    LiveImportList, LiveImportListError, NarrowedCount, PendingFilter, PendingFilterEntry,
+    ProjectedStage,
+};
+#[cfg(desktop)]
+pub use mapping::{
+    mapping_tracks, FolderFiles, InvalidCandidateDetail, MappingContainer, MappingEntry,
+    MappingFile, MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable,
+    MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
+};
+#[cfg(desktop)]
+pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
+#[cfg(desktop)]
+pub use preparations::CandidatePreparations;
+#[cfg(desktop)]
+pub use release_reads::ReleaseReads;
+#[cfg(desktop)]
+pub(crate) use remote_images::RemoteImages;
+#[cfg(desktop)]
+pub use service::ImportService;
+pub use session::{
+    CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
+    PaneOutcome, SearchForm, SearchTab,
+};
+#[cfg(desktop)]
+pub use triage::{
+    BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
+    IdentifyingStep, ImportStanding, NeedsYouReason, PendingBadge, PendingStanding, PendingState,
+    StoredLookup, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
+    TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
+};
+#[cfg(desktop)]
+pub use types::ImportCommand;
+#[cfg(desktop)]
+pub use types::ReleaseLink;
+pub use types::{
+    artists_standing, credited_line, ArtistAssignment, ArtistStanding, ArtistsStanding, AudioFile,
+    CandidateDraft, CandidateEditField, CandidateTrack, Credited, DraftAlbum, DraftFieldEdit,
+    DraftTrack, EditValidationError, LibraryDraft, LibraryTrack, MetadataProvenance,
+    PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft,
+    ReleaseEditDisplayContext, ReleaseEditLoadError, ReleaseEditSeed, ReleaseEditTrackContext,
+    ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource, ReleaseUserEdit,
+    TrackArtistAssignments, TrackBinding, TrackUserEdit,
+};
+#[cfg(desktop)]
+pub use types::{
+    CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, CueAnalyzedAudioFile,
+    CueFlacAnalysis, DiscogsArtistImage, ImportDestination, ImportPhase, ImportProgress,
+    ImportStep, PrepareStep, TrackAudio, TrackFile,
+};
+#[cfg(desktop)]
+pub use watched_folder::WatchedFolder;

@@ -1,22 +1,13 @@
 //! Audio files and images on disk.
 
-/// The FLAC fixture tree lives in bae-core, so it is reached relative to the
-/// workspace root — `CARGO_MANIFEST_DIR` here is this crate, not bae-core.
-fn bae_core_fixtures() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("bae-test-support sits one level under the workspace root")
-        .join("bae-core/tests/fixtures")
-}
-
 /// A committed test fixture's bytes. Panics naming the file and how to get it
 /// back when the checkout lacks it.
 pub fn read_fixture(path: &std::path::Path) -> Vec<u8> {
     std::fs::read(path).unwrap_or_else(|error| {
         panic!(
-            "test fixture {} could not be read ({error}); it is committed under \
-             bae-core/tests/fixtures, so restore it with \
-             `git checkout -- bae-core/tests/fixtures`",
+            "test fixture {} could not be read ({error}); it is committed, so \
+             restore it with `git checkout -- {}`",
+            path.display(),
             path.display()
         )
     })
@@ -30,7 +21,7 @@ pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> 
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
 
-    let fixture = bae_core_fixtures().join("flac/01 Test Track 1.flac");
+    let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let flac = read_fixture(&fixture);
 
     let dest = dir.join(filename);

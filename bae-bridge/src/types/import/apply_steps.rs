@@ -1,7 +1,7 @@
 use crate::types::{BridgeCatalog, BridgeMessage, BridgeMessageArg};
 
 /// A network read an apply of a catalog release waits on: an import pick or
-/// the release editor's. Mirrors `bae_core::import::CatalogApplyStep`.
+/// the release editor's. Mirrors `bae_import::CatalogApplyStep`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCatalogApplyStep {
     /// Reading a release's documents from its catalog.
@@ -12,8 +12,8 @@ pub enum BridgeCatalogApplyStep {
 }
 
 impl BridgeCatalogApplyStep {
-    pub(crate) fn from_core(step: bae_core::import::CatalogApplyStep) -> Self {
-        use bae_core::import::CatalogApplyStep as S;
+    pub(crate) fn from_core(step: bae_import::CatalogApplyStep) -> Self {
+        use bae_import::CatalogApplyStep as S;
         match step {
             S::ReadingRelease(catalog) => {
                 Self::ReadingRelease { catalog: BridgeCatalog::from_core(catalog) }

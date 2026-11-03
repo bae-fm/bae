@@ -2,14 +2,14 @@
 //! only the rows it shows, and a bulk action runs in core over the selected
 //! keys in the order the list shows them.
 
-use bae_core::import::selection::{SelectionChange, SelectionSummary, SingleSelection};
-use bae_core::import::{
+use bae_core::library::AppServices;
+use bae_db::LibraryPageWindow;
+use bae_import::selection::{SelectionChange, SelectionSummary, SingleSelection};
+use bae_import::{
     Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
     ImportListItem, ImportListOrder, ImportListSnapshot, ImportListView, LiveImportList,
     PendingFilter, TriageTab,
 };
-use bae_core::library::AppServices;
-use bae_db::LibraryPageWindow;
 use bae_test_support as support;
 use std::path::Path;
 use tempfile::TempDir;
@@ -25,7 +25,7 @@ async fn open(dir: &Path) -> AppServices {
 /// `count` one-track albums under `collection`, watched and scanned. Each
 /// track has its own name, so no two albums are the same files.
 async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
-    let flac = std::fs::read(bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac"))
+    let flac = std::fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"))
         .expect("FLAC fixture");
     for n in 0..count {
         let album = collection.join(format!("Album {n}"));
@@ -82,7 +82,7 @@ async fn list_showing(
 }
 
 /// The keys the snapshot's page shows selected, top to bottom.
-fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<bae_core::import::CandidateKey> {
+fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateKey> {
     snapshot
         .windows
         .iter()
@@ -97,7 +97,7 @@ fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<bae_core::import::Cand
 }
 
 /// The candidate keys the snapshot's page shows, top to bottom.
-fn on_page(snapshot: &ImportListSnapshot) -> Vec<bae_core::import::CandidateKey> {
+fn on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateKey> {
     snapshot
         .windows
         .iter()
@@ -155,7 +155,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
     let not_looked_up =
         ImportListView { pending_filter: PendingFilter::NotLookedUp, ..ImportListView::default() };
     let (list, shown) = list_showing(&services, not_looked_up, 3).await;
-    let picked: Vec<bae_core::import::CandidateKey> = on_page(&shown).into_iter().take(2).collect();
+    let picked: Vec<bae_import::CandidateKey> = on_page(&shown).into_iter().take(2).collect();
     let revision =
         list.change_selection(SelectionChange::Replace { keys: picked.clone() }).await.unwrap();
     let selected = until(&list, |snapshot| {
@@ -232,10 +232,7 @@ fn descending() -> ImportListView {
 }
 
 /// The candidate keys `view` shows, top to bottom.
-async fn shown_keys(
-    services: &AppServices,
-    view: ImportListView,
-) -> Vec<bae_core::import::CandidateKey> {
+async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<bae_import::CandidateKey> {
     let list = services
         .load_import_list(
             view,
@@ -260,7 +257,7 @@ async fn select_out_of_order(
     list: &LiveImportList,
     view: ImportListView,
     picks: &[usize],
-) -> Vec<bae_core::import::CandidateKey> {
+) -> Vec<bae_import::CandidateKey> {
     let shown = shown_keys(services, view).await;
     let revision = list
         .change_selection(SelectionChange::Toggle {
@@ -284,11 +281,11 @@ async fn reached_in_order(
     changes: &mut tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange>,
     count: usize,
     reached: impl Fn(&CandidateRuntimeSnapshot) -> bool,
-) -> Vec<bae_core::import::CandidateKey> {
-    let mut order: Vec<bae_core::import::CandidateKey> = Vec::new();
+) -> Vec<bae_import::CandidateKey> {
+    let mut order: Vec<bae_import::CandidateKey> = Vec::new();
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
         while order.len() < count {
-            let arrivals: Vec<bae_core::import::CandidateKey> =
+            let arrivals: Vec<bae_import::CandidateKey> =
                 match changes.recv().await.expect("the runtime answers") {
                     CandidateRuntimeChange::Updated { key, runtime } => (reached(&runtime)
                         && !order.contains(&key))
@@ -330,7 +327,7 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
 
     let admitted = reached_in_order(&mut changes, expected.len(), |runtime| {
         runtime.identification
-            == Some(bae_core::import::IdentificationRuntime::Queued(Admission::Requested))
+            == Some(bae_import::IdentificationRuntime::Queued(Admission::Requested))
     })
     .await;
     assert_eq!(admitted, expected);
@@ -350,7 +347,7 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
         services
             .import_set_candidate_album_artists(
                 &key,
-                vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Name"))],
+                vec![bae_import::Credited::plain(ArtistAssignment::named("Artist Name"))],
             )
             .await
             .unwrap();
@@ -388,14 +385,14 @@ async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
     std::fs::create_dir_all(&broken).unwrap();
     std::fs::write(
         broken.join("01 Track.flac"),
-        std::fs::read(bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac")).unwrap(),
+        std::fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac")).unwrap(),
     )
     .unwrap();
     std::fs::write(broken.join("02 Track.flac"), b"").unwrap();
     scan_albums(&services, &collection, 1).await;
     let skipped = ImportListView { tab: TriageTab::Skipped, ..ImportListView::default() };
     let (list, _) = list_showing(&services, skipped, 1).await;
-    let key = bae_core::import::CandidateKey::folder(&broken);
+    let key = bae_import::CandidateKey::folder(&broken);
 
     let revision =
         list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();

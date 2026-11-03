@@ -8,7 +8,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeArtistAssignment = bae_core::import::ArtistAssignment,
+    BridgeArtistAssignment = bae_import::ArtistAssignment,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -18,7 +18,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeCredited = bae_core::import::Credited,
+    BridgeCredited = bae_import::Credited,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { artist: (BridgeArtistAssignment), join },
@@ -44,7 +44,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeArtistStanding = bae_core::import::ArtistStanding,
+    BridgeArtistStanding = bae_import::ArtistStanding,
     from_core: pub(crate) fn,
     variants: {
         Library,
@@ -54,7 +54,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeArtistsStanding = bae_core::import::ArtistsStanding,
+    BridgeArtistsStanding = bae_import::ArtistsStanding,
     from_core: pub(crate) fn,
     variants: {
         Library,
@@ -66,7 +66,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeTrackArtistAssignments = bae_core::import::TrackArtistAssignments,
+    BridgeTrackArtistAssignments = bae_import::TrackArtistAssignments,
     from_core: pub(super) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -76,7 +76,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeTrackUserEdit = bae_core::import::TrackUserEdit,
+    BridgeTrackUserEdit = bae_import::TrackUserEdit,
     from_core: pub(crate) fn,
     into_core: fn,
     fields: {
@@ -87,7 +87,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeReleaseUserEdit = bae_core::import::ReleaseUserEdit,
+    BridgeReleaseUserEdit = bae_import::ReleaseUserEdit,
     from_core: pub(crate) fn,
     fields: {
         album_title,
@@ -99,7 +99,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeRawPressingEdit = bae_core::import::RawPressingEdit,
+    BridgeRawPressingEdit = bae_import::RawPressingEdit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
@@ -114,12 +114,12 @@ mirror_struct! {
 /// catalog gave the row stay in the core, which gives them back to a row that
 /// keeps the name they came with.
 impl BridgeRawLabelEdit {
-    pub(crate) fn from_core(row: bae_core::import::RawLabelEdit) -> Self {
+    pub(crate) fn from_core(row: bae_import::RawLabelEdit) -> Self {
         Self { name: row.name, catalog_number: row.catalog_number }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::import::RawLabelEdit {
-        bae_core::import::RawLabelEdit {
+    pub(crate) fn into_core(self) -> bae_import::RawLabelEdit {
+        bae_import::RawLabelEdit {
             name: self.name,
             catalog_number: self.catalog_number,
             ..Default::default()
@@ -128,7 +128,7 @@ impl BridgeRawLabelEdit {
 }
 
 mirror_struct! {
-    BridgeRawTrackEdit = bae_core::import::RawTrackEdit,
+    BridgeRawTrackEdit = bae_import::RawTrackEdit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
@@ -140,7 +140,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeRawReleaseEdit = bae_core::import::RawReleaseEdit,
+    BridgeRawReleaseEdit = bae_import::RawReleaseEdit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
@@ -153,19 +153,15 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeReleaseEditTrackSource = bae_core::import::ReleaseEditTrackSource,
+    BridgeReleaseEditTrackSource = bae_import::ReleaseEditTrackSource,
     from_core: fn,
     fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
 }
 
 impl BridgeReleaseEditTrackContext {
-    fn from_core(context: bae_core::import::ReleaseEditTrackContext) -> Self {
-        let bae_core::import::ReleaseEditTrackContext {
-            track_id,
-            sources,
-            duration_ms,
-            position_text,
-        } = context;
+    fn from_core(context: bae_import::ReleaseEditTrackContext) -> Self {
+        let bae_import::ReleaseEditTrackContext { track_id, sources, duration_ms, position_text } =
+            context;
         Self {
             track_id,
             sources: sources.into_iter().map(BridgeReleaseEditTrackSource::from_core).collect(),
@@ -176,7 +172,7 @@ impl BridgeReleaseEditTrackContext {
 }
 
 mirror_enum! {
-    BridgeReleaseEditTrackRun = bae_core::import::ReleaseEditTrackRun,
+    BridgeReleaseEditTrackRun = bae_import::ReleaseEditTrackRun,
     from_core: fn,
     variants: {
         Track(track: (BridgeReleaseEditTrackContext)),
@@ -190,8 +186,8 @@ mirror_enum! {
 /// Not a `mirror_struct`: `header_key` is derived from the side rather than
 /// carried by core, so a side reads a field instead of asking.
 impl BridgeReleaseEditTrackSide {
-    fn from_core(side: bae_core::import::ReleaseEditTrackSide) -> Self {
-        let bae_core::import::ReleaseEditTrackSide { side, runs } = side;
+    fn from_core(side: bae_import::ReleaseEditTrackSide) -> Self {
+        let bae_import::ReleaseEditTrackSide { side, runs } = side;
         let side = BridgeTrackSide::from_core(side);
         Self {
             header_key: side.header_key().map(str::to_string),
@@ -202,7 +198,7 @@ impl BridgeReleaseEditTrackSide {
 }
 
 mirror_struct! {
-    BridgeReleaseEditDisplayContext = bae_core::import::ReleaseEditDisplayContext,
+    BridgeReleaseEditDisplayContext = bae_import::ReleaseEditDisplayContext,
     from_core: fn,
     fields: {
         source_audio: (opt BridgeSourceAudioSummary),
@@ -211,7 +207,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeReleaseEditSeed = bae_core::import::ReleaseEditSeed,
+    BridgeReleaseEditSeed = bae_import::ReleaseEditSeed,
     from_core: pub(crate) fn,
     fields: {
         edit: (BridgeRawReleaseEdit),

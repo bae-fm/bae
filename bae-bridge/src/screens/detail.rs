@@ -115,12 +115,12 @@ impl DetailValue for crate::types::BridgeWorkDetail {
 
 #[cfg(feature = "desktop")]
 impl DetailValue for crate::types::BridgeImportCandidateDetail {
-    type Core = bae_core::import::ImportCandidateDetail;
+    type Core = bae_import::ImportCandidateDetail;
 }
 
 #[cfg(feature = "desktop")]
 impl DetailValue for crate::types::BridgeInvalidCandidateDetail {
-    type Core = bae_core::import::InvalidCandidateDetail;
+    type Core = bae_import::InvalidCandidateDetail;
 }
 
 // Gated on the target, as the export queue its transfers include is.
@@ -143,7 +143,7 @@ detail_subscription! {
     built by invalid_candidate,
     snapshot: BridgeInvalidCandidateSnapshot,
     value: crate::types::BridgeInvalidCandidateDetail,
-    id: Vec<u8> = bae_core::import::CandidateKey,
+    id: Vec<u8> = bae_import::CandidateKey,
 }
 
 #[cfg(feature = "desktop")]
@@ -152,7 +152,7 @@ detail_subscription! {
     built by import_candidate,
     snapshot: BridgeImportCandidateSnapshot,
     value: crate::types::BridgeImportCandidateDetail,
-    id: Vec<u8> = bae_core::import::CandidateKey,
+    id: Vec<u8> = bae_import::CandidateKey,
 }
 
 detail_subscription! {

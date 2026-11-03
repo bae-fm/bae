@@ -22,6 +22,10 @@ bae-diagnostics = { workspace = true }
 # The identify reducer, its view and its verdicts, which only the desktop
 # import pipeline drives; the crate is empty on mobile.
 bae-identify = { workspace = true }
+# Import: watched folders, candidates, identification and the import that
+# writes a release into the store. On mobile only its error, session and
+# release-edit types compile.
+bae-import = { workspace = true }
 bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
@@ -29,8 +33,6 @@ bae-types = { workspace = true }
 bae-util = { workspace = true }
 coven = { workspace = true }
 rusqlite = { workspace = true }
-# The provider errors import classifies; the transport is bae-util's.
-reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 toml = { workspace = true }
@@ -40,54 +42,29 @@ thiserror = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4", "v5"] }
 chrono = { workspace = true, features = ["serde"] }
-sha2 = { workspace = true }
 hex = { workspace = true }
-# Natural, case-insensitive file-name order: the release file list every
-# platform shows (detail, gallery) and the desktop import scan share it.
-natord = { workspace = true }
-base64 = { workspace = true }
 async-trait = { workspace = true }
-regex = { workspace = true }
-libc = { workspace = true }
 tokio-util = { workspace = true, features = ["io", "rt"] }
 rand = { workspace = true }
 tracing = { workspace = true }
 # The app directory's files are staged in a temporary file before an atomic
-# persist. Desktop extraction also stages cover files for barcode OCR.
+# persist.
 tempfile = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
 
-# The import pipeline's dependencies. The predicate is the pipeline's own, the
-# `desktop` cfg's (bae-util/build.rs): a mobile build is a sync/playback client
-# and compiles none of this. Naming the desktop targets positively instead
-# would let a new non-mobile target compile the pipeline while its
-# dependencies stayed behind.
+# Saving and exporting a release write its tags, which only the desktop builds
+# do.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 lofty = { workspace = true }
-# A scanned file's name is matched against a sheet's or a tag's with its
-# Unicode composition set aside (src/import/folder_scanner.rs).
-unicode-normalization = { workspace = true }
-notify = { workspace = true }
-strsim = { workspace = true }
-# The MusicBrainz Disc ID is a SHA-1 of the disc's table of contents
-# (src/import/discid_hash.rs).
-sha1 = { workspace = true }
-# Dev-mode `.env` loading (src/config/dev.rs).
-# Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no
-# system libs. Import-only: playback derives its gain from the stored
-# measurements with plain arithmetic (no ebur128 at playback). true_peak returns
-# a linear ratio (1.0 = 0 dBTP), stored verbatim as `*_peak_linear`.
-ebur128 = { workspace = true }
-
-# Whether a watched folder is on a network volume (src/import/volume.rs): a
-# drive letter mapped to a share looks local by spelling, and only
-# `GetDriveTypeW` tells it apart.
-[target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
 
 [dev-dependencies]
+# The open-file limit the import open-files test lowers, and the CPU time the
+# playback CPU test reads.
+libc = { workspace = true }
+# The sign-in test parses the address a provider's sign-in presents.
+reqwest = { workspace = true }
 # The test codec helpers (WAV reader, whole-buffer encoder), and the
 # instrumentation bae-core's unit tests read: probe counts, buffer ranges and
 # reads.
@@ -102,6 +79,9 @@ bae-playback = { workspace = true, features = ["test-utils"] }
 bae-preferences = { workspace = true, features = ["test-utils"] }
 # What the import tests read back of an identify run.
 bae-identify = { workspace = true, features = ["test-utils"] }
+# The fixture audio and the import service's test seams the library's import
+# tests drive.
+bae-import = { workspace = true, features = ["test-utils"] }
 # What a decode's windows read, for the playback tests.
 bae-track-audio = { workspace = true, features = ["test-utils"] }
 # The bug reporter and telemetry transport that record what they are handed.
@@ -138,9 +118,9 @@ keyring-core = { workspace = true }
 # images they import.
 image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
 
-# Encodes the non-UTF-8 tags the import tests read back.
+# An artist credit test compares names with their combining marks set aside.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dev-dependencies]
-encoding_rs = { workspace = true }
+unicode-normalization = { workspace = true }
 
 # The scrub-point test reads a FLAC's frames straight off FFmpeg's demuxer.
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dev-dependencies]
@@ -177,10 +157,11 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # library's preferences without a library, bae-track-audio's so they read a
 # decode's windows back, bae-util's so they get its test
 # transport and a retry that sleeps no real time, bae-audio's so they get its
-# test codec helpers, bae-types's so they get the pressing values their
+# test codec helpers, bae-import's so they get the fixture audio and the import
+# service's test seams, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
 # and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

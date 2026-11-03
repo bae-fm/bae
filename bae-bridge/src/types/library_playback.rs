@@ -26,8 +26,8 @@ pub enum BridgeDiscogsSaveOutcome {
 
 #[cfg(feature = "desktop")]
 impl BridgeDiscogsSaveOutcome {
-    pub(crate) fn from_core(outcome: bae_core::import::DiscogsSaveOutcome) -> Self {
-        use bae_core::import::DiscogsSaveOutcome as O;
+    pub(crate) fn from_core(outcome: bae_import::DiscogsSaveOutcome) -> Self {
+        use bae_import::DiscogsSaveOutcome as O;
         match outcome {
             O::Valid => Self::Valid,
             O::Unvalidated(error) => Self::Unvalidated { detail: error.to_string() },

@@ -71,14 +71,14 @@ impl Automation {
                 })??;
                 for status in statuses {
                     match status.status {
-                        bae_core::import::FolderScanStatus::Complete => {}
-                        bae_core::import::FolderScanStatus::Failed { error } => {
+                        bae_import::FolderScanStatus::Complete => {}
+                        bae_import::FolderScanStatus::Failed { error } => {
                             return Err(AutomationError::import(format!(
                                 "{}: {error}",
                                 coven::path_text(&status.watched_folder_path)
                             )));
                         }
-                        bae_core::import::FolderScanStatus::Scanning { .. } => {
+                        bae_import::FolderScanStatus::Scanning { .. } => {
                             return Err(AutomationError::import(format!(
                                 "{}: its read ended with no outcome stored",
                                 coven::path_text(&status.watched_folder_path)
@@ -163,7 +163,7 @@ impl Automation {
             return automation_candidate_from_folder(&detail, &runtime, &percents, &self.services)
                 .await;
         }
-        if let Some(bae_core::import::ImportCandidateSnapshot::Invalid(candidate)) =
+        if let Some(bae_import::ImportCandidateSnapshot::Invalid(candidate)) =
             self.services.import_get_candidate(&key).await.map_err(AutomationError::from)?
         {
             return Ok(automation_candidate_from_invalid(&candidate));
@@ -210,7 +210,7 @@ impl Automation {
             .import_select_candidate_release(
                 key,
                 link.into_core(),
-                bae_core::import::CatalogApplySteps::unread(),
+                bae_import::CatalogApplySteps::unread(),
             )
             .await?;
         Ok(EmptyResponse {})
@@ -238,7 +238,7 @@ impl Automation {
         self.services
             .import_set_candidate_edit_field(
                 &key,
-                bae_core::import::DraftFieldEdit::Text { field: field.into_core(), value },
+                bae_import::DraftFieldEdit::Text { field: field.into_core(), value },
             )
             .await?;
         Ok(EmptyResponse {})
@@ -254,7 +254,7 @@ impl Automation {
         self.services
             .import_set_candidate_edit_field(
                 &key,
-                bae_core::import::DraftFieldEdit::Labels(
+                bae_import::DraftFieldEdit::Labels(
                     labels.into_iter().map(AutomationLabelRow::into_core).collect(),
                 ),
             )
@@ -281,10 +281,7 @@ impl Automation {
     ) -> Result<EmptyResponse, AutomationError> {
         let key = self.known_key(candidate_key).await?;
         self.services
-            .import_set_candidate_edit_field(
-                &key,
-                bae_core::import::DraftFieldEdit::Barcodes(barcodes),
-            )
+            .import_set_candidate_edit_field(&key, bae_import::DraftFieldEdit::Barcodes(barcodes))
             .await?;
         Ok(EmptyResponse {})
     }
@@ -299,7 +296,7 @@ impl Automation {
         self.services
             .import_set_candidate_edit_field(
                 &key,
-                bae_core::import::DraftFieldEdit::PressingFact(fact.into_core()),
+                bae_import::DraftFieldEdit::PressingFact(fact.into_core()),
             )
             .await?;
         Ok(EmptyResponse {})
@@ -324,12 +321,10 @@ impl Automation {
         candidate_key: String,
     ) -> Result<AutomationImportStarted, AutomationError> {
         Ok(match self.services.import_start_import(&candidate_key_named(&candidate_key)?).await? {
-            bae_core::import::ImportStart::Queued { import_id } => {
+            bae_import::ImportStart::Queued { import_id } => {
                 AutomationImportStarted::Queued { import_id }
             }
-            bae_core::import::ImportStart::WhenPickStored => {
-                AutomationImportStarted::WhenPickStored
-            }
+            bae_import::ImportStart::WhenPickStored => AutomationImportStarted::WhenPickStored,
         })
     }
 
@@ -453,11 +448,7 @@ impl Automation {
         let session = self.services.open_release_edit(&release_id).await?;
         let seed = self
             .services
-            .apply_release_edit_catalog(
-                &session,
-                &link,
-                &bae_core::import::CatalogApplySteps::unread(),
-            )
+            .apply_release_edit_catalog(&session, &link, &bae_import::CatalogApplySteps::unread())
             .await?;
         if album_id.is_some() {
             self.services.set_release_edit_album(&session, album_id).await?;

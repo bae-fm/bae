@@ -69,14 +69,14 @@ impl BridgeRemoteCover {
 }
 
 impl BridgeCoverChoice {
-    pub(crate) fn from_core(choice: bae_core::import::CoverChoice) -> Self {
-        let bae_core::import::CoverChoice { selection, image } = choice;
+    pub(crate) fn from_core(choice: bae_import::CoverChoice) -> Self {
+        let bae_import::CoverChoice { selection, image } = choice;
         Self {
             selection: match selection {
-                bae_core::import::CoverSelection::Local(file_id) => {
+                bae_import::CoverSelection::Local(file_id) => {
                     BridgeCoverSelection::ReleaseImage { file_id }
                 }
-                bae_core::import::CoverSelection::Remote(image, source) => {
+                bae_import::CoverSelection::Remote(image, source) => {
                     BridgeCoverSelection::RemoteCover {
                         selection: BridgeRemoteCoverSelection {
                             image: BridgeRemoteImageSet::from_core(image),
@@ -84,7 +84,7 @@ impl BridgeCoverChoice {
                         },
                     }
                 }
-                bae_core::import::CoverSelection::Embedded(source_file_id) => {
+                bae_import::CoverSelection::Embedded(source_file_id) => {
                     BridgeCoverSelection::EmbeddedCover { source_file_id }
                 }
             },
@@ -94,18 +94,18 @@ impl BridgeCoverChoice {
 }
 
 impl BridgeCoverImageSource {
-    pub(crate) fn from_core(source: bae_core::import::CoverImageSource) -> Self {
+    pub(crate) fn from_core(source: bae_import::CoverImageSource) -> Self {
         match source {
-            bae_core::import::CoverImageSource::Library { image } => {
+            bae_import::CoverImageSource::Library { image } => {
                 Self::Library { image: crate::types::BridgeImageRef::from_core(image) }
             }
-            bae_core::import::CoverImageSource::Remote { image } => {
+            bae_import::CoverImageSource::Remote { image } => {
                 Self::Remote { image: BridgeRemoteImageSet::from_core(image) }
             }
-            bae_core::import::CoverImageSource::Local { file } => {
+            bae_import::CoverImageSource::Local { file } => {
                 Self::Local { file: BridgeFileVersion::from_core(file) }
             }
-            bae_core::import::CoverImageSource::Embedded { source, data } => {
+            bae_import::CoverImageSource::Embedded { source, data } => {
                 Self::Embedded { source: BridgeFileVersion::from_core(source), data }
             }
         }
@@ -113,20 +113,20 @@ impl BridgeCoverImageSource {
 }
 
 impl BridgeFileVersion {
-    pub(crate) fn from_core(file: bae_core::import::folder_scanner::FileVersion) -> Self {
-        let bae_core::import::folder_scanner::FileVersion { path, size, modified_at_ns } = file;
+    pub(crate) fn from_core(file: bae_import::folder_scanner::FileVersion) -> Self {
+        let bae_import::folder_scanner::FileVersion { path, size, modified_at_ns } = file;
         Self { path: coven::path_bytes(&path), size, modified_at_ns }
     }
 }
 
 mirror_enum! {
-    BridgeEvidenceSignal = bae_core::import::EvidenceSignal,
+    BridgeEvidenceSignal = bae_import::EvidenceSignal,
     from_core: fn,
     variants: { Barcode, DiscId },
 }
 
 mirror_struct! {
-    BridgeFileEvidence = bae_core::import::FileEvidence,
+    BridgeFileEvidence = bae_import::FileEvidence,
     from_core: pub(crate) fn,
     fields: { signal: (BridgeEvidenceSignal), value, file_id },
 }

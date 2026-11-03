@@ -1,7 +1,7 @@
 use super::super::*;
 
 impl BridgeFileInfo {
-    fn from_core(f: &bae_core::import::folder_scanner::ScannedFile) -> Self {
+    fn from_core(f: &bae_import::folder_scanner::ScannedFile) -> Self {
         BridgeFileInfo {
             name: f.relative_path.clone(),
             size: f.size,
@@ -18,9 +18,8 @@ impl BridgeFileInfo {
 impl BridgeCandidateSourceAudio {
     /// Borrowed core input: `CandidateSourceAudio` carries the folder's files by
     /// reference, so this is not `mirror_struct`'s owned copy.
-    fn from_core(source_audio: bae_core::import::folder_scanner::CandidateSourceAudio<'_>) -> Self {
-        let bae_core::import::folder_scanner::CandidateSourceAudio { summary, files } =
-            source_audio;
+    fn from_core(source_audio: bae_import::folder_scanner::CandidateSourceAudio<'_>) -> Self {
+        let bae_import::folder_scanner::CandidateSourceAudio { summary, files } = source_audio;
         Self {
             summary: BridgeSourceAudioSummary::from_core(summary),
             files: files.into_iter().map(BridgeFileInfo::from_core).collect(),
@@ -29,8 +28,8 @@ impl BridgeCandidateSourceAudio {
 }
 
 impl BridgeCandidateFile {
-    fn from_core(entry: bae_core::import::folder_scanner::CandidateFile) -> Self {
-        use bae_core::import::folder_scanner::{CandidateFile, FileRole};
+    fn from_core(entry: bae_import::folder_scanner::CandidateFile) -> Self {
+        use bae_import::folder_scanner::{CandidateFile, FileRole};
 
         let cover_choice = entry.cover_choice().map(BridgeCoverChoice::from_core);
         let CandidateFile { file, role } = entry;
@@ -55,30 +54,30 @@ impl BridgeCandidateFile {
 }
 
 mirror_enum! {
-    BridgeSheetBindingOffer = bae_core::import::folder_scanner::SheetBindingOffer,
+    BridgeSheetBindingOffer = bae_import::folder_scanner::SheetBindingOffer,
     from_core: fn,
     variants: { Offered, RefusedCodec { codec }, RefusedTiming, RefusedUnreadable },
 }
 
 mirror_struct! {
-    BridgeSheetBindingOption = bae_core::import::folder_scanner::SheetBindingOption,
+    BridgeSheetBindingOption = bae_import::folder_scanner::SheetBindingOption,
     from_core: pub(crate) fn,
     fields: { file_id, offer: (BridgeSheetBindingOffer) },
 }
 
 mirror_struct! {
-    BridgeSheetReferenceOptions = bae_core::import::folder_scanner::SheetReferenceOptions,
+    BridgeSheetReferenceOptions = bae_import::folder_scanner::SheetReferenceOptions,
     from_core: pub(crate) fn,
     fields: { file_reference, file_id, options: (each BridgeSheetBindingOption) },
 }
 
 impl BridgeCandidateFiles {
-    pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
+    pub(crate) fn from_core(files: bae_import::folder_scanner::CategorizedFiles) -> Self {
         let source_audio = files.source_audio().map(BridgeCandidateSourceAudio::from_core);
         let file_metadata_identity = files.file_metadata_identity();
         let cover_files =
             files.cover_files().cloned().map(BridgeCandidateFile::from_core).collect();
-        let bae_core::import::folder_scanner::CategorizedFiles { files, .. } = files;
+        let bae_import::folder_scanner::CategorizedFiles { files, .. } = files;
         BridgeCandidateFiles {
             file_metadata_identity,
             cover_files,
@@ -101,7 +100,7 @@ impl BridgePressingEdit {
 }
 
 mirror_enum! {
-    BridgeAudioFile = bae_core::import::AudioFile,
+    BridgeAudioFile = bae_import::AudioFile,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -111,14 +110,14 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSheetDisc = bae_core::import::folder_scanner::SheetDisc,
+    BridgeSheetDisc = bae_import::folder_scanner::SheetDisc,
     from_core: fn,
     into_core: pub(crate) fn,
     variants: { Disc { number }, Ignored },
 }
 
 mirror_enum! {
-    BridgeMappingRole = bae_core::import::MappingRole,
+    BridgeMappingRole = bae_import::MappingRole,
     from_core: fn,
     variants: {
         Audio,
@@ -130,8 +129,8 @@ mirror_enum! {
 }
 
 impl BridgeMappingFile {
-    pub(crate) fn from_core(file: bae_core::import::MappingFile) -> Self {
-        let bae_core::import::MappingFile {
+    pub(crate) fn from_core(file: bae_import::MappingFile) -> Self {
+        let bae_import::MappingFile {
             file_id,
             name,
             size,
@@ -155,8 +154,8 @@ impl BridgeMappingFile {
 }
 
 impl BridgeMappingEntry {
-    fn from_core(entry: bae_core::import::MappingEntry) -> Self {
-        let bae_core::import::MappingEntry {
+    fn from_core(entry: bae_import::MappingEntry) -> Self {
+        let bae_import::MappingEntry {
             sheet_id,
             index,
             number,
@@ -182,7 +181,7 @@ impl BridgeMappingEntry {
 }
 
 mirror_enum! {
-    BridgeMappingSource = bae_core::import::MappingSource,
+    BridgeMappingSource = bae_import::MappingSource,
     from_core: fn,
     variants: {
         File(file: (BridgeMappingFile)),
@@ -191,7 +190,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeTrackMapping = bae_core::import::TrackMapping,
+    BridgeTrackMapping = bae_import::TrackMapping,
     from_core: fn,
     fields: {
         source: (BridgeMappingSource),
@@ -203,14 +202,14 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeMappingContainer = bae_core::import::MappingContainer,
+    BridgeMappingContainer = bae_import::MappingContainer,
     from_core: fn,
     fields: { file_id, name, size, audio_format: (BridgeAudioFormat) },
 }
 
 impl BridgeSheetGroup {
-    fn from_core(sheet: bae_core::import::SheetGroup) -> Self {
-        let bae_core::import::SheetGroup {
+    fn from_core(sheet: bae_import::SheetGroup) -> Self {
+        let bae_import::SheetGroup {
             sheet_id,
             name,
             size,
@@ -237,7 +236,7 @@ impl BridgeSheetGroup {
 }
 
 mirror_enum! {
-    BridgeSheetBound = bae_core::import::SheetBound,
+    BridgeSheetBound = bae_import::SheetBound,
     from_core: fn,
     variants: {
         Describes(container: (BridgeMappingContainer)),
@@ -249,14 +248,14 @@ mirror_enum! {
 }
 
 impl BridgeMappingImage {
-    pub(crate) fn from_core(image: bae_core::import::MappingImage) -> Self {
-        let bae_core::import::MappingImage { file_id, name, file } = image;
+    pub(crate) fn from_core(image: bae_import::MappingImage) -> Self {
+        let bae_import::MappingImage { file_id, name, file } = image;
         BridgeMappingImage { file_id, name, file: BridgeFileVersion::from_core(file) }
     }
 }
 
 mirror_enum! {
-    BridgeMappingTrackRun = bae_core::import::MappingTrackRun,
+    BridgeMappingTrackRun = bae_import::MappingTrackRun,
     from_core: fn,
     variants: {
         Tracks(mappings: (each BridgeTrackMapping)),
@@ -270,8 +269,8 @@ mirror_enum! {
 /// Not a `mirror_struct`: `header_key` is derived from the side rather than
 /// carried by core, so a side reads a field instead of asking.
 impl BridgeMappingTrackSide {
-    fn from_core(side: bae_core::import::MappingTrackSide) -> Self {
-        let bae_core::import::MappingTrackSide { side, runs } = side;
+    fn from_core(side: bae_import::MappingTrackSide) -> Self {
+        let bae_import::MappingTrackSide { side, runs } = side;
         let side = BridgeTrackSide::from_core(side);
         Self {
             header_key: side.header_key().map(str::to_string),
@@ -282,7 +281,7 @@ impl BridgeMappingTrackSide {
 }
 
 mirror_enum! {
-    BridgeMappingFileRow = bae_core::import::MappingFileRow,
+    BridgeMappingFileRow = bae_import::MappingFileRow,
     from_core: fn,
     variants: {
         File(file: (BridgeMappingFile)),
@@ -291,7 +290,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeFolderFiles = bae_core::import::FolderFiles,
+    BridgeFolderFiles = bae_import::FolderFiles,
     from_core: pub(crate) fn,
     fields: {
         images: (each BridgeMappingImage),
@@ -300,7 +299,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeMappingTable = bae_core::import::MappingTable,
+    BridgeMappingTable = bae_import::MappingTable,
     from_core: pub(crate) fn,
     fields: {
         images: (each BridgeMappingImage),
@@ -313,9 +312,7 @@ mirror_struct! {
 #[cfg(test)]
 mod cover_projection_tests {
     use super::*;
-    use bae_core::import::folder_scanner::{
-        CandidateFile, CategorizedFiles, FileRole, ScannedFile,
-    };
+    use bae_import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 
     #[test]
     fn unsupported_cover_formats_remain_artwork_without_a_cover_action() {

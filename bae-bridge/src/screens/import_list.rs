@@ -14,7 +14,7 @@ use crate::types::BridgeError;
 /// list shows, so changing it and acting on it are this list's to do.
 #[derive(uniffi::Object)]
 pub struct ImportListSubscription {
-    inner: bae_core::import::LiveImportList,
+    inner: bae_import::LiveImportList,
     services: bae_core::library::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
     /// Where the next bulk action reports how far it has got: the stream
@@ -23,7 +23,7 @@ pub struct ImportListSubscription {
 }
 
 pub(crate) fn import_list(
-    inner: bae_core::import::LiveImportList,
+    inner: bae_import::LiveImportList,
     services: bae_core::library::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<ImportListSubscription> {
@@ -131,7 +131,7 @@ impl ImportListSubscription {
                     .first_identifying_candidate()
                     .await
                     .map_err(list_error)?
-                    .map(bae_core::import::CandidateKey::into_bytes))
+                    .map(bae_import::CandidateKey::into_bytes))
             })
             .await
     }
@@ -206,7 +206,7 @@ impl ImportListSubscription {
                     .await
                     .map_err(BridgeError::from)?;
                 self.inner
-                    .change_selection(bae_core::import::selection::SelectionChange::Replace {
+                    .change_selection(bae_import::selection::SelectionChange::Replace {
                         keys: vec![key.clone()],
                     })
                     .await
@@ -230,12 +230,12 @@ impl ImportListSubscription {
                     .await
                     .map_err(BridgeError::from)?;
                 self.inner
-                    .change_selection(bae_core::import::selection::SelectionChange::Replace {
+                    .change_selection(bae_import::selection::SelectionChange::Replace {
                         keys: keys.clone(),
                     })
                     .await
                     .map_err(list_error)?;
-                Ok(keys.into_iter().map(bae_core::import::CandidateKey::into_bytes).collect())
+                Ok(keys.into_iter().map(bae_import::CandidateKey::into_bytes).collect())
             })
             .await
     }
@@ -315,13 +315,13 @@ impl ImportListSubscription {
     }
 }
 
-fn list_error(error: bae_core::import::LiveImportListError) -> BridgeError {
+fn list_error(error: bae_import::LiveImportListError) -> BridgeError {
     match error {
-        bae_core::import::LiveImportListError::Cancelled => BridgeError::Cancelled,
-        error @ bae_core::import::LiveImportListError::RunNotShown => {
+        bae_import::LiveImportListError::Cancelled => BridgeError::Cancelled,
+        error @ bae_import::LiveImportListError::RunNotShown => {
             BridgeError::internal(error.to_string())
         }
-        bae_core::import::LiveImportListError::Query(error) => BridgeError::database_query(error),
-        bae_core::import::LiveImportListError::Database(error) => BridgeError::from(error),
+        bae_import::LiveImportListError::Query(error) => BridgeError::database_query(error),
+        bae_import::LiveImportListError::Database(error) => BridgeError::from(error),
     }
 }

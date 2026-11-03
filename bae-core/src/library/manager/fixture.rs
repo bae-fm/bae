@@ -56,7 +56,7 @@ pub enum LibraryFixtureError {
     #[error("write library fixture: {0}")]
     Write(#[from] LibraryError),
     #[error("write library fixture: {0}")]
-    WriteCandidate(#[from] crate::import::ImportError),
+    WriteCandidate(#[from] bae_import::ImportError),
 }
 
 impl LibraryFixture {

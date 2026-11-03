@@ -75,7 +75,7 @@ impl LibraryManager {
                     .fetch_required(&url)
                     .await
                     .map_err(|error| {
-                        crate::import::ImportError::from(bae_catalogs::CatalogError::from(
+                        bae_import::ImportError::from(bae_catalogs::CatalogError::from(
                             error.reporting_cache_task(|failed| self.diagnostics.bug(failed)),
                         ))
                     })?
@@ -90,7 +90,7 @@ impl LibraryManager {
         let bytes = blocking("resize a cover", move || bae_util::stored_image::stored_jpeg(&bytes))
             .await
             .map_err(|failed| self.bug(failed))?
-            .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
+            .map_err(|detail| bae_import::ImportError::CoverArt { detail })?;
         let library_image = DbLibraryImage::cover(
             release_id,
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()),

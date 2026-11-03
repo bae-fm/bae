@@ -1,0 +1,103 @@
+fn local_import_command(
+    import_id: &str,
+    candidate_key: &crate::CandidateKey,
+    folder: &Path,
+) -> ImportCommand {
+    ImportCommand {
+        import_id: import_id.to_string(),
+        candidate_key: candidate_key.clone(),
+        source: crate::release_candidate::CandidateSource {
+            path: folder.to_path_buf(),
+            scope: crate::ReleaseFileScope::Recursive,
+            parts: Vec::new(),
+        },
+        selected_cover: None,
+        destination: ImportDestination::Local,
+        pick: None,
+        read_file_tags: false,
+        user_edit: None,
+    }
+}
+
+/// A source file that cannot be opened mid-import fails the import with the
+/// open's own error and leaves nothing of the release behind: no album, no
+/// release, and the candidate's failure recorded for its pane. Importing the
+/// same candidate again once the file opens lands the whole release.
+#[tokio::test]
+async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it() {
+    let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
+    let folder = test.temp.path().join("box-set");
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
+    for disc in 1..=2 {
+        let disc_dir = folder.join(format!("CD{disc}"));
+        std::fs::create_dir_all(&disc_dir).unwrap();
+        for track in 1..=3 {
+            std::fs::copy(&fixture, disc_dir.join(format!("0{track} Track {track}.flac"))).unwrap();
+        }
+    }
+    let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Box Set").await;
+    let candidate = stored.candidate.clone();
+    let expectation = || stored.clone();
+
+    // The scan read every file; now one stops opening. Its size and
+    // modification time are unchanged, so the import's identity check passes
+    // and the failure is the open itself.
+    let blocked_name = Path::new("CD2").join("02 Track 2.flac");
+    let blocked = crate::test_files::UnopenableFile::block(&folder.join(&blocked_name));
+    test.service.queue_import_for_test(&candidate_key, "import-blocked").await;
+    test.service
+        .do_import(local_import_command("import-blocked", &candidate_key, &folder), expectation())
+        .await;
+    drop(blocked);
+
+    let failure = tables
+        .load_import_candidate_pane_rows(&candidate.content_hash)
+        .await
+        .unwrap()
+        .failure
+        .expect("the failed import is recorded on its candidate");
+    let detail = &failure.reason.detail;
+    assert!(
+        detail.contains(&*blocked_name.to_string_lossy()),
+        "the failure names the file that would not open: {detail}"
+    );
+    assert!(
+        bae_db::test_fixtures::row_count(&test.database, "albums").await == 0,
+        "a failed import writes no album"
+    );
+    assert!(
+        test.service.tables.release_imported_from(&candidate.content_hash).await.unwrap().is_none(),
+        "a failed import writes no release of its files"
+    );
+
+    test.service.queue_import_for_test(&candidate_key, "import-retry").await;
+    test.service
+        .prepare_and_run_folder_import(
+            "import-retry".to_string(),
+            candidate_key.clone(),
+            crate::release_candidate::CandidateSource {
+                path: folder.clone(),
+                scope: crate::ReleaseFileScope::Recursive,
+                parts: Vec::new(),
+            },
+            expectation(),
+            ImportDestination::Local,
+        )
+        .await
+        .expect("the retried import lands");
+
+    assert_eq!(
+        bae_db::test_fixtures::row_count(&test.database, "albums").await,
+        1,
+        "the retry writes the release once"
+    );
+    assert_eq!(bae_db::test_fixtures::row_count(&test.database, "releases").await, 1);
+    let release = tables
+        .release_imported_from(&candidate.content_hash)
+        .await
+        .unwrap()
+        .expect("the retried import records the release of its files");
+    assert_eq!(test.database.get_tracks_for_release(&release).await.unwrap().len(), 6);
+}

@@ -4,11 +4,11 @@
 //! apply.
 
 use super::test_devices::{run_two_device_test, TestDevice, TwoDevices};
-use crate::import::{ArtistAssignment, ReleaseUserEdit};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
 use bae_db::ExistingArtist;
 use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
+use bae_import::{ArtistAssignment, ReleaseUserEdit};
 
 const MB_ARTIST: &str = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";
 const DISCOGS_ARTIST: &str = "3840";
@@ -281,7 +281,7 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
     }
     ReleaseUserEdit {
         album_title: "Album".to_string(),
-        album_artist_assignments: crate::import::Credited::plain_list(assignments),
+        album_artist_assignments: bae_import::Credited::plain_list(assignments),
         album_year: None,
         pressing: bae_types::pressing::Pressing::blank(),
         tracks: Vec::new(),
@@ -417,11 +417,11 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         draft_crediting(devices.b(), &musicbrainz).await;
 
         record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
-        crate::import::tables::ImportTables::new(devices.a().database().clone())
+        bae_import::tables::ImportTables::new(devices.a().database().clone())
             .choose_import_artist_identity(
                 "conflict",
                 0,
-                crate::import::ArtistIdentityConflictChoice::SameArtist,
+                bae_import::ArtistIdentityConflictChoice::SameArtist,
                 &coven::UuidIds,
             )
             .await
@@ -449,11 +449,11 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
 
         devices.pause().await;
         record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
-        crate::import::tables::ImportTables::new(devices.a().database().clone())
+        bae_import::tables::ImportTables::new(devices.a().database().clone())
             .choose_import_artist_identity(
                 "conflict",
                 0,
-                crate::import::ArtistIdentityConflictChoice::SameArtist,
+                bae_import::ArtistIdentityConflictChoice::SameArtist,
                 &coven::UuidIds,
             )
             .await

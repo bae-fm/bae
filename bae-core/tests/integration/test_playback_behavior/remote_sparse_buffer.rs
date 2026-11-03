@@ -29,7 +29,7 @@ impl RemoteMultiWindowPlayback {
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
-                candidate_key: bae_core::import::CandidateKey::from_bytes(name.as_bytes().to_vec()),
+                candidate_key: bae_import::CandidateKey::from_bytes(name.as_bytes().to_vec()),
                 destination: ImportDestination::Remote { pin: false },
                 ..support::folder_import(
                     &import_id,

@@ -1,9 +1,9 @@
 use super::*;
-use bae_core::import::folder_scanner::{
+use bae_import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
     ScannedFile,
 };
-use bae_core::import::{ImportEvent, ImportProgress};
+use bae_import::{ImportEvent, ImportProgress};
 use std::path::PathBuf;
 
 /// An `Automation` over a real library in a temporary directory, keeping the
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// reads.
 pub(super) struct Fixture {
     automation: Automation,
-    tables: bae_core::import::tables::ImportTables,
+    tables: bae_import::tables::ImportTables,
     services: AppServices,
     tmp: tempfile::TempDir,
 }
@@ -65,7 +65,7 @@ pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
     let (manager, database, catalogs, closing) =
         bae_test_support::open_test_library(tmp.path()).await;
-    let tables = bae_core::import::tables::ImportTables::new(database.clone());
+    let tables = bae_import::tables::ImportTables::new(database.clone());
     let services =
         bae_test_support::start_test_services(manager, database, catalogs, closing).await;
     let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
@@ -110,7 +110,7 @@ fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
                         1_000,
                         0,
                     );
-                    file.source_audio = Some(bae_core::import::folder_scanner::ScannedAudio {
+                    file.source_audio = Some(bae_import::folder_scanner::ScannedAudio {
                         content_type: bae_util::content_type::ContentType::Flac,
                         duration_ms: 1_000,
                         format: bae_types::audio_format::AudioFormat {
@@ -157,13 +157,13 @@ async fn write_scan(
     let tables = &fixture.tables;
     tables.add_watched_import_folder(root).await.expect("the root is watched");
     let generation = tables
-        .begin_folder_scan(root, bae_core::import::VolumeKind::Local)
+        .begin_folder_scan(root, bae_import::VolumeKind::Local)
         .await
         .expect("a scan generation opens");
     let mut items = Vec::new();
     build(&mut items);
     for item in &items {
-        bae_core::import::store_scan_item(
+        bae_import::store_scan_item(
             tables,
             &bae_diagnostics::Diagnostics::noop(),
             root,
@@ -189,7 +189,7 @@ fn importing(key: &str, percent: u8) -> ImportEvent {
         progress: ImportProgress::Progress {
             id: "release-1".to_string(),
             percent: Some(percent),
-            phase: bae_core::import::ImportPhase::MeasuringLoudness,
+            phase: bae_import::ImportPhase::MeasuringLoudness,
             import_id: IMPORT_ID.to_string(),
         },
     }
@@ -256,7 +256,7 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
         candidate_key: candidate_key_named(&key).unwrap(),
         progress: ImportProgress::Preparing {
             import_id: IMPORT_ID.to_string(),
-            step: bae_core::import::PrepareStep::ValidatingSourceFiles,
+            step: bae_import::PrepareStep::ValidatingSourceFiles,
         },
     });
     fixture
@@ -264,7 +264,7 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
         .move_candidate_import_for_test(
             &candidate_key_named(&key).unwrap(),
             IMPORT_ID,
-            bae_core::import::ImportStep::Running(bae_core::import::ImportPhase::MeasuringLoudness),
+            bae_import::ImportStep::Running(bae_import::ImportPhase::MeasuringLoudness),
         )
         .await;
     fixture.record(importing(&key, 42));

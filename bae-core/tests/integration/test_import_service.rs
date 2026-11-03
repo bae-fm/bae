@@ -12,12 +12,12 @@ use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
     MbUrlResource, MbWork,
 };
-use bae_core::import::{
+use bae_core::library::LibraryManager;
+use bae_db::{Database, LibraryImageType};
+use bae_import::{
     ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit, ScanEvent,
     TrackArtistAssignments, TrackUserEdit,
 };
-use bae_core::library::LibraryManager;
-use bae_db::{Database, LibraryImageType};
 use bae_types::pressing::ReleaseLabel;
 use bae_util::test_channels::HANG_GUARD;
 use std::fs;
@@ -30,7 +30,7 @@ use tempfile::TempDir;
 struct ImportFixture {
     db: Database,
     storage: Arc<coven::MemoryStorage>,
-    handle: bae_core::import::ImportServiceHandle,
+    handle: bae_import::ImportServiceHandle,
     library_manager: LibraryManager,
     /// The catalog fakes the library asks, which a test seeds.
     fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
@@ -113,7 +113,7 @@ async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
 }
 
 fn generate_album_files(dir: &Path, filenames: &[&str]) {
-    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
+    let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let flac = fs::read(&fixture).expect("FLAC fixture missing");
     for name in filenames {
         fs::write(dir.join(name), &flac).unwrap();
@@ -151,7 +151,7 @@ fn generate_tagged_album_files(
     use lofty::tag::items::Timestamp;
     use lofty::tag::{Tag, TagType};
 
-    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
+    let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let flac = fs::read(&fixture).expect("FLAC fixture missing");
 
     for t in tracks {
@@ -211,7 +211,7 @@ fn generate_tagged_album_files_with_embedded_cover(
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
 
-    let fixture = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
+    let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let flac = fs::read(&fixture).expect("FLAC fixture missing");
 
     for t in tracks {

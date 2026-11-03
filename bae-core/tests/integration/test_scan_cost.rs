@@ -15,9 +15,9 @@
 //! 5,000, 10,000 and 20,000 folders, or the sizes `SCAN_SIZES` lists
 //! (`SCAN_SIZES=5000,20000`).
 
-use bae_core::import::{ImportListView, ScanEvent};
 use bae_core::library::AppServices;
 use bae_db::LibraryPageWindow;
+use bae_import::{ImportListView, ScanEvent};
 use bae_test_support as support;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -60,7 +60,7 @@ impl Shape {
 /// no two folders hold the same files.
 fn write_folders(root: &Path, shape: Shape, count: usize) {
     let source = root.with_extension("source.flac");
-    std::fs::copy(support::fixture_dir!("flac", "01 Test Track 1.flac"), &source)
+    std::fs::copy(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"), &source)
         .expect("copy the FLAC fixture");
     for n in 0..count {
         let folder = shape.folder(root, n);

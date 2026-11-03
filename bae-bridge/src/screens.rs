@@ -161,7 +161,7 @@ pulled_values! {
 #[cfg(feature = "desktop")]
 pulled_values! {
     /// How far the identifications and imports in flight have got.
-    ImportCountsSubscription: bae_core::import::ImportCounts => crate::types::BridgeImportCounts,
+    ImportCountsSubscription: bae_import::ImportCounts => crate::types::BridgeImportCounts,
     converted by crate::types::BridgeImportCounts::from_core,
     built by import_counts
 }
@@ -170,9 +170,9 @@ pulled_values! {
 pulled_values! {
     /// What one candidate has in flight; `None` while nothing is.
     CandidateRuntimeSubscription:
-        Option<bae_core::import::CandidateRuntimeSnapshot>
+        Option<bae_import::CandidateRuntimeSnapshot>
             => Option<crate::types::BridgeCandidateRuntimeSnapshot>,
-    converted by |runtime: Option<bae_core::import::CandidateRuntimeSnapshot>| {
+    converted by |runtime: Option<bae_import::CandidateRuntimeSnapshot>| {
         runtime.map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
     },
     built by candidate_runtime
@@ -341,7 +341,7 @@ pulled_values! {
 pulled_values! {
     /// Where each watched folder's scan stands.
     FolderScansSubscription:
-        bae_core::import::FolderScanProgress => crate::types::BridgeFolderScans,
+        bae_import::FolderScanProgress => crate::types::BridgeFolderScans,
     converted by crate::types::BridgeFolderScans::from_core,
     built by folder_scans
 }

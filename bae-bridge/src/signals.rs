@@ -1,7 +1,7 @@
 //! The core `ArtworkAnalyzer` on top of the platform's analyzer callback, which
 //! lives here because the callback trait is a uniffi export.
 
-use bae_core::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use std::path::Path;
 
 use crate::types::ArtworkAnalyzerCallback;

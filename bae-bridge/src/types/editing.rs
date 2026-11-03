@@ -7,7 +7,7 @@ use super::{
 };
 
 /// One kind of identifying signal extracted from a candidate file. Mirrors
-/// `bae_core::import::FileEvidence`.
+/// `bae_import::FileEvidence`.
 ///
 /// This is independent of which pressing is selected. The chip goes on the
 /// file: the gallery tile for an image barcodes were read from, or the table
@@ -24,7 +24,7 @@ pub struct BridgeFileEvidence {
 }
 
 /// A signal that can name the file it was read off. Mirrors
-/// `bae_core::import::EvidenceSignal`.
+/// `bae_import::EvidenceSignal`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeEvidenceSignal {
@@ -46,7 +46,7 @@ pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
     .to_string()
 }
 
-/// Mirror of `bae_core::import::ReleaseUserEdit` — a normalized, validated
+/// Mirror of `bae_import::ReleaseUserEdit` — a normalized, validated
 /// metadata edit ready to apply.
 ///
 /// `tracks` MUST line up with the release's existing tracks in order; edits
@@ -87,7 +87,7 @@ pub struct BridgeTrackUserEdit {
 }
 
 /// One artist credited on an album or track. Mirror of
-/// `bae_core::import::ArtistAssignment`: a library artist the person picked,
+/// `bae_import::ArtistAssignment`: a library artist the person picked,
 /// or a credit — what a source or the person's typing said, which claims
 /// nothing about the library. How a credit stands to the library is read
 /// beside the draft ([`BridgeResolvedCredit`]) and asked of core with
@@ -106,7 +106,7 @@ pub enum BridgeArtistAssignment {
 }
 
 /// One place in an album's or track's credit list. Mirror of
-/// `bae_core::import::Credited`: who is credited, and what is printed after
+/// `bae_import::Credited`: who is credited, and what is printed after
 /// it when another credit follows (`None`: ", ").
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCredited {
@@ -208,7 +208,7 @@ pub struct BridgeResolvedCredit {
 }
 
 /// How one assigned artist stands to the library — what its badge says.
-/// Mirror of `bae_core::import::ArtistStanding`.
+/// Mirror of `bae_import::ArtistStanding`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistStanding {
@@ -222,7 +222,7 @@ pub enum BridgeArtistStanding {
 }
 
 /// How a whole artist field stands to the library. Mirror of
-/// `bae_core::import::ArtistsStanding`.
+/// `bae_import::ArtistsStanding`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistsStanding {
@@ -260,8 +260,7 @@ pub fn bridge_artists_standing(
         assignments.into_iter().map(BridgeArtistAssignment::into_core).collect();
     let resolutions: Vec<_> =
         resolutions.into_iter().map(BridgeResolvedCredit::into_core).collect();
-    bae_core::import::artists_standing(&assignments, &resolutions)
-        .map(BridgeArtistsStanding::from_core)
+    bae_import::artists_standing(&assignments, &resolutions).map(BridgeArtistsStanding::from_core)
 }
 
 /// The line a credit list prints: each credit's printed name, then its join
@@ -270,7 +269,7 @@ pub fn bridge_artists_standing(
 #[uniffi::export]
 pub fn bridge_credit_line(credits: Vec<BridgeCredited>) -> String {
     let credits: Vec<_> = credits.into_iter().map(BridgeCredited::into_core).collect();
-    bae_core::import::credited_line(&credits)
+    bae_import::credited_line(&credits)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -280,7 +279,7 @@ pub enum BridgeTrackArtistAssignments {
 }
 
 /// The audio a track's samples come from. Mirrors
-/// `bae_core::import::AudioFile`. `file_id` is the file's identity within the
+/// `bae_import::AudioFile`. `file_id` is the file's identity within the
 /// release (its relative path), the same id the sheet bindings use.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAudioFile {
@@ -555,7 +554,7 @@ pub enum BridgeCandidateEditField {
 }
 
 mirror_enum! {
-    BridgeCandidateEditField = bae_core::import::CandidateEditField,
+    BridgeCandidateEditField = bae_import::CandidateEditField,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -566,7 +565,7 @@ mirror_enum! {
 }
 
 /// One choice of what the pressing is, made with a picker that offers only
-/// the vocabulary's values. Mirrors `bae_core::import::PressingFactEdit`.
+/// the vocabulary's values. Mirrors `bae_import::PressingFactEdit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePressingFactEdit {
     Area { area: Option<BridgeReleaseArea> },
@@ -578,8 +577,8 @@ pub enum BridgePressingFactEdit {
 
 #[cfg(feature = "desktop")]
 impl BridgePressingFactEdit {
-    pub(crate) fn into_core(self) -> bae_core::import::PressingFactEdit {
-        use bae_core::import::PressingFactEdit;
+    pub(crate) fn into_core(self) -> bae_import::PressingFactEdit {
+        use bae_import::PressingFactEdit;
         match self {
             Self::Area { area } => PressingFactEdit::Area(area.map(BridgeReleaseArea::into_core)),
             Self::Media { media } => PressingFactEdit::Media(
@@ -619,7 +618,7 @@ pub fn bridge_apply_pressing_fact(
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text
-/// as typed, not yet normalized. Mirrors `bae_core::import::RawReleaseEdit`.
+/// as typed, not yet normalized. Mirrors `bae_import::RawReleaseEdit`.
 /// The editor binds directly to this shape and calls `shape_release_edit` to
 /// normalize + validate it into a wire `BridgeReleaseUserEdit`.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -632,7 +631,7 @@ pub struct BridgeRawReleaseEdit {
 }
 
 /// The library album a draft files under when it is written: an import's, or
-/// a library release's edit session's. Mirrors `bae_core::import::DraftAlbum`.
+/// a library release's edit session's. Mirrors `bae_import::DraftAlbum`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDraftAlbum {
     /// A new album: none is picked and the draft's records name none the
@@ -647,7 +646,7 @@ pub enum BridgeDraftAlbum {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeDraftAlbum = bae_core::import::DraftAlbum,
+    BridgeDraftAlbum = bae_import::DraftAlbum,
     from_core: pub(crate) fn,
     variants: {
         New,
@@ -658,7 +657,7 @@ mirror_enum! {
 
 /// A library release's edit session as the editor opens it: the raw form, the
 /// cover, what the editor shows beside the form, and the album a save files
-/// the release under. Mirrors `bae_core::import::ReleaseEditSeed`.
+/// the release under. Mirrors `bae_import::ReleaseEditSeed`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditSeed {
     pub edit: BridgeRawReleaseEdit,
@@ -688,7 +687,7 @@ pub struct BridgeReleaseEditTrackContext {
 }
 
 /// Consecutive tracks of one side that the editor's table draws together.
-/// Mirrors `bae_core::import::ReleaseEditTrackRun`.
+/// Mirrors `bae_import::ReleaseEditTrackRun`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeReleaseEditTrackRun {
     /// A track whose row names its own source.
@@ -699,7 +698,7 @@ pub enum BridgeReleaseEditTrackRun {
 }
 
 /// One side of the release in the editor's track table and the runs of
-/// tracks on it. Mirrors `bae_core::import::ReleaseEditTrackSide`.
+/// tracks on it. Mirrors `bae_import::ReleaseEditTrackSide`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackSide {
     pub side: BridgeTrackSide,
@@ -718,7 +717,7 @@ pub struct BridgeReleaseEditDisplayContext {
 }
 
 /// Raw pressing fields as the editor holds them. Mirrors
-/// `bae_core::import::RawPressingEdit`: each text field is the text the user
+/// `bae_import::RawPressingEdit`: each text field is the text the user
 /// typed, empty meaning "not set"; `year` is text (parsed at shape time).
 /// `labels` is one row per label and `barcodes` one row per barcode, blank
 /// rows included. `facts` is what the person chose with the form's pickers.
@@ -730,7 +729,7 @@ pub struct BridgeRawPressingEdit {
     pub facts: BridgePressingFacts,
 }
 
-/// One label row of the editor. Mirrors `bae_core::import::RawLabelEdit`.
+/// One label row of the editor. Mirrors `bae_import::RawLabelEdit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeRawLabelEdit {
     pub name: String,
@@ -738,7 +737,7 @@ pub struct BridgeRawLabelEdit {
 }
 
 /// One raw track row from the editor. Mirrors
-/// `bae_core::import::RawTrackEdit`: `id` is the stable `ForEach` row
+/// `bae_import::RawTrackEdit`: `id` is the stable `ForEach` row
 /// identity and its explicit artist assignment mode.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawTrackEdit {

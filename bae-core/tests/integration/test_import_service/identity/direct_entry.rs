@@ -11,12 +11,12 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
     f.handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
-            candidate_key: bae_core::import::CandidateKey::from_bytes(
+            candidate_key: bae_import::CandidateKey::from_bytes(
                 b"direct-entry-candidate".to_vec(),
             ),
-            source: bae_core::import::release_candidate::CandidateSource {
+            source: bae_import::release_candidate::CandidateSource {
                 path: album_dir,
-                scope: bae_core::import::ReleaseFileScope::Recursive,
+                scope: bae_import::ReleaseFileScope::Recursive,
                 parts: Vec::new(),
             },
             selected_cover: None,
@@ -25,7 +25,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
             read_file_tags: false,
             user_edit: Some(ReleaseUserEdit {
                 album_title: "Album Title".to_string(),
-                album_artist_assignments: vec![bae_core::import::Credited::plain(
+                album_artist_assignments: vec![bae_import::Credited::plain(
                     ArtistAssignment::named("Artist Name"),
                 )],
                 album_year: None,
@@ -33,7 +33,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
                 tracks: vec![TrackUserEdit {
                     title: "Track Title".to_string(),
                     artist_assignments: TrackArtistAssignments::AlbumArtists,
-                    file: Some(bae_core::import::AudioFile::Standalone {
+                    file: Some(bae_import::AudioFile::Standalone {
                         file_id: "01 Track Title.flac".into(),
                     }),
                 }],

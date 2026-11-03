@@ -396,5 +396,5 @@ pub enum BridgeIdentifyFailure {
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_reidentify_key(release_id: String) -> Vec<u8> {
-    bae_core::import::CandidateKey::reidentify(&release_id).into_bytes()
+    bae_import::CandidateKey::reidentify(&release_id).into_bytes()
 }

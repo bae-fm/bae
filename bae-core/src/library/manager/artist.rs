@@ -73,7 +73,7 @@ impl LibraryManager {
     /// shows the credits in it.
     pub async fn resolve_release_edit_credits(
         &self,
-        edit: &crate::import::RawReleaseEdit,
+        edit: &bae_import::RawReleaseEdit,
     ) -> Result<Vec<bae_db::ResolvedCredit>, LibraryError> {
         let credits: Vec<_> = edit.credits().cloned().collect();
         Ok(self.database.resolve_artist_credits(&credits).await?)

@@ -116,7 +116,7 @@ fn a_library_opens_watching_its_fixtures_folders() {
     );
     let candidate = app
         .runtime
-        .block_on(app.services.import_get_candidate(&bae_core::import::CandidateKey::folder(
+        .block_on(app.services.import_get_candidate(&bae_import::CandidateKey::folder(
             &std::path::Path::new(&music).join("Album Folder"),
         )))
         .unwrap();

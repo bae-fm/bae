@@ -1,0 +1,133 @@
+[package]
+name = "bae-import"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_import"
+path = "src/lib.rs"
+
+[dependencies]
+# The decode, probe and transcode an import reads its files with.
+bae-audio = { workspace = true }
+# The catalog clients, the catalog model a draft is read from, and the image
+# cache covers and artist pictures are fetched through.
+bae-catalogs = { workspace = true }
+# The store import reads and writes its own tables and the library's records
+# in.
+bae-db = { workspace = true }
+# The bugs and telemetry an import reports, and the error categories a pane
+# shows.
+bae-diagnostics = { workspace = true }
+# The identify reducer import's identification runs drive.
+bae-identify = { workspace = true }
+# The preferences an import and identification read.
+bae-preferences = { workspace = true }
+# The readers import's loudness pass reads a track's stored audio through.
+bae-track-audio = { workspace = true }
+# Pressing values, mediums and track positions.
+bae-types = { workspace = true }
+# Content types, HTTP, error text and the panic-reporting tasks.
+bae-util = { workspace = true }
+# The store's files, clock and ids.
+coven = { workspace = true }
+rusqlite = { workspace = true }
+# The provider errors import classifies; the transport is bae-util's.
+reqwest = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+thiserror = { workspace = true }
+uuid = { workspace = true, features = ["v4", "v5"] }
+chrono = { workspace = true, features = ["serde"] }
+hex = { workspace = true }
+# The cancellation token a library's closing ends import's live reads with.
+tokio-util = { workspace = true, features = ["rt"] }
+tracing = { workspace = true }
+sha2 = { workspace = true }
+# Natural, case-insensitive file-name order, the order a scan lists a
+# folder's files in.
+natord = { workspace = true }
+base64 = { workspace = true }
+async-trait = { workspace = true }
+regex = { workspace = true }
+# A watched folder's volume and file times on macOS and Linux
+# (src/volume.rs, src/folder_scanner/folder_times/).
+libc = { workspace = true }
+# Extraction stages a library release's cover for barcode OCR.
+tempfile = { workspace = true }
+
+# The import pipeline's dependencies. The predicate is the pipeline's own, the
+# `desktop` cfg's (bae-util/build.rs): a mobile build compiles only import's
+# error, session and release-edit types, and none of this.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+lofty = { workspace = true }
+# A scanned file's name is matched against a sheet's or a tag's with its
+# Unicode composition set aside (src/folder_scanner.rs).
+unicode-normalization = { workspace = true }
+notify = { workspace = true }
+strsim = { workspace = true }
+# The MusicBrainz Disc ID is a SHA-1 of the disc's table of contents
+# (src/discid_hash.rs).
+sha1 = { workspace = true }
+# Loudness and true-peak measurement at import (src/loudness_meter.rs). Pure
+# Rust, no system libs. Playback derives its gain from the stored measurements
+# with plain arithmetic.
+ebur128 = { workspace = true }
+
+# Whether a watched folder is on a network volume (src/volume.rs): a drive
+# letter mapped to a share looks local by spelling, and only `GetDriveTypeW`
+# tells it apart.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
+
+[dev-dependencies]
+# The test codec helpers, and the instrumentation the tests read: probe
+# counts, buffer ranges and reads.
+bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"] }
+# A store laid out where a test puts it.
+bae-app-dir = { workspace = true, features = ["test-utils"] }
+# Test databases with bae's schema and the rows db's fixtures seed them with.
+bae-db = { workspace = true, features = ["test-utils"] }
+# What the tests read back of an identify run.
+bae-identify = { workspace = true, features = ["test-utils"] }
+# A new library's preferences, built without a library.
+bae-preferences = { workspace = true, features = ["test-utils"] }
+# What a decode's windows read, for the loudness tests.
+bae-track-audio = { workspace = true, features = ["test-utils"] }
+# The bug reporter that records what it is handed.
+bae-diagnostics = { workspace = true, features = ["test-utils"] }
+# The test transport, the stand-in host, the hang guard and fixture ids.
+bae-util = { workspace = true, features = ["test-utils"] }
+# The pressing values the fixtures are built from.
+bae-types = { workspace = true, features = ["test-utils"] }
+# The catalog clients' test constructors, the catalog fakes and documents, the
+# stand-in image host, and the requests the rate limiter queued and admitted.
+bae-catalogs = { workspace = true, features = ["test-utils", "test-instrumentation"] }
+# coven's deterministic clock and id fakes.
+coven = { workspace = true, features = ["test-utils"] }
+tokio = { workspace = true, features = ["test-util"] }
+# Builds the covers and pictures the tests serve and import.
+image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
+
+# Encodes the non-UTF-8 tags the tests read back.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dev-dependencies]
+encoding_rs = { workspace = true }
+
+[features]
+default = []
+# The fixture audio (tests/fixtures), the test seams of the import service
+# and its parts, and the values a test reads back, for the tests of every
+# crate that builds on this one; coven's and bae-db's give those seams the
+# live queries' runs and test databases they read. Dev/test-only: a
+# production build never enables it.
+test-utils = ["coven/test-utils", "bae-db/test-utils"]
+
+[lints]
+workspace = true

@@ -3,12 +3,12 @@
 //! built into a temp folder, run through `ExtractionService` with a stub
 //! analyzer, and checked for which catalog numbers and free text survive.
 
-use bae_core::import::extraction::service::{
+use bae_identify::signals::TextSignal;
+use bae_import::extraction::service::{
     ExtractionService, ExtractionServiceHandle, ExtractionSource,
 };
-use bae_core::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
-use bae_core::import::ImportEventBus;
-use bae_identify::signals::TextSignal;
+use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use bae_import::ImportEventBus;
 use bae_test_support as support;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -183,7 +183,7 @@ async fn drive_fixture(
     folder: PathBuf,
     ocr_map: HashMap<PathBuf, Vec<String>>,
 ) -> (Vec<String>, Vec<String>) {
-    let candidates = bae_core::import::CandidateRuntime::for_test().await;
+    let candidates = bae_import::CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let (database, _lib_tmp) = make_database().await;
     let handle: ExtractionServiceHandle = ExtractionService::start(
@@ -196,27 +196,26 @@ async fn drive_fixture(
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));
     handle.register_analyzer(analyzer);
 
-    let key = bae_core::import::CandidateKey::from_bytes(
-        format!("fixture:{}", fixture.name).into_bytes(),
-    );
-    let files = bae_core::import::folder_scanner::collect_release_candidate_files_with_scope(
+    let key =
+        bae_import::CandidateKey::from_bytes(format!("fixture:{}", fixture.name).into_bytes());
+    let files = bae_import::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
-        bae_core::import::ReleaseFileScope::Recursive,
-        &bae_core::import::folder_scanner::StoredCandidateEdits::none(),
+        bae_import::ReleaseFileScope::Recursive,
+        &bae_import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("fixture scan");
     let mut run = handle.start(
-        bae_core::import::IdentifyRunId::for_test(1),
+        bae_import::IdentifyRunId::for_test(1),
         key,
         ExtractionSource::Candidate {
-            candidate: bae_core::import::FolderCandidate {
+            candidate: bae_import::FolderCandidate {
                 name: folder.file_name().unwrap().to_string_lossy().into_owned(),
                 relative_folder: bae_db::RelativeFolder::root(),
                 watched_folder_path: folder.clone(),
                 file_root: folder.clone(),
                 path: folder,
                 files,
-                scope: bae_core::import::ReleaseFileScope::Recursive,
+                scope: bae_import::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
                 grouping: None,
             },

@@ -120,7 +120,7 @@ async fn restore_cost(library: Library) {
     let providers = bae_catalogs::providers::Providers::offline();
     let remote_images =
         bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
-    let catalogs = bae_core::import::CatalogSessions::new(
+    let catalogs = bae_import::CatalogSessions::new(
         providers,
         database.clone(),
         bae_diagnostics::Diagnostics::noop(),

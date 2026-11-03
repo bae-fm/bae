@@ -1,0 +1,348 @@
+use super::*;
+use crate::folder_scanner::{CandidateFile, CandidateFileEdits, ScannedFile, SheetDisc};
+use bae_db::watched_path::host_root;
+
+/// A folder of two FLAC tracks at `relative` under the watched root `root`.
+fn folder_at(root: &str, relative: &str) -> FolderCandidate {
+    let path = host_root(root).join(relative);
+    let name = path.file_name().unwrap().to_string_lossy().into_owned();
+    FolderCandidate {
+        path: path.clone(),
+        file_root: path.clone(),
+        name,
+        watched_folder_path: host_root(root),
+        scope: ReleaseFileScope::Direct,
+        file_edit_revision: 0,
+        relative_folder: bae_db::RelativeFolder::test(relative),
+        grouping: None,
+        files: CategorizedFiles {
+            files: ["01.flac", "02.flac"]
+                .into_iter()
+                .map(|name| CandidateFile {
+                    file: ScannedFile::new(path.join(name), name.into(), 100, 12)
+                        .with_test_flac_audio(),
+                    role: FileRole::Audio,
+                })
+                .collect(),
+            parts: Vec::new(),
+        },
+    }
+}
+
+/// `members` read as one release, with no file decision stored for any.
+fn composed(members: &[FolderCandidate]) -> FolderCandidate {
+    let members: Vec<(FolderCandidate, CandidateFileEdits)> =
+        members.iter().map(|member| (member.clone(), CandidateFileEdits::default())).collect();
+    let (mut release, inherited) = compose(
+        &crate::CandidateKey::grouping("test"),
+        &members[0].0.watched_folder_path,
+        &members,
+        &[],
+    )
+    .unwrap();
+    release.files.apply_candidate_file_edits(&inherited).unwrap();
+    release
+}
+
+fn plain(members: &[FolderCandidate]) -> Vec<(FolderCandidate, CandidateFileEdits)> {
+    members.iter().map(|member| (member.clone(), CandidateFileEdits::default())).collect()
+}
+
+/// Each track's disc and number as the folders lay them out.
+fn layout(release: &FolderCandidate) -> Vec<(Option<u32>, u32)> {
+    crate::audio_layout::folder_tracks(&release.files)
+        .iter()
+        .map(|track| (track.disc, track.number.get()))
+        .collect()
+}
+
+/// Two disc folders under one album read as the album would: each file under
+/// its disc folder's name, each disc a run of its own, tracks numbered from
+/// one on each — and not one file's place on disk moves.
+#[test]
+fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
+    let members =
+        [folder_at("/music", "Artist/Album/Disc 1"), folder_at("/music", "Artist/Album/Disc 2")];
+    let release = composed(&members);
+
+    assert_eq!(release.path, host_root("/music").join("Artist/Album"));
+    assert_eq!(release.relative_folder.text(), "Artist/Album/Disc 1");
+    assert_eq!(release.key(), crate::CandidateKey::grouping("test"));
+    assert_eq!(
+        release.files.release_files().map(|file| file.relative_path.as_str()).collect::<Vec<_>>(),
+        ["Disc 1/01.flac", "Disc 1/02.flac", "Disc 2/01.flac", "Disc 2/02.flac"]
+    );
+    assert_eq!(
+        release.files.release_files().map(|file| &file.path).collect::<Vec<_>>(),
+        members
+            .iter()
+            .flat_map(|member| member.files.release_files().map(|file| &file.path))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        release.source_folders(),
+        members.iter().map(|member| member.path.clone()).collect::<Vec<_>>()
+    );
+    assert_eq!(layout(&release), [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]);
+}
+
+/// Folders under different watched folders share no folder, so each takes a
+/// prefix of its position and name, in the order they were given.
+#[test]
+fn folders_under_different_roots_take_their_position_and_name() {
+    let release = composed(&[folder_at("/music", "Volume B"), folder_at("/archive", "Volume A")]);
+    assert_eq!(
+        release.files.release_files().map(|file| file.relative_path.as_str()).collect::<Vec<_>>(),
+        [
+            "01 - Volume B/01.flac",
+            "01 - Volume B/02.flac",
+            "02 - Volume A/01.flac",
+            "02 - Volume A/02.flac"
+        ]
+    );
+    assert_eq!(layout(&release), [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]);
+}
+
+#[test]
+fn rejects_duplicate_members_and_overlapping_files() {
+    let first = folder_at("/music", "Volume A");
+    assert!(compose(
+        &crate::CandidateKey::grouping("test"),
+        &host_root("/music"),
+        &plain(&[first.clone(), first.clone()]),
+        &[]
+    )
+    .is_err());
+    let mut second = folder_at("/music", "Volume B");
+    second.files.files[0] = first.files.files[0].clone();
+    assert!(compose(
+        &crate::CandidateKey::grouping("test"),
+        &host_root("/music"),
+        &plain(&[first, second]),
+        &[]
+    )
+    .is_err());
+}
+
+/// A folder read from its file tags keeps the release's own disc layout,
+/// whatever disc number the tags state.
+#[test]
+fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
+    use crate::file_tag_snapshot::{FileObservation, FileTagFact, FileTagSnapshot};
+    let release = composed(&[folder_at("/music", "Volume B"), folder_at("/archive", "Volume A")]);
+    let snapshot = FileTagSnapshot {
+        scan_generation: 1,
+        file_edit_revision: 0,
+        embedded_cover: None,
+        files: release
+            .files
+            .audio()
+            .enumerate()
+            .map(|(index, file)| FileTagFact {
+                observation: FileObservation {
+                    relative_path: file.relative_path.clone(),
+                    size: file.size,
+                    modified_at_ns: file.modified_at_ns,
+                },
+                tags: crate::file_tag_snapshot::FileTags {
+                    title: Some(format!("Tagged Track {index}")),
+                    track_artists: vec!["Artist".into()],
+                    album_title: Some("Album".into()),
+                    album_artists: vec!["Artist".into()],
+                    compilation: false,
+                    years: Vec::new(),
+                    numbers: crate::track_numbers::TrackNumbers { disc: Some(7), track: Some(1) },
+                },
+            })
+            .collect(),
+    };
+    let edit = release.file_tag_values(&snapshot).unwrap();
+    let laid_out: Vec<_> = layout(&release)
+        .into_iter()
+        .map(|(disc, number)| (disc, std::num::NonZeroU32::new(number)))
+        .collect();
+    assert_eq!(
+        edit.tracks.iter().map(|track| track.place).collect::<Vec<_>>(),
+        bae_types::mediums::by_disc(&laid_out).1,
+        "the folders' layout places the tracks, whatever their tags say"
+    );
+    assert_eq!(edit.tracks[2].title, "Tagged Track 2");
+}
+
+/// `folder` with a sheet carving its `01.flac` into one track.
+fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandidate {
+    use crate::cue_flac::{CueSheet, CueTrack, CueTrackMode};
+    use crate::folder_scanner::SheetAudioFile;
+
+    let sheet_name = "01.flac.cue".to_string();
+    folder.files.files.push(CandidateFile {
+        file: ScannedFile::new(folder.path.join(&sheet_name), sheet_name, 100, 12),
+        role: FileRole::TrackSheet {
+            sheet: CueSheet {
+                title: None,
+                performer: None,
+                catalog: None,
+                date: None,
+                ripper: None,
+                tracks: vec![CueTrack {
+                    number: 1,
+                    mode: CueTrackMode::Audio,
+                    title: None,
+                    performer: None,
+                    indexes: Vec::new(),
+                    file_reference: "01.flac".into(),
+                    start_cue_frames: 0,
+                    generated_pregap_frames: None,
+                    end_cue_frames: None,
+                }],
+            },
+            binding: SheetBinding::Resolved {
+                files: vec![SheetAudioFile {
+                    file_reference: "01.flac".into(),
+                    file_id: "01.flac".into(),
+                }],
+            },
+            disc: SheetDisc::Disc { number: 1 },
+        },
+    });
+    folder
+}
+
+/// A folder's decisions about its sheets are the release's starting point: a
+/// sheet the folder ignores stays ignored in the release it joins.
+#[test]
+fn a_members_file_decisions_carry_into_the_release() {
+    let first = with_a_sheet_over_its_first_file(folder_at("/music", "Album/Disc 1"));
+    let mut decided = CandidateFileEdits::default();
+    decided.sheet_discs.set("01.flac.cue".into(), SheetDisc::Ignored);
+    let members = vec![
+        (first, decided),
+        (folder_at("/music", "Album/Disc 2"), CandidateFileEdits::default()),
+    ];
+    let (mut release, inherited) =
+        compose(&crate::CandidateKey::grouping("test"), &host_root("/music"), &members, &[])
+            .unwrap();
+    release.files.apply_candidate_file_edits(&inherited).unwrap();
+    assert!(release.files.carving_sheets().is_empty());
+    assert_eq!(
+        crate::audio_layout::audio_units(&release.files).len(),
+        4,
+        "the ignored sheet's container is a track of its own again"
+    );
+}
+
+/// A folder carved by track sheets takes a disc per sheet within its own run,
+/// after its loose audio; the next folder's run starts after them.
+#[test]
+fn sheets_take_discs_within_their_folders_run() {
+    let first = with_a_sheet_over_its_first_file(folder_at("/music", "Album/Disc 1"));
+    let release = composed(&[first, folder_at("/music", "Album/Disc 2")]);
+    // Disc 1's loose `02.flac` is its first disc, its sheet the second, and
+    // Disc 2's loose audio the third.
+    let sides: Vec<Option<u32>> = layout(&release).iter().map(|(disc, _)| *disc).collect();
+    assert_eq!(sides.iter().filter(|side| **side == Some(1)).count(), 1);
+    assert_eq!(sides.iter().filter(|side| **side == Some(2)).count(), 1);
+    assert_eq!(sides.iter().filter(|side| **side == Some(3)).count(), 2);
+    assert_eq!(
+        crate::audio_layout::audio_units(&release.files),
+        crate::audio_layout::folder_tracks(&release.files)
+            .into_iter()
+            .map(|track| track.file)
+            .collect::<Vec<_>>()
+    );
+}
+
+/// The folder picked releases all sit directly in, as the rule reads it.
+fn parent_of(members: &[FolderCandidate]) -> Option<PathBuf> {
+    shared_parent(
+        members
+            .iter()
+            .map(|member| (member.watched_folder_path.as_path(), member.file_root.as_path())),
+    )
+}
+
+/// Releases sit in one folder when each is directly in it — two discs of
+/// three as much as all of them — and in none when they are at different
+/// places, at different depths, one inside another, under different watched
+/// folders, or directly in the watched folder.
+#[test]
+fn releases_sit_in_one_folder_only_when_each_is_directly_in_it() {
+    let album = host_root("/music").join("Artist/Album");
+    let disc = |relative: &str| folder_at("/music", relative);
+    assert_eq!(
+        parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Album/Disc 2")]),
+        Some(album.clone())
+    );
+    assert_eq!(
+        parent_of(&[
+            disc("Artist/Album/Disc 1"),
+            disc("Artist/Album/Disc 2"),
+            disc("Artist/Album/Disc 3"),
+        ]),
+        Some(album)
+    );
+    assert_eq!(parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Other/Disc 1")]), None);
+    assert_eq!(parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Album/Disc 2/Bonus")]), None);
+    assert_eq!(parent_of(&[disc("Artist/Album"), disc("Artist/Album/Disc 1")]), None);
+    assert_eq!(
+        parent_of(&[folder_at("/music", "Album/Disc 1"), folder_at("/other", "Album/Disc 2")]),
+        None
+    );
+    assert_eq!(parent_of(&[disc("Album A"), disc("Album B")]), None);
+}
+
+/// The folder's files are the release's own, at their paths below it, beside
+/// the discs under theirs; files from anywhere else are refused.
+#[test]
+fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
+    let album = host_root("/music").join("Album");
+    let cover = CandidateFile {
+        file: ScannedFile::new(album.join("cover.jpg"), "cover.jpg".into(), 10, 1),
+        role: FileRole::Artwork,
+    };
+    let members =
+        plain(&[folder_at("/music", "Album/Disc 1"), folder_at("/music", "Album/Disc 2")]);
+    let (release, _) = compose(
+        &crate::CandidateKey::grouping("test"),
+        &host_root("/music"),
+        &members,
+        std::slice::from_ref(&cover),
+    )
+    .unwrap();
+    assert_eq!(release.path, album);
+    assert_eq!(
+        release
+            .files
+            .files
+            .iter()
+            .map(|entry| entry.file.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        ["cover.jpg", "Disc 1/01.flac", "Disc 1/02.flac", "Disc 2/01.flac", "Disc 2/02.flac"]
+    );
+    assert_eq!(release.files.artwork().count(), 1);
+
+    let apart = plain(&[folder_at("/music", "Album/Disc 1"), folder_at("/music", "Other/Disc 2")]);
+    assert!(compose(
+        &crate::CandidateKey::grouping("test"),
+        &host_root("/music"),
+        &apart,
+        std::slice::from_ref(&cover)
+    )
+    .is_err());
+    let elsewhere = CandidateFile {
+        file: ScannedFile::new(
+            host_root("/music").join("Other/cover.jpg"),
+            "cover.jpg".into(),
+            10,
+            1,
+        ),
+        ..cover
+    };
+    assert!(compose(
+        &crate::CandidateKey::grouping("test"),
+        &host_root("/music"),
+        &members,
+        &[elsewhere]
+    )
+    .is_err());
+}

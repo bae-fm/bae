@@ -87,7 +87,7 @@ macro_rules! mirror_into {
 /// ```ignore
 /// mirror_struct! {
 ///     #[cfg(feature = "desktop")]
-///     BridgeReleaseUserEdit = bae_core::import::ReleaseUserEdit,
+///     BridgeReleaseUserEdit = bae_import::ReleaseUserEdit,
 ///     from_core: pub(crate) fn,
 ///     into_core: pub(crate) fn,
 ///     fields: {
@@ -168,7 +168,7 @@ macro_rules! mirror_struct {
 /// ```ignore
 /// mirror_enum! {
 ///     #[cfg(feature = "desktop")]
-///     BridgeSheetBound = bae_core::import::SheetBound,
+///     BridgeSheetBound = bae_import::SheetBound,
 ///     from_core: fn,
 ///     into_core: fn,
 ///     variants: {

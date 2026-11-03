@@ -1,0 +1,269 @@
+//! Folder scanner for import release candidates.
+//!
+//! Each directory with direct audio approximates one release. A directory
+//! whose children hold the audio is read as one release or as separate ones:
+//! by the reading stored for it, or, with none, by the scan's own reading of
+//! its children (see [`heuristic_folder_release_decision`]). A pass reads several
+//! of the folders directly under the watched root at once, newest first by the
+//! latest date each has, each a directory at a time, and reports candidates as
+//! they become available.
+use super::file_validation;
+use crate::cue_flac::{parse_cue_sheet, CueSheet};
+use bae_util::content_type_hint::ContentTypeHint;
+use sha2::{Digest, Sha256};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+use tracing::{debug, info};
+
+mod candidates;
+mod categorize;
+mod file_reads;
+mod files;
+mod folder_times;
+mod scan;
+pub use candidates::*;
+pub use categorize::is_audio_file;
+use categorize::*;
+pub use categorize::{scanned_audio, DiscLayout};
+pub(crate) use file_reads::FileReads;
+use file_reads::Playability;
+pub use files::*;
+pub use folder_times::FolderDate;
+pub(crate) use folder_times::FolderTimes;
+pub(crate) use scan::file_modified_at_ns;
+pub use scan::*;
+
+/// The text files a folder carries beside its audio: track sheets, rip logs
+/// and the AccurateRip reports rippers write beside them, notes, playlists.
+const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "accurip", "txt", "m3u", "m3u8"];
+
+/// Extensions used by download clients and browsers to mark an
+/// in-progress download. Presence of any of these anywhere in a folder means
+/// the folder is mid-download and should not surface as an import candidate.
+const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "aria2", "partial"];
+
+// ── Candidate file index ────────────────────────────────────────────────────
+
+/// Resolve every audio path a CUE names. Each `FILE` uses the same rule
+/// ([`resolve_cue_audio_path`]), and every reference must resolve to a
+/// different file.
+pub(crate) fn resolve_cue_audio_paths<'sheet, 'audio>(
+    cue_path: &Path,
+    sheet: &'sheet CueSheet,
+    audio_files: &'audio [PathBuf],
+) -> Option<Vec<(&'sheet str, &'audio PathBuf)>> {
+    let references = sheet.audio_file_references();
+    if references.is_empty() {
+        return None;
+    }
+    let mut resolved = Vec::with_capacity(references.len());
+    let mut used = BTreeSet::new();
+    for reference in references {
+        let audio = resolve_cue_audio_path(cue_path, reference, audio_files)?;
+        if !used.insert(audio.as_path()) {
+            debug!("CUE {:?} resolves more than one FILE reference to {:?}", cue_path, audio);
+            return None;
+        }
+        resolved.push((reference, audio));
+    }
+    Some(resolved)
+}
+
+/// The audio one `FILE` reference names, as far as the folder can say.
+///
+/// A sheet's reference is the path the ripper wrote, which is the path on the
+/// ripper's machine: folders that are not here, `\\` where this system reads
+/// `/`, the WAV the audio was encoded from rather than the FLAC it became, a
+/// name in another case on a system that ignores case, or the same letters in
+/// another Unicode normalization than the file system stored. So the
+/// reference is read as its components and tried against the sheet's own
+/// folder first — a reference is relative to its sheet by convention, which is
+/// what tells `CD1/01.wav` from `CD2/01.wav` — then against each folder above
+/// it. In each folder it is tried from the whole path down to the bare file
+/// name, dropping one leading folder at a time. At each length the literal
+/// path wins; then the one audio file whose path reads the same once case and
+/// normalization are set aside; then the one audio file beside it whose stem
+/// reads the same that way, whatever its extension. The first try that names
+/// exactly one file is the answer; one that names several names none.
+fn resolve_cue_audio_path<'a>(
+    cue_path: &Path,
+    file_reference: &str,
+    audio_files: &'a [PathBuf],
+) -> Option<&'a PathBuf> {
+    let cue_dir = cue_path.parent()?;
+    let components: Vec<&str> = file_reference
+        .split(['/', '\\'])
+        .filter(|component| !component.is_empty() && *component != ".")
+        .collect();
+    let file_name = *components.last()?;
+    let file_stem = spelled(Path::new(file_name).file_stem()?.to_str()?);
+    for base in cue_dir.ancestors() {
+        for start in 0..components.len() {
+            let mut referenced = base.to_path_buf();
+            for component in &components[start..] {
+                referenced.push(component);
+            }
+            if let Some(exact) = audio_files.iter().find(|path| **path == referenced) {
+                return Some(exact);
+            }
+            let reference_dir = spelled_path(referenced.parent()?);
+            let same_path = spelled_path(&referenced);
+            let same_name = audio_files.iter().filter(|path| spelled_path(path) == same_path);
+            let same_stem = audio_files.iter().filter(|path| {
+                path.parent().is_some_and(|dir| spelled_path(dir) == reference_dir)
+                    && path.file_stem().is_some_and(|stem| {
+                        spelled(&coven::path_text(Path::new(stem))) == file_stem
+                    })
+            });
+            for mut matches in
+                [Box::new(same_name) as Box<dyn Iterator<Item = &'a PathBuf>>, Box::new(same_stem)]
+            {
+                if let Some(matched) = matches.next() {
+                    if matches.next().is_some() {
+                        debug!(
+                            "CUE {cue_path:?} names {referenced:?}, which more than one audio file answers"
+                        );
+                        return None;
+                    }
+                    return Some(matched);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// How a name reads once case and Unicode normalization are set aside.
+fn spelled(name: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+    name.nfc().flat_map(char::to_lowercase).collect()
+}
+
+/// How a path reads once case and Unicode normalization are set aside, one
+/// component at a time. Comparing components rather than the path's text keeps
+/// `a\b` and `a/b` the same path on Windows, where a pushed component is
+/// joined with `\` and a path read from elsewhere may carry `/`.
+fn spelled_path(path: &Path) -> Vec<String> {
+    path.components()
+        .map(|component| spelled(&coven::path_text(Path::new(component.as_os_str()))))
+        .collect()
+}
+
+/// A single file entry in a candidate's selected file set.
+#[derive(Debug, Clone)]
+pub struct FileEntry {
+    /// Path relative to the scan root
+    pub path: PathBuf,
+    /// File size in bytes
+    pub size: u64,
+    pub modified_at_ns: i64,
+}
+
+/// A pre-collected list of files for release candidate detection.
+///
+/// Built by walking the filesystem once.
+pub struct CandidateFileIndex {
+    files: Vec<FileEntry>,
+    dirs: BTreeMap<PathBuf, DirEntry>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum FolderScanError {
+    #[error("{}: {source}", path.display())]
+    Io {
+        path: PathBuf,
+        #[source]
+        source: io::Error,
+    },
+    /// The scan root exists but is a file, not a directory. A distinct variant
+    /// so the message is stable across platforms — `read_dir` on a file reports
+    /// "Not a directory" on Unix but "The directory name is invalid" on Windows,
+    /// and the import service surfaces this text straight to the user.
+    #[error("not a directory: {}", path.display())]
+    NotADirectory { path: PathBuf },
+    #[error("folder scan cancelled")]
+    Cancelled,
+    #[error("{0}")]
+    Other(String),
+    /// One of the threads a pass reads folders on at once panicked; the
+    /// others stopped with it. A bug, which the pass's caller reports.
+    #[error("{0}")]
+    Panicked(bae_util::task_failure::TaskFailed),
+}
+
+impl FolderScanError {
+    pub(crate) fn io(path: impl Into<PathBuf>, source: io::Error) -> Self {
+        Self::Io { path: path.into(), source }
+    }
+}
+
+#[derive(Debug, Default)]
+struct DirEntry {
+    files: Vec<usize>,
+    subdirs: BTreeSet<PathBuf>,
+}
+
+impl CandidateFileIndex {
+    pub fn new(files: Vec<FileEntry>) -> Self {
+        let mut tree = Self { files, dirs: BTreeMap::new() };
+        tree.rebuild_index();
+        tree
+    }
+
+    /// All files recursively under `dir` (inclusive).
+    fn all_files_under<'a>(&'a self, dir: &Path) -> impl Iterator<Item = &'a FileEntry> {
+        let mut indices = Vec::new();
+        self.collect_file_indices_under(&Self::normalize_dir(dir), &mut indices);
+        indices.into_iter().map(|idx| &self.files[idx])
+    }
+
+    fn rebuild_index(&mut self) {
+        self.dirs.clear();
+        self.dirs.entry(PathBuf::new()).or_default();
+
+        for idx in 0..self.files.len() {
+            let parent = {
+                let file = &self.files[idx];
+                Self::normalize_dir(file.path.parent().unwrap_or_else(|| Path::new("")))
+            };
+            self.dirs.entry(parent.clone()).or_default().files.push(idx);
+            self.index_dir_path(&parent);
+        }
+    }
+
+    fn index_dir_path(&mut self, dir: &Path) {
+        let mut parent = PathBuf::new();
+        self.dirs.entry(parent.clone()).or_default();
+
+        for component in dir.components() {
+            let child = parent.join(component.as_os_str());
+            self.dirs.entry(parent.clone()).or_default().subdirs.insert(child.clone());
+            self.dirs.entry(child.clone()).or_default();
+            parent = child;
+        }
+    }
+
+    fn collect_file_indices_under(&self, dir: &Path, out: &mut Vec<usize>) {
+        let Some(entry) = self.dirs.get(dir) else {
+            return;
+        };
+
+        out.extend(entry.files.iter().copied());
+        for subdir in &entry.subdirs {
+            self.collect_file_indices_under(subdir, out);
+        }
+    }
+
+    fn normalize_dir(dir: &Path) -> PathBuf {
+        if dir.as_os_str().is_empty() || dir == Path::new(".") {
+            PathBuf::new()
+        } else {
+            dir.to_path_buf()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

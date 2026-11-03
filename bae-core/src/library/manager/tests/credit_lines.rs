@@ -183,20 +183,20 @@ async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
     let artist_a = bae_db::ExistingArtist::from(
         manager.get_artist_by_id(CREDIT_ARTIST_A).await.unwrap().expect("Artist A"),
     );
-    let edit = |album_artists: Vec<crate::import::Credited>| crate::import::ReleaseUserEdit {
+    let edit = |album_artists: Vec<bae_import::Credited>| bae_import::ReleaseUserEdit {
         album_title: "Test Album".to_string(),
         album_artist_assignments: album_artists,
         album_year: None,
         pressing: bae_types::pressing::Pressing::blank(),
         tracks: vec![
-            crate::import::TrackUserEdit {
+            bae_import::TrackUserEdit {
                 title: "Featured".to_string(),
-                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                artist_assignments: bae_import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
-            crate::import::TrackUserEdit {
+            bae_import::TrackUserEdit {
                 title: "Plain".to_string(),
-                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                artist_assignments: bae_import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
         ],
@@ -206,8 +206,8 @@ async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
     manager
         .apply_release_metadata_user_edit(
             &library.release.id,
-            &edit(vec![crate::import::Credited {
-                artist: crate::import::ArtistAssignment::picked(artist_a.clone()),
+            &edit(vec![bae_import::Credited {
+                artist: bae_import::ArtistAssignment::picked(artist_a.clone()),
                 join: Some(" & ".to_string()),
             }]),
         )
@@ -222,8 +222,8 @@ async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
         .apply_release_metadata_user_edit(
             &library.release.id,
             &edit(vec![
-                crate::import::Credited::plain(crate::import::ArtistAssignment::picked(artist_a)),
-                crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                bae_import::Credited::plain(bae_import::ArtistAssignment::picked(artist_a)),
+                bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                     "Typed Artist",
                 )),
             ]),
@@ -261,22 +261,22 @@ async fn a_typed_credit_matching_a_credit_name_is_that_artist() {
     manager
         .apply_release_metadata_user_edit(
             &library.release.id,
-            &crate::import::ReleaseUserEdit {
+            &bae_import::ReleaseUserEdit {
                 album_title: "Test Album".to_string(),
-                album_artist_assignments: vec![crate::import::Credited::plain(
-                    crate::import::ArtistAssignment::named("a pseudonym"),
+                album_artist_assignments: vec![bae_import::Credited::plain(
+                    bae_import::ArtistAssignment::named("a pseudonym"),
                 )],
                 album_year: None,
                 pressing: bae_types::pressing::Pressing::blank(),
                 tracks: vec![
-                    crate::import::TrackUserEdit {
+                    bae_import::TrackUserEdit {
                         title: "Featured".to_string(),
-                        artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                        artist_assignments: bae_import::TrackArtistAssignments::AlbumArtists,
                         file: None,
                     },
-                    crate::import::TrackUserEdit {
+                    bae_import::TrackUserEdit {
                         title: "Plain".to_string(),
-                        artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                        artist_assignments: bae_import::TrackArtistAssignments::AlbumArtists,
                         file: None,
                     },
                 ],

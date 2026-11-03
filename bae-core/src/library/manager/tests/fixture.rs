@@ -162,12 +162,12 @@ fn fixture_candidate(
 }
 
 /// Found's rows the import list reads, by display path, newest first.
-async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjection {
-    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
+async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListProjection {
+    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
     let list =
-        tables.open_import_list(crate::import::ImportListView::default()).await.unwrap();
+        tables.open_import_list(bae_import::ImportListView::default()).await.unwrap();
     tables
-        .load_import_list(crate::import::ImportListRequest {
+        .load_import_list(bae_import::ImportListRequest {
             list,
             windows: std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 })
                 .collect(),
@@ -181,10 +181,10 @@ async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjec
 /// folder reads as read through.
 #[tokio::test]
 async fn fixture_candidates_land_on_found_in_their_states() {
-    use crate::import::PendingStanding;
+    use bae_import::PendingStanding;
     use crate::library::FixtureCandidateState as State;
     let (manager, temp_dir) = setup_test_manager().await;
-    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
+    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
     let root = temp_dir.path().join("watched").to_path_buf();
     let states = [
         ("Not Looked Up", State::NotLookedUp),
@@ -215,7 +215,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, live, .. } => {
+            bae_import::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.display_path.clone(), live.standing.clone()))
             }
             _ => None,
@@ -227,7 +227,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             ("Not Looked Up".to_string(), Some(PendingStanding::NotLookedUp)),
             (
                 "Needs You".to_string(),
-                Some(PendingStanding::NeedsYou { reason: crate::import::NeedsYouReason::NotFound })
+                Some(PendingStanding::NeedsYou { reason: bae_import::NeedsYouReason::NotFound })
             ),
             ("Identified".to_string(), Some(PendingStanding::Identified)),
             ("Unmatched".to_string(), Some(PendingStanding::Unmatched)),
@@ -261,7 +261,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             .iter()
             .map(|status| (status.watched_folder_path.clone(), status.status.clone()))
             .collect::<Vec<_>>(),
-        [(root, crate::import::FolderScanStatus::Complete)]
+        [(root, bae_import::FolderScanStatus::Complete)]
     );
 }
 
@@ -285,13 +285,13 @@ async fn fixture_candidates_carry_what_their_states_name() {
 
     manager.write_fixture(&fixture).await.unwrap();
 
-    let rows: Vec<crate::import::TriageRow> = found_rows(&manager)
+    let rows: Vec<bae_import::TriageRow> = found_rows(&manager)
         .await
         .windows
         .into_iter()
         .flat_map(|window| window.items)
         .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, .. } => Some(row),
+            bae_import::ImportListItem::Candidate { row, .. } => Some(row),
             _ => None,
         })
         .collect();
@@ -303,7 +303,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
     assert!(
         matches!(
             row("Identified Folder").reading,
-            crate::import::triage::TriageReading::Identified { .. }
+            bae_import::triage::TriageReading::Identified { .. }
         ),
         "the row reads as linked to its release"
     );
@@ -317,8 +317,8 @@ async fn fixture_candidates_carry_what_their_states_name() {
     );
     assert_eq!(
         row("Failed Folder").import_status,
-        Some(crate::import::TriageImportStatus::Error {
-            failure: crate::import::ImportFailureReason {
+        Some(bae_import::TriageImportStatus::Error {
+            failure: bae_import::ImportFailureReason {
                 detail: crate::library::FIXTURE_IMPORT_FAILURE.to_string()
             }
         })

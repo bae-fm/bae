@@ -94,7 +94,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let album_dir = collection.join("two-credit");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
-    let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
+    let candidate_key = bae_import::CandidateKey::folder(&album_dir);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
@@ -113,7 +113,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
                 record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             },
-            bae_core::import::CatalogApplySteps::unread(),
+            bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -193,8 +193,8 @@ async fn pick_release_for_folder(
     collection: &Path,
     album_dir: &Path,
     mb_id: &str,
-) -> (bae_core::import::CandidateKey, bae_core::import::ImportCandidateDetail) {
-    let candidate_key = bae_core::import::CandidateKey::folder(album_dir);
+) -> (bae_import::CandidateKey, bae_import::ImportCandidateDetail) {
+    let candidate_key = bae_import::CandidateKey::folder(album_dir);
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     let expected = album_dir.to_path_buf();
@@ -212,7 +212,7 @@ async fn pick_release_for_folder(
                 record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
                 partners: vec![],
             },
-            bae_core::import::CatalogApplySteps::unread(),
+            bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -229,7 +229,7 @@ async fn pick_release_for_folder(
 async fn scanned_folder_of(
     f: &ImportFixture,
     track_count: usize,
-) -> bae_core::import::CandidateKey {
+) -> bae_import::CandidateKey {
     let collection = f.temp_path().join("collection");
     let album_dir = collection.join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -242,20 +242,20 @@ async fn scanned_folder_of(
         matches!(event, ScanEvent::FolderCandidate { candidate, .. } if candidate.path == expected)
     })
     .await;
-    bae_core::import::CandidateKey::folder(&album_dir)
+    bae_import::CandidateKey::folder(&album_dir)
 }
 
 /// A person's pick of MusicBrainz release `mb_id` for the candidate.
 async fn pick_release(
     f: &ImportFixture,
-    candidate_key: &bae_core::import::CandidateKey,
+    candidate_key: &bae_import::CandidateKey,
     mb_id: &str,
-) -> Result<u64, bae_core::import::ImportError> {
+) -> Result<u64, bae_import::ImportError> {
     f.handle
         .select_candidate_release(
             candidate_key.clone(),
             pressing_link(mb_id),
-            bae_core::import::CatalogApplySteps::unread(),
+            bae_import::CatalogApplySteps::unread(),
         )
         .await
 }
@@ -269,8 +269,8 @@ fn pressing_link(mb_id: &str) -> bae_identify::PressingLink {
 
 async fn candidate_pane(
     f: &ImportFixture,
-    candidate_key: &bae_core::import::CandidateKey,
-) -> bae_core::import::ImportCandidateDetail {
+    candidate_key: &bae_import::CandidateKey,
+) -> bae_import::ImportCandidateDetail {
     f.handle.load_candidate(candidate_key).await.unwrap().expect("the candidate reads back")
 }
 
@@ -301,7 +301,7 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
         assert!(
             matches!(
                 error,
-                bae_core::import::ImportError::MetadataTrackCount {
+                bae_import::ImportError::MetadataTrackCount {
                     folder_tracks: 12,
                     release_tracks: listed,
                 } if listed as usize == release_tracks
@@ -321,7 +321,7 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
         let after = candidate_pane(&f, &candidate_key).await;
         assert_eq!(
             after.draft().unwrap().release_link,
-            Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&fitting)))
+            Some(bae_import::ReleaseLink::Pressing(pressing_link(&fitting)))
         );
         assert_eq!(after.draft().unwrap().release_link, before.draft().unwrap().release_link);
         assert_eq!(after.draft().unwrap().metadata_draft, before.draft().unwrap().metadata_draft);
@@ -332,7 +332,7 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
         assert_eq!(after.metadata_revision, before.metadata_revision);
         assert_eq!(after.draft().unwrap().cover, before.draft().unwrap().cover);
         assert_eq!(after.resumed_identify_state, before.resumed_identify_state);
-        let tracks = bae_core::import::mapping_tracks(&after.draft().unwrap().mapping);
+        let tracks = bae_import::mapping_tracks(&after.draft().unwrap().mapping);
         assert_eq!(tracks.len(), 12);
         assert!(tracks.iter().all(|track| track.file.is_some()));
     }
@@ -352,11 +352,11 @@ async fn a_release_listing_the_folder_s_track_count_applies() {
     let pane = candidate_pane(&f, &candidate_key).await;
     assert_eq!(
         pane.draft().unwrap().release_link,
-        Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&fitting)))
+        Some(bae_import::ReleaseLink::Pressing(pressing_link(&fitting)))
     );
     assert_eq!(
         pane.draft().unwrap().metadata_provenance,
-        Some(bae_core::import::MetadataProvenance::ExternalRelease {
+        Some(bae_import::MetadataProvenance::ExternalRelease {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, fitting.clone()),
         })
     );
@@ -389,11 +389,11 @@ async fn a_release_listing_no_tracks_applies() {
     let after = candidate_pane(&f, &candidate_key).await;
     assert_eq!(
         after.draft().unwrap().release_link,
-        Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&lists_nothing)))
+        Some(bae_import::ReleaseLink::Pressing(pressing_link(&lists_nothing)))
     );
     assert_eq!(
         after.draft().unwrap().metadata_provenance,
-        Some(bae_core::import::MetadataProvenance::ExternalRelease {
+        Some(bae_import::MetadataProvenance::ExternalRelease {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, lists_nothing.clone()),
         })
     );
@@ -402,7 +402,7 @@ async fn a_release_listing_no_tracks_applies() {
         after.draft().unwrap().metadata_draft.tracks,
         before.draft().unwrap().metadata_draft.tracks
     );
-    let tracks = bae_core::import::mapping_tracks(&after.draft().unwrap().mapping);
+    let tracks = bae_import::mapping_tracks(&after.draft().unwrap().mapping);
     assert_eq!(tracks.len(), 12);
     assert!(tracks.iter().all(|track| track.file.is_some()));
 }
@@ -424,7 +424,7 @@ async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
 
     let (candidate_key, pane) = pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    let mut tracks = bae_core::import::mapping_tracks(&pane.draft().unwrap().mapping);
+    let mut tracks = bae_import::mapping_tracks(&pane.draft().unwrap().mapping);
     assert_eq!(tracks.len(), 3);
     tracks[0].file = tracks[1].file.clone();
     assert!(f.handle.set_candidate_track_edit(&candidate_key, tracks[0].clone()).await.is_err());

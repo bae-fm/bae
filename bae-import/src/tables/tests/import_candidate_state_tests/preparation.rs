@@ -1,0 +1,816 @@
+use super::*;
+
+#[tokio::test]
+async fn stale_file_revision_cannot_replace_prepared_metadata() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (files, hash) = stored_pane_candidate(&db).await;
+    let stale = tables
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .and_then(crate::tables::DbPreparationRead::prepared)
+        .expect("the scanned candidate is prepared");
+    crate::CandidatePreparations::new(db.clone())
+        .store_file_decisions(
+            &crate::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: stale.file_edit_revision,
+                metadata_revision: stale.metadata_revision,
+            },
+            &pane_candidate_key(),
+            &CandidateFileEdits::default(),
+            &[(pane_candidate_key(), files)],
+            stale.draft.clone(),
+        )
+        .await
+        .unwrap();
+
+    let error = crate::CandidatePreparations::new(db.clone())
+        .apply_source(
+            &host_root("/music"),
+            &crate::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: stale.file_edit_revision,
+                metadata_revision: stale.metadata_revision,
+            },
+            &pane_candidate_key(),
+            &crate::CandidateMetadataDraft {
+                draft: stale.draft,
+                provenance: stale.metadata_provenance,
+                cover: stale.cover,
+                assets: stale.assets,
+            },
+        )
+        .await
+        .expect_err("metadata prepared for the prior files is stale");
+    assert!(error.to_string().contains("candidate changed"), "{error}");
+}
+
+#[tokio::test]
+async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let stale = tables
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .and_then(crate::tables::DbPreparationRead::prepared)
+        .expect("the scanned candidate is prepared");
+    let root = host_root("/music");
+    let mut replacement = scanned_candidate(&root, "Album");
+    let crate::folder_scanner::ScanItem::Valid(candidate) = &mut replacement else {
+        unreachable!("the fixture creates a valid candidate");
+    };
+    candidate.files.files[0].file.size += 1;
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.save_folder_scan_item(&root, generation, &replacement)
+        .await
+        .unwrap()
+        .expect("the current scan accepts the replacement");
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+
+    let error = crate::CandidatePreparations::new(db.clone())
+        .apply_source(
+            &root,
+            &crate::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: stale.file_edit_revision,
+                metadata_revision: stale.metadata_revision,
+            },
+            &pane_candidate_key(),
+            &crate::CandidateMetadataDraft {
+                draft: stale.draft,
+                provenance: stale.metadata_provenance,
+                cover: stale.cover,
+                assets: stale.assets,
+            },
+        )
+        .await
+        .expect_err("the candidate key no longer names the prepared files");
+    assert!(error.to_string().contains("candidate changed"), "{error}");
+}
+
+#[tokio::test]
+async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let root = host_root("/music");
+    let mut replacement = scanned_candidate(&root, "Album");
+    let crate::folder_scanner::ScanItem::Valid(candidate) = &mut replacement else {
+        unreachable!("the fixture creates a valid candidate");
+    };
+    candidate.files.files[0].file.size += 1;
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.save_folder_scan_item(&root, generation, &replacement)
+        .await
+        .unwrap()
+        .expect("the current scan accepts the replacement");
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+
+    let error = crate::CandidatePreparations::new(db.clone())
+        .set_prepared_cover(
+            &root,
+            &pane_candidate_key(),
+            &as_read(&hash, 0),
+            &CoverSelection::Local("cover.jpg".to_string()),
+            None,
+        )
+        .await
+        .expect_err("the candidate key no longer names the prepared files");
+    assert!(error.to_string().contains("candidate changed"), "{error}");
+}
+
+#[tokio::test]
+async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (files, hash) = stored_pane_candidate(&db).await;
+    assert!(store_verdict(&db, &hash, settled_signals(),).await);
+    let stale = tables
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .and_then(crate::tables::DbPreparationRead::prepared)
+        .expect("the candidate is prepared");
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+        .await
+        .unwrap();
+
+    let mut edits = CandidateFileEdits::default();
+    edits.sheet_discs.set("CDImage.cue".to_string(), SheetDisc::Ignored);
+    let mut settled = files;
+    settled.apply_candidate_file_edits(&edits).unwrap();
+    let error = crate::CandidatePreparations::new(db.clone())
+        .store_file_decisions(
+            &crate::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: stale.file_edit_revision,
+                metadata_revision: stale.metadata_revision,
+            },
+            &pane_candidate_key(),
+            &edits,
+            &[(pane_candidate_key(), settled)],
+            stale.draft.clone(),
+        )
+        .await
+        .expect_err("file mappings prepared for the prior metadata are stale");
+    assert!(error.to_string().contains("metadata changed"), "{error}");
+
+    let state =
+        tables.load_import_candidate_state(&hash).await.unwrap().expect("the candidate state remains");
+    assert_eq!(state.file_edits, CandidateFileEdits::default());
+    assert!(state.identify.is_some(), "the rejected write keeps its verdict");
+    let pane = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert_eq!(pane.draft.pressing.year, "1991");
+    assert_eq!(pane.draft.tracks, stale.draft.tracks);
+}
+
+/// A remote cover is stored with the bytes fetched for it, so one whose bytes
+/// are missing is a broken row, refused when an import reads it rather than
+/// imported without its cover.
+#[tokio::test]
+async fn a_remote_cover_stored_without_its_bytes_is_refused_on_read() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (_, hash) = stored_pane_candidate(&db).await;
+    crate::CandidatePreparations::new(db.clone())
+        .set_prepared_cover(
+            &host_root("/music"),
+            &pane_candidate_key(),
+            &as_read(&hash, 0),
+            &CoverSelection::Remote(
+                bae_catalogs::remote_image::RemoteImageSet::original(
+                    "https://example.invalid/cover".to_string(),
+                ),
+                Catalog::Discogs,
+            ),
+            Some(&bae_catalogs::remote_image::RemoteImage {
+                bytes: vec![1, 2, 3],
+                content_type: bae_util::content_type::ContentType::Jpeg,
+            }),
+        )
+        .await
+        .unwrap();
+    let deleted_hash = hash.clone();
+    db.call(move |sql| {
+        sql.execute(
+            "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
+            [&deleted_hash],
+        )?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+
+    let error = tables
+        .load_import_candidate_preparation(&hash)
+        .await
+        .expect_err("a remote cover without its bytes is not ready to import");
+    assert!(error.to_string().contains("a remote candidate cover has no prepared bytes"));
+}
+
+/// A pane edit with no candidate row under it is a defect, not a state to
+/// absorb: the form is drawn only under a pick, and a pick writes that row.
+#[tokio::test]
+async fn a_pane_edit_without_a_candidate_row_is_refused() {
+    let (db, _tmp) = empty_db().await;
+    let hash = pane_candidate().content_hash();
+
+    for error in [
+        crate::CandidatePreparations::new(db.clone())
+            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+            .await
+            .expect_err("a cover with nothing picked"),
+        crate::CandidatePreparations::new(db.clone())
+            .set_field(&hash, CandidateEditField::PressingYear, "1991")
+            .await
+            .expect_err("a field with nothing picked"),
+        crate::CandidatePreparations::new(db.clone())
+            .set_track_edit(&hash, &edited_row("import-track-0", "Track Title", None))
+            .await
+            .expect_err("a row with nothing picked"),
+    ] {
+        assert!(
+            error.to_string().contains("no candidate state row"),
+            "{error} should say what is missing"
+        );
+    }
+}
+
+/// Field writes update the one complete draft and leave its other values intact.
+#[tokio::test]
+async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    fetched(&db, "rel-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let seed = metadata_draft("Seeded Title", "Artist Name");
+    crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(&hash, &pane_candidate_key(), &seed, Some(&release_pick("rel-1")), &[])
+        .await
+        .unwrap();
+
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, CandidateEditField::AlbumYear, "1987")
+        .await
+        .unwrap();
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+        .await
+        .unwrap();
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, CandidateEditField::AlbumTitle, "Album Title")
+        .await
+        .unwrap();
+
+    let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft;
+    assert_eq!(stored.album_title, "Album Title");
+    assert_eq!(stored.album_year, "1987");
+    assert_eq!(stored.pressing.year, "1991");
+    assert_eq!(stored.album_artist_assignments, seed.album_artist_assignments);
+    let mut expected_tracks = seed.tracks;
+    expected_tracks[0].file = Some(AudioFile::Standalone { file_id: "01.flac".into() });
+    assert_eq!(stored.release_edit().tracks, expected_tracks);
+}
+
+/// The list places a row by whether its draft is blank and valid, read off two
+/// columns rather than the draft whole; every draft write keeps them current.
+#[tokio::test]
+async fn every_draft_write_keeps_the_lists_draft_columns_current() {
+    let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let columns = |db: &Database, hash: &str| {
+        let db = db.clone();
+        let hash = hash.to_string();
+        async move {
+            db.read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT draft_blank, draft_valid FROM import_candidate_edit \
+                     WHERE content_hash = ?1",
+                    params![hash],
+                    |row| Ok((row.get::<_, bool>(0)?, row.get::<_, bool>(1)?)),
+                )?)
+            })
+            .await
+            .unwrap()
+        }
+    };
+    let preparations = crate::CandidatePreparations::new(db.clone());
+    preparations
+        .replace_metadata(
+            &hash,
+            &pane_candidate_key(),
+            &metadata_draft("Album Title", "Artist Name"),
+            Some(&release_pick("rel-1")),
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(columns(&db, &hash).await, (false, true));
+
+    preparations.set_field(&hash, CandidateEditField::AlbumYear, "not a year").await.unwrap();
+    assert_eq!(
+        columns(&db, &hash).await,
+        (false, false),
+        "a year that does not parse leaves the draft invalid"
+    );
+
+    preparations.set_field(&hash, CandidateEditField::AlbumYear, "1987").await.unwrap();
+    assert_eq!(columns(&db, &hash).await, (false, true));
+}
+
+#[tokio::test]
+async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let existing = existing_artist();
+    db.insert_artist(&existing).await.unwrap();
+
+    let assignments = crate::Credited::plain_list(vec![
+        ArtistAssignment::picked(existing.into()),
+        ArtistAssignment::Credit {
+            credit: ArtistCredit {
+                credited_as: None,
+                name: "New Artist".to_string(),
+                sort_name: Some("Artist, New".to_string()),
+                musicbrainz_artist_id: Some("mb-new".to_string()),
+                discogs_artist_id: Some("discogs-new".to_string()),
+            },
+        },
+    ]);
+    crate::CandidatePreparations::new(db.clone())
+        .set_album_artists(&hash, &assignments)
+        .await
+        .unwrap();
+
+    let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert_eq!(stored.draft.album_artist_assignments, assignments);
+
+    let explicit_empty = RawTrackEdit {
+        id: "candidate-track-0".to_string(),
+        title: "Track Title".to_string(),
+        artist_assignments: TrackArtistAssignments::Explicit(Vec::new()),
+        file: Some(stored.draft.tracks[0].edit.file.clone()),
+    };
+    crate::CandidatePreparations::new(db.clone())
+        .set_track_edit(&hash, &explicit_empty)
+        .await
+        .unwrap();
+    assert_eq!(
+        tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft.tracks[0]
+            .edit
+            .artist_assignments,
+        TrackArtistAssignments::Explicit(Vec::new())
+    );
+}
+
+#[tokio::test]
+async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+
+    let error = crate::CandidatePreparations::new(db.clone())
+        .set_album_artists(
+            &hash,
+            &[crate::Credited::plain(ArtistAssignment::picked(ExistingArtist {
+                artist_id: bae_util::test_ids::test_uuid("missing-artist"),
+                name: "Missing Artist".to_string(),
+                sort_name: None,
+                musicbrainz_artist_id: None,
+                discogs_artist_id: None,
+            }))],
+        )
+        .await
+        .expect_err("a missing referenced artist cannot be stored");
+    assert!(
+        error.to_string().contains("FOREIGN KEY constraint failed"),
+        "the database rejects the broken reference: {error}"
+    );
+}
+
+/// A track metadata edit is stored over the row's audio and rejoins it in the
+/// candidate pane.
+#[tokio::test]
+async fn a_track_row_round_trips_metadata_and_mapping() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    fetched(&db, "rel-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &hash,
+            &pane_candidate_key(),
+            &metadata_draft("Album", "Artist"),
+            Some(&release_pick("rel-1")),
+            &[],
+        )
+        .await
+        .unwrap();
+    let before = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    let edit = edited_row(
+        "candidate-track-0",
+        "Edited title",
+        Some(before.draft.tracks[0].edit.file.clone()),
+    );
+    crate::CandidatePreparations::new(db.clone())
+        .set_track_edit(&hash, &edit)
+        .await
+        .unwrap();
+
+    let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert_eq!(stored.draft.tracks.len(), 1);
+    assert_eq!(stored.draft.tracks[0].edit.title, "Edited title");
+    assert_eq!(Some(stored.draft.tracks[0].edit.file.clone()), edit.file);
+}
+
+/// A file decision reshapes the folder, so the extracted signals go with it. The caller's replacement mappings, metadata,
+/// and cover land with the file decision as one candidate state.
+#[tokio::test]
+async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    fetched(&db, "rel-1").await;
+    let (files, hash) = stored_pane_candidate(&db).await;
+    assert!(store_verdict(&db, &hash, settled_signals()).await);
+    crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &hash,
+            &pane_candidate_key(),
+            &metadata_draft("Album", "Artist"),
+            Some(&release_pick("rel-1")),
+            &[],
+        )
+        .await
+        .unwrap();
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+        .await
+        .unwrap();
+    crate::CandidatePreparations::new(db.clone())
+        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+        .await
+        .unwrap();
+    let preparation = tables
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .and_then(crate::tables::DbPreparationRead::prepared)
+        .expect("the candidate has a stored preparation");
+    crate::CandidatePreparations::new(db.clone())
+        .set_track_edit_prepared(
+            &host_root("/music"),
+            &pane_candidate_key(),
+            &crate::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: preparation.file_edit_revision,
+                metadata_revision: preparation.metadata_revision,
+            },
+            &edited_row(
+                "candidate-track-0",
+                "Track Title",
+                Some(preparation.draft.tracks[0].edit.file.clone()),
+            ),
+        )
+        .await
+        .unwrap();
+    let mut edits = CandidateFileEdits::default();
+    edits.sheet_discs.set("CDImage.cue".to_string(), SheetDisc::Ignored);
+    let mut settled = files;
+    settled.apply_candidate_file_edits(&edits).unwrap();
+    let (metadata_revision, draft) = current_draft(&db, &hash).await;
+    crate::CandidatePreparations::new(db.clone())
+        .store_file_decisions(
+            &as_read(&hash, metadata_revision),
+            &pane_candidate_key(),
+            &edits,
+            &[(pane_candidate_key(), settled)],
+            draft.clone(),
+        )
+        .await
+        .unwrap();
+
+    let state = tables.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    assert!(state.signals.is_none(), "the disc ID is recomputed");
+
+    let pane = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert_eq!(pane.draft, draft, "the prepared replacement draft lands atomically");
+    assert_eq!(pane.draft.pressing.year, "1991", "the draft survives");
+    assert_eq!(
+        pane.cover,
+        Some(CoverSelection::Local("cover.jpg".to_string())),
+        "and so does its cover"
+    );
+}
+
+/// Applying or clearing metadata replaces the whole draft and removes artist
+/// assignments owned by the prior source, while every physical decision stays.
+#[tokio::test]
+async fn metadata_apply_and_clear_preserve_every_physical_decision() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    fetched(&db, "rel-1").await;
+    fetched(&db, "rel-2").await;
+    let (files, hash) = stored_pane_candidate(&db).await;
+    let old_draft = metadata_draft("Old album", "Replacement Artist");
+    crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &hash,
+            &pane_candidate_key(),
+            &old_draft,
+            Some(&release_pick("rel-1")),
+            &[],
+        )
+        .await
+        .unwrap();
+    let mut file_edits = CandidateFileEdits::default();
+    file_edits.sheet_discs.set("CDImage.cue".to_string(), SheetDisc::Ignored);
+    let mut settled = files;
+    settled.apply_candidate_file_edits(&file_edits).unwrap();
+    let (metadata_revision, draft) = current_draft(&db, &hash).await;
+    crate::CandidatePreparations::new(db.clone())
+        .store_file_decisions(
+            &as_read(&hash, metadata_revision),
+            &pane_candidate_key(),
+            &file_edits,
+            &[(pane_candidate_key(), settled)],
+            draft,
+        )
+        .await
+        .unwrap();
+    crate::CandidatePreparations::new(db.clone())
+        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+        .await
+        .unwrap();
+    let mapping = edited_row(
+        "candidate-track-0",
+        "Track Title",
+        Some(
+            tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft.tracks[0]
+                .edit
+                .file
+                .clone(),
+        ),
+    );
+    crate::CandidatePreparations::new(db.clone())
+        .set_track_edit(&hash, &mapping)
+        .await
+        .unwrap();
+
+    let new_draft = metadata_draft("New album", "New Artist");
+    let applied_revision = crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &hash,
+            &pane_candidate_key(),
+            &new_draft,
+            Some(&release_pick("rel-2")),
+            &[],
+        )
+        .await
+        .unwrap();
+    let applied = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    let mut expected = new_draft;
+    expected.tracks[0].file = mapping.file.clone();
+    assert_eq!(
+        applied.draft.release_edit(),
+        expected,
+        "the new draft lands and the person's file choice survives it"
+    );
+    assert_eq!(applied_revision, 4);
+    assert_eq!(
+        applied.cover,
+        Some(CoverSelection::Local("cover.jpg".to_string())),
+        "the source brought no image of its own, so the folder's cover stands"
+    );
+    assert_eq!(
+        tables.load_import_candidate_state(&hash).await.unwrap().unwrap().file_edits.sheet_discs,
+        file_edits.sheet_discs
+    );
+
+    let chosen_bytes = bae_catalogs::remote_image::RemoteImage {
+        bytes: vec![1, 2, 3],
+        content_type: bae_util::content_type::ContentType::Jpeg,
+    };
+    crate::CandidatePreparations::new(db.clone())
+        .set_cover(
+            &hash,
+            &CoverSelection::Remote(
+                bae_catalogs::remote_image::RemoteImageSet::original(
+                    "https://example.invalid/cover".to_string(),
+                ),
+                Catalog::MusicBrainz,
+            ),
+            Some(&chosen_bytes),
+        )
+        .await
+        .unwrap();
+    let mut blank = crate::pane::blank_candidate_draft(&pane_candidate()).release_edit();
+    blank.tracks.truncate(1);
+    let cleared_revision = crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(&hash, &pane_candidate_key(), &blank, None, &[])
+        .await
+        .unwrap();
+    let cleared = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert!(cleared.draft.release_edit().is_blank());
+    assert_eq!(Some(cleared.draft.tracks[0].edit.file.clone()), mapping.file);
+    assert_eq!(cleared_revision, 6);
+    assert_eq!(
+        cleared.cover,
+        Some(CoverSelection::Remote(
+            bae_catalogs::remote_image::RemoteImageSet::original(
+                "https://example.invalid/cover".to_string()
+            ),
+            Catalog::MusicBrainz,
+        )),
+        "a draft that brings no image of its own says nothing about the cover, \
+         so the one the person chose stands"
+    );
+    assert_eq!(
+        tables.load_import_candidate_prepared_assets(&hash).await.unwrap().remote_cover,
+        Some(chosen_bytes),
+        "the chosen cover keeps the bytes fetched with it"
+    );
+}
+
+#[tokio::test]
+async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
+    let (db, _tmp) = empty_db().await;
+    fetched(&db, "rel-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+
+    assert_eq!(
+        crate::CandidatePreparations::new(db.clone())
+            .replace_metadata(
+                &hash,
+                &pane_candidate_key(),
+                &metadata_draft("Album", "Artist"),
+                Some(&release_pick("rel-1")),
+                &[],
+            )
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        crate::CandidatePreparations::new(db.clone())
+            .set_field(&hash, CandidateEditField::PressingYear, "1991")
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        crate::CandidatePreparations::new(db.clone())
+            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+            .await
+            .unwrap(),
+        3
+    );
+    assert_eq!(
+        crate::CandidatePreparations::new(db.clone())
+            .set_album_artists(
+                &hash,
+                &[crate::Credited::plain(credit_named("Different Artist"))],
+            )
+            .await
+            .unwrap(),
+        4
+    );
+    assert_eq!(
+        crate::CandidatePreparations::new(db.clone())
+            .set_track_edit(
+                &hash,
+                &edited_row(
+                    "candidate-track-0",
+                    "Changed title",
+                    Some(AudioFile::Standalone { file_id: "01.flac".into() })
+                ),
+            )
+            .await
+            .unwrap(),
+        5
+    );
+}
+
+/// A verdict revises the draft it lands on whoever wrote it, so a person's
+/// pick and the fields they typed over it are replaced by the release the run
+/// settled on.
+#[tokio::test]
+async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    fetched(&db, "rel-chosen").await;
+    fetched(&db, "rel-1").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &hash,
+            &pane_candidate_key(),
+            &metadata_draft("Album", "Artist"),
+            Some(&release_pick("rel-chosen")),
+            &[],
+        )
+        .await
+        .unwrap();
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+        .await
+        .unwrap();
+
+    assert!(crate::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            content_hash: hash.to_string(),
+            file_edit_revision: 0,
+            candidate_key: pane_candidate_key(),
+            verdict: sample_verdict(),
+            signals: settled_signals(),
+            pick: Some(crate::tables::VerdictPick {
+                link: release_link("rel-1"),
+                metadata: crate::CandidateMetadataDraft {
+                    draft: candidate_draft("Different album", "Different Artist"),
+                    provenance: Some(release_pick("rel-1")),
+                    cover: None,
+                    assets: crate::CandidatePreparedAssets::default(),
+                },
+            }),
+            releases: Vec::new(),
+        })
+        .await
+        .unwrap());
+
+    let state = tables.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    assert_eq!(state.metadata_provenance, Some(release_pick("rel-1")));
+    assert_eq!(
+        tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft.album_title,
+        "Different album"
+    );
+}
+
+/// A verdict written after a field edit replaces the edit: the later write
+/// wins.
+#[tokio::test]
+async fn a_verdict_after_a_metadata_edit_replaces_it() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    fetched(&db, "rel-first").await;
+    fetched(&db, "rel-second").await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let first_pick = release_pick("rel-first");
+    assert!(crate::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            content_hash: hash.to_string(),
+            file_edit_revision: 0,
+            candidate_key: pane_candidate_key(),
+            verdict: sample_verdict(),
+            signals: settled_signals(),
+            pick: Some(crate::tables::VerdictPick {
+                link: release_link("rel-first"),
+                metadata: crate::CandidateMetadataDraft {
+                    draft: candidate_draft("First album", "Artist"),
+                    provenance: Some(first_pick.clone()),
+                    cover: None,
+                    assets: crate::CandidatePreparedAssets::default(),
+                },
+            }),
+            releases: Vec::new(),
+        })
+        .await
+        .unwrap());
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, CandidateEditField::AlbumTitle, "Person's title")
+        .await
+        .unwrap();
+
+    assert!(crate::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
+            content_hash: hash.to_string(),
+            file_edit_revision: 0,
+            candidate_key: pane_candidate_key(),
+            verdict: sample_verdict(),
+            signals: settled_signals(),
+            pick: Some(crate::tables::VerdictPick {
+                link: release_link("rel-second"),
+                metadata: crate::CandidateMetadataDraft {
+                    draft: candidate_draft("Second album", "Different Artist"),
+                    provenance: Some(release_pick("rel-second")),
+                    cover: None,
+                    assets: crate::CandidatePreparedAssets::default(),
+                },
+            }),
+            releases: Vec::new(),
+        })
+        .await
+        .unwrap());
+
+    let state = tables.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    assert_eq!(state.metadata_revision, 3);
+    assert_eq!(state.metadata_provenance, Some(release_pick("rel-second")));
+    assert_eq!(
+        tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft.album_title,
+        "Second album"
+    );
+}

@@ -1,8 +1,8 @@
 //! How an import's error reads once it crosses into a library error.
 
-use crate::import::ImportError;
 use crate::library::LibraryError;
 use bae_diagnostics::UiErrorCategory;
+use bae_import::ImportError;
 
 /// An import error that crosses into a library error stays the refusal it
 /// is, so the library's category is the import's own, and a store failure

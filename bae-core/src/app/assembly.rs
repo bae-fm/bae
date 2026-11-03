@@ -24,7 +24,7 @@ pub enum PlaybackOutput {
 /// drives built from that store. `closing` ends its tasks when it closes.
 pub async fn open_library_manager(
     database: Database,
-    #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
+    #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     closing: CancellationToken,
     app_dir: bae_app_dir::AppDir,
     clock: ClockRef,
@@ -67,7 +67,7 @@ pub async fn open_library_manager(
 pub async fn start_library_services(
     manager: LibraryManager,
     database: Database,
-    #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
+    #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     #[cfg(desktop)] closing: CancellationToken,
     #[cfg(desktop)] clock: ClockRef,
     ids: IdSourceRef,
@@ -125,13 +125,13 @@ pub async fn start_library_services(
     // library manager and the in-core player.
     #[cfg(desktop)]
     {
-        let import = crate::import::ImportService::start(
+        let import = bae_import::ImportService::start(
             runtime_handle,
             database.clone(),
             catalogs,
             remote_images,
             diagnostics,
-            crate::import::CandidatePreparations::new(database),
+            bae_import::CandidatePreparations::new(database),
             clock,
             ids,
             closing.child_token(),
@@ -158,5 +158,5 @@ pub enum ServicesStartError {
     /// The import service did not start.
     #[cfg(desktop)]
     #[error(transparent)]
-    Import(#[from] crate::import::ImportError),
+    Import(#[from] bae_import::ImportError),
 }

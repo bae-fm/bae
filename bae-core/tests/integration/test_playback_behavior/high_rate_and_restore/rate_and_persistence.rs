@@ -15,7 +15,7 @@ impl HighSampleRateTestFixture {
             support::setup_test_library_with_album_dir(fakes.providers()).await;
         let runtime_handle = tokio::runtime::Handle::current();
 
-        let fixture_path = bae_test_support::fixture_dir!("flac", "96khz_test.flac");
+        let fixture_path = bae_import::test_fixtures::flac_dir().join("96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
         std::fs::write(&test_path, bae_test_support::read_fixture(&fixture_path))
             .expect("copy the 96 kHz FLAC fixture");
@@ -497,7 +497,7 @@ struct RestoreTestLibrary {
     closing: bae_core::library::CancellationToken,
     /// The catalog sessions the library was built over, for a test that
     /// imports again.
-    catalogs: bae_core::import::CatalogSessions,
+    catalogs: bae_import::CatalogSessions,
     /// The catalog fakes those sessions ask, which a test that imports again
     /// seeds.
     fakes: bae_catalogs::fake_catalogs::FakeCatalogs,

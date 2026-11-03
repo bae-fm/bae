@@ -38,7 +38,7 @@ pub async fn open_test_library(
 ) -> (
     bae_core::library::LibraryManager,
     bae_db::Database,
-    bae_core::import::CatalogSessions,
+    bae_import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
     open_test_library_with(dir, bae_catalogs::providers::Providers::offline()).await
@@ -52,7 +52,7 @@ pub async fn open_test_library_with(
 ) -> (
     bae_core::library::LibraryManager,
     bae_db::Database,
-    bae_core::import::CatalogSessions,
+    bae_import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
     let database = open_test_db(dir).await;
@@ -68,7 +68,7 @@ pub async fn test_library_from_handle(
 ) -> (
     bae_core::library::LibraryManager,
     bae_db::Database,
-    bae_core::import::CatalogSessions,
+    bae_import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
     open_library(
@@ -93,12 +93,12 @@ async fn open_library(
 ) -> (
     bae_core::library::LibraryManager,
     bae_db::Database,
-    bae_core::import::CatalogSessions,
+    bae_import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
     let remote_images =
         bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
-    let catalogs = bae_core::import::CatalogSessions::new(
+    let catalogs = bae_import::CatalogSessions::new(
         providers,
         database.clone(),
         bae_diagnostics::Diagnostics::noop(),
@@ -127,7 +127,7 @@ async fn open_library(
 pub async fn start_test_services(
     manager: bae_core::library::LibraryManager,
     database: bae_db::Database,
-    catalogs: bae_core::import::CatalogSessions,
+    catalogs: bae_import::CatalogSessions,
     closing: bae_core::library::CancellationToken,
 ) -> bae_core::library::AppServices {
     let remote_images =
@@ -159,7 +159,7 @@ pub async fn setup_test_library() -> (
     (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
     tempfile::TempDir,
@@ -175,7 +175,7 @@ pub async fn setup_test_library_with(
     (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
     tempfile::TempDir,
@@ -195,7 +195,7 @@ pub async fn setup_test_library_with_album_dir(
     (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
     std::path::PathBuf,
@@ -216,7 +216,7 @@ pub fn setup_fresh_library(
     (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
     tempfile::TempDir,

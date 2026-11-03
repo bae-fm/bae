@@ -4,16 +4,16 @@
 //! shows what core stored rather than what a surface made of an error.
 
 use super::*;
-use crate::import::{ImportError, PaneCommand, PaneMove, PaneOutcome};
 use bae_catalogs::SearchQuery;
 use bae_identify::LookupChoiceEdit;
 use bae_identify::PressingLink;
+use bae_import::{ImportError, PaneCommand, PaneMove, PaneOutcome};
 
 impl AppServices {
     /// Import the candidate the pane shows.
     pub async fn pane_start_import(
         &self,
-        candidate_key: &crate::import::CandidateKey,
+        candidate_key: &bae_import::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import
@@ -28,9 +28,9 @@ impl AppServices {
     /// Apply the person's answer to the candidate's artist conflict.
     pub async fn pane_choose_artist_identity(
         &self,
-        candidate_key: &crate::import::CandidateKey,
+        candidate_key: &bae_import::CandidateKey,
         metadata_revision: u64,
-        choice: crate::import::ArtistIdentityConflictChoice,
+        choice: bae_import::ArtistIdentityConflictChoice,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import
@@ -45,9 +45,9 @@ impl AppServices {
     /// Apply the person's answer to the candidate's label conflict.
     pub async fn pane_choose_label_identity(
         &self,
-        candidate_key: &crate::import::CandidateKey,
+        candidate_key: &bae_import::CandidateKey,
         metadata_revision: u64,
-        choice: crate::import::LabelIdentityConflictChoice,
+        choice: bae_import::LabelIdentityConflictChoice,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import
@@ -66,9 +66,9 @@ impl AppServices {
     /// the error.
     pub async fn pane_select_release(
         &self,
-        candidate_key: crate::import::CandidateKey,
+        candidate_key: bae_import::CandidateKey,
         link: PressingLink,
-        steps: crate::import::CatalogApplySteps,
+        steps: bae_import::CatalogApplySteps,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import.clear_pane_failure(&candidate_key).await?;
@@ -82,7 +82,7 @@ impl AppServices {
     /// whose failure the pane states. The release link stays as it is.
     pub async fn pane_read_file_tags(
         &self,
-        candidate_key: crate::import::CandidateKey,
+        candidate_key: bae_import::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         let outcome = import
@@ -101,7 +101,7 @@ impl AppServices {
     /// Unlink the candidate from its release, leaving its draft as it is.
     pub async fn pane_unlink_release(
         &self,
-        candidate_key: &crate::import::CandidateKey,
+        candidate_key: &bae_import::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import
@@ -117,7 +117,7 @@ impl AppServices {
     /// back to the draft.
     pub async fn pane_keep_own_draft(
         &self,
-        candidate_key: &crate::import::CandidateKey,
+        candidate_key: &bae_import::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         let outcome = import
@@ -138,7 +138,7 @@ impl AppServices {
     /// and go back to the draft.
     pub async fn pane_link_shared_album(
         &self,
-        candidate_key: &crate::import::CandidateKey,
+        candidate_key: &bae_import::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         let outcome = import
@@ -158,7 +158,7 @@ impl AppServices {
     /// counts, and run it again when what it looks up changed.
     pub async fn pane_edit_lookup_choices(
         &self,
-        candidate_key: crate::import::CandidateKey,
+        candidate_key: bae_import::CandidateKey,
         edit: LookupChoiceEdit,
     ) -> Result<PaneOutcome, ImportError> {
         let command = match &edit {
@@ -185,7 +185,7 @@ impl AppServices {
     /// looks at what it found, and picks from it.
     pub async fn pane_identify_automatically(
         &self,
-        candidate_key: crate::import::CandidateKey,
+        candidate_key: bae_import::CandidateKey,
     ) -> Result<(), ImportError> {
         if self.inner.import.open_automatic(&candidate_key).await? {
             self.rerun_identify(candidate_key);
@@ -198,7 +198,7 @@ impl AppServices {
     /// draft. The pane stays where it is when the cancel fails.
     pub async fn pane_cancel_identification(
         &self,
-        candidate_key: &crate::import::CandidateKey,
+        candidate_key: &bae_import::CandidateKey,
     ) -> Result<(), ImportError> {
         self.cancel_identification(vec![candidate_key.clone()]).await?;
         self.inner.import.move_candidate_pane(candidate_key, PaneMove::Back).await
@@ -209,7 +209,7 @@ impl AppServices {
     /// banner, so this only clears the banner for it.
     pub async fn pane_start_candidate_search(
         &self,
-        candidate_key: crate::import::CandidateKey,
+        candidate_key: bae_import::CandidateKey,
         query: SearchQuery,
     ) -> Result<(), ImportError> {
         self.inner.import.clear_pane_failure(&candidate_key).await?;
@@ -224,9 +224,9 @@ impl AppServices {
     /// nobody.
     async fn edit_candidate_lookup_choices(
         &self,
-        candidate_key: crate::import::CandidateKey,
+        candidate_key: bae_import::CandidateKey,
         edit: bae_identify::LookupChoiceEdit,
-    ) -> Result<(), crate::import::ImportError> {
+    ) -> Result<(), bae_import::ImportError> {
         let change = self.inner.import.edit_candidate_lookup_choices(&candidate_key, edit).await?;
         if change == bae_identify::ChoiceChange::Lookups {
             self.inner.identification.rerun_identify(candidate_key);

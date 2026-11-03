@@ -91,8 +91,8 @@ releases. A phone browses, downloads and plays them.
 | Subsonic and MCP servers | yes | no |
 | Export and save files | yes | no |
 
-The phone builds of bae-core leave the import pipeline, identification,
-catalog lookups and metadata editing out entirely (§11.2).
+The phone builds leave the import pipeline, identification, catalog lookups
+and metadata editing out entirely (§11.2).
 
 The macOS app is the full desktop app. On Windows and Linux, bae-avalonia
 holds the desktop app's start-up, update and packaging machinery and one
@@ -3830,7 +3830,8 @@ bindings export none of their symbols.
 
 | Crate | Holds |
 |---|---|
-| bae-core | the library, import, files, outputs, sync integration, settings |
+| bae-core | the library, files, outputs, sync integration, settings |
+| bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local path, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |

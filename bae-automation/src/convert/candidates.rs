@@ -24,10 +24,10 @@ pub(crate) async fn automation_candidate_from_folder(
     let draft = folder.draft();
     let live = runtime.get(&candidate.key());
     let (toolbar, view) = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
-        Some(bae_core::import::IdentificationInFlight::Run(published)) => {
+        Some(bae_import::IdentificationInFlight::Run(published)) => {
             (published.toolbar(), published.view())
         }
-        Some(bae_core::import::IdentificationInFlight::Queued) | None => (
+        Some(bae_import::IdentificationInFlight::Queued) | None => (
             folder.resumed_identify_state.toolbar(),
             bae_identify::IdentifyStateView::from(folder.resumed_identify_state.clone()),
         ),
@@ -66,7 +66,7 @@ pub(crate) async fn automation_candidate_from_folder(
         },
         picked_pressing: draft
             .and_then(|draft| draft.release_link.as_ref())
-            .and_then(bae_core::import::ReleaseLink::pressing)
+            .and_then(bae_import::ReleaseLink::pressing)
             .cloned()
             .map(AutomationPressingLink::from_core),
         file_evidence: folder
@@ -89,7 +89,7 @@ pub(crate) async fn automation_candidate_from_folder(
 }
 
 mirror_struct! {
-    AutomationImportedRelease = bae_core::import::ImportedRelease,
+    AutomationImportedRelease = bae_import::ImportedRelease,
     from_core: fn,
     fields: { release_id, album_id },
 }
@@ -135,12 +135,12 @@ mirror_enum! {
 /// normalizes them. A form that will not shape yet — an empty album title —
 /// reads back as the seed it came from.
 fn shaped_edit(
-    edit: &bae_core::import::RawReleaseEdit,
-    mapping: &bae_core::import::MappingTable,
-) -> bae_core::import::ReleaseUserEdit {
+    edit: &bae_import::RawReleaseEdit,
+    mapping: &bae_import::MappingTable,
+) -> bae_import::ReleaseUserEdit {
     let mut raw = edit.clone();
-    raw.tracks = bae_core::import::mapping_tracks(mapping);
-    raw.shape().unwrap_or_else(|_| bae_core::import::ReleaseUserEdit {
+    raw.tracks = bae_import::mapping_tracks(mapping);
+    raw.shape().unwrap_or_else(|_| bae_import::ReleaseUserEdit {
         album_title: raw.album_title.clone(),
         album_artist_assignments: Vec::new(),
         album_year: None,

@@ -12,7 +12,7 @@ pub async fn storage_library(
     directory: &std::path::Path,
     providers: Providers,
 ) -> (
-    (LibraryManager, bae_db::Database, bae_core::import::CatalogSessions, CancellationToken),
+    (LibraryManager, bae_db::Database, bae_import::CatalogSessions, CancellationToken),
     Arc<MemoryStorage>,
 ) {
     let installation = coven::TestCoven::new();

@@ -73,7 +73,7 @@ impl Drop for LoweredFileLimit {
 }
 
 fn write_box_set(album_dir: &Path) {
-    let flac = fs::read(bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac"))
+    let flac = fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"))
         .expect("FLAC fixture");
     for disc in 1..=DISCS {
         let disc_dir = album_dir.join(format!("CD{disc}"));

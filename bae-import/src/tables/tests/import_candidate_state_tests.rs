@@ -1,0 +1,66 @@
+use super::{empty_db, fixed_now};
+use bae_util::content_type::ContentType;
+use std::path::Path;
+use std::sync::Arc;
+
+/// The candidate as a caller reads it back after a fixture stored it: no file
+/// decisions edited yet, and whatever metadata revision the caller just
+/// observed. Tests that deliberately submit a stale or advanced
+/// `file_edit_revision` write the record out in full instead.
+fn as_read(content_hash: &str, metadata_revision: u64) -> crate::CandidateAsRead {
+    crate::CandidateAsRead {
+        content_hash: content_hash.to_string(),
+        file_edit_revision: 0,
+        metadata_revision,
+    }
+}
+
+/// The stored draft and the metadata revision it stands at: what a file
+/// decision that reshapes no track lays over the folder.
+async fn current_draft(db: &Database, content_hash: &str) -> (u64, crate::CandidateDraft) {
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let preparation = tables
+        .load_import_candidate_preparation(content_hash)
+        .await
+        .unwrap()
+        .and_then(crate::tables::DbPreparationRead::prepared)
+        .expect("the candidate has a stored preparation");
+    (preparation.metadata_revision, preparation.draft)
+}
+
+/// Store the person's answer for how one folder reads, alone: the row a
+/// fixture needs beside the entries it writes itself. The service never stores
+/// a decision without the candidates it gives — that is
+/// `commit_folder_reading`.
+async fn store_user_folder_decision(
+    db: &Database,
+    key: &crate::folder_scanner::FolderReleaseDecisionKey,
+    decision: crate::folder_scanner::FolderReleaseDecision,
+) -> Result<(), bae_db::DbError> {
+    let key = key.clone();
+    let grouping = crate::CandidateKey::grouping(&format!(
+        "{}/{}",
+        key.watched_folder_path.display(),
+        key.relative_folder.text()
+    ));
+    db.call(move |sql| {
+        crate::tables::folder_scans::store_folder_reading(
+            sql,
+            &key,
+            decision,
+            crate::folder_scanner::FolderReleaseDecisionAuthor::User,
+            &grouping,
+        )
+    })
+    .await
+}
+
+include!("import_candidate_state_tests/verdicts_and_bindings.rs");
+include!("import_candidate_state_tests/folder_state.rs");
+include!("import_candidate_state_tests/superseding.rs");
+include!("import_candidate_state_tests/first_found.rs");
+include!("import_candidate_state_tests/watched_folder_removal.rs");
+include!("import_candidate_state_tests/pane_rows.rs");
+include!("import_candidate_state_tests/lookup_choices.rs");
+include!("import_candidate_state_tests/metadata_author.rs");
+include!("import_candidate_state_tests/standing_endings.rs");

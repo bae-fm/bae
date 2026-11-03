@@ -35,7 +35,7 @@ fn album_with_a_latin1_name(collection: &Path) -> (std::path::PathBuf, std::path
 async fn scanned_releases(
     f: &ImportFixture,
     collection: &Path,
-) -> Vec<bae_core::import::FolderCandidate> {
+) -> Vec<bae_import::FolderCandidate> {
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     let mut releases = Vec::new();
@@ -56,7 +56,7 @@ async fn scanned_releases(
 /// return its id once the import completes.
 #[cfg(target_os = "linux")]
 async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
-    let key = bae_core::import::CandidateKey::folder(album);
+    let key = bae_import::CandidateKey::folder(album);
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -147,14 +147,14 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
     let (album, _track) = album_with_a_latin1_name(&collection);
     let releases = scanned_releases(&f, &collection).await;
     assert_eq!(releases.len(), 1, "the scan lists the album: {releases:?}");
-    let key = bae_core::import::CandidateKey::folder(&album);
+    let key = bae_import::CandidateKey::folder(&album);
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
 
     f.library_manager.set_import_to_cloud(true).await.unwrap();
     let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let outcome = support::wait_for_import_end(&mut progress_rx).await;
-    let bae_core::import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
+    let bae_import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
     };
 
@@ -186,14 +186,14 @@ async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
 
     assert!(scanned_releases(&f, &collection).await.is_empty());
 
-    let expected = bae_core::import::InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() };
+    let expected = bae_import::InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() };
     wait_for_tab(
         &f,
         "the folder under Skipped",
-        bae_core::import::TriageTab::Skipped,
+        bae_import::TriageTab::Skipped,
         |snapshot| {
             snapshot.windows.iter().flat_map(|window| &window.items).any(|item| match item {
-                bae_core::import::ImportListItem::Invalid { candidate, .. } => {
+                bae_import::ImportListItem::Invalid { candidate, .. } => {
                     candidate.path == album
                         && candidate.reason() == expected
                         && candidate.files.len() == 2

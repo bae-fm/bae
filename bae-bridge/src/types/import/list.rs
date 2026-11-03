@@ -1,7 +1,7 @@
 //! The import tab's list as it crosses: one window of items at a time, plus
 //! the chrome around them.
 //!
-//! Mirrors `bae_core::import::list` field for field and decides nothing. Which
+//! Mirrors `bae_import::list` field for field and decides nothing. Which
 //! items exist, in what order, under which header and in which tab is core's;
 //! a UI iterates a window and formats it for its locale.
 
@@ -29,7 +29,7 @@ pub struct BridgeImportListView {
 }
 
 /// One entry of Found's filter menu: which of Found's rows the list shows.
-/// Mirrors `bae_core::import::PendingFilter`.
+/// Mirrors `bae_import::PendingFilter`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgePendingFilter {
     /// Every row.
@@ -46,7 +46,7 @@ pub enum BridgePendingFilter {
 
 /// One entry of Found's filter menu and how many of Found's rows it holds, as
 /// the snapshot carrying it was joined. An entry holding none cannot be chosen; one
-/// already chosen stays chosen. Mirrors `bae_core::import::PendingFilterEntry`.
+/// already chosen stays chosen. Mirrors `bae_import::PendingFilterEntry`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePendingFilterEntry {
     pub filter: BridgePendingFilter,
@@ -127,7 +127,7 @@ pub struct BridgeImportQueueSummary {
 }
 
 /// What a view narrows its rows by. Mirrors
-/// `bae_core::import::ImportListNarrowing`.
+/// `bae_import::ImportListNarrowing`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportListNarrowing {
     pub tab: BridgeTriageTab,
@@ -136,7 +136,7 @@ pub struct BridgeImportListNarrowing {
 }
 
 /// How many of a tab's entries a narrowed list shows, of how many it has.
-/// Mirrors `bae_core::import::NarrowedCount`.
+/// Mirrors `bae_import::NarrowedCount`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeNarrowedCount {
     pub shown: u32,
@@ -144,7 +144,7 @@ pub struct BridgeNarrowedCount {
 }
 
 /// How far the identifications and imports in flight have got, whoever
-/// started them. Mirrors `bae_core::import::ImportCounts`.
+/// started them. Mirrors `bae_import::ImportCounts`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportCounts {
     /// How many identifications of the batch in flight have ended, of
@@ -157,7 +157,7 @@ pub struct BridgeImportCounts {
 }
 
 /// Where each watched folder's scan stands. Mirrors
-/// `bae_core::import::FolderScanProgress`.
+/// `bae_import::FolderScanProgress`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderScans {
     /// Every scanned root, in watched-folder order.
@@ -315,7 +315,7 @@ pub enum BridgeCandidatePanePlacement {
 }
 
 /// Which surface the pane's metadata slot shows. Mirrors
-/// `bae_core::import::MetadataPresentation`.
+/// `bae_import::MetadataPresentation`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMetadataPresentation {
     Draft,
@@ -323,7 +323,7 @@ pub enum BridgeMetadataPresentation {
 }
 
 /// Which section of the Find online page is open. Mirrors
-/// `bae_core::import::FindOnlineSection`.
+/// `bae_import::FindOnlineSection`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeFindOnlineSection {
     Automatic,
@@ -333,7 +333,7 @@ pub enum BridgeFindOnlineSection {
 /// A move of the pane the person asks for. Identification's results are asked
 /// for through `identify_automatically`; the moves core makes on its own —
 /// an admission, a settled pick, a person's pick landing — are core's. Mirrors
-/// the person's `bae_core::import::PaneMove`s.
+/// the person's `bae_import::PaneMove`s.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePaneMove {
     /// The typed search.
@@ -347,7 +347,7 @@ pub enum BridgePaneMove {
 }
 
 /// Which query the typed-search form is asking. Mirrors
-/// `bae_core::import::SearchTab`.
+/// `bae_import::SearchTab`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSearchTab {
     General,
@@ -356,7 +356,7 @@ pub enum BridgeSearchTab {
 }
 
 /// The typed-search form as the person left it. Mirrors
-/// `bae_core::import::SearchForm`.
+/// `bae_import::SearchForm`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSearchForm {
     pub tab: BridgeSearchTab,
@@ -367,7 +367,7 @@ pub struct BridgeSearchForm {
 }
 
 /// The pane's per-candidate state between visits. Mirrors
-/// `bae_core::import::CandidateSession`.
+/// `bae_import::CandidateSession`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateSession {
     pub presentation: BridgeMetadataPresentation,
@@ -379,7 +379,7 @@ pub struct BridgeCandidateSession {
 }
 
 /// A command the pane runs for its candidate whose failure the pane states.
-/// Mirrors `bae_core::import::PaneCommand`.
+/// Mirrors `bae_import::PaneCommand`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePaneCommand {
     Import,
@@ -399,7 +399,7 @@ pub enum BridgePaneCommand {
 }
 
 /// The pane's last command, which failed, and why. Mirrors
-/// `bae_core::import::PaneFailure`.
+/// `bae_import::PaneFailure`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePaneFailure {
     pub command: BridgePaneCommand,
@@ -407,7 +407,7 @@ pub struct BridgePaneFailure {
 }
 
 /// What a pane command came to: it ran, or it failed and the pane states why.
-/// Mirrors `bae_core::import::PaneOutcome`.
+/// Mirrors `bae_import::PaneOutcome`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePaneOutcome {
     Done,
@@ -416,7 +416,7 @@ pub enum BridgePaneOutcome {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgePaneCommand = bae_core::import::PaneCommand,
+    BridgePaneCommand = bae_import::PaneCommand,
     from_core: pub(crate) fn,
     variants: {
         Import,
@@ -434,14 +434,14 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgePaneOutcome = bae_core::import::PaneOutcome,
+    BridgePaneOutcome = bae_import::PaneOutcome,
     from_core: pub(crate) fn,
     variants: { Done, Failed },
 }
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgePaneFailure = bae_core::import::PaneFailure,
+    BridgePaneFailure = bae_import::PaneFailure,
     from_core: pub(crate) fn,
     fields: {
         command: (BridgePaneCommand),
@@ -451,14 +451,14 @@ mirror_struct! {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeMetadataPresentation = bae_core::import::MetadataPresentation,
+    BridgeMetadataPresentation = bae_import::MetadataPresentation,
     from_core: pub(crate) fn,
     variants: { Draft, FindOnline },
 }
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeFindOnlineSection = bae_core::import::FindOnlineSection,
+    BridgeFindOnlineSection = bae_import::FindOnlineSection,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Automatic, Search },
@@ -466,7 +466,7 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgePaneMove = bae_core::import::PaneMove,
+    BridgePaneMove = bae_import::PaneMove,
     into_core: pub(crate) fn,
     variants: {
         Search,
@@ -478,7 +478,7 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeSearchTab = bae_core::import::SearchTab,
+    BridgeSearchTab = bae_import::SearchTab,
     from_core: fn,
     into_core: fn,
     variants: { General, CatalogNumber, Barcode },
@@ -486,7 +486,7 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeSearchForm = bae_core::import::SearchForm,
+    BridgeSearchForm = bae_import::SearchForm,
     from_core: fn,
     into_core: pub(crate) fn,
     fields: { tab: (BridgeSearchTab), artist, album, catalog, barcode },
@@ -494,7 +494,7 @@ mirror_struct! {
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeCandidateSession = bae_core::import::CandidateSession,
+    BridgeCandidateSession = bae_import::CandidateSession,
     from_core: pub(crate) fn,
     fields: {
         presentation: (BridgeMetadataPresentation),
@@ -555,7 +555,7 @@ pub enum BridgeLabelIdentityConflictChoice {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeLabelIdentityConflictChoice = bae_core::import::LabelIdentityConflictChoice,
+    BridgeLabelIdentityConflictChoice = bae_import::LabelIdentityConflictChoice,
     into_core: pub(crate) fn,
     variants: { SameLabel, DiscogsLabel, MusicBrainzLabel, Neither, ChangeMatch },
 }
@@ -581,7 +581,7 @@ pub enum BridgeArtistIdentityConflictChoice {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeArtistIdentityConflictChoice = bae_core::import::ArtistIdentityConflictChoice,
+    BridgeArtistIdentityConflictChoice = bae_import::ArtistIdentityConflictChoice,
     into_core: pub(crate) fn,
     variants: { SameArtist, DiscogsArtist, MusicBrainzArtist, Neither, ChangeMatch },
 }

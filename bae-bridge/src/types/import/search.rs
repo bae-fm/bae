@@ -173,7 +173,7 @@ pub struct BridgePressing {
 }
 
 /// One provider's part of a candidate's manual search. Mirrors
-/// `bae_core::import::SourceSearch`; the results themselves reach a surface
+/// `bae_import::SourceSearch`; the results themselves reach a surface
 /// through the search's `groups`, so a source reports only how many it found.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceSearch {
@@ -198,8 +198,8 @@ pub enum BridgeSourceSearch {
 
 #[cfg(feature = "desktop")]
 impl BridgeSourceSearch {
-    fn from_core(search: bae_core::import::SourceSearch) -> Self {
-        use bae_core::import::SourceSearch;
+    fn from_core(search: bae_import::SourceSearch) -> Self {
+        use bae_import::SourceSearch;
         match search {
             SourceSearch::Off => Self::Off,
             SourceSearch::NotConfigured => Self::NotConfigured,
@@ -216,7 +216,7 @@ impl BridgeSourceSearch {
 }
 
 /// Where a candidate's typed search stands as a whole — the one glyph a
-/// surface heads it with. Mirrors `bae_core::import::SearchStatus`; crossed
+/// surface heads it with. Mirrors `bae_import::SearchStatus`; crossed
 /// rather than folded per surface, so "still searching" means one thing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSearchStatus {
@@ -234,8 +234,8 @@ pub enum BridgeSearchStatus {
 
 #[cfg(feature = "desktop")]
 impl BridgeSearchStatus {
-    fn from_core(status: bae_core::import::SearchStatus) -> Self {
-        use bae_core::import::SearchStatus;
+    fn from_core(status: bae_import::SearchStatus) -> Self {
+        use bae_import::SearchStatus;
         match status {
             SearchStatus::Searching => Self::Searching,
             SearchStatus::Found => Self::Found,
@@ -254,7 +254,7 @@ pub struct BridgeSourceSearchEntry {
 }
 
 /// A candidate's typed search as its sources land. Mirrors
-/// `bae_core::import::CandidateSearch`.
+/// `bae_import::CandidateSearch`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateSearch {
     /// What was asked — the line the result area heads itself with.
@@ -273,11 +273,11 @@ pub struct BridgeCandidateSearch {
 
 #[cfg(feature = "desktop")]
 impl BridgeCandidateSearch {
-    pub(crate) fn from_core(search: bae_core::import::CandidateSearch) -> Self {
+    pub(crate) fn from_core(search: bae_import::CandidateSearch) -> Self {
         let status = BridgeSearchStatus::from_core(search.status());
         let unusable_barcode =
             search.query.unusable_barcode().map(BridgeUnusableBarcode::from_core);
-        let bae_core::import::CandidateSearch {
+        let bae_import::CandidateSearch {
             query,
             sources,
             groups,

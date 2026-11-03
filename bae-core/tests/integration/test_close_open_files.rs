@@ -9,7 +9,7 @@ use std::time::Duration;
 
 /// Copy the three fixture tracks into `dir`.
 fn write_tracks(dir: &std::path::Path) {
-    let fixtures = support::fixture_dir!("flac");
+    let fixtures = bae_import::test_fixtures::flac_dir();
     for name in ["01 Test Track 1.flac", "02 Test Track 2.flac", "03 Test Track 3.flac"] {
         std::fs::copy(fixtures.join(name), dir.join(name)).expect("copy a fixture track");
     }

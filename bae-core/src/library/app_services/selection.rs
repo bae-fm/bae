@@ -1,17 +1,17 @@
 //! Acting on the import list's selection on [`AppServices`]. The list
 //! subscription owns the selection
-//! ([`LiveImportList`](crate::import::LiveImportList)) and
+//! ([`LiveImportList`](bae_import::LiveImportList)) and
 //! hands its selected rows here, in the order the list shows them.
 
 use super::*;
-use crate::import::selection::SelectedRows;
-use crate::import::triage::{keys_for, CandidateAction};
-use crate::import::ImportError;
+use bae_import::selection::SelectedRows;
+use bae_import::triage::{keys_for, CandidateAction};
+use bae_import::ImportError;
 
 /// One selected candidate a bulk action could not run on, and why.
 #[derive(Debug)]
 pub struct SelectionActionFailure {
-    pub candidate_key: crate::import::CandidateKey,
+    pub candidate_key: bae_import::CandidateKey,
     pub name: String,
     pub error: ImportError,
 }
@@ -34,7 +34,7 @@ impl AppServices {
     pub async fn combine_import_selection(
         &self,
         selected: &SelectedRows,
-    ) -> Result<crate::import::CandidateKey, ImportError> {
+    ) -> Result<bae_import::CandidateKey, ImportError> {
         self.import_combine_candidates(
             selected.candidates.iter().map(|candidate| candidate.candidate_key.clone()).collect(),
         )
@@ -47,7 +47,7 @@ impl AppServices {
     pub async fn separate_import_selection(
         &self,
         selected: &SelectedRows,
-    ) -> Result<Vec<crate::import::CandidateKey>, ImportError> {
+    ) -> Result<Vec<bae_import::CandidateKey>, ImportError> {
         match (selected.candidates.as_slice(), selected.invalid.as_slice()) {
             ([only], []) => self.import_separate_candidate(&only.candidate_key).await,
             _ => Err(ImportError::Internal {
@@ -72,10 +72,10 @@ impl AppServices {
         progress: impl Fn(u64, u64),
     ) -> Result<Vec<SelectionActionFailure>, ImportError> {
         let selected = &selected.candidates;
-        let members = crate::import::selection::members(selected);
+        let members = bae_import::selection::members(selected);
         let keys = keys_for(&members, action);
         let total = keys.len() as u64;
-        let name_of = |key: &crate::import::CandidateKey| {
+        let name_of = |key: &bae_import::CandidateKey| {
             selected
                 .iter()
                 .find(|candidate| &candidate.candidate_key == key)
@@ -107,7 +107,7 @@ impl AppServices {
     async fn run_on_candidate(
         &self,
         action: CandidateAction,
-        key: &crate::import::CandidateKey,
+        key: &bae_import::CandidateKey,
     ) -> Result<(), ImportError> {
         match action {
             CandidateAction::Import => self.import_selected(key).await.map(|_| ()),

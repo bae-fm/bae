@@ -47,12 +47,12 @@ impl BridgeCatalogApply {
 /// show the apply. An apply nobody reads writes nothing.
 pub(crate) fn catalog_apply_steps(
     apply: Option<&BridgeCatalogApply>,
-) -> bae_core::import::CatalogApplySteps {
+) -> bae_import::CatalogApplySteps {
     let Some(values) = apply.and_then(|apply| apply.steps.lock().unwrap().clone()) else {
-        return bae_core::import::CatalogApplySteps::unread();
+        return bae_import::CatalogApplySteps::unread();
     };
     let writer = StreamWriter::new(values);
-    bae_core::import::CatalogApplySteps::new(move |step| match step {
+    bae_import::CatalogApplySteps::new(move |step| match step {
         Some(step) => writer.set(
             String::new(),
             BridgeFastValue::CatalogApplyStep { step: BridgeCatalogApplyStep::from_core(step) },

@@ -6,7 +6,7 @@
 //! tags, and the import is asked for.
 
 use crate::app::test_library::TestLibrary;
-use crate::import::{CandidateKey, ImportEvent, ImportServiceHandle};
+use bae_import::{CandidateKey, ImportEvent, ImportServiceHandle};
 use bae_util::test_channels::HANG_GUARD;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -56,7 +56,7 @@ impl ImportingLibrary {
         let root = self.temp.path().join(root);
         let folder = root.join(name);
         std::fs::create_dir_all(&folder).unwrap();
-        let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac");
+        let fixtures = bae_import::test_fixtures::flac_dir();
         for (index, fixture) in ["01 Test Track 1.flac", "02 Test Track 2.flac"].iter().enumerate()
         {
             let path = folder.join(format!("{:02} Track.flac", index + 1));
@@ -79,9 +79,7 @@ impl ImportingLibrary {
         self.import
             .set_candidate_album_artists(
                 &key,
-                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
-                    artist,
-                ))],
+                vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named(artist))],
             )
             .await
             .unwrap();
@@ -96,12 +94,12 @@ impl ImportingLibrary {
     }
 
     /// One candidate as the pane reads it.
-    async fn pane(&self, key: &CandidateKey) -> crate::import::ImportCandidateDetail {
+    async fn pane(&self, key: &CandidateKey) -> bae_import::ImportCandidateDetail {
         self.import.load_candidate(key).await.unwrap().expect("the candidate reads back")
     }
 
     /// The release editor's copy of `release_id`, as it opens.
-    async fn release_edit(&self, release_id: &str) -> crate::import::ReleaseEditSeed {
+    async fn release_edit(&self, release_id: &str) -> bae_import::ReleaseEditSeed {
         self.library.open_release_edit(release_id).await.unwrap().opened().clone()
     }
 
@@ -144,12 +142,12 @@ async fn import_outcome(
             continue;
         };
         match progress {
-            crate::import::ImportProgress::Complete { import_id: completed, id, album_id }
+            bae_import::ImportProgress::Complete { import_id: completed, id, album_id }
                 if completed == import_id =>
             {
                 return Ok((id, album_id))
             }
-            crate::import::ImportProgress::Failed { import_id: failed, error }
+            bae_import::ImportProgress::Failed { import_id: failed, error }
                 if failed == import_id =>
             {
                 return Err(error)
@@ -174,7 +172,7 @@ async fn import_outcome(
 struct HeldImport<'a>(&'a ImportServiceHandle);
 
 impl<'a> HeldImport<'a> {
-    fn at(import: &'a ImportServiceHandle, phase: crate::import::ImportPhase) -> Self {
+    fn at(import: &'a ImportServiceHandle, phase: bae_import::ImportPhase) -> Self {
         import.hold_progress_at(phase);
         Self(import)
     }
@@ -224,7 +222,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     let (_, shown_album) = fixture.import(&shown_key).await.expect("the shown album imports");
 
     let mut events = fixture.import.every_event();
-    let held = HeldImport::at(&fixture.import, crate::import::ImportPhase::MeasuringLoudness);
+    let held = HeldImport::at(&fixture.import, bae_import::ImportPhase::MeasuringLoudness);
     let importing = fixture.import.start_import(&importing_key).await.unwrap().expect_queued();
     tokio::time::timeout(HANG_GUARD, fixture.import.progress_held())
         .await
@@ -308,8 +306,8 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .import
         .set_candidate_edit_field(
             &key,
-            crate::import::DraftFieldEdit::Text {
-                field: crate::import::CandidateEditField::AlbumTitle,
+            bae_import::DraftFieldEdit::Text {
+                field: bae_import::CandidateEditField::AlbumTitle,
                 value: "Collected Volumes".into(),
             },
         )
@@ -319,7 +317,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .import
         .set_candidate_album_artists(
             &key,
-            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Combined Artist",
             ))],
         )
@@ -389,15 +387,15 @@ async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
         .import
         .set_candidate_edit_field(
             &key,
-            crate::import::DraftFieldEdit::Text {
-                field: crate::import::CandidateEditField::AlbumTitle,
+            bae_import::DraftFieldEdit::Text {
+                field: bae_import::CandidateEditField::AlbumTitle,
                 value: "Edited candidate".into(),
             },
         )
         .await;
     assert_eq!(
         refused.map_err(|error| error.to_string()),
-        Err(crate::import::ImportError::FilesAlreadyImported { release_id: release_id.clone() }
+        Err(bae_import::ImportError::FilesAlreadyImported { release_id: release_id.clone() }
             .to_string())
     );
     assert_eq!(fixture.release_edit(&release_id).await, release_before);
@@ -464,7 +462,7 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
                 ),
                 partners: vec![],
             },
-            crate::import::CatalogApplySteps::unread(),
+            bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();

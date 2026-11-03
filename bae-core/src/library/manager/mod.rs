@@ -128,7 +128,7 @@ pub enum LibraryError {
     /// (another number of tracks, discs that fit alike) rather than a
     /// generic line.
     #[error(transparent)]
-    Import(Box<crate::import::ImportError>),
+    Import(Box<bae_import::ImportError>),
     /// An operation on a release, an album, an artist or an import
     /// candidate could not go ahead as asked — what it names is not in the
     /// library, the candidate moved under it, an input is blank — with why
@@ -149,9 +149,9 @@ pub enum LibraryError {
     /// title, no album artist). The editor's typed error, so every surface reports
     /// the same rule rather than its own hand-written sentence.
     #[error(transparent)]
-    Edit(#[from] crate::import::EditValidationError),
+    Edit(#[from] bae_import::EditValidationError),
     #[error("Release editor cannot load: {0}")]
-    ReleaseEditLoad(#[from] crate::import::ReleaseEditLoadError),
+    ReleaseEditLoad(#[from] bae_import::ReleaseEditLoadError),
     /// A release edit session's save found the release changed since the
     /// session opened on it, and wrote nothing.
     #[error("Release '{release_id}' changed since its edit session opened")]
@@ -346,11 +346,11 @@ impl LibraryError {
 /// A catalog session that could not be had failed on the library's own
 /// store: its preferences or its keyring.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl From<crate::import::CatalogSessionError> for LibraryError {
-    fn from(error: crate::import::CatalogSessionError) -> Self {
+impl From<bae_import::CatalogSessionError> for LibraryError {
+    fn from(error: bae_import::CatalogSessionError) -> Self {
         match error {
-            crate::import::CatalogSessionError::Preferences(error) => Self::Database(error),
-            crate::import::CatalogSessionError::Keyring(error) => Self::Keyring(error),
+            bae_import::CatalogSessionError::Preferences(error) => Self::Database(error),
+            bae_import::CatalogSessionError::Keyring(error) => Self::Keyring(error),
         }
     }
 }
@@ -364,11 +364,11 @@ impl From<TaskFailed> for LibraryError {
 /// Library operations that run import steps (a release editor's catalog
 /// apply, a cover download) report the import error itself; a store failure
 /// import met is the library's store failure.
-impl From<crate::import::ImportError> for LibraryError {
-    fn from(error: crate::import::ImportError) -> Self {
+impl From<bae_import::ImportError> for LibraryError {
+    fn from(error: bae_import::ImportError) -> Self {
         match error {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            crate::import::ImportError::Database(error) => LibraryError::Database(error),
+            bae_import::ImportError::Database(error) => LibraryError::Database(error),
             other => LibraryError::Import(Box::new(other)),
         }
     }
@@ -499,7 +499,7 @@ pub struct LibraryManager {
     /// The catalogs as this library may ask them, which import's services
     /// hold too.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    catalogs: crate::import::CatalogSessions,
+    catalogs: bae_import::CatalogSessions,
     /// Held by every edit session's save and every field edit of a release,
     /// so a save compares the release with what its session opened on and
     /// writes with no other of them on this device between the two.

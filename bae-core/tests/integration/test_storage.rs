@@ -1,7 +1,7 @@
 //! Where an import keeps its files, and what deleting a release leaves.
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_core::import::{CoverSelection, ImportCommand};
 use bae_db::LibraryImageType;
+use bae_import::{CoverSelection, ImportCommand};
 use bae_test_support as support;
 use bae_util::content_type::ContentType;
 use std::fs;
@@ -338,7 +338,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
 }
 
 fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
-    let fixture_path = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
+    let fixture_path = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let flac_template = bae_test_support::read_fixture(&fixture_path);
     let files = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"];
     let bae_dir = dir.join(".bae");

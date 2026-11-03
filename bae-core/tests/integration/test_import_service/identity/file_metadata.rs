@@ -69,7 +69,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     fs::create_dir_all(&album_dir).unwrap();
     copy_cue_flac_fixture(&album_dir);
 
-    let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
+    let candidate_key = bae_import::CandidateKey::folder(&album_dir);
     f.handle.add_watched_folder(album_dir.to_path_buf()).await.unwrap();
     f.handle.refresh_watched_folder(album_dir.to_path_buf()).await.unwrap();
     // The draft the folder's own tags seeded at discovery — what the pane
@@ -88,7 +88,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert_eq!(draft.album_title, "Test Album");
     assert_eq!(
         draft.album_artist_assignments,
-        bae_core::import::Credited::plain_list(vec![file_tag_artist_assignment("Test Artist")])
+        bae_import::Credited::plain_list(vec![file_tag_artist_assignment("Test Artist")])
     );
     assert_eq!(draft.pressing.year, "");
     assert!(draft.pressing.facts.is_empty());
@@ -107,7 +107,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: bae_core::import::CandidateKey::from_bytes(b"cue".to_vec()),
+            candidate_key: bae_import::CandidateKey::from_bytes(b"cue".to_vec()),
             ..support::folder_import(&import_id, album_dir, support::DraftSource::FileTags)
         })
         .await
@@ -131,7 +131,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert!(album_detail.artists.iter().all(|artist| artist.artist.sort_name.is_none()));
     assert_eq!(
         draft.album_artist_assignments,
-        bae_core::import::Credited::plain_list(committed_album_artist_assignments)
+        bae_import::Credited::plain_list(committed_album_artist_assignments)
     );
 
     let release_detail =
@@ -154,7 +154,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
                             .artists
                             .iter()
                             .map(|artist| {
-                                bae_core::import::Credited::plain(file_tag_artist_assignment(
+                                bae_import::Credited::plain(file_tag_artist_assignment(
                                     &artist.artist.name,
                                 ))
                             })
@@ -284,7 +284,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: bae_core::import::CandidateKey::from_bytes(b"identified".to_vec()),
+            candidate_key: bae_import::CandidateKey::from_bytes(b"identified".to_vec()),
             ..support::folder_import(
                 &import_id,
                 identified_dir,
@@ -311,7 +311,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     let import_id2 = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: bae_core::import::CandidateKey::from_bytes(b"file-tags".to_vec()),
+            candidate_key: bae_import::CandidateKey::from_bytes(b"file-tags".to_vec()),
             ..support::folder_import(&import_id2, file_tags_dir, support::DraftSource::FileTags)
         })
         .await
@@ -346,7 +346,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named(
+        album_artist_assignments: vec![bae_import::Credited::plain(ArtistAssignment::named(
             "Artist Edited",
         ))],
         album_year: Some(1998),
@@ -371,7 +371,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
         tracks: vec![TrackUserEdit {
             title: "Edited Track Title".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: Some(bae_core::import::AudioFile::Standalone { file_id: "01.flac".into() }),
+            file: Some(bae_import::AudioFile::Standalone { file_id: "01.flac".into() }),
         }],
     };
 
@@ -433,7 +433,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     // for the projection to read, so the folder name is the album title.
     generate_album_files(&album_dir, &["01.flac", "02.flac"]);
 
-    let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
+    let candidate_key = bae_import::CandidateKey::folder(&album_dir);
     f.handle.add_watched_folder(album_dir.to_path_buf()).await.unwrap();
     f.handle.refresh_watched_folder(album_dir.to_path_buf()).await.unwrap();
     f.handle.select_candidate_file_tags(candidate_key.clone()).await.unwrap();
@@ -449,7 +449,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     f.handle
         .set_candidate_album_artists(
             &candidate_key,
-            vec![bae_core::import::Credited::plain(file_tag_artist_assignment("Artist Name"))],
+            vec![bae_import::Credited::plain(file_tag_artist_assignment("Artist Name"))],
         )
         .await
         .unwrap();

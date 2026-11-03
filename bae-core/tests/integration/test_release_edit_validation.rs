@@ -7,9 +7,9 @@
 //! `LibraryManager::apply_release_metadata_user_edit`. These tests drive that
 //! write path the way those surfaces do, with no editor in front of it.
 
-use bae_core::import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
 use bae_core::library::LibraryError;
 use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -66,7 +66,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
         album_title: album_title.to_string(),
         album_artist_assignments: album_artist_seed_names
             .iter()
-            .map(|name| bae_core::import::Credited::plain(ArtistAssignment::named(*name)))
+            .map(|name| bae_import::Credited::plain(ArtistAssignment::named(*name)))
             .collect(),
         album_year: None,
         pressing: bae_types::pressing::Pressing::blank(),

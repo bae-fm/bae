@@ -1,0 +1,672 @@
+use super::*;
+use crate::folder_scanner::ScannedFile;
+use crate::import_cancel::ImportStop;
+use bae_db::watched_path::host_root;
+use bae_db::Database;
+use bae_util::test_channels::HANG_GUARD;
+use coven::FixedClock;
+use coven::SequentialIds;
+use std::sync::Mutex;
+use std::time::Duration;
+use tempfile::TempDir;
+
+/// A `/`-spelled watched root in the host's spelling, since a watched root must
+/// be absolute by the OS's own rule.
+fn root_path(posix: &str) -> PathBuf {
+    host_root(posix)
+}
+
+/// A worker for a test, with the candidate-preparations writer over the same
+/// database.
+struct TestService {
+    service: ImportService,
+    preparations: crate::CandidatePreparations,
+    /// The library the service imports into, for a test that reads or seeds
+    /// rows no call reads or writes on its own.
+    database: Database,
+    temp: TempDir,
+}
+
+async fn setup_import_service() -> TestService {
+    let temp_dir = TempDir::new().unwrap();
+    let db_path = temp_dir.path().join("test.db");
+    let database =
+        Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
+
+    let preparations = crate::CandidatePreparations::new(database.clone());
+    // The runtime writes its standings into the library the import commits
+    // into.
+    let tables = crate::tables::ImportTables::new(database.clone());
+    let runtime =
+        crate::CandidateRuntime::new(tables.clone(), bae_diagnostics::Diagnostics::noop());
+    let catalogs = crate::CatalogSessions::new(
+        bae_catalogs::providers::Providers::offline(),
+        database.clone(),
+        bae_diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
+    let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
+    let event_tx = crate::ImportEventBus::new(runtime.clone());
+    TestService {
+        service: ImportService {
+            commands_rx,
+            event_tx,
+            runtime,
+            database: database.clone(),
+            tables,
+            catalogs,
+            remote_images: crate::RemoteImages::new(
+                bae_catalogs::remote_image::RemoteImageCache::for_test(
+                    bae_util::http::Http::for_test(),
+                ),
+                bae_diagnostics::Diagnostics::noop(),
+            ),
+            clock: Arc::new(coven::SystemClock),
+            ids: Arc::new(coven::UuidIds),
+            import_cancels: Default::default(),
+            diagnostics: bae_diagnostics::Diagnostics::noop(),
+        },
+        preparations,
+        database,
+        temp: temp_dir,
+    }
+}
+
+impl ImportService {
+    /// Queue `import_id` of the candidate at `key` as asking for an import
+    /// does — its claim on the candidate and its cancel — for a test that runs
+    /// the worker's steps itself.
+    async fn queue_import_for_test(&self, key: &crate::CandidateKey, import_id: &str) {
+        self.runtime
+            .claim_for_import(key, import_id, false)
+            .await
+            .expect("a test queues an import of a candidate no import owns");
+        self.import_cancels.register(key, import_id);
+    }
+}
+
+async fn prepare_named_candidate(
+    service: &ImportService,
+    preparations: &crate::CandidatePreparations,
+    content_hash: &str,
+    watched_folder_path: &std::path::Path,
+    candidate_path: &crate::CandidateKey,
+    album_title: &str,
+) -> u64 {
+    let preparation = crate::preparation::import_preparation(&service.tables, content_hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate has its initial preparation");
+    let mut draft = preparation.draft;
+    draft.album_title = album_title.to_string();
+    draft.album_artist_assignments =
+        vec![crate::Credited::plain(crate::ArtistAssignment::named("Artist Name"))];
+    preparations
+        .apply_source(
+            watched_folder_path,
+            &crate::CandidateAsRead {
+                content_hash: content_hash.to_string(),
+                file_edit_revision: preparation.file_edit_revision,
+                metadata_revision: preparation.metadata_revision,
+            },
+            candidate_path,
+            &crate::CandidateMetadataDraft {
+                draft,
+                provenance: preparation.metadata_provenance,
+                cover: preparation.cover,
+                assets: preparation.assets,
+            },
+        )
+        .await
+        .unwrap()
+}
+
+/// Store `folder` as a scanned candidate of its own watched root with a named
+/// draft, returning its candidate key and what an import of it is queued
+/// against: its revisions and the tag reading the scan stored.
+async fn store_scanned_candidate(
+    test: &TestService,
+    folder: &Path,
+    name: &str,
+) -> (crate::CandidateKey, super::ImportExpectation) {
+    let service = &test.service;
+    let tables = &test.service.tables;
+    let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        folder,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let content_hash = files.content_hash();
+    let candidate_key = crate::CandidateKey::folder(folder);
+    tables.add_watched_import_folder(folder).await.unwrap();
+    let generation = tables.begin_folder_scan(folder, crate::VolumeKind::Local).await.unwrap();
+    crate::store_scan_item(
+        tables,
+        &bae_diagnostics::Diagnostics::noop(),
+        folder,
+        generation,
+        &ScanItem::Valid(crate::folder_scanner::FolderCandidate {
+            path: folder.to_path_buf(),
+            file_root: folder.to_path_buf(),
+            name: name.to_string(),
+            files,
+            watched_folder_path: folder.to_path_buf(),
+            scope: crate::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            relative_folder: bae_db::RelativeFolder::test(name),
+            grouping: None,
+        }),
+    )
+    .await
+    .unwrap()
+    .expect("the stored scan generation is current");
+    tables.finish_folder_scan(folder, generation, None).await.unwrap();
+    let metadata_revision = prepare_named_candidate(
+        service,
+        &test.preparations,
+        &content_hash,
+        folder,
+        &candidate_key,
+        name,
+    )
+    .await;
+    let file_tag_snapshot = tables
+        .load_candidate_file_tag_snapshot(folder, &candidate_key)
+        .await
+        .unwrap()
+        .expect("the candidate is stored")
+        .snapshot;
+    (
+        candidate_key,
+        super::ImportExpectation {
+            candidate: crate::CandidateAsRead {
+                content_hash,
+                file_edit_revision: 0,
+                metadata_revision,
+            },
+            file_tag_snapshot,
+        },
+    )
+}
+
+#[derive(Clone)]
+struct FakeScanStarter {
+    scans: Arc<Mutex<Vec<FakeStartedScan>>>,
+    started: Arc<tokio::sync::Notify>,
+    /// Taken by every start before anything else: while a test holds it, a
+    /// coordinator starting a pass waits there, taking nothing else.
+    start_gate: Arc<Mutex<()>>,
+}
+
+struct FakeStartedScan {
+    path: PathBuf,
+    /// The folder decision this pass stores, with the caller it answers.
+    reading: Option<FolderReadingRequest>,
+    /// The folders this pass reads again because they changed on disk.
+    folders: Option<std::collections::BTreeSet<std::ffi::OsString>>,
+    cancellation: crate::folder_scanner::ScanCancellation,
+    /// Ends the pass's task, then tells the coordinator the pass is over.
+    completion: Option<(
+        tokio::sync::oneshot::Sender<()>,
+        tokio::sync::mpsc::UnboundedSender<RootScanCompletion>,
+        RootScanCompletion,
+    )>,
+}
+
+impl FakeScanStarter {
+    fn new() -> (Self, RootScanStarter) {
+        let fake = Self {
+            scans: Arc::new(Mutex::new(Vec::new())),
+            started: Arc::new(tokio::sync::Notify::new()),
+            start_gate: Arc::new(Mutex::new(())),
+        };
+        let captured = fake.clone();
+        let starter: RootScanStarter = Arc::new(move |id, path, pass, completion| {
+            drop(captured.start_gate.lock().unwrap());
+            let cancellation = crate::folder_scanner::ScanCancellation::new();
+            let (finish, finished) = tokio::sync::oneshot::channel();
+            let started_path = path.clone();
+            // The pass ends when it is finished, or when its finish is
+            // dropped unsent: it ended without telling the coordinator.
+            let task = bae_diagnostics::Diagnostics::noop().spawn_reported(
+                &tokio::runtime::Handle::current(),
+                "a fake pass",
+                async move {
+                    #[expect(
+                        clippy::let_underscore_must_use,
+                        reason = "a finish dropped unsent ends the pass as one sent does"
+                    )]
+                    let _ = finished.await;
+                },
+                |_| {},
+            );
+            let (reading, folders) = match pass {
+                RootPass::WholeRoot => (None, None),
+                RootPass::Decision(request) => (Some(request), None),
+                RootPass::Folders(folders) => (None, Some(folders)),
+            };
+            captured.scans.lock().unwrap().push(FakeStartedScan {
+                path: started_path,
+                reading,
+                folders,
+                cancellation: cancellation.clone(),
+                completion: Some((finish, completion, RootScanCompletion { id, path })),
+            });
+            captured.started.notify_one();
+            RootScanTask { cancellation, task }
+        });
+        (fake, starter)
+    }
+
+    /// Hold every pass start until the guard drops.
+    fn hold_starts(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.start_gate.lock().unwrap()
+    }
+
+    async fn wait_for_count(&self, count: usize) {
+        while self.scans.lock().unwrap().len() < count {
+            tokio::time::timeout(HANG_GUARD, self.started.notified())
+                .await
+                .expect("scan coordinator did not start the expected scan");
+        }
+    }
+
+    /// End the scan at `index`, telling a folder decision's caller it was
+    /// stored.
+    ///
+    /// The pass's end is queued to the coordinator before this returns, but
+    /// from this thread, so it is not ordered against commands or watch
+    /// reports sent before or after it: the coordinator checks its channels
+    /// one after another, and the end can arrive after it found the others
+    /// empty. A test that needs its commands taken first waits for them with
+    /// [`CoordinatorHarness::commands_handled`].
+    fn complete(&self, index: usize) {
+        if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
+            reading.answer(Ok(Vec::new()));
+        }
+        let (finish, completions, completion) = self.scans.lock().unwrap()[index]
+            .completion
+            .take()
+            .expect("fake scan has not completed");
+        finish.send(()).expect("the fake scan's task is still running");
+        completions.send(completion).expect("coordinator still receives completions");
+    }
+
+    /// The folder decision the pass at `index` stores, if it is one.
+    fn reading(
+        &self,
+        index: usize,
+    ) -> Option<(crate::FolderReleaseDecisionKey, crate::FolderReleaseDecision)> {
+        self.scans.lock().unwrap()[index].reading.as_ref().map(|reading| reading.target().clone())
+    }
+
+    /// The changed folders the pass at `index` reads again, if it is one.
+    fn folders(&self, index: usize) -> Option<Vec<std::ffi::OsString>> {
+        self.scans.lock().unwrap()[index]
+            .folders
+            .as_ref()
+            .map(|folders| folders.iter().cloned().collect())
+    }
+
+    fn path(&self, index: usize) -> PathBuf {
+        self.scans.lock().unwrap()[index].path.clone()
+    }
+
+    fn cancellation(&self, index: usize) -> crate::folder_scanner::ScanCancellation {
+        self.scans.lock().unwrap()[index].cancellation.clone()
+    }
+
+    /// End the pass at `index` without telling the coordinator it ended.
+    fn abort(&self, index: usize) {
+        drop(
+            self.scans.lock().unwrap()[index]
+                .completion
+                .take()
+                .expect("fake scan has not completed"),
+        );
+    }
+
+    async fn wait_for_cancellation(&self, index: usize) {
+        tokio::time::timeout(HANG_GUARD, async {
+            while !self.cancellation(index).is_cancelled() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("scan coordinator did not cancel the active scan");
+    }
+}
+
+#[derive(Default)]
+struct FakeRemovalBackend {
+    uninstall_error: Mutex<Option<String>>,
+    remove_error: Mutex<Option<String>>,
+    reinstall_error: Mutex<Option<String>>,
+    block_reinstall: std::sync::atomic::AtomicBool,
+    reinstall_started: tokio::sync::Notify,
+    release_reinstall: tokio::sync::Notify,
+    calls: Mutex<Vec<&'static str>>,
+}
+
+#[async_trait::async_trait]
+impl RootRemovalBackend for FakeRemovalBackend {
+    async fn uninstall(&self, _path: &Path) -> Result<FolderWatchSnapshot, String> {
+        self.calls.lock().unwrap().push("uninstall");
+        match self.uninstall_error.lock().unwrap().clone() {
+            Some(error) => Err(error),
+            None => Ok(FolderWatchSnapshot::default()),
+        }
+    }
+
+    async fn reinstall(&self, _path: &Path, _snapshot: &FolderWatchSnapshot) -> Result<(), String> {
+        self.calls.lock().unwrap().push("reinstall");
+        if self.block_reinstall.load(std::sync::atomic::Ordering::SeqCst) {
+            self.reinstall_started.notify_one();
+            self.release_reinstall.notified().await;
+        }
+        match self.reinstall_error.lock().unwrap().clone() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
+
+    async fn remove_durable_roots(
+        &self,
+        _roots: &[PathBuf],
+        _parent: Option<&Path>,
+    ) -> Result<Vec<crate::CandidateKey>, String> {
+        self.calls.lock().unwrap().push("remove");
+        match self.remove_error.lock().unwrap().clone() {
+            Some(error) => Err(error),
+            None => Ok(Vec::new()),
+        }
+    }
+}
+
+struct CoordinatorHarness {
+    commands: tokio::sync::mpsc::UnboundedSender<WatcherCommand>,
+    fs_events: tokio::sync::mpsc::UnboundedSender<WatchReport>,
+    scans: FakeScanStarter,
+    /// The store the coordinator reads which folders are watched from.
+    database: Database,
+    folder_state_commit: crate::FolderStateCommit,
+    removal_backend: Arc<FakeRemovalBackend>,
+    coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
+    _temp: TempDir,
+}
+
+impl CoordinatorHarness {
+    async fn new() -> Self {
+        Self::with_roots(&["/music"]).await
+    }
+
+    /// `roots` are `/`-spelled; each is registered in the host's spelling, as
+    /// [`root_path`] gives it.
+    async fn with_roots(roots: &[&str]) -> Self {
+        let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
+        let TestService { service, preparations, database, temp } = setup_import_service().await;
+        let tables = service.tables.clone();
+        for root in &roots {
+            tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
+        }
+        let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (fs_events, fs_rx) = tokio::sync::mpsc::unbounded_channel();
+        if let Some(root) = roots.first() {
+            let root_path = PathBuf::from(root);
+            let generation = tables
+                .begin_folder_scan(std::path::Path::new(root), crate::VolumeKind::Local)
+                .await
+                .unwrap();
+            crate::store_scan_item(
+                &tables,
+                &bae_diagnostics::Diagnostics::noop(),
+                std::path::Path::new(root),
+                generation,
+                &ScanItem::Invalid(crate::InvalidCandidate {
+                    path: root_path.join("Group/Release"),
+                    name: "Release".to_string(),
+                    watched_folder_path: std::path::PathBuf::from(&root),
+                    relative_folder: bae_db::RelativeFolder::test("Group/Release"),
+                    grouping: None,
+                    files: Vec::new(),
+                    tags: None,
+                }),
+            )
+            .await
+            .unwrap()
+            .expect("the seeded scan generation is current");
+        }
+        let folder_state_commit = crate::FolderStateCommit::default();
+        let (scans, starter) = FakeScanStarter::new();
+        let removal_backend = Arc::new(FakeRemovalBackend::default());
+        let coordinator_thread = ImportService::start_watcher_with_starter(
+            command_rx,
+            fs_rx,
+            crate::ImportServices {
+                event_tx: service.event_tx,
+                catalogs: service.catalogs.clone(),
+                remote_images: service.remote_images.clone(),
+                database: database.clone(),
+                tables: service.tables.clone(),
+                preparations: preparations.clone(),
+                clock: service.clock.clone(),
+                ids: service.ids.clone(),
+                file_tags: Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+                directories: Arc::new(crate::folder_scanner::OsDirectoryReader),
+                folder_state_commit: folder_state_commit.clone(),
+                import_cancels: Default::default(),
+                diagnostics: service.diagnostics.clone(),
+                closing: tokio_util::sync::CancellationToken::new(),
+            },
+            starter,
+            removal_backend.clone(),
+        );
+        Self {
+            commands,
+            fs_events,
+            scans,
+            database,
+            folder_state_commit,
+            removal_backend,
+            coordinator_thread: Mutex::new(Some(coordinator_thread)),
+            _temp: temp,
+        }
+    }
+
+    /// Hand the coordinator `report` as its watch would, and wait until it
+    /// has asked for the reads the report calls for.
+    async fn watch_report(&self, report: WatchReport) {
+        let (taken, wait) = tokio::sync::oneshot::channel();
+        self.commands.send(WatcherCommand::WatchReport { report, taken }).unwrap();
+        tokio::time::timeout(HANG_GUARD, wait)
+            .await
+            .expect("the coordinator takes the watch report")
+            .expect("the coordinator is running");
+    }
+
+    /// Wait until the coordinator has handled every command sent before this
+    /// one: commands are taken in order, and a report of no changes asks for
+    /// nothing.
+    async fn commands_handled(&self) {
+        self.watch_report(Ok(Vec::new())).await;
+    }
+
+    async fn shutdown(&self) {
+        let (completion, done) = std::sync::mpsc::channel();
+        self.commands.send(WatcherCommand::Shutdown { completion }).unwrap();
+        tokio::task::spawn_blocking(move || done.recv()).await.unwrap().unwrap();
+        let thread = self
+            .coordinator_thread
+            .lock()
+            .unwrap()
+            .take()
+            .expect("coordinator has not already shut down");
+        tokio::task::spawn_blocking(move || thread.join()).await.unwrap().unwrap();
+    }
+}
+
+#[test]
+fn terminal_import_failure_preserves_a_label_identity_conflict() {
+    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let label = |id: &str| bae_db::ExistingLabel {
+        label_id: id.to_string(),
+        name: "Label Name".to_string(),
+        musicbrainz_label_id: None,
+        discogs_label_id: None,
+    };
+    let conflict = bae_db::LabelIdentityConflict {
+        incoming_label_name: "Label Name".to_string(),
+        discogs_label_id: "7190".to_string(),
+        musicbrainz_label_id: "mb-label".to_string(),
+        discogs_label: label("by-discogs"),
+        musicbrainz_label: label("by-musicbrainz"),
+    };
+    let error = crate::ImportError::from(bae_db::IdentityWriteError::LabelIdentityConflict(
+        Box::new(conflict.clone()),
+    ));
+
+    let failure = ImportService::terminal_failure(&error, failed_at);
+
+    assert_eq!(failure.identity_conflict, Some(crate::IdentityConflict::Label(conflict)));
+}
+
+#[test]
+fn terminal_import_failure_preserves_an_artist_identity_conflict() {
+    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let discogs_artist = bae_db::ExistingArtist {
+        artist_id: "artist-discogs".to_string(),
+        name: "Artist One".to_string(),
+        sort_name: None,
+        musicbrainz_artist_id: None,
+        discogs_artist_id: Some("discogs-1".to_string()),
+    };
+    let musicbrainz_artist = bae_db::ExistingArtist {
+        artist_id: "artist-musicbrainz".to_string(),
+        name: "Artist Two".to_string(),
+        sort_name: None,
+        musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
+        discogs_artist_id: None,
+    };
+    let error =
+        crate::ImportError::ArtistIdentityConflict(Box::new(bae_db::ArtistIdentityConflict {
+            incoming_artist_name: "Mapped Artist".to_string(),
+            discogs_artist_id: "discogs-1".to_string(),
+            musicbrainz_artist_id: "musicbrainz-1".to_string(),
+            discogs_artist: discogs_artist.clone(),
+            musicbrainz_artist: musicbrainz_artist.clone(),
+        }));
+
+    let failure = ImportService::terminal_failure(&error, failed_at);
+
+    assert_eq!(failure.failed_at, failed_at);
+    assert!(matches!(
+        failure.identity_conflict,
+        Some(crate::IdentityConflict::Artist(bae_db::ArtistIdentityConflict {
+            discogs_artist: actual_discogs,
+            musicbrainz_artist: actual_musicbrainz,
+            ..
+        })) if actual_discogs == discogs_artist && actual_musicbrainz == musicbrainz_artist
+    ));
+}
+
+/// Scan dependencies over the test service's library, with a folder-state
+/// commit lock of their own.
+fn test_scan_services(
+    service: &ImportService,
+    database: &bae_db::Database,
+    preparations: &crate::CandidatePreparations,
+    event_tx: crate::handle::ImportEventBus,
+    folder_watcher: Arc<FolderWatcher>,
+    file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+    directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
+) -> ScanServices {
+    ScanServices::new(
+        crate::ImportServices {
+            event_tx,
+            database: database.clone(),
+            tables: service.tables.clone(),
+            catalogs: service.catalogs.clone(),
+            remote_images: service.remote_images.clone(),
+            preparations: preparations.clone(),
+            clock: service.clock.clone(),
+            ids: service.ids.clone(),
+            file_tags,
+            directories,
+            folder_state_commit: crate::FolderStateCommit::default(),
+            import_cancels: Default::default(),
+            diagnostics: service.diagnostics.clone(),
+            closing: tokio_util::sync::CancellationToken::new(),
+        },
+        folder_watcher,
+    )
+}
+
+/// What a test reads a folder with. `_fs_rx` keeps the folder watcher's sender
+/// connected while the scan runs.
+struct TestScan {
+    services: ScanServices,
+    cancellation: crate::folder_scanner::ScanCancellation,
+    _fs_rx: tokio::sync::mpsc::UnboundedReceiver<WatchReport>,
+}
+
+impl TestService {
+    /// A scan over this service's library, and the stream it announces on.
+    fn scan(&self) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
+        self.scan_with(
+            Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+            Arc::new(crate::folder_scanner::OsDirectoryReader),
+        )
+    }
+
+    /// The same scan, reading tags through `file_tags` and listings through
+    /// `directories`.
+    fn scan_with(
+        &self,
+        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+        directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
+    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
+        let event_tx = crate::ImportEventBus::new(self.service.runtime.clone());
+        let events = event_tx.every_event();
+        let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
+        let scan = TestScan {
+            services: test_scan_services(
+                &self.service,
+                &self.database,
+                &self.preparations,
+                event_tx,
+                Arc::new(FolderWatcher::new(fs_tx, bae_diagnostics::Diagnostics::noop())),
+                file_tags,
+                directories,
+            ),
+            cancellation: crate::folder_scanner::ScanCancellation::new(),
+            _fs_rx: fs_rx,
+        };
+        (scan, events)
+    }
+}
+
+impl TestScan {
+    /// Read `root` and reconcile what it holds against what is stored.
+    async fn rescan(&self, root: &Path) -> Result<(), crate::ImportError> {
+        ImportService::rescan_and_reconcile(root, &self.services, &self.cancellation).await
+    }
+}
+
+include!("tests/coordinator.rs");
+include!("tests/cover_and_rescan.rs");
+include!("tests/edits_and_formats.rs");
+include!("tests/folder_reading.rs");
+include!("tests/groupings.rs");
+include!("tests/progressive_scan.rs");
+include!("tests/reading_progress.rs");
+include!("tests/failed_import_retry.rs");
+include!("tests/panicked_import.rs");
+include!("tests/panicked_scan.rs");
+include!("tests/scan_reads.rs");
+include!("tests/spent_rows.rs");
+include!("tests/takeover.rs");

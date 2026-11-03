@@ -14,8 +14,8 @@ pub struct BridgeWatchedFolder {
 
 #[cfg(feature = "desktop")]
 impl BridgeWatchedFolder {
-    pub fn from_core(folder: bae_core::import::WatchedFolder) -> Self {
-        let bae_core::import::WatchedFolder { path, name } = folder;
+    pub fn from_core(folder: bae_import::WatchedFolder) -> Self {
+        let bae_import::WatchedFolder { path, name } = folder;
         Self { path: coven::path_bytes(&path), path_text: coven::path_text(&path), name }
     }
 }
@@ -26,7 +26,7 @@ impl BridgeWatchedFolder {
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_candidate_key_text(candidate_key: Vec<u8>) -> String {
-    bae_core::import::CandidateKey::from_bytes(candidate_key).to_string()
+    bae_import::CandidateKey::from_bytes(candidate_key).to_string()
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -240,21 +240,21 @@ pub enum BridgeImportStep {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgePrepareStep = bae_core::import::PrepareStep,
+    BridgePrepareStep = bae_import::PrepareStep,
     from_core: fn,
     variants: { Queued, ValidatingSourceFiles, FetchingArtistPictures },
 }
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeImportPhase = bae_core::import::ImportPhase,
+    BridgeImportPhase = bae_import::ImportPhase,
     from_core: fn,
     variants: { ReadingFiles, MeasuringLoudness, Finalizing },
 }
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeImportStep = bae_core::import::ImportStep,
+    BridgeImportStep = bae_import::ImportStep,
     from_core: pub(crate) fn,
     variants: {
         Preparing(step: (BridgePrepareStep)),

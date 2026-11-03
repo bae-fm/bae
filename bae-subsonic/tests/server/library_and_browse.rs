@@ -1,4 +1,3 @@
-use std::path::Path;
 
 use axum::body::{to_bytes, Body};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE};
@@ -8,8 +7,8 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_preferences::SubsonicCredential;
 use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
-use bae_core::import::release_candidate::CandidateSource;
-use bae_core::import::{ImportCommand, ImportDestination, ReleaseFileScope};
+use bae_import::release_candidate::CandidateSource;
+use bae_import::{ImportCommand, ImportDestination, ReleaseFileScope};
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
 use md5::{Digest, Md5};
@@ -89,7 +88,7 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
 async fn new_manager() -> ((
     bae_core::library::LibraryManager,
     bae_db::Database,
-    bae_core::import::CatalogSessions,
+    bae_import::CatalogSessions,
     bae_core::library::CancellationToken,
 ), TempDir) {
     support::setup_test_library().await
@@ -102,11 +101,7 @@ async fn new_services() -> (AppServices, TempDir) {
 }
 
 fn flac_fixture(name: &str) -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("bae-core/tests/fixtures/flac")
-        .join(name)
+    bae_import::test_fixtures::flac_dir().join(name)
 }
 
 fn cue_fixture(name: &str) -> std::path::PathBuf {
@@ -166,7 +161,7 @@ async fn seed_library() -> Library {
     import
         .send_command(ImportCommand {
             import_id: import_id.clone(),
-            candidate_key: bae_core::import::CandidateKey::from_bytes(b"pt".to_vec()),
+            candidate_key: bae_import::CandidateKey::from_bytes(b"pt".to_vec()),
             source: CandidateSource {
                 path: pt_dir.clone(),
                 scope: ReleaseFileScope::Recursive,
@@ -198,7 +193,7 @@ async fn seed_library() -> Library {
     cue_import
         .send_command(ImportCommand {
             import_id: cue_id.clone(),
-            candidate_key: bae_core::import::CandidateKey::from_bytes(b"cue".to_vec()),
+            candidate_key: bae_import::CandidateKey::from_bytes(b"cue".to_vec()),
             source: CandidateSource {
                 path: cue_dir,
                 scope: ReleaseFileScope::Recursive,

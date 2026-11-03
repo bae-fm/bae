@@ -114,7 +114,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
                 record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
-            &crate::import::CatalogApplySteps::unread(),
+            &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -144,7 +144,7 @@ async fn an_applied_catalog_tells_its_catalog_read() {
     );
     let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let keep = told.clone();
-    let steps = crate::import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step));
+    let steps = bae_import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step));
     let session = manager.open_release_edit(&release.id).await.unwrap();
 
     manager
@@ -161,7 +161,7 @@ async fn an_applied_catalog_tells_its_catalog_read() {
 
     assert_eq!(
         *told.lock().unwrap(),
-        vec![Some(crate::import::CatalogApplyStep::ReadingRelease(Catalog::MusicBrainz)), None,]
+        vec![Some(bae_import::CatalogApplyStep::ReadingRelease(Catalog::MusicBrainz)), None,]
     );
 }
 
@@ -231,13 +231,13 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
             &bae_types::mediums::TrackSide::Disc { disc: 2 },
         ]
     );
-    let crate::import::ReleaseEditTrackRun::Track(first_context) = &sides[0].runs[0] else {
+    let bae_import::ReleaseEditTrackRun::Track(first_context) = &sides[0].runs[0] else {
         panic!("a track on its own file is a run of its own");
     };
     assert_eq!(first_context.track_id, first.id);
     assert_eq!(first_context.sources[0].layout, bae_db::source_audio::SourceAudioLayout::File);
     // A track playing two files is no sheet's run, though a sheet carves both.
-    let crate::import::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
+    let bae_import::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
         panic!("a track over two files is a run of its own");
     };
     assert_eq!(second_context.track_id, second.id);
@@ -288,10 +288,10 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     manager
         .apply_release_metadata_user_edit(
             &release.id,
-            &crate::import::ReleaseUserEdit {
+            &bae_import::ReleaseUserEdit {
                 album_title: "Edited Album".to_string(),
-                album_artist_assignments: vec![crate::import::Credited::plain(
-                    crate::import::ArtistAssignment::named("Edited Album Artist"),
+                album_artist_assignments: vec![bae_import::Credited::plain(
+                    bae_import::ArtistAssignment::named("Edited Album Artist"),
                 )],
                 album_year: Some(1984),
                 pressing: bae_types::pressing::Pressing {
@@ -306,10 +306,10 @@ async fn release_metadata_edit_preserves_records_and_audio() {
                     },
                     barcodes: vec!["123456789".to_string()],
                 },
-                tracks: vec![crate::import::TrackUserEdit {
+                tracks: vec![bae_import::TrackUserEdit {
                     title: "Edited Track".to_string(),
-                    artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                        crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                    artist_assignments: bae_import::TrackArtistAssignments::Explicit(vec![
+                        bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                             "Edited Track Artist",
                         )),
                     ]),
@@ -361,13 +361,13 @@ async fn release_metadata_edit_preserves_records_and_audio() {
 #[tokio::test]
 async fn a_named_album_artist_already_in_the_library_is_linked() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
-    let edit = crate::import::ReleaseUserEdit {
+    let edit = bae_import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Album Artist One",
             )),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Album Artist Two",
             )),
         ],
@@ -392,16 +392,16 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
 #[tokio::test]
 async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
-    let edit = crate::import::ReleaseUserEdit {
+    let edit = bae_import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Album Artist One",
             )),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Album Artist Two",
             )),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Album Artist One",
             )),
         ],
@@ -422,14 +422,14 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
 
 /// An edit of a two-track release crediting two album artists and, per track,
 /// the artists `track_artists` names, in order.
-fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseUserEdit {
-    crate::import::ReleaseUserEdit {
+fn credited_release_edit(track_artists: [&[&str]; 2]) -> bae_import::ReleaseUserEdit {
+    bae_import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Album Artist One",
             )),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                 "Album Artist Two",
             )),
         ],
@@ -438,13 +438,13 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseU
         tracks: track_artists
             .iter()
             .enumerate()
-            .map(|(index, artists)| crate::import::TrackUserEdit {
+            .map(|(index, artists)| bae_import::TrackUserEdit {
                 title: format!("Track {}", index + 1),
-                artist_assignments: crate::import::TrackArtistAssignments::Explicit(
+                artist_assignments: bae_import::TrackArtistAssignments::Explicit(
                     artists
                         .iter()
                         .map(|name| {
-                            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                                 *name,
                             ))
                         })

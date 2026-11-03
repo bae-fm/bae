@@ -110,10 +110,8 @@ impl AppServices {
     #[cfg(desktop)]
     pub fn subscribe_invalid_candidate(
         &self,
-    ) -> crate::library::LiveDetail<
-        crate::import::InvalidCandidateDetail,
-        crate::import::CandidateKey,
-    > {
+    ) -> crate::library::LiveDetail<bae_import::InvalidCandidateDetail, bae_import::CandidateKey>
+    {
         let import = self.inner.import.clone();
         detail_read(
             self.inner.manager.clone(),

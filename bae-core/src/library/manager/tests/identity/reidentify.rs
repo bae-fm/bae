@@ -11,7 +11,7 @@ async fn stored_for(
     catalog: LookupCatalog,
     release_id: &str,
 ) -> Option<bae_catalogs::source_release::SourceRelease> {
-    crate::import::tables::ImportTables::new(manager.database.clone())
+    bae_import::tables::ImportTables::new(manager.database.clone())
         .load_source_release(&bae_catalogs::records::LookupRef::new(catalog, release_id))
         .await
         .unwrap()
@@ -22,7 +22,7 @@ async fn stored_for(
 async fn reidentify(manager: &LibraryManager, release_id: &str, link: bae_identify::PressingLink) {
     let session = manager.open_release_edit(release_id).await.unwrap();
     let seed = manager
-        .apply_release_edit_catalog(&session, &link, &crate::import::CatalogApplySteps::unread())
+        .apply_release_edit_catalog(&session, &link, &bae_import::CatalogApplySteps::unread())
         .await
         .unwrap();
     manager.save_release_edit(&session, &seed.edit).await.unwrap();
@@ -207,7 +207,7 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
         .apply_release_edit_catalog(
             &session,
             &musicbrainz_link(new_release_id),
-            &crate::import::CatalogApplySteps::unread(),
+            &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .expect_err("a release of 12 tracks cannot lay out 10");
@@ -238,7 +238,7 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
         .apply_release_edit_catalog(
             &session,
             &musicbrainz_link(new_release_id),
-            &crate::import::CatalogApplySteps::unread(),
+            &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -371,7 +371,7 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(
         manager.set_release_edit_album(&session, Some(picked.id.clone())).await.unwrap(),
-        crate::import::DraftAlbum::Picked {
+        bae_import::DraftAlbum::Picked {
             album_id: picked.id.clone(),
             title: "Picked Album".to_string(),
         }
@@ -394,7 +394,7 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
 /// fresh open drops.
 #[tokio::test]
 async fn a_release_edit_session_names_the_album_its_save_files_under() {
-    use crate::import::DraftAlbum;
+    use bae_import::DraftAlbum;
     let (manager, _temp_dir) = setup_test_manager().await;
     let grouped = DbAlbum { title: "Grouped Album".to_string(), ..create_test_album() };
     let sibling = create_test_release(&grouped.id);
@@ -427,7 +427,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         .apply_release_edit_catalog(
             &session,
             &musicbrainz_link("named-new"),
-            &crate::import::CatalogApplySteps::unread(),
+            &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -436,7 +436,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         .apply_release_edit_catalog(
             &session,
             &musicbrainz_link("unnamed-new"),
-            &crate::import::CatalogApplySteps::unread(),
+            &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -454,7 +454,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         .apply_release_edit_catalog(
             &session,
             &musicbrainz_link("named-new"),
-            &crate::import::CatalogApplySteps::unread(),
+            &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -471,7 +471,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
 /// as they were.
 #[tokio::test]
 async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
-    use crate::import::DraftAlbum;
+    use bae_import::DraftAlbum;
     let (manager, _temp_dir) = setup_test_manager().await;
     let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
     let release = create_test_release(&own.id);
@@ -488,7 +488,7 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
         .apply_release_edit_catalog(
             &sheet,
             &musicbrainz_link("two-sessions-new"),
-            &crate::import::CatalogApplySteps::unread(),
+            &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -531,8 +531,8 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
     let titled = |session: &ReleaseEdit, title: &str| {
         let mut edit = session.opened().edit.clone();
         edit.album_title = title.to_string();
-        edit.album_artist_assignments = vec![crate::import::Credited::plain(
-            crate::import::ArtistAssignment::named("Artist Name"),
+        edit.album_artist_assignments = vec![bae_import::Credited::plain(
+            bae_import::ArtistAssignment::named("Artist Name"),
         )];
         edit
     };

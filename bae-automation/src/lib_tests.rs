@@ -113,13 +113,13 @@ mod release_metadata_update_input {
     #[test]
     fn an_empty_album_title_fails_the_edit_rule() {
         let wire = edit("", &["Artist Alpha"]).into_core();
-        assert_eq!(wire.validate(), Err(bae_core::import::EditValidationError::EmptyAlbumTitle),);
+        assert_eq!(wire.validate(), Err(bae_import::EditValidationError::EmptyAlbumTitle),);
     }
 
     #[test]
     fn an_artist_less_edit_fails_the_edit_rule() {
         let wire = edit("Album Alpha", &[]).into_core();
-        assert_eq!(wire.validate(), Err(bae_core::import::EditValidationError::NoAlbumArtist),);
+        assert_eq!(wire.validate(), Err(bae_import::EditValidationError::NoAlbumArtist),);
     }
 
     /// An untrimmed title is trimmed, as the desktop editor does, not refused.
@@ -130,9 +130,7 @@ mod release_metadata_update_input {
         assert_eq!(wire.album_title, "Album Alpha");
         assert_eq!(
             wire.album_artist_assignments,
-            bae_core::import::Credited::plain_list([bae_core::import::ArtistAssignment::named(
-                "Artist Alpha"
-            )])
+            bae_import::Credited::plain_list([bae_import::ArtistAssignment::named("Artist Alpha")])
         );
     }
 
@@ -171,7 +169,7 @@ mod release_metadata_update_input {
     #[test]
     fn a_refused_edit_crosses_as_a_validation_error() {
         let error = AutomationError::from(LibraryError::Edit(
-            bae_core::import::EditValidationError::EmptyAlbumTitle,
+            bae_import::EditValidationError::EmptyAlbumTitle,
         ));
         assert_eq!(error.kind(), "validation");
         assert_eq!(error.message(), "Album title is required");

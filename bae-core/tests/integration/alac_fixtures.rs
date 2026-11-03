@@ -2,19 +2,19 @@
 //!
 //! Exercises the probe -> scanner -> import -> playback pipeline on real
 //! ALAC/AAC bytes (generated once with Homebrew ffmpeg, checked into
-//! `test-fixtures/alac/`). Nothing is mocked: every assertion runs through
-//! the same code paths production uses.
+//! bae-import's `test-fixtures/alac/`). Nothing is mocked: every assertion
+//! runs through the same code paths production uses.
 use bae_test_support as support;
 
 use bae_audio::{decode_audio, probe_audio_from_path};
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_core::cue_flac::parse_cue_sheet;
-use bae_core::import::discid::read_rip_artifacts;
-use bae_core::import::folder_scanner::{
+use bae_core::library::LibraryManager;
+use bae_import::cue_flac::parse_cue_sheet;
+use bae_import::discid::read_rip_artifacts;
+use bae_import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,
     FolderReleaseDecisions, ScanItem, StoredCandidateEdits,
 };
-use bae_core::library::LibraryManager;
 use bae_util::content_type::ContentType;
 use std::path::{Path, PathBuf};
 use support::tracing_init;
@@ -22,7 +22,7 @@ use tempfile::TempDir;
 use tracing::info;
 
 fn fixture_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("test-fixtures").join("alac")
+    bae_import::test_fixtures::alac_dir()
 }
 
 fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsRelease {
@@ -285,7 +285,7 @@ fn cue_alac_disc_id_is_stable() {
 
     let categorized = collect_release_candidate_files_with_scope(
         &album_dir,
-        bae_core::import::ReleaseFileScope::Recursive,
+        bae_import::ReleaseFileScope::Recursive,
         &StoredCandidateEdits::none(),
     )
     .expect("scan album dir");

@@ -25,6 +25,8 @@ bae-db = { workspace = true }
 bae-playback = { workspace = true, features = ["test-utils"] }
 # The catalog pick an import draft names.
 bae-identify = { workspace = true }
+# The import service the helpers run, and its fixture audio.
+bae-import = { workspace = true, features = ["test-utils"] }
 # The preferences the import helpers set.
 bae-preferences = { workspace = true }
 # The diagnostics sink the libraries the helpers open report to.

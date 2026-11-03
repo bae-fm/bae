@@ -1,0 +1,51 @@
+//! Pick an import's cover image from the folder's own files.
+
+use super::ImportService;
+use crate::folder_scanner::CandidateFile;
+
+impl ImportService {
+    /// Read the selected cover file's bytes as the folder holds them. Nothing
+    /// is written here, and no row is built: the caller resizes the winning
+    /// candidate and records the result, so nothing describing these bytes
+    /// can be mistaken for a description of the stored file.
+    ///
+    /// The path is the candidate's stored selection, so a folder that no
+    /// longer holds that image is a candidate whose selection no longer
+    /// describes it, and that is stated rather than replaced by some other
+    /// image. Only the artwork the folder offers as a cover can be it: a
+    /// damaged image of the same name is no cover.
+    ///
+    /// The read runs on a blocking thread, so a cover on a slow volume does not
+    /// stall the import worker's runtime.
+    pub(super) async fn pick_folder_cover(
+        discovered_files: &[CandidateFile],
+        selected_cover_path: &str,
+        diagnostics: &bae_diagnostics::Diagnostics,
+    ) -> Result<Vec<u8>, crate::ImportError> {
+        use crate::ImportError;
+
+        let cover_file = discovered_files
+            .iter()
+            .find(|entry| {
+                entry.file.relative_path == selected_cover_path && entry.cover_choice().is_some()
+            })
+            .map(|entry| &entry.file)
+            .ok_or_else(|| ImportError::LocalCover {
+                detail: format!(
+                    "Selected cover {selected_cover_path} not found among discovered images"
+                ),
+            })?;
+
+        let path = cover_file.path.clone();
+        let bytes = bae_util::task_failure::blocking("read the import's cover", move || {
+            std::fs::read(&path)
+        })
+        .await
+        .map_err(|failed| diagnostics.bug(failed))?
+        .map_err(|e| ImportError::LocalCover {
+            detail: format!("Failed to read cover art {}: {e}", cover_file.path.display()),
+        })?;
+
+        Ok(bytes)
+    }
+}

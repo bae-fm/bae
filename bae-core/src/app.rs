@@ -415,7 +415,7 @@ where
         http,
     );
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    let catalogs = crate::import::CatalogSessions::new(
+    let catalogs = bae_import::CatalogSessions::new(
         providers,
         database.clone(),
         diagnostics.clone(),

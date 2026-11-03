@@ -519,7 +519,7 @@ forward! {
                 .services
                 .import_set_candidate_edit_field(
                     &candidate_key.into(),
-                    bae_core::import::DraftFieldEdit::Text {
+                    bae_import::DraftFieldEdit::Text {
                         field: field.into_core(),
                         value,
                     },
@@ -536,7 +536,7 @@ forward! {
                 .services
                 .import_set_candidate_edit_field(
                     &candidate_key.into(),
-                    bae_core::import::DraftFieldEdit::Labels(
+                    bae_import::DraftFieldEdit::Labels(
                         labels
                             .into_iter()
                             .map(crate::types::BridgeRawLabelEdit::into_core)
@@ -552,7 +552,7 @@ forward! {
                 .services
                 .import_set_candidate_edit_field(
                     &candidate_key.into(),
-                    bae_core::import::DraftFieldEdit::Barcodes(barcodes),
+                    bae_import::DraftFieldEdit::Barcodes(barcodes),
                 )
                 .await?)
         }
@@ -566,7 +566,7 @@ forward! {
                 .services
                 .import_set_candidate_edit_field(
                     &candidate_key.into(),
-                    bae_core::import::DraftFieldEdit::PressingFact(fact.into_core()),
+                    bae_import::DraftFieldEdit::PressingFact(fact.into_core()),
                 )
                 .await?)
         }

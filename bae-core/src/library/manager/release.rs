@@ -82,7 +82,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<bae_catalogs::reading::ReadAudio, LibraryError> {
-        use crate::import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
+        use bae_import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
         resolve_release_identity(&self.database, &self.diagnostics, release_id)
             .await
             .map_err(|error| match error {
@@ -160,7 +160,7 @@ impl LibraryManager {
     ///
     /// Every surface a user edits through reaches the write here — the desktop
     /// editor and MCP's `release_metadata_update`. The desktop shapes its form
-    /// first ([`crate::import::RawReleaseEdit::shape`]); MCP hands over
+    /// first ([`bae_import::RawReleaseEdit::shape`]); MCP hands over
     /// a wire edit built field-for-field. So the edit is normalized and validated
     /// here rather than at any one caller: a blank album title or an artist-less
     /// album is rejected, and surrounding whitespace is trimmed, no matter which
@@ -171,7 +171,7 @@ impl LibraryManager {
     pub async fn apply_release_metadata_user_edit(
         &self,
         release_id: &str,
-        edit: &crate::import::ReleaseUserEdit,
+        edit: &bae_import::ReleaseUserEdit,
     ) -> Result<(), LibraryError> {
         let edit = edit.clone().normalized();
         edit.validate()?;
@@ -203,14 +203,14 @@ impl LibraryManager {
     ///
     /// Ungated on purpose: a release reseeded from sparse file tags carries a
     /// blank-but-editable title and artist, which the user fills in the editor.
-    /// A *user's* edit is held to [`crate::import::ReleaseUserEdit::validate`] —
+    /// A *user's* edit is held to [`bae_import::ReleaseUserEdit::validate`] —
     /// it arrives through [`Self::apply_release_metadata_user_edit`].
     pub(super) fn release_metadata_rows(
         &self,
         album: DbAlbum,
         release: DbRelease,
         existing_tracks: &[DbTrack],
-        edit: &crate::import::ReleaseUserEdit,
+        edit: &bae_import::ReleaseUserEdit,
     ) -> Result<bae_db::ReleaseMetadataRows, LibraryError> {
         use bae_db::{DbAlbumArtist, DbTrackArtist};
 
@@ -225,10 +225,10 @@ impl LibraryManager {
         let now = chrono::DateTime::<chrono::Utc>::from(self.clock.now());
         let mut credits: Vec<DbArtist> = Vec::new();
         let mut picked: Vec<String> = Vec::new();
-        let mut credit_of = |assignment: &crate::import::ArtistAssignment| {
+        let mut credit_of = |assignment: &bae_import::ArtistAssignment| {
             let credit = assignment.write_row(self.ids.as_ref(), now);
             let id = credit.id.clone();
-            if matches!(assignment, crate::import::ArtistAssignment::Picked { .. }) {
+            if matches!(assignment, bae_import::ArtistAssignment::Picked { .. }) {
                 picked.push(id.clone());
             }
             credits.push(credit);
@@ -250,7 +250,7 @@ impl LibraryManager {
         let updated_album = DbAlbum {
             title: edit.album_title.clone(),
             year: edit.album_year,
-            is_compilation: crate::import::ArtistAssignment::credit_a_compilation(
+            is_compilation: bae_import::ArtistAssignment::credit_a_compilation(
                 &edit.album_artist_assignments,
             ),
             ..album
@@ -280,7 +280,7 @@ impl LibraryManager {
 
         let mut track_artists: Vec<DbTrackArtist> = Vec::new();
         for (existing, track) in existing_tracks.iter().zip(edit.tracks.iter()) {
-            let crate::import::TrackArtistAssignments::Explicit(assignments) =
+            let bae_import::TrackArtistAssignments::Explicit(assignments) =
                 &track.artist_assignments
             else {
                 continue;

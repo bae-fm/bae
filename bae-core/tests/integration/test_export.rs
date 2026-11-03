@@ -18,7 +18,7 @@ use tempfile::TempDir;
 
 struct ExportFixture {
     mgr: LibraryManager,
-    handle: bae_core::import::ImportServiceHandle,
+    handle: bae_import::ImportServiceHandle,
     cloud: Arc<MemoryStorage>,
     _temp: TempDir,
 }

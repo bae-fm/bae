@@ -29,7 +29,7 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
 #[tokio::test]
 async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     use bae_preferences::DiscogsValidation;
-    use crate::import::{DiscogsSaveOutcome, ImportError};
+    use bae_import::{DiscogsSaveOutcome, ImportError};
     use bae_catalogs::discogs::client::DiscogsError;
 
     let (manager, _temp_dir) = setup_test_manager().await;

@@ -126,7 +126,7 @@ pub(super) fn fresh_test_library(
     (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
     std::path::PathBuf,
@@ -164,7 +164,7 @@ pub(super) fn start_test_handle(
     (manager, database, catalogs, closing): (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
 ) -> Arc<super::AppHandle> {
@@ -324,8 +324,8 @@ fn a_run_s_signals_cross_with_its_runtime() {
     };
     let running = |signals: Option<bae_identify::signals::Signals>| {
         crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-            bae_core::import::CandidateRuntimeSnapshot {
-                identification: Some(bae_core::import::IdentificationRuntime::Running(
+            bae_import::CandidateRuntimeSnapshot {
+                identification: Some(bae_import::IdentificationRuntime::Running(
                     bae_identify::PublishedRun {
                         outcome: bae_identify::RunOutcome::Answered(
                             bae_identify::TerminalVerdict::ManualOnly {
@@ -351,9 +351,9 @@ fn a_run_s_signals_cross_with_its_runtime() {
     assert!(running(None).signals.is_none(), "a run extraction has not reported to carries none");
 
     let queued = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-        bae_core::import::CandidateRuntimeSnapshot {
-            identification: Some(bae_core::import::IdentificationRuntime::Queued(
-                bae_core::import::Admission::Automatic,
+        bae_import::CandidateRuntimeSnapshot {
+            identification: Some(bae_import::IdentificationRuntime::Queued(
+                bae_import::Admission::Automatic,
             )),
             import: None,
             search: None,

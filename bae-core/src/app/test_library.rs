@@ -2,11 +2,11 @@
 //! starts over it: the whole of the library's services through the app's own
 //! step, or one service alone for a test that drives its internals.
 
-use crate::import::{CatalogSessions, ImportServiceHandle};
 use crate::library::{AppServices, CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
 use bae_db::Database;
 use bae_diagnostics::Diagnostics;
+use bae_import::{CatalogSessions, ImportServiceHandle};
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
 
@@ -128,14 +128,14 @@ impl TestLibrary {
     /// library closes.
     pub(crate) async fn start_import(
         &self,
-    ) -> Result<ImportServiceHandle, crate::import::ImportError> {
-        crate::import::ImportService::start(
+    ) -> Result<ImportServiceHandle, bae_import::ImportError> {
+        bae_import::ImportService::start(
             tokio::runtime::Handle::current(),
             self.database.clone(),
             self.catalogs.clone(),
             self.remote_images.clone(),
             self.diagnostics.clone(),
-            crate::import::CandidatePreparations::new(self.database.clone()),
+            bae_import::CandidatePreparations::new(self.database.clone()),
             self.clock.clone(),
             self.ids.clone(),
             self.closing.child_token(),

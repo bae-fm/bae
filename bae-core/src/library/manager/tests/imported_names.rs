@@ -7,7 +7,7 @@ use std::os::windows::ffi::OsStringExt;
 /// What the import `import_id` reported: the release it created, or the
 /// error it failed with.
 async fn import_outcome(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<crate::import::ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<bae_import::ImportEvent>,
     import_id: &str,
 ) -> Result<String, String> {
     loop {
@@ -15,16 +15,16 @@ async fn import_outcome(
             .await
             .expect("the import reports its result")
             .expect("the import event stream remains open");
-        let crate::import::ImportEvent::ImportProgress { progress, .. } = event else {
+        let bae_import::ImportEvent::ImportProgress { progress, .. } = event else {
             continue;
         };
         match progress {
-            crate::import::ImportProgress::Complete { import_id: completed, id, .. }
+            bae_import::ImportProgress::Complete { import_id: completed, id, .. }
                 if completed == import_id =>
             {
                 return Ok(id)
             }
-            crate::import::ImportProgress::Failed { import_id: failed, error }
+            bae_import::ImportProgress::Failed { import_id: failed, error }
                 if failed == import_id =>
             {
                 return Err(error)
@@ -45,24 +45,21 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
     let root = temp.path().join("watched");
     let folder = root.join("Album");
     std::fs::create_dir_all(&folder).unwrap();
-    let flac = std::fs::read(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/flac/01 Test Track 1.flac"),
-    )
-    .unwrap();
+    let flac =
+        std::fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac")).unwrap();
     let name: Vec<u16> =
         "Caf".encode_utf16().chain([0xD800]).chain(".flac".encode_utf16()).collect();
     std::fs::write(folder.join(std::ffi::OsString::from_wide(&name)), &flac).unwrap();
     let import = manager.start_import().await.unwrap();
     import.add_watched_folder(root.clone()).await.unwrap();
     import.refresh_watched_folder(root.clone()).await.unwrap();
-    let key = crate::import::CandidateKey::folder(&folder);
+    let key = bae_import::CandidateKey::folder(&folder);
     import.select_candidate_file_tags(key.clone()).await.unwrap();
     import
         .set_candidate_edit_field(
             &key,
-            crate::import::DraftFieldEdit::Text {
-                field: crate::import::CandidateEditField::AlbumTitle,
+            bae_import::DraftFieldEdit::Text {
+                field: bae_import::CandidateEditField::AlbumTitle,
                 value: "Album Title".into(),
             },
         )
@@ -71,9 +68,7 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
     import
         .set_candidate_album_artists(
             &key,
-            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
-                "Artist Name",
-            ))],
+            vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))],
         )
         .await
         .unwrap();

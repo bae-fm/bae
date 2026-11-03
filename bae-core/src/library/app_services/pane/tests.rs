@@ -2,9 +2,9 @@
 //! the identification queue.
 
 use super::*;
-use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
-use crate::import::identification::MAX_IN_FLIGHT;
-use crate::import::{CandidateKey, ImportServiceHandle};
+use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
+use bae_import::identification::MAX_IN_FLIGHT;
+use bae_import::{CandidateKey, ImportServiceHandle};
 use bae_util::test_host::FakeHost;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -89,7 +89,8 @@ impl Library {
         let dir = self.root.join(folder);
         std::fs::create_dir_all(&dir).unwrap();
         for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
-            std::fs::copy(Path::new("tests/fixtures/flac").join(name), dir.join(name)).unwrap();
+            std::fs::copy(bae_import::test_fixtures::flac_dir().join(name), dir.join(name))
+                .unwrap();
         }
         std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
         dir
@@ -102,7 +103,7 @@ impl Library {
         self.services.import_refresh_watched_folder(self.root.clone()).await.unwrap();
         tokio::time::timeout(
             Duration::from_secs(30),
-            self.import.wait_for_list(crate::import::ImportListView::default(), |projection| {
+            self.import.wait_for_list(bae_import::ImportListView::default(), |projection| {
                 projection.summary.counts.pending as usize
                     + projection.summary.counts.done as usize
                     + projection.summary.counts.skipped as usize
@@ -120,12 +121,12 @@ impl Library {
             .await
             .unwrap()
             .and_then(|runtime| runtime.identification_in_flight())
-            == Some(crate::import::IdentificationInFlight::Queued)
+            == Some(bae_import::IdentificationInFlight::Queued)
     }
 
     /// Whether identification stored a verdict for `key`.
     async fn identified(&self, key: &CandidateKey) -> bool {
-        crate::import::tables::ImportTables::new(self.database.clone())
+        bae_import::tables::ImportTables::new(self.database.clone())
             .load_import_candidate_states()
             .await
             .unwrap()
@@ -162,7 +163,7 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     }
     let waiting = waiting.expect("one candidate is over the cap and waiting");
     let key = CandidateKey::folder(&waiting);
-    library.import.move_candidate_pane(&key, crate::import::PaneMove::Automatic).await.unwrap();
+    library.import.move_candidate_pane(&key, bae_import::PaneMove::Automatic).await.unwrap();
 
     library.services.pane_cancel_identification(&key).await.unwrap();
 
@@ -181,7 +182,7 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
             .unwrap()
             .session
             .presentation,
-        crate::import::MetadataPresentation::Draft,
+        bae_import::MetadataPresentation::Draft,
         "the pane is back on the draft"
     );
     library.provider.release();

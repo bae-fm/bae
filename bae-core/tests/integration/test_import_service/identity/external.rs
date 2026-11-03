@@ -102,7 +102,7 @@ async fn a_user_edit_overlays_the_picked_release() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named(
+        album_artist_assignments: vec![bae_import::Credited::plain(ArtistAssignment::named(
             "Artist Edited",
         ))],
         album_year: Some(1977),
@@ -119,7 +119,7 @@ async fn a_user_edit_overlays_the_picked_release() {
         tracks: vec![TrackUserEdit {
             title: "Edited Track".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: Some(bae_core::import::AudioFile::Standalone {
+            file: Some(bae_import::AudioFile::Standalone {
                 file_id: "01 Track One.flac".into(),
             }),
         }],

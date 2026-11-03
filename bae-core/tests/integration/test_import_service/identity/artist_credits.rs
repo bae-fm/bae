@@ -229,8 +229,8 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
 
 /// The one live query an open import pane reads its candidate through.
 type PaneQuery = coven::ReconfigurableLiveQuery<
-    Option<bae_core::import::CandidateKey>,
-    Option<bae_core::import::ImportCandidateDetailProjection>,
+    Option<bae_import::CandidateKey>,
+    Option<bae_import::ImportCandidateDetailProjection>,
 >;
 
 /// A watched folder of tagged files, scanned and read as its own tags, whose
@@ -238,8 +238,8 @@ type PaneQuery = coven::ReconfigurableLiveQuery<
 async fn open_tagged_pane(
     f: &ImportFixture,
     dir: &std::path::Path,
-) -> (bae_core::import::CandidateKey, PaneQuery) {
-    let key = bae_core::import::CandidateKey::folder(dir);
+) -> (bae_import::CandidateKey, PaneQuery) {
+    let key = bae_import::CandidateKey::folder(dir);
     f.handle.add_watched_folder(dir.to_path_buf()).await.unwrap();
     f.handle.refresh_watched_folder(dir.to_path_buf()).await.unwrap();
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();

@@ -5,7 +5,7 @@
 async fn pure_reads_use_the_read_connection() {
     let (db, tmp) = bae_db::test_fixtures::temp_db().await;
 
-    let tables = bae_core::import::tables::ImportTables::new(db.clone());
+    let tables = bae_import::tables::ImportTables::new(db.clone());
 
     // A device-local write still uses the write connection.
     bae_playback::tables::save_playback_state(
@@ -58,7 +58,7 @@ async fn pure_reads_use_the_read_connection() {
     assert!(!tables.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap());
     tables.set_import_candidate_skipped(&never_skipped, false).await.unwrap();
     let generation = tables
-        .begin_folder_scan(std::path::Path::new(root), bae_core::import::VolumeKind::Local)
+        .begin_folder_scan(std::path::Path::new(root), bae_import::VolumeKind::Local)
         .await
         .unwrap();
     assert!(tables
@@ -66,11 +66,11 @@ async fn pure_reads_use_the_read_connection() {
         .await
         .unwrap()
         .is_none());
-    assert!(!bae_core::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&bae_core::import::tables::NewImportCandidateVerdict {
+    assert!(!bae_import::CandidatePreparations::new(db.clone())
+        .store_verdict(&bae_import::tables::NewImportCandidateVerdict {
             content_hash: "hash-with-no-row".to_string(),
             file_edit_revision: 7,
-            candidate_key: bae_core::import::CandidateKey::folder(
+            candidate_key: bae_import::CandidateKey::folder(
                 &std::path::Path::new(root).join("Album")
             ),
             verdict: bae_identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
@@ -86,7 +86,7 @@ async fn pure_reads_use_the_read_connection() {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            pick: Some(bae_core::import::tables::VerdictPick {
+            pick: Some(bae_import::tables::VerdictPick {
                 link: bae_identify::PressingLink {
                     record: bae_catalogs::records::LookupRef::new(
                         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
@@ -94,12 +94,12 @@ async fn pure_reads_use_the_read_connection() {
                     ),
                     partners: Vec::new(),
                 },
-                metadata: bae_core::import::CandidateMetadataDraft {
-                    draft: bae_core::import::CandidateDraft {
+                metadata: bae_import::CandidateMetadataDraft {
+                    draft: bae_import::CandidateDraft {
                         album_title: "Unwritten candidate".to_string(),
                         album_artist_assignments: Vec::new(),
                         album_year: String::new(),
-                        pressing: bae_core::import::RawPressingEdit {
+                        pressing: bae_import::RawPressingEdit {
                             year: String::new(),
                             labels: Vec::new(),
                             facts: Default::default(),
@@ -112,7 +112,7 @@ async fn pure_reads_use_the_read_connection() {
                     },
                     provenance: None,
                     cover: None,
-                    assets: bae_core::import::CandidatePreparedAssets::default(),
+                    assets: bae_import::CandidatePreparedAssets::default(),
                 },
             }),
             releases: Vec::new(),

@@ -243,6 +243,6 @@ task_types = [
     "PlaybackService::start_inner",
 ]
 # Starts the identification queue's task; its handle stops it.
-"bae-core/src/import/handle/identification.rs" = [
+"bae-import/src/handle/identification.rs" = [
     "ImportServiceHandle::start_identification_queue",
 ]

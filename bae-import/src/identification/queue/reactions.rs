@@ -1,0 +1,289 @@
+//! What each event does to the queue. Only a found release puts a candidate
+//! the queue does not hold on it.
+
+use super::*;
+
+/// Apply `events` in the order they were sent. The releases found among them
+/// are one admission, so the count opens at their total; it goes ahead of any
+/// later event about one of them.
+pub(super) async fn handle_events(
+    context: &Context,
+    queue: &mut Queue,
+    settle_token: &CancellationToken,
+    settling: &mut JoinSet<Finished>,
+    events: Vec<ImportEvent>,
+) {
+    let mut found: Vec<crate::CandidateKey> = Vec::new();
+    for event in events {
+        match event {
+            ImportEvent::Scan(ScanEvent::FolderCandidate {
+                candidate,
+                found_while_automatic: true,
+                ..
+            }) => {
+                let key = candidate.key();
+                if !found.contains(&key) {
+                    found.push(key);
+                }
+            }
+            event => {
+                if subject(&event).is_some_and(|key| found.contains(&key)) {
+                    admit_found_releases(context, queue, std::mem::take(&mut found)).await;
+                }
+                handle_event(context, queue, settle_token, settling, event).await;
+            }
+        }
+    }
+    admit_found_releases(context, queue, found).await;
+}
+
+/// The candidate `event` is about, when it names one.
+fn subject(event: &ImportEvent) -> Option<crate::CandidateKey> {
+    match event {
+        ImportEvent::ImportProgress { candidate_key, .. }
+        | ImportEvent::IdentifyStateChanged { candidate_key, .. }
+        | ImportEvent::SignalsUpdated { candidate_key, .. }
+        | ImportEvent::Scan(
+            ScanEvent::CandidateRemoved { candidate_key }
+            | ScanEvent::CandidateSkipChanged { candidate_key, .. }
+            | ScanEvent::CandidateMetadataChanged { candidate_key },
+        ) => Some(candidate_key.clone()),
+        ImportEvent::Scan(
+            ScanEvent::FolderCandidate { candidate, .. }
+            | ScanEvent::CandidateDiscovered { candidate, .. }
+            | ScanEvent::CandidateBindingChanged { candidate },
+        ) => Some(candidate.key()),
+        ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)) => Some(candidate.key()),
+        ImportEvent::Scan(
+            ScanEvent::WatchedFoldersChanged { .. }
+            | ScanEvent::FolderScanStatusChanged { .. }
+            | ScanEvent::Finished,
+        ) => None,
+    }
+}
+
+/// Queue the releases at `keys`, then follow each as any announced candidate
+/// is followed.
+async fn admit_found_releases(
+    context: &Context,
+    queue: &mut Queue,
+    keys: Vec<crate::CandidateKey>,
+) {
+    if keys.is_empty() {
+        return;
+    }
+    admit_found(context, queue, keys.clone()).await;
+    for key in &keys {
+        follow(context, queue, key).await;
+    }
+}
+
+/// Apply one import event.
+async fn handle_event(
+    context: &Context,
+    queue: &mut Queue,
+    settle_token: &CancellationToken,
+    settling: &mut JoinSet<Finished>,
+    event: ImportEvent,
+) {
+    match event {
+        ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. } => {
+            advance(context, queue, settle_token, settling, &candidate_key, run, state).await;
+        }
+        ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }) => {
+            follow(context, queue, &candidate.key()).await;
+        }
+        // A person's decision about the candidate ends its identification.
+        ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
+            queue.withdraw(context, &candidate.key()).await;
+        }
+        ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }) => {
+            queue.withdraw(context, &candidate_key).await;
+        }
+        ImportEvent::Scan(ScanEvent::CandidateSkipChanged { candidate_key, skipped: true }) => {
+            queue.withdraw(context, &candidate_key).await;
+        }
+        // Gone, or taken by an import: a run left going would never finish.
+        ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })
+        | ImportEvent::ImportProgress { candidate_key, .. } => {
+            queue.withdraw(context, &candidate_key).await;
+        }
+        _ => {}
+    }
+}
+
+/// One state of the run answering a job.
+async fn advance(
+    context: &Context,
+    queue: &mut Queue,
+    settle_token: &CancellationToken,
+    settling: &mut JoinSet<Finished>,
+    key: &crate::CandidateKey,
+    run: IdentifyRunId,
+    state: IdentifyState,
+) {
+    let Some(index) = queue.running_job(key, run) else {
+        return;
+    };
+    // Something outside the queue ended the run, which ends this candidate's
+    // identification; the rest of its job waits for a run of its own.
+    if matches!(state, IdentifyState::Idle) {
+        queue.withdraw(context, key).await;
+        return;
+    }
+    if !state.is_terminal() {
+        return;
+    }
+    let job = &mut queue.jobs[index];
+    let identity = job.identity.clone();
+    let priority = job.priority();
+    let candidate = job
+        .members
+        .iter()
+        .find(|member| member.candidate.key() == *key)
+        .map(|member| member.candidate.clone())
+        .expect("a job's running representative is one of its members");
+    // The run ended on its own; only its extraction may still be working.
+    context.import.cancel_candidate_extraction(key);
+    let settle_token = settle_token.child_token();
+    job.state =
+        JobState::Settling { representative: key.clone(), run, abandon: settle_token.clone() };
+    let context = context.clone();
+    settling.spawn(async move {
+        let representative_key = candidate.key();
+        settled_or_failed(
+            &context,
+            identity.clone(),
+            representative_key,
+            run,
+            settle_answer(context.clone(), identity, candidate, run, state, priority, settle_token),
+        )
+        .await
+    });
+}
+
+/// What one settled answer does to the job it answered.
+pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished) {
+    let Some(index) = queue.settling_job(&done.identity, &done.representative_key, done.run) else {
+        debug!(
+            "identification: {} settled for a job the queue has moved off",
+            done.representative_key
+        );
+        // The Import was asked of this run, which another has replaced.
+        if matches!(done.settled, Settled::Stored { import_asked: true, .. }) {
+            info!(
+                "identification: {}'s run was replaced; the Import asked of it is dropped",
+                done.representative_key
+            );
+        }
+        return;
+    };
+    let job = queue.jobs.remove(index).expect("the located job exists");
+    let marks = job.marks();
+    for (key, _) in &marks {
+        super::withdraw(context, key).await;
+    }
+    match done.settled {
+        Settled::Stored { picked_unattended, import_asked } => {
+            info!("identification: stored the verdict for {}", done.representative_key);
+            // A stored row with no pick, its read having failed, imports
+            // nothing, whoever asked.
+            if picked_unattended {
+                import_when_identified(context, &done.representative_key, import_asked).await;
+            } else if import_asked {
+                info!(
+                    "identification: {} stored no pick; the Import asked of it is dropped",
+                    done.representative_key
+                );
+            }
+        }
+        // Nothing was stored, and nothing runs again on its own.
+        Settled::Refused | Settled::Abandoned => {
+            info!("identification: {} stored no answer; its job is over", done.representative_key);
+        }
+        Settled::WriteFailed { error } | Settled::Unwritable { error } => {
+            for (key, files) in &marks {
+                super::record(
+                    context,
+                    &format!("record that {key}'s answer was not written"),
+                    context
+                        .import
+                        .fail_identification(
+                            key,
+                            done.run,
+                            files,
+                            crate::SaveFailure::NotWritten { error: error.clone() },
+                        )
+                        .await,
+                );
+            }
+        }
+        Settled::Inapplicable { error } => {
+            for (key, files) in &marks {
+                super::record(
+                    context,
+                    &format!("record that {key}'s answer could not be read into its draft"),
+                    context
+                        .import
+                        .fail_identification(
+                            key,
+                            done.run,
+                            files,
+                            crate::SaveFailure::Inapplicable { error: error.clone() },
+                        )
+                        .await,
+                );
+            }
+        }
+    }
+}
+
+/// Import `key`, whose run just stored an auto-importable verdict, when
+/// "Import automatically when identified" is on or a person asked for the
+/// import while the release was read. Whether the run started on its own or a
+/// person asked for it does not matter.
+async fn import_when_identified(context: &Context, key: &crate::CandidateKey, import_asked: bool) {
+    if !import_asked {
+        match bae_preferences::preferences(&context.database).await {
+            Ok(prefs) if prefs.identification.import_when_identified => {}
+            Ok(_) => return,
+            Err(error) => {
+                warn!(
+                    "identification: {key} is not imported once identified: the setting \
+                     could not be read ({error})"
+                );
+                return;
+            }
+        }
+    }
+    match context.import.import_identified(key).await {
+        Ok(crate::ImportStart::Queued { import_id }) => {
+            info!("identification: importing {key} as {import_id} now that it is identified")
+        }
+        Ok(crate::ImportStart::WhenPickStored) => {
+            info!("identification: {key} has another pick being read, which it imports once stored")
+        }
+        Err(error) => {
+            warn!("identification: the import of {key} once identified could not start: {error}")
+        }
+    }
+}
+
+/// Follow a candidate the queue holds to what is stored for it now: off the
+/// queue when it can no longer be answered, and placed again as its new files
+/// when they changed while it waited. A run reading the old files was ended
+/// when the runtime recorded the change, and its ending takes the key off
+/// the queue; an answer already being written is refused for files the
+/// candidate no longer has.
+async fn follow(context: &Context, queue: &mut Queue, key: &crate::CandidateKey) {
+    let Some(held) = queue.held(key) else {
+        return;
+    };
+    let Some(candidate) = answerable_candidate(context, key).await else {
+        queue.withdraw(context, key).await;
+        return;
+    };
+    if !held.running && CandidateFiles::of(&candidate) != held.identity {
+        admit(context, queue, vec![candidate], held.admission).await;
+    }
+}

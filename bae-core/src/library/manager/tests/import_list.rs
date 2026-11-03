@@ -10,7 +10,7 @@
 async fn done_with_two_uploading(
     manager: &TestManager,
     dir: &std::path::Path,
-) -> Vec<(String, crate::import::CandidateKey)> {
+) -> Vec<(String, bae_import::CandidateKey)> {
     connect_test_cloud(manager).await;
     let files: &[(&str, &[u8])] = &[("track.flac", b"track-bytes")];
     let a = insert_local_release_with_files(manager, &dir.join("a"), "A", files).await;
@@ -26,7 +26,7 @@ async fn done_with_two_uploading(
     );
     let mut keys = Vec::new();
     for (name, release) in [("A", &a), ("B", &b), ("C", &c), ("D", &d)] {
-        let key = crate::import::CandidateKey::folder(&root.join(name));
+        let key = bae_import::CandidateKey::folder(&root.join(name));
         let path = format!("X'{}'", hex::encode(key.as_bytes()));
         let relative = format!("X'{}'", hex::encode(name.as_bytes()));
         sql.push_str(&format!(
@@ -46,13 +46,13 @@ async fn done_with_two_uploading(
 }
 
 /// The release names one read of a list shows, in order.
-fn done_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
+fn done_names(projection: &bae_import::ImportListProjection) -> Vec<String> {
     projection
         .windows
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
+            bae_import::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
             _ => None,
         })
         .collect()
@@ -62,22 +62,22 @@ fn done_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
 /// it.
 async fn open_list(
     manager: &TestLibrary,
-    view: crate::import::ImportListView,
+    view: bae_import::ImportListView,
     windows: bae_db::LibraryPageWindows,
-) -> Result<crate::import::LiveImportList, crate::import::ImportError> {
+) -> Result<bae_import::LiveImportList, bae_import::ImportError> {
     manager.start_import().await?.open_list(view, windows).await
 }
 
 /// One read of `list` through `offset` and `limit`.
 async fn read_list(
     database: &bae_db::Database,
-    list: crate::import::ImportListId,
+    list: bae_import::ImportListId,
     offset: u64,
     limit: u64,
-) -> crate::import::ImportListProjection {
-    let tables = crate::import::tables::ImportTables::new(database.clone());
+) -> bae_import::ImportListProjection {
+    let tables = bae_import::tables::ImportTables::new(database.clone());
     tables
-        .load_import_list(crate::import::ImportListRequest {
+        .load_import_list(bae_import::ImportListRequest {
             list,
             windows: std::iter::once(bae_db::LibraryPageWindow { offset, limit }).collect(),
         })
@@ -92,25 +92,25 @@ async fn read_list(
 #[tokio::test]
 async fn done_runs_the_releases_still_uploading_first() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
+    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
     let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
-    let done = |order| crate::import::ImportListView {
-        tab: crate::import::TriageTab::Done,
+    let done = |order| bae_import::ImportListView {
+        tab: bae_import::TriageTab::Done,
         order,
-        ..crate::import::ImportListView::default()
+        ..bae_import::ImportListView::default()
     };
     for (order, expected) in [
-        (crate::import::ImportListOrder::NewestFirst, ["C", "B", "D", "A"]),
-        (crate::import::ImportListOrder::OldestFirst, ["C", "B", "A", "D"]),
-        (crate::import::ImportListOrder::PathAscending, ["C", "B", "A", "D"]),
-        (crate::import::ImportListOrder::PathDescending, ["C", "B", "D", "A"]),
+        (bae_import::ImportListOrder::NewestFirst, ["C", "B", "D", "A"]),
+        (bae_import::ImportListOrder::OldestFirst, ["C", "B", "A", "D"]),
+        (bae_import::ImportListOrder::PathAscending, ["C", "B", "A", "D"]),
+        (bae_import::ImportListOrder::PathDescending, ["C", "B", "D", "A"]),
     ] {
         let list = tables.open_import_list(done(order)).await.unwrap();
         assert_eq!(done_names(&read_list(&manager.database, list, 0, 50).await), expected, "{order:?}");
     }
 
     let list =
-        tables.open_import_list(done(crate::import::ImportListOrder::NewestFirst)).await.unwrap();
+        tables.open_import_list(done(bae_import::ImportListOrder::NewestFirst)).await.unwrap();
     let across = read_list(&manager.database, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
     assert_eq!(across.total_count, 4);
@@ -122,12 +122,12 @@ async fn done_runs_the_releases_still_uploading_first() {
     tables
         .change_import_list_selection(
             list,
-            crate::import::selection::SelectionChange::Replace { keys: vec![key("A"), key("B")] },
+            bae_import::selection::SelectionChange::Replace { keys: vec![key("A"), key("B")] },
         )
         .await
         .unwrap();
     tables
-        .set_import_list_view(list, done(crate::import::ImportListOrder::OldestFirst))
+        .set_import_list_view(list, done(bae_import::ImportListOrder::OldestFirst))
         .await
         .unwrap();
     let selected = read_list(&manager.database, list, 0, 0).await;
@@ -148,13 +148,13 @@ async fn done_runs_the_releases_still_uploading_first() {
 
 /// Each Done row's name and how its release's upload stands, in order.
 fn done_uploads(
-    windows: &[crate::import::ImportListWindow],
+    windows: &[bae_import::ImportListWindow],
 ) -> Vec<(String, Option<bae_db::UploadProgress>)> {
     windows
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, .. } => {
+            bae_import::ImportListItem::Candidate { row, .. } => {
                 Some((row.folder_name.clone(), row.upload.clone()))
             }
             _ => None,
@@ -172,10 +172,10 @@ async fn a_done_row_carries_its_release_upload() {
     done_with_two_uploading(&manager, temp_dir.path()).await;
     let subscription = open_list(
         &manager,
-        crate::import::ImportListView {
-            tab: crate::import::TriageTab::Done,
-            order: crate::import::ImportListOrder::PathAscending,
-            ..crate::import::ImportListView::default()
+        bae_import::ImportListView {
+            tab: bae_import::TriageTab::Done,
+            order: bae_import::ImportListOrder::PathAscending,
+            ..bae_import::ImportListView::default()
         },
         std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
     )
@@ -230,21 +230,21 @@ async fn a_done_row_carries_its_release_upload() {
 #[tokio::test]
 async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
+    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
     let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let list = tables
-        .open_import_list(crate::import::ImportListView {
-            tab: crate::import::TriageTab::Done,
-            order: crate::import::ImportListOrder::NewestFirst,
-            ..crate::import::ImportListView::default()
+        .open_import_list(bae_import::ImportListView {
+            tab: bae_import::TriageTab::Done,
+            order: bae_import::ImportListOrder::NewestFirst,
+            ..bae_import::ImportListView::default()
         })
         .await
         .unwrap();
     tables
         .change_import_list_selection(
             list,
-            crate::import::selection::SelectionChange::Extend { from: key("A"), to: key("B") },
+            bae_import::selection::SelectionChange::Extend { from: key("A"), to: key("B") },
         )
         .await
         .unwrap();
@@ -269,7 +269,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let subscription = open_list(
         &manager,
-        crate::import::ImportListView::default(),
+        bae_import::ImportListView::default(),
         bae_db::LibraryPageWindows::default(),
     )
     .await
@@ -289,15 +289,15 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     assert_eq!(requested.view_revision, initial.view_revision);
 
     let revision = subscription
-        .set_view(crate::import::ImportListView {
-            tab: crate::import::TriageTab::Done,
-            ..crate::import::ImportListView::default()
+        .set_view(bae_import::ImportListView {
+            tab: bae_import::TriageTab::Done,
+            ..bae_import::ImportListView::default()
         })
         .await
         .unwrap();
     let moved = subscription.next().await.expect("the view's value");
     assert_eq!(moved.view_revision, revision);
-    assert_eq!(moved.summary.narrowing.tab, crate::import::TriageTab::Done);
+    assert_eq!(moved.summary.narrowing.tab, bae_import::TriageTab::Done);
 }
 
 /// Cancelling settles a pending read and closes the list: its row goes, and a
@@ -307,7 +307,7 @@ async fn cancelling_closes_the_list() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let subscription = open_list(
         &manager,
-        crate::import::ImportListView::default(),
+        bae_import::ImportListView::default(),
         bae_db::LibraryPageWindows::default(),
     )
     .await
@@ -323,12 +323,12 @@ async fn cancelling_closes_the_list() {
         .unwrap()
         .is_empty());
     assert!(matches!(
-        subscription.set_view(crate::import::ImportListView::default()).await,
-        Err(crate::import::LiveImportListError::Database(_))
+        subscription.set_view(bae_import::ImportListView::default()).await,
+        Err(bae_import::LiveImportListError::Database(_))
     ));
     assert!(matches!(
         subscription.next().await,
-        Err(crate::import::LiveImportListError::Cancelled)
+        Err(bae_import::LiveImportListError::Cancelled)
     ));
 }
 
@@ -341,7 +341,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
     let subscription = Arc::new(
         open_list(
             &manager,
-            crate::import::ImportListView::default(),
+            bae_import::ImportListView::default(),
             bae_db::LibraryPageWindows::default(),
         )
         .await
@@ -360,13 +360,13 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         .expect("the waiting read ends")
         .unwrap();
     assert!(
-        matches!(read, Err(crate::import::LiveImportListError::Cancelled)),
+        matches!(read, Err(bae_import::LiveImportListError::Cancelled)),
         "the waiting read is cancelled: {read:?}"
     );
     assert!(
         matches!(
             subscription.next().await,
-            Err(crate::import::LiveImportListError::Cancelled)
+            Err(bae_import::LiveImportListError::Cancelled)
         ),
         "a read after the close is cancelled too"
     );

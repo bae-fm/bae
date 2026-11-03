@@ -3,8 +3,8 @@
 //! resume row playback starts from.
 
 use super::*;
-use crate::import::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
 use bae_db::{NewReleaseFile, SeededAudio};
+use bae_import::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
 
 /// The album a [`LibraryFixture`]'s library is playing, added after its
 /// albums.
@@ -38,7 +38,7 @@ impl LibraryManager {
                 playing.cue_sheet.display()
             ))
         };
-        let sheet = crate::cue_flac::parse_cue_sheet(&playing.cue_sheet)
+        let sheet = bae_import::cue_flac::parse_cue_sheet(&playing.cue_sheet)
             .map_err(|error| invalid(error.to_string()))?;
         let folder =
             playing.cue_sheet.parent().ok_or_else(|| invalid("names no folder".to_string()))?;
@@ -53,7 +53,7 @@ impl LibraryManager {
             let unplayable = || invalid(format!("{} is no audio bae plays", path.display()));
             let probe = bae_audio::probe_audio_from_path(&path).ok_or_else(unplayable)?;
             scanned_audio
-                .push(crate::import::folder_scanner::scanned_audio(&probe).ok_or_else(unplayable)?);
+                .push(bae_import::folder_scanner::scanned_audio(&probe).ok_or_else(unplayable)?);
             audio_files.push(CueAnalyzedAudioFile {
                 file_reference: track.file_reference.clone(),
                 path,
@@ -84,7 +84,7 @@ impl LibraryManager {
                 .clone()
                 .ok_or_else(|| invalid(format!("track {} has no TITLE", track.number)))?;
             let duration_ms =
-                crate::import::probe::sheet_track_duration_ms(&analysis, index, &sheet_name)
+                bae_import::probe::sheet_track_duration_ms(&analysis, index, &sheet_name)
                     .map_err(|error| invalid(error.to_string()))?;
             let db_track = DbTrack {
                 id: self.ids.new_id().to_string(),
@@ -138,7 +138,7 @@ impl LibraryManager {
             let diagnostics = self.diagnostics.clone();
             let tracks = tracks_to_files.clone();
             bae_util::task_failure::blocking("build a fixture's audio formats", move || {
-                crate::import::ImportService::build_audio_formats(
+                bae_import::ImportService::build_audio_formats(
                     &tracks,
                     &file_ids,
                     clock.as_ref(),

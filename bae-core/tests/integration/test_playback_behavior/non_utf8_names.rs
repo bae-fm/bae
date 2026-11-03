@@ -14,7 +14,7 @@ async fn a_track_whose_name_is_not_utf8_plays() {
         "non-utf8-name",
         uuid::Uuid::new_v4().to_string(),
         |album_dir| {
-            let fixture = bae_test_support::fixture_dir!("flac").join("01 Test Track 1.flac");
+            let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
             std::fs::write(
                 album_dir.join(std::ffi::OsStr::from_bytes(b"01 Caf\xE9.flac")),
                 bae_test_support::read_fixture(&fixture),

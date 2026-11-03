@@ -1,6 +1,6 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_preferences::SidePauseCountdown;
-use bae_core::import::{ImportCommand, ImportDestination};
+use bae_import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_playback::{LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode};
 use bae_types::track_time::{TrackTime};
@@ -398,7 +398,7 @@ struct PlaybackTestFixture {
     /// The library's store, sessions and closing token, which the import
     /// service [`Self::services`] starts runs over.
     database: bae_db::Database,
-    catalogs: bae_core::import::CatalogSessions,
+    catalogs: bae_import::CatalogSessions,
     closing: bae_core::library::CancellationToken,
     /// Dropping this receiver would make stream creation fail.
     _capture_stream_rx: bae_playback::CapturedStreams,

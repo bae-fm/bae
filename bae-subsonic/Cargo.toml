@@ -35,6 +35,9 @@ tracing = { workspace = true }
 [dev-dependencies]
 # The catalog pick the import tests seed releases with.
 bae-identify = { workspace = true }
+# The import the server tests land their releases with, and its fixture
+# audio.
+bae-import = { workspace = true, features = ["test-utils"] }
 # The readers and read errors the streaming tests drive.
 bae-track-audio = { workspace = true }
 bae-test-support = { workspace = true }

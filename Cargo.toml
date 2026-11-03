@@ -11,6 +11,7 @@ members = [
     "bae-desktop",
     "bae-diagnostics",
     "bae-identify",
+    "bae-import",
     "bae-loc",
     "bae-mcp",
     "bae-mirror",
@@ -80,6 +81,7 @@ bae-db = { path = "bae-db" }
 bae-desktop = { path = "bae-desktop" }
 bae-diagnostics = { path = "bae-diagnostics" }
 bae-identify = { path = "bae-identify" }
+bae-import = { path = "bae-import" }
 bae-loc = { path = "bae-loc" }
 bae-mcp = { path = "bae-mcp" }
 bae-mirror = { path = "bae-mirror" }

@@ -18,12 +18,10 @@ mod triage_tests {
     #[test]
     fn an_idle_candidate_crosses_with_its_running_import() {
         let idle =
-            BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
+            BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeSnapshot {
                 identification: None,
-                import: Some(bae_core::import::ImportInFlight {
-                    step: bae_core::import::ImportStep::Running(
-                        bae_core::import::ImportPhase::ReadingFiles,
-                    ),
+                import: Some(bae_import::ImportInFlight {
+                    step: bae_import::ImportStep::Running(bae_import::ImportPhase::ReadingFiles),
                 }),
                 search: None,
             });
@@ -39,9 +37,9 @@ mod triage_tests {
     #[test]
     fn a_queued_candidate_crosses_as_queued() {
         let queued =
-            BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
-                identification: Some(bae_core::import::IdentificationRuntime::Queued(
-                    bae_core::import::Admission::Automatic,
+            BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeSnapshot {
+                identification: Some(bae_import::IdentificationRuntime::Queued(
+                    bae_import::Admission::Automatic,
                 )),
                 import: None,
                 search: None,
@@ -62,7 +60,7 @@ mod conversion_roundtrip {
     #[cfg(feature = "desktop")]
     #[test]
     fn the_draft_s_author_crosses_the_bridge_as_itself() {
-        use bae_core::import::MetadataAuthor;
+        use bae_import::MetadataAuthor;
         let crossed: Vec<_> = [
             MetadataAuthor::Nobody,
             MetadataAuthor::Prefill,
@@ -224,7 +222,7 @@ mod conversion_roundtrip {
     #[cfg(feature = "desktop")]
     #[test]
     fn grouping_blocks_carry_their_own_lines() {
-        use bae_core::import::{GroupingBlock, ImportError};
+        use bae_import::{GroupingBlock, ImportError};
         let taken =
             GroupingBlock::FolderFilesTaken { folder: "Album".into(), release: "Disc 1".into() };
         let refused = BridgeError::from(ImportError::GroupingBlocked { reason: taken.clone() });
@@ -331,39 +329,37 @@ mod conversion_roundtrip {
     #[cfg(feature = "desktop")]
     #[test]
     fn raw_release_edit_round_trips() {
-        let core = bae_core::import::RawReleaseEdit {
+        let core = bae_import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
-            album_artist_assignments: bae_core::import::Credited::plain_list([
-                bae_core::import::ArtistAssignment::named("Artist Name"),
-                bae_core::import::ArtistAssignment::named("Artist Beta"),
+            album_artist_assignments: bae_import::Credited::plain_list([
+                bae_import::ArtistAssignment::named("Artist Name"),
+                bae_import::ArtistAssignment::named("Artist Beta"),
             ]),
             album_year: "1987".to_string(),
-            pressing: bae_core::import::RawPressingEdit {
+            pressing: bae_import::RawPressingEdit {
                 year: "1990".to_string(),
                 labels: vec![
-                    bae_core::import::RawLabelEdit {
+                    bae_import::RawLabelEdit {
                         name: "Label A".to_string(),
                         catalog_number: "AB 100".to_string(),
                         ..Default::default()
                     },
-                    bae_core::import::RawLabelEdit::default(),
+                    bae_import::RawLabelEdit::default(),
                 ],
                 barcodes: vec!["012345678905".to_string(), String::new()],
                 facts: every_kind_of_fact(),
             },
-            tracks: vec![bae_core::import::RawTrackEdit {
+            tracks: vec![bae_import::RawTrackEdit {
                 id: "row-1".to_string(),
                 title: "Track Title".to_string(),
-                artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
-                    bae_core::import::Credited::plain(bae_core::import::ArtistAssignment::named(
+                artist_assignments: bae_import::TrackArtistAssignments::Explicit(vec![
+                    bae_import::Credited::plain(bae_import::ArtistAssignment::named(
                         "Track Artist",
                     )),
                 ]),
                 // Not a form field, so the round trip must keep it or a
                 // corrected file pairing is lost before the commit.
-                file: Some(bae_core::import::AudioFile::Standalone {
-                    file_id: "01.flac".to_string(),
-                }),
+                file: Some(bae_import::AudioFile::Standalone { file_id: "01.flac".to_string() }),
             }],
         };
         assert_eq!(core, BridgeRawReleaseEdit::from_core(core.clone()).into_core());
@@ -372,38 +368,38 @@ mod conversion_roundtrip {
     #[cfg(feature = "desktop")]
     #[test]
     fn release_edit_seed_carries_the_persisted_editor_projection() {
-        let edit = bae_core::import::RawReleaseEdit {
+        let edit = bae_import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
-            album_artist_assignments: bae_core::import::Credited::plain_list([
-                bae_core::import::ArtistAssignment::named("Artist Name"),
+            album_artist_assignments: bae_import::Credited::plain_list([
+                bae_import::ArtistAssignment::named("Artist Name"),
             ]),
             album_year: String::new(),
-            pressing: bae_core::import::RawPressingEdit {
+            pressing: bae_import::RawPressingEdit {
                 year: String::new(),
                 labels: Vec::new(),
                 barcodes: Vec::new(),
                 facts: bae_types::pressing::PressingFacts::default(),
             },
-            tracks: vec![bae_core::import::RawTrackEdit {
+            tracks: vec![bae_import::RawTrackEdit {
                 id: "track-id".to_string(),
                 title: "Track Title".to_string(),
-                artist_assignments: bae_core::import::TrackArtistAssignments::AlbumArtists,
+                artist_assignments: bae_import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             }],
         };
 
         {
-            let bridge = BridgeReleaseEditSeed::from_core(bae_core::import::ReleaseEditSeed {
+            let bridge = BridgeReleaseEditSeed::from_core(bae_import::ReleaseEditSeed {
                 edit: edit.clone(),
                 cover: None,
-                display: bae_core::import::ReleaseEditDisplayContext {
+                display: bae_import::ReleaseEditDisplayContext {
                     source_audio: None,
-                    sides: vec![bae_core::import::ReleaseEditTrackSide {
+                    sides: vec![bae_import::ReleaseEditTrackSide {
                         side: bae_types::mediums::TrackSide::Disc { disc: 2 },
-                        runs: vec![bae_core::import::ReleaseEditTrackRun::Track(
-                            bae_core::import::ReleaseEditTrackContext {
+                        runs: vec![bae_import::ReleaseEditTrackRun::Track(
+                            bae_import::ReleaseEditTrackContext {
                                 track_id: "track-id".to_string(),
-                                sources: vec![bae_core::import::ReleaseEditTrackSource {
+                                sources: vec![bae_import::ReleaseEditTrackSource {
                                     file_id: "file-id".to_string(),
                                     name: "source.flac".to_string(),
                                     layout: bae_db::source_audio::SourceAudioLayout::File,
@@ -414,7 +410,7 @@ mod conversion_roundtrip {
                         )],
                     }],
                 },
-                album: bae_core::import::DraftAlbum::Named {
+                album: bae_import::DraftAlbum::Named {
                     album_id: "album-id".to_string(),
                     title: "Album Title".to_string(),
                 },
@@ -492,11 +488,11 @@ fn a_non_database_coven_error_keeps_its_own_text() {
 #[test]
 fn a_release_read_from_several_folders_crosses_as_its_folders() {
     let parts = [
-        bae_core::import::ReleasePart {
+        bae_import::ReleasePart {
             folder: std::path::PathBuf::from("/music/Album/Disc 1"),
             prefix: "Disc 1/".into(),
         },
-        bae_core::import::ReleasePart {
+        bae_import::ReleasePart {
             folder: std::path::PathBuf::from("/music/Album/Disc 2"),
             prefix: "Disc 2/".into(),
         },
@@ -679,16 +675,16 @@ fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
     use std::os::unix::ffi::OsStrExt;
 
     let path = std::path::Path::new("/music").join(std::ffi::OsStr::from_bytes(b"Caf\xE9"));
-    let folder = BridgeWatchedFolder::from_core(bae_core::import::WatchedFolder {
+    let folder = BridgeWatchedFolder::from_core(bae_import::WatchedFolder {
         path: path.clone(),
         name: "Caf\\xE9".into(),
     });
     assert_eq!(folder.path, b"/music/Caf\xE9");
     assert_eq!(folder.path_text, "/music/Caf\\xE9");
 
-    let key = bae_core::import::CandidateKey::folder(&path);
+    let key = bae_import::CandidateKey::folder(&path);
     assert_eq!(bridge_candidate_key_text(key.into_bytes()), "/music/Caf\\xE9");
-    let grouping = bae_core::import::CandidateKey::grouping("g1");
+    let grouping = bae_import::CandidateKey::grouping("g1");
     assert_eq!(bridge_candidate_key_text(grouping.into_bytes()), "grouping:g1");
 }
 

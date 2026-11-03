@@ -12,14 +12,14 @@
 //! It prints each query's runs over the writes: all of them, those a write
 //! caused, and of those, the ones whose result was unchanged.
 
-use bae_core::import::folder_scanner::{
-    CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
-};
-use bae_core::import::{
-    CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
-};
 use bae_db::LibraryPageWindow;
 use bae_db::RelativeFolder;
+use bae_import::folder_scanner::{
+    CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
+};
+use bae_import::{
+    CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
+};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -103,15 +103,14 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     std::fs::create_dir_all(&library).unwrap();
     let (manager, database, catalogs, closing) =
         bae_test_support::open_test_library(&library).await;
-    let tables = bae_core::import::tables::ImportTables::new(database.clone());
+    let tables = bae_import::tables::ImportTables::new(database.clone());
     manager.set_identify_automatically(false).await.unwrap();
     let services =
         bae_test_support::start_test_services(manager, database, catalogs, closing).await;
 
     let root = temp.path().join("watched");
     tables.add_watched_import_folder(&root).await.unwrap();
-    let generation =
-        tables.begin_folder_scan(&root, bae_core::import::VolumeKind::Local).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, bae_import::VolumeKind::Local).await.unwrap();
     let seed = folder(&root, "0000 seed", 1_000);
     let ScanItem::Valid(seed_candidate) = &seed else { unreachable!("the folder is valid") };
     let key = CandidateKey::folder(&seed_candidate.path);

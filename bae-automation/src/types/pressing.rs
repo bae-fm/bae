@@ -160,8 +160,8 @@ impl AutomationReleaseName {
 }
 
 impl AutomationPressingFactEdit {
-    pub(crate) fn into_core(self) -> bae_core::import::PressingFactEdit {
-        use bae_core::import::PressingFactEdit;
+    pub(crate) fn into_core(self) -> bae_import::PressingFactEdit {
+        use bae_import::PressingFactEdit;
         match self {
             Self::Area { area } => PressingFactEdit::Area(area),
             Self::Media { media } => PressingFactEdit::Media(media),

@@ -18,6 +18,8 @@ bae-core = { workspace = true }
 bae-db = { workspace = true }
 # The identify views its answers carry.
 bae-identify = { workspace = true }
+# The import queue, candidates and release drafts its tools read and drive.
+bae-import = { workspace = true }
 # The MCP server's settings.
 bae-preferences = { workspace = true }
 bae-diagnostics = { workspace = true }

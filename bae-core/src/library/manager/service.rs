@@ -46,7 +46,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        #[cfg(desktop)] catalogs: crate::import::CatalogSessions,
+        #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
         sync: SyncController,
         downloads: crate::library::Downloads,
         #[cfg(desktop)] outputs: crate::library::Outputs,

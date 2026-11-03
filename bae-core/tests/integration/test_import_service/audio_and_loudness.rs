@@ -51,7 +51,7 @@ async fn local_folder_import() {
 
 #[tokio::test]
 async fn import_progress_names_every_operation_before_loudness() {
-    use bae_core::import::{ImportEvent, ImportPhase, ImportProgress, ImportStep, PrepareStep};
+    use bae_import::{ImportEvent, ImportPhase, ImportProgress, ImportStep, PrepareStep};
 
     support::tracing_init();
 
@@ -59,7 +59,7 @@ async fn import_progress_names_every_operation_before_loudness() {
     let mut events = f.handle.every_event();
 
     let album_dir = f.temp_path().join("album");
-    let expected_candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
+    let expected_candidate_key = bae_import::CandidateKey::folder(&album_dir);
     fs::create_dir_all(&album_dir).unwrap();
     generate_tagged_album_files(
         &album_dir,
@@ -348,7 +348,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 async fn loudness_pass_advances_the_candidate_rows_percent() {
     let f = ImportFixture::new().await;
 
-    use bae_core::import::{ImportEvent, ImportPhase, ImportProgress};
+    use bae_import::{ImportEvent, ImportPhase, ImportProgress};
 
     support::tracing_init();
 
@@ -358,7 +358,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     let mut event_rx = f.handle.every_event();
 
     let album_dir = f.temp_path().join("album");
-    let expected_candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
+    let expected_candidate_key = bae_import::CandidateKey::folder(&album_dir);
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(
         &album_dir,

@@ -111,7 +111,7 @@ fn create_test_album() -> DiscogsRelease {
 /// Copy the `flac` fixtures into `dir` and return their bytes.
 fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     use std::fs;
-    let fixture_dir = bae_test_support::fixture_dir!("flac");
+    let fixture_dir = bae_import::test_fixtures::flac_dir();
     let fixture_files =
         vec!["01 Test Track 1.flac", "02 Test Track 2.flac", "03 Test Track 3.flac"];
     let mut file_data = Vec::new();

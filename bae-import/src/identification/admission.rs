@@ -1,0 +1,83 @@
+//! What puts a candidate on the queue on its own, and the reads a run starts
+//! from.
+
+use super::*;
+
+/// Put the found releases at `keys` on the queue as one automatic admission,
+/// except those that cannot be answered and those whose files already have a
+/// stored result, such as a folder renamed after it was identified.
+pub(super) async fn admit_found(
+    context: &Context,
+    queue: &mut Queue,
+    keys: Vec<crate::CandidateKey>,
+) {
+    let mut admitted = Vec::with_capacity(keys.len());
+    for key in keys {
+        let Some(candidate) = answerable_candidate(context, &key).await else {
+            continue;
+        };
+        match context
+            .tables
+            .verdict_stored_for(&candidate.files.content_hash(), candidate.file_edit_revision)
+            .await
+        {
+            Ok(true) => {
+                info!("identification: {key} was found with its files already answered");
+            }
+            Ok(false) => admitted.push(candidate),
+            Err(error) => warn!(
+                "identification: cannot read the stored state of {key} ({error}); leaving it \
+                 unidentified"
+            ),
+        }
+    }
+    if !admitted.is_empty() {
+        admit(context, queue, admitted, Admission::Automatic).await;
+    }
+}
+
+/// The candidate at `key` if an answer can still be stored for it: not set
+/// aside, imported, or claimed by an import. The same read the verdict write
+/// makes.
+pub(super) async fn answerable_candidate(
+    context: &Context,
+    key: &crate::CandidateKey,
+) -> Option<FolderCandidate> {
+    match context.import.answerable_candidate(key).await {
+        Ok(candidate) => candidate,
+        Err(error) => {
+            warn!("identification: cannot read candidate {key} ({error}); leaving it alone");
+            None
+        }
+    }
+}
+
+/// What one run of a candidate begins from.
+pub(super) struct CandidateRunStart {
+    /// What the person decided this candidate's identification asks about.
+    pub(super) choices: LookupChoices,
+    /// The title to search by when the identifiers name nothing: the person's
+    /// words, else the draft's.
+    pub(super) title_search: Option<TitleSearch>,
+}
+
+/// Read what a run begins from. The draft comes from the pane's rows, because
+/// the surface's projection fails for a pick whose documents were cleared.
+pub(super) async fn candidate_run_start(
+    context: &Context,
+    candidate: &FolderCandidate,
+) -> Result<CandidateRunStart, crate::ImportError> {
+    let content_hash = candidate.files.content_hash();
+    let Some(state) = context.tables.load_import_candidate_state(&content_hash).await? else {
+        return Err(crate::ImportError::Internal {
+            detail: format!("candidate {} has no persisted state row", candidate.key()),
+        });
+    };
+    let draft = context.tables.load_import_candidate_pane_rows(&content_hash).await?.draft;
+    let artist = crate::credited_line(&draft.album_artist_assignments);
+    let title_search = match &state.lookup_choices.search_words {
+        Some(words) => TitleSearch::of(&words.album, &words.artist),
+        None => TitleSearch::of_draft(&draft.album_title, &artist),
+    };
+    Ok(CandidateRunStart { choices: state.lookup_choices, title_search })
+}

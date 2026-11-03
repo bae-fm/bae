@@ -24,6 +24,9 @@ bae-cast = { workspace = true, optional = true }
 # The identify views and verdicts the desktop import screens mirror.
 bae-identify = { workspace = true, optional = true }
 bae-core = { workspace = true }
+# The import screens' candidates, drafts and queue, and the release-edit
+# model every platform's editor mirrors.
+bae-import = { workspace = true }
 bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.
 bae-db = { workspace = true }
@@ -77,6 +80,8 @@ bae-test-support = { workspace = true }
 # The validation-reason ↔ catalog cross-check test loads the master catalog.
 bae-loc = { workspace = true }
 bae-core = { workspace = true, features = ["test-utils"] }
+# The fixture audio the import list tests scan.
+bae-import = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed, and whether a diagnostics
 # setting sends events.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }

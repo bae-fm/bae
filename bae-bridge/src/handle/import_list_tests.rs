@@ -49,8 +49,7 @@ fn until(
 #[test]
 fn separating_the_selection_selects_the_releases_it_returns() {
     let (handle, root) = super::super::tests::fresh_bridge_handle("separate-selection");
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../bae-core/tests/fixtures/flac/01 Test Track 1.flac");
+    let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let music = root.join("music");
     for part in ["Part A", "Part B"] {
         let folder = music.join("Collection").join(part);
@@ -108,8 +107,7 @@ fn separating_the_selection_selects_the_releases_it_returns() {
 #[test]
 fn a_cancelled_progress_stream_hears_no_later_action() {
     let (handle, root) = super::super::tests::fresh_bridge_handle("cancelled-selection-progress");
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../bae-core/tests/fixtures/flac/01 Test Track 1.flac");
+    let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let music = root.join("music");
     let folder = music.join("Album");
     std::fs::create_dir_all(&folder).unwrap();

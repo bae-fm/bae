@@ -213,7 +213,7 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
 async fn a_release_session_keeps_its_choices_in_core() {
     use bae_identify::LookupChoiceEdit;
     let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
-    let key = crate::import::CandidateKey::reidentify("release-1");
+    let key = bae_import::CandidateKey::reidentify("release-1");
     let release = "release-1".to_string();
 
     services
@@ -287,10 +287,10 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
     manager
         .apply_release_metadata_user_edit(
             release_id,
-            &crate::import::ReleaseUserEdit {
+            &bae_import::ReleaseUserEdit {
                 album_title: "Renamed Album".to_string(),
-                album_artist_assignments: vec![crate::import::Credited::plain(
-                    crate::import::ArtistAssignment::Picked {
+                album_artist_assignments: vec![bae_import::Credited::plain(
+                    bae_import::ArtistAssignment::Picked {
                         credit_name: None,
                         artist: bae_db::ExistingArtist {
                             artist_id: bae_util::test_ids::test_uuid(
@@ -305,9 +305,9 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                 )],
                 album_year: None,
                 pressing: bae_types::pressing::Pressing::blank(),
-                tracks: vec![crate::import::TrackUserEdit {
+                tracks: vec![bae_import::TrackUserEdit {
                     title: "Track 0".to_string(),
-                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                    artist_assignments: bae_import::TrackArtistAssignments::AlbumArtists,
                     file: None,
                 }],
             },

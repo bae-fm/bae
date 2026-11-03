@@ -26,7 +26,7 @@ async fn setup_manager(
     (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
     Arc<MemoryStorage>,
@@ -40,7 +40,7 @@ async fn setup_with_cloud(
     (
         bae_core::library::LibraryManager,
         bae_db::Database,
-        bae_core::import::CatalogSessions,
+        bae_import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
     Arc<MemoryStorage>,

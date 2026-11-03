@@ -105,8 +105,8 @@ mirror_enum! {
 }
 
 #[cfg(feature = "desktop")]
-impl From<&bae_core::import::GroupingBlock> for BridgeError {
-    fn from(block: &bae_core::import::GroupingBlock) -> Self {
+impl From<&bae_import::GroupingBlock> for BridgeError {
+    fn from(block: &bae_import::GroupingBlock) -> Self {
         BridgeError::from_core(block.ui_error())
     }
 }
@@ -616,8 +616,8 @@ impl From<bae_core::library::MetadataSourceSwitchError> for BridgeError {
 
 /// An import failure crosses in the class core gave it.
 #[cfg(feature = "desktop")]
-impl From<bae_core::import::ImportError> for BridgeError {
-    fn from(error: bae_core::import::ImportError) -> Self {
+impl From<bae_import::ImportError> for BridgeError {
+    fn from(error: bae_import::ImportError) -> Self {
         BridgeError::from_core(error.ui_error())
     }
 }
@@ -681,19 +681,17 @@ mirror_enum! {
 
 #[cfg(feature = "desktop")]
 impl BridgeCoverSelection {
-    pub(crate) fn into_core(self) -> bae_core::import::CoverSelection {
+    pub(crate) fn into_core(self) -> bae_import::CoverSelection {
         match self {
             BridgeCoverSelection::ReleaseImage { file_id } => {
-                bae_core::import::CoverSelection::Local(file_id)
+                bae_import::CoverSelection::Local(file_id)
             }
-            BridgeCoverSelection::RemoteCover { selection } => {
-                bae_core::import::CoverSelection::Remote(
-                    selection.image.into_core(),
-                    selection.source.into_core(),
-                )
-            }
+            BridgeCoverSelection::RemoteCover { selection } => bae_import::CoverSelection::Remote(
+                selection.image.into_core(),
+                selection.source.into_core(),
+            ),
             BridgeCoverSelection::EmbeddedCover { source_file_id } => {
-                bae_core::import::CoverSelection::Embedded(source_file_id)
+                bae_import::CoverSelection::Embedded(source_file_id)
             }
         }
     }

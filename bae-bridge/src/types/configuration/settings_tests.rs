@@ -1,7 +1,7 @@
 use super::*;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::CatalogError;
-use bae_core::import::ImportError;
+use bae_import::ImportError;
 
 #[test]
 fn unexpected_import_data_is_distinct_from_domain_refusals() {
@@ -132,9 +132,7 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
             BridgeErrorCategory::FilesAlreadyImported,
         ),
         (
-            ImportError::from(bae_core::import::DiscogsKeyError::Keyring(
-                coven::KeyError::StoreClosed,
-            )),
+            ImportError::from(bae_import::DiscogsKeyError::Keyring(coven::KeyError::StoreClosed)),
             BridgeErrorCategory::Config,
         ),
     ] {

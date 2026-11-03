@@ -1,0 +1,95 @@
+//! What a row states about its release's identity: the catalogs its
+//! documents describe it in, read once so the pane's row and the queue's
+//! agree.
+
+use super::*;
+
+/// Which catalogs describe a pick is read off its stored release once:
+/// the queue's row and the pane's detail name the same records, in the order
+/// surfaces list catalogs — the pick's own, the release its document links,
+/// and the two its release group links.
+#[tokio::test]
+async fn the_row_and_the_pane_name_the_same_records() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    save_verdict(&db, &candidate, "mb-verdict").await;
+    tables
+        .save_source_release(
+            &bae_catalogs::payloads::ReleasePayloads::for_test(
+                bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-linked"),
+                musicbrainz_release_linked_out("mb-linked", "mb-group").to_string(),
+                vec![bae_catalogs::records::SourcePayload::new(
+                    PayloadSource::MusicBrainzReleaseGroup,
+                    "mb-group",
+                    release_group_linked_out().to_string(),
+                )],
+            )
+            .extract()
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    let draft = tables
+        .load_import_candidate_pane_rows(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .draft
+        .release_edit();
+    crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &candidate.files.content_hash(),
+            &crate::CandidateKey::folder(&candidate.path),
+            &draft,
+            Some(&MetadataProvenance::ExternalRelease {
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    "mb-linked".to_string(),
+                ),
+            }),
+            &[],
+        )
+        .await
+        .unwrap();
+    crate::CandidatePreparations::new(db.clone())
+        .replace_link(
+            &candidate.files.content_hash(),
+            Some(&crate::ReleaseLink::Pressing(bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    "mb-linked",
+                ),
+                partners: vec![],
+            })),
+            &[],
+        )
+        .await
+        .unwrap();
+
+    let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
+    let row = rows(&projection).remove(0);
+    let crate::triage::TriageReading::Identified { records } = &row.reading else {
+        panic!("a picked row reads as identified, got {:?}", row.reading);
+    };
+    assert_eq!(
+        records.iter().map(|record| (record.catalog(), record.key())).collect::<Vec<_>>(),
+        vec![
+            (Catalog::MusicBrainz, "mb-linked"),
+            (Catalog::Discogs, "4242"),
+            (Catalog::AllMusic, "mw0000424242"),
+            (Catalog::Wikidata, "Q424242"),
+        ]
+    );
+
+    let detail = tables
+        .load_import_candidate(&crate::CandidateKey::folder(&candidate.path))
+        .await
+        .unwrap()
+        .expect("the scanned candidate has a pane")
+        .resolve();
+    let crate::CandidatePanePlacement::Pending { records: pane_records, .. } = &detail.placement
+    else {
+        panic!("a picked candidate is pending, got {:?}", detail.placement);
+    };
+    assert_eq!(pane_records, records, "the pane names the records the queue's row does");
+}

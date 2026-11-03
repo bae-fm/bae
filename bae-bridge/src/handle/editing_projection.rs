@@ -3,7 +3,7 @@
 /// editor disables Save. The editor calls this on every change (to gate Save
 /// and show the reason) and on commit (to read the payload it passes to
 /// `update_release_metadata_user_edit` / `start_import`). Stateless
-/// type-translation wrapper around [`bae_core::import::RawReleaseEdit::shape`].
+/// type-translation wrapper around [`bae_import::RawReleaseEdit::shape`].
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn shape_release_edit(
@@ -24,7 +24,7 @@ mirror_enum! {
     /// Kept here, not as a `From` in bae-core, so bae-core stays unaware of
     /// bridge types.
     #[cfg(feature = "desktop")]
-    crate::types::BridgeValidationReason = bae_core::import::EditValidationError,
+    crate::types::BridgeValidationReason = bae_import::EditValidationError,
     from_core: pub(super) fn,
     variants: { EmptyAlbumTitle, NoAlbumArtist, EmptyArtistName, InvalidYear },
 }
