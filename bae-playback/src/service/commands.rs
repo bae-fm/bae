@@ -89,6 +89,43 @@ impl PlaybackService {
                     }
                 }
             }
+            PlaybackCommand::PlayTracks { track_ids, start_index } => {
+                let named = track_ids.len();
+                let fill = ContextFill::Tracks { track_ids, start: start_index };
+                match self.playback_queue.play(fill).await {
+                    Ok(ContextFilled::Playing { current, track_count }) => {
+                        if track_count < named {
+                            warn!(
+                                "PlayTracks: {} of {named} tracks are not in the library; \
+                                 they are left out",
+                                named - track_count
+                            );
+                        }
+                        self.start_filled_context(
+                            current.track_id,
+                            PlaybackStartSource::Tracks,
+                            track_count,
+                        )
+                        .await;
+                    }
+                    // A start the list doesn't have, or a track the library
+                    // no longer holds, plays nothing rather than some other
+                    // track.
+                    Ok(ContextFilled::StartMissing) => {
+                        error!(
+                            "PlayTracks: no track in the library to start from at {start_index} of {named}"
+                        );
+                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+                    }
+                    Ok(ContextFilled::NoTracks) => {
+                        warn!("PlayTracks: no tracks named; nothing to play");
+                    }
+                    Err(e) => {
+                        error!("PlayTracks: couldn't fill the queue: {e}");
+                        self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+                    }
+                }
+            }
             PlaybackCommand::PlayLibraryShuffled => {
                 match self.playback_queue.play(ContextFill::LibraryShuffled).await {
                     Ok(ContextFilled::Playing { current, track_count }) => {

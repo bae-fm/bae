@@ -119,6 +119,7 @@ telemetry_value_enum! {
     pub enum PlaybackStartSource {
         Release => "release",
         Releases => "releases",
+        Tracks => "tracks",
         LibraryShuffled => "library_shuffled",
         Restored => "restored",
     }
@@ -169,6 +170,7 @@ telemetry_value_enum! {
         Play => "play",
         PlayRelease => "play_release",
         PlayReleases => "play_releases",
+        PlayTracks => "play_tracks",
         PlayLibraryShuffled => "play_library_shuffled",
         Next => "next",
         Previous => "previous",

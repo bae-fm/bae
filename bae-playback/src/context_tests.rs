@@ -20,6 +20,7 @@ fn source_columns_round_trip() {
     for source in [
         ContextSource::Release("550e8400-e29b-41d4-a716-446655440000".into()),
         ContextSource::Releases,
+        ContextSource::Tracks,
         ContextSource::Library,
     ] {
         let (kind, release_id) = source.to_columns();
@@ -31,5 +32,6 @@ fn source_columns_round_trip() {
 fn a_pair_bae_never_writes_is_refused() {
     assert!(ContextSource::from_columns("release", None).is_err());
     assert!(ContextSource::from_columns("library", Some("id".into())).is_err());
+    assert!(ContextSource::from_columns("tracks", Some("id".into())).is_err());
     assert!(ContextSource::from_columns("folder", None).is_err());
 }

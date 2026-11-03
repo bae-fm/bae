@@ -1953,12 +1953,13 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     -- The entry number the next entry of either lane gets: no two entries
     -- ever share one, so an id a screen still holds never names a later row.
     next_entry INTEGER NOT NULL,
-    -- What the context lane plays from (one release, several, or the
-    -- library), whether it plays shuffled, and the position of its track
-    -- playing or last played: the lane's upcoming tracks are the ones after
-    -- it. NULL together exactly while the lane is empty. Which releases
-    -- several were is the lane's tracks.
-    source_kind       TEXT CHECK (source_kind IN ('release', 'releases', 'library')),
+    -- What the context lane plays from (one release, several, a list of
+    -- tracks, or the library), whether it plays shuffled, and the position of
+    -- its track playing or last played: the lane's upcoming tracks are the
+    -- ones after it. NULL together exactly while the lane is empty. Which
+    -- releases several were, or which tracks a list named, is the lane's
+    -- tracks.
+    source_kind       TEXT CHECK (source_kind IN ('release', 'releases', 'tracks', 'library')),
     -- The release the lane plays, set exactly when it plays one.
     source_release_id TEXT,
     shuffled          INTEGER CHECK (shuffled IN (0, 1)),

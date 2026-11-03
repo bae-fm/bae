@@ -157,7 +157,7 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
                         |row| row.get(0),
                     )
                     .optional()?,
-                ContextSource::Releases | ContextSource::Library => None,
+                ContextSource::Releases | ContextSource::Tracks | ContextSource::Library => None,
             };
             (
                 Some(crate::ResolvedContext { source, source_title, shuffled }),

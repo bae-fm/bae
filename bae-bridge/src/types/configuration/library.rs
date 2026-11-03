@@ -308,9 +308,12 @@ pub enum BridgePlaybackSourceKind {
 impl BridgePlaybackSourceKind {
     pub(crate) fn from_core(source: &bae_playback::ContextSource) -> Self {
         match source {
-            bae_playback::ContextSource::Release(_) | bae_playback::ContextSource::Releases => {
-                Self::Release
-            }
+            // Sentinel: the bridge's own kind for a list of tracks comes with
+            // its queue-section label. Only here to keep the core change apart
+            // from the bridge shape the apps compile against.
+            bae_playback::ContextSource::Release(_)
+            | bae_playback::ContextSource::Releases
+            | bae_playback::ContextSource::Tracks => Self::Release,
             bae_playback::ContextSource::Library => Self::Library,
         }
     }

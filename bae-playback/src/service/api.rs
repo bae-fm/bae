@@ -28,6 +28,13 @@ pub(crate) enum PlaybackCommand {
     /// Releases with no playable tracks are skipped, none left is a no-op, and a
     /// single one left plays exactly like `PlayRelease`.
     PlayReleases(Vec<String>),
+    /// Play tracks in the order given as one context, from the one at
+    /// `start_index`. Tracks the library does not hold are left out; a start
+    /// index past the list or naming such a track plays nothing.
+    PlayTracks {
+        track_ids: Vec<String>,
+        start_index: usize,
+    },
     /// Play the whole library in a new shuffle; an empty library is a no-op.
     PlayLibraryShuffled,
     Pause,
@@ -274,6 +281,9 @@ impl PlaybackHandle {
     }
     pub fn play_releases(&self, release_ids: Vec<String>) {
         self.dispatch(PlaybackCommand::PlayReleases(release_ids));
+    }
+    pub fn play_tracks(&self, track_ids: Vec<String>, start_index: usize) {
+        self.dispatch(PlaybackCommand::PlayTracks { track_ids, start_index });
     }
     pub fn play_library_shuffled(&self) {
         self.dispatch(PlaybackCommand::PlayLibraryShuffled);

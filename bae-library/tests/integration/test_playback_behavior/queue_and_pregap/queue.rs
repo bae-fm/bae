@@ -306,6 +306,9 @@ async fn current_release_id(handle: &bae_playback::PlaybackHandle) -> String {
         bae_playback::ContextSource::Releases => {
             panic!("expected a single-release context, got a multi-release one")
         }
+        bae_playback::ContextSource::Tracks => {
+            panic!("expected a release context, got a list of tracks")
+        }
         bae_playback::ContextSource::Library => {
             panic!("expected a release context, got the whole-library context")
         }

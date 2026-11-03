@@ -344,3 +344,61 @@ async fn test_set_shuffle_with_no_context_is_noop() {
     assert!(f.value().await.context.is_none());
     assert_eq!(f.current_name(), None);
 }
+
+/// A list of tracks plays exactly those tracks in the order sent, across
+/// releases and with a track named twice, from the entry at the start index:
+/// the ones before it are history, the ones after it upcoming.
+#[tokio::test]
+async fn play_tracks_plays_the_list_in_order_from_the_start_index() {
+    let mut f = fixture(&[("r1", &["a1", "a2", "a3"]), ("r2", &["b1", "b2"])]).await;
+    let list = f.ids(&["b2", "a1", "b1", "a1", "a3"]);
+
+    assert_eq!(f.play_fill(ContextFill::Tracks { track_ids: list, start: 3 }).await, "a1");
+
+    let value = f.value().await;
+    assert_eq!(value.context.unwrap().source, ContextSource::Tracks);
+    assert!(value.has_previous, "the entries before the start are behind it");
+    assert_eq!(f.context_order().await, names(&["b2", "a1", "b1", "a1", "a3"]));
+    assert_eq!(f.upcoming().await, names(&["a3"]));
+    assert_eq!(f.previous(0).await, Some("b1".into()), "the start is the second a1, not the first");
+}
+
+/// A track the library doesn't hold is left out, and the start still names
+/// the entry the list put at its index.
+#[tokio::test]
+async fn play_tracks_leaves_out_a_track_the_library_lacks() {
+    let mut f = fixture(&[("r1", &["a1", "a2", "a3"])]).await;
+    let mut list = f.ids(&["a1", "a2", "a3"]);
+    list.insert(1, "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string());
+
+    assert_eq!(f.play_fill(ContextFill::Tracks { track_ids: list, start: 2 }).await, "a2");
+
+    assert_eq!(f.context_order().await, names(&["a1", "a2", "a3"]));
+    assert_eq!(f.upcoming().await, names(&["a3"]));
+}
+
+/// A start the list doesn't have, a start track the library doesn't hold, and
+/// an empty list each play nothing and leave the queue as it was.
+#[tokio::test]
+async fn play_tracks_without_a_start_track_leaves_the_queue() {
+    let mut f = release(&["t1", "t2"]).await;
+    f.play_from("t1").await;
+    let before = f.shown().await;
+
+    let past_the_end =
+        f.queue.play(ContextFill::Tracks { track_ids: f.ids(&["t1", "t2"]), start: 2 }).await;
+    assert_eq!(past_the_end.unwrap(), crate::tables::ContextFilled::StartMissing);
+    let not_held = f
+        .queue
+        .play(ContextFill::Tracks {
+            track_ids: vec![f.id("t2"), "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string()],
+            start: 1,
+        })
+        .await;
+    assert_eq!(not_held.unwrap(), crate::tables::ContextFilled::StartMissing);
+    let empty = f.queue.play(ContextFill::Tracks { track_ids: Vec::new(), start: 0 }).await;
+    assert_eq!(empty.unwrap(), crate::tables::ContextFilled::NoTracks);
+
+    assert_eq!(f.shown().await, before);
+    assert_eq!(f.current(), "t1");
+}

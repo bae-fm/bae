@@ -2972,10 +2972,15 @@ playing from  Album Title, tracks 4–11
 When track 3 ends, Up Next drains first, then the release continues at track
 4.
 
-What's playing from is a release, several releases in the order chosen, or the
-whole library. The queue keeps which of the three it is, and the release when
-it is one; which releases several were is the tracks they filled. A play of
-several of which only one has tracks plays that release. Albums picked together in the album grid, played, queued or
+What's playing from is a release, several releases in the order chosen, a
+list of tracks in the order it was sent, or the whole library. The queue keeps
+which of the four it is, and the release when it is one; which releases
+several were, or which tracks a list named, is the tracks they filled. A play
+of several of which only one has tracks plays that release. A list of tracks
+plays from the track at the index it names, with the tracks before it behind
+the cursor; it leaves out any track the library doesn't hold and plays a track
+named twice twice. A start the list doesn't have, or a start track the library
+doesn't hold, plays nothing. Albums picked together in the album grid, played, queued or
 dragged to the queue, go in the grid's order under its sort and grouping,
 which core reads for the ids it is handed, whatever order they were picked
 in. Its rows are filled once, when playing starts; after that they
@@ -2989,6 +2994,7 @@ removable, reorderable and skipped to on its own.
 | Command | Effect |
 |---|---|
 | Play a release, from a track or shuffled | Up Next is cleared; the release is what's playing from |
+| Play a list of tracks, from one of them | Up Next is cleared; the list is what's playing from |
 | Play next / add to queue | tracks go to the front or end of Up Next |
 | Remove, reorder, skip to | acts on one entry, within its own part |
 | Clear Up Next | empties Up Next only |
@@ -3289,7 +3295,8 @@ ends or the session closes.
 ### 7.8 What a device remembers
 
 The queue and position are per device. The queue is stored as it changes: Up
-Next, what's playing from (a release, several, or the library) and its tracks
+Next, what's playing from (a release, several, a list of tracks, or the
+library) and its tracks
 in play order — shuffled or not, with the session's removals and reorders —
 which track of it is playing, and repeat.
 Beside it a device saves the entry playing and its position while a track is

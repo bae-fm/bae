@@ -534,6 +534,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         PlaybackCommand::Play(_) => Some(PlaybackCommandKind::Play),
         PlaybackCommand::PlayRelease { .. } => Some(PlaybackCommandKind::PlayRelease),
         PlaybackCommand::PlayReleases(_) => Some(PlaybackCommandKind::PlayReleases),
+        PlaybackCommand::PlayTracks { .. } => Some(PlaybackCommandKind::PlayTracks),
         PlaybackCommand::PlayLibraryShuffled => Some(PlaybackCommandKind::PlayLibraryShuffled),
         PlaybackCommand::Next => Some(PlaybackCommandKind::Next),
         PlaybackCommand::Previous => Some(PlaybackCommandKind::Previous),
@@ -592,6 +593,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         PlaybackCommand::Play(_)
         | PlaybackCommand::PlayRelease { .. }
         | PlaybackCommand::PlayReleases(_)
+        | PlaybackCommand::PlayTracks { .. }
         | PlaybackCommand::PlayLibraryShuffled
         | PlaybackCommand::Pause
         | PlaybackCommand::Stop

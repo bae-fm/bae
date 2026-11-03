@@ -1,15 +1,17 @@
 /// What the context lane plays from: a single release, several releases one
-/// after another in the order they were chosen, or the whole library. The
-/// queue screens label the lane by it; the lane's tracks are in the queue
-/// tables, filled once when it starts playing.
+/// after another in the order they were chosen, a list of tracks in the order
+/// it was sent, or the whole library. The queue screens label the lane by it;
+/// the lane's tracks are in the queue tables, filled once when it starts
+/// playing.
 ///
 /// `Releases` always stands for at least two releases: a single-release play
 /// collapses to `Release` (see [`ContextSource::releases`]). Which releases
-/// they were is the lane's tracks, not the source.
+/// they were, or which tracks, is the lane's tracks, not the source.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContextSource {
     Release(String),
     Releases,
+    Tracks,
     Library,
 }
 
@@ -33,6 +35,7 @@ impl ContextSource {
         match self {
             ContextSource::Release(id) => ("release", Some(id)),
             ContextSource::Releases => ("releases", None),
+            ContextSource::Tracks => ("tracks", None),
             ContextSource::Library => ("library", None),
         }
     }
@@ -46,6 +49,7 @@ impl ContextSource {
         match (kind, release_id) {
             ("release", Some(id)) => Ok(ContextSource::Release(id)),
             ("releases", None) => Ok(ContextSource::Releases),
+            ("tracks", None) => Ok(ContextSource::Tracks),
             ("library", None) => Ok(ContextSource::Library),
             (kind, release_id) => Err(format!(
                 "the queue's source {kind:?} with release {release_id:?} is not one bae writes"

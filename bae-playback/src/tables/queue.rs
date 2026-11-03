@@ -52,6 +52,9 @@ pub enum ContextFill {
     /// from the first track. A release with no tracks is left out, of the lane
     /// and of the source the queue names; a release named twice plays twice.
     Releases(Vec<String>),
+    /// Tracks in the order given, from the one at index `start`. A track the
+    /// library does not hold is left out; a track named twice plays twice.
+    Tracks { track_ids: Vec<String>, start: usize },
     /// Every library track, shuffled.
     LibraryShuffled,
 }
@@ -70,11 +73,11 @@ pub enum ContextFilled {
     /// The lane holds `track_count` tracks and plays `current` first; Up Next
     /// is empty.
     Playing { current: QueueEntry, track_count: usize },
-    /// The release, the releases or the library hold no tracks. The queue is
-    /// as it was.
+    /// The release, the releases or the library hold no tracks, or the list
+    /// of tracks is empty. The queue is as it was.
     NoTracks,
-    /// The track to start from is not on the release, or not in the library.
-    /// The queue is as it was.
+    /// The track to start from is not on the release, not in the library, or
+    /// not in the list of tracks at its start index. The queue is as it was.
     StartMissing,
 }
 
@@ -509,13 +512,22 @@ struct FillSource {
     source: Option<String>,
 }
 
+/// The lane row a fill plays first.
+enum FillCursor {
+    First,
+    /// The row of this track, which the one release played holds once.
+    Track(String),
+    /// The row at this position.
+    Position(i64),
+}
+
 fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<ContextFilled, DbError> {
     let release_source = |release_id: String| FillSource {
         from: "tracks t WHERE t.release_id = :source",
         source_order: "t.position, t.id",
         source: Some(release_id),
     };
-    let (source, rows, shuffled, start_track) = match fill {
+    let (source, rows, shuffled, start) = match fill {
         ContextFill::ReleaseOfTrack(track_id) => {
             let release_id: Option<String> = sql
                 .query_row("SELECT release_id FROM tracks WHERE id = ?", [&track_id], |row| {
@@ -529,7 +541,7 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
                 ContextSource::Release(release_id.clone()),
                 release_source(release_id),
                 false,
-                Some(track_id),
+                FillCursor::Track(track_id),
             )
         }
         ContextFill::Release { release_id, start } => {
@@ -541,9 +553,9 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
             if !has_tracks {
                 return Ok(ContextFilled::NoTracks);
             }
-            let (shuffled, start_track) = match start {
-                ReleaseStart::First => (false, None),
-                ReleaseStart::Shuffled => (true, None),
+            let (shuffled, start) = match start {
+                ReleaseStart::First => (false, FillCursor::First),
+                ReleaseStart::Shuffled => (true, FillCursor::First),
                 ReleaseStart::Track(track_id) => {
                     let on_release: bool = sql.query_row(
                         "SELECT EXISTS (SELECT 1 FROM tracks WHERE id = ? AND release_id = ?)",
@@ -553,14 +565,14 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
                     if !on_release {
                         return Ok(ContextFilled::StartMissing);
                     }
-                    (false, Some(track_id))
+                    (false, FillCursor::Track(track_id))
                 }
             };
             (
                 ContextSource::Release(release_id.clone()),
                 release_source(release_id),
                 shuffled,
-                start_track,
+                start,
             )
         }
         ContextFill::Releases(release_ids) => {
@@ -586,7 +598,43 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
                     source: Some(playable_ids),
                 },
                 false,
-                None,
+                FillCursor::First,
+            )
+        }
+        ContextFill::Tracks { track_ids, start } => {
+            if track_ids.is_empty() {
+                return Ok(ContextFilled::NoTracks);
+            }
+            let Some(start_track) = track_ids.get(start) else {
+                return Ok(ContextFilled::StartMissing);
+            };
+            let start_held: bool = sql.query_row(
+                "SELECT EXISTS (SELECT 1 FROM tracks WHERE id = ?)",
+                [start_track],
+                |row| row.get(0),
+            )?;
+            if !start_held {
+                return Ok(ContextFilled::StartMissing);
+            }
+            let track_ids = serde_json::to_string(&track_ids)
+                .expect("serializing a Vec<String> to JSON cannot fail");
+            // The start entry's place among the entries the library holds,
+            // which are the lane's rows in the list's order.
+            let cursor: i64 = sql.query_row(
+                "SELECT count(*) FROM json_each(?1) j JOIN tracks t ON t.id = j.value \
+                 WHERE j.key <= ?2",
+                params![&track_ids, start as i64],
+                |row| row.get(0),
+            )?;
+            (
+                ContextSource::Tracks,
+                FillSource {
+                    from: "json_each(:source) j JOIN tracks t ON t.id = j.value",
+                    source_order: "j.key",
+                    source: Some(track_ids),
+                },
+                false,
+                FillCursor::Position(cursor),
             )
         }
         ContextFill::LibraryShuffled => {
@@ -603,7 +651,7 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
                     source: None,
                 },
                 true,
-                None,
+                FillCursor::First,
             )
         }
     };
@@ -640,14 +688,14 @@ fn fill_on(sql: &coven::BulkSqlContext<'_>, fill: ContextFill) -> Result<Context
         ),
         bound.as_slice(),
     )?;
-    // The start track is on the one release played, which holds it once.
-    let cursor: i64 = match start_track {
-        Some(track_id) => sql.query_row(
+    let cursor: i64 = match start {
+        FillCursor::First => 1,
+        FillCursor::Track(track_id) => sql.query_row(
             "SELECT position FROM playback_context WHERE track_id = ?",
             [track_id],
             |row| row.get(0),
         )?,
-        None => 1,
+        FillCursor::Position(position) => position,
     };
     let (source_kind, source_release_id) = source.to_columns();
     sql.execute(
