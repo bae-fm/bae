@@ -2,8 +2,43 @@
 # which scripts/owner-dependency-boundary.sh installs at a pinned coven
 # revision and runs on this workspace.
 
-# bae holds itself to one rule group: an owner never hands out what it holds.
-rules = ["owner-dependencies"]
+# The rule groups bae holds itself to: its crates depend only downward, and
+# an owner never hands out what it holds.
+rules = ["crate-dependencies", "owner-dependencies"]
+
+# The code generator for the bindings answers only to the conventions.
+tools = ["bae-uniffi-bindgen"]
+
+# The crates in dependency order: each depends, dev-dependencies included,
+# only on crates before it. bae-views sits below bae-library because the
+# library's tests read the views.
+crate_order = [
+    "bae-loc",
+    "bae-mirror",
+    "bae-theme",
+    "bae-types",
+    "bae-util",
+    "bae-audio",
+    "bae-catalogs",
+    "bae-diagnostics",
+    "bae-app-dir",
+    "bae-db",
+    "bae-preferences",
+    "bae-track-audio",
+    "bae-identify",
+    "bae-playback",
+    "bae-import",
+    "bae-transfers",
+    "bae-views",
+    "bae-library",
+    "bae-app",
+    "bae-automation",
+    "bae-subsonic",
+    "bae-cast",
+    "bae-mcp",
+    "bae-desktop",
+    "bae-bridge",
+]
 
 # These are retained state and service capabilities, not values passed between
 # operations. The checker also follows fields containing them, so an owner made
