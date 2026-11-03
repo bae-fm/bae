@@ -556,3 +556,7 @@ pub fn release_edit_tracks_on(
         })
     })?)
 }
+
+#[cfg(test)]
+#[path = "release_tests.rs"]
+mod tests;

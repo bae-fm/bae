@@ -235,3 +235,7 @@ fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> rusqlite::Result<V
         Ok(PlaylistEntry { position_id: uuid_column(row, 0)?, track_id: row.get(1)? })
     })
 }
+
+#[cfg(test)]
+#[path = "collections_tests.rs"]
+mod tests;

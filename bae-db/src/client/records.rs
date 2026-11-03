@@ -407,3 +407,7 @@ pub fn check_releases_in_library_on(
     }
     Ok(statuses)
 }
+
+#[cfg(test)]
+#[path = "records_tests.rs"]
+mod tests;

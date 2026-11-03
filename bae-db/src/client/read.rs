@@ -528,3 +528,7 @@ pub(super) fn row_to_audio_segment(row: &Row) -> rusqlite::Result<DbAudioSegment
         created_at: rfc3339_column(row, "created_at")?,
     })
 }
+
+#[cfg(test)]
+#[path = "read_tests.rs"]
+mod tests;

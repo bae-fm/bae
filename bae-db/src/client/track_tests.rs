@@ -1,4 +1,4 @@
-use super::super::*;
+use crate::client::*;
 use crate::test_fixtures::chunked_tracks::*;
 
 #[tokio::test]

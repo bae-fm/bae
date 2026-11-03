@@ -1,4 +1,4 @@
-use super::super::*;
+use crate::client::*;
 
 /// An in-memory DB on the real schema with one artist/album/release whose
 /// `created_at` is valid, so a test can corrupt one column and prove the

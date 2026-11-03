@@ -335,3 +335,7 @@ impl Database {
         .await
     }
 }
+
+#[cfg(test)]
+#[path = "sync_start_failure_tests.rs"]
+mod tests;

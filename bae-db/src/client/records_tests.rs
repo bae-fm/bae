@@ -1,11 +1,17 @@
 //! Which library album an import's release records name, and what the
 //! status probe says a catalog release is in the library as.
 
+use crate::client::*;
+use crate::test_fixtures::live_query::*;
 use crate::test_fixtures::temp_db;
+use crate::test_fixtures::{exec, exec_batch};
+use crate::{identity, DbAlbumArtist};
 use crate::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::ReleaseRecord;
 use chrono::Utc;
+use std::collections::BTreeSet;
+use std::time::Duration;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -478,4 +484,208 @@ async fn the_status_probe_names_every_album_of_the_group() {
         .map(|album| (album.album_id.as_str(), album.holds_release))
         .collect();
     assert_eq!(albums, [(other.id.as_str(), true), (x.id.as_str(), false)]);
+}
+
+// Fixture row ids, UUIDs because coven refuses any other synced primary key.
+const ALBUM_1: &str = "9644b84d-94b2-4b3b-863a-d6583931920c";
+const ARTIST_1: &str = "6c441836-aef7-4239-8a84-5336c4cce52c";
+const RELEASE_1: &str = "c0218676-4c47-4eb7-8d65-57a8d328c3d1";
+
+fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
+    ReleaseRecord::new(
+        &bae_catalogs::records::MetadataRef::new(source, release_id),
+        Some(format!("group-{release_id}")),
+    )
+}
+
+async fn ids(db: &Database, query: &'static str) -> Vec<String> {
+    db.read(move |sql| sql.query(query, [], |row| row.get::<_, String>(0)).map_err(DbError::from))
+        .await
+        .unwrap()
+}
+
+/// A release's records and an album's credits are facts: each row's id is
+/// computed from the fact it states, so another device stating the same fact
+/// writes the same row.
+#[tokio::test]
+async fn fact_rows_take_their_ids_from_their_facts() {
+    let (db, _tmp) = temp_db().await;
+    let now = Utc::now();
+
+    let artist = DbArtist {
+        id: ARTIST_1.to_string(),
+        name: "Artist".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: now,
+    };
+    db.insert_artist(&artist).await.unwrap();
+
+    let mut album = DbAlbum::new_test("Album");
+    album.id = ALBUM_1.to_string();
+    db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now)).await.unwrap();
+
+    let release = DbRelease::new_test(&album.id, RELEASE_1);
+    db.insert_release(&release).await.unwrap();
+    db.insert_release_records(&release.id, &[record(Catalog::Discogs, "discogs-release-1")])
+        .await
+        .unwrap();
+    assert_eq!(
+        ids(&db, "SELECT id FROM release_records").await,
+        vec![identity::release_record_id(&release.id, Catalog::Discogs)],
+    );
+
+    // Moving the release to a fresh album copies its credits under the new
+    // album's ids.
+    let target = DbAlbum::new_test("Target Album");
+    db.set_records_atomic(crate::RecordsChange {
+        release_id: release.id.clone(),
+        records: vec![record(Catalog::MusicBrainz, "mb-release-1")],
+        current_album_id: album.id.clone(),
+        target_album_id: target.id.clone(),
+        new_album: Some(target.clone()),
+    })
+    .await
+    .unwrap();
+
+    let credits = ids(&db, "SELECT id FROM album_artists").await;
+    assert!(
+        credits.contains(&identity::album_artist_id(&target.id, 0)),
+        "the copied credit's id is its (album, position), got {credits:?}"
+    );
+    assert_eq!(
+        ids(&db, "SELECT id FROM release_records").await,
+        vec![identity::release_record_id(&release.id, Catalog::MusicBrainz)],
+    );
+}
+
+/// The statuses of every offered release come from one subscription: its
+/// checks move in place as the offers change, and a record write wakes the
+/// one read that answers them all.
+#[tokio::test]
+async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
+    let (db, _temp) = live_db().await;
+    let offered = LibraryCheck {
+        release_id: "source-release-1".to_string(),
+        source: Catalog::MusicBrainz,
+        source_group_id: Some("source-group-1".to_string()),
+    };
+    let other = LibraryCheck {
+        release_id: "source-release-2".to_string(),
+        source: Catalog::MusicBrainz,
+        source_group_id: None,
+    };
+    let mut live = db.subscribe_library_statuses(BTreeSet::new());
+    let requests = live.requests();
+    assert!(
+        live.next().await.expect("the query stays open").result.unwrap().is_empty(),
+        "no offers check nothing"
+    );
+
+    requests.set([offered.clone(), other.clone()].into_iter().collect()).unwrap();
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(initial.len(), 2);
+    assert!(initial.iter().all(|status| !status.album_in_library()));
+
+    exec(
+        &db,
+        "INSERT INTO release_records
+         (id, release_id, catalog, kind, key, album_key) VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1')",
+        &[IDENTITY_ID, RELEASE_ID],
+    )
+    .await;
+    let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("identity write wakes the library statuses")
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let status = |statuses: &[LibraryStatus], release_id: &str| {
+        statuses
+            .iter()
+            .find(|status| status.release_id == release_id)
+            .cloned()
+            .expect("a status per check")
+    };
+    let held = status(&updated, "source-release-1");
+    assert!(held.release_in_library());
+    assert!(held.album_in_library());
+    assert_eq!(held.albums[0].album_id, ALBUM_ID);
+    assert!(!status(&updated, "source-release-2").album_in_library());
+
+    exec(&db,
+        "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL WHERE id = ?1",
+        &[IDENTITY_ID],
+    ).await;
+    let album_only = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("identity kind change wakes the library statuses")
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let held = status(&album_only, "source-release-1");
+    assert!(!held.release_in_library());
+    assert!(held.album_in_library());
+
+    requests.set([other].into_iter().collect()).unwrap();
+    let narrowed = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(
+        narrowed.iter().map(|status| status.release_id.as_str()).collect::<Vec<_>>(),
+        vec!["source-release-2"],
+        "a release no longer offered is no longer checked"
+    );
+}
+
+/// Each check answers with the albums holding its pressing first, then the
+/// albums holding another release of its album, oldest first; a check with
+/// no album answers only by its pressing; and the answers come in the checks'
+/// order, one per check, matched or not.
+#[tokio::test]
+async fn library_statuses_answer_every_check_in_order() {
+    let (db, _temp) = live_db().await;
+    exec_batch(
+        &db,
+        &format!(
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{OTHER_ALBUM_ID}', 'Older Album', 0, '2025-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{OTHER_RELEASE_ID}', '{OTHER_ALBUM_ID}', '2025-01-01T00:00:00Z', 0);
+             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES ('{IDENTITY_ID}', '{RELEASE_ID}', 'musicbrainz', 'album', 'group-1', NULL);
+             INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES ('0d8f8a3e-6c1b-4d5e-9a3c-2f1e7b6a5d4c', '{OTHER_RELEASE_ID}', 'musicbrainz', 'pressing', 'pressing-1', 'group-1');"
+        ),
+    )
+    .await;
+    let check = |release_id: &str, group: Option<&str>| LibraryCheck {
+        release_id: release_id.to_string(),
+        source: Catalog::MusicBrainz,
+        source_group_id: group.map(str::to_string),
+    };
+    let statuses = db
+        .check_releases_in_library(&[
+            check("pressing-1", Some("group-1")),
+            check("pressing-2", None),
+            check("pressing-3", Some("group-1")),
+            check("pressing-1", None),
+        ])
+        .await
+        .unwrap();
+    fn albums(status: &LibraryStatus) -> Vec<(&str, bool)> {
+        status.albums.iter().map(|album| (album.album_id.as_str(), album.holds_release)).collect()
+    }
+    assert_eq!(
+        statuses.iter().map(|status| status.release_id.as_str()).collect::<Vec<_>>(),
+        ["pressing-1", "pressing-2", "pressing-3", "pressing-1"]
+    );
+    assert_eq!(
+        albums(&statuses[0]),
+        [(OTHER_ALBUM_ID, true), (ALBUM_ID, false)],
+        "the album holding the pressing comes before the one holding its album"
+    );
+    assert!(statuses[1].albums.is_empty());
+    assert_eq!(
+        albums(&statuses[2]),
+        [(OTHER_ALBUM_ID, false), (ALBUM_ID, false)],
+        "albums holding only its album come oldest first"
+    );
+    assert_eq!(albums(&statuses[3]), [(OTHER_ALBUM_ID, true)]);
 }

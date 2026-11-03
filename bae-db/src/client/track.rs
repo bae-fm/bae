@@ -296,3 +296,7 @@ impl Database {
         .await
     }
 }
+
+#[cfg(test)]
+#[path = "track_tests.rs"]
+mod tests;

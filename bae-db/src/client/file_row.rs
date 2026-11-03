@@ -97,3 +97,7 @@ impl FileRowColumns {
         ))
     }
 }
+
+#[cfg(test)]
+#[path = "file_row_tests.rs"]
+mod tests;

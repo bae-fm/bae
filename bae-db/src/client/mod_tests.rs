@@ -1,6 +1,8 @@
-use super::super::*;
 use super::*;
 use crate::test_fixtures::aggregate_ordering::*;
+use crate::test_fixtures::live_query::*;
+use crate::test_fixtures::*;
+use rusqlite::params;
 
 #[tokio::test]
 async fn release_file_source_audio_facts_round_trip_without_track_rows() {
@@ -56,7 +58,7 @@ async fn release_records_are_read_in_catalog_order() {
     .unwrap();
 
     let records =
-        db.read(|sql| super::super::read::get_release_records_on(&sql, RELEASE_A)).await.unwrap();
+        db.read(|sql| crate::client::read::get_release_records_on(&sql, RELEASE_A)).await.unwrap();
     assert_eq!(
         records.iter().map(|record| record.catalog()).collect::<Vec<_>>(),
         [
@@ -69,7 +71,7 @@ async fn release_records_are_read_in_catalog_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", super::super::read::RELEASE_RECORDS_IN_ORDER),
+                &format!("EXPLAIN QUERY PLAN {}", crate::client::read::RELEASE_RECORDS_IN_ORDER),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
             )
@@ -95,21 +97,21 @@ async fn a_tracks_neighbors_are_read_from_the_positions_index() {
     let (db, _tmp) = release_detail_db().await;
     assert_eq!(
         db.track_neighbors(TRACK_A).await.unwrap(),
-        Some(super::super::track::TrackNeighbors {
+        Some(crate::client::track::TrackNeighbors {
             is_first: true,
             next: Some(TRACK_B.to_string()),
         })
     );
     assert_eq!(
         db.track_neighbors(TRACK_B).await.unwrap(),
-        Some(super::super::track::TrackNeighbors { is_first: false, next: None })
+        Some(crate::client::track::TrackNeighbors { is_first: false, next: None })
     );
     assert_eq!(db.count_tracks_for_release(RELEASE_A).await.unwrap(), 2);
 
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", super::super::track::TRACK_NEIGHBORS),
+                &format!("EXPLAIN QUERY PLAN {}", crate::client::track::TRACK_NEIGHBORS),
                 [TRACK_A],
                 |row| row.get::<_, String>(3),
             )
@@ -141,8 +143,10 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         files.iter().map(|f| f.original_filename.clone()).collect()
     };
 
-    let read =
-        db.read(|sql| super::super::read::get_files_for_release_on(&sql, RELEASE_A)).await.unwrap();
+    let read = db
+        .read(|sql| crate::client::read::get_files_for_release_on(&sql, RELEASE_A))
+        .await
+        .unwrap();
     assert_eq!(names(&read), FILES_IN_NATURAL_ORDER, "the read");
     let listed = db.get_files_for_release(RELEASE_A).await.unwrap();
     assert_eq!(names(&listed), FILES_IN_NATURAL_ORDER, "the release's file list");
@@ -150,7 +154,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", super::super::read::RELEASE_FILES_IN_ORDER),
+                &format!("EXPLAIN QUERY PLAN {}", crate::client::read::RELEASE_FILES_IN_ORDER),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
             )
@@ -166,4 +170,99 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),
         "the read sorts after reading: {plan:?}"
     );
+}
+
+#[tokio::test]
+async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
+    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+
+    let track = DbTrack::new_test("missing-release", TRACK_A, "Track Title A", 1);
+    let error = db
+        .insert_track(&track)
+        .await
+        .expect_err("track insert without a release must violate the foreign key");
+
+    assert!(
+        error.to_string().contains("FOREIGN KEY constraint failed"),
+        "expected a foreign-key violation, got {error}"
+    );
+}
+
+#[tokio::test]
+async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
+    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let runtime_thread = std::thread::current().id();
+    let fetched_thread = db
+        .read(|sql| {
+            let value = sql.query_row("SELECT 42", [], |row| row.get::<_, i64>(0))?;
+            Ok((value, std::thread::current().id()))
+        })
+        .process(move |(value, reader)| {
+            assert_eq!(value, 42);
+            assert_ne!(runtime_thread, std::thread::current().id());
+            Ok(reader)
+        })
+        .await
+        .unwrap();
+    assert_ne!(fetched_thread, std::thread::current().id());
+
+    let error = db
+        .read(|sql| Ok(sql.query_row("SELECT 1 WHERE 0", [], |row| row.get::<_, i64>(0))?))
+        .process(|_| -> Result<(), DbError> { panic!("a failed fetch must skip processing") })
+        .await
+        .unwrap_err();
+    assert!(matches!(error, DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)));
+
+    let error = db
+        .read(|_| Ok(()))
+        .process(|()| Err::<(), _>(DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)))
+        .await
+        .unwrap_err();
+    assert!(matches!(error, DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)));
+}
+
+/// Every connection to a library knows the natural order bae's schema names:
+/// numbers by value, letters without regard to case, then bytes.
+#[tokio::test]
+async fn coven_connection_orders_by_bae_natural_order() {
+    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let ordered = db
+        .read(|sql| {
+            Ok(sql.query(
+                "SELECT column1 FROM (VALUES ('Disc 10'), ('disc 2'), ('Disc 2'), ('Disc 1'))
+                 ORDER BY column1 COLLATE natural_order",
+                [],
+                |row| row.get::<_, String>(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(ordered, ["Disc 1", "Disc 2", "disc 2", "Disc 10"]);
+}
+
+#[tokio::test]
+async fn single_table_subscription_ignores_a_different_primary_key() {
+    let (db, _temp) = live_db().await;
+    exec(
+        &db,
+        "INSERT INTO albums
+         (id, title, is_compilation, created_at) VALUES (?1, 'Other Album', 0, '2026-01-01T00:00:00Z')",
+        &[OTHER_ALBUM_ID],
+    )
+    .await;
+    // The request only gives the test a change of its own to make; the query
+    // reads the same row whatever it is.
+    let mut live = db.inner.handle.subscribe_reconfigurable(0_u8, |_, sql| {
+        sql.query_row("SELECT title FROM albums WHERE id = ?1", params![ALBUM_ID], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(CovenError::from)
+    });
+    assert_eq!(live.next().await.expect("the query stays open").result.unwrap(), "Album Title");
+
+    exec(&db, "UPDATE albums SET title = 'Renamed Other Album' WHERE id = ?1", &[OTHER_ALBUM_ID])
+        .await;
+
+    let moved = next_run_is_only_the_request(&mut live, 1).await;
+    assert_eq!(moved.result.unwrap(), "Album Title");
 }

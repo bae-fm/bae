@@ -1,13 +1,13 @@
 //! The pending list names each file's row by index, whatever the size of the
 //! library.
 
-use super::super::pending::pending_rows_query;
+use crate::client::pending::pending_rows_query;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
-async fn plan(db: &super::super::Database, statement: String) -> Vec<String> {
+async fn plan(db: &crate::client::Database, statement: String) -> Vec<String> {
     db.read(move |sql| {
         sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
-            .map_err(super::super::DbError::from)
+            .map_err(crate::client::DbError::from)
     })
     .await
     .unwrap()
@@ -15,7 +15,7 @@ async fn plan(db: &super::super::Database, statement: String) -> Vec<String> {
 
 #[tokio::test]
 async fn the_pending_list_finds_each_row_by_index() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = crate::test_fixtures::temp_db().await;
     let plan = plan(&db, pending_rows_query()).await;
     for alias in [
         "named",

@@ -168,3 +168,7 @@ impl Database {
         .await
     }
 }
+
+#[cfg(test)]
+#[path = "queued_uploads_tests.rs"]
+mod tests;

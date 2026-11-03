@@ -211,3 +211,7 @@ pub fn search_pattern(query: &str) -> String {
     pattern.push('*');
     pattern
 }
+
+#[cfg(test)]
+#[path = "schema_tests.rs"]
+mod tests;

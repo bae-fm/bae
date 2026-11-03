@@ -99,6 +99,7 @@ mod test_capabilities;
 mod track;
 
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;
 
 pub mod list_windows;

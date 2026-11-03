@@ -2,8 +2,8 @@
 //! category the status line words, and refused outside the classes a start
 //! can fail in.
 
-use super::super::*;
-use super::temp_db;
+use crate::client::*;
+use crate::test_fixtures::temp_db;
 use bae_diagnostics::{UiError, UiErrorCategory as C};
 use coven::{DropboxAccess, OAuthAccess, OwnBucketReason, StorageFailure as F};
 
@@ -13,7 +13,7 @@ fn failure(category: C) -> UiError {
 
 /// The failed start the store reads back.
 async fn read_back(db: &Database) -> Option<UiError> {
-    db.read(|sql| super::super::sync_start_failure::start_failure_on(&sql)).await.unwrap()
+    db.read(|sql| crate::client::sync_start_failure::start_failure_on(&sql)).await.unwrap()
 }
 
 /// Every class a start can fail in, and every storage reason with each
