@@ -55,12 +55,13 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
         Menu {
             ForEach(Criterion.Field.allCases, id: \.self) { field in
                 Toggle(
-                    field.displayName,
                     isOn: Binding(
                         get: { field == criterion.field },
                         set: { _ in onSetField(field) }
                     )
-                )
+                ) {
+                    Text(field.displayName)
+                }
                 .disabled(takenFields.contains(field))
             }
         } label: {
@@ -76,7 +77,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .accessibilityLabel(criterion.field.displayName)
+        .accessibilityLabel(Text(criterion.field.displayName))
         .help("Change sort field")
     }
 

@@ -7,7 +7,7 @@ extension BridgeSortField: CaseIterable {
         [.title, .artist, .year, .dateAdded]
     }
 
-    public var displayName: String {
+    public var displayName: LocalizedStringResource {
         switch self {
         case .title: "Title"
         case .artist: "Artist"

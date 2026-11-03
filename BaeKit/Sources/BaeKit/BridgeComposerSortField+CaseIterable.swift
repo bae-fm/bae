@@ -5,11 +5,11 @@ extension BridgeComposerSortField: CaseIterable {
         [.name, .workCount, .linkedReleaseCount]
     }
 
-    public var displayName: String {
+    public var displayName: LocalizedStringResource {
         switch self {
-        case .name: String(localized: "Name")
-        case .workCount: String(localized: "Works")
-        case .linkedReleaseCount: String(localized: "Releases")
+        case .name: "Name"
+        case .workCount: "Works"
+        case .linkedReleaseCount: "Releases"
         }
     }
 }

@@ -41,6 +41,30 @@ struct SortCriteriaRowTests {
         #expect(criteria == before)
     }
 
+    /// Every field's name resolves through the string catalog: read in
+    /// Japanese, where every one of these words differs, none stays English.
+    @Test("every sort field's name is translated")
+    func everyFieldNameIsTranslated() {
+        func read(_ name: LocalizedStringResource, in language: String)
+            -> String
+        {
+            var name = name
+            name.locale = Locale(identifier: language)
+            return String(localized: name)
+        }
+        let names =
+            BridgeSortField.allCases.map(\.displayName)
+            + BridgeComposerSortField.allCases.map(\.displayName)
+            + BridgeArtistSortField.allCases.map(\.displayName)
+        for name in names {
+            let english = read(name, in: "en")
+            #expect(
+                read(name, in: "ja") != english,
+                "\(english) reads the same in Japanese"
+            )
+        }
+    }
+
     /// The field name is a menu label. An AppKit menu button renders a label
     /// as its title and can drop the rest, so assert the pill's menu button
     /// still carries its field.
@@ -70,7 +94,7 @@ struct SortCriteriaRowTests {
                     .compactMap { $0 as? NSPopUpButton }
                     .first
             )
-            let field = BridgeSortField.dateAdded.displayName
+            let field = String(localized: BridgeSortField.dateAdded.displayName)
             #expect(
                 menu.attributedTitle.string.contains(field),
                 "the menu reads \(menu.attributedTitle.string)"

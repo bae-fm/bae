@@ -5,10 +5,10 @@ extension BridgeArtistSortField: CaseIterable {
         [.name, .albumCount]
     }
 
-    public var displayName: String {
+    public var displayName: LocalizedStringResource {
         switch self {
-        case .name: String(localized: "Name")
-        case .albumCount: String(localized: "Albums")
+        case .name: "Name"
+        case .albumCount: "Albums"
         }
     }
 }

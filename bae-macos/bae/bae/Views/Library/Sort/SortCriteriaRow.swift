@@ -1,9 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// A sortable field the pill row can label and enumerate.
+/// A sortable field the pill row can label and enumerate. Its name is a
+/// catalog resource, so a field written as a bare literal is still translated.
 protocol SortCriterionField: Hashable, CaseIterable where AllCases == [Self] {
-    var displayName: String { get }
+    var displayName: LocalizedStringResource { get }
 }
 
 /// A field+direction criterion the pill row renders and mutates.
@@ -45,10 +46,12 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
             if !unused.isEmpty {
                 Menu {
                     ForEach(unused, id: \.self) { field in
-                        Button(field.displayName) {
+                        Button {
                             criteria.append(
                                 Criterion(field: field, direction: .ascending)
                             )
+                        } label: {
+                            Text(field.displayName)
                         }
                     }
                 } label: {

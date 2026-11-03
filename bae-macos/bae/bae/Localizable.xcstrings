@@ -24484,7 +24484,7 @@
       }
     },
     "Albums" : {
-      "comment" : "Search results: albums section header",
+      "comment" : "Search results: albums section header / artist sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -26212,7 +26212,7 @@
       }
     },
     "Artist" : {
-      "comment" : "Storage table column / edit-metadata field / import search: artist",
+      "comment" : "Storage table column / edit-metadata field / import search: artist / library sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -54575,7 +54575,7 @@
       }
     },
     "Name" : {
-      "comment" : "Storage sheet file table: filename column header",
+      "comment" : "Storage sheet file table: filename column header / composer and artist sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -67093,7 +67093,7 @@
       }
     },
     "Releases" : {
-      "comment" : "Composer work detail release section header",
+      "comment" : "Composer work detail release section header / composer sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -83174,7 +83174,7 @@
       }
     },
     "Title" : {
-      "comment" : "Edit-metadata: album/track title field label & placeholder",
+      "comment" : "Edit-metadata: album/track title field label & placeholder / library sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -88363,7 +88363,7 @@
       }
     },
     "Works" : {
-      "comment" : "Library/search works section and composer work count label",
+      "comment" : "Library/search works section and composer work count label / composer sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -88536,7 +88536,7 @@
       }
     },
     "Year" : {
-      "comment" : "Edit-metadata: pressing year field label & placeholder",
+      "comment" : "Edit-metadata: pressing year field label & placeholder / library sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -129271,7 +129271,7 @@
       }
     },
     "Date Added" : {
-      "comment" : "Storage Manager column header: when the release was added to the library",
+      "comment" : "Storage Manager column header: when the release was added to the library / library sort field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
