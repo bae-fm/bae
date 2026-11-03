@@ -594,7 +594,7 @@ pub fn bridge_length_clock(ms: u64) -> BridgeDurationClock {
     BridgeDurationClock::of_length(ms)
 }
 
-/// The two clocks a seek bar shows. Mirror of bae-library's `SeekBarClocks`.
+/// The two clocks a seek bar shows. Mirror of bae-util's `SeekBarClocks`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSeekBarClocks {
     /// Pregap countdown before track start; elapsed or remaining afterward,
@@ -602,6 +602,12 @@ pub struct BridgeSeekBarClocks {
     pub leading: BridgeDurationClock,
     /// The track's total length; `None` when it is not known.
     pub trailing: Option<BridgeDurationClock>,
+}
+
+mirror_struct! {
+    BridgeSeekBarClocks = bae_util::duration::SeekBarClocks,
+    from_core: fn,
+    fields: { leading: (BridgeDurationClock), trailing: (opt BridgeDurationClock) },
 }
 
 /// The seek bar's two labels, for a position within a track.
@@ -619,12 +625,11 @@ pub fn bridge_seek_bar(
     duration_ms: Option<u64>,
     show_remaining: bool,
 ) -> BridgeSeekBarClocks {
-    let bae_util::duration::SeekBarClocks { leading, trailing } =
-        bae_util::duration::SeekBarClocks::new(position_ms, duration_ms, show_remaining);
-    BridgeSeekBarClocks {
-        leading: BridgeDurationClock::from_core(leading),
-        trailing: trailing.map(BridgeDurationClock::from_core),
-    }
+    BridgeSeekBarClocks::from_core(bae_util::duration::SeekBarClocks::new(
+        position_ms,
+        duration_ms,
+        show_remaining,
+    ))
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
