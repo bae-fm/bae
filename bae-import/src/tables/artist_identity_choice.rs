@@ -48,10 +48,7 @@ impl ImportTables {
                     Choice::SameArtist => unreachable!("a merge uses the file-aware write"),
                 };
                 record_choice_on(sql, &hash, &discogs, &musicbrainz, choice, &artist_id)?;
-                sql.execute(
-                    "DELETE FROM import_candidate_failure WHERE content_hash = ?",
-                    [&hash],
-                )?;
+                crate::tables::import_state::failure_rows::delete_failure_on(sql, &hash)?;
                 Ok(())
             })
             .await

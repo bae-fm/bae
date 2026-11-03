@@ -112,8 +112,82 @@ pub(super) fn load_failure_on(
 
 /// Drop the failure the last import of `content_hash` left, and the identity
 /// conflict that hangs off it.
-pub(super) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+pub(crate) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [content_hash])?;
+    Ok(())
+}
+
+/// The kind of library identity a recorded conflict names two of.
+#[derive(Clone, Copy)]
+pub(crate) enum ConflictIdentity {
+    Artist,
+    Label,
+}
+
+impl ConflictIdentity {
+    fn table(self) -> &'static str {
+        match self {
+            Self::Artist => "import_candidate_artist_identity_conflict",
+            Self::Label => "import_candidate_label_identity_conflict",
+        }
+    }
+
+    /// The conflict's library identity columns: the one holding the Discogs
+    /// id, then the one holding the MusicBrainz id.
+    fn columns(self) -> [&'static str; 2] {
+        match self {
+            Self::Artist => ["discogs_library_artist_id", "musicbrainz_library_artist_id"],
+            Self::Label => ["discogs_library_label_id", "musicbrainz_library_label_id"],
+        }
+    }
+}
+
+/// Drop the failure the last import of `content_hash` left, if it stopped on
+/// a conflict of `identity`, with that conflict.
+pub(crate) fn delete_conflict_failure_on(
+    sql: &CovenWrite<'_>,
+    identity: ConflictIdentity,
+    content_hash: &str,
+) -> Result<(), DbError> {
+    sql.execute(
+        &format!(
+            "DELETE FROM import_candidate_failure WHERE content_hash = ? \
+             AND content_hash IN (SELECT content_hash FROM {})",
+            identity.table()
+        ),
+        [content_hash],
+    )?;
+    Ok(())
+}
+
+/// The recorded conflicts once the library identity `absorbed` is merged into
+/// `survivor`: a failure whose conflict the merge makes one identity goes,
+/// with its conflict, and a conflict that still names `absorbed` names
+/// `survivor`.
+pub(crate) fn merge_conflicts_on(
+    sql: &CovenWrite<'_>,
+    identity: ConflictIdentity,
+    absorbed: &str,
+    survivor: &str,
+) -> Result<(), DbError> {
+    let [discogs, musicbrainz] = identity.columns();
+    sql.execute(
+        &format!(
+            "DELETE FROM import_candidate_failure WHERE content_hash IN (\
+                 SELECT content_hash FROM {table} \
+                 WHERE ({discogs} = ?1 OR {musicbrainz} = ?1) \
+                   AND CASE WHEN {discogs} = ?1 THEN ?2 ELSE {discogs} END \
+                       = CASE WHEN {musicbrainz} = ?1 THEN ?2 ELSE {musicbrainz} END)",
+            table = identity.table()
+        ),
+        params![absorbed, survivor],
+    )?;
+    for column in identity.columns() {
+        sql.execute(
+            &format!("UPDATE {} SET {column} = ?1 WHERE {column} = ?2", identity.table()),
+            params![survivor, absorbed],
+        )?;
+    }
     Ok(())
 }
 

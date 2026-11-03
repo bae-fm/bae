@@ -45,10 +45,7 @@ impl ImportTables {
                     Choice::ChangeMatch => unreachable!("changing the match returned above"),
                 };
                 record_choice_on(sql, &hash, &conflict, choice, &label_id)?;
-                sql.execute(
-                    "DELETE FROM import_candidate_failure WHERE content_hash = ?",
-                    [&hash],
-                )?;
+                crate::tables::import_state::failure_rows::delete_failure_on(sql, &hash)?;
                 Ok(())
             })
             .await
@@ -160,25 +157,12 @@ fn merge_labels_on(
     }
     // Every other candidate's conflict the merge makes one label goes; the
     // rest that named the absorbed label name the survivor.
-    sql.execute(
-        "DELETE FROM import_candidate_failure WHERE content_hash IN (\
-             SELECT content_hash FROM import_candidate_label_identity_conflict \
-             WHERE (discogs_library_label_id = ?1 OR musicbrainz_library_label_id = ?1) \
-               AND CASE WHEN discogs_library_label_id = ?1 THEN ?2 \
-                        ELSE discogs_library_label_id END \
-                   = CASE WHEN musicbrainz_library_label_id = ?1 THEN ?2 \
-                          ELSE musicbrainz_library_label_id END)",
-        params![absorbed, survivor],
+    crate::tables::import_state::failure_rows::merge_conflicts_on(
+        sql,
+        crate::tables::import_state::failure_rows::ConflictIdentity::Label,
+        absorbed,
+        survivor,
     )?;
-    for column in ["discogs_library_label_id", "musicbrainz_library_label_id"] {
-        sql.execute(
-            &format!(
-                "UPDATE import_candidate_label_identity_conflict \
-                 SET {column} = ?1 WHERE {column} = ?2"
-            ),
-            params![survivor, absorbed],
-        )?;
-    }
     sql.execute(
         "UPDATE labels SET \
              musicbrainz_label_id = COALESCE(musicbrainz_label_id, ?2), \

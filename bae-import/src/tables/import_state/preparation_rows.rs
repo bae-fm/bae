@@ -244,7 +244,11 @@ pub(super) fn save_preparation_on(
         // An answer belongs to these source credits. Changing their source
         // requires the person to decide any new conflict.
         crate::tables::artist_identity_choice::delete_choices_on(sql, content_hash)?;
-        sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ? AND content_hash IN (SELECT content_hash FROM import_candidate_artist_identity_conflict)", [content_hash])?;
+        super::failure_rows::delete_conflict_failure_on(
+            sql,
+            super::failure_rows::ConflictIdentity::Artist,
+            content_hash,
+        )?;
     }
 
     if stored.identification != prep.identification {

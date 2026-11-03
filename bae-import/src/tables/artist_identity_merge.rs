@@ -166,33 +166,16 @@ fn apply_artist_identity_merge(
     )?;
     // Removing the parent failure also removes the conflict row whose
     // stored conflict no longer applies after consolidation.
-    sql.execute(
-        "DELETE FROM import_candidate_failure WHERE content_hash = ?",
-        [&plan.content_hash],
+    crate::tables::import_state::failure_rows::delete_failure_on(sql, &plan.content_hash)?;
+    // Another selected candidate can have failed on the same pair: every
+    // conflict that becomes one artist after this merge goes, and any that
+    // still names a different third artist names the survivor.
+    crate::tables::import_state::failure_rows::merge_conflicts_on(
+        sql,
+        crate::tables::import_state::failure_rows::ConflictIdentity::Artist,
+        &plan.absorbed_artist_id,
+        &plan.surviving_artist_id,
     )?;
-    // Another selected candidate can have failed on the same pair. Clear every
-    // conflict that becomes one artist after this merge, then retarget any
-    // conflict that still names a different third artist. This removes every
-    // conflict that would otherwise still name two artists that are now one.
-    sql.execute(
-        "DELETE FROM import_candidate_failure WHERE content_hash IN (\
-             SELECT content_hash FROM import_candidate_artist_identity_conflict \
-             WHERE (discogs_library_artist_id = ?1 OR musicbrainz_library_artist_id = ?1) \
-               AND CASE WHEN discogs_library_artist_id = ?1 THEN ?2 \
-                        ELSE discogs_library_artist_id END \
-                   = CASE WHEN musicbrainz_library_artist_id = ?1 THEN ?2 \
-                          ELSE musicbrainz_library_artist_id END)",
-        params![plan.absorbed_artist_id, plan.surviving_artist_id],
-    )?;
-    for column in ["discogs_library_artist_id", "musicbrainz_library_artist_id"] {
-        sql.execute(
-            &format!(
-                "UPDATE import_candidate_artist_identity_conflict \
-                 SET {column} = ?1 WHERE {column} = ?2"
-            ),
-            params![plan.surviving_artist_id, plan.absorbed_artist_id],
-        )?;
-    }
 
     if matches!(&plan.images, (None, Some(_))) {
         sql.execute(
