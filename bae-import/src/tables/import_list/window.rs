@@ -11,22 +11,22 @@
 //! filters keep, whether the list folds it, and whether its folder is offered
 //! to be read as one release, as its placement holds it.
 
-use super::super::folder_scans;
-use super::super::import_state::{
-    cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
-    PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
-};
-use super::super::release_groupings::{block_of, load_candidate_on};
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
 use crate::folder_scanner::{FileVersion, ScanItem};
 use crate::list::{ImportListItem, ListedRelease};
+use crate::tables::folder_scans;
+use crate::tables::import_state::{
+    cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
+    PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
+};
+use crate::tables::release_groupings::{block_of, load_candidate_on};
 use crate::tables::source_releases::load_release_records_on;
 use crate::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
-use crate::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ReleaseLink};
+use crate::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
 use bae_db::client::files::cover_version_sql;
 use bae_db::client::queued_uploads::release_upload_on;
 use bae_db::client::read::get_release_records_on;
@@ -211,7 +211,7 @@ fn release_rows(
     list: ImportListId,
     keys: &[ItemKey],
 ) -> Result<Vec<ReleaseRows>, DbError> {
-    use super::super::import_state::failure_rows::{
+    use crate::tables::import_state::failure_rows::{
         failure_reason_from_row, FAILURE_REASON_COLUMNS,
     };
     let keys: Vec<serde_json::Value> = keys
@@ -649,3 +649,7 @@ fn claimed_records(
         })
         .collect()
 }
+
+#[cfg(test)]
+#[path = "window_tests.rs"]
+mod tests;

@@ -1,23 +1,11 @@
-//! The writes a surface makes to the list it has open: opening and closing
-//! it, changing its view, folding its groups and changing its selection. Each
-//! is one write the list's live query answers, and each answers with the
-//! revision the read that reflects it carries.
+//! The list a surface has open (`import_list`) and the groups it folds
+//! (`import_list_collapsed`): opening and closing it, changing its view and
+//! folding its groups. Each is one write the list's live query answers, and
+//! each answers with the view revision the read that reflects it carries.
 
 use super::order::{order_column, tab_column, Shown};
 use super::*;
-use crate::selection::SelectionChange;
-use crate::{CandidateKey, FolderReleaseDecisionKey};
-use bae_db::LibraryPageWindow;
-
-/// What a change to a selection came to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SelectionWrite {
-    /// The selection is as asked, at this revision.
-    Changed { revision: u64 },
-    /// A run of rows was asked for between rows the list does not show, so
-    /// nothing changed.
-    RunNotShown,
-}
+use crate::FolderReleaseDecisionKey;
 
 fn view_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
     let revision = sql
@@ -27,16 +15,6 @@ fn view_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbErro
         .optional()?
         .ok_or_else(|| DbError::Message(format!("import list {} is not open", list.0)))?;
     to_u64(revision, "a list's view revision")
-}
-
-fn selection_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
-    let revision = sql
-        .query_row("SELECT selection_revision FROM import_list WHERE id = ?", [list.0], |row| {
-            row.get::<_, i64>(0)
-        })
-        .optional()?
-        .ok_or_else(|| DbError::Message(format!("import list {} is not open", list.0)))?;
-    to_u64(revision, "a list's selection revision")
 }
 
 /// The view moved: a fold folded or opened something.
@@ -58,26 +36,6 @@ fn opened_at(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
             &[],
         )?
         .unwrap_or(0))
-}
-
-/// Insert every key of `keys` the list shows into its selection.
-fn select_shown(
-    sql: &CovenWrite<'_>,
-    list: ImportListId,
-    keys: &[CandidateKey],
-) -> Result<(), DbError> {
-    sql.execute(
-        "INSERT INTO import_list_selection (list_id, key) \
-         SELECT shown.list_id, shown.key FROM json_each(:keys) AS w \
-         JOIN import_list_shown AS shown ON shown.key = unhex(w.value) \
-         WHERE shown.list_id = :list \
-         ON CONFLICT (list_id, key) DO NOTHING",
-        named_params! {
-            ":keys": crate::tables::key_hex_list(keys.iter()),
-            ":list": list.0,
-        },
-    )?;
-    Ok(())
 }
 
 impl ImportTables {
@@ -233,71 +191,8 @@ impl ImportTables {
         })
         .await
     }
-
-    /// Apply a change a person made by pointing at rows of `list`. A row the
-    /// list does not show is never selected.
-    pub async fn change_import_list_selection(
-        &self,
-        list: ImportListId,
-        change: SelectionChange,
-    ) -> Result<SelectionWrite, DbError> {
-        self.database
-            .call(move |sql| {
-                match change {
-                    SelectionChange::Replace { keys } => {
-                        sql.execute(
-                            "DELETE FROM import_list_selection \
-                         WHERE list_id = ? AND key NOT IN (SELECT unhex(value) FROM json_each(?))",
-                            params![list.0, crate::tables::key_hex_list(keys.iter())],
-                        )?;
-                        select_shown(sql, list, &keys)?;
-                    }
-                    SelectionChange::Toggle { add, remove } => {
-                        sql.execute(
-                            "DELETE FROM import_list_selection \
-                         WHERE list_id = ? AND key IN (SELECT unhex(value) FROM json_each(?))",
-                            params![list.0, crate::tables::key_hex_list(remove.iter())],
-                        )?;
-                        select_shown(sql, list, &add)?;
-                    }
-                    SelectionChange::Extend { from, to } => {
-                        let row = list_row(sql, list)?;
-                        let items = row.items(Shown::View);
-                        let (Some(from), Some(to)) =
-                            (items.position_of(sql, &from)?, items.position_of(sql, &to)?)
-                        else {
-                            return Ok(SelectionWrite::RunNotShown);
-                        };
-                        items.select_window(
-                            sql,
-                            &LibraryPageWindow {
-                                offset: from.min(to),
-                                limit: from.abs_diff(to) + 1,
-                            },
-                        )?;
-                    }
-                }
-                Ok(SelectionWrite::Changed { revision: selection_revision(sql, list)? })
-            })
-            .await
-    }
-
-    /// Select every row `list` shows, and answer with the selection revision
-    /// the read that shows it carries.
-    pub(crate) async fn select_all_in_import_list(
-        &self,
-        list: ImportListId,
-    ) -> Result<u64, DbError> {
-        self.database
-            .call(move |sql| {
-                sql.execute(
-                    "INSERT INTO import_list_selection (list_id, key) \
-                 SELECT list_id, key FROM import_list_shown WHERE list_id = ? \
-                 ON CONFLICT (list_id, key) DO NOTHING",
-                    [list.0],
-                )?;
-                selection_revision(sql, list)
-            })
-            .await
-    }
 }
+
+#[cfg(test)]
+#[path = "writes_tests.rs"]
+mod tests;

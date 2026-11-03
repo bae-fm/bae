@@ -3,9 +3,7 @@
 use crate::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScannedFile,
 };
-use bae_db::test_fixtures::{
-    empty_db, exec, exec_batch, fixed_now, write_cover, ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A,
-};
+use bae_db::test_fixtures::{empty_db, ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
 use bae_db::Database;
 use std::path::PathBuf;
 
@@ -68,14 +66,7 @@ pub(crate) async fn watched_root() -> (Database, tempfile::TempDir, std::path::P
     (db, tmp, root)
 }
 
-mod draftless_candidate_tests;
-mod folder_scan_live_query_tests;
-mod import_candidate_state_tests;
-mod import_list_live_query_tests;
 mod import_list_placement_tests;
-mod import_list_tests;
-mod import_list_window_cost;
-mod import_list_window_tests;
 
 /// A folder of plain track files, each `(relative_path, size)`.
 pub(crate) fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {

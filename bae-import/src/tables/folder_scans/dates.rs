@@ -1,3 +1,7 @@
+//! When a folder was found, kept by its path on disk: when a scan first saw
+//! it, the date its filesystem gives, and whether a scan has read it as a
+//! release or as broken.
+
 use super::*;
 use crate::folder_scanner::FolderDate;
 
@@ -97,3 +101,7 @@ impl FolderDiscovery {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "dates_tests.rs"]
+mod tests;

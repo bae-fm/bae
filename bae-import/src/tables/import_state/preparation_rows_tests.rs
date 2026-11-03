@@ -2,10 +2,14 @@
 
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::tag_snapshot::tests::*;
+use crate::tables::import_list::tests::*;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::CoverSelection;
+use crate::MetadataProvenance;
+use crate::TriageTab;
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::catalog::LookupCatalog;
 use bae_db::test_fixtures::empty_db;
 use bae_db::watched_path::host_root;
 
@@ -168,4 +172,41 @@ async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically(
             Some(original)
         );
     }
+}
+
+/// A pick of a release nothing stored is refused and leaves nothing behind.
+#[tokio::test]
+async fn a_pick_of_a_release_nothing_stored_is_refused() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    save_verdict(&db, &candidate, "mb-verdict").await;
+    let draft = tables
+        .load_import_candidate_pane_rows(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .draft
+        .release_edit();
+    crate::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &candidate.files.content_hash(),
+            &crate::CandidateKey::folder(&candidate.path),
+            &draft,
+            Some(&MetadataProvenance::ExternalRelease {
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    "mb-never-fetched".to_string(),
+                ),
+            }),
+            &[],
+        )
+        .await
+        .expect_err("a pick of a release nothing stored is refused");
+
+    let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
+    assert_eq!(
+        rows(&projection)[0].metadata_provenance,
+        None,
+        "the refused pick left nothing behind"
+    );
 }

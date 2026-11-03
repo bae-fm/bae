@@ -839,3 +839,7 @@ fn names(statement: &str, name: &str) -> bool {
             .is_none_or(|next| !(next.is_alphanumeric() || next == '_'))
     })
 }
+
+#[cfg(test)]
+#[path = "order_tests.rs"]
+mod tests;

@@ -5,30 +5,31 @@
 //! (`import_list_selection`); every release's tab, Found state, group, dates,
 //! shown text and command basis are in `import_list_placement`, which triggers
 //! keep in the write that changes any table they come from. A read of the list
-//! is then a handful of indexed statements: the counts and the selection's
-//! offers (`summary`), the requested windows in the list's order (`order`),
-//! and each window's rows by key (`window`). A search reads the rows its
-//! index (`import_list_search`) finds. Nothing is placed, filtered, sorted or
-//! counted outside SQLite.
+//! (`read`) is then a handful of indexed statements: the counts (`summary`),
+//! what the selection holds and offers (`selection`), the requested windows in
+//! the list's order (`order`), and each window's rows by key (`window`). A
+//! search reads the rows its index (`import_list_search`) finds. Nothing is
+//! placed, filtered, sorted or counted outside SQLite. The pane reads one
+//! candidate (`pane`) from the same placement. A surface changes the list it
+//! has open by its view and folds (`writes`) and by its selection
+//! (`selection`).
 
 mod listed;
 mod order;
 mod pane;
+mod read;
+mod selection;
 mod summary;
 mod window;
 mod writes;
 
 use super::*;
-use crate::list::{
-    ImportCandidateDetailProjection, ImportListId, ImportListNarrowing, ImportListProjection,
-    ImportListRequest, ImportListView, ImportListWindow, ImportQueueSummary,
-};
-use crate::watched_folder::WatchedFolder;
-use crate::{ImportedRelease, PendingFilter};
+use crate::list::{ImportListId, ImportListView};
+use crate::PendingFilter;
 use folder_scans::columns::{to_u32, to_u64, unreadable};
-use order::{HeaderPlaces, Items, Shown};
+use order::{Items, Shown};
 
-pub use writes::SelectionWrite;
+pub use selection::SelectionWrite;
 
 /// One list's row as its reads take it: its view, its revisions, and whether
 /// its view narrows its tab or keeps every row of it.
@@ -127,334 +128,6 @@ fn list_row(
     })
 }
 
-#[derive(Clone, PartialEq)]
-struct ImportListRows {
-    windows: Vec<(bae_db::LibraryPageWindow, Vec<window::WindowItemRows>)>,
-    total_count: u64,
-    summary: ImportQueueSummary,
-    pending_filter_entries: Vec<crate::PendingFilterEntry>,
-    selection: crate::selection::SelectionSummary,
-    view_revision: u64,
-    selection_revision: u64,
-}
-
-/// What places a list's rows: its view, and the tables its order and its
-/// Done tab's uploads read, by their versions.
-type Standing = (ImportListId, u64, Vec<i64>);
-
-/// The tables whose rows place a list's items, as `list_order_versions`
-/// names them: the placement, and for Done the releases still uploading,
-/// found by the hash of the folder each came from.
-const LIST_SOURCES: &[&str] =
-    &["import_list_placement", "release_listing", "local_release_origin", "scan_candidate"];
-
-/// Where a read found a list's rows: each window's first and last items in
-/// each part, and the headers of the groups its windows list.
-#[derive(Debug, Clone, Default)]
-struct ListPlaces {
-    items: Places,
-    headers: HeaderPlaces,
-}
-
-/// One read of the list for `request`, each window read from an item beside
-/// it when this read or, while the list stands as it stood then, the last
-/// read through `places` found one (`list_windows`).
-fn load_import_list_on(
-    sql: &SqlReadContext<'_>,
-    request: &ImportListRequest,
-    places: &KnownPlaces<Standing, ListPlaces>,
-) -> Result<ImportListRows, DbError> {
-    let list = list_row(sql, request.list)?;
-    let standing = (list.id, list.view_revision, list_order_versions_on(sql, LIST_SOURCES)?);
-    let mut known = places.under(&standing);
-    let mut found = ListPlaces::default();
-    let counts = summary::counts(sql)?;
-    let listed = summary::listed(sql, &list, &counts)?;
-    let windows = request
-        .windows
-        .iter()
-        .map(|window| {
-            let items = list.items(listed.shown(window));
-            let (keys, read) = items.window(sql, window, &known.items)?;
-            known.items.extend(read.clone());
-            found.items.extend(read);
-            let headers = items.header_positions(sql, window.offset, &keys, &mut known.headers)?;
-            Ok((window.clone(), window::materialise(sql, &list, &keys, &headers)?))
-        })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    found.headers = known.headers;
-    places.keep(standing, found);
-    let watched_folders = sql
-        .query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
-            path_column::get(row, 0)
-        })?
-        .into_iter()
-        .map(WatchedFolder::from_path)
-        .collect();
-    let selection = summary::selection(sql, list.id)?;
-    Ok(ImportListRows {
-        windows,
-        total_count: listed.total,
-        summary: ImportQueueSummary {
-            counts: counts.tabs,
-            watched_folders,
-            has_groups: counts.has_groups,
-            narrowed: listed.narrowed,
-            narrowing: ImportListNarrowing {
-                tab: list.view.tab,
-                filter_text: list.view.filter_text.clone(),
-                pending_filter: list.view.pending_filter,
-            },
-            opened_at: list.opened_at,
-        },
-        pending_filter_entries: counts.entries,
-        selection,
-        view_revision: list.view_revision,
-        selection_revision: list.selection_revision,
-    })
-}
-
-impl ImportListRows {
-    fn process(self) -> Result<ImportListProjection, DbError> {
-        let windows = self
-            .windows
-            .into_iter()
-            .map(|(window, items)| {
-                Ok(ImportListWindow {
-                    window,
-                    items: items
-                        .into_iter()
-                        .map(window::WindowItemRows::process)
-                        .collect::<Result<_, _>>()?,
-                })
-            })
-            .collect::<Result<_, DbError>>()?;
-        Ok(ImportListProjection {
-            total_count: self.total_count,
-            windows,
-            summary: self.summary,
-            pending_filter_entries: self.pending_filter_entries,
-            selection: self.selection,
-            view_revision: self.view_revision,
-            selection_revision: self.selection_revision,
-        })
-    }
-}
-
-impl ImportTables {
-    /// The list a request names as a live query whose request carries the
-    /// windows, so changing them reruns the read on the same subscription.
-    /// Everything else the read shows is in the tables, so a write to the
-    /// list's view, folds or selection reruns it too.
-    pub(crate) fn subscribe_import_list(
-        &self,
-        initial: ImportListRequest,
-    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection> {
-        let places = KnownPlaces::new();
-        self.database
-            .subscribe_reconfigurable(initial, move |request, sql| {
-                load_import_list_on(&sql, request, &places).map_err(CovenError::from)
-            })
-            .process(|rows| rows.process().map_err(CovenError::from))
-    }
-
-    /// The plans each part of `list`'s windows is read by, by offset and by
-    /// each seek from a row, for a test that holds every order to its index.
-    #[cfg(test)]
-    pub(crate) async fn import_list_window_plans(
-        &self,
-        list: ImportListId,
-    ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
-        self.database
-            .read(move |sql| {
-                let row = list_row(&sql, list)?;
-                row.items(Shown::View).window_plans(&sql)
-            })
-            .await
-    }
-
-    /// The plans a searching list's counts and its windows read from the
-    /// rows its search finds are read by, one line per step, the counts
-    /// first: what a test holds them to the search index with.
-    #[cfg(test)]
-    pub(crate) async fn import_list_search_plans(
-        &self,
-        list: ImportListId,
-    ) -> Result<Vec<Vec<String>>, DbError> {
-        self.database
-            .read(move |sql| {
-                let row = list_row(&sql, list)?;
-                let counts = sql.query(
-                    &format!("EXPLAIN QUERY PLAN {}", summary::SEARCH_COUNTS),
-                    named_params! { ":list": list.0 },
-                    |row| row.get::<_, String>(3),
-                )?;
-                let mut plans = vec![counts];
-                plans.extend(row.items(Shown::Found).window_plans(&sql)?.concat());
-                Ok(plans)
-            })
-            .await
-    }
-
-    /// Every item a list shows, read from its tab's rows in order — Found's
-    /// in runs — and another way: from the rows its search finds, or, on
-    /// Found, its items sorted with each member in its header's place. The
-    /// two reads, which a test holds to agree. `None` for a list on Done or
-    /// Skipped that does not search, whose rows are only read in order.
-    #[cfg(test)]
-    pub(crate) async fn import_list_read_both_ways(
-        &self,
-        list: ImportListId,
-    ) -> Result<Option<(Vec<String>, Vec<String>)>, DbError> {
-        self.database
-            .read(move |sql| {
-                let row = list_row(&sql, list)?;
-                let everything = bae_db::LibraryPageWindow { offset: 0, limit: u64::MAX };
-                let keys = |shown| -> Result<Vec<String>, DbError> {
-                    Ok(row
-                        .items(shown)
-                        .window(&sql, &everything, &Places::new())?
-                        .0
-                        .into_iter()
-                        .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
-                        .collect())
-                };
-                let other = match (row.filters_text, row.view.tab) {
-                    (true, _) => keys(Shown::Found)?,
-                    (false, crate::TriageTab::Pending) => sql
-                        .query(
-                            &format!(
-                                "SELECT i.item, i.key FROM import_list_item AS i {join} \
-                             WHERE i.list_id = ? AND i.tab = 'pending' ORDER BY {terms}",
-                                join = order::unit_join("i", "unit"),
-                                terms = order::sorted_terms(row.view.order, "i", "unit"),
-                            ),
-                            [list.0],
-                            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?)),
-                        )?
-                        .into_iter()
-                        .map(|(item, key)| {
-                            Ok(format!("{:?} {}", order::Item::of(&item)?, hex::encode(key)))
-                        })
-                        .collect::<Result<_, DbError>>()?,
-                    (false, _) => return Ok(None),
-                };
-                Ok(Some((keys(Shown::View)?, other)))
-            })
-            .await
-    }
-
-    /// One read of the list, for a caller with no subscription.
-    pub async fn load_import_list(
-        &self,
-        request: ImportListRequest,
-    ) -> Result<ImportListProjection, DbError> {
-        self.database
-            .read(move |sql| load_import_list_on(&sql, &request, &KnownPlaces::new()))
-            .process(ImportListRows::process)
-            .await
-    }
-
-    /// Where the candidate at `candidate_key` sits in the list `list` once
-    /// revealed: on the tab its placement puts it on, with the filters
-    /// cleared and its group opened, the list's other folds kept. `None` when
-    /// the list lists no such candidate.
-    pub async fn locate_import_candidate(
-        &self,
-        list: ImportListId,
-        candidate_key: &crate::CandidateKey,
-    ) -> Result<Option<crate::ImportCandidateListLocation>, DbError> {
-        let candidate_key = candidate_key.clone();
-        self.database.read(move |sql| summary::locate(&sql, list, &candidate_key)).await
-    }
-
-    /// The first candidate in the list's order, every tab's rows unfiltered,
-    /// whose identification is queued, running or having its answer written;
-    /// `None` when none is.
-    pub(crate) async fn first_identifying_import_candidate(
-        &self,
-        list: ImportListId,
-    ) -> Result<Option<crate::CandidateKey>, DbError> {
-        self.database.read(move |sql| summary::first_identifying(&sql, list)).await
-    }
-
-    /// The rows the list `list` has selected, in the order it shows them:
-    /// what a bulk action runs over.
-    pub async fn load_import_list_selected(
-        &self,
-        list: ImportListId,
-    ) -> Result<crate::selection::SelectedRows, DbError> {
-        self.database.read(move |sql| summary::selected(&sql, list)).await
-    }
-
-    /// The candidate the request names, as the pane reads it, live; `None` for
-    /// no key or a key naming no release the list lists, which clears a
-    /// selection.
-    pub(crate) fn subscribe_import_candidate(
-        &self,
-        initial: Option<crate::CandidateKey>,
-    ) -> coven::ReconfigurableLiveQuery<
-        Option<crate::CandidateKey>,
-        Option<ImportCandidateDetailProjection>,
-    > {
-        self.database
-            .subscribe_reconfigurable(initial, |key, sql| match key {
-                None => Ok(None),
-                Some(key) => pane::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
-            })
-            .process(|process| {
-                process
-                    .map(pane::CandidateDetailRows::process)
-                    .transpose()
-                    .map_err(CovenError::from)
-            })
-    }
-
-    /// The folder that failed validation at the key the read is set to, as
-    /// the pane looking into it reads it, live; `None` for no key, or a key
-    /// naming no such folder, which clears a selection. Only a folder stored
-    /// as invalid is read whole: any other key is answered by its kind.
-    pub(crate) fn subscribe_invalid_candidate(
-        &self,
-        initial: Option<crate::CandidateKey>,
-    ) -> coven::ReconfigurableLiveQuery<
-        Option<crate::CandidateKey>,
-        Option<crate::InvalidCandidateDetail>,
-    > {
-        self.database.subscribe_reconfigurable(initial, |key, sql| match key {
-            None => Ok(None),
-            Some(key) => {
-                let invalid: bool = sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM scan_candidate \
-                                        WHERE path = ? AND kind = 'invalid')",
-                    [key],
-                    |row| row.get(0),
-                )?;
-                if !invalid {
-                    return Ok(None);
-                }
-                let stored =
-                    folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)
-                        .map_err(CovenError::from)?;
-                Ok(match stored.map(|(_, stored)| stored.item) {
-                    Some(crate::folder_scanner::ScanItem::Invalid(candidate)) => {
-                        Some(crate::InvalidCandidateDetail::of(candidate))
-                    }
-                    _ => None,
-                })
-            }
-        })
-    }
-
-    /// One candidate as the pane reads it, once.
-    pub(crate) async fn load_import_candidate(
-        &self,
-        key: &crate::CandidateKey,
-    ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
-        let key = key.clone();
-        self.database
-            .read(move |sql| pane::load_candidate_detail_on(&sql, &key))
-            .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
-            .await
-    }
-}
+#[cfg(test)]
+#[path = "import_list_tests.rs"]
+pub(crate) mod tests;

@@ -1,16 +1,18 @@
 //! Which items a list shows and in what order: its roots, its natural path
-//! order, its dates, its groups and their headers, folds, and windows.
+//! order, its dates, its groups and their headers, folds, windows, what its
+//! text filter finds, and the indexes each order reads off.
 
 use super::*;
-use crate::FolderReleaseDecisionKey;
+use crate::tables::import_list::tests::*;
+use crate::tables::tests::*;
+use crate::ImportListItem;
+use crate::ImportListProjection;
 
 impl Library {
     /// A second watched folder, `root`, at `position`, with the settled
     /// release `name` directly in it.
     fn second_root_release(&self, root: &std::path::Path, position: i64, name: &str) -> String {
-        let path = super::super::sql_blob(&coven::path_bytes(&super::super::super::folder_below(
-            root, name,
-        )));
+        let path = sql_blob(&coven::path_bytes(&folder_below(root, name)));
         format!(
             "{}INSERT INTO scan_candidate
                  (watched_folder_path, path, generation, kind, name, relative_folder, folder,
@@ -18,18 +20,10 @@ impl Library {
              VALUES ({root_sql}, {path}, 1, 'valid', '{name}', {relative}, {path}, {path},
                      'direct', 'hash-{root}-{name}');",
             self.watch(root, position),
-            root_sql = super::super::sql_blob(&coven::path_bytes(root)),
-            relative = super::super::sql_relative(name),
+            root_sql = sql_blob(&coven::path_bytes(root)),
+            relative = sql_relative(name),
             root = root.display(),
         )
-    }
-
-    /// The group at `name` under the watched folder.
-    pub(super) fn group_key(&self, name: &str) -> FolderReleaseDecisionKey {
-        FolderReleaseDecisionKey {
-            watched_folder_path: self.root.clone(),
-            relative_folder: bae_db::RelativeFolder::test(name),
-        }
     }
 
     /// The scan's releases at `display_paths`, each found at its date.
@@ -71,29 +65,6 @@ async fn the_descending_order_reverses_the_whole_queue() {
     );
 }
 
-/// A tentative candidate is a release the scan found before it knew what
-/// enclosed it: not a row, not a count, and not a group.
-#[tokio::test]
-async fn a_tentative_candidate_is_neither_a_row_nor_a_count() {
-    let lib = Library::new().await;
-    lib.run(&lib.scan_as("Box/CD1", "tentative")).await;
-    let read = lib.shown(view(TriageTab::Pending)).await;
-    assert!(sequence(&read).is_empty());
-    assert_eq!(read.total_count, 0);
-    assert_eq!(read.summary.counts, crate::TriageTabCounts::default());
-    assert!(!read.summary.has_groups);
-}
-
-#[tokio::test]
-async fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
-    let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Release"), lib.scan_as("Broken", "invalid"))).await;
-    let pending = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(pending.summary.counts, crate::TriageTabCounts { pending: 1, done: 0, skipped: 1 });
-    assert_eq!(sequence(&pending), ["candidate Release"]);
-    assert_eq!(lib.items(view(TriageTab::Skipped)).await, ["invalid Broken"]);
-}
-
 #[tokio::test]
 async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let lib = Library::new().await;
@@ -115,25 +86,6 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     assert_eq!(
         sequence(&lib.read(list).await),
         ["group Group", "candidate Group/Release 1", "candidate Group/Release 2"]
-    );
-}
-
-/// Folding every group is one write, and so is opening them all again.
-#[tokio::test]
-async fn every_group_folds_and_opens_at_once() {
-    let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(&format!("{}{}{}", lib.scan("A/One"), lib.scan("B/Two"), lib.scan("Loose"))).await;
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let folded = tables.set_import_list_groups_folded(list, true).await.unwrap();
-    let read = lib.read(list).await;
-    assert_eq!(sequence(&read), ["group A", "group B", "candidate Loose"]);
-    assert_eq!(read.view_revision, folded);
-    let opened = tables.set_import_list_groups_folded(list, false).await.unwrap();
-    assert_eq!(opened, folded + 1, "each fold moves the view's revision");
-    assert_eq!(
-        sequence(&lib.read(list).await),
-        ["group A", "candidate A/One", "group B", "candidate B/Two", "candidate Loose"]
     );
 }
 
@@ -329,9 +281,7 @@ async fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
              VALUES ({}, 20, 1);",
         lib.dated(&[("Release 10", 10), ("Release 2", 10)]),
         lib.second_root_release(&second, 1, "Newest"),
-        super::super::sql_blob(&coven::path_bytes(&super::super::super::folder_below(
-            &second, "Newest"
-        ))),
+        sql_blob(&coven::path_bytes(&folder_below(&second, "Newest"))),
     ))
     .await;
     assert_eq!(
@@ -387,119 +337,215 @@ async fn a_window_past_the_end_holds_what_is_left() {
         .is_empty());
 }
 
-/// A group header is where a folder read as several releases offers to be read
-/// as one. A header that is only a path component the rows share offers
-/// nothing: the folder that holds them — `Singles/Label`, the nearest one
-/// nothing is stored for — is where that choice belongs, not every folder
-/// above it.
-#[tokio::test]
-async fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
-    let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}{}{}{}",
-        lib.scan("Box/Disc 1"),
-        lib.scan("Box/Disc 2"),
-        lib.scan("Singles/Label/Series/One"),
-        lib.scan("Singles/Label/Series/Two"),
-        lib.kept_apart("Box"),
-        lib.kept_apart("Singles/Label/Series"),
-    ))
-    .await;
-    let read = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(combinable(&read), [("Box".to_string(), true), ("Singles".to_string(), false)]);
+impl Library {
+    /// Credit the draft of the release at `display_path` to `artist`.
+    fn credited(&self, display_path: &str, artist: &str) -> String {
+        format!(
+            "INSERT INTO import_candidate_album_artist_assignment
+                 (content_hash, position, assignment_kind, name)
+             VALUES ('{}', 0, 'credit', '{artist}');",
+            hash(display_path)
+        )
+    }
+
+    /// What the tags of the folder at `display_path`, which failed
+    /// validation, call it.
+    fn tagged(&self, display_path: &str, album_title: &str) -> String {
+        format!(
+            "INSERT INTO scan_skipped_tags (watched_folder_path, candidate_path, album_title)
+             VALUES ({}, {}, '{album_title}');",
+            self.sql_root(),
+            self.sql(display_path)
+        )
+    }
+
+    /// The items a list on `tab` shows with `needle` typed into its filter.
+    async fn found_by(&self, tab: TriageTab, needle: &str) -> Vec<String> {
+        self.items(ImportListView { filter_text: needle.to_string(), ..view(tab) }).await
+    }
 }
 
-/// A folder nothing has settled either way, holding several releases below a
-/// folder that keeps them apart, is combinable too — it is the nearest folder
-/// above them to hold them all, and the header for it is where the choice
-/// belongs.
+/// A row with no draft shows its folder's name and nothing else, so that is
+/// what finds it; its path is not on screen and finds nothing.
 #[tokio::test]
-async fn a_folder_nothing_settled_over_several_releases_offers_to_combine() {
+async fn the_filter_finds_an_undrafted_row_by_its_folder_name_not_its_path() {
+    let lib = Library::new().await;
+    lib.run(&format!("{}{}", lib.scan("Group/Wanted"), lib.scan("Other"))).await;
+    assert_eq!(
+        lib.found_by(TriageTab::Pending, "want").await,
+        ["group Group", "candidate Group/Wanted"],
+        "an emptied group drops its header, a matching one keeps it"
+    );
+    assert!(lib.found_by(TriageTab::Pending, "group/").await.is_empty());
+}
+
+/// A drafted row shows its draft's title and artists — not the verdict's
+/// lead, and not its folder — so those are what find it, whatever their case.
+#[tokio::test]
+async fn the_filter_finds_a_drafted_row_by_the_draft_it_shows() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}{}{}",
+        scanned_with_states(&lib, &["Folder", "Other"]),
+        lib.draft("Folder", "Album"),
+        lib.credited("Folder", "Artist"),
+        lib.verdict("Folder", "found", Some(11)),
+        lib.found_release("Folder", 0, 0, (Some("listed"), Some(11))),
+    ))
+    .await;
+    for needle in ["album", "ARTIST"] {
+        assert_eq!(
+            lib.found_by(TriageTab::Pending, needle).await,
+            ["candidate Folder"],
+            "{needle} is on the row"
+        );
+    }
+    for needle in ["album title", "folder"] {
+        assert!(
+            lib.found_by(TriageTab::Pending, needle).await.is_empty(),
+            "{needle} is the verdict's lead or the folder, which the row does not show"
+        );
+    }
+}
+
+/// The filter folds case as library search does, beyond ASCII: a needle in
+/// one case finds the text in another.
+#[tokio::test]
+async fn the_filter_folds_case_beyond_ascii() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}",
+        scanned_with_states(&lib, &["Folder"]),
+        lib.draft("Folder", "ÉTÉ Œuvre"),
+    ))
+    .await;
+    assert_eq!(lib.found_by(TriageTab::Pending, "été œuvre").await, ["candidate Folder"]);
+}
+
+/// What is typed is matched as itself: `*`, `?` and `[`, which a `GLOB`
+/// pattern reads as wildcards, find only text holding them.
+#[tokio::test]
+async fn the_filter_matches_wildcard_characters_as_themselves() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}{}",
+        scanned_with_states(&lib, &["Starred", "Asked", "Bracketed", "Plain"]),
+        lib.draft("Starred", "A*B"),
+        lib.draft("Asked", "Why?"),
+        lib.draft("Bracketed", "[Live]"),
+    ))
+    .await;
+    for (needle, found) in [
+        ("*", "candidate Starred"),
+        ("a*b", "candidate Starred"),
+        ("?", "candidate Asked"),
+        ("why?", "candidate Asked"),
+        ("[", "candidate Bracketed"),
+        ("[live]", "candidate Bracketed"),
+    ] {
+        assert_eq!(lib.found_by(TriageTab::Pending, needle).await, [found], "{needle}");
+    }
+}
+
+/// A search of one or two characters, shorter than any run the search index
+/// holds, finds every row holding it all the same.
+#[tokio::test]
+async fn the_filter_finds_one_or_two_characters() {
     let lib = Library::new().await;
     lib.run(&format!(
         "{}{}{}",
-        lib.scan("Wrapper/Box/Disc 1"),
-        lib.scan("Wrapper/Box/Disc 2"),
-        lib.kept_apart("Wrapper/Box"),
-    ))
-    .await;
-    let read = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(combinable(&read), [("Wrapper".to_string(), true)]);
-}
-
-/// Whether a header offers to combine follows every write that decides it: a
-/// reading stored, changed or removed at its folder or at one inside it, and
-/// a release of any tab placed below it or gone.
-#[tokio::test]
-async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
-    let lib = Library::new().await;
-    let offers = || async { combinable(&lib.shown(view(TriageTab::Pending)).await) };
-    let singles = |offered: bool| [("Singles".to_string(), offered)];
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Singles/Label/Series/One"),
-        lib.scan("Singles/Label/Series/Two")
-    ))
-    .await;
-    assert_eq!(offers().await, singles(false), "Series is nearer to both");
-    lib.run(&format!(
-        "{}{}",
-        lib.kept_apart("Singles/Label"),
-        lib.kept_apart("Singles/Label/Series")
-    ))
-    .await;
-    assert_eq!(offers().await, singles(true), "every folder between is settled");
-    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles/Label' AS BLOB);")
-        .await;
-    assert_eq!(offers().await, singles(false), "Label is nearer again");
-    lib.run(&lib.kept_apart("Singles")).await;
-    assert_eq!(offers().await, singles(true), "Singles keeps them apart");
-    lib.run(
-        "UPDATE release_grouping SET combined = 1 WHERE key = CAST('reading Singles' AS BLOB);",
-    )
-    .await;
-    assert_eq!(offers().await, singles(false), "Singles is read as one");
-    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles' AS BLOB);").await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Singles/Loose"),
-        lib.state("Singles/Loose"),
-        lib.imported("Singles/Loose", "2026-01-02T00:00:00Z")
+        scanned_with_states(&lib, &["Folder", "Other"]),
+        lib.draft("Folder", "Xy"),
+        lib.draft("Other", "Yz"),
     ))
     .await;
     assert_eq!(
-        offers().await,
-        singles(true),
-        "a release on Done right below Singles is nearest to it"
+        lib.found_by(TriageTab::Pending, "y").await,
+        ["candidate Folder", "candidate Other"]
     );
-    lib.run(&format!("DELETE FROM scan_candidate WHERE path = {};", lib.sql("Singles/Loose")))
-        .await;
-    assert_eq!(offers().await, singles(false), "and gone, it is not");
+    assert_eq!(lib.found_by(TriageTab::Pending, "XY").await, ["candidate Folder"]);
+    assert!(lib.found_by(TriageTab::Pending, "q").await.is_empty());
 }
 
-/// Each header's group name and whether it offers to combine, in order.
-fn combinable(read: &ImportListProjection) -> Vec<(String, bool)> {
-    read.windows[0]
-        .items
-        .iter()
-        .filter_map(|item| match item {
-            ImportListItem::GroupHeader { group, .. } => {
-                Some((group.name.clone(), group.combinable))
-            }
-            _ => None,
-        })
-        .collect()
+/// A Done row shows its library album's title, so that is what finds it, and
+/// nothing the candidate's draft or folder says does.
+#[tokio::test]
+async fn the_filter_finds_a_done_row_by_its_library_album() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}{}{}
+         UPDATE albums SET title = 'Second Album' WHERE id IN
+             (SELECT album_id FROM releases WHERE id = '{}');",
+        scanned_with_states(&lib, &["Folder", "Other"]),
+        lib.draft("Other", "Draft Title"),
+        lib.credited("Other", "Draft Artist"),
+        lib.imported("Folder", "2026-01-02T00:00:00Z"),
+        lib.imported("Other", "2026-01-03T00:00:00Z"),
+        lib.release_id("Other"),
+    ))
+    .await;
+    assert_eq!(
+        lib.found_by(TriageTab::Done, "album").await,
+        ["candidate Other", "candidate Folder"]
+    );
+    assert_eq!(lib.found_by(TriageTab::Done, "second").await, ["candidate Other"]);
+    for needle in ["folder", "draft title", "draft artist"] {
+        assert!(
+            lib.found_by(TriageTab::Done, needle).await.is_empty(),
+            "{needle} is not on a Done row"
+        );
+    }
 }
 
-impl Library {
-    /// The stored reading of the folder at `display_path` that keeps its
-    /// releases apart.
-    fn kept_apart(&self, display_path: &str) -> String {
-        format!(
-            "INSERT INTO release_grouping (key, anchor_folder, combined, author)
-             VALUES (CAST('reading {display_path}' AS BLOB), {}, 0, 'user');",
-            self.sql(display_path)
-        )
+#[tokio::test]
+async fn the_filter_matches_an_invalid_folder_by_its_name_and_its_tags() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}",
+        lib.scan_as("Broken", "invalid"),
+        lib.scan_as("Tagged", "invalid"),
+        lib.tagged("Tagged", "Tagged Title"),
+    ))
+    .await;
+    assert_eq!(lib.found_by(TriageTab::Skipped, "broken").await, ["invalid Broken"]);
+    assert_eq!(lib.found_by(TriageTab::Skipped, "tagged title").await, ["invalid Tagged"]);
+}
+
+impl ImportTables {
+    /// The plans each part of `list`'s windows is read by, by offset and by
+    /// each seek from a row, for a test that holds every order to its index.
+    async fn import_list_window_plans(
+        &self,
+        list: ImportListId,
+    ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
+        self.database
+            .read(move |sql| {
+                let row = list_row(&sql, list)?;
+                row.items(Shown::View).window_plans(&sql)
+            })
+            .await
+    }
+
+    /// The plans a searching list's counts and its windows read from the
+    /// rows its search finds are read by, one line per step, the counts
+    /// first: what a test holds them to the search index with.
+    async fn import_list_search_plans(
+        &self,
+        list: ImportListId,
+    ) -> Result<Vec<Vec<String>>, DbError> {
+        self.database
+            .read(move |sql| {
+                let row = list_row(&sql, list)?;
+                let counts = sql.query(
+                    &format!("EXPLAIN QUERY PLAN {}", summary::SEARCH_COUNTS),
+                    named_params! { ":list": list.0 },
+                    |row| row.get::<_, String>(3),
+                )?;
+                let mut plans = vec![counts];
+                plans.extend(row.items(Shown::Found).window_plans(&sql)?.concat());
+                Ok(plans)
+            })
+            .await
     }
 }
 

@@ -1,5 +1,13 @@
+//! When a folder was found: the dates a scan stores for it, kept across
+//! rescans and rewrites, and the list's order by them.
+
 use super::*;
+use crate::tables::import_list::tests::*;
+use crate::tables::tests::*;
+use crate::FolderCandidate;
+use crate::TriageTab;
 use crate::{folder_scanner::FolderDate, ImportListOrder};
+use bae_db::test_fixtures::fixed_now;
 use coven::FixedClock;
 use std::sync::Arc;
 

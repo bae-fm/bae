@@ -1,20 +1,14 @@
 //! What the chrome around a list says, read beside its windows: the tab
 //! counts and Found's filter entries from the counts kept beside the
-//! placement, how many items the list holds and how many its filters keep
-//! (a search's from the rows its index finds), and what its selection holds
-//! and offers. And the reads a surface makes of a list on its own: where a
-//! candidate would be revealed, the first one being identified, and the
-//! selected rows a bulk action takes.
+//! placement, and how many items the list holds and how many its filters
+//! keep (a search's from the rows its index finds). And the reads a surface
+//! makes of a list on its own: where a candidate would be revealed, and the
+//! first one being identified.
 
-use super::super::import_state::{RuntimeFactColumns, RUNTIME_FACT_COLUMNS};
-use super::listed::{BasisColumns, BASIS_COLUMNS};
 use super::order::{sorted_terms, tab_of, unit_join, uploading_cte, Item};
 use super::*;
 use crate::list::{ImportCandidateListLocation, NarrowedCount};
-use crate::selection::{SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection};
-use crate::triage::{selection_offers, SelectionPart};
 use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
-use bae_db::client::query::{QueryOne, QueryRows};
 use bae_db::RelativeFolder;
 
 /// Every tab's count, how many of Found's releases each filter entry holds,
@@ -191,106 +185,6 @@ pub(super) fn listed(
     Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order })
 }
 
-/// What the list's selection holds and offers. The offers are worked out
-/// once for each set of selected rows alike in everything their commands are
-/// decided from, weighted by how many rows it holds, rather than once a row.
-pub(super) fn selection(
-    sql: &SqlReadContext<'_>,
-    list: ImportListId,
-) -> Result<SelectionSummary, DbError> {
-    let groups = sql.query(
-        &format!(
-            "SELECT p.item, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS}, count(*), MIN(p.key) \
-             FROM import_list_selection AS s \
-             JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
-             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
-             WHERE s.list_id = ? \
-             GROUP BY p.item, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS}"
-        ),
-        [list.0],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                BasisColumns::read(row, 1)?,
-                RuntimeFactColumns::read(row, 7)?,
-                row.get::<_, i64>(11)?,
-                row.get::<_, CandidateKey>(12)?,
-            ))
-        },
-    )?;
-    let mut parts = Vec::with_capacity(groups.len());
-    let mut count = 0;
-    let mut single = None;
-    for (item, basis, facts, rows, key) in groups {
-        let rows = to_u64(rows, "a selection's count")?;
-        count += rows;
-        let item = Item::of(&item)?;
-        single = Some((item, key.clone()));
-        // A folder that failed validation takes part in the selection — it
-        // holds back combining it — with no action of its own.
-        let actions = match item {
-            Item::Candidate => basis.basis(&key)?.actions(&facts.facts(&key)?),
-            Item::Invalid | Item::Group => Vec::new(),
-        };
-        parts.push(SelectionPart { actions, count: rows });
-    }
-    let single = match (count, single) {
-        (1, Some((Item::Candidate, key))) => Some(SingleSelection::Candidate { key }),
-        (1, Some((Item::Invalid, key))) => Some(SingleSelection::InvalidCandidate { key }),
-        _ => None,
-    };
-    Ok(SelectionSummary { count, single, offers: selection_offers(&parts) })
-}
-
-/// The selected rows of the list, in its order.
-pub(super) fn selected(
-    sql: &(impl QueryOne + QueryRows),
-    list: ImportListId,
-) -> Result<SelectedRows, DbError> {
-    let row = super::list_row(sql, list)?;
-    let rows = sql.query(
-        &format!(
-            "WITH {uploading} \
-             SELECT p.item, p.key, c.name, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS} \
-             FROM import_list_selection AS s \
-             JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
-             {unit} \
-             JOIN scan_candidate AS c \
-                 ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
-             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
-             LEFT JOIN uploading AS u ON u.key = p.key \
-             WHERE s.list_id = ? \
-             ORDER BY u.position IS NULL, u.position, {terms}",
-            uploading = uploading_cte(),
-            unit = unit_join("p", "unit"),
-            terms = sorted_terms(row.view.order, "p", "unit"),
-        ),
-        [list.0],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, CandidateKey>(1)?,
-                row.get::<_, String>(2)?,
-                BasisColumns::read(row, 3)?,
-                RuntimeFactColumns::read(row, 9)?,
-            ))
-        },
-    )?;
-    let mut selected = SelectedRows::default();
-    for (item, key, name, basis, facts) in rows {
-        match Item::of(&item)? {
-            Item::Candidate => selected.candidates.push(SelectedCandidate {
-                basis: basis.basis(&key)?,
-                facts: facts.facts(&key)?,
-                candidate_key: key,
-                name,
-            }),
-            Item::Invalid | Item::Group => selected.invalid.push(key),
-        }
-    }
-    Ok(selected)
-}
-
 /// Where the candidate at `key` sits in `list` once revealed.
 pub(super) fn locate(
     sql: &SqlReadContext<'_>,
@@ -360,3 +254,32 @@ pub(super) fn first_identifying(
         )
         .optional()?)
 }
+
+impl ImportTables {
+    /// Where the candidate at `candidate_key` sits in the list `list` once
+    /// revealed: on the tab its placement puts it on, with the filters
+    /// cleared and its group opened, the list's other folds kept. `None` when
+    /// the list lists no such candidate.
+    pub async fn locate_import_candidate(
+        &self,
+        list: ImportListId,
+        candidate_key: &crate::CandidateKey,
+    ) -> Result<Option<crate::ImportCandidateListLocation>, DbError> {
+        let candidate_key = candidate_key.clone();
+        self.database.read(move |sql| locate(&sql, list, &candidate_key)).await
+    }
+
+    /// The first candidate in the list's order, every tab's rows unfiltered,
+    /// whose identification is queued, running or having its answer written;
+    /// `None` when none is.
+    pub(crate) async fn first_identifying_import_candidate(
+        &self,
+        list: ImportListId,
+    ) -> Result<Option<crate::CandidateKey>, DbError> {
+        self.database.read(move |sql| first_identifying(&sql, list)).await
+    }
+}
+
+#[cfg(test)]
+#[path = "summary_tests.rs"]
+mod tests;

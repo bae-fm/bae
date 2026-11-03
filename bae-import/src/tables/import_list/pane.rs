@@ -1,19 +1,21 @@
 //! One candidate as the pane reads it, whole: its folder and files, its
 //! draft and the releases it is linked to, what is running for it, and where
 //! the list places it, which the pane reads from the list's placement as the
-//! list's rows do.
+//! list's rows do. And a folder that failed validation, read whole for the
+//! pane that looks into it.
 
-use super::super::import_state::{
-    load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
-};
-use super::super::release_groupings::{load_candidate_on, skipped_on};
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::window::stored_embedded_cover;
 use super::*;
 use crate::cover_art::CoverChoice;
 use crate::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
+use crate::list::ImportCandidateDetailProjection;
+use crate::tables::import_state::{
+    load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
+};
+use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::load_source_release_on;
-use crate::{CoverSelection, ReleaseLink};
+use crate::{CoverSelection, ImportedRelease, ReleaseLink};
 use crate::{DraftProjection, ProjectedStage};
 use bae_db::client::records::{album_records_name_on, check_releases_in_library_on};
 use bae_identify::PressingLink;
@@ -394,3 +396,80 @@ fn chosen_cover(
         }
     }
 }
+
+impl ImportTables {
+    /// The candidate the request names, as the pane reads it, live; `None` for
+    /// no key or a key naming no release the list lists, which clears a
+    /// selection.
+    pub(crate) fn subscribe_import_candidate(
+        &self,
+        initial: Option<crate::CandidateKey>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::CandidateKey>,
+        Option<ImportCandidateDetailProjection>,
+    > {
+        self.database
+            .subscribe_reconfigurable(initial, |key, sql| match key {
+                None => Ok(None),
+                Some(key) => pane::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
+            })
+            .process(|process| {
+                process
+                    .map(pane::CandidateDetailRows::process)
+                    .transpose()
+                    .map_err(CovenError::from)
+            })
+    }
+
+    /// The folder that failed validation at the key the read is set to, as
+    /// the pane looking into it reads it, live; `None` for no key, or a key
+    /// naming no such folder, which clears a selection. Only a folder stored
+    /// as invalid is read whole: any other key is answered by its kind.
+    pub(crate) fn subscribe_invalid_candidate(
+        &self,
+        initial: Option<crate::CandidateKey>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::CandidateKey>,
+        Option<crate::InvalidCandidateDetail>,
+    > {
+        self.database.subscribe_reconfigurable(initial, |key, sql| match key {
+            None => Ok(None),
+            Some(key) => {
+                let invalid: bool = sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM scan_candidate \
+                                        WHERE path = ? AND kind = 'invalid')",
+                    [key],
+                    |row| row.get(0),
+                )?;
+                if !invalid {
+                    return Ok(None);
+                }
+                let stored =
+                    folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)
+                        .map_err(CovenError::from)?;
+                Ok(match stored.map(|(_, stored)| stored.item) {
+                    Some(crate::folder_scanner::ScanItem::Invalid(candidate)) => {
+                        Some(crate::InvalidCandidateDetail::of(candidate))
+                    }
+                    _ => None,
+                })
+            }
+        })
+    }
+
+    /// One candidate as the pane reads it, once.
+    pub(crate) async fn load_import_candidate(
+        &self,
+        key: &crate::CandidateKey,
+    ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
+        let key = key.clone();
+        self.database
+            .read(move |sql| pane::load_candidate_detail_on(&sql, &key))
+            .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
+            .await
+    }
+}
+
+#[cfg(test)]
+#[path = "pane_tests.rs"]
+mod tests;

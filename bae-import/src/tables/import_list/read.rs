@@ -1,0 +1,159 @@
+//! One read of a list: its counts, its windows, and what its selection holds,
+//! each window read from an item beside it that this read or, while the list
+//! stands as it stood then, the last read found; and the live query that
+//! reruns the read when its request or a table it reads changes.
+
+use super::order::HeaderPlaces;
+use super::*;
+use crate::list::{
+    ImportListNarrowing, ImportListProjection, ImportListRequest, ImportListWindow,
+    ImportQueueSummary,
+};
+use crate::watched_folder::WatchedFolder;
+
+#[derive(Clone, PartialEq)]
+struct ImportListRows {
+    windows: Vec<(bae_db::LibraryPageWindow, Vec<window::WindowItemRows>)>,
+    total_count: u64,
+    summary: ImportQueueSummary,
+    pending_filter_entries: Vec<crate::PendingFilterEntry>,
+    selection: crate::selection::SelectionSummary,
+    view_revision: u64,
+    selection_revision: u64,
+}
+
+/// What places a list's rows: its view, and the tables its order and its
+/// Done tab's uploads read, by their versions.
+type Standing = (ImportListId, u64, Vec<i64>);
+
+/// The tables whose rows place a list's items, as `list_order_versions`
+/// names them: the placement, and for Done the releases still uploading,
+/// found by the hash of the folder each came from.
+const LIST_SOURCES: &[&str] =
+    &["import_list_placement", "release_listing", "local_release_origin", "scan_candidate"];
+
+/// Where a read found a list's rows: each window's first and last items in
+/// each part, and the headers of the groups its windows list.
+#[derive(Debug, Clone, Default)]
+struct ListPlaces {
+    items: Places,
+    headers: HeaderPlaces,
+}
+
+/// One read of the list for `request`, each window read from an item beside
+/// it when this read or, while the list stands as it stood then, the last
+/// read through `places` found one (`list_windows`).
+fn load_import_list_on(
+    sql: &SqlReadContext<'_>,
+    request: &ImportListRequest,
+    places: &KnownPlaces<Standing, ListPlaces>,
+) -> Result<ImportListRows, DbError> {
+    let list = list_row(sql, request.list)?;
+    let standing = (list.id, list.view_revision, list_order_versions_on(sql, LIST_SOURCES)?);
+    let mut known = places.under(&standing);
+    let mut found = ListPlaces::default();
+    let counts = summary::counts(sql)?;
+    let listed = summary::listed(sql, &list, &counts)?;
+    let windows = request
+        .windows
+        .iter()
+        .map(|window| {
+            let items = list.items(listed.shown(window));
+            let (keys, read) = items.window(sql, window, &known.items)?;
+            known.items.extend(read.clone());
+            found.items.extend(read);
+            let headers = items.header_positions(sql, window.offset, &keys, &mut known.headers)?;
+            Ok((window.clone(), window::materialise(sql, &list, &keys, &headers)?))
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
+    found.headers = known.headers;
+    places.keep(standing, found);
+    let watched_folders = sql
+        .query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
+            path_column::get(row, 0)
+        })?
+        .into_iter()
+        .map(WatchedFolder::from_path)
+        .collect();
+    let selection = selection::selection(sql, list.id)?;
+    Ok(ImportListRows {
+        windows,
+        total_count: listed.total,
+        summary: ImportQueueSummary {
+            counts: counts.tabs,
+            watched_folders,
+            has_groups: counts.has_groups,
+            narrowed: listed.narrowed,
+            narrowing: ImportListNarrowing {
+                tab: list.view.tab,
+                filter_text: list.view.filter_text.clone(),
+                pending_filter: list.view.pending_filter,
+            },
+            opened_at: list.opened_at,
+        },
+        pending_filter_entries: counts.entries,
+        selection,
+        view_revision: list.view_revision,
+        selection_revision: list.selection_revision,
+    })
+}
+
+impl ImportListRows {
+    fn process(self) -> Result<ImportListProjection, DbError> {
+        let windows = self
+            .windows
+            .into_iter()
+            .map(|(window, items)| {
+                Ok(ImportListWindow {
+                    window,
+                    items: items
+                        .into_iter()
+                        .map(window::WindowItemRows::process)
+                        .collect::<Result<_, _>>()?,
+                })
+            })
+            .collect::<Result<_, DbError>>()?;
+        Ok(ImportListProjection {
+            total_count: self.total_count,
+            windows,
+            summary: self.summary,
+            pending_filter_entries: self.pending_filter_entries,
+            selection: self.selection,
+            view_revision: self.view_revision,
+            selection_revision: self.selection_revision,
+        })
+    }
+}
+
+impl ImportTables {
+    /// The list a request names as a live query whose request carries the
+    /// windows, so changing them reruns the read on the same subscription.
+    /// Everything else the read shows is in the tables, so a write to the
+    /// list's view, folds or selection reruns it too.
+    pub(crate) fn subscribe_import_list(
+        &self,
+        initial: ImportListRequest,
+    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection> {
+        let places = KnownPlaces::new();
+        self.database
+            .subscribe_reconfigurable(initial, move |request, sql| {
+                load_import_list_on(&sql, request, &places).map_err(CovenError::from)
+            })
+            .process(|rows| rows.process().map_err(CovenError::from))
+    }
+
+    /// One read of the list, for a caller with no subscription.
+    pub async fn load_import_list(
+        &self,
+        request: ImportListRequest,
+    ) -> Result<ImportListProjection, DbError> {
+        self.database
+            .read(move |sql| load_import_list_on(&sql, &request, &KnownPlaces::new()))
+            .process(ImportListRows::process)
+            .await
+    }
+}
+
+#[cfg(test)]
+#[path = "read_tests.rs"]
+mod tests;

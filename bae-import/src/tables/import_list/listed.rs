@@ -163,3 +163,7 @@ impl ListedColumns {
         Ok(ListedRelease { basis: self.basis.basis(key)?, standing })
     }
 }
+
+#[cfg(test)]
+#[path = "listed_tests.rs"]
+mod tests;

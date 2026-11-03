@@ -2,14 +2,14 @@
 //! write to one of them moves exactly the placement rows it should, in that
 //! write.
 
-use super::{empty_db, exec_batch, folder_below};
+use crate::tables::import_list::tests::*;
+use crate::tables::tests::folder_below;
 use std::collections::BTreeMap;
 
 mod candidates;
 mod done_rows;
 mod groupings;
 mod groups;
-mod list_reads;
 mod scans;
 mod verdicts;
 
@@ -124,53 +124,7 @@ impl Placed {
     }
 }
 
-/// A database with one watched folder, its scan begun, and helpers that spell
-/// the rows each test writes.
-struct Library {
-    db: bae_db::Database,
-    _tmp: tempfile::TempDir,
-    root: std::path::PathBuf,
-}
-
 impl Library {
-    async fn new() -> Self {
-        let (db, tmp) = empty_db().await;
-        let root = bae_db::watched_path::host_root("/music");
-        let library = Self { db, _tmp: tmp, root };
-        library.run(&library.watch(&library.root, 0)).await;
-        library
-    }
-
-    /// Watch `root` at `position`, its scan begun.
-    fn watch(&self, root: &std::path::Path, position: i64) -> String {
-        format!(
-            "INSERT INTO watched_import_folders (path, position) VALUES ({root}, {position});
-             INSERT INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-             VALUES ({root}, 1, 'scanning', 'local');",
-            root = sql_blob(&coven::path_bytes(root)),
-        )
-    }
-
-    /// The folder at `display_path` below the watched folder.
-    fn path(&self, display_path: &str) -> std::path::PathBuf {
-        folder_below(&self.root, display_path)
-    }
-
-    /// The key of the release scanned at `display_path`.
-    fn key(&self, display_path: &str) -> crate::CandidateKey {
-        crate::CandidateKey::folder(&self.path(display_path))
-    }
-
-    /// The folder at `display_path` as a SQL literal of its bytes.
-    fn sql(&self, display_path: &str) -> String {
-        sql_blob(&coven::path_bytes(&self.path(display_path)))
-    }
-
-    /// The watched folder as a SQL literal of its bytes.
-    fn sql_root(&self) -> String {
-        sql_blob(&coven::path_bytes(&self.root))
-    }
-
     fn release(&self, display_path: &str) -> Item {
         (self.root_text(), "candidate", self.text(display_path))
     }
@@ -199,223 +153,6 @@ impl Library {
     /// reads back.
     fn text(&self, display_path: &str) -> String {
         coven::path_text(&self.path(display_path))
-    }
-
-    /// Store the scan's release at `display_path` as `kind`.
-    fn scan_as(&self, display_path: &str, kind: &str) -> String {
-        self.scan_folder(std::path::Path::new(display_path), kind)
-    }
-
-    /// Store the scan's release at the folder `relative` below the watched
-    /// folder as `kind`.
-    fn scan_folder(&self, relative: &std::path::Path, kind: &str) -> String {
-        let folder = self.folder(relative);
-        let relative = bae_db::RelativeFolder::of(relative).unwrap();
-        let name = coven::path_text(std::path::Path::new(folder.file_name().unwrap()));
-        let hash = match kind {
-            "invalid" => "NULL".to_string(),
-            _ => format!("'{}'", hash(&relative.text())),
-        };
-        format!(
-            "INSERT INTO scan_candidate
-                 (watched_folder_path, path, generation, kind, name, relative_folder, folder,
-                  file_root, scope, content_hash)
-             VALUES ({root}, {path}, 1, '{kind}', '{name}', {relative}, {path},
-                     {path}, 'direct', {hash});",
-            root = self.sql_root(),
-            path = sql_blob(&coven::path_bytes(&folder)),
-            relative = sql_blob(relative.as_bytes()),
-        )
-    }
-
-    /// The folder `relative` below the watched folder.
-    fn folder(&self, relative: &std::path::Path) -> std::path::PathBuf {
-        bae_db::watched_path::folder_below(
-            &self.root,
-            &bae_db::RelativeFolder::of(relative).unwrap(),
-        )
-    }
-
-    /// Store the scan's settled release at `display_path`.
-    fn scan(&self, display_path: &str) -> String {
-        self.scan_as(display_path, "valid")
-    }
-
-    /// Record when the scans first saw the folder at `display_path`.
-    fn discovered(&self, display_path: &str, first_seen_at: i64) -> String {
-        format!(
-            "INSERT INTO folder_discovery (folder, first_seen_at, settled)
-             VALUES ({}, {first_seen_at}, 1);",
-            self.sql(display_path)
-        )
-    }
-
-    /// The release's state at its files' current revision, with a blank
-    /// draft a person owns.
-    fn state(&self, display_path: &str) -> String {
-        let hash = hash(display_path);
-        format!(
-            "INSERT INTO import_candidate_state (content_hash, candidate_key)
-             VALUES ('{hash}', {path});
-             INSERT INTO import_candidate_edit
-                 (content_hash, album_title, album_year, year, author, draft_blank, draft_valid)
-             VALUES ('{hash}', '', '', '', 'person', 1, 0);",
-            path = self.sql(display_path)
-        )
-    }
-
-    /// Write `title` into the release's draft.
-    fn draft(&self, display_path: &str, title: &str) -> String {
-        format!(
-            "UPDATE import_candidate_edit SET album_title = '{title}', draft_blank = 0
-             WHERE content_hash = '{}';",
-            hash(display_path)
-        )
-    }
-
-    /// A stored verdict of `kind` over a folder of `track_count` tracks.
-    fn verdict(&self, display_path: &str, kind: &str, track_count: Option<i64>) -> String {
-        let failures = match kind {
-            "failed" => "'[{\"source\":\"musicbrainz\"}]'",
-            _ => "NULL",
-        };
-        let error = match kind {
-            "error" => "'bae broke'",
-            _ => "NULL",
-        };
-        format!(
-            "INSERT INTO import_candidate_verdict
-                 (content_hash, kind, track_count, failures_json, error_detail, kept_own_draft)
-             VALUES ('{}', '{kind}', {}, {failures}, {error}, 0);",
-            hash(display_path),
-            track_count.map_or("NULL".to_string(), |count| count.to_string()),
-        )
-    }
-
-    /// One release the verdict offers, in pressing row `pressing`, listing
-    /// `source_tracks` (its kind and count).
-    fn found_release(
-        &self,
-        display_path: &str,
-        position: i64,
-        pressing: i64,
-        source_tracks: (Option<&str>, Option<i64>),
-    ) -> String {
-        let (kind, count) = source_tracks;
-        format!(
-            "INSERT INTO import_candidate_match
-                 (content_hash, position, listing, pressing, source, release_id, title,
-                  media_kind, album_links, source_tracks_kind, source_tracks_count)
-             VALUES ('{}', {position}, 'offered', {pressing}, 'musicbrainz', 'mb-{position}',
-                     'Album', 'undescribed', 'not_asked', {}, {});",
-            hash(display_path),
-            kind.map_or("NULL".to_string(), |kind| format!("'{kind}'")),
-            count.map_or("NULL".to_string(), |count| count.to_string()),
-        )
-    }
-
-    /// Run `sql`, and check the counts and the search index kept beside the
-    /// placement still say what it holds: every write here moves placement
-    /// rows, and each must move the counts and the searched text with them.
-    async fn run(&self, sql: &str) {
-        exec_batch(&self.db, sql).await;
-        self.searchable(sql).await;
-        let (kept, counted) = self
-            .db
-            .read(|sql| {
-                let rows = |statement: &str| {
-                    sql.query(statement, [], |row| {
-                        Ok((
-                            row.get::<_, Option<String>>(0)?,
-                            row.get::<_, Option<String>>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                            row.get::<_, i64>(3)?,
-                        ))
-                    })
-                };
-                let kept = [
-                    rows("SELECT tab, item, NULL, count FROM import_list_tab_count")?,
-                    rows("SELECT pending_entry, NULL, NULL, count FROM import_list_entry_count")?,
-                    rows(
-                        "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
-                         pending_entry, count FROM import_list_group_entry_count",
-                    )?,
-                ];
-                let counted = [
-                    rows(
-                        "SELECT tab, item, NULL, count(*) FROM import_list_placement \
-                         GROUP BY tab, item",
-                    )?,
-                    rows(
-                        "SELECT pending_entry, NULL, NULL, count(*) FROM import_list_placement \
-                         WHERE pending_entry IS NOT NULL GROUP BY pending_entry",
-                    )?,
-                    rows(
-                        "SELECT coven_path_text(watched_folder_path), group_name, pending_entry, \
-                         count(*) FROM import_list_placement \
-                         WHERE item = 'candidate' AND group_folder IS NOT NULL \
-                         GROUP BY watched_folder_path, group_folder, pending_entry",
-                    )?,
-                ];
-                Ok((kept, counted))
-            })
-            .await
-            .unwrap();
-        for (mut kept, mut counted) in kept.into_iter().zip(counted) {
-            kept.sort();
-            counted.sort();
-            assert_eq!(kept, counted, "the counts kept beside the placement after {sql}");
-        }
-    }
-
-    /// Check the search index holds each release's folded shown text under
-    /// its placement row's number, and nothing else; and that every header
-    /// says whether its folder is offered to be read as one release.
-    async fn searchable(&self, after: &str) {
-        let (indexed, placed) = self
-            .db
-            .read(|sql| {
-                let rows = |statement: &str| {
-                    sql.query(statement, [], |row| {
-                        Ok((
-                            row.get::<_, i64>(0)?,
-                            row.get::<_, Option<String>>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                        ))
-                    })
-                };
-                Ok((
-                    rows("SELECT rowid, title, artists FROM import_list_search ORDER BY rowid")?,
-                    rows(
-                        "SELECT entry, filter_title, filter_artists FROM import_list_placement \
-                         WHERE item <> 'group' ORDER BY entry",
-                    )?,
-                ))
-            })
-            .await
-            .unwrap();
-        assert_eq!(indexed, placed, "the search index after {after}");
-        let unjudged = self
-            .db
-            .read(|sql| {
-                Ok(sql.query(
-                    "SELECT coven_path_text(key) FROM import_list_placement \
-                     WHERE item = 'group' AND combinable IS NULL",
-                    [],
-                    |row| row.get::<_, String>(0),
-                )?)
-            })
-            .await
-            .unwrap();
-        assert!(
-            unjudged.is_empty(),
-            "headers saying nothing of combining after {after}: {unjudged:?}"
-        );
-        exec_batch(
-            &self.db,
-            "INSERT INTO import_list_search (import_list_search, rank) VALUES ('integrity-check', 1);",
-        )
-        .await;
     }
 
     /// Every placement row as it stands.
@@ -471,22 +208,6 @@ impl Library {
             .map(|item| (item.clone(), after.get(item).cloned()))
             .collect()
     }
-}
-
-/// `bytes` as a SQL BLOB literal.
-fn sql_blob(bytes: &[u8]) -> String {
-    format!("X'{}'", hex::encode(bytes))
-}
-
-/// The folder at `display_path` below a watched folder as a SQL literal of its
-/// `RelativeFolder` bytes.
-fn sql_relative(display_path: &str) -> String {
-    sql_blob(bae_db::RelativeFolder::test(display_path).as_bytes())
-}
-
-/// The content hash the fixtures give the release at `display_path`.
-fn hash(display_path: &str) -> String {
-    format!("hash-{display_path}")
 }
 
 /// The moves `rows` name, as a test spells them.
