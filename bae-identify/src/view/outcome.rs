@@ -310,3 +310,7 @@ impl IdentifyRunView {
 fn badge(kind: SignalKind, state: SignalState) -> ToolbarSignal {
     ToolbarSignal { kind, shown: None, state, excluded: false, options: Vec::new() }
 }
+
+#[cfg(test)]
+#[path = "outcome_tests.rs"]
+mod tests;

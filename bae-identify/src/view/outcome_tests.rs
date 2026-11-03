@@ -1,8 +1,8 @@
 //! Which of a failed run's failures a surface says in lines of their own,
 //! beneath the ledger: those no cell of it shows.
 
-use super::tests::*;
-use super::*;
+use crate::view::tests::*;
+use crate::view::*;
 use crate::{Findings, IdentifyFailure, TerminalVerdict};
 use bae_catalogs::search::SourceFailure;
 

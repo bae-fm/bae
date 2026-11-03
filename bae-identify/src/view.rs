@@ -448,11 +448,3 @@ pub(super) fn run_view(
 #[cfg(test)]
 #[path = "view_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "view/catalog_row_tests.rs"]
-mod catalog_row_tests;
-
-#[cfg(test)]
-#[path = "view/failure_lines_tests.rs"]
-mod failure_lines_tests;

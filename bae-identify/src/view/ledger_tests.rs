@@ -1,10 +1,10 @@
 //! The Catalog # row: which numbers are in effect, which are struck out and
 //! which are only offered, and what striking one out does to the ranking.
 
-use super::tests::*;
 use super::*;
 use crate::signals::TextLine;
 use crate::signals::TextOrigin;
+use crate::view::tests::*;
 use crate::{Findings, NarrowedOut, TerminalVerdict};
 use bae_catalogs::search::MetadataResult;
 

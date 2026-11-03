@@ -406,3 +406,7 @@ impl IdentifyRunView {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "ledger_tests.rs"]
+mod tests;
