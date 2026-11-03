@@ -1,8 +1,8 @@
 //! What each of coven's pending records is about, named so a person
 //! recognizes it, with why it waits and what they can do about it.
 
-use super::*;
-use bae_db::{FileRow, PendingRow};
+use crate::sync_status::{pending_action, PendingAction};
+use crate::{FileRow, PendingRow};
 
 /// What a pending record is about. A file is named by the row on this device
 /// whose file it is; every other subject by what it is.
@@ -60,7 +60,7 @@ pub struct PendingWait {
 impl PendingWait {
     /// The wait of `record`, about a file of the release `release_id` when
     /// it names one.
-    pub(crate) fn of(record: &coven::PendingRecord, release_id: Option<&str>) -> Self {
+    pub fn of(record: &coven::PendingRecord, release_id: Option<&str>) -> Self {
         Self {
             reason: record.reason.clone(),
             cause: record.cause.clone(),
@@ -118,7 +118,7 @@ impl PendingItem {
     }
 
     /// A record as the library lists it: a file's named by its row.
-    pub(crate) fn listed(row: PendingRow) -> Self {
+    pub fn listed(row: PendingRow) -> Self {
         Self::named(row.record, row.file_row)
     }
 

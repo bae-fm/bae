@@ -63,8 +63,7 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
         .await
         .unwrap()
         .iter()
-        .any(|record| crate::library::pending_action(record, None)
-            == crate::library::PendingAction::RestoreFile));
+        .any(|record| bae_db::pending_action(record, None) == bae_db::PendingAction::RestoreFile));
 }
 
 /// A local release another device holds says it isn't uploaded here:
@@ -261,23 +260,23 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status();
     let listed = pending_list_until(&mut values, |items| {
-        items.iter().any(|item| {
-            matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. })
-        })
+        items
+            .iter()
+            .any(|item| matches!(item.wait.action, bae_db::PendingAction::CancelUpload { .. }))
     })
     .await;
     let item = listed
         .iter()
-        .find(|item| matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. }))
+        .find(|item| matches!(item.wait.action, bae_db::PendingAction::CancelUpload { .. }))
         .unwrap();
     assert_eq!(
         item.subject,
-        PendingSubjectName::ReleaseFile {
+        bae_db::PendingSubjectName::ReleaseFile {
             file_name: "a.flac".into(),
             album_title: "Test Album".into(),
         }
     );
-    let crate::library::PendingAction::CancelUpload { id } = item.wait.action.clone() else {
+    let bae_db::PendingAction::CancelUpload { id } = item.wait.action.clone() else {
         unreachable!("found by its action");
     };
     manager.cancel_failed_release_move(id).await.unwrap();
@@ -286,9 +285,9 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     }
     assert_eq!(manager.count_pending_uploads_for_release(&release.id).await.unwrap(), 0);
     pending_list_until(&mut values, |items| {
-        !items.iter().any(|item| {
-            matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. })
-        })
+        !items
+            .iter()
+            .any(|item| matches!(item.wait.action, bae_db::PendingAction::CancelUpload { .. }))
     })
     .await;
 }
@@ -305,16 +304,16 @@ async fn an_upload_missing_its_original_is_listed_by_name() {
     let items = pending_list_until(&mut values, |items| !items.is_empty()).await;
     let item = items
         .iter()
-        .find(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. }))
+        .find(|item| matches!(item.subject, bae_db::PendingSubjectName::ReleaseFile { .. }))
         .expect("the upload is named by its file");
     assert_eq!(
         item.subject,
-        PendingSubjectName::ReleaseFile {
+        bae_db::PendingSubjectName::ReleaseFile {
             file_name: "a.flac".into(),
             album_title: "Test Album".into(),
         }
     );
-    assert_eq!(item.wait.action, crate::library::PendingAction::RestoreFile);
+    assert_eq!(item.wait.action, bae_db::PendingAction::RestoreFile);
 }
 
 /// A release's cover, carried by the `covers` row whose key is the release

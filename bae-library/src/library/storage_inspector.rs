@@ -1,8 +1,9 @@
 //! The Storage Manager inspector's release: its files, each beside its
 //! upload while one waits, and the release's entry in each transfer queue.
 
-use super::{PendingWait, UploadState};
+use super::UploadState;
 use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
+use bae_db::PendingWait;
 use bae_transfers::ReleaseQueueState;
 use bae_transfers::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 

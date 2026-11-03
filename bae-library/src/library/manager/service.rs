@@ -327,12 +327,12 @@ impl LibraryManager {
     /// each once, as it appears or changes. Call once after construction,
     /// with a tokio runtime available.
     pub fn start(&self) -> Result<(), LibraryError> {
-        let mut statuses = self.database.subscribe(super::sync_status_on);
+        let mut statuses = self.database.subscribe(bae_db::sync_status_on);
         let lm = self.clone();
         self.spawn_supervised_task(
             "sync status follower",
             async move {
-                let mut last: Option<SyncStatusSnapshot> = None;
+                let mut last: Option<bae_db::SyncStatusSnapshot> = None;
                 while let Some(read) = statuses.next().await {
                     let snapshot = match read {
                         Ok(snapshot) => snapshot,
@@ -355,15 +355,15 @@ impl LibraryManager {
     /// diagnostics, when `snapshot` brings it after `last`.
     async fn follow_sync_status(
         &self,
-        last: Option<&SyncStatusSnapshot>,
-        snapshot: &SyncStatusSnapshot,
+        last: Option<&bae_db::SyncStatusSnapshot>,
+        snapshot: &bae_db::SyncStatusSnapshot,
     ) {
         if let Some(bae_diagnostics::UiError::Diagnostic { category, detail }) =
             snapshot.failure_to_log(last)
         {
             tracing::warn!(?category, "sync failure: {detail}");
         }
-        let failed = |snapshot: &SyncStatusSnapshot| match &snapshot.status {
+        let failed = |snapshot: &bae_db::SyncStatusSnapshot| match &snapshot.status {
             coven::SyncStatus::Failed { error, .. } => Some(error.clone()),
             _ => None,
         };
@@ -388,8 +388,8 @@ impl LibraryManager {
     }
 
     /// Follow the sync status, each value read from its tables in one go.
-    pub fn subscribe_sync_status(&self) -> coven::LiveQuery<SyncStatusSnapshot> {
-        self.database.subscribe(super::sync_status_on)
+    pub fn subscribe_sync_status(&self) -> coven::LiveQuery<bae_db::SyncStatusSnapshot> {
+        self.database.subscribe(bae_db::sync_status_on)
     }
 
     /// Tell every reader these tracks are deleted.

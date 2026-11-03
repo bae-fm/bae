@@ -9,7 +9,7 @@ use bae_db::people::ProfileError;
 #[derive(Clone, Debug, PartialEq)]
 pub struct OpenInvite {
     pub invite: coven::Invite,
-    pub held: Option<crate::library::PendingWait>,
+    pub held: Option<bae_db::PendingWait>,
 }
 
 impl OpenInvite {
@@ -28,7 +28,7 @@ impl OpenInvite {
                         matches!(record.subject,
                             coven::PendingSubject::Operation { id, .. } if id == invite.operation)
                     })
-                    .map(|record| crate::library::PendingWait::of(record, None));
+                    .map(|record| bae_db::PendingWait::of(record, None));
                 Self { invite, held }
             })
             .collect()

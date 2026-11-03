@@ -92,19 +92,13 @@ mod save;
 pub(crate) use save::SaveWindow;
 #[cfg(test)]
 mod hold;
-mod pending_item;
 mod storage;
 mod sync;
-mod sync_status;
 use bae_diagnostics::{
     cloud_home_category, cloud_setup_category, cloud_unlock_category, device_only_category,
     file_read_category, key_category, sync_category,
 };
 mod track;
-
-pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
-pub(crate) use sync_status::sync_status_on;
-pub use sync_status::{pending_action, PendingAction, SyncRetryOutcome};
 
 /// Outcome of `resolve_records_target_album` — where a release should
 /// land after a `set_records` call. `new_album` carries the album row
@@ -379,35 +373,6 @@ impl From<bae_import::ImportError> for LibraryError {
             other => LibraryError::Import(Box::new(other)),
         }
     }
-}
-
-/// Sync activity and the things coven is waiting on that need attention,
-/// read from coven's tables and bae's own in one go.
-#[derive(Debug, Clone, PartialEq)]
-pub struct SyncStatusSnapshot {
-    pub status: coven::SyncStatus,
-    pub pending: Vec<PendingItem>,
-    /// Why this device's last attempt to start sync failed, while that
-    /// stands.
-    pub error: Option<bae_diagnostics::UiError>,
-    /// What the person's retry would do now, as coven decides it: run a
-    /// pass, or be answered at once without one.
-    pub retry_effect: coven::RetryEffect,
-}
-
-/// The settings status line. Platforms localize these cases and the item count.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SyncIndicator {
-    /// Storage is set up, but the sync loop isn't running.
-    Stopped,
-    Syncing,
-    Synced,
-    Offline,
-    /// The failure is the snapshot's `shown_failure()`.
-    Failed,
-    Waiting {
-        items: usize,
-    },
 }
 
 /// Tag fields to embed on an exported track file.

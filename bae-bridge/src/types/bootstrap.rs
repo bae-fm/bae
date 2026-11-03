@@ -96,9 +96,7 @@ impl BridgeBootstrapStatus {
                 records: records
                     .into_iter()
                     .map(|record| {
-                        BridgePendingRecord::from_core(
-                            bae_library::library::PendingItem::before_open(record),
-                        )
+                        BridgePendingRecord::from_core(bae_db::PendingItem::before_open(record))
                     })
                     .collect(),
             },

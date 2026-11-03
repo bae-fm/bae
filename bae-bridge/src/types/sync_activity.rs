@@ -88,7 +88,7 @@ impl BridgeDownloadsInFlight {
 }
 
 /// What the person's retry came to: the first sync pass after the request.
-/// Mirrors `bae_library::library::SyncRetryOutcome`.
+/// Mirrors `bae_db::SyncRetryOutcome`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSyncRetryOutcome {
     /// The pass reached its read end.
@@ -105,16 +105,14 @@ pub enum BridgeSyncRetryOutcome {
 }
 
 impl BridgeSyncRetryOutcome {
-    pub(crate) fn from_core(outcome: bae_library::library::SyncRetryOutcome) -> Self {
+    pub(crate) fn from_core(outcome: bae_db::SyncRetryOutcome) -> Self {
         match outcome {
-            bae_library::library::SyncRetryOutcome::Synced => Self::Synced,
-            bae_library::library::SyncRetryOutcome::Failed(error) => {
+            bae_db::SyncRetryOutcome::Synced => Self::Synced,
+            bae_db::SyncRetryOutcome::Failed(error) => {
                 Self::Failed { error: super::BridgeError::from_core(error) }
             }
-            bae_library::library::SyncRetryOutcome::CoolingDown { until } => {
-                Self::CoolingDown { until }
-            }
-            bae_library::library::SyncRetryOutcome::NotSyncing => Self::NotSyncing,
+            bae_db::SyncRetryOutcome::CoolingDown { until } => Self::CoolingDown { until },
+            bae_db::SyncRetryOutcome::NotSyncing => Self::NotSyncing,
         }
     }
 }

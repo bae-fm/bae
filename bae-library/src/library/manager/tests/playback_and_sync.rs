@@ -28,9 +28,9 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
 /// state.
 #[tokio::test]
 async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
-    use bae_preferences::DiscogsValidation;
-    use bae_import::{DiscogsSaveOutcome, ImportError};
     use bae_catalogs::discogs::client::DiscogsError;
+    use bae_import::{DiscogsSaveOutcome, ImportError};
+    use bae_preferences::DiscogsValidation;
 
     let (manager, _temp_dir) = setup_test_manager().await;
     let handle = manager.start_import().await.unwrap();
@@ -52,9 +52,7 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     assert!(
         matches!(
             error,
-            ImportError::Catalog(bae_catalogs::CatalogError::Discogs(
-                DiscogsError::Transport(_)
-            ))
+            ImportError::Catalog(bae_catalogs::CatalogError::Discogs(DiscogsError::Transport(_)))
         ),
         "{error}"
     );
@@ -256,7 +254,10 @@ async fn play_seeded(manager: &LibraryManager, first_track: &str) {
     let release_id =
         manager.database.find_track_by_id(first_track).await.unwrap().unwrap().release_id;
     tables
-        .fill(bae_playback::tables::ContextFill::Release { release_id, start: bae_playback::tables::ReleaseStart::First })
+        .fill(bae_playback::tables::ContextFill::Release {
+            release_id,
+            start: bae_playback::tables::ReleaseStart::First,
+        })
         .await
         .unwrap();
 }
@@ -271,8 +272,12 @@ async fn the_context_tail_reads_in_order_after_the_playing_track() {
 
     let value = bae_playback::tables::queue_value(manager.database()).await.unwrap();
     assert!(value.context.is_some() && value.has_next);
-    let upcoming: Vec<String> =
-        bae_playback::tables::queue_upcoming(manager.database()).await.unwrap().into_iter().map(|item| item.track_id).collect();
+    let upcoming: Vec<String> = bae_playback::tables::queue_upcoming(manager.database())
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|item| item.track_id)
+        .collect();
     assert_eq!(upcoming, track_ids[1..].to_vec());
 }
 
@@ -522,11 +527,14 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
     let synced = crate::followed::value_matching(&mut values, |value| {
         let running =
             !matches!(value.status, coven::SyncStatus::Stopped | coven::SyncStatus::Disconnected);
-        assert!(!running || value.error.is_none(), "a running sync shows a failed start: {value:?}");
+        assert!(
+            !running || value.error.is_none(),
+            "a running sync shows a failed start: {value:?}"
+        );
         matches!(value.status, coven::SyncStatus::Synced { .. })
     })
     .await;
-    assert_eq!(synced.indicator(), Some(SyncIndicator::Synced), "{synced:?}");
+    assert_eq!(synced.indicator(), Some(bae_db::SyncIndicator::Synced), "{synced:?}");
     manager.close().await.unwrap();
 }
 

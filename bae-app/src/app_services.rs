@@ -420,7 +420,7 @@ impl AppServices {
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_sync!(manager, network_changed => network_changed() -> ());
     delegate_async!(manager, release_memory => release_memory() -> Result<(), bae_library::library::LibraryError>);
-    delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_library::library::SyncRetryOutcome> + Send + 'static, bae_library::library::LibraryError>);
+    delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_db::SyncRetryOutcome> + Send + 'static, bae_library::library::LibraryError>);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), bae_library::library::LibraryError>);
     delegate_async!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> Result<(), bae_library::library::LibraryError>);
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), bae_library::library::LibraryError>);
@@ -594,7 +594,7 @@ impl AppServices {
     }
 
     // The sync status, each value read from its tables in one go.
-    delegate_values!(subscribe_sync_status => subscribe_sync_status() -> bae_library::library::SyncStatusSnapshot);
+    delegate_values!(subscribe_sync_status => subscribe_sync_status() -> bae_db::SyncStatusSnapshot);
 
     pub async fn retry_pending_operation(
         &self,

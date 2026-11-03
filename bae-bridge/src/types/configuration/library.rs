@@ -349,16 +349,11 @@ pub struct BridgeSyncStatusSnapshot {
 }
 
 impl BridgeSyncStatusSnapshot {
-    pub(crate) fn from_core(snapshot: bae_library::library::SyncStatusSnapshot) -> Self {
+    pub(crate) fn from_core(snapshot: bae_db::SyncStatusSnapshot) -> Self {
         let indicator = snapshot.indicator().map(crate::types::BridgeSyncIndicator::from_core);
         let error = snapshot.shown_failure();
         let reconnect_offered = snapshot.reconnect_offered();
-        let bae_library::library::SyncStatusSnapshot {
-            status: _,
-            pending,
-            error: _,
-            retry_effect: _,
-        } = snapshot;
+        let bae_db::SyncStatusSnapshot { status: _, pending, error: _, retry_effect: _ } = snapshot;
         Self {
             indicator,
             reconnect_offered,
@@ -381,16 +376,14 @@ pub enum BridgeSyncIndicator {
     Waiting { items: u64 },
 }
 impl BridgeSyncIndicator {
-    pub(crate) fn from_core(value: bae_library::library::SyncIndicator) -> Self {
+    pub(crate) fn from_core(value: bae_db::SyncIndicator) -> Self {
         match value {
-            bae_library::library::SyncIndicator::Stopped => Self::Stopped,
-            bae_library::library::SyncIndicator::Syncing => Self::Syncing,
-            bae_library::library::SyncIndicator::Synced => Self::Synced,
-            bae_library::library::SyncIndicator::Offline => Self::Offline,
-            bae_library::library::SyncIndicator::Failed => Self::Failed,
-            bae_library::library::SyncIndicator::Waiting { items } => {
-                Self::Waiting { items: items as u64 }
-            }
+            bae_db::SyncIndicator::Stopped => Self::Stopped,
+            bae_db::SyncIndicator::Syncing => Self::Syncing,
+            bae_db::SyncIndicator::Synced => Self::Synced,
+            bae_db::SyncIndicator::Offline => Self::Offline,
+            bae_db::SyncIndicator::Failed => Self::Failed,
+            bae_db::SyncIndicator::Waiting { items } => Self::Waiting { items: items as u64 },
         }
     }
 }

@@ -1,8 +1,40 @@
-//! Sync status and the actions for coven's current pending records.
+//! The sync status as the status line and the activity list show it:
+//! coven's status, its pending records, what a retry would do and why the
+//! last start failed, read in one go, and the actions each pending record
+//! offers.
 
-use super::{PendingItem, SyncIndicator, SyncStatusSnapshot};
-use bae_db::PendingRow;
+use crate::pending_item::{PendingItem, PendingSubjectName, PendingWait};
+use crate::PendingRow;
 use bae_diagnostics::UiError;
+
+/// Sync activity and the things coven is waiting on that need attention,
+/// read from coven's tables and bae's own in one go.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyncStatusSnapshot {
+    pub status: coven::SyncStatus,
+    pub pending: Vec<PendingItem>,
+    /// Why this device's last attempt to start sync failed, while that
+    /// stands.
+    pub error: Option<bae_diagnostics::UiError>,
+    /// What the person's retry would do now, as coven decides it: run a
+    /// pass, or be answered at once without one.
+    pub retry_effect: coven::RetryEffect,
+}
+
+/// The settings status line. Platforms localize these cases and the item count.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SyncIndicator {
+    /// Storage is set up, but the sync loop isn't running.
+    Stopped,
+    Syncing,
+    Synced,
+    Offline,
+    /// The failure is the snapshot's `shown_failure()`.
+    Failed,
+    Waiting {
+        items: usize,
+    },
+}
 
 /// The category a whole-pass sync failure shows under.
 fn sync_failure_category(error: &coven::SyncFailure) -> bae_diagnostics::UiErrorCategory {
@@ -90,12 +122,10 @@ fn blocked_failure(
 /// (`coven_sync_status`), what a retry would do (`coven_retry_effect`), its
 /// pending records (`coven_pending`), and why this device's last attempt to
 /// start sync failed (`sync_start_failure`).
-pub(crate) fn sync_status_on(
-    sql: coven::SqlReadContext<'_>,
-) -> coven::CovenResult<SyncStatusSnapshot> {
-    let status = bae_db::client::sync_status::coven_status_on(&sql)?;
-    let pending = bae_db::client::pending::pending_rows_on(&sql)?;
-    let start_failure = bae_db::client::sync_start_failure::start_failure_on(&sql)?;
+pub fn sync_status_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncStatusSnapshot> {
+    let status = crate::client::sync_status::coven_status_on(&sql)?;
+    let pending = crate::client::pending::pending_rows_on(&sql)?;
+    let start_failure = crate::client::sync_start_failure::start_failure_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
     Ok(SyncStatusSnapshot::read(status, retry_effect, pending, start_failure))
 }
@@ -104,7 +134,7 @@ impl SyncStatusSnapshot {
     /// The sync status from one read of its tables: coven's status and
     /// what a retry would do, its pending records each named by its row,
     /// and why the last attempt to start sync failed, while that stands.
-    pub(crate) fn read(
+    pub fn read(
         status: coven::SyncStatus,
         retry_effect: coven::RetryEffect,
         pending: Vec<PendingRow>,
@@ -134,10 +164,8 @@ impl SyncStatusSnapshot {
             return;
         };
         let (failure, error) = (failure, error.to_string());
-        let connection = self
-            .pending
-            .iter_mut()
-            .filter(|item| item.subject == super::PendingSubjectName::Connection);
+        let connection =
+            self.pending.iter_mut().filter(|item| item.subject == PendingSubjectName::Connection);
         for item in connection {
             if matches!(&item.wait.reason, coven::PendingReason::Storage { failure: recorded, .. } if *recorded == failure)
             {
@@ -164,8 +192,8 @@ impl SyncStatusSnapshot {
     /// storage refused the pass or couldn't be reached, a blocked slot's, and
     /// that of its own operation whose last attempt failed.
     fn failure_recorded(&self) -> bool {
-        use super::PendingSubjectName as N;
         use coven::{PendingReason as R, StatusFailure as F, SyncStatus as S};
+        use PendingSubjectName as N;
         self.pending.iter().any(|item| match (&self.status, &item.subject, &item.wait.reason) {
             (
                 S::Offline { failure, .. } | S::Failed { failure: F::Storage(failure), .. },
@@ -222,7 +250,7 @@ impl SyncStatusSnapshot {
 
     /// Whether the status line offers Reconnect: a start failed and left
     /// sync not running with storage set up on this device, and starting it
-    /// again is what retries it ([`super::LibraryManager::reconnect_sync`]).
+    /// again is what retries it.
     /// A loop that runs retries a failed pass by itself, and Retry Now ends
     /// its wait; with no storage set up on this device there is no sync to
     /// start, and signing in to the recorded storage again is the way back.
@@ -252,9 +280,8 @@ impl SyncStatusSnapshot {
     /// work, such as another device's upload.
     fn failure_a_retry_clears(&self) -> bool {
         use coven::{StatusFailure as F, SyncStatus as S};
-        let retries = |record: &coven::PendingRecord| {
-            super::PendingWait::of(record, None).retries_by_itself()
-        };
+        let retries =
+            |record: &coven::PendingRecord| PendingWait::of(record, None).retries_by_itself();
         match &self.status {
             S::Offline { .. } | S::Failed { failure: F::Storage(_) | F::Other, .. } => true,
             S::Blocked { slot, reason, .. } => retries(&coven::PendingRecord::new(
@@ -274,7 +301,7 @@ impl SyncStatusSnapshot {
     /// The failure to log as this status follows `last`: one coven doesn't
     /// log itself, as it appears or changes. The same failure read again, or
     /// a change to anything else, logs nothing more.
-    pub(super) fn failure_to_log(&self, last: Option<&Self>) -> Option<UiError> {
+    pub fn failure_to_log(&self, last: Option<&Self>) -> Option<UiError> {
         let failure = self.failure_coven_does_not_log();
         if last.and_then(Self::failure_coven_does_not_log) == failure {
             return None;

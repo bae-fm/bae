@@ -215,7 +215,7 @@ pulled_values! {
 pulled_values! {
     /// What sync is doing, what it waits on, and why a start failed.
     SyncStatusSubscription:
-        bae_library::library::SyncStatusSnapshot => crate::types::BridgeSyncStatusSnapshot,
+        bae_db::SyncStatusSnapshot => crate::types::BridgeSyncStatusSnapshot,
     converted by crate::types::BridgeSyncStatusSnapshot::from_core,
     built by sync_status
 }

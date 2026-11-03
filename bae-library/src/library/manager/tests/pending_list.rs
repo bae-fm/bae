@@ -7,14 +7,14 @@
 /// Follow the pending list as the running library does, and wait for the
 /// first list `matches` accepts.
 async fn pending_list_until(
-    values: &mut coven::LiveQuery<crate::library::SyncStatusSnapshot>,
-    matches: impl Fn(&[PendingItem]) -> bool,
-) -> Vec<PendingItem> {
+    values: &mut coven::LiveQuery<bae_db::SyncStatusSnapshot>,
+    matches: impl Fn(&[bae_db::PendingItem]) -> bool,
+) -> Vec<bae_db::PendingItem> {
     crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending
 }
 
 /// The text of the error behind `item`, with every cause below it.
-fn cause_text(item: &PendingItem) -> Option<String> {
+fn cause_text(item: &bae_db::PendingItem) -> Option<String> {
     item.wait.cause.clone()
 }
 
@@ -32,7 +32,7 @@ async fn a_waiting_upload_is_named_by_its_file_and_album() {
     pending_list_until(&mut values, |items| {
         items.iter().any(|item| {
             item.subject
-                == crate::library::PendingSubjectName::ReleaseFile {
+                == bae_db::PendingSubjectName::ReleaseFile {
                     file_name: "a.flac".into(),
                     album_title: "Test Album".into(),
                 }
@@ -166,14 +166,14 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         "the second failure's record sorts first"
     );
 
-    let album = |title: &str| PendingSubjectName::ReleaseFile {
+    let album = |title: &str| bae_db::PendingSubjectName::ReleaseFile {
         file_name: if title == "Test Album" { "a.flac" } else { "b.flac" }.into(),
         album_title: title.into(),
     };
     let listed = pending_list_until(&mut values, |items| {
         items
             .iter()
-            .filter(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. }))
+            .filter(|item| matches!(item.subject, bae_db::PendingSubjectName::ReleaseFile { .. }))
             .count()
             == 2
     })
@@ -182,7 +182,7 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         listed
             .iter()
             .map(|item| item.subject.clone())
-            .filter(|subject| matches!(subject, PendingSubjectName::ReleaseFile { .. }))
+            .filter(|subject| matches!(subject, bae_db::PendingSubjectName::ReleaseFile { .. }))
             .collect::<Vec<_>>(),
         vec![album("Test Album"), album("Album Title Second")],
         "{second:?} failed after the first"
@@ -211,7 +211,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     })
     .await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    let retry = crate::library::PendingAction::RetryDownload { release_id: release_id.clone() };
+    let retry = bae_db::PendingAction::RetryDownload { release_id: release_id.clone() };
     pending_list_until(&mut values, |items| items.iter().any(|item| item.wait.action == retry))
         .await;
 

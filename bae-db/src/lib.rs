@@ -2,8 +2,9 @@
 //! points every read and write runs through, the schema (its one migration,
 //! the synced tables and the SQL functions it declares), the library's
 //! records and the row writers that keep them, list windows, the cancellable
-//! live queries a surface pulls values from, and the people, collections and
-//! history a library holds.
+//! live queries a surface pulls values from, the people, collections and
+//! history a library holds, and the sync status as coven and this device's
+//! rows give it.
 
 pub mod admin_change;
 pub mod client;
@@ -17,7 +18,9 @@ pub mod live_query;
 pub mod membership;
 pub mod migrations;
 mod models;
+mod pending_item;
 pub mod people;
+pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 pub mod schema;
 pub use schema::configure_store;
 mod resolved_track_audio;
@@ -26,7 +29,12 @@ pub use resolved_track_audio::{
 };
 pub mod source_audio;
 pub mod stored_name;
+mod sync_status;
 pub mod synced;
+pub use sync_status::{
+    pending_action, sync_status_on, PendingAction, SyncIndicator, SyncRetryOutcome,
+    SyncStatusSnapshot,
+};
 mod upload_progress;
 pub use upload_progress::{UploadActivity, UploadProgress};
 #[cfg(any(test, feature = "test-utils"))]

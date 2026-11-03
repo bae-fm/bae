@@ -19,8 +19,8 @@ async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::Fixed
 /// Follow the status until `accept` takes it.
 async fn status_until(
     manager: &TestManager,
-    accept: impl Fn(&SyncStatusSnapshot) -> bool,
-) -> SyncStatusSnapshot {
+    accept: impl Fn(&bae_db::SyncStatusSnapshot) -> bool,
+) -> bae_db::SyncStatusSnapshot {
     let mut values = manager.subscribe_sync_status();
     crate::followed::value_matching(&mut values, accept).await
 }
@@ -35,13 +35,16 @@ fn next_request_fails(failure: coven::StorageFailure, response: Option<u16>) -> 
 /// the failure beside the connection's record coven saved for it. Storage
 /// works again afterwards, so only coven's wait stands between the library
 /// and its next pass.
-async fn fail_a_pass(manager: &TestManager, faults: coven::Faults) -> SyncStatusSnapshot {
+async fn fail_a_pass(manager: &TestManager, faults: coven::Faults) -> bae_db::SyncStatusSnapshot {
     let mut values = manager.subscribe_sync_status();
     manager.storage.set_faults(faults).await;
     manager.trigger_sync();
     let failed = crate::followed::value_matching(&mut values, |value| {
         matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. })
-            && value.pending.iter().any(|item| item.subject == PendingSubjectName::Connection)
+            && value
+                .pending
+                .iter()
+                .any(|item| item.subject == bae_db::PendingSubjectName::Connection)
     })
     .await;
     manager.storage.set_faults(coven::Faults::none()).await;
@@ -74,7 +77,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
         .await
         .expect("the retry's pass ends");
         assert!(
-            matches!(answer, crate::library::SyncRetryOutcome::Synced),
+            matches!(answer, bae_db::SyncRetryOutcome::Synced),
             "{failure:?} {response:?}: {answer:?}"
         );
         assert!(
@@ -111,7 +114,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
         .await
         .expect("a held pass answers the retry at once");
         assert!(
-            matches!(answer, crate::library::SyncRetryOutcome::Failed(_)),
+            matches!(answer, bae_db::SyncRetryOutcome::Failed(_)),
             "{failure:?} {response:?}: {answer:?}"
         );
         assert_eq!(
@@ -146,7 +149,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     .await
     .expect("a cooldown answers the retry at once");
     assert!(
-        matches!(answer, crate::library::SyncRetryOutcome::CoolingDown { until } if until == ends),
+        matches!(answer, bae_db::SyncRetryOutcome::CoolingDown { until } if until == ends),
         "{answer:?}"
     );
 
@@ -165,7 +168,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     })
     .await
     .expect("the retry's pass ends");
-    assert!(matches!(answer, crate::library::SyncRetryOutcome::Synced), "{answer:?}");
+    assert!(matches!(answer, bae_db::SyncRetryOutcome::Synced), "{answer:?}");
     assert!(manager.storage.request_trace().len() > requests, "the retry ran a pass");
     manager.close().await.unwrap();
 }

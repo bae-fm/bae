@@ -506,7 +506,7 @@ fn work_detail_conversion_preserves_work_release_rows() {
 fn a_failed_sync_status_crosses_with_its_fault() {
     let fault = "sync cycle: pull Store commits: database: retained Merge replay \
                  has an unresolved foreign-key dependency";
-    let snapshot = bae_library::library::SyncStatusSnapshot {
+    let snapshot = bae_db::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal(fault)),
         status: coven::SyncStatus::Disconnected,
         pending: Vec::new(),
@@ -526,7 +526,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 /// A healthy cycle carries no error, so no surface renders a failure for it.
 #[test]
 fn a_healthy_sync_status_crosses_without_an_error() {
-    let snapshot = bae_library::library::SyncStatusSnapshot {
+    let snapshot = bae_db::SyncStatusSnapshot {
         error: None,
         status: coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH },
         pending: Vec::new(),
@@ -544,7 +544,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 /// Reconnect offered beside it.
 #[test]
 fn a_failed_start_crosses_offering_reconnect() {
-    let snapshot = bae_library::library::SyncStatusSnapshot {
+    let snapshot = bae_db::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal("the store key is missing")),
         status: coven::SyncStatus::Stopped,
         pending: Vec::new(),
@@ -563,13 +563,13 @@ fn a_failed_start_crosses_offering_reconnect() {
 #[test]
 fn a_failure_its_record_shows_crosses_only_as_the_record() {
     let failure = coven::StorageFailure::Protocol;
-    let snapshot = bae_library::library::SyncStatusSnapshot {
+    let snapshot = bae_db::SyncStatusSnapshot {
         error: None,
         status: coven::SyncStatus::Failed {
             failure: coven::StatusFailure::Storage(failure),
             error: "storage refused the pass".into(),
         },
-        pending: vec![bae_library::library::PendingItem::before_open(coven::PendingRecord::new(
+        pending: vec![bae_db::PendingItem::before_open(coven::PendingRecord::new(
             coven::PendingSubject::Connection,
             coven::PendingReason::Storage {
                 provider: coven::CloudProvider::S3,

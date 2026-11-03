@@ -1,5 +1,4 @@
 use super::*;
-use bae_db::PendingRow;
 
 /// The status as one read of its tables gives it: `status`, the records
 /// beside it, coven's answer to what a retry would do, and why the last

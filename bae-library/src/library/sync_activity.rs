@@ -1,7 +1,7 @@
 //! Everything sync is doing on this device at once, for the activity
 //! indicator in the app's title bar and the list it opens.
 
-use crate::library::{PendingItem, SyncStatusSnapshot};
+use bae_db::{PendingItem, SyncStatusSnapshot};
 use bae_diagnostics::UiError;
 use bae_transfers::CountLabel;
 use bae_transfers::ReleaseQueueCounts;
@@ -126,7 +126,7 @@ mod tests;
 pub(crate) fn sync_activity_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncActivity> {
     let uploads = upload_queue_counts_on(&sql)?;
     let downloads = bae_transfers::tables::release_queue_counts_on::<()>(&sql)?;
-    let status = crate::library::manager::sync_status_on(sql)?;
+    let status = bae_db::sync_status_on(sql)?;
     Ok(SyncActivity::new(&status, &uploads, &downloads))
 }
 

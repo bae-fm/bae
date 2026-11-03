@@ -512,7 +512,7 @@ fn a_release_read_from_several_folders_crosses_as_its_folders() {
 /// details, never the reason's debug text.
 #[test]
 fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
-    let mut item = bae_library::library::PendingItem::before_open(coven::PendingRecord::new(
+    let mut item = bae_db::PendingItem::before_open(coven::PendingRecord::new(
         coven::PendingSubject::Connection,
         coven::PendingReason::Storage {
             provider: coven::CloudProvider::S3,
@@ -540,15 +540,15 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
 /// action's key beside the action.
 #[test]
 fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
-    let record = BridgePendingRecord::from_core(bae_library::library::PendingItem {
-        subject: bae_library::library::PendingSubjectName::ReleaseFile {
+    let record = BridgePendingRecord::from_core(bae_db::PendingItem {
+        subject: bae_db::PendingSubjectName::ReleaseFile {
             file_name: "01 Track Title.flac".into(),
             album_title: "Album Title".into(),
         },
-        wait: bae_library::library::PendingWait {
+        wait: bae_db::PendingWait {
             reason: coven::PendingReason::Paused,
             cause: None,
-            action: bae_library::library::PendingAction::RestoreFile,
+            action: bae_db::PendingAction::RestoreFile,
         },
     });
     assert_eq!(
@@ -564,12 +564,12 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
     assert_eq!(record.reason.key, "core.pending.reason.paused");
     assert_eq!(record.action_key.as_deref(), Some("core.pending.action.restore_file"));
 
-    let waiting = BridgePendingRecord::from_core(bae_library::library::PendingItem {
-        subject: bae_library::library::PendingSubjectName::Snapshot,
-        wait: bae_library::library::PendingWait {
+    let waiting = BridgePendingRecord::from_core(bae_db::PendingItem {
+        subject: bae_db::PendingSubjectName::Snapshot,
+        wait: bae_db::PendingWait {
             reason: coven::PendingReason::Paused,
             cause: None,
-            action: bae_library::library::PendingAction::Wait,
+            action: bae_db::PendingAction::Wait,
         },
     });
     assert_eq!(
