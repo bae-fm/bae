@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""Refuse test code that reaches the person's own keychain.
+"""Refuse test code that reaches the person's own keychain or bae directory.
 
 `Keychain::System` keeps coven's keys, credentials and saved restore codes in
 the OS keychain: the person's login keychain, iCloud Keychain (which reaches
 every device on their Apple account) or their phone's Block Store.
-`BridgeHost::new` is the host the apps start over it. A test, a bench or a
-test helper keeps its keys in an in-memory keychain instead
-(`Keychain::in_memory()`, `BridgeHost::with_test_keyring`). This check
-refuses either name in test code:
+`BridgeHost::new` is the host the apps start over it, and `Coven::builder`
+opens a store over it without bae's `Keychain`. A test, a bench, an example
+or a test helper keeps its keys in an in-memory keychain instead
+(`Keychain::in_memory()`, `BridgeHost::with_test_keyring`,
+`TestCoven::builder`). `dirs::home_dir` is the person's own home, whose
+`~/.bae` holds their libraries; test code puts its bae directory under a
+temporary one. This check refuses each of those names in test code:
 
-- Rust: the code of every workspace `test` and `bench` target; code under a
-  `cfg` that holds only in a test build, one that needs `test` or a `test-*`
-  feature (`test-utils`, `test-keyring`); and every module file such code
-  declares, as `rust_modules` reaches them from Cargo's targets.
+- Rust: the code of every workspace `test`, `bench` and `example` target;
+  code under a `cfg` that holds only in a test build, one that needs `test`
+  or a `test-*` feature (`test-utils`, `test-keyring`); and every module file
+  such code declares, as `rust_modules` reaches them from Cargo's targets.
 - Swift: the sources of each XcodeGen project's test bundles.
 - Kotlin: Gradle's test source sets (`src/test*`, `src/androidTest*`,
   `src/screenshotTest*`).
@@ -37,8 +40,18 @@ from pathlib import Path
 from rust_modules import reached_files
 from source_tokens import Token, tokenize
 
-# The Rust names that reach the person's keychain: two tokens around `::`.
-RUST_NAMES = {("Keychain", "System"), ("BridgeHost", "new")}
+# The Rust names that reach the person's keychain or home: two tokens around
+# `::`.
+RUST_NAMES = {
+    ("Keychain", "System"),
+    ("BridgeHost", "new"),
+    ("Coven", "builder"),
+    ("dirs", "home_dir"),
+}
+# Test code allowed to name them. restore_code is a tool the person runs, when
+# they ask for it, to print their own active library's restore code: it must
+# read their keychain and their `~/.bae`.
+RUST_ALLOWED = {"bae-library/examples/restore_code.rs"}
 # What a fake host is made from in each app's bindings: no keychain behind it.
 SWIFT_HANDLE_LABELS = {"unsafeFromHandle", "noHandle"}
 KOTLIN_HANDLE_ARGUMENTS = {"NoHandle"}
@@ -85,8 +98,9 @@ def rust_uses(tokens: list[Token]) -> list[tuple[int, str]]:
 
 def check_rust(root: Path) -> list[str]:
     violations = [
-        f"{path.relative_to(root.resolve())}:{file.tokens[position].line}: {name}"
+        f"{relative}:{file.tokens[position].line}: {name}"
         for path, file in reached_files(root).items()
+        if (relative := path.relative_to(root.resolve()).as_posix()) not in RUST_ALLOWED
         for position, name in rust_uses(file.tokens)
         if file.in_test(position)
     ]
@@ -210,8 +224,9 @@ def main() -> int:
     if violations:
         print(
             "Test code keeps its keys in an in-memory keychain "
-            "(Keychain::in_memory(), BridgeHost::with_test_keyring), never "
-            "the person's own keychain.",
+            "(Keychain::in_memory(), BridgeHost::with_test_keyring, "
+            "TestCoven::builder) and its bae directory under a temporary "
+            "home, never the person's own keychain or home.",
             file=sys.stderr,
         )
     return 1 if violations else 0

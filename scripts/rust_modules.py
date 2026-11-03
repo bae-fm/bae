@@ -3,9 +3,9 @@ found by following `mod` declarations and `include!` from Cargo's targets
 with the compiler's file rules, and which of its code exists only in a test
 build.
 
-A file is test code when a test or bench target compiles it, or when the
-code that declares or includes it does; within a file, code under a `cfg`
-that holds only in a test build is test code (`cfg_value`).
+A file is test code when a test, bench or example target compiles it, or
+when the code that declares or includes it does; within a file, code under a
+`cfg` that holds only in a test build is test code (`cfg_value`).
 """
 
 from __future__ import annotations
@@ -228,8 +228,8 @@ def module_file(declaring: Path, owns_directory: bool, declaration: ModDeclarati
 
 
 def workspace_targets(root: Path) -> list[tuple[Path, bool]]:
-    """Every workspace target's root file, and whether it is a test or a
-    bench."""
+    """Every workspace target's root file, and whether it is a test, a bench
+    or an example: code that never ships."""
     metadata = json.loads(
         subprocess.run(
             ["cargo", "metadata", "--no-deps", "--format-version", "1"],
@@ -241,7 +241,7 @@ def workspace_targets(root: Path) -> list[tuple[Path, bool]]:
     targets = []
     for package in metadata["packages"]:
         for target in package["targets"]:
-            test = any(kind in ("test", "bench") for kind in target["kind"])
+            test = any(kind in ("test", "bench", "example") for kind in target["kind"])
             targets.append((Path(target["src_path"]), test))
     return targets
 
@@ -250,7 +250,8 @@ def workspace_targets(root: Path) -> list[tuple[Path, bool]]:
 class ReachedFile:
     tokens: list[Token]
     read: RustFile
-    # A test or bench target compiles it, or test code declares or includes it.
+    # A test, bench or example target compiles it, or test code declares or
+    # includes it.
     test: bool
 
     def in_test(self, position: int) -> bool:
