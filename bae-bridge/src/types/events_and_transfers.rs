@@ -284,7 +284,7 @@ pub struct BridgeCountLabel {
 }
 
 mirror_struct! {
-    BridgeCountLabel = bae_transfers::CountLabel,
+    BridgeCountLabel = bae_types::count_label::CountLabel,
     from_core: pub(crate) fn,
     fields: { key, count },
 }

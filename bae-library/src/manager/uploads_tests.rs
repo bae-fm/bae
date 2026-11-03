@@ -158,7 +158,10 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
         Some(bae_views::album_detail::ReleaseUpload {
             progress: bae_db::UploadProgress { queued: 2, uploading: 0 },
             summary: vec![bae_transfers::TransferCount {
-                label: bae_transfers::CountLabel { key: "core.queue.queued".into(), count: 2 },
+                label: bae_types::count_label::CountLabel {
+                    key: "core.queue.queued".into(),
+                    count: 2
+                },
                 stage: bae_transfers::TransferStage::Waiting,
             }],
         })

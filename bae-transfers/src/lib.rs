@@ -26,8 +26,8 @@ pub use queued_releases::{QueuedPayload, QueuedReleases, RunningOp};
 #[cfg(desktop)]
 pub use release_queue::ReleaseQueueEntries;
 pub use release_queue::{
-    transfer_summary, CountLabel, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry,
-    ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
+    transfer_summary, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
+    ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
     ReleaseQueueWindows, TransferCount, TransferStage,
 };
 pub use release_state::{release_transfer_state_on, ReleaseTransferState};

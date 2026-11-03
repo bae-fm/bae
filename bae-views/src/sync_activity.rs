@@ -4,9 +4,9 @@
 use super::*;
 use bae_db::{PendingItem, SyncStatusSnapshot};
 use bae_diagnostics::UiError;
-use bae_transfers::CountLabel;
 use bae_transfers::ReleaseQueueCounts;
 use bae_transfers::ReleaseQueueProgress;
+use bae_types::count_label::CountLabel;
 
 /// What sync is doing now: the work that needs the person and the transfers
 /// moving bytes. How many bytes the uploads have moved is not part of it: it

@@ -13,6 +13,7 @@
 //! its title, file count, and size — is read with the queue, so an edit to the
 //! release shows on its row while it waits.
 
+use bae_types::count_label::CountLabel;
 use std::collections::BTreeMap;
 
 /// Where an entry stands. `Progress` is how far an active one has got:
@@ -63,17 +64,6 @@ pub struct ReleaseQueueProgress {
 pub struct ReleaseQueueCounts {
     pub total: ReleaseQueueProgress,
     pub paused: bool,
-}
-
-/// A catalog key whose message takes `count`, and the count to render it with
-/// (e.g. `core.queue.downloading` × 2): a part of a queue summary line, or the
-/// count line under an artist's or composer's name. Core decides which keys
-/// appear, in what order, and that a zero drops out of a summary; the UI
-/// resolves each key against its catalog and joins the parts.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CountLabel {
-    pub key: String,
-    pub count: u32,
 }
 
 /// One count of a release transfer's summary line, and where the files it

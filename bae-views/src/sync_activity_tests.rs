@@ -1,5 +1,6 @@
 use super::*;
-use bae_transfers::{CountLabel, ReleaseQueueCounts};
+use bae_transfers::ReleaseQueueCounts;
+use bae_types::count_label::CountLabel;
 
 /// An empty, running upload queue.
 fn idle_uploads() -> UploadQueueCounts {

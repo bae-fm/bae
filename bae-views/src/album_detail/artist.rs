@@ -16,8 +16,8 @@ impl ArtistSummary {
 
     /// The line under the artist's name in its list, its detail and search:
     /// how many albums credit it.
-    pub fn count_line(&self) -> bae_transfers::CountLabel {
-        bae_transfers::CountLabel {
+    pub fn count_line(&self) -> bae_types::count_label::CountLabel {
+        bae_types::count_label::CountLabel {
             key: "core.library.album_count".to_string(),
             count: u32::try_from(self.raw.album_count).expect("an album count is never negative"),
         }

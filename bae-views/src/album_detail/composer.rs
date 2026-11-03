@@ -19,8 +19,8 @@ impl ComposerSummary {
 
     /// The line under the composer's name in its list, its detail and
     /// search: how many works it is credited on.
-    pub fn count_line(&self) -> bae_transfers::CountLabel {
-        bae_transfers::CountLabel {
+    pub fn count_line(&self) -> bae_types::count_label::CountLabel {
+        bae_types::count_label::CountLabel {
             key: "core.library.work_count".to_string(),
             count: u32::try_from(self.raw.work_count).expect("a work count is never negative"),
         }
