@@ -54,7 +54,7 @@ pub(super) async fn setup_test_import_over(
     (parts, database, temp_dir)
 }
 
-pub(super) fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
+pub(crate) fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
     let now = Utc::now();
     DbArtist {
         id: Uuid::new_v4().to_string(),
@@ -91,7 +91,7 @@ pub(super) async fn insert_library_release(
 
 /// What the import `import_id` reported: the release and album it created, or
 /// the error it failed with. Every other event on the stream is skipped.
-pub(super) async fn await_import_outcome(
+pub(crate) async fn await_import_outcome(
     events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     import_id: &str,
 ) -> Result<(String, String), String> {
@@ -445,16 +445,30 @@ pub(super) async fn rescan_into(tables: &crate::tables::ImportTables, candidate:
 
 /// A running import service over a watched root holding one stored candidate —
 /// what every control in this file is addressed to.
-pub(super) struct StoredCandidate {
-    pub(super) handle: ImportServiceHandle,
+pub(crate) struct StoredCandidate {
+    pub(crate) handle: ImportServiceHandle,
     /// What the service was started from, for the tests that start another
     /// over the same store to read what survived the first one.
     pub(super) parts: TestImport,
     pub(super) candidate: FolderCandidate,
     /// The key the pane's controls address the candidate by.
-    pub(super) key: crate::CandidateKey,
+    pub(crate) key: crate::CandidateKey,
     /// Held for its `Drop`: the watched root lives inside it.
-    pub(super) tmp: TempDir,
+    pub(crate) tmp: TempDir,
+}
+
+impl ImportServiceHandle {
+    /// The library the handle reads and writes, for a test outside the
+    /// handle that reads or seeds rows no call reads or writes on its own.
+    pub(crate) fn database(&self) -> &Database {
+        &self.database
+    }
+
+    /// The catalogs the handle asks, for a test outside the handle that
+    /// stores a Discogs key without asking Discogs about it.
+    pub(crate) fn catalogs(&self) -> &crate::CatalogSessions {
+        &self.catalogs
+    }
 }
 
 pub(super) async fn stored_candidate() -> StoredCandidate {
@@ -539,7 +553,7 @@ pub(super) async fn pane_fixture_with(
 }
 
 /// [`stored_candidate_with`] with the folder's own tags already picked.
-pub(super) async fn picked_stored_candidate_with(
+pub(crate) async fn picked_stored_candidate_with(
     providers: bae_catalogs::providers::Providers,
 ) -> StoredCandidate {
     let fixture = stored_candidate_with(providers).await;
@@ -556,7 +570,7 @@ pub(super) async fn pane(
     handle.load_candidate(key).await.unwrap().expect("the picked candidate reads back")
 }
 
-pub(super) async fn shut_down(handle: ImportServiceHandle) {
+pub(crate) async fn shut_down(handle: ImportServiceHandle) {
     tokio::task::spawn_blocking(move || handle.stop_and_join()).await.unwrap();
 }
 

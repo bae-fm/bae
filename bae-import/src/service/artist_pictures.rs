@@ -147,4 +147,4 @@ fn artist_image_rows(
 
 #[cfg(test)]
 #[path = "artist_pictures_tests.rs"]
-mod tests;
+pub(crate) mod tests;

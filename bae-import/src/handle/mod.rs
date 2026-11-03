@@ -44,7 +44,7 @@ use crate::folder_scan_status::WatchedFolderScanStatus;
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]
-mod tests;
+pub(crate) mod tests;
 
 /// Every event the import service emits, on one channel.
 #[derive(Debug, Clone)]

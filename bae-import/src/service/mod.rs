@@ -23,7 +23,7 @@ use {
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-mod artist_pictures;
+pub(crate) mod artist_pictures;
 mod content_type;
 mod cover_image;
 mod format_prep;
