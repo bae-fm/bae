@@ -45,7 +45,7 @@ pub type LiveComposerBrowse = LiveLibraryBrowse<
 /// The download queue as the Downloads pane draws it: its windows, each row
 /// an entry beside its release.
 pub type LiveDownloadBrowse =
-    LiveLibraryBrowse<crate::library::ReleaseQueueWindows<()>, crate::library::DownloadRow>;
+    LiveLibraryBrowse<bae_transfers::ReleaseQueueWindows<()>, bae_transfers::DownloadRow>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum LiveLibraryBrowseError {

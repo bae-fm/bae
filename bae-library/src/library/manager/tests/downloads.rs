@@ -23,7 +23,7 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     let snap = download_queue_now(&manager).await;
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.rows.len(), 1);
-    assert_eq!(snap.rows[0].op.state, crate::library::DownloadPhase::Queued);
+    assert_eq!(snap.rows[0].op.state, bae_transfers::DownloadPhase::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
@@ -46,8 +46,7 @@ async fn download_queue_skips_already_pinned() {
     connect_test_cloud(&manager).await;
     let release_id =
         uploaded_release(&manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
-    let summary =
-        manager.views().find_release_detail(&release_id).await.unwrap().unwrap().summary;
+    let summary = manager.views().find_release_detail(&release_id).await.unwrap().unwrap().summary;
     assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Remote);
     assert!(summary.pinned, "the offline-cached file makes it read as pinned");
 
@@ -102,8 +101,7 @@ async fn download_queue_skips_local_release() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let summary =
-        manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary;
+    let summary = manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary;
     assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Local);
 
     manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
@@ -128,7 +126,7 @@ async fn download_queue_failed_pin_retries() {
     let failed = download_queue_until(&manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
-            Some(crate::library::DownloadPhase::Failed { .. })
+            Some(bae_transfers::DownloadPhase::Failed { .. })
         )
     })
     .await;
@@ -141,9 +139,9 @@ async fn download_queue_failed_pin_retries() {
     assert!(
         snap.rows.first().is_some_and(|row| matches!(
             row.op.state,
-            crate::library::DownloadPhase::Queued
-                | crate::library::DownloadPhase::Active { .. }
-                | crate::library::DownloadPhase::Failed { .. }
+            bae_transfers::DownloadPhase::Queued
+                | bae_transfers::DownloadPhase::Active { .. }
+                | bae_transfers::DownloadPhase::Failed { .. }
         )),
         "after retry the release is still tracked"
     );
@@ -167,7 +165,7 @@ async fn pinning_a_failed_download_queues_it_again_in_its_place() {
     download_queue_until(&manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
-            Some(crate::library::DownloadPhase::Failed { .. })
+            Some(bae_transfers::DownloadPhase::Failed { .. })
         )
     })
     .await;
@@ -185,8 +183,8 @@ async fn pinning_a_failed_download_queues_it_again_in_its_place() {
             .map(|row| (row.op.release_id.clone(), row.op.state.clone()))
             .collect::<Vec<_>>(),
         [
-            (failed, crate::library::DownloadPhase::Queued),
-            (later, crate::library::DownloadPhase::Queued),
+            (failed, bae_transfers::DownloadPhase::Queued),
+            (later, bae_transfers::DownloadPhase::Queued),
         ]
     );
     assert_eq!(queue.total.failed, 0);
@@ -204,7 +202,7 @@ async fn download_transfers_report_each_driven_file_progress() {
     manager.set_downloads_paused(true).await.unwrap();
     assert!(manager
         .downloads
-        .enqueue_all(vec![crate::library::DownloadEntry {
+        .enqueue_all(vec![bae_transfers::DownloadEntry {
             release_id: release_id.clone(),
             created_at: 0,
             payload: (),
@@ -217,7 +215,7 @@ async fn download_transfers_report_each_driven_file_progress() {
         .activate_for_test(
             &release_id,
             pending.abort_handle(),
-            crate::library::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
+            bae_transfers::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
         )
         .await
         .unwrap());
@@ -225,7 +223,7 @@ async fn download_transfers_report_each_driven_file_progress() {
     let mut transfers = manager.downloads.subscribe_transfers();
     let bytes_done = |transfers: &std::collections::BTreeMap<
         String,
-        crate::library::DownloadTransferProgress,
+        bae_transfers::DownloadTransferProgress,
     >| {
         transfers.get("release-progress").expect("the active download has progress").clone()
     };
@@ -242,7 +240,7 @@ async fn download_transfers_report_each_driven_file_progress() {
     for done in [3, 7] {
         progress_tx
             .send(TransferProgress::Progress {
-                progress: crate::library::DownloadTransferProgress::new(&release_id, done, 7)
+                progress: bae_transfers::DownloadTransferProgress::new(&release_id, done, 7)
                     .unwrap(),
             })
             .expect("the transfer driver is listening");
@@ -266,7 +264,7 @@ async fn download_bytes_send_no_new_sync_activity() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let release_id = "release-activity".to_string();
     let progress = |bytes_done| {
-        crate::library::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
+        bae_transfers::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
     };
     let mut activity = manager.library.views().subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.downloads, None);
@@ -275,7 +273,7 @@ async fn download_bytes_send_no_new_sync_activity() {
     manager.set_downloads_paused(true).await.unwrap();
     assert!(manager
         .downloads
-        .enqueue_all(vec![crate::library::DownloadEntry {
+        .enqueue_all(vec![bae_transfers::DownloadEntry {
             release_id: release_id.clone(),
             created_at: 0,
             payload: (),
@@ -324,8 +322,8 @@ async fn opening_a_library_empties_its_transfer_queues() {
         .unwrap();
     let left =
         Database::from_handle(handle.clone(), clock.clone(), std::sync::Arc::new(coven::UuidIds));
-    let left = crate::library::Downloads::new(left);
-    left.enqueue_all(vec![crate::library::DownloadEntry {
+    let left = bae_transfers::Downloads::new(left);
+    left.enqueue_all(vec![bae_transfers::DownloadEntry {
         release_id: REL_1.to_string(),
         created_at: 0,
         payload: (),

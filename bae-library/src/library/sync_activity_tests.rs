@@ -1,5 +1,5 @@
 use super::*;
-use crate::library::{CountLabel, ReleaseQueueCounts};
+use bae_transfers::{CountLabel, ReleaseQueueCounts};
 
 /// An empty, running upload queue.
 fn idle_uploads() -> UploadQueueCounts {

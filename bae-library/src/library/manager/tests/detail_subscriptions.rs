@@ -44,11 +44,19 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
     let transitioning = releases[0].clone();
     load.push(tokio::spawn(async move {
         loop {
-            database
-                .begin_release_storage_action(&transitioning, bae_db::StoredTransition::Unpin)
-                .await
-                .unwrap();
-            database.end_release_storage_action(&transitioning).await.unwrap();
+            bae_transfers::release_storage_action::begin_release_storage_action(
+                &database,
+                &transitioning,
+                bae_transfers::StoredTransition::Unpin,
+            )
+            .await
+            .unwrap();
+            bae_transfers::release_storage_action::end_release_storage_action(
+                &database,
+                &transitioning,
+            )
+            .await
+            .unwrap();
             tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         }
     }));

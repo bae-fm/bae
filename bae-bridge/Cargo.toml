@@ -38,6 +38,8 @@ bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 # The stretch of a file a preview plays.
 bae-track-audio = { workspace = true }
+# The transfer queues' rows and counts the bridge mirrors.
+bae-transfers = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The catalogs, covers and image sets the bridge mirrors.
 bae-catalogs = { workspace = true }

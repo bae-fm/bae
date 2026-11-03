@@ -157,13 +157,13 @@ impl LibraryManager {
     pub(crate) async fn initial_download_progress(
         &self,
         release_id: &str,
-    ) -> Result<crate::library::DownloadTransferProgress, LibraryError> {
+    ) -> Result<bae_transfers::DownloadTransferProgress, LibraryError> {
         let pinnable = self.release_pinnable_files(release_id).await?;
-        crate::library::DownloadTransferProgress::new(
+        Ok(bae_transfers::DownloadTransferProgress::new(
             release_id,
             0,
             total_bytes(release_id, &pinnable)?,
-        )
+        )?)
     }
 
     /// Unpin a remote release's files, as the release's unpin transition:
@@ -171,14 +171,19 @@ impl LibraryManager {
     /// (still readable, now droppable) in the write that ends the
     /// transition. No cloud read.
     pub(crate) async fn unpin_release_files(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.run_storage_action(release_id, bae_db::StoredTransition::Unpin, async {
+        self.run_storage_action(release_id, bae_transfers::StoredTransition::Unpin, async {
             let files: Vec<coven::FileId> = self
                 .release_pinnable_files(release_id)
                 .await?
                 .iter()
                 .map(|entry| entry.file.id())
                 .collect();
-            Ok(self.database.unpin_release(release_id, files).await?)
+            Ok(bae_transfers::release_storage_action::unpin_release(
+                &self.database,
+                release_id,
+                files,
+            )
+            .await?)
         })
         .await
     }

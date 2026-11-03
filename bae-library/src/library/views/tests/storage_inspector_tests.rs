@@ -1,9 +1,11 @@
 //! The Storage Manager inspector's read of one release.
 
-use crate::library::output_snapshot::{OutputKind, OutputRequest};
-use crate::library::queued_releases::tables_tests::{download, enqueue_releases};
-use crate::library::release_queue::ReleaseQueueEntry;
 use bae_db::test_fixtures::*;
+use bae_transfers::{OutputKind, OutputRequest, ReleaseQueueEntry};
+
+fn download(release_id: &str) -> ReleaseQueueEntry<()> {
+    ReleaseQueueEntry { release_id: release_id.to_string(), created_at: 7, payload: () }
+}
 
 /// The inspector's read of one release holds its entry in each queue and
 /// nothing of another release's, and reads no release the library does not
@@ -18,20 +20,21 @@ async fn the_inspectors_read_holds_the_releases_own_entries() {
     })
     .await
     .unwrap();
-    enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
-    enqueue_releases(
-        &db,
-        vec![ReleaseQueueEntry {
+    bae_transfers::Downloads::new(db.clone())
+        .enqueue_all(vec![download(RELEASE_A), download(RELEASE_B)])
+        .await
+        .unwrap();
+    bae_transfers::Outputs::new(db.clone())
+        .enqueue_all(vec![ReleaseQueueEntry {
             release_id: RELEASE_B.to_string(),
             created_at: 3,
             payload: OutputRequest {
                 target_dir: "/Users/ana/Music/Copies".into(),
                 kind: OutputKind::Export,
             },
-        }],
-    )
-    .await
-    .unwrap();
+        }])
+        .await
+        .unwrap();
 
     let mut live = crate::library::views::LibraryViews::new(db.clone())
         .subscribe_storage_inspector(Some(RELEASE_B.to_string()));

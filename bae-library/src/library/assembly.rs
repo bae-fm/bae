@@ -24,9 +24,9 @@ pub async fn open_library_manager(
 ) -> Result<LibraryManager, DbError> {
     let sync =
         crate::library::sync_controller::SyncController::new(database.clone(), diagnostics.clone());
-    let downloads = crate::library::Downloads::new(database.clone());
+    let downloads = bae_transfers::Downloads::new(database.clone());
     #[cfg(desktop)]
-    let outputs = crate::library::Outputs::new(database.clone());
+    let outputs = bae_transfers::Outputs::new(database.clone());
     LibraryManager::open(
         database,
         app_dir,

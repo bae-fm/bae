@@ -776,21 +776,15 @@ async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
 #[tokio::test]
 async fn the_download_queue_seeks_its_windows_through_its_key() {
     let (db, _tmp) = library().await;
-    let order = crate::library::queued_releases::tables::queue_order();
-    let key = key_at(
-        &db,
-        &order,
-        crate::library::queued_releases::tables::queue_window_rows_on::<()>,
-        150,
-    )
-    .await;
+    let order = bae_transfers::tables::queue_order();
+    let key = key_at(&db, &order, bae_transfers::tables::queue_window_rows_on::<()>, 150).await;
     assert_seeks_search(
         &db,
         "downloads",
         &order,
         key,
         |seek| {
-            crate::library::queued_releases::tables::queue_rows_sql::<()>(
+            bae_transfers::tables::queue_rows_sql::<()>(
                 Some(&order),
                 &format!(
                     "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",

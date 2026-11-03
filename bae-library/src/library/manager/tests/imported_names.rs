@@ -84,7 +84,7 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
 
     let target = temp.path().join("export");
     manager
-        .export_release(&release_id, &target, crate::library::OutputKind::Export)
+        .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
         .await
         .expect("the release exports");
     assert_eq!(std::fs::read(target.join("Album").join("Caf＼xED＼xA0＼x80.flac")).unwrap(), flac);

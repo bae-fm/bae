@@ -11,9 +11,10 @@
 
 use std::future::Future;
 
-use crate::library::queued_releases::RunningOp;
-use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
+use crate::library::{LibraryError, LibraryManager};
 use bae_diagnostics::{LocalId, TelemetryEvent};
+use bae_transfers::DownloadTransferProgress;
+use bae_transfers::RunningOp;
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{caught, TaskFailed};
 use tokio::sync::mpsc;

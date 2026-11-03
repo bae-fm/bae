@@ -2,12 +2,10 @@
 //! table: the Downloads pane and a release's download status read it, and the
 //! bytes the active download moves travel apart, keyed by release.
 
-use super::release_queue::{
+use crate::release_queue::{
     ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot,
     ReleaseQueueState,
 };
-
-use super::LibraryError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DownloadTransferProgress {
@@ -20,21 +18,21 @@ pub struct DownloadTransferProgress {
 }
 
 impl DownloadTransferProgress {
-    pub fn new(release_id: &str, bytes_done: u64, bytes_total: u64) -> Result<Self, LibraryError> {
+    pub fn new(
+        release_id: &str,
+        bytes_done: u64,
+        bytes_total: u64,
+    ) -> Result<Self, DownloadProgressError> {
+        let refused =
+            |problem| DownloadProgressError { release_id: release_id.to_string(), problem };
         if bytes_total == 0 {
-            return Err(LibraryError::Storage(format!(
-                "pin release {release_id}: byte total is zero"
-            )));
+            return Err(refused("byte total is zero"));
         }
         if bytes_done > bytes_total {
-            return Err(LibraryError::Storage(format!(
-                "pin release {release_id}: bytes done exceeds byte total"
-            )));
+            return Err(refused("bytes done exceeds byte total"));
         }
         if bytes_total > i64::MAX as u64 {
-            return Err(LibraryError::Storage(format!(
-                "pin release {release_id}: byte total exceeds display range"
-            )));
+            return Err(refused("byte total exceeds display range"));
         }
         Ok(Self {
             bytes_done,
@@ -45,26 +43,35 @@ impl DownloadTransferProgress {
     }
 }
 
+/// A pin's byte counts that make no progress: its total is zero or too
+/// large to show, or it has done more than its total.
+#[derive(Debug, thiserror::Error)]
+#[error("pin release {release_id}: {problem}")]
+pub struct DownloadProgressError {
+    release_id: String,
+    problem: &'static str,
+}
+
 /// Where a download began, what its rate is measured from: the time it
 /// began and the bytes it held then, beside the bytes it last held. The bytes
 /// a download holds move as each file lands, so its rate is what it moved
 /// since it began over the time since.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct DownloadRate {
+pub struct DownloadRate {
     began: std::time::SystemTime,
     bytes_then: u64,
     bytes_last: u64,
 }
 
 impl DownloadRate {
-    pub(crate) fn begin(now: std::time::SystemTime, bytes_done: u64) -> Self {
+    pub fn begin(now: std::time::SystemTime, bytes_done: u64) -> Self {
         Self { began: now, bytes_then: bytes_done, bytes_last: bytes_done }
     }
 
     /// `progress` read at `now`, with the rate it has gone at since the
     /// download began. Bytes the cache gave up meanwhile begin the
     /// measurement again from what it holds now.
-    pub(crate) fn measure(
+    pub fn measure(
         &mut self,
         progress: DownloadTransferProgress,
         now: std::time::SystemTime,
@@ -86,7 +93,7 @@ pub type DownloadEntry = ReleaseQueueEntry<()>;
 pub type DownloadProgress = ReleaseQueueProgress;
 /// A download as the Downloads pane lists it: its phase without the active
 /// one's bytes, which travel apart, keyed by release
-/// ([`DownloadTransfersWatch`](super::DownloadTransfersWatch)).
+/// (the library's download transfers watch).
 pub type QueuedDownload = ReleaseQueueOp<(), ()>;
 pub type DownloadPhase = ReleaseQueueState<()>;
 pub type DownloadRow = ReleaseQueueRow<(), ()>;

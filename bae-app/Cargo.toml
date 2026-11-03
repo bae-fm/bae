@@ -36,6 +36,8 @@ bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 # The stored audio a track's decode reads.
 bae-track-audio = { workspace = true }
+# The transfer queues' rows and counts the services pass on.
+bae-transfers = { workspace = true }
 # Pressing values the services pass on.
 bae-types = { workspace = true }
 # The panic-reporting tasks the services run.

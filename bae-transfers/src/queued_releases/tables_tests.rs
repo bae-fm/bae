@@ -2,12 +2,12 @@
 //! what opening the library leaves, and how the reads are planned.
 
 use super::tables::{self, QueuedPayload};
-use crate::library::output_snapshot::{OutputKind, OutputRequest};
-use crate::library::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
+use crate::output_snapshot::{OutputKind, OutputRequest};
+use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
 use bae_db::test_fixtures::*;
 use bae_db::*;
 
-pub(crate) async fn enqueue_releases<P: QueuedPayload>(
+async fn enqueue_releases<P: QueuedPayload>(
     db: &Database,
     entries: Vec<ReleaseQueueEntry<P>>,
 ) -> Result<bool, DbError> {
@@ -66,7 +66,7 @@ async fn cancel_queued_release<P: QueuedPayload>(
 
 async fn release_queue<P: QueuedPayload>(
     db: &Database,
-) -> Result<crate::library::release_queue::ReleaseQueueSnapshot<P, ()>, DbError> {
+) -> Result<crate::release_queue::ReleaseQueueSnapshot<P, ()>, DbError> {
     db.read(|sql| tables::release_queue_on::<P>(&sql)).await
 }
 
@@ -74,7 +74,7 @@ async fn clear_transfers(db: &Database) -> Result<(), DbError> {
     db.call(tables::clear_transfers_on).await
 }
 
-pub(crate) fn download(release_id: &str) -> ReleaseQueueEntry<()> {
+fn download(release_id: &str) -> ReleaseQueueEntry<()> {
     ReleaseQueueEntry { release_id: release_id.to_string(), created_at: 7, payload: () }
 }
 
@@ -288,11 +288,20 @@ async fn opening_ends_every_transition() {
         ),
     )
     .await;
-    db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin).await.unwrap();
+    crate::release_storage_action::begin_release_storage_action(
+        &db,
+        RELEASE_A,
+        crate::StoredTransition::Unpin,
+    )
+    .await
+    .unwrap();
 
     clear_transfers(&db).await.unwrap();
 
-    assert_eq!(db.release_transfer_action(RELEASE_A).await.unwrap(), None);
+    assert_eq!(
+        crate::release_storage_action::release_transfer_action(&db, RELEASE_A).await.unwrap(),
+        None
+    );
 }
 
 /// The worker's lookups use the table's keys, and the pane's read joins
@@ -319,7 +328,7 @@ async fn the_queue_reads_are_planned_on_their_keys() {
         by_release.contains("USING INDEX sqlite_autoindex_download_queue_1 (release_id=?)"),
         "{by_release}"
     );
-    let pane = plan(crate::library::queued_releases::tables::queue_rows_sql::<()>(
+    let pane = plan(crate::queued_releases::tables::queue_rows_sql::<()>(
         None,
         "ORDER BY q.position LIMIT 100 OFFSET 0",
     ))
@@ -336,12 +345,11 @@ async fn a_window_reads_its_entries_and_the_queue_length() {
     let releases: Vec<String> =
         (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
     enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
-    let mut live = crate::library::Downloads::new(db.clone()).subscribe_windows(
-        bae_db::LibraryPageWindows::from([
+    let mut live =
+        crate::Downloads::new(db.clone()).subscribe_windows(bae_db::LibraryPageWindows::from([
             bae_db::LibraryPageWindow { offset: 1, limit: 2 },
             bae_db::LibraryPageWindow { offset: 9, limit: 2 },
-        ]),
-    );
+        ]));
     let read = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(read.total_count, 5);
     let shown: Vec<Vec<String>> = read

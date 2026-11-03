@@ -188,7 +188,7 @@ pub(crate) fn build_release_detail_on(
         params![release.id],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
-    let download = crate::library::queued_releases::tables::download_phase_on(sql, &release.id)?;
+    let download = bae_transfers::tables::download_phase_on(sql, &release.id)?;
     let cover_version = sql.query_row(
         &format!("SELECT {}", cover_version_sql("?1")),
         params![release.id],
@@ -228,7 +228,7 @@ pub(crate) struct ReleaseDetailRows {
     pinned: bool,
     remote: bool,
     upload: Option<DbReleaseUpload>,
-    download: Option<crate::library::DownloadPhase>,
+    download: Option<bae_transfers::DownloadPhase>,
     transfer_action: Option<bae_types::release_storage::ReleaseStorageAction>,
     cover_version: Option<String>,
 }

@@ -1,0 +1,53 @@
+[package]
+name = "bae-transfers"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_transfers"
+path = "src/lib.rs"
+
+[dependencies]
+# The store the queues' tables and the transitions live in, and the list
+# windows a queue's pane reads.
+bae-db = { workspace = true }
+# The save preset a queued save carries whole.
+bae-preferences = { workspace = true }
+# The storage transition a release's reads show.
+bae-types = { workspace = true }
+# The panic-catching a queue's worker runs each entry under.
+bae-util = { workspace = true }
+coven = { workspace = true }
+rusqlite = { workspace = true }
+# A queued save's preset, stored whole as JSON, and the releases a pin
+# queues, bound as a JSON list.
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync", "rt"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# Test databases with bae's schema and the rows db's fixtures seed them with.
+bae-db = { workspace = true, features = ["test-utils"] }
+# A new library's save presets, for the queued save the tests store.
+bae-preferences = { workspace = true, features = ["test-utils"] }
+# Fresh release ids for the window tests.
+bae-util = { workspace = true, features = ["test-utils"] }
+coven = { workspace = true, features = ["test-utils"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }
+
+[features]
+default = []
+# The entry a test starts without a worker, and the reads a test waits on
+# the whole queue or a release's transition with.
+test-utils = []
+
+[lints]
+workspace = true

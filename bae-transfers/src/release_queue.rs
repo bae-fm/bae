@@ -4,7 +4,7 @@
 //! device's ([`bae_db`]): its entries in the order queued, each one's
 //! phase, and whether the queue is paused. How far the active entry has got
 //! moves too often to be written, and travels apart from the table, keyed by
-//! release ([`crate::library::ReleaseTransfersWatch`]).
+//! release (the library's release transfers watch).
 //!
 //! `Extra` is what an entry carries beyond its release: nothing for a
 //! download, the target folder and what to write there for an output.
@@ -94,7 +94,7 @@ pub enum TransferStage {
 
 /// A release transfer's summary from its counts, in order, each with its
 /// catalog key and stage, each dropped when its count is zero.
-pub(crate) fn transfer_summary<const N: usize>(
+pub fn transfer_summary<const N: usize>(
     counts: [(&str, u32, TransferStage); N],
 ) -> Vec<TransferCount> {
     counts
@@ -156,8 +156,8 @@ pub struct ReleaseQueueWindows<Extra> {
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueEntries {
-    pub download: Option<super::DownloadRow>,
-    pub output: Option<super::OutputPhaseRow>,
+    pub download: Option<crate::DownloadRow>,
+    pub output: Option<crate::OutputPhaseRow>,
 }
 
 impl<Extra> ReleaseQueueSnapshot<Extra, ()> {

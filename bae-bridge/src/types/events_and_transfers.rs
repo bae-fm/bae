@@ -210,7 +210,7 @@ pub struct BridgeQueuedRelease {
 }
 
 mirror_struct! {
-    BridgeQueuedRelease = bae_library::library::QueuedRelease,
+    BridgeQueuedRelease = bae_transfers::QueuedRelease,
     from_core: pub(crate) fn,
     fields: { title, file_count, total_size },
 }
@@ -283,7 +283,7 @@ pub struct BridgeCountLabel {
 }
 
 mirror_struct! {
-    BridgeCountLabel = bae_library::library::CountLabel,
+    BridgeCountLabel = bae_transfers::CountLabel,
     from_core: pub(crate) fn,
     fields: { key, count },
 }
@@ -305,13 +305,13 @@ pub enum BridgeTransferStage {
 }
 
 mirror_enum! {
-    BridgeTransferStage = bae_library::library::TransferStage,
+    BridgeTransferStage = bae_transfers::TransferStage,
     from_core: fn,
     variants: { Moving, Waiting, Done },
 }
 
 mirror_struct! {
-    BridgeTransferCount = bae_library::library::TransferCount,
+    BridgeTransferCount = bae_transfers::TransferCount,
     from_core: pub(crate) fn,
     fields: {
         label: (BridgeCountLabel),

@@ -219,7 +219,7 @@ pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
     /// The release's entry in this device's download queue, `None` when it
     /// has none.
-    pub download: Option<crate::library::DownloadPhase>,
+    pub download: Option<bae_transfers::DownloadPhase>,
     pub album_artists: Vec<bae_db::credits::LibraryCredit>,
     pub release_index: usize,
     pub is_compilation: bool,
@@ -308,7 +308,7 @@ pub struct DbStorageInspector {
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
     /// The release's entries in the download and export queues.
-    pub entries: crate::library::ReleaseQueueEntries,
+    pub entries: bae_transfers::ReleaseQueueEntries,
 }
 
 /// One file of a release as the Storage Manager's inspector reads it: the
@@ -338,5 +338,5 @@ pub struct DbFileUpload {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailRead {
     pub detail: DbReleaseDetail,
-    pub download: Option<crate::library::DownloadPhase>,
+    pub download: Option<bae_transfers::DownloadPhase>,
 }

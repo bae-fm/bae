@@ -29,6 +29,9 @@ bae-import = { workspace = true }
 bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
+# The transfer queues and storage transitions the manager drives and its
+# reads show.
+bae-transfers = { workspace = true }
 bae-types = { workspace = true }
 bae-util = { workspace = true }
 coven = { workspace = true }
@@ -82,6 +85,9 @@ bae-identify = { workspace = true, features = ["test-utils"] }
 # The fixture audio and the import service's test seams the library's import
 # tests drive.
 bae-import = { workspace = true, features = ["test-utils"] }
+# A queue entry started without a worker, and a release's transition read
+# back.
+bae-transfers = { workspace = true, features = ["test-utils"] }
 # What a decode's windows read, for the playback tests.
 bae-track-audio = { workspace = true, features = ["test-utils"] }
 # The bug reporter and telemetry transport that record what they are handed.
@@ -151,13 +157,14 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # databases and the rows they seed, bae-playback's so they get its capture
 # devices and manual clock, bae-preferences' so they get a new
 # library's preferences without a library, bae-track-audio's so they read a
-# decode's windows back, bae-util's so they get its test
+# decode's windows back, bae-transfers' so they follow a whole queue and
+# start an entry without a worker, bae-util's so they get its test
 # transport and a retry that sleeps no real time, bae-audio's so they get its
 # test codec helpers, bae-import's so they get the fixture audio and the import
 # service's test seams, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
 # and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

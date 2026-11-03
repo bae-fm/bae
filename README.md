@@ -34,6 +34,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 | `bae-identify` | Identification (desktop only): the reducer, its view, and the verdict a run stores |
 | `bae-track-audio` | Reading a track's stored audio for a decode: its readers, decode windows and read errors |
 | `bae-preferences` | This device's preferences for a library and its save presets |
+| `bae-transfers` | The download and export queues and the storage transition each release is in |
 | `bae-db` | The library's store: the database over coven, the schema, the library's records and their row writers |
 | `bae-app-dir` | bae's own directory: the libraries on this device, the installation id, the keyring namespace |
 | `bae-diagnostics` | Telemetry, bug reports to the platform's crash reporter, and the error categories a person is shown |

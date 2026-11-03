@@ -19,7 +19,7 @@ impl AppServices {
             .until_closed(manager.subscribe_download_windows(bae_db::LibraryPageWindows::new()));
         bae_library::library::LiveLibraryBrowse::new(
             query,
-            |read: bae_library::library::ReleaseQueueWindows<()>, request_revision, cause| {
+            |read: bae_transfers::ReleaseQueueWindows<()>, request_revision, cause| {
                 bae_library::library::LibraryBrowseSnapshot {
                     windows: read.windows,
                     sections: Vec::new(),
@@ -34,9 +34,7 @@ impl AppServices {
 
     /// How many downloads are in each phase now, and whether the queue is
     /// paused.
-    pub async fn download_counts(
-        &self,
-    ) -> Result<bae_library::library::ReleaseQueueCounts, LibraryError> {
+    pub async fn download_counts(&self) -> Result<bae_transfers::ReleaseQueueCounts, LibraryError> {
         self.inner.manager.download_counts().await
     }
 
@@ -45,7 +43,7 @@ impl AppServices {
     /// one after each write that changes them.
     pub fn subscribe_download_counts(
         &self,
-    ) -> bae_db::live_query::LiveValues<bae_library::library::ReleaseQueueCounts> {
+    ) -> bae_db::live_query::LiveValues<bae_transfers::ReleaseQueueCounts> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_download_counts())
     }
@@ -69,9 +67,7 @@ impl AppServices {
     /// active one with the percent it has reached: the automation surface's
     /// export status.
     #[cfg(desktop)]
-    pub async fn output_snapshot(
-        &self,
-    ) -> Result<bae_library::library::OutputSnapshot, LibraryError> {
+    pub async fn output_snapshot(&self) -> Result<bae_transfers::OutputSnapshot, LibraryError> {
         self.inner.manager.output_snapshot().await
     }
 

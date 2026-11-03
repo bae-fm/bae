@@ -1,9 +1,9 @@
 use super::*;
 use crate::album_detail::FilePin;
-use crate::library::output_snapshot::{OutputKind, OutputRequest};
-use crate::library::release_queue::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};
-use crate::library::ReleaseQueueEntries;
 use bae_db::UploadProgress;
+use bae_transfers::ReleaseQueueEntries;
+use bae_transfers::{OutputKind, OutputRequest};
+use bae_transfers::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};
 
 fn row<Extra>(
     payload: Extra,
@@ -43,7 +43,7 @@ fn file(id: &str, pin: Option<FilePin>) -> crate::library::views::DbStorageInspe
 }
 
 /// Each count of a summary, by its label's key.
-fn counts(summary: &[crate::library::TransferCount]) -> Vec<(&str, u32)> {
+fn counts(summary: &[bae_transfers::TransferCount]) -> Vec<(&str, u32)> {
     summary.iter().map(|count| (count.label.key.as_str(), count.label.count)).collect()
 }
 

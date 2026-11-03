@@ -16,8 +16,13 @@ impl LibraryManager {
         // coven keeps the files here once stored when `pin` asks it to.
         self.run_file_operation("attach release", move |_closing| async move {
             manager
-                .run_storage_action(&release_id, bae_db::StoredTransition::Upload, async {
-                    Ok(manager.database.attach_release_files(&release_id, pin).await?)
+                .run_storage_action(&release_id, bae_transfers::StoredTransition::Upload, async {
+                    Ok(bae_transfers::release_storage_action::attach_release_files(
+                        &manager.database,
+                        &release_id,
+                        pin,
+                    )
+                    .await?)
                 })
                 .await
         })
@@ -32,7 +37,7 @@ impl LibraryManager {
     pub(crate) async fn run_storage_action<T>(
         &self,
         release_id: &str,
-        action: bae_db::StoredTransition,
+        action: bae_transfers::StoredTransition,
         work: impl std::future::Future<Output = Result<T, LibraryError>>,
     ) -> Result<T, LibraryError> {
         self.begin_storage_action(release_id, action).await?;
@@ -48,9 +53,15 @@ impl LibraryManager {
     async fn begin_storage_action(
         &self,
         release_id: &str,
-        action: bae_db::StoredTransition,
+        action: bae_transfers::StoredTransition,
     ) -> Result<(), LibraryError> {
-        match self.database.begin_release_storage_action(release_id, action).await? {
+        match bae_transfers::release_storage_action::begin_release_storage_action(
+            &self.database,
+            release_id,
+            action,
+        )
+        .await?
+        {
             true => Ok(()),
             false => Err(LibraryError::Storage(format!(
                 "release {release_id} already has an active storage transition"
@@ -67,7 +78,12 @@ impl LibraryManager {
         release_id: &str,
         operation: LibraryError,
     ) -> LibraryError {
-        let Err(error) = self.database.end_release_storage_action(release_id).await else {
+        let Err(error) = bae_transfers::release_storage_action::end_release_storage_action(
+            &self.database,
+            release_id,
+        )
+        .await
+        else {
             return operation;
         };
         let cleanup = LibraryError::from(error);
@@ -100,35 +116,44 @@ impl LibraryManager {
         let result = self
             .run_file_operation("make release local", move |closing| async move {
                 manager
-                    .run_storage_action(&release_id, bae_db::StoredTransition::DetachAudio, async {
-                        let (stop, stopped) = tokio::sync::watch::channel(false);
-                        // Listed until the transition ends, however it
-                        // ends.
-                        let report = manager.make_local_transfers.report(&release_id);
-                        let call = manager.database.prepare_device_only(
-                            &folder,
-                            files,
-                            &stopped,
-                            |progress| report.progress(progress),
-                        );
-                        tokio::pin!(call);
-                        // A cancel that came first stops the call before
-                        // it starts.
-                        let prepared = tokio::select! {
-                            biased;
-                            _ = operation.cancelled() => {
-                                stop.send_replace(true);
-                                call.await
+                    .run_storage_action(
+                        &release_id,
+                        bae_transfers::StoredTransition::DetachAudio,
+                        async {
+                            let (stop, stopped) = tokio::sync::watch::channel(false);
+                            // Listed until the transition ends, however it
+                            // ends.
+                            let report = manager.make_local_transfers.report(&release_id);
+                            let call = manager.database.prepare_device_only(
+                                &folder,
+                                files,
+                                &stopped,
+                                |progress| report.progress(progress),
+                            );
+                            tokio::pin!(call);
+                            // A cancel that came first stops the call before
+                            // it starts.
+                            let prepared = tokio::select! {
+                                biased;
+                                _ = operation.cancelled() => {
+                                    stop.send_replace(true);
+                                    call.await
+                                }
+                                _ = closing.cancelled() => {
+                                    stop.send_replace(true);
+                                    call.await
+                                }
+                                result = &mut call => result,
                             }
-                            _ = closing.cancelled() => {
-                                stop.send_replace(true);
-                                call.await
-                            }
-                            result = &mut call => result,
-                        }
-                        .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
-                        Ok(manager.database.make_release_local(&release_id, prepared).await?)
-                    })
+                            .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
+                            Ok(bae_transfers::release_storage_action::make_release_local(
+                                &manager.database,
+                                &release_id,
+                                prepared,
+                            )
+                            .await?)
+                        },
+                    )
                     .await
             })
             .await;
@@ -186,7 +211,7 @@ impl LibraryManager {
             Err(error) => {
                 self.diagnostics
                     .report_bug("queue releases to pin", &bae_util::error_text::CauseChain(&error));
-                return Err(error);
+                return Err(error.into());
             }
         }
         Ok(())
@@ -203,7 +228,7 @@ impl LibraryManager {
     /// of starting the next release; the in-flight one runs to completion.
     /// Resuming wakes the worker.
     pub async fn set_downloads_paused(&self, paused: bool) -> Result<(), LibraryError> {
-        self.downloads.set_paused(paused).await
+        Ok(self.downloads.set_paused(paused).await?)
     }
 
     /// Cancel a release's download. Drops a queued or failed entry; cancelling
@@ -212,13 +237,13 @@ impl LibraryManager {
         // An active entry needs no follow-up here: the aborted pin task closes its
         // progress channel, and the worker's drain clears the streamed transfer
         // action, finds the entry gone, leaves the queue alone, and re-parks.
-        self.downloads.cancel(release_id).await
+        Ok(self.downloads.cancel(release_id).await?)
     }
 
     /// Flip every failed download back to queued and wake the worker to retry
     /// them.
     pub async fn retry_downloads(&self) -> Result<(), LibraryError> {
-        self.downloads.retry_failed().await
+        Ok(self.downloads.retry_failed().await?)
     }
 
     /// The serial download worker: drains the pin queue one release at a time
@@ -226,7 +251,7 @@ impl LibraryManager {
     /// (the activate/cancel race, cancel-is-not-a-failure, remove vs
     /// mark-failed).
     ///
-    /// [`QueuedReleases::run_serial`]: crate::library::QueuedReleases::run_serial
+    /// [`QueuedReleases::run_serial`]: bae_transfers::QueuedReleases::run_serial
     ///
     /// All this supplies is how a pin runs: resolve the release's byte totals,
     /// ask `TransferService` to compose the pin task with this worker's progress

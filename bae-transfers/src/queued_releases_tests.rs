@@ -1,5 +1,5 @@
 use super::*;
-use crate::library::release_queue::ReleaseQueueState;
+use crate::release_queue::ReleaseQueueState;
 
 const RELEASE_A: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
 const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
@@ -53,6 +53,15 @@ async fn until(
     }
 }
 
+/// How an entry's work failed: as it says, or by panicking.
+#[derive(Debug, thiserror::Error)]
+enum WorkError {
+    #[error("{0}")]
+    Failed(String),
+    #[error(transparent)]
+    Panicked(#[from] TaskFailed),
+}
+
 /// Each outcome the worker reported: the release, and its failure.
 type Outcomes = Arc<Mutex<Vec<(String, Result<(), String>)>>>;
 
@@ -64,8 +73,8 @@ fn worker<Start, StartFut, Fut>(
 ) -> (tokio::task::JoinHandle<()>, Outcomes)
 where
     Start: FnMut(ReleaseQueueEntry<()>) -> StartFut + Send + 'static,
-    StartFut: Future<Output = Result<(u8, RunningOp<Fut>), LibraryError>> + Send,
-    Fut: Future<Output = Result<(), LibraryError>> + Send,
+    StartFut: Future<Output = Result<(u8, RunningOp<Fut>), WorkError>> + Send,
+    Fut: Future<Output = Result<(), WorkError>> + Send,
 {
     let done = Arc::new(Mutex::new(Vec::new()));
     let worker_queue = queue.clone();
@@ -76,10 +85,10 @@ where
                 "Test",
                 start,
                 move |release_id, result| {
-                    recorded
-                        .lock()
-                        .unwrap()
-                        .push((release_id.to_string(), result.map_err(|error| error.to_string())))
+                    recorded.lock().unwrap().push((
+                        release_id.to_string(),
+                        result.map_err(|error: &WorkError| error.to_string()),
+                    ))
                 },
                 |label, error| panic!("{label}: the queue's table failed: {error}"),
                 |failed| panic!("an entry's work panicked: {failed}"),
@@ -112,15 +121,15 @@ async fn reported(done: &Outcomes, count: usize) -> Vec<(String, Result<(), Stri
 /// panic to a failure that names it.
 fn spawned(
     task: tokio::task::JoinHandle<()>,
-) -> RunningOp<impl Future<Output = Result<(), LibraryError>>> {
+) -> RunningOp<impl Future<Output = Result<(), WorkError>>> {
     let abort = task.abort_handle();
     RunningOp::new(abort, async move {
         match task.await {
             Ok(()) => Ok(()),
             Err(join_error) if join_error.is_cancelled() => {
-                Err(LibraryError::Storage("cancelled".to_string()))
+                Err(WorkError::Failed("cancelled".to_string()))
             }
-            Err(join_error) => Err(LibraryError::Storage(format!("task panicked: {join_error}"))),
+            Err(join_error) => Err(WorkError::Failed(format!("task panicked: {join_error}"))),
         }
     })
 }
@@ -185,10 +194,10 @@ async fn an_entry_that_panics_fails_and_the_next_one_runs() {
                     ))
                 },
                 move |release_id, result| {
-                    recorded
-                        .lock()
-                        .unwrap()
-                        .push((release_id.to_string(), result.map_err(|error| error.to_string())))
+                    recorded.lock().unwrap().push((
+                        release_id.to_string(),
+                        result.map_err(|error: &WorkError| error.to_string()),
+                    ))
                 },
                 |label, error| panic!("{label}: the queue's table failed: {error}"),
                 move |failed| {

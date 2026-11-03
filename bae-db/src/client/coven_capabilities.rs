@@ -250,8 +250,8 @@ impl Database {
     }
 
     /// Download these cloud files to their paths under `folder`, for a write
-    /// to switch them all to this device only with
-    /// [`Self::make_release_local`], telling `on_progress` how far each file
+    /// to switch them all to this device only with coven's
+    /// `make_device_only`, telling `on_progress` how far each file
     /// and the whole call have come. A failure or a cancel removes every copy
     /// and folder the call made.
     pub async fn prepare_device_only(

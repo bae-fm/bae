@@ -21,6 +21,7 @@ members = [
     "bae-subsonic",
     "bae-theme",
     "bae-track-audio",
+    "bae-transfers",
     "bae-types",
     "bae-uniffi-bindgen",
     "bae-util",
@@ -90,6 +91,7 @@ bae-playback = { path = "bae-playback" }
 bae-preferences = { path = "bae-preferences" }
 bae-subsonic = { path = "bae-subsonic" }
 bae-track-audio = { path = "bae-track-audio" }
+bae-transfers = { path = "bae-transfers" }
 bae-types = { path = "bae-types" }
 bae-util = { path = "bae-util" }
 

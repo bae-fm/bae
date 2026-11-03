@@ -744,6 +744,7 @@ dependencies = [
  "bae-playback",
  "bae-preferences",
  "bae-track-audio",
+ "bae-transfers",
  "bae-types",
  "bae-util",
  "chrono",
@@ -798,6 +799,7 @@ dependencies = [
  "bae-library",
  "bae-mirror",
  "bae-preferences",
+ "bae-transfers",
  "bae-types",
  "bae-util",
  "coven",
@@ -829,6 +831,7 @@ dependencies = [
  "bae-playback",
  "bae-preferences",
  "bae-track-audio",
+ "bae-transfers",
  "bae-types",
  "bae-util",
  "coven",
@@ -1039,6 +1042,7 @@ dependencies = [
  "bae-playback",
  "bae-preferences",
  "bae-track-audio",
+ "bae-transfers",
  "bae-types",
  "bae-util",
  "chrono",
@@ -1188,6 +1192,23 @@ dependencies = [
  "bae-diagnostics",
  "bae-util",
  "coven",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "bae-transfers"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-db",
+ "bae-preferences",
+ "bae-types",
+ "bae-util",
+ "coven",
+ "rusqlite",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",

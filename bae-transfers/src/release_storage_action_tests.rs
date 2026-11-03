@@ -1,9 +1,8 @@
 //! `release_storage_action`: a release is in one storage transition at a
 //! time, and its reads show it.
 
-use super::super::*;
 use super::*;
-use bae_types::release_storage::ReleaseStorageAction;
+use bae_db::test_fixtures::*;
 
 const LIBRARY: &str = "
     INSERT INTO albums (id, title, is_compilation, created_at) VALUES
@@ -24,25 +23,24 @@ async fn library() -> (Database, tempfile::TempDir) {
 #[tokio::test]
 async fn a_release_is_in_one_transition_at_a_time() {
     let (db, _tmp) = library().await;
-    assert!(db
-        .begin_release_storage_action(RELEASE_A, StoredTransition::DetachAudio)
+    assert!(begin_release_storage_action(&db, RELEASE_A, StoredTransition::DetachAudio)
         .await
         .unwrap());
     assert!(
-        !db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin).await.unwrap(),
+        !begin_release_storage_action(&db, RELEASE_A, StoredTransition::Unpin).await.unwrap(),
         "a release in a transition refuses another"
     );
     assert_eq!(
-        db.release_transfer_action(RELEASE_A).await.unwrap(),
+        release_transfer_action(&db, RELEASE_A).await.unwrap(),
         Some(ReleaseStorageAction::DetachAudio)
     );
-    assert_eq!(db.release_transfer_action(RELEASE_B).await.unwrap(), None);
+    assert_eq!(release_transfer_action(&db, RELEASE_B).await.unwrap(), None);
 
-    db.end_release_storage_action(RELEASE_A).await.unwrap();
-    assert_eq!(db.release_transfer_action(RELEASE_A).await.unwrap(), None);
-    assert!(db.begin_release_storage_action(RELEASE_A, StoredTransition::Upload).await.unwrap());
+    end_release_storage_action(&db, RELEASE_A).await.unwrap();
+    assert_eq!(release_transfer_action(&db, RELEASE_A).await.unwrap(), None);
+    assert!(begin_release_storage_action(&db, RELEASE_A, StoredTransition::Upload).await.unwrap());
     assert_eq!(
-        db.release_transfer_action(RELEASE_A).await.unwrap(),
+        release_transfer_action(&db, RELEASE_A).await.unwrap(),
         Some(ReleaseStorageAction::Upload)
     );
 }
@@ -58,12 +56,12 @@ async fn the_active_download_reads_as_a_pin() {
         &[RELEASE_B],
     )
     .await;
-    assert_eq!(db.release_transfer_action(RELEASE_B).await.unwrap(), None);
+    assert_eq!(release_transfer_action(&db, RELEASE_B).await.unwrap(), None);
 
     exec(&db, "UPDATE download_queue SET state = 'active' WHERE release_id = ?1", &[RELEASE_B])
         .await;
     assert_eq!(
-        db.release_transfer_action(RELEASE_B).await.unwrap(),
+        release_transfer_action(&db, RELEASE_B).await.unwrap(),
         Some(ReleaseStorageAction::Pin)
     );
 }

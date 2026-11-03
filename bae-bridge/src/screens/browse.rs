@@ -244,7 +244,7 @@ impl DownloadBrowseSubscription {
 
 impl BridgeDownloadBrowseSnapshot {
     fn from_core(
-        snapshot: bae_library::library::LibraryBrowseSnapshot<bae_library::library::DownloadRow>,
+        snapshot: bae_library::library::LibraryBrowseSnapshot<bae_transfers::DownloadRow>,
     ) -> Self {
         Self {
             windows: snapshot

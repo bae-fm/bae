@@ -87,7 +87,7 @@ impl LibraryManager {
     pub(crate) async fn pin_release_files_with_progress(
         &self,
         release: &str,
-        mut on_progress: impl FnMut(crate::library::DownloadTransferProgress) + Send,
+        mut on_progress: impl FnMut(bae_transfers::DownloadTransferProgress) + Send,
     ) -> Result<(), LibraryError> {
         let pinnable = self.release_pinnable_files(release).await?;
         let total = super::coven_files::total_bytes(release, &pinnable)?;
@@ -139,7 +139,7 @@ impl LibraryManager {
                 let mut count = PinCount::default();
                 let pin = manager.database.pin(&files);
                 tokio::pin!(pin);
-                let mut rate: Option<crate::library::download_snapshot::DownloadRate> = None;
+                let mut rate: Option<bae_transfers::DownloadRate> = None;
                 loop {
                     // Whether the pin finished, and whether the pins must be
                     // read again before counting.
@@ -165,10 +165,10 @@ impl LibraryManager {
                     let Some(bytes) = count.bytes(&sizes) else {
                         continue;
                     };
-                    let next = crate::library::DownloadTransferProgress::new(&release, bytes, total)?;
+                    let next = bae_transfers::DownloadTransferProgress::new(&release, bytes, total)?;
                     let now = manager.clock.now();
                     let next = rate
-                        .get_or_insert_with(|| crate::library::download_snapshot::DownloadRate::begin(now, next.bytes_done))
+                        .get_or_insert_with(|| bae_transfers::DownloadRate::begin(now, next.bytes_done))
                         .measure(next, now);
                     progress_tx.send(next).map_err(|error| LibraryError::Storage(format!("pinning release was cancelled: {error}")))?;
                     if finished {

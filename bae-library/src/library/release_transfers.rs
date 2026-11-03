@@ -4,7 +4,7 @@
 //! moved. No table holds the progress, so the reads of the transfers' tables
 //! change only as transfers come, go, start or fail.
 
-use super::DownloadTransferProgress;
+use bae_transfers::DownloadTransferProgress;
 use std::collections::BTreeMap;
 use tokio::sync::watch;
 

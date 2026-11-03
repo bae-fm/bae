@@ -1,10 +1,11 @@
 //! Everything sync is doing on this device at once, for the activity
 //! indicator in the app's title bar and the list it opens.
 
-use crate::library::release_queue::ReleaseQueueProgress;
-use crate::library::CountLabel;
-use crate::library::{PendingItem, ReleaseQueueCounts, SyncStatusSnapshot};
+use crate::library::{PendingItem, SyncStatusSnapshot};
 use bae_diagnostics::UiError;
+use bae_transfers::CountLabel;
+use bae_transfers::ReleaseQueueCounts;
+use bae_transfers::ReleaseQueueProgress;
 
 /// What sync is doing now: the work that needs the person and the transfers
 /// moving bytes. How many bytes the uploads have moved is not part of it: it
@@ -124,7 +125,7 @@ mod tests;
 /// since the retry effect's read takes the read whole.
 pub(crate) fn sync_activity_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncActivity> {
     let uploads = upload_queue_counts_on(&sql)?;
-    let downloads = crate::library::queued_releases::tables::release_queue_counts_on::<()>(&sql)?;
+    let downloads = bae_transfers::tables::release_queue_counts_on::<()>(&sql)?;
     let status = crate::library::manager::sync_status_on(sql)?;
     Ok(SyncActivity::new(&status, &uploads, &downloads))
 }

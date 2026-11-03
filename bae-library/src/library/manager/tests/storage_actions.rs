@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::album_detail::StorageRowStatus;
-use bae_db::StoredTransition;
+use bae_transfers::StoredTransition;
 use bae_types::release_storage::ReleaseStorageAction;
 
 const WAIT: std::time::Duration = std::time::Duration::from_secs(10);
@@ -75,11 +75,13 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     until("the release shows no transition", || release_detail.next(), release_shows(None)).await;
     until("the row rests", || storage.next(), row_shows(StorageRowStatus::Local)).await;
 
-    assert!(manager
-        .database
-        .begin_release_storage_action(&release.id, StoredTransition::Unpin)
-        .await
-        .unwrap());
+    assert!(bae_transfers::release_storage_action::begin_release_storage_action(
+        &manager.database,
+        &release.id,
+        StoredTransition::Unpin
+    )
+    .await
+    .unwrap());
     let unpinning = Some(ReleaseStorageAction::Unpin);
     until("the album shows the transition", || album_detail.next(), album_shows(unpinning)).await;
     until("the release shows the transition", || release_detail.next(), release_shows(unpinning))
@@ -91,7 +93,12 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     )
     .await;
 
-    manager.database.end_release_storage_action(&release.id).await.unwrap();
+    bae_transfers::release_storage_action::end_release_storage_action(
+        &manager.database,
+        &release.id,
+    )
+    .await
+    .unwrap();
     until("the album's transition ends", || album_detail.next(), album_shows(None)).await;
     until("the release's transition ends", || release_detail.next(), release_shows(None)).await;
     until("the row rests again", || storage.next(), row_shows(StorageRowStatus::Local)).await;
@@ -104,7 +111,14 @@ async fn a_transition_reaches_the_reads_from_its_row() {
 #[tokio::test]
 async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let shown = || async { manager.database.release_transfer_action(&release.id).await.unwrap() };
+    let shown = || async {
+        bae_transfers::release_storage_action::release_transfer_action(
+            &manager.database,
+            &release.id,
+        )
+        .await
+        .unwrap()
+    };
 
     let failed = manager
         .run_storage_action(&release.id, StoredTransition::Unpin, async {
@@ -154,14 +168,24 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
         || async { file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file.id).await };
     assert!(pinned().await);
 
-    let refused = manager.database.unpin_release(&release.id, vec![file.file]).await;
+    let refused = bae_transfers::release_storage_action::unpin_release(
+        &manager.database,
+        &release.id,
+        vec![file.file],
+    )
+    .await;
     assert!(refused.is_err(), "no unpin was admitted for the write to end");
     assert!(pinned().await, "a write that can't end the transition releases no pin");
 
     manager.unpin_release(&release.id).await.unwrap();
     assert!(!pinned().await, "the unpin released the pin");
     assert_eq!(
-        manager.database.release_transfer_action(&release.id).await.unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(
+            &manager.database,
+            &release.id
+        )
+        .await
+        .unwrap(),
         None,
         "and ended the transition"
     );
@@ -203,7 +227,12 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         .prepare_device_only(&refused_folder, paths, &stopped, |_| {})
         .await
         .unwrap();
-    let refused = manager.database.make_release_local(&release.id, prepared).await;
+    let refused = bae_transfers::release_storage_action::make_release_local(
+        &manager.database,
+        &release.id,
+        prepared,
+    )
+    .await;
     assert!(refused.is_err(), "no make-local was admitted for the write to end");
     assert!(
         release_files(&manager, &release.id).await.iter().all(|file| file.stored),
@@ -221,7 +250,12 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         "making it local switched every file here"
     );
     assert_eq!(
-        manager.database.release_transfer_action(&release.id).await.unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(
+            &manager.database,
+            &release.id
+        )
+        .await
+        .unwrap(),
         None,
         "and ended the transition"
     );
@@ -232,11 +266,13 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
 #[tokio::test]
 async fn a_release_in_a_transition_refuses_another() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    assert!(manager
-        .database
-        .begin_release_storage_action(&release.id, StoredTransition::Unpin)
-        .await
-        .unwrap());
+    assert!(bae_transfers::release_storage_action::begin_release_storage_action(
+        &manager.database,
+        &release.id,
+        StoredTransition::Unpin
+    )
+    .await
+    .unwrap());
 
     let ran = std::sync::atomic::AtomicBool::new(false);
     let refused = manager
@@ -248,7 +284,12 @@ async fn a_release_in_a_transition_refuses_another() {
     assert!(matches!(refused, Err(LibraryError::Storage(_))), "{refused:?}");
     assert!(!ran.load(std::sync::atomic::Ordering::SeqCst), "the refused work never runs");
     assert_eq!(
-        manager.database.release_transfer_action(&release.id).await.unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(
+            &manager.database,
+            &release.id
+        )
+        .await
+        .unwrap(),
         Some(ReleaseStorageAction::Unpin)
     );
 }
@@ -269,12 +310,25 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
     .await;
     manager.upload_release(&release.id, false).await.unwrap();
     assert_eq!(moving_file_count(&manager, &release.id).await, 1);
-    assert_eq!(manager.database.release_transfer_action(&release.id).await.unwrap(), None);
+    assert_eq!(
+        bae_transfers::release_storage_action::release_transfer_action(
+            &manager.database,
+            &release.id
+        )
+        .await
+        .unwrap(),
+        None
+    );
 
     let empty = insert_release_without_files(&manager).await;
     let refused = manager.upload_release(&empty, false).await;
     assert!(refused.is_err(), "a release with no files has none to queue");
-    assert_eq!(manager.database.release_transfer_action(&empty).await.unwrap(), None);
+    assert_eq!(
+        bae_transfers::release_storage_action::release_transfer_action(&manager.database, &empty)
+            .await
+            .unwrap(),
+        None
+    );
 }
 
 /// A release with no files, in an album of its own in `manager`'s library.

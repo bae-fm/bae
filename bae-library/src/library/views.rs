@@ -43,11 +43,11 @@ use bae_db::client::list_windows::{
 use bae_db::client::pressing_columns::{read_media, release_media_sql};
 use bae_db::client::query::*;
 use bae_db::client::read::*;
-use bae_db::client::release_storage_action::{transfer_action_column, transfer_action_sql};
 use bae_db::client::sync_status::cloud_home_on;
 use bae_db::credits::LibraryCredit;
 use bae_db::schema::search_pattern;
 use bae_db::*;
+use bae_transfers::release_storage_action::{transfer_action_column, transfer_action_sql};
 use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::{CovenError, SqlReadContext};

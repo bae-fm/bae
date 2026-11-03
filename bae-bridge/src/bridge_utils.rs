@@ -106,10 +106,10 @@ impl BridgeOutputKind {
     /// Display-only: a save carries its preset's resolved name, not an id — the
     /// queue row never dereferences a preset. No `into_core`; enqueue takes a
     /// preset id directly.
-    pub(crate) fn from_core(kind: &bae_library::library::OutputKind) -> Self {
+    pub(crate) fn from_core(kind: &bae_transfers::OutputKind) -> Self {
         match kind {
-            bae_library::library::OutputKind::Export => BridgeOutputKind::Export,
-            bae_library::library::OutputKind::Save { preset } => {
+            bae_transfers::OutputKind::Export => BridgeOutputKind::Export,
+            bae_transfers::OutputKind::Save { preset } => {
                 BridgeOutputKind::Save { preset_name: preset.name.clone() }
             }
         }

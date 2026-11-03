@@ -161,9 +161,11 @@ async fn test_multiple_releases_independent_completion() {
     let settled = tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             let queue = downloads.next().await.expect("the query stays open").unwrap();
-            if queue.rows.iter().all(|row| {
-                matches!(row.op.state, bae_library::library::DownloadPhase::Failed { .. })
-            }) {
+            if queue
+                .rows
+                .iter()
+                .all(|row| matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. }))
+            {
                 return queue;
             }
         }

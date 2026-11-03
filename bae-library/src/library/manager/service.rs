@@ -48,8 +48,8 @@ impl LibraryManager {
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
         sync: SyncController,
-        downloads: crate::library::Downloads,
-        #[cfg(desktop)] outputs: crate::library::Outputs,
+        downloads: bae_transfers::Downloads,
+        #[cfg(desktop)] outputs: bae_transfers::Outputs,
         closing: tokio_util::sync::CancellationToken,
     ) -> Result<Self, bae_db::DbError> {
         // The store opens running one transfer per direction, the least any
@@ -59,7 +59,7 @@ impl LibraryManager {
         // No transfer outlives the process that ran it, so the library opens
         // with its transfer queues empty, before their workers start, and
         // with no release in a storage transition.
-        database.call(crate::library::queued_releases::tables::clear_transfers_on).await?;
+        database.call(bae_transfers::tables::clear_transfers_on).await?;
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.
         database.record_sync_start_failure(None).await?;
@@ -434,18 +434,14 @@ impl LibraryManager {
     /// Every entry of the download queue now, for a test that reads the
     /// whole queue.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn download_snapshot(
-        &self,
-    ) -> Result<crate::library::DownloadSnapshot, LibraryError> {
-        self.downloads.snapshot().await
+    pub async fn download_snapshot(&self) -> Result<bae_transfers::DownloadSnapshot, LibraryError> {
+        Ok(self.downloads.snapshot().await?)
     }
 
     /// Follow every entry of the download queue, for a test that waits on
     /// the whole queue.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_download_snapshot(
-        &self,
-    ) -> coven::LiveQuery<crate::library::DownloadSnapshot> {
+    pub fn subscribe_download_snapshot(&self) -> coven::LiveQuery<bae_transfers::DownloadSnapshot> {
         self.downloads.subscribe()
     }
 
@@ -456,24 +452,20 @@ impl LibraryManager {
         initial: bae_db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
         bae_db::LibraryPageWindows,
-        crate::library::ReleaseQueueWindows<()>,
+        bae_transfers::ReleaseQueueWindows<()>,
     > {
         self.downloads.subscribe_windows(initial)
     }
 
     /// How many downloads are in each phase now, and whether the queue is
     /// paused.
-    pub async fn download_counts(
-        &self,
-    ) -> Result<crate::library::ReleaseQueueCounts, LibraryError> {
-        self.downloads.counts().await
+    pub async fn download_counts(&self) -> Result<bae_transfers::ReleaseQueueCounts, LibraryError> {
+        Ok(self.downloads.counts().await?)
     }
 
     /// Follow how many downloads are in each phase, and whether the queue is
     /// paused: what the Downloads pane's controls show of them.
-    pub fn subscribe_download_counts(
-        &self,
-    ) -> coven::LiveQuery<crate::library::ReleaseQueueCounts> {
+    pub fn subscribe_download_counts(&self) -> coven::LiveQuery<bae_transfers::ReleaseQueueCounts> {
         self.downloads.subscribe_counts()
     }
 
@@ -482,7 +474,7 @@ impl LibraryManager {
     pub fn subscribe_download_transfers(
         &self,
     ) -> tokio::sync::watch::Receiver<
-        std::collections::BTreeMap<String, crate::library::DownloadTransferProgress>,
+        std::collections::BTreeMap<String, bae_transfers::DownloadTransferProgress>,
     > {
         self.downloads.subscribe_transfers()
     }
@@ -500,7 +492,7 @@ impl LibraryManager {
     /// The export queue as it stands now, each entry beside its release, the
     /// active one with the percent it has reached.
     #[cfg(desktop)]
-    pub async fn output_snapshot(&self) -> Result<crate::library::OutputSnapshot, LibraryError> {
+    pub async fn output_snapshot(&self) -> Result<bae_transfers::OutputSnapshot, LibraryError> {
         // The table first: every export it reads as active has its percent
         // held from before it started until after it stops.
         let snapshot = self.outputs.snapshot().await?;
@@ -514,7 +506,7 @@ impl LibraryManager {
     #[cfg(all(desktop, test))]
     pub(crate) fn subscribe_output_snapshot(
         &self,
-    ) -> coven::LiveQuery<crate::library::OutputPhaseSnapshot> {
+    ) -> coven::LiveQuery<bae_transfers::OutputPhaseSnapshot> {
         self.outputs.subscribe()
     }
 
@@ -529,7 +521,7 @@ impl LibraryManager {
 
     /// A transfer queue's own table failed to read or write in its worker,
     /// which has nobody to tell: the worker waits for the next command.
-    pub(super) fn report_queue_store_failure(&self, queue: &str, error: &LibraryError) {
+    pub(super) fn report_queue_store_failure(&self, queue: &str, error: &bae_db::DbError) {
         self.diagnostics.report_bug(
             &format!("read or write the {queue} queue's table"),
             &bae_util::error_text::CauseChain(error),

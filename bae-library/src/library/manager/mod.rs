@@ -355,6 +355,13 @@ impl From<bae_import::CatalogSessionError> for LibraryError {
     }
 }
 
+/// A pin's byte counts that make no progress are the store's to explain.
+impl From<bae_transfers::DownloadProgressError> for LibraryError {
+    fn from(error: bae_transfers::DownloadProgressError) -> Self {
+        Self::Storage(error.to_string())
+    }
+}
+
 impl From<TaskFailed> for LibraryError {
     fn from(failed: TaskFailed) -> Self {
         Self::Internal(failed.to_string())
@@ -484,7 +491,7 @@ pub struct LibraryManager {
     /// single serial worker drains it one release at a time. Shared across
     /// manager clones; emptied as the library opens (a release that wasn't
     /// fully pinned stays cloud-only).
-    downloads: crate::library::Downloads,
+    downloads: bae_transfers::Downloads,
     /// The "Export…" and save queue: its table, which the inspector reads, and
     /// the percent its active output has reached. A single serial worker
     /// drains it one release at a time. Shared across manager clones; emptied
@@ -492,7 +499,7 @@ pub struct LibraryManager {
     /// reads, and writes to a user directory. Desktop-only: see the `output`
     /// module.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    outputs: crate::library::Outputs,
+    outputs: bae_transfers::Outputs,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     remote_images: bae_catalogs::remote_image::RemoteImageCache,

@@ -109,7 +109,7 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.rows.len(), 1);
     assert_eq!(snap.rows[0].op.payload.target_dir, target);
-    assert_eq!(snap.rows[0].op.state, crate::library::OutputPhase::Queued);
+    assert_eq!(snap.rows[0].op.state, bae_transfers::OutputPhase::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
@@ -184,7 +184,7 @@ async fn export_writes_a_parent_name_inside_its_folder() {
 
     let target = temp_dir.path().join("export-out");
     manager
-        .export_release(&release_id, &target, crate::library::OutputKind::Export)
+        .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
         .await
         .expect("a parent name exports");
 
@@ -211,7 +211,7 @@ async fn export_refuses_an_absolute_original_filename() {
 
     let target = temp_dir.path().join("export-out");
     let error = manager
-        .export_release(&release_id, &target, crate::library::OutputKind::Export)
+        .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
         .await
         .expect_err("an absolute original_filename is refused");
 
@@ -234,7 +234,7 @@ async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
 
     let target = temp_dir.path().join("export-out");
     manager
-        .export_release(&release_id, &target, crate::library::OutputKind::Export)
+        .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
         .await
         .expect("a folder name holding a slash exports");
 
@@ -272,7 +272,7 @@ async fn export_write_error_marks_failed_until_cancelled() {
     let failed = output_queue_until(&manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
-            Some(crate::library::OutputPhase::Failed { .. })
+            Some(bae_transfers::OutputPhase::Failed { .. })
         )
     })
     .await;
@@ -328,7 +328,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     output_queue_until(&manager, |queue| {
         matches!(
             queue.rows.first().map(|row| &row.op.state),
-            Some(crate::library::OutputPhase::Failed { .. })
+            Some(bae_transfers::OutputPhase::Failed { .. })
         )
     })
     .await;

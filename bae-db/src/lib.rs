@@ -49,7 +49,6 @@ pub use client::RecordsChange;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::ReleaseEditWrite;
 pub use client::ReleaseMetadataRows;
-pub use client::StoredTransition;
 pub use client::{Database, IdentityWriteError, ReleaseDeletion, StorageSetupSteps};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),

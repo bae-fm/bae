@@ -4,10 +4,10 @@
 //! bytes are downloaded from the cloud home and decrypted with the release's
 //! item key — the same verified read pin and unmanage use.
 
-use bae_library::library::OutputKind;
 use bae_preferences::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
+use bae_transfers::OutputKind;
 use coven::MemoryStorage;
 use std::fs;
 use std::path::Path;

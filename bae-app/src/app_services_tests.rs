@@ -244,8 +244,8 @@ async fn inspected_export_until(
     inspector: &bae_library::library::LiveDetail<
         bae_library::library::storage_inspector::StorageInspector,
     >,
-    matches: impl Fn(&bae_library::library::OutputPhaseRow) -> bool,
-) -> bae_library::library::OutputPhaseRow {
+    matches: impl Fn(&bae_transfers::OutputPhaseRow) -> bool,
+) -> bae_transfers::OutputPhaseRow {
     use bae_library::library::storage_inspector::StorageInspectorTransfer;
     loop {
         let snapshot = tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())

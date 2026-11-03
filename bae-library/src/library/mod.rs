@@ -6,7 +6,6 @@ mod browse;
 mod closing_step;
 pub(crate) mod detach_cancels;
 mod detail;
-pub mod download_snapshot;
 mod file_transfers;
 #[cfg(all(test, desktop))]
 mod import_tests;
@@ -17,12 +16,9 @@ mod local_lifecycle;
 pub(crate) mod make_local_transfers;
 pub mod manager;
 mod outbox_watch;
-pub mod output_snapshot;
 mod queue_upcoming;
-pub mod queued_releases;
 #[cfg(desktop)]
 mod release_files;
-pub mod release_queue;
 mod release_transfers;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
@@ -45,10 +41,6 @@ pub use track_decode::TrackDecode;
 
 pub use bae_db::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
-pub use download_snapshot::{
-    DownloadEntry, DownloadPhase, DownloadProgress, DownloadRow, DownloadSnapshot,
-    DownloadTransferProgress, QueuedDownload,
-};
 pub use file_transfers::{FileTransferChange, FileTransfersWatch};
 pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus, LiveLibraryStatusError};
 pub use live_read::{live_read_channel, SubscriptionReader};
@@ -63,22 +55,11 @@ pub use outbox_watch::{
     OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,
     ReleaseUploadTransfer, UploadTransfer,
 };
-pub use output_snapshot::{
-    OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
-    OutputProgress, OutputRow, OutputSnapshot, OutputState,
-};
 pub use queue_upcoming::{LiveQueueUpcoming, QueueUpcomingSnapshot};
-pub(crate) use queued_releases::QueuedReleases;
 #[cfg(desktop)]
 pub use release_files::{
     LiveReleaseFiles, ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest,
     ReleaseFilesSnapshot,
-};
-#[cfg(desktop)]
-pub use release_queue::ReleaseQueueEntries;
-pub use release_queue::{
-    CountLabel, QueuedRelease, ReleaseQueueCounts, ReleaseQueueWindows, TransferCount,
-    TransferStage,
 };
 pub use release_transfers::{
     DownloadTransferChange, DownloadTransfersWatch, MakeLocalTransfersWatch, OutputTransferChange,
@@ -107,13 +88,6 @@ use bae_db::configure_store;
 use tokio::sync::watch;
 
 pub use tokio_util::sync::CancellationToken;
-
-/// The pin queue: its table, and the bytes its active download has moved.
-pub(crate) type Downloads = QueuedReleases<(), DownloadTransferProgress>;
-/// The export and save queue: its table, and the percent its active one has
-/// reached.
-#[cfg(desktop)]
-pub(crate) type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8>;
 
 /// One track of a save: its tags, its stored audio, and which of its audio
 /// the saved file carries. Holds no open source; a save opens the files a

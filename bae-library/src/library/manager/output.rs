@@ -26,7 +26,7 @@ impl LibraryManager {
         release_id: &str,
         target_dir: std::path::PathBuf,
     ) -> Result<(), LibraryError> {
-        self.enqueue_output(release_id, target_dir, crate::library::OutputKind::Export).await
+        self.enqueue_output(release_id, target_dir, bae_transfers::OutputKind::Export).await
     }
 
     /// Enqueue a release-level save to `target_dir` under the preset named by
@@ -49,7 +49,7 @@ impl LibraryManager {
                     "save preset {preset_id} is not available for release save"
                 ))
             })?;
-        self.enqueue_output(release_id, target_dir, crate::library::OutputKind::Save { preset })
+        self.enqueue_output(release_id, target_dir, bae_transfers::OutputKind::Save { preset })
             .await
     }
 
@@ -62,7 +62,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         target_dir: std::path::PathBuf,
-        kind: crate::library::OutputKind,
+        kind: bae_transfers::OutputKind,
     ) -> Result<(), LibraryError> {
         if self.outputs.contains(release_id).await? {
             debug!("enqueue_output: {release_id} already queued, skipping");
@@ -72,10 +72,10 @@ impl LibraryManager {
             LibraryError::Export(format!("cannot export release {release_id}: not found"))
         })?;
 
-        let entry = crate::library::OutputEntry {
+        let entry = bae_transfers::OutputEntry {
             release_id: release_id.to_string(),
             created_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis(),
-            payload: crate::library::output_snapshot::OutputRequest { target_dir, kind },
+            payload: bae_transfers::OutputRequest { target_dir, kind },
         };
         self.outputs.enqueue_all(vec![entry]).await?;
         Ok(())
@@ -85,7 +85,7 @@ impl LibraryManager {
     /// starting the next release; the in-flight one runs to completion. Resuming
     /// wakes the worker.
     pub async fn set_outputs_paused(&self, paused: bool) -> Result<(), LibraryError> {
-        self.outputs.set_paused(paused).await
+        Ok(self.outputs.set_paused(paused).await?)
     }
 
     /// Cancel a release's export. Drops a queued/failed entry; for the active one,
@@ -94,7 +94,7 @@ impl LibraryManager {
     /// the abort leaves no output at the final path — the staging directory is
     /// removed when the aborted task's future drops.
     pub async fn cancel_output(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.outputs.cancel(release_id).await
+        Ok(self.outputs.cancel(release_id).await?)
     }
 
     /// The serial export worker: drains the export queue one release at a time
@@ -102,15 +102,15 @@ impl LibraryManager {
     /// (the activate/cancel race, cancel-is-not-a-failure, remove vs
     /// mark-failed).
     ///
-    /// [`QueuedReleases::run_serial`]: crate::library::QueuedReleases::run_serial
+    /// [`QueuedReleases::run_serial`]: bae_transfers::QueuedReleases::run_serial
     ///
     /// All this supplies is how an export runs — spawn the copy task and yield its
     /// outcome, a panicked task failing it and reported as a bug — and the
     /// diagnostics event for the outcome. The copy itself updates the active
     /// export's percent as it writes each file.
     pub(super) async fn run_output_worker(&self) {
-        use crate::library::queued_releases::RunningOp;
-        use crate::library::OutputKind;
+        use bae_transfers::OutputKind;
+        use bae_transfers::RunningOp;
         use std::sync::atomic::{AtomicBool, Ordering};
 
         // The completion telemetry differs by kind (export vs save), but the
@@ -188,7 +188,7 @@ impl LibraryManager {
     async fn export_release_to_dir(
         &self,
         release_id: &str,
-        request: crate::library::output_snapshot::OutputRequest,
+        request: bae_transfers::OutputRequest,
     ) -> Result<(), LibraryError> {
         let release = self
             .get_release_by_id(release_id)
@@ -212,10 +212,10 @@ impl LibraryManager {
                 .map_err(|failed| self.bug(failed))??;
 
         match request.kind {
-            crate::library::OutputKind::Export => {
+            bae_transfers::OutputKind::Export => {
                 self.copy_release_files_to_staging(release_id, &folder, staging.path()).await?;
             }
-            crate::library::OutputKind::Save { preset } => {
+            bae_transfers::OutputKind::Save { preset } => {
                 info!(
                     release_id,
                     folder = folder.as_str(),
@@ -247,14 +247,11 @@ impl LibraryManager {
         &self,
         release_id: &str,
         target_dir: &Path,
-        kind: crate::library::OutputKind,
+        kind: bae_transfers::OutputKind,
     ) -> Result<(), LibraryError> {
         self.export_release_to_dir(
             release_id,
-            crate::library::output_snapshot::OutputRequest {
-                target_dir: target_dir.to_path_buf(),
-                kind,
-            },
+            bae_transfers::OutputRequest { target_dir: target_dir.to_path_buf(), kind },
         )
         .await
     }

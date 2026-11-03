@@ -104,15 +104,15 @@ pub struct ReleaseUpload {
     pub progress: bae_db::UploadProgress,
     /// How many of the release's files are uploading, queued and stored,
     /// each left out at zero.
-    pub summary: Vec<crate::library::TransferCount>,
+    pub summary: Vec<bae_transfers::TransferCount>,
 }
 
 impl ReleaseUpload {
     pub(crate) fn from_raw(raw: bae_db::DbReleaseUpload) -> Self {
         let progress = bae_db::UploadProgress::of_release(&raw);
-        use crate::library::TransferStage;
+        use bae_transfers::TransferStage;
         Self {
-            summary: crate::library::release_queue::transfer_summary([
+            summary: bae_transfers::transfer_summary([
                 ("core.queue.uploading", progress.uploading, TransferStage::Moving),
                 ("core.queue.queued", progress.queued, TransferStage::Waiting),
                 (
@@ -172,7 +172,7 @@ impl ReleaseDetail {
     /// logic stays in one place.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
-        download: Option<crate::library::DownloadPhase>,
+        download: Option<bae_transfers::DownloadPhase>,
         album_artists: &[bae_db::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx,

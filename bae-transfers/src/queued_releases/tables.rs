@@ -1,14 +1,14 @@
 //! The transfer queues' tables: `download_queue` and `output_queue`, each
 //! entry a release in the order queued with its phase, and whether each queue
 //! is paused (`release_queues`), as functions over coven's SQL contexts. The
-//! queue owners ([`super::QueuedReleases`]) are the only writers; the panes,
+//! queue owners ([`crate::QueuedReleases`]) are the only writers; the panes,
 //! the detail views and the sync activity read the same tables through live
 //! queries.
 
-use crate::library::output_snapshot::{OutputKind, OutputRequest};
+use crate::output_snapshot::{OutputKind, OutputRequest};
 #[cfg(any(desktop, test, feature = "test-utils"))]
-use crate::library::release_queue::ReleaseQueueSnapshot;
-use crate::library::release_queue::{
+use crate::release_queue::ReleaseQueueSnapshot;
+use crate::release_queue::{
     QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress,
     ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
@@ -25,7 +25,7 @@ use rusqlite::{params, OptionalExtension, Row};
 
 /// What a queue's entries carry beyond their release, and the table that
 /// holds them.
-pub(crate) trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
+pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     /// The queue's row in `release_queues`.
     const QUEUE: &'static str;
     const TABLE: &'static str;
@@ -143,7 +143,7 @@ fn phase_from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<ReleaseQueueStat
 /// A queue's entries beside their releases as the library holds them, the
 /// ones `tail` picks: a `WHERE`, `ORDER BY` or `LIMIT` over the queue `q`;
 /// and each entry's key in `keyed`'s order when one is given.
-pub(crate) fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: &str) -> String {
+pub fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: &str) -> String {
     format!(
         "SELECT {columns}, q.state, q.error, r.id IS NOT NULL, a.title, \
             COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0), \
@@ -196,13 +196,13 @@ fn queue_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQueueRo
 }
 
 /// A queue's order: the order queued.
-pub(crate) fn queue_order() -> ListOrder {
+pub fn queue_order() -> ListOrder {
     ListOrder::new(vec![SortTerm::ascending("q.position")])
 }
 
 /// The queue's entries `seek` reads in `order`, at most `limit` from
 /// `offset`, each with its key.
-pub(crate) fn queue_window_rows_on<P: QueuedPayload>(
+pub fn queue_window_rows_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     seek: &Seek,
@@ -264,7 +264,7 @@ pub(crate) fn release_queue_on<P: QueuedPayload>(
     })
 }
 
-pub(crate) fn release_queue_counts_on<P: QueuedPayload>(
+pub fn release_queue_counts_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueCounts, DbError> {
     let (queued, active, failed): (u32, u32, u32) = sql.query_row(
@@ -285,11 +285,11 @@ pub(crate) fn release_queue_counts_on<P: QueuedPayload>(
 
 /// `release_id`'s entries in the download and export queues.
 #[cfg(desktop)]
-pub(crate) fn release_queue_entries_on(
+pub fn release_queue_entries_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<crate::library::ReleaseQueueEntries, DbError> {
-    Ok(crate::library::ReleaseQueueEntries {
+) -> Result<crate::release_queue::ReleaseQueueEntries, DbError> {
+    Ok(crate::release_queue::ReleaseQueueEntries {
         download: queue_rows_on::<()>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
         output: queue_rows_on::<OutputRequest>(sql, "WHERE q.release_id = ?1", [release_id])?.pop(),
     })
@@ -297,7 +297,7 @@ pub(crate) fn release_queue_entries_on(
 
 /// The download queue's phase for `release_id`, `None` when it is not
 /// queued: what a release's detail shows of its download.
-pub(crate) fn download_phase_on(
+pub fn download_phase_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseQueueState<()>>, DbError> {
@@ -480,10 +480,42 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
 /// Empty both queues and let them run, and end every storage transition:
 /// what the library opens with, since no transfer outlives the process
 /// that ran it.
-pub(crate) fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+pub fn clear_transfers_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     sql.execute("DELETE FROM download_queue", [])?;
     sql.execute("DELETE FROM output_queue", [])?;
     sql.execute("DELETE FROM release_storage_action", [])?;
     sql.execute("UPDATE release_queues SET paused = 0", [])?;
     Ok(())
+}
+
+/// The worker's moves of a queue's entries, for a test that moves entries in
+/// the table without a worker running them.
+#[cfg(any(test, feature = "test-utils"))]
+pub mod worker_moves {
+    use super::*;
+
+    /// Start `release_id`'s entry, as the worker does once its task runs.
+    pub fn activate_on<P: QueuedPayload>(
+        sql: &CovenWrite<'_>,
+        release_id: &str,
+    ) -> Result<bool, DbError> {
+        activate_queued_release_on::<P>(sql, release_id)
+    }
+
+    /// Finish `release_id`'s active entry, as the worker does on success.
+    pub fn finish_on<P: QueuedPayload>(
+        sql: &CovenWrite<'_>,
+        release_id: &str,
+    ) -> Result<bool, DbError> {
+        finish_queued_release_on::<P>(sql, release_id)
+    }
+
+    /// Fail `release_id`'s entry with `error`, as the worker does on failure.
+    pub fn fail_on<P: QueuedPayload>(
+        sql: &CovenWrite<'_>,
+        release_id: &str,
+        error: &str,
+    ) -> Result<bool, DbError> {
+        fail_queued_release_on::<P>(sql, release_id, error)
+    }
 }

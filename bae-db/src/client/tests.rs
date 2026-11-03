@@ -6,9 +6,6 @@ const RELEASE_1: &str = "c0218676-4c47-4eb7-8d65-57a8d328c3d1";
 use crate::test_fixtures::*;
 
 #[cfg(test)]
-mod release_storage_action_tests;
-
-#[cfg(test)]
 mod sync_start_failure_tests;
 
 #[cfg(test)]

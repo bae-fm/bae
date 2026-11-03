@@ -71,9 +71,9 @@ pub(super) fn empty_input_schema() -> Map<String, Value> {
 }
 
 pub(super) fn automation_output_snapshot(
-    snapshot: bae_library::library::OutputSnapshot,
+    snapshot: bae_transfers::OutputSnapshot,
 ) -> AutomationOutputSnapshot {
-    use bae_library::library::{OutputKind, OutputState};
+    use bae_transfers::{OutputKind, OutputState};
     let outputs = snapshot
         .rows
         .into_iter()

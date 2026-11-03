@@ -25,7 +25,9 @@ fn release_only_image_preset() -> bae_preferences::SavePreset {
     bae_preferences::SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
-        codec: bae_preferences::SaveCodec::Flac { bit_depth: bae_preferences::SaveBitDepth::Bits16 },
+        codec: bae_preferences::SaveCodec::Flac {
+            bit_depth: bae_preferences::SaveBitDepth::Bits16,
+        },
         filename_tokens: vec![bae_preferences::SaveFilenameToken::Title],
         pregap_placement: bae_preferences::SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
@@ -101,7 +103,7 @@ async fn enqueue_release_save_captures_the_preset() {
     manager.set_save_presets(edited).await.unwrap();
 
     let snap = output_queue_now(&manager).await;
-    let crate::library::OutputKind::Save { preset } = &snap.rows[0].op.payload.kind else {
+    let bae_transfers::OutputKind::Save { preset } = &snap.rows[0].op.payload.kind else {
         panic!("expected a queued save op");
     };
     assert_eq!(
@@ -260,8 +262,8 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
 /// about MusicBrainz.
 #[tokio::test]
 async fn the_last_source_being_asked_cannot_be_switched_off() {
-    use bae_preferences::SourceAvailability;
     use bae_catalogs::catalog::LookupCatalog;
+    use bae_preferences::SourceAvailability;
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
@@ -299,8 +301,8 @@ async fn the_last_source_being_asked_cannot_be_switched_off() {
 /// credential arrives.
 #[tokio::test]
 async fn an_unreachable_source_keeps_the_switch_underneath_it() {
-    use bae_preferences::SourceAvailability;
     use bae_catalogs::catalog::LookupCatalog;
+    use bae_preferences::SourceAvailability;
 
     let (manager, _temp_dir) = setup_test_manager().await;
 
@@ -314,7 +316,13 @@ async fn an_unreachable_source_keeps_the_switch_underneath_it() {
         "no credential still beats the switch"
     );
     assert!(
-        !manager.preferences().await.unwrap().identification.catalogs.enabled(LookupCatalog::Discogs),
+        !manager
+            .preferences()
+            .await
+            .unwrap()
+            .identification
+            .catalogs
+            .enabled(LookupCatalog::Discogs),
         "the switch is kept where the person left it"
     );
 }

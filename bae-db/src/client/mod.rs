@@ -82,8 +82,6 @@ mod release_deletion;
 mod release_file;
 mod release_locality;
 pub use release_deletion::ReleaseDeletion;
-pub mod release_storage_action;
-pub use release_storage_action::StoredTransition;
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

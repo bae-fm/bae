@@ -122,7 +122,7 @@ async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
     let target = f.temp_path().join("Export");
     fs::create_dir_all(&target).unwrap();
     f.library
-        .export_release(&release_id, &target, bae_library::library::OutputKind::Export)
+        .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
         .await
         .expect("the release exports");
 

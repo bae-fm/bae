@@ -3,7 +3,7 @@
 //! read it while a release is copied or saved out to a folder, and the
 //! percent the active one has reached travels apart, keyed by release.
 
-use super::release_queue::{
+use crate::release_queue::{
     ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot,
     ReleaseQueueState,
 };

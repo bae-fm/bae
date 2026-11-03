@@ -348,8 +348,8 @@ async fn measure_downloads(db: &Database, n: u64) {
         "downloads",
         "queued",
         n,
-        crate::library::queued_releases::tables::queue_order(),
-        crate::library::queued_releases::tables::queue_window_rows_on::<()>,
+        bae_transfers::tables::queue_order(),
+        bae_transfers::tables::queue_window_rows_on::<()>,
     )
     .await;
 }

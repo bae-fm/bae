@@ -112,7 +112,11 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     assert_eq!(detail_ids, vec![release.id.clone()]);
 
     // The release-level resolver returns it.
-    assert!(crate::library::views::LibraryViews::new(manager.database.clone()).find_release_detail(&release.id).await.unwrap().is_some());
+    assert!(crate::library::views::LibraryViews::new(manager.database.clone())
+        .find_release_detail(&release.id)
+        .await
+        .unwrap()
+        .is_some());
 }
 
 #[tokio::test]
@@ -409,11 +413,13 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     )
     .await;
     assert!(
-        manager
-            .database
-            .begin_release_storage_action(&active_release.id, bae_db::StoredTransition::Unpin)
-            .await
-            .unwrap(),
+        bae_transfers::release_storage_action::begin_release_storage_action(
+            &manager.database,
+            &active_release.id,
+            bae_transfers::StoredTransition::Unpin
+        )
+        .await
+        .unwrap(),
         "hold the target in another transition"
     );
 
@@ -547,7 +553,9 @@ async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     assert!(download_queue_now(&manager).await.rows.is_empty());
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     wait_for_kept_release(&manager, &release.id).await;
-    assert!(manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary.pinned);
+    assert!(
+        manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary.pinned
+    );
 }
 
 #[tokio::test]

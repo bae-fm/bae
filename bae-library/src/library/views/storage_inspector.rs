@@ -15,9 +15,7 @@ fn storage_inspector_on(
     Ok(Some(DbStorageInspector {
         files: inspector_files_on(sql, release_id)?,
         upload: bae_db::client::queued_uploads::release_upload_on(sql, release_id)?,
-        entries: crate::library::queued_releases::tables::release_queue_entries_on(
-            sql, release_id,
-        )?,
+        entries: bae_transfers::tables::release_queue_entries_on(sql, release_id)?,
     }))
 }
 

@@ -182,15 +182,15 @@ async fn queued_upload_count(manager: &LibraryManager) -> i64 {
 /// Insert `release` with its first medium, one CD side, which
 /// [`DbTrack::new_test`] tracks sit on.
 /// The download queue as its table holds it now.
-async fn download_queue_now(manager: &LibraryManager) -> crate::library::DownloadSnapshot {
+async fn download_queue_now(manager: &LibraryManager) -> bae_transfers::DownloadSnapshot {
     manager.download_snapshot().await.unwrap()
 }
 
 /// Wait until the download queue's live read holds what `done` looks for.
 async fn download_queue_until(
     manager: &LibraryManager,
-    done: impl Fn(&crate::library::DownloadSnapshot) -> bool,
-) -> crate::library::DownloadSnapshot {
+    done: impl Fn(&bae_transfers::DownloadSnapshot) -> bool,
+) -> bae_transfers::DownloadSnapshot {
     let mut values = manager.subscribe_download_snapshot();
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
@@ -206,7 +206,7 @@ async fn download_queue_until(
 
 /// The export queue as its table holds it now.
 #[cfg(desktop)]
-async fn output_queue_now(manager: &LibraryManager) -> crate::library::OutputPhaseSnapshot {
+async fn output_queue_now(manager: &LibraryManager) -> bae_transfers::OutputPhaseSnapshot {
     manager.outputs.snapshot().await.unwrap()
 }
 
@@ -214,8 +214,8 @@ async fn output_queue_now(manager: &LibraryManager) -> crate::library::OutputPha
 #[cfg(desktop)]
 async fn output_queue_until(
     manager: &LibraryManager,
-    done: impl Fn(&crate::library::OutputPhaseSnapshot) -> bool,
-) -> crate::library::OutputPhaseSnapshot {
+    done: impl Fn(&bae_transfers::OutputPhaseSnapshot) -> bool,
+) -> bae_transfers::OutputPhaseSnapshot {
     let mut values = manager.subscribe_output_snapshot();
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {

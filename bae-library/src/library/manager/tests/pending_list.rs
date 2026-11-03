@@ -218,7 +218,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     download_queue_until(&manager, |queue| {
         queue.rows.iter().any(|row| {
             row.op.release_id == release_id
-                && matches!(row.op.state, crate::library::DownloadPhase::Failed { .. })
+                && matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. })
         })
     })
     .await;

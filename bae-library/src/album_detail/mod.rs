@@ -183,9 +183,9 @@ pub enum ReleaseDownloadStatus {
 pub fn release_download_status(
     pinned: bool,
     storage_actions: &[ReleaseStorageAction],
-    download: Option<&crate::library::DownloadPhase>,
+    download: Option<&bae_transfers::DownloadPhase>,
 ) -> Option<ReleaseDownloadStatus> {
-    use crate::library::DownloadPhase;
+    use bae_transfers::DownloadPhase;
 
     match download {
         Some(DownloadPhase::Queued) => Some(ReleaseDownloadStatus::Queued),
@@ -417,7 +417,7 @@ mod tests {
     /// in the queue it decides the control — even once `pinned` has flipped.
     #[test]
     fn a_queue_entry_outranks_pinned() {
-        use crate::library::DownloadPhase;
+        use bae_transfers::DownloadPhase;
         let cases = [
             (DownloadPhase::Queued, ReleaseDownloadStatus::Queued),
             (DownloadPhase::Active { progress: () }, ReleaseDownloadStatus::Downloading),

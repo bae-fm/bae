@@ -1,9 +1,10 @@
 //! The Storage Manager inspector's release: its files, each beside its
 //! upload while one waits, and the release's entry in each transfer queue.
 
-use super::release_queue::ReleaseQueueState;
-use super::{DownloadRow, OutputPhaseRow, PendingWait, ReleaseQueueEntries, UploadState};
+use super::{PendingWait, UploadState};
 use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
+use bae_transfers::ReleaseQueueState;
+use bae_transfers::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 
 /// What the inspector shows of one release, read in core for the release id
 /// it is set to.
@@ -46,13 +47,13 @@ pub enum StorageInspectorTransfer {
     /// each left out at zero, while its download waits or runs.
     Download {
         operation: DownloadRow,
-        summary: Option<Vec<crate::library::TransferCount>>,
+        summary: Option<Vec<bae_transfers::TransferCount>>,
     },
     /// Coven downloading the release's files a move to the cloud asked this
     /// device to keep here, outside the download queue: `summary` counts the
     /// files downloading and kept, each left out at zero.
     PinFetch {
-        summary: Vec<crate::library::TransferCount>,
+        summary: Vec<bae_transfers::TransferCount>,
     },
     Output {
         operation: OutputPhaseRow,
@@ -120,10 +121,10 @@ impl StorageInspector {
                 .expect("a release's file count")
         };
         let pins = pinning.map(|pinning| {
-            use crate::library::TransferStage;
+            use bae_transfers::TransferStage;
             (
                 pinning,
-                crate::library::release_queue::transfer_summary([
+                bae_transfers::transfer_summary([
                     (
                         "core.queue.pinning",
                         count(|pin| matches!(pin, FilePin::Downloading { .. })),
@@ -162,7 +163,7 @@ fn storage_inspector_transfers(
     release_id: &str,
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
-    pins: Option<(Pinning, Vec<crate::library::TransferCount>)>,
+    pins: Option<(Pinning, Vec<bae_transfers::TransferCount>)>,
 ) -> Vec<StorageInspectorTransfer> {
     let mut items = Vec::new();
     let (download_summary, fetch_summary) = match pins {

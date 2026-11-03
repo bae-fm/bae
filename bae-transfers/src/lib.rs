@@ -1,0 +1,38 @@
+//! The transfer queues and storage transitions: downloading releases to keep
+//! on this device, exporting and saving them to a folder, and the storage
+//! transition each release is in. Each queue is a table of this device's,
+//! drained one release at a time by its owner ([`QueuedReleases`]); the
+//! transitions are `release_storage_action`'s rows, each ended in the write
+//! that changes the release's files.
+
+mod download_snapshot;
+mod output_snapshot;
+mod queued_releases;
+mod release_queue;
+pub mod release_storage_action;
+
+pub use download_snapshot::{
+    DownloadEntry, DownloadPhase, DownloadProgress, DownloadProgressError, DownloadRate,
+    DownloadRow, DownloadSnapshot, DownloadTransferProgress, QueuedDownload,
+};
+pub use output_snapshot::{
+    OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
+    OutputProgress, OutputRequest, OutputRow, OutputSnapshot, OutputState,
+};
+pub use queued_releases::tables;
+pub use queued_releases::{QueuedPayload, QueuedReleases, RunningOp};
+#[cfg(desktop)]
+pub use release_queue::ReleaseQueueEntries;
+pub use release_queue::{
+    transfer_summary, CountLabel, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry,
+    ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
+    ReleaseQueueWindows, TransferCount, TransferStage,
+};
+pub use release_storage_action::StoredTransition;
+
+/// The pin queue: its table, and the bytes its active download has moved.
+pub type Downloads = QueuedReleases<(), DownloadTransferProgress>;
+/// The export and save queue: its table, and the percent its active one has
+/// reached.
+#[cfg(desktop)]
+pub type Outputs = QueuedReleases<OutputRequest, u8>;

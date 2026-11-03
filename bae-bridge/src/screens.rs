@@ -207,7 +207,7 @@ pulled_values! {
 pulled_values! {
     /// How many downloads are in each phase, and whether the queue is paused.
     DownloadCountsSubscription:
-        bae_library::library::ReleaseQueueCounts => crate::types::BridgeDownloadCounts,
+        bae_transfers::ReleaseQueueCounts => crate::types::BridgeDownloadCounts,
     converted by crate::types::BridgeDownloadCounts::from_core,
     built by download_counts
 }
