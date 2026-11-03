@@ -721,7 +721,7 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     assert_eq!(
         queued.upload,
         Some(crate::album_detail::ReleaseUpload {
-            progress: crate::library::UploadProgress { queued: 2, uploading: 0 },
+            progress: bae_db::UploadProgress { queued: 2, uploading: 0 },
             summary: vec![crate::library::TransferCount {
                 label: crate::library::CountLabel { key: "core.queue.queued".into(), count: 2 },
                 stage: crate::library::TransferStage::Waiting,

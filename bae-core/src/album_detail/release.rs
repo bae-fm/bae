@@ -101,7 +101,7 @@ impl ReleaseSummary {
 /// transfer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseUpload {
-    pub progress: crate::library::UploadProgress,
+    pub progress: bae_db::UploadProgress,
     /// How many of the release's files are uploading, queued and stored,
     /// each left out at zero.
     pub summary: Vec<crate::library::TransferCount>,
@@ -109,7 +109,7 @@ pub struct ReleaseUpload {
 
 impl ReleaseUpload {
     pub(crate) fn from_raw(raw: bae_db::DbReleaseUpload) -> Self {
-        let progress = crate::library::UploadProgress::of_release(&raw);
+        let progress = bae_db::UploadProgress::of_release(&raw);
         use crate::library::TransferStage;
         Self {
             summary: crate::library::release_queue::transfer_summary([

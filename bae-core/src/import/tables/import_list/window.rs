@@ -27,11 +27,11 @@ use crate::import::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
 use crate::import::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ReleaseLink};
-use crate::library::UploadProgress;
 use bae_db::client::files::cover_version_sql;
 use bae_db::client::queued_uploads::release_upload_on;
 use bae_db::client::read::get_release_records_on;
 use bae_db::RelativeFolder;
+use bae_db::UploadProgress;
 use bae_identify::PressingLink;
 use std::path::{Path, PathBuf};
 

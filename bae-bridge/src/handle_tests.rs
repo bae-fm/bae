@@ -364,7 +364,7 @@ fn a_run_s_signals_cross_with_its_runtime() {
 
 #[test]
 fn upload_progress_keeps_the_counts_and_their_phase() {
-    let value = crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
+    let value = crate::types::BridgeUploadProgress::from_core(bae_db::UploadProgress {
         queued: 1,
         uploading: 2,
     });

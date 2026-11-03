@@ -3,7 +3,7 @@ use crate::album_detail::FilePin;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
 use crate::library::release_queue::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};
 use crate::library::ReleaseQueueEntries;
-use crate::library::UploadProgress;
+use bae_db::UploadProgress;
 
 fn row<Extra>(
     payload: Extra,

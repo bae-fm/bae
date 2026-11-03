@@ -27,6 +27,8 @@ pub use resolved_track_audio::{
 pub mod source_audio;
 pub mod stored_name;
 pub mod synced;
+mod upload_progress;
+pub use upload_progress::{UploadActivity, UploadProgress};
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_devices;
 #[cfg(any(test, feature = "test-utils"))]

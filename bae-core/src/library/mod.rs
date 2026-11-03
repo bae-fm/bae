@@ -88,7 +88,7 @@ pub use storage_browse::{
     UploadQueueRun,
 };
 pub use sync_activity::{DownloadsInFlight, SyncActivity, UploadQueueCounts, UploadsInFlight};
-pub use upload_progress::{UploadActivity, UploadBar, UploadProgress, UploadState};
+pub use upload_progress::{UploadBar, UploadState};
 
 #[cfg(test)]
 mod creation_tests;
