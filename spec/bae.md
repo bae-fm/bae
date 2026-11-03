@@ -1464,7 +1464,12 @@ own, or one the person started with Identify, a retry, or a changed clue. A
 pressing the person picks themselves, from a run's list or their own search,
 waits for their Import. Both are settings (Appendix C), and each works without
 the other: with automatic identification off, the runs a person starts still
-import. Turning import on imports nothing already identified.
+import. Turning import on imports nothing already identified. An automatic
+import that cannot start has nobody to tell, so the refusal is recorded as
+the release's failed import, where its row and pane show it, and one that is
+a bug (a store that fails, a row that is damaged) is also reported as a bug.
+It records nothing when another import already holds the release, when this
+device already imported its files, or when the library is closing.
 
 Import asked for while bae reads a run's unattended pick, from the row, the
 pane or a selection, leaves the read going and doesn't import the draft as it

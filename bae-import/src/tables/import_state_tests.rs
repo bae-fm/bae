@@ -441,3 +441,15 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
         .unwrap();
     (read, listings)
 }
+
+/// Damage the candidate `content_hash`'s cover rows as no write leaves them:
+/// its remote cover's bytes are gone, so reading the candidate fails as a
+/// damaged row.
+pub(crate) async fn lose_remote_cover_bytes(db: &Database, content_hash: &str) {
+    bae_db::test_fixtures::exec(
+        db,
+        "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?1",
+        &[content_hash],
+    )
+    .await;
+}

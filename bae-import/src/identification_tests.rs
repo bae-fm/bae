@@ -109,6 +109,8 @@ pub(crate) struct Fixture {
     /// The queue, started the first time a test reaches for it, so a test can
     /// set a candidate up before a found release's run reads it.
     pub(crate) identification: OnceLock<IdentificationHandle>,
+    /// Every bug the import service reported.
+    pub(crate) bugs: Arc<bae_diagnostics::RecordingBugReporter>,
     pub(crate) root: PathBuf,
     pub(crate) _temp: TempDir,
 }
@@ -156,12 +158,13 @@ impl Fixture {
         );
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
+        let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
         let parts = crate::tests::import::TestImport::new(
             database.clone(),
             providers,
             clock,
             ids,
-            bae_diagnostics::Diagnostics::noop(),
+            bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
         );
         let import = parts.start().await.unwrap();
 
@@ -182,6 +185,7 @@ impl Fixture {
             musicbrainz,
             context,
             identification: OnceLock::new(),
+            bugs,
             root,
             _temp: temp,
         }

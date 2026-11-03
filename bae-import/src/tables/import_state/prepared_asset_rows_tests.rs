@@ -3,7 +3,7 @@
 use crate::cover_art::PreparedCover;
 use crate::tables::import_state::tests::*;
 use bae_catalogs::catalog::Catalog;
-use bae_db::test_fixtures::{empty_db, exec};
+use bae_db::test_fixtures::empty_db;
 use bae_db::watched_path::host_root;
 
 fn remote_cover() -> PreparedCover {
@@ -63,8 +63,7 @@ async fn a_remote_cover_stored_without_its_bytes_fails_its_read() {
         )
         .await
         .unwrap();
-    exec(&db, "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?1", &[&hash])
-        .await;
+    lose_remote_cover_bytes(&db, &hash).await;
 
     let error = crate::preparation::stored_preparation(&tables, &hash)
         .await

@@ -241,9 +241,16 @@ pub enum ImportError {
     #[error(transparent)]
     DiscogsKey(Box<crate::DiscogsKeyError>),
 
+    /// The import service stopped, as it does when the library closes,
+    /// before the import could be queued: nothing is wrong with the
+    /// candidate, and nothing was claimed for it.
+    #[cfg(desktop)]
+    #[error("the import service has stopped")]
+    Stopped,
+
     /// A broken invariant, not a user condition: artist-id remap miss,
-    /// non-UTF-8 path, work that panicked apart from its caller, closed command channel,
-    /// missing library-status row.
+    /// non-UTF-8 path, work that panicked apart from its caller, missing
+    /// library-status row.
     #[error("internal import error: {detail}")]
     Internal { detail: String },
 }
@@ -404,6 +411,8 @@ impl ImportError {
             Self::CoverArt { .. } => C::ImportData,
             Self::Catalog(error) => catalog_category(error),
             Self::Internal { .. } => C::Internal,
+            #[cfg(desktop)]
+            Self::Stopped => C::Internal,
             #[cfg(desktop)]
             Self::DiscogsKey(error) => match **error {
                 crate::DiscogsKeyError::Keyring(_) | crate::DiscogsKeyError::Preferences(_) => {

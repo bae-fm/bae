@@ -1,6 +1,6 @@
 //! Starting an import: the claim one import holds on a candidate, the checks
 //! the start makes of its files and tags, what the import commits from the
-//! draft, and the automatic starts that are refused without a failed import.
+//! draft, and the automatic starts refused with and without a failed import.
 
 use super::*;
 use crate::handle::tests::*;
@@ -614,6 +614,82 @@ async fn an_automatic_import_behind_another_import_records_no_failure() {
 
     assert!(matches!(error, crate::ImportError::CandidateImportInProgress), "{error}");
     assert_eq!(fixture.import_failure(&dir).await, None);
+}
+
+/// An automatic start that a failure refuses has nobody to tell: a candidate
+/// whose stored remote cover lost its bytes cannot be read, so the start is
+/// recorded as the candidate's failed import, where the person sees it, and
+/// reported as the bug it is.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_automatic_start_a_damaged_row_refuses_records_the_failure_and_reports_it() {
+    let fixture = Fixture::new("auto-import-damaged").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    let probed = fixture.probed_total_ms(&dir);
+    let mut release: serde_json::Value = serde_json::from_str(
+        &bae_catalogs::test_releases::mb_release_json("mb-damaged", "rg-damaged", &[probed, 0]),
+    )
+    .expect("the release fixture parses");
+    release["cover-art-archive"]["front"] = serde_json::json!(true);
+    let mut discid: serde_json::Value =
+        serde_json::from_str(&discid_json("mb-damaged", "rg-damaged", &[probed, 0]))
+            .expect("the disc ID fixture parses");
+    discid["releases"][0]["cover-art-archive"]["front"] = serde_json::json!(true);
+    fixture.provider.route("/release/mb-damaged/front", 200, cover_png());
+    fixture.provider.route("/discid/", 200, discid.to_string());
+    fixture.provider.route("/release/mb-damaged?", 200, release.to_string());
+    fixture.scan(1).await;
+    fixture.drain_automatic().await;
+    assert_eq!(fixture.judgement_for(&dir).await, (true, None));
+    crate::tables::import_state::tests::lose_remote_cover_bytes(
+        &fixture.database,
+        &fixture.content_hash(&dir),
+    )
+    .await;
+
+    let error = fixture
+        .import
+        .import_identified(&key)
+        .await
+        .expect_err("a candidate that cannot be read does not start an import");
+
+    assert!(matches!(error, crate::ImportError::Database(_)), "{error:?}");
+    let failure = fixture.import_failure(&dir).await.expect("the refused start is recorded");
+    assert!(failure.reason.detail.contains("no stored bytes"), "{failure:?}");
+    let bugs = fixture.bugs.reports();
+    assert_eq!(bugs.len(), 1, "{bugs:?}");
+    assert!(bugs[0].0.contains("start the automatic import"), "{bugs:?}");
+}
+
+/// The library closing under an automatic start is not a failure of the
+/// candidate: nothing is recorded, nothing is reported, and nothing stays
+/// claimed.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_automatic_start_the_closing_library_stops_records_nothing() {
+    let fixture = Fixture::new("auto-import-stopped").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.identify_ready(&dir, "mb-stopped", "rg-stopped").await;
+    fixture.import.stop_and_join();
+
+    let error = fixture
+        .import
+        .import_identified(&key)
+        .await
+        .expect_err("a stopped service queues no import");
+
+    assert!(matches!(error, crate::ImportError::Stopped), "{error:?}");
+    assert_eq!(fixture.import_failure(&dir).await, None);
+    assert_eq!(fixture.bugs.reports(), Vec::new());
+    assert!(
+        fixture
+            .import
+            .candidate_runtime(&key)
+            .await
+            .unwrap()
+            .is_none_or(|runtime| runtime.import.is_none()),
+        "nothing claims the candidate"
+    );
 }
 
 impl Fixture {

@@ -68,7 +68,8 @@ impl ImportServiceHandle {
 
     /// [`Self::start_import`] for a candidate an identification run just
     /// settled as auto-importable. Nobody sees a refusal, so it is recorded as
-    /// the candidate's failed import.
+    /// the candidate's failed import, and one that is a bug is reported as
+    /// one.
     pub(crate) async fn import_identified(
         &self,
         candidate_key: &crate::CandidateKey,
@@ -84,14 +85,29 @@ impl ImportServiceHandle {
                 // The files are in the library: that is the Done candidate's
                 // own state, not a failed import.
                 Err(crate::ImportError::FilesAlreadyImported { .. }) => {}
-                Err(error) => this.record_failed_start(&candidate_key, error).await,
+                // The library is closing: nothing failed for the candidate.
+                Err(crate::ImportError::Stopped) => {}
+                Err(error) => {
+                    if matches!(
+                        error,
+                        crate::ImportError::Internal { .. } | crate::ImportError::Database(_)
+                    ) {
+                        this.diagnostics.report_bug(
+                            &format!("start the automatic import of {candidate_key}"),
+                            error,
+                        );
+                    }
+                    this.record_failed_start(&candidate_key, error).await
+                }
             }
             started
         })
         .await
     }
 
-    /// Record a refused start as `candidate_key`'s failed import.
+    /// Record a refused start as `candidate_key`'s failed import. No caller
+    /// waits to hear how that went, so a read or write that fails is a bug,
+    /// reported with the refusal it was recording.
     async fn record_failed_start(
         &self,
         candidate_key: &crate::CandidateKey,
@@ -104,8 +120,9 @@ impl ImportServiceHandle {
                 return;
             }
             Err(read) => {
-                tracing::error!(
-                    "could not read {candidate_key} to record its refused import: {read}"
+                self.diagnostics.report_bug(
+                    &format!("read {candidate_key} to record its refused import"),
+                    &format!("the import was refused: {error}; reading it failed: {read}"),
                 );
                 return;
             }
@@ -121,7 +138,10 @@ impl ImportServiceHandle {
             )
             .await
         {
-            tracing::error!("could not record the refused import of {candidate_key}: {write}");
+            self.diagnostics.report_bug(
+                &format!("record the refused import of {candidate_key}"),
+                &format!("the import was refused: {error}; recording that failed: {write}"),
+            );
         }
     }
 
@@ -448,9 +468,7 @@ impl ImportServiceHandle {
         {
             self.import_cancels.forget(&candidate_key, &import_id);
             self.release_import_claim(&candidate_key, &import_id).await?;
-            return Err(crate::ImportError::Internal {
-                detail: "Failed to queue import command".to_string(),
-            });
+            return Err(crate::ImportError::Stopped);
         }
         Ok(())
     }
