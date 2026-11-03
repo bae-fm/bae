@@ -85,7 +85,6 @@ fun Context.localizedLine(error: BridgeException): String? =
 fun Context.localizedLine(reason: BridgePlaybackErrorReason): String? =
     when (reason) {
         is BridgePlaybackErrorReason.SyncDisconnected,
-        is BridgePlaybackErrorReason.UploadPending,
         is BridgePlaybackErrorReason.NotUploaded,
         is BridgePlaybackErrorReason.OriginalMissing,
         is BridgePlaybackErrorReason.AudioOutput,

@@ -2086,7 +2086,7 @@ CREATE TABLE IF NOT EXISTS playback_now (
     -- detail. Each failure counts up `failures`, so two alike in a row are
     -- two values a screen tells apart.
     failure         TEXT CHECK (failure IN (
-        'sync_disconnected', 'upload_pending', 'not_uploaded', 'original_missing',
+        'sync_disconnected', 'not_uploaded', 'original_missing',
         'audio_output', 'internal', 'renderer')),
     failure_problem TEXT CHECK (failure_problem IN (
         'device_unavailable', 'unsupported_format', 'airplay_refused')),

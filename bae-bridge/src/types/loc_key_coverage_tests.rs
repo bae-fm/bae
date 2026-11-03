@@ -478,7 +478,6 @@ fn produced_keys() -> Vec<String> {
     // bridge_playback_error_reason_key — Diagnostic carries no key.
     for r in [
         BridgePlaybackErrorReason::SyncDisconnected,
-        BridgePlaybackErrorReason::UploadPending,
         BridgePlaybackErrorReason::NotUploaded,
         BridgePlaybackErrorReason::OriginalMissing,
         BridgePlaybackErrorReason::AudioOutput {

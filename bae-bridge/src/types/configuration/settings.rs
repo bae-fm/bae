@@ -297,9 +297,6 @@ pub enum BridgePlaybackErrorReason {
     /// A remote cloud-only track isn't downloaded and sync is disconnected —
     /// the user reconnects to play it.
     SyncDisconnected,
-    /// Another device attached the track and its upload hasn't reached
-    /// storage yet — the user waits for it to finish.
-    UploadPending,
     /// A local release imported on another device, which hasn't uploaded it.
     NotUploaded,
     /// A local release's original files are gone or changed on this device.
@@ -483,9 +480,6 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
         BridgePlaybackErrorReason::SyncDisconnected => {
             Some("core.playback.error.sync_disconnected".to_string())
         }
-        BridgePlaybackErrorReason::UploadPending => {
-            Some("core.playback.error.upload_pending".to_string())
-        }
         BridgePlaybackErrorReason::NotUploaded => Some("core.release.not_uploaded".to_string()),
         BridgePlaybackErrorReason::OriginalMissing => {
             Some("core.release.original_missing".to_string())
@@ -657,7 +651,6 @@ impl BridgePlaybackErrorReason {
         use bae_playback::PlaybackErrorReason;
         match reason {
             PlaybackErrorReason::SyncDisconnected => Self::SyncDisconnected,
-            PlaybackErrorReason::UploadPending => Self::UploadPending,
             PlaybackErrorReason::NotUploaded => Self::NotUploaded,
             PlaybackErrorReason::OriginalMissing => Self::OriginalMissing,
             PlaybackErrorReason::AudioOutput { problem } => {

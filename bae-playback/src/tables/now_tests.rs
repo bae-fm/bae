@@ -79,7 +79,6 @@ async fn each_change_reads_back_as_written() {
 
     for reason in [
         PlaybackErrorReason::SyncDisconnected,
-        PlaybackErrorReason::UploadPending,
         PlaybackErrorReason::NotUploaded,
         PlaybackErrorReason::OriginalMissing,
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::DeviceUnavailable },

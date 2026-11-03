@@ -15,13 +15,6 @@ pub enum PlaybackError {
     /// A playback invariant failed.
     #[error("Internal playback error: {0}")]
     Internal(String),
-    /// Another device attached the track's file and storage doesn't hold it
-    /// yet: its upload is still under way. Keyed so the user waits for the
-    /// upload instead of getting a missing-file diagnostic.
-    #[error(
-        "This release is still uploading to the cloud home — try again when the upload finishes"
-    )]
-    UploadPending,
     /// The audio output didn't start: the device's, the speaker's, or bae's
     /// own audio path's doing, as the error says.
     #[error("the audio output didn't start: {0}")]
@@ -50,7 +43,6 @@ impl PlaybackError {
     pub fn ui_reason(&self) -> crate::PlaybackErrorReason {
         use crate::PlaybackErrorReason;
         match self {
-            PlaybackError::UploadPending => PlaybackErrorReason::UploadPending,
             PlaybackError::AudioOutput(error) => {
                 use crate::AudioError;
                 use crate::AudioOutputProblem;

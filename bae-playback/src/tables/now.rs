@@ -259,7 +259,6 @@ fn failure_columns(
 ) -> (&'static str, Option<&'static str>, Option<&str>) {
     match reason {
         PlaybackErrorReason::SyncDisconnected => ("sync_disconnected", None, None),
-        PlaybackErrorReason::UploadPending => ("upload_pending", None, None),
         PlaybackErrorReason::NotUploaded => ("not_uploaded", None, None),
         PlaybackErrorReason::OriginalMissing => ("original_missing", None, None),
         PlaybackErrorReason::AudioOutput { problem } => (
@@ -391,7 +390,6 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
     };
     let reason = match failure.as_str() {
         "sync_disconnected" => PlaybackErrorReason::SyncDisconnected,
-        "upload_pending" => PlaybackErrorReason::UploadPending,
         "not_uploaded" => PlaybackErrorReason::NotUploaded,
         "original_missing" => PlaybackErrorReason::OriginalMissing,
         "audio_output" => {

@@ -11,9 +11,6 @@ pub enum PlaybackErrorReason {
     /// A remote cloud-only track has no local copy and sync is disconnected —
     /// the user reconnects cloud sync to play it. Actionable, keyed.
     SyncDisconnected,
-    /// Another device attached the release and its upload hasn't reached
-    /// storage yet — the user waits for the upload. Actionable, keyed.
-    UploadPending,
     /// A local release imported on another device, which hasn't uploaded it.
     /// Actionable, keyed.
     NotUploaded,
