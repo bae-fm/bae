@@ -1,9 +1,14 @@
-//! Cancelling an import: one waiting for the worker never starts, one running
+//! Cancelling an import: one waiting for the worker ends at once, one running
 //! is dropped before it writes, and either leaves the candidate as it stood
-//! before the import was asked for — no release, no recorded failure, nothing
-//! running — ready to be imported again.
+//! before the import was asked for — nothing written, nothing running — ready
+//! to be imported again.
 
 use super::*;
+use crate::handle::tests::*;
+use bae_util::test_channels::HANG_GUARD;
+use std::path::Path;
+use std::path::PathBuf;
+use tempfile::TempDir;
 
 /// Two picked candidates with their artists named, on one handle: enough to
 /// have one import running while another waits behind it.
@@ -20,9 +25,7 @@ async fn two_importable(
         handle
             .set_candidate_album_artists(
                 key,
-                vec![crate::Credited::plain(crate::ArtistAssignment::named(
-                    "Artist",
-                ))],
+                vec![crate::Credited::plain(crate::ArtistAssignment::named("Artist"))],
             )
             .await
             .unwrap();
@@ -203,11 +206,7 @@ async fn await_progress_of(
             .expect("the import event stream remains open");
         if let ImportEvent::ImportProgress {
             progress:
-                crate::ImportProgress::Progress {
-                    import_id: reported,
-                    phase: reported_phase,
-                    ..
-                },
+                crate::ImportProgress::Progress { import_id: reported, phase: reported_phase, .. },
             ..
         } = event
         {
@@ -269,10 +268,11 @@ async fn assert_imports_again_from_the_start(
     let mut shown = Vec::new();
     while let Ok(change) = changes.try_recv() {
         match change {
-            crate::candidate_runtime::CandidateRuntimeChange::Updated {
-                key: changed,
-                runtime,
-            } if changed == key.clone() => shown.extend(runtime.import),
+            crate::candidate_runtime::CandidateRuntimeChange::Updated { key: changed, runtime }
+                if changed == key.clone() =>
+            {
+                shown.extend(runtime.import)
+            }
             _ => {}
         }
     }

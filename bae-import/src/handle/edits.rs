@@ -307,3 +307,7 @@ impl ImportServiceHandle {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "edits_tests.rs"]
+mod tests;

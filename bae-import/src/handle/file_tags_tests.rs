@@ -1,0 +1,228 @@
+//! A candidate's file tags: the stored reading while its audio is unchanged,
+//! a new complete reading when the files, the scan or a file decision moved.
+
+use super::*;
+use crate::handle::tests::*;
+use bae_util::test_channels::HANG_GUARD;
+
+/// Apply the folder's own file tags as its metadata, reading them with
+/// `reader`.
+async fn pick_file_tags(
+    handle: &mut ImportServiceHandle,
+    key: &crate::CandidateKey,
+    reader: std::sync::Arc<CountingFileTagReader>,
+) -> Result<u64, crate::ImportError> {
+    handle.file_tags = reader;
+    handle.select_candidate_file_tags(key.clone()).await
+}
+
+/// The file-tag reading stored for the candidate at `key`.
+async fn stored_tags(
+    handle: &ImportServiceHandle,
+    candidate: &crate::folder_scanner::FolderCandidate,
+    key: &crate::CandidateKey,
+) -> Option<crate::file_tag_snapshot::FileTagSnapshot> {
+    let tables = handle.tables.clone();
+    tables
+        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, key)
+        .await
+        .unwrap()
+        .expect("the candidate remains stored")
+        .snapshot
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        unread_stored_candidate().await;
+    let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
+
+    let error = pick_file_tags(&mut handle, &key, reader.clone())
+        .await
+        .expect_err("the second unreadable audio file rejects the complete reading");
+    let stored = stored_tags(&handle, &candidate, &key).await;
+    shut_down(handle).await;
+
+    assert!(error.to_string().contains("fixture tag read 1 failed"));
+    assert_eq!(reader.read_count(), 2);
+    assert!(stored.is_none(), "facts from the first file cannot land without the complete reading");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        unread_stored_candidate().await;
+    let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
+
+    pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
+    assert_eq!(reader.read_count(), 2);
+    let read = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap();
+
+    assert_eq!(Some(read.snapshot), stored_tags(&handle, &candidate, &key).await);
+    assert_eq!(
+        reader.read_count(),
+        2,
+        "an exact stored observation avoids opening the audio tags again"
+    );
+    shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn changed_file_observations_read_the_tags_again() {
+    let StoredCandidate { mut handle, mut candidate, key, tmp, .. } =
+        unread_stored_candidate().await;
+    let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
+
+    pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
+
+    let first_audio = tmp.path().join("watched/Album/01 Track.flac");
+    let audio = std::fs::OpenOptions::new().write(true).open(&first_audio).unwrap();
+    audio
+        .set_times(
+            std::fs::FileTimes::new()
+                .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(5)),
+        )
+        .unwrap();
+
+    let after_modified_time =
+        handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
+    assert_eq!(reader.read_count(), 4);
+    assert_eq!(titles(&after_modified_time), vec![Some("Track Title 3"), Some("Track Title 4")]);
+
+    let second_audio = tmp.path().join("watched/Album/02 Track.flac");
+    let mut audio = std::fs::OpenOptions::new().append(true).open(&second_audio).unwrap();
+    std::io::Write::write_all(&mut audio, &[0]).unwrap();
+    candidate
+        .files
+        .files
+        .iter_mut()
+        .find(|file| file.file.relative_path == "02 Track.flac")
+        .unwrap()
+        .file
+        .size = std::fs::metadata(&second_audio).unwrap().len();
+    rescan_unread_into(&handle.tables, candidate).await;
+
+    let after_size = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
+    assert_eq!(reader.read_count(), 6);
+    assert_eq!(titles(&after_size), vec![Some("Track Title 5"), Some("Track Title 6")]);
+    shut_down(handle).await;
+}
+
+/// A scan that finds the same files leaves the stored reading standing — it
+/// re-read the very files that reading was taken from — while a file decision
+/// makes the candidate a different shape and its tags are read again.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_file_decision_makes_the_tags_read_again() {
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        unread_stored_candidate().await;
+    let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
+    pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
+
+    rescan_into(&handle.tables, candidate).await;
+
+    let after_generation =
+        handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
+    assert_eq!(reader.read_count(), 2);
+    assert_eq!(titles(&after_generation), vec![Some("Track Title 1"), Some("Track Title 2")]);
+    shut_down(handle).await;
+
+    let StoredCandidate { mut handle, key, tmp: _tmp, .. } =
+        stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
+    pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
+
+    handle
+        .set_sheet_disc(
+            key.clone(),
+            "Disc.cue".to_string(),
+            crate::folder_scanner::SheetDisc::Ignored,
+        )
+        .await
+        .unwrap();
+
+    let after_file_edit =
+        handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
+    assert_eq!(reader.read_count(), 4);
+    assert_eq!(titles(&after_file_edit), vec![Some("Track Title 3"), Some("Track Title 4")]);
+    shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
+    let StoredCandidate { handle, candidate, key, tmp, .. } =
+        stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let hash = candidate.files.content_hash();
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
+    let stale = crate::preparation::import_preparation(&handle.tables, &hash)
+        .await
+        .unwrap()
+        .expect("the candidate starts prepared");
+    handle
+        .set_sheet_disc(
+            key.clone(),
+            "Disc.cue".to_string(),
+            crate::folder_scanner::SheetDisc::Ignored,
+        )
+        .await
+        .unwrap();
+    let snapshot = handle
+        .read_file_tag_snapshot(&key, std::sync::Arc::new(CountingFileTagReader::immediate()))
+        .await
+        .unwrap()
+        .snapshot;
+    let root = tmp.path().join("watched");
+
+    let error = handle
+        .preparations
+        .apply_file_metadata(
+            &root,
+            &key,
+            &crate::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: stale.file_edit_revision,
+                metadata_revision: stale.metadata_revision,
+            },
+            &snapshot,
+            &stale.draft,
+            stale.cover.as_ref(),
+        )
+        .await
+        .expect_err("the new file snapshot cannot carry mappings from the old file revision");
+
+    assert!(error.to_string().contains("candidate changed"), "{error}");
+    shut_down(handle).await;
+}
+
+/// Tags read while a scan stored the candidate again describe an older scan,
+/// so picking them reads them again and stores the reading of the newer one.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        unread_stored_candidate().await;
+    let (reader, reached, gate) = CountingFileTagReader::held();
+    let reader = std::sync::Arc::new(reader);
+    handle.file_tags = reader.clone();
+    let operation = tokio::spawn({
+        let handle = handle.clone();
+        let key = key.clone();
+        async move { handle.select_candidate_file_tags(key).await }
+    });
+    reached.recv_timeout(HANG_GUARD).expect("the tag reader reached the first audio file");
+
+    rescan_into(&handle.tables, candidate.clone()).await;
+    gate.open();
+
+    operation.await.unwrap().expect("the pick reads the tags of the newer scan");
+    let stored = handle
+        .tables
+        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
+        .await
+        .unwrap()
+        .expect("the candidate remains stored");
+    assert_eq!(reader.read_count(), 4, "the tags were read twice");
+    assert_eq!(
+        stored.snapshot.map(|snapshot| snapshot.scan_generation),
+        Some(stored.scan_generation)
+    );
+    shut_down(handle).await;
+}

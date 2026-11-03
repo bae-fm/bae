@@ -244,3 +244,7 @@ impl ImportServiceHandle {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "combinations_tests.rs"]
+mod tests;

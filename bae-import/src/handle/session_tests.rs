@@ -1,4 +1,7 @@
-use super::*;
+//! The pane's session: its parts read back as written, and a pane command's
+//! failure stored until the next command.
+
+use crate::handle::tests::*;
 use crate::{
     ImportError, MetadataPresentation, PaneCommand, PaneFailure, PaneMove, PaneOutcome, SearchForm,
     SearchTab,
@@ -46,10 +49,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
 async fn a_session_write_for_an_unknown_key_is_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .move_candidate_pane(
-            &crate::CandidateKey::test("/nowhere/at/all"),
-            PaneMove::FindOnline,
-        )
+        .move_candidate_pane(&crate::CandidateKey::test("/nowhere/at/all"), PaneMove::FindOnline)
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;

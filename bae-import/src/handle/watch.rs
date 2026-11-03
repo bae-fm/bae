@@ -189,3 +189,7 @@ impl ImportServiceHandle {
             .map_err(|detail| crate::ImportError::Watch { detail })
     }
 }
+
+#[cfg(test)]
+#[path = "watch_tests.rs"]
+mod tests;

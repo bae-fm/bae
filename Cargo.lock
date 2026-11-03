@@ -1143,8 +1143,10 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "coven",
+ "reqwest",
  "rusqlite",
  "serde",
+ "serde_json",
  "thiserror 2.0.18",
  "tokio",
 ]

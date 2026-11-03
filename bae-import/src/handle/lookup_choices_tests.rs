@@ -1,12 +1,15 @@
+//! The person's lookup choices: what a run looks up by, read back on the pane,
+//! kept over a pick or a new reading of the tags, and asking for another run
+//! only when they change what the run looks up.
+
 use super::*;
+use crate::handle::tests::*;
+use bae_catalogs::fake_catalogs::FakeCatalogs;
+use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_identify::{ChoiceChange, LookupChoiceEdit, LookupChoices};
 
 fn barcode(code: &str) -> LookupChoiceEdit {
     LookupChoiceEdit::ToggleBarcode { code: code.to_string() }
-}
-
-fn catalog(number: &str) -> LookupChoiceEdit {
-    LookupChoiceEdit::ToggleCatalog { number: number.to_string() }
 }
 
 fn discounted(number: &str) -> LookupChoiceEdit {
@@ -234,104 +237,4 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
         .await
         .unwrap();
     assert!(stored, "the settled signals land on the fixture candidate");
-}
-
-pub(super) async fn pick(
-    handle: &ImportServiceHandle,
-    key: &crate::CandidateKey,
-    release_id: &str,
-) {
-    handle
-        .select_candidate_release(
-            key.clone(),
-            bae_identify::PressingLink {
-                record: bae_catalogs::records::LookupRef::new(
-                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
-                    release_id.to_string(),
-                ),
-                partners: vec![],
-            },
-            crate::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
-}
-
-/// A two-track MusicBrainz release carrying `catalog_number`, in no release
-/// group so the pick fetches no cover.
-pub(super) fn seed_mb_release_with_catalog(
-    fakes: &FakeCatalogs,
-    release_id: &str,
-    catalog_number: &str,
-) {
-    seed_mb_release(fakes, release_id, catalog_number, false);
-}
-
-/// [`seed_mb_release_with_catalog`]'s release, with the Cover Art Archive
-/// stating a front image for it.
-pub(super) fn seed_mb_release_with_front(
-    fakes: &FakeCatalogs,
-    release_id: &str,
-    catalog_number: &str,
-) {
-    seed_mb_release(fakes, release_id, catalog_number, true);
-}
-
-fn seed_mb_release(
-    fakes: &FakeCatalogs,
-    release_id: &str,
-    catalog_number: &str,
-    front: bool,
-) {
-    let response = bae_catalogs::musicbrainz::MbReleaseResponse {
-        id: release_id.to_string(),
-        title: "Album Title".to_string(),
-        disambiguation: None,
-        annotation: None,
-        date: Some("1996".to_string()),
-        country: Some("US".to_string()),
-        status: None,
-        packaging: None,
-        barcode: None,
-        artist_credit: vec![bae_catalogs::musicbrainz::MbArtistCredit {
-            joinphrase: None,
-            name: "Artist Name".to_string(),
-            artist: Some(bae_catalogs::musicbrainz::MbArtistRef {
-                id: Some("mb-artist-1".to_string()),
-                name: Some("Artist Name".to_string()),
-                sort_name: Some("Artist Name".to_string()),
-            }),
-        }],
-        release_group: None,
-        label_info: vec![bae_catalogs::musicbrainz::MbLabelInfo {
-            label: Some(bae_catalogs::musicbrainz::MbLabel {
-                id: None,
-                name: Some("Label Name".to_string()),
-            }),
-            catalog_number: Some(catalog_number.to_string()),
-        }],
-        media: vec![bae_catalogs::musicbrainz::MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: (1..=2)
-                .map(|number| bae_catalogs::musicbrainz::MbTrack {
-                    position: Some(number),
-                    number: Some(number.to_string()),
-                    title: None,
-                    length: None,
-                    recording: Some(bae_catalogs::musicbrainz::MbRecording {
-                        id: None,
-                        title: Some("Track One".to_string()),
-                        artist_credit: vec![],
-                        relations: vec![],
-                    }),
-                    artist_credit: vec![],
-                })
-                .collect(),
-        }],
-        relations: vec![],
-        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive { front, darkened: false },
-    };
-    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    fakes.seed_musicbrainz_release(release_id, raw_json);
 }

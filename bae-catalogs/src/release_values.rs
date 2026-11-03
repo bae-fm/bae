@@ -179,3 +179,7 @@ pub fn place_labels(
 pub fn value_labels(values: &ReleaseValues) -> Vec<String> {
     place_labels(&values.mediums, values.tracks.iter().map(|track| track.place))
 }
+
+#[cfg(test)]
+#[path = "release_values_tests.rs"]
+mod tests;

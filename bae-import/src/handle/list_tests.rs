@@ -5,7 +5,12 @@
 //! off the page delivers one.
 
 use super::*;
+use crate::handle::tests::*;
 use crate::{ImportListView, LiveImportList, PendingFilter};
+use bae_catalogs::fake_catalogs::FakeCatalogs;
+use bae_catalogs::test_releases::seed_mb_release_with_catalog;
+use bae_util::test_channels::HANG_GUARD;
+use tempfile::TempDir;
 
 /// The list under one filter entry, and the keys and filter entries its last
 /// snapshot carried.
@@ -32,8 +37,7 @@ impl LiveList {
     /// Wait until the list shows exactly `expected`; at once when it already
     /// does, since a change that moves no row delivers nothing.
     async fn shows(&mut self, expected: &[&crate::CandidateKey]) {
-        let wanted: Vec<crate::CandidateKey> =
-            expected.iter().map(|key| (*key).clone()).collect();
+        let wanted: Vec<crate::CandidateKey> = expected.iter().map(|key| (*key).clone()).collect();
         let reached = tokio::time::timeout(HANG_GUARD, async {
             while self.shown.as_ref() != Some(&wanted) {
                 self.next().await;
@@ -74,9 +78,7 @@ impl LiveList {
                 .iter()
                 .flat_map(|window| &window.items)
                 .filter_map(|item| match item {
-                    crate::ImportListItem::Candidate { row, .. } => {
-                        Some(row.candidate_key.clone())
-                    }
+                    crate::ImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
                     _ => None,
                 })
                 .collect(),
@@ -198,20 +200,13 @@ async fn the_entry_counts_follow_what_is_running() {
 /// first item alone: the key on that page, and the key off it.
 async fn one_row_on_the_page(
     providers: bae_catalogs::providers::Providers,
-) -> (
-    ImportServiceHandle,
-    TempDir,
-    LiveImportList,
-    crate::CandidateKey,
-    crate::CandidateKey,
-) {
+) -> (ImportServiceHandle, TempDir, LiveImportList, crate::CandidateKey, crate::CandidateKey) {
     let (parts, database, tmp) = setup_test_import_with(providers).await;
     let tables = crate::tables::ImportTables::new(database);
     let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&tables, &tmp, "Other Record").await;
     let root = first.watched_folder_path.clone();
-    let generation =
-        tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     for candidate in [first, second] {
         crate::store_scan_item(
             &tables,
@@ -256,8 +251,7 @@ async fn one_row_on_the_page(
 fn candidate_key(item: &crate::ImportListItem) -> Option<&crate::CandidateKey> {
     match item {
         crate::ImportListItem::Candidate { row, .. } => Some(&row.candidate_key),
-        crate::ImportListItem::GroupHeader { .. }
-        | crate::ImportListItem::Invalid { .. } => None,
+        crate::ImportListItem::GroupHeader { .. } | crate::ImportListItem::Invalid { .. } => None,
     }
 }
 
@@ -306,9 +300,9 @@ async fn a_run_off_the_page_delivers_its_count() {
 async fn a_verdict_off_the_page_delivers_its_count() {
     let fakes = FakeCatalogs::offline();
     let (handle, _tmp, list, _on_page, off_page) = one_row_on_the_page(fakes.providers()).await;
-    super::lookup_choices::seed_mb_release_with_catalog(&fakes, "off-the-page", "CAT-1");
+    seed_mb_release_with_catalog(&fakes, "off-the-page", "CAT-1");
 
-    super::lookup_choices::pick(&handle, &off_page, "off-the-page").await;
+    pick(&handle, &off_page, "off-the-page").await;
     // The pick's write and its cancelling the row's run each deliver; while
     // the run still goes it counts the row under In Progress.
     let moved = loop {

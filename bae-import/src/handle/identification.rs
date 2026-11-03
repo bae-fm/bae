@@ -195,3 +195,7 @@ impl ImportServiceHandle {
         self.runtime.run_signals(candidate_key, run).await
     }
 }
+
+#[cfg(test)]
+#[path = "identification_tests.rs"]
+mod tests;

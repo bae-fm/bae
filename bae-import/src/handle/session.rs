@@ -146,3 +146,7 @@ impl ImportServiceHandle {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "session_tests.rs"]
+mod tests;

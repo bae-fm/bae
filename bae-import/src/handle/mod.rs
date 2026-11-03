@@ -11,8 +11,14 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
+mod cancel;
 mod combinations;
+mod commit;
+mod covers;
 mod edits;
+mod event_bus;
+mod file_decisions;
+mod file_tags;
 mod identification;
 mod import;
 mod list;
@@ -24,6 +30,7 @@ mod shared_album;
 mod verdict_write;
 mod watch;
 
+pub use event_bus::ImportEventBus;
 pub use import::ImportStart;
 pub(crate) use scan::external_metadata_with_cover;
 pub(crate) use verdict_write::VerdictWrite;
@@ -34,227 +41,8 @@ use super::candidates::{
 };
 
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;
-
-/// The import event channel and the candidate runtime it records into.
-///
-/// Every event is recorded in the runtime before any reader hears it, so a
-/// reader that hears an event and then asks the runtime finds its effect
-/// already there.
-#[derive(Clone)]
-pub struct ImportEventBus {
-    delivery: EventDelivery,
-    runtime: CandidateRuntime,
-    /// Stops the thread sending one chosen event until a test lets it
-    /// through, so the test can act partway through the work that sends it.
-    #[cfg(any(test, feature = "test-utils"))]
-    send_hold: Arc<SendHold>,
-}
-
-/// Where [`ImportEventBus::hold_send_where`] stops a sender.
-#[cfg(any(test, feature = "test-utils"))]
-struct SendHold {
-    state: std::sync::Mutex<HoldState>,
-    changed: std::sync::Condvar,
-    /// Set once a sender is stopped, for a test to await.
-    held: tokio::sync::watch::Sender<bool>,
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl Default for SendHold {
-    fn default() -> Self {
-        Self {
-            state: Default::default(),
-            changed: Default::default(),
-            held: tokio::sync::watch::Sender::new(false),
-        }
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-#[derive(Default)]
-enum HoldState {
-    #[default]
-    Off,
-    /// The next event this matches stops its sender.
-    Armed(Box<dyn Fn(&ImportEvent) -> bool + Send>),
-    /// A sender is stopped, its event neither recorded nor delivered.
-    Held,
-    /// The stopped sender was let go.
-    Released,
-}
-
-/// The one way an event reaches the bus's readers.
-#[derive(Clone)]
-struct EventDelivery {
-    every_event: Arc<std::sync::Mutex<EveryEvent>>,
-    /// The feed's end, holding every event since the bus started, until the
-    /// one reader in the app that acts on every event takes it.
-    feed: Arc<std::sync::Mutex<Option<mpsc::UnboundedReceiver<ImportEvent>>>>,
-}
-
-/// The readers that hear every event, and — for a test reader from the start
-/// — every event delivered so far, under one lock so a reader misses nothing
-/// and hears nothing twice.
-struct EveryEvent {
-    readers: Vec<mpsc::UnboundedSender<ImportEvent>>,
-    #[cfg(any(test, feature = "test-utils"))]
-    delivered: Vec<ImportEvent>,
-}
-
-impl EventDelivery {
-    fn new() -> Self {
-        let (feed_reader, feed) = mpsc::unbounded_channel();
-        Self {
-            every_event: Arc::new(std::sync::Mutex::new(EveryEvent {
-                readers: vec![feed_reader],
-                #[cfg(any(test, feature = "test-utils"))]
-                delivered: Vec::new(),
-            })),
-            feed: Arc::new(std::sync::Mutex::new(Some(feed))),
-        }
-    }
-
-    /// Hand `event` to every reader.
-    fn deliver(&self, event: ImportEvent) {
-        let mut every_event = self.every_event.lock().unwrap();
-        #[cfg(any(test, feature = "test-utils"))]
-        every_event.delivered.push(event.clone());
-        every_event.readers.retain(|reader| reader.send(event.clone()).is_ok());
-    }
-}
-
-impl ImportEventBus {
-    /// A bus recording into `runtime`.
-    pub fn new(runtime: CandidateRuntime) -> Self {
-        Self {
-            delivery: EventDelivery::new(),
-            runtime,
-            #[cfg(any(test, feature = "test-utils"))]
-            send_hold: Arc::default(),
-        }
-    }
-
-    /// Record `event` in the runtime, then hand it to every reader.
-    pub fn send(&self, event: ImportEvent) {
-        #[cfg(any(test, feature = "test-utils"))]
-        self.wait_if_held(&event);
-        self.runtime.record_event(&event);
-        self.delivery.deliver(event);
-    }
-
-    /// Record `event` in the runtime, await `written` — the standing it
-    /// announces — and hand the event to every reader only once that write
-    /// landed: a reader that hears it finds the standing in the table, and
-    /// what the event says beside it already recorded. A write that fails is
-    /// returned, and the event is not sent.
-    pub(crate) async fn send_once_written<E>(
-        &self,
-        event: ImportEvent,
-        written: impl std::future::Future<Output = Result<(), E>>,
-    ) -> Result<(), E> {
-        #[cfg(any(test, feature = "test-utils"))]
-        self.wait_if_held(&event);
-        self.runtime.record_event(&event);
-        written.await?;
-        self.delivery.deliver(event);
-        Ok(())
-    }
-
-    /// Every event since the bus started, none dropped, each on the reader
-    /// before its send returns, for the one reader in the app that acts on
-    /// every event, whenever it starts. A reader that also takes commands
-    /// hears every event sent before a command before the command itself.
-    /// `None` once taken.
-    pub(crate) fn take_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {
-        self.delivery.feed.lock().unwrap().take()
-    }
-
-    /// Every event sent from now on, none dropped, for a test to wait on.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
-        let (reader, events) = mpsc::unbounded_channel();
-        self.delivery.every_event.lock().unwrap().readers.push(reader);
-        events
-    }
-
-    /// Every event this bus has delivered and will deliver, none dropped —
-    /// for a test that starts reading after the work it waits on began.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_event_from_start(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
-        let (reader, events) = mpsc::unbounded_channel();
-        let mut every_event = self.delivery.every_event.lock().unwrap();
-        for event in &every_event.delivered {
-            #[expect(
-                clippy::let_underscore_must_use,
-                reason = "the receiver is returned below, so the send cannot fail"
-            )]
-            let _ = reader.send(event.clone());
-        }
-        every_event.readers.push(reader);
-        events
-    }
-
-    /// Stop the first thread that sends an event `matches` takes, before the
-    /// event is recorded or delivered, until [`Self::release_send`].
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn hold_send_where(&self, matches: impl Fn(&ImportEvent) -> bool + Send + 'static) {
-        *self.send_hold.state.lock().unwrap() = HoldState::Armed(Box::new(matches));
-    }
-
-    /// [`Self::hold_send_where`] a measured percent of `phase` above zero:
-    /// those come from the threads doing the work, while a zero comes from
-    /// the worker, which must stay free to hear a cancel.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn hold_progress_at(&self, phase: crate::ImportPhase) {
-        self.hold_send_where(move |event| {
-            matches!(
-                event,
-                ImportEvent::ImportProgress {
-                    progress: ImportProgress::Progress {
-                        phase: sent,
-                        percent: Some(percent),
-                        ..
-                    },
-                    ..
-                } if *sent == phase && *percent > 0
-            )
-        });
-    }
-
-    /// Wait until a sender is stopped where [`Self::hold_send_where`] said.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) async fn send_held(&self) {
-        self.send_hold
-            .held
-            .subscribe()
-            .wait_for(|held| *held)
-            .await
-            .expect("the hold outlives the wait for it");
-    }
-
-    /// Let the stopped sender go on.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn release_send(&self) {
-        *self.send_hold.state.lock().unwrap() = HoldState::Released;
-        self.send_hold.changed.notify_all();
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    fn wait_if_held(&self, event: &ImportEvent) {
-        let mut state = self.send_hold.state.lock().unwrap();
-        if !matches!(&*state, HoldState::Armed(matches) if matches(event)) {
-            return;
-        }
-        *state = HoldState::Held;
-        self.send_hold.held.send_replace(true);
-        let _released = self
-            .send_hold
-            .changed
-            .wait_while(state, |state| matches!(state, HoldState::Held))
-            .unwrap();
-    }
-}
 
 /// Every event the import service emits, on one channel.
 #[derive(Debug, Clone)]
@@ -816,65 +604,6 @@ impl ImportServiceHandle {
             .map(|runtime| ImportCandidateSnapshot::Runtime { key: key.to_string(), runtime }))
     }
 
-    /// The stored candidate whose preparation may still be changed. A caller
-    /// about to write holds `folder_state_commit` across this and the write so
-    /// an import claim cannot land between them; without the lock it only
-    /// refuses early.
-    pub(super) async fn editable_candidate_for_commit(
-        &self,
-        key: &crate::CandidateKey,
-    ) -> Result<crate::folder_scanner::FolderCandidate, crate::ImportError> {
-        let candidate =
-            self.get_release_candidate(key).await?.ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{key} is not an actionable folder candidate"),
-            })?;
-        self.candidate_standing(key, &candidate).await?.editable()?;
-        Ok(candidate)
-    }
-
-    /// Whether the stored candidate at `key` is set aside, already in the
-    /// library, or claimed by a running import — the claim read from its
-    /// standing, which a caller about to write reads under the commit lock.
-    /// Read from the tables because the list's query lands after the commit
-    /// it reflects.
-    pub(crate) async fn candidate_standing(
-        &self,
-        key: &crate::CandidateKey,
-        candidate: &crate::folder_scanner::FolderCandidate,
-    ) -> Result<crate::CandidateStanding, crate::ImportError> {
-        Ok(crate::CandidateStanding {
-            skipped: self.tables.is_release_candidate_skipped(candidate).await?,
-            imported: self
-                .tables
-                .release_imported_from(&candidate.files.content_hash())
-                .await?
-                .is_some(),
-            claimed: self.runtime.import_claimed(key).await?,
-        })
-    }
-
-    /// Take `folder_state_commit` and recheck under it that the candidate is
-    /// still at the revision the edit was prepared from. The caller holds the
-    /// guard across its write; `operation` names it in the lock's log lines.
-    pub(super) async fn commit_lock_for_revision(
-        &self,
-        operation: &'static str,
-        key: &crate::CandidateKey,
-        expected_content_hash: &str,
-        expected_file_edit_revision: u64,
-    ) -> Result<crate::FolderStateCommitGuard, crate::ImportError> {
-        let commit = self.folder_state_commit.lock(operation).await;
-        let candidate = self.editable_candidate_for_commit(key).await?;
-        if candidate.files.content_hash() != expected_content_hash
-            || candidate.file_edit_revision != expected_file_edit_revision
-        {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{key} changed before its edit could be stored"),
-            });
-        }
-        Ok(commit)
-    }
-
     /// Claim `candidate_key` for the test import `import_id`, under the lock
     /// [`Self::save_candidate_verdict_if_current`] holds across its check and
     /// write, so no verdict is stored for a claimed candidate.
@@ -890,60 +619,4 @@ impl ImportServiceHandle {
             .await
             .expect("a test claims a candidate no import owns");
     }
-
-    async fn release_import_claim(
-        &self,
-        candidate_key: &crate::CandidateKey,
-        import_id: &str,
-    ) -> Result<(), crate::ImportError> {
-        let _commit = self.folder_state_commit.lock("release an import claim").await;
-        Ok(self.runtime.move_import(candidate_key, import_id, None).await?)
-    }
-
-    /// Run a durable write to completion once it has been asked for.
-    ///
-    /// The write runs as a task on the import runtime and this only waits on
-    /// it, so dropping the caller's future ends the wait and nothing else.
-    /// Coven commits a write whether or not the future that asked survives, so
-    /// the bookkeeping and lock release after it must run too. Fails through
-    /// `From<TaskFailed>` only when the task panicked, which is reported as a
-    /// bug, or the runtime is gone.
-    pub(crate) async fn committed<V, E>(
-        &self,
-        write: impl std::future::Future<Output = Result<V, E>> + Send + 'static,
-    ) -> Result<V, E>
-    where
-        V: Send + 'static,
-        E: From<bae_util::task_failure::TaskFailed> + Send + 'static,
-    {
-        bae_util::task_failure::joined("a candidate write", self.runtime_handle.spawn(write))
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))?
-    }
-}
-
-/// Remap the parsed (temporary) IDs a link row points at to their actual DB IDs.
-///
-/// A `ReleaseRows`'s link rows reference artist and work IDs minted when the
-/// rows were built; reconcile may have resolved those to existing DB rows. `label` names
-/// the endpoint being remapped in the unmapped-ID error.
-pub(crate) fn remap_links<T: Clone>(
-    links: &[T],
-    id_map: &HashMap<String, String>,
-    label: &str,
-    target_id: impl Fn(&T) -> &str,
-    assign_target_id: impl Fn(&mut T, String),
-) -> Result<Vec<T>, crate::ImportError> {
-    links
-        .iter()
-        .map(|link| {
-            let parsed_id = target_id(link);
-            let actual_id = id_map.get(parsed_id).ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{label} ID {parsed_id} not found in the import's ID map"),
-            })?;
-            let mut remapped = link.clone();
-            assign_target_id(&mut remapped, actual_id.clone());
-            Ok(remapped)
-        })
-        .collect()
 }

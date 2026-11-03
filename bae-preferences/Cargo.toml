@@ -32,6 +32,9 @@ thiserror = { workspace = true }
 [dev-dependencies]
 # Test databases with bae's schema.
 bae-db = { workspace = true, features = ["test-utils"] }
+# The HTTP status and the JSON failure a Discogs check can end with.
+reqwest = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "time"] }
 
 [features]

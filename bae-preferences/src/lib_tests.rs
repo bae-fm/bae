@@ -206,3 +206,37 @@ fn side_pause_countdown_duration_is_the_offered_length() {
     assert_eq!(SidePauseCountdown::Seconds45.duration(), Some(Duration::from_secs(45)));
     assert_eq!(SidePauseCountdown::Seconds60.duration(), Some(Duration::from_secs(60)));
 }
+
+/// A key is stored as Discogs' check of it left it: rejected only on a 401,
+/// unvalidated whenever Discogs could not confirm it.
+#[cfg(desktop)]
+#[test]
+fn validation_folds_validate_token_outcomes() {
+    use bae_catalogs::discogs::client::DiscogsError;
+    use bae_catalogs::providers::DiscogsCheck;
+
+    assert_eq!(DiscogsValidation::of(&DiscogsCheck::of(Ok(()))), DiscogsValidation::Valid);
+    // A 401 is the one outcome that rejects the stored key.
+    assert_eq!(
+        DiscogsValidation::of(&DiscogsCheck::of(Err(DiscogsError::InvalidApiKey))),
+        DiscogsValidation::Rejected
+    );
+    // Anything that merely fails to confirm the key leaves it unvalidated
+    // to retry — never rejected — and keeps why.
+    for couldnt_confirm in [
+        DiscogsError::Provider {
+            status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
+            told_wait: None,
+        },
+        DiscogsError::NotFound,
+        DiscogsError::Serialization(serde_json::from_str::<i32>("nope").unwrap_err()),
+    ] {
+        let reason = couldnt_confirm.to_string();
+        let check = DiscogsCheck::of(Err(couldnt_confirm));
+        assert_eq!(DiscogsValidation::of(&check), DiscogsValidation::Unvalidated);
+        let DiscogsCheck::Unchecked(kept) = check else {
+            panic!("a check Discogs could not answer keeps its failure");
+        };
+        assert_eq!(kept.to_string(), reason);
+    }
+}

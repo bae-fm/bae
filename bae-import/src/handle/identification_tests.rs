@@ -1,9 +1,15 @@
-//! A person's decision about a candidate ends its identification inside the
-//! decision's own write: no delivery of the list shows the decision beside
-//! the candidate still being identified.
+//! A person's decision about a candidate ends its identification in the
+//! decision's own write: no delivery of the list shows the decision beside the
+//! candidate still being identified. A cancel whose end cannot be written
+//! fails and ends nothing.
 
 use super::*;
+use crate::handle::tests::*;
 use crate::{ImportListSnapshot, ImportListView, PendingFilter, TriageRow, TriageTab};
+use bae_catalogs::fake_catalogs::FakeCatalogs;
+use bae_catalogs::test_releases::seed_discogs_pressing;
+use bae_util::test_channels::HANG_GUARD;
+use tempfile::TempDir;
 
 /// Every candidate row a snapshot holds, with whether it reads as being
 /// identified.
@@ -114,8 +120,7 @@ async fn reading_the_files_tags_ends_identification_in_its_write() {
         |rows| {
             rows.iter().any(|(row, _)| {
                 row.candidate_key == key
-                    && row.metadata_provenance
-                        == Some(crate::MetadataProvenance::FileMetadata)
+                    && row.metadata_provenance == Some(crate::MetadataProvenance::FileMetadata)
             })
         },
     )
@@ -133,7 +138,7 @@ async fn a_pick_ends_identification_in_its_write() {
         .await
         .unwrap();
     let release_id = "70000301";
-    super::metadata_application::seed_discogs_pressing(&fakes, release_id, "Label Name", "CAT-1");
+    seed_discogs_pressing(&fakes, release_id, "Label Name", "CAT-1");
     identifying(&handle, &key).await;
     let deciding = handle.clone();
     let decided_key = key.clone();
@@ -171,7 +176,7 @@ async fn a_pick_ends_identification_in_its_write() {
 async fn linking_the_shared_album_ends_identification_in_its_write() {
     let fakes = FakeCatalogs::offline();
     let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
-    super::shared_album::store_two_pressings(&handle, &fakes, &hash).await;
+    store_two_pressings(&handle, &fakes, &hash).await;
     identifying(&handle, &key).await;
     let deciding = handle.clone();
     let decided_key = key.clone();
@@ -250,5 +255,31 @@ async fn combining_ends_its_folders_identification_in_its_write() {
             "{key}'s identification ended with the combination"
         );
     }
+    shut_down(handle).await;
+}
+
+/// A cancel of an identification whose end cannot be written fails to the
+/// person who asked, and the candidate still reads as being identified.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cancel_whose_end_cannot_be_written_fails_and_ends_nothing() {
+    let (handle, tmp, key, _hash) = pane_fixture().await;
+    admit(&handle, &key).await;
+    start_run(&handle, &key, crate::IdentifyRunId::for_test(1)).await;
+    crate::candidate_runtime::tests::fail_standing_writes(
+        tmp.path(),
+        &[
+            ("DELETE", "OLD.identification = 'running'"),
+            ("UPDATE", "OLD.identification = 'running'"),
+        ],
+    )
+    .await;
+
+    let error = handle.cancel_identification(&key).await.unwrap_err();
+
+    assert!(error.to_string().contains("the disk is full"), "{error}");
+    assert_eq!(
+        handle.standing_facts_for_test(&key).await.identification,
+        Some(crate::IdentificationStatus::Running)
+    );
     shut_down(handle).await;
 }

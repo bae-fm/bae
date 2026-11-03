@@ -106,3 +106,7 @@ impl ImportServiceHandle {
             .await
     }
 }
+
+#[cfg(test)]
+#[path = "shared_album_tests.rs"]
+mod tests;

@@ -5,6 +5,7 @@ use super::*;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::credits::{ArtistCredit, CreditedRole, SourceCredit};
 use bae_catalogs::release_values::TrackValues;
+use bae_catalogs::test_releases::{mb_credit, mb_release_values, mb_vinyl_release};
 use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
 
 /// A credit to `name`, with the ids given.
@@ -364,4 +365,59 @@ fn one_composer_of_a_work_and_its_part_commits_as_one_artist() {
     );
     assert!(!rows.album_artists.iter().any(|link| committed[&link.artist_id] == composer));
     assert!(!rows.track_artists.iter().any(|link| committed[&link.artist_id] == composer));
+}
+
+/// The editor seed for a release: its reading's editable values.
+fn seed_for(response: &bae_catalogs::musicbrainz::MbReleaseResponse) -> crate::ReleaseUserEdit {
+    user_edit(&mb_release_values(response))
+}
+
+/// Every artist the release credits reaches the editor, in credit order. The
+/// picker's display shape collapses them to one name; the seed must not, or the
+/// commit's artist comparison reads an untouched list as an edit and drops the
+/// junction rows.
+#[test]
+fn seed_carries_every_album_artist() {
+    let mut response = mb_vinyl_release("vinyl-release");
+    response.artist_credit =
+        vec![mb_credit("mb-artist-a", "Artist A"), mb_credit("mb-artist-b", "Artist B")];
+
+    let edit = seed_for(&response);
+
+    let names: Vec<&str> = edit
+        .album_artist_assignments
+        .iter()
+        .map(|assignment| match assignment {
+            crate::Credited { artist: crate::ArtistAssignment::Credit { credit }, .. } => {
+                credit.name.as_str()
+            }
+            crate::Credited { artist: crate::ArtistAssignment::Picked { .. }, .. } => {
+                panic!("a parsed source artist is not a library selection")
+            }
+        })
+        .collect();
+    assert_eq!(names, vec!["Artist A", "Artist B"]);
+}
+
+/// A track crediting a guest seeds that name; a track with no credit of its own
+/// seeds an empty list — the editor's "share the album artist" convention.
+#[test]
+fn seed_per_track_artist_override() {
+    let mut response = mb_vinyl_release("vinyl-release");
+    response.media[0].tracks[2].artist_credit = vec![mb_credit("mb-guest", "Guest Artist")];
+
+    let edit = seed_for(&response);
+
+    assert_eq!(edit.tracks[0].artist_assignments, crate::TrackArtistAssignments::AlbumArtists);
+    assert_eq!(edit.tracks[1].artist_assignments, crate::TrackArtistAssignments::AlbumArtists);
+    let crate::TrackArtistAssignments::Explicit(assignments) = &edit.tracks[2].artist_assignments
+    else {
+        panic!("the guest credit is explicit")
+    };
+    assert!(matches!(
+        assignments.as_slice(),
+        [crate::Credited { artist: crate::ArtistAssignment::Credit { credit }, .. }]
+            if credit.name == "Guest Artist"
+                && credit.musicbrainz_artist_id.as_deref() == Some("mb-guest")
+    ));
 }

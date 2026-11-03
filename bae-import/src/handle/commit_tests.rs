@@ -1,11 +1,53 @@
-//! What a pane control waits on. Every one of them takes the folder-state
-//! commit lock, so whatever else holds that lock sets how long a click takes
-//! to land. Reading files — a folder's tags, over a network share that answers
-//! a read in hundreds of milliseconds — is never done while holding it: a
-//! scan of a large share would otherwise hold every click behind it.
+//! The commit lock every pane control's write takes: whatever else holds it
+//! must not wait on reading files, a write prepared before an import's claim
+//! cannot land after it, and a durable write that panics fails its caller.
 
 use super::*;
+use crate::handle::tests::*;
+use crate::test_import::TestImport;
+use crate::ImportError;
+use bae_db::Database;
+use bae_util::test_channels::HANG_GUARD;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
+use tempfile::TempDir;
+
+/// [`setup_test_import`] reporting its bugs to `diagnostics`.
+async fn setup_test_import_reporting_to(
+    diagnostics: bae_diagnostics::Diagnostics,
+) -> (TestImport, Database, TempDir) {
+    setup_test_import_over(bae_catalogs::providers::Providers::offline(), diagnostics).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let title_before =
+        pane(&handle, &key).await.draft().unwrap().metadata_draft.clone().album_title;
+    let commit = handle.folder_state_commit.lock("hold for a test").await;
+    let edit = tokio::spawn({
+        let handle = handle.clone();
+        let key = key.clone();
+        async move {
+            handle
+                .set_candidate_edit_field(
+                    &key,
+                    crate::DraftFieldEdit::Text {
+                        field: crate::CandidateEditField::AlbumTitle,
+                        value: "Racing edit".to_string(),
+                    },
+                )
+                .await
+        }
+    });
+    tokio::task::yield_now().await;
+    handle.runtime.claim_for_import(&key, "import-1", false).await.unwrap();
+    drop(commit);
+
+    assert!(matches!(edit.await.unwrap(), Err(crate::ImportError::CandidateImportInProgress)));
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_draft.album_title, title_before);
+    shut_down(handle).await;
+}
 
 /// Reads tags as the app does, except that once the test holds a folder, a
 /// read of any file under it reports itself and then waits until the test
@@ -161,13 +203,12 @@ async fn two_candidates() -> (
     let other = TempDir::new().unwrap();
     let (mut held_candidate, held_key, _) = unscanned_candidate(&tables, &tmp, "Held Album").await;
     std::fs::write(held_candidate.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
-    held_candidate.files =
-        crate::folder_scanner::collect_release_candidate_files_with_scope(
-            &held_candidate.path,
-            held_candidate.scope,
-            &crate::folder_scanner::StoredCandidateEdits::none(),
-        )
-        .unwrap();
+    held_candidate.files = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        &held_candidate.path,
+        held_candidate.scope,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
     rescan_unread_into(&tables, held_candidate.clone()).await;
     let (_, edited_key, _) = picked_candidate(&tables, &other, "Edited Album").await;
     let (reader, entered) = HeldTagReader::new();
@@ -235,4 +276,29 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
     shut_down(handle).await;
     landed.expect("the edit lands without waiting for the decision's tag reads");
     decided.expect("the decision lands once its read finishes");
+}
+
+/// The panic comes back to the caller as an internal error, and the crash
+/// reporter hears of it once.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_write_that_panics_fails_its_caller_and_is_reported() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let (parts, _, _tmp) = setup_test_import_reporting_to(diagnostics).await;
+    let handle = parts.start().await.expect("start the import service");
+
+    let result: Result<(), ImportError> = handle
+        .committed(async {
+            if true {
+                panic!("the write's bookkeeping broke");
+            }
+            Ok(())
+        })
+        .await;
+
+    let Err(ImportError::Internal { detail }) = result else {
+        panic!("a panicked write fails as internal, got {result:?}");
+    };
+    assert_eq!(detail, "a candidate write panicked: the write's bookkeeping broke");
+    assert_eq!(bugs.reports(), vec![("a candidate write".to_string(), detail)]);
 }

@@ -1,39 +1,5 @@
 use super::*;
-use crate::import_cancel::CancelOutcome;
 use bae_catalogs::rate_limiter::CallPriority;
-
-#[derive(PartialEq, Eq)]
-enum FileTagSnapshotMatch {
-    Current,
-    CandidateChanged,
-    AudioChanged,
-}
-
-fn file_tag_snapshot_match(
-    snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
-    scan_generation: u64,
-    file_edit_revision: u64,
-    observations: &[crate::file_tag_snapshot::FileObservation],
-) -> FileTagSnapshotMatch {
-    if snapshot.scan_generation != scan_generation
-        || snapshot.file_edit_revision != file_edit_revision
-    {
-        return FileTagSnapshotMatch::CandidateChanged;
-    }
-    if snapshot.files.iter().map(|fact| &fact.observation).eq(observations) {
-        FileTagSnapshotMatch::Current
-    } else {
-        FileTagSnapshotMatch::AudioChanged
-    }
-}
-
-/// A candidate's file tags as [`ImportServiceHandle::read_file_tag_snapshot`]
-/// found them, not yet stored.
-pub(super) struct FileTagSnapshotRead {
-    /// The candidate as stored when its reading was looked up.
-    pub(super) candidate: crate::folder_scanner::FolderCandidate,
-    pub(super) snapshot: crate::file_tag_snapshot::FileTagSnapshot,
-}
 
 /// How an import was asked for, which decides whether a running
 /// identification refuses it.
@@ -71,61 +37,6 @@ impl ImportStart {
 }
 
 impl ImportServiceHandle {
-    /// The stored reading while the candidate and its audio files are unchanged,
-    /// a new reading otherwise. Stores nothing; the caller decides whether the
-    /// reading is kept.
-    pub(super) async fn read_file_tag_snapshot(
-        &self,
-        candidate_key: &crate::CandidateKey,
-        reader: std::sync::Arc<dyn crate::file_tag_snapshot::FileTagReader>,
-    ) -> Result<FileTagSnapshotRead, crate::ImportError> {
-        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
-        let watched_folder_path = candidate.watched_folder_path.clone();
-        let Some(stored) = self
-            .tables
-            .load_candidate_file_tag_snapshot(&watched_folder_path, candidate_key)
-            .await?
-        else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
-        let crate::tables::DbCandidateFileTagSnapshot {
-            scan_generation,
-            candidate,
-            snapshot: stored_snapshot,
-        } = stored;
-        let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
-        let file_edit_revision = candidate.file_edit_revision;
-        let snapshot =
-            bae_util::task_failure::blocking("read a candidate's file tags", move || {
-                let observations = crate::file_tag_snapshot::observe_audio_files(&audio_files)?;
-                if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
-                    file_tag_snapshot_match(
-                        snapshot,
-                        scan_generation,
-                        file_edit_revision,
-                        &observations,
-                    ) == FileTagSnapshotMatch::Current
-                }) {
-                    return Ok::<_, crate::ImportError>(snapshot);
-                }
-                crate::file_tag_snapshot::extract_file_tag_snapshot(
-                    &audio_files,
-                    scan_generation,
-                    file_edit_revision,
-                    reader.as_ref(),
-                )
-            })
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))??;
-        Ok(FileTagSnapshotRead { candidate, snapshot })
-    }
-
     /// Queue an import of the candidate as stored, ending its identification
     /// — unless that identification is reading the release it picked
     /// unattended, which the import then waits for.
@@ -700,70 +611,6 @@ impl ImportServiceHandle {
         rx
     }
 
-    /// Cancel the waiting or running import of `candidate_key`, leaving the
-    /// candidate as it stood before the import was asked for. An import already
-    /// writing its release finishes, and that is the error.
-    pub async fn cancel_import(
-        &self,
-        candidate_key: &crate::CandidateKey,
-    ) -> Result<(), crate::ImportError> {
-        match self.import_cancels.cancel(candidate_key) {
-            CancelOutcome::NotImporting | CancelOutcome::CancelledRunning => Ok(()),
-            CancelOutcome::CancelledWaiting { import_id } => {
-                self.end_cancelled_import(candidate_key, import_id).await
-            }
-            CancelOutcome::Writing => Err(crate::ImportError::ImportWriting),
-        }
-    }
-
-    /// Cancel every import that has not begun writing its release. Each one
-    /// cancelled while it waited ends here; the first whose ending cannot be
-    /// written fails the cancel, after the rest have been tried.
-    pub async fn cancel_all_imports(&self) -> Result<(), crate::ImportError> {
-        let mut failed = Ok(());
-        for (candidate_key, import_id) in self.import_cancels.cancel_all() {
-            let ended = self.end_cancelled_import(&candidate_key, import_id).await;
-            if failed.is_ok() {
-                failed = ended;
-            }
-        }
-        failed
-    }
-
-    /// [`Self::cancel_all_imports`] for a caller that cannot wait for it — a
-    /// person's command that returns at once. An ending that cannot be
-    /// written has no one to fail to, so it is a bug, reported as one.
-    pub fn cancel_all_imports_in_background(&self) {
-        let this = self.clone();
-        self.diagnostics.spawn_reported(
-            &self.runtime_handle,
-            "cancel every waiting import",
-            async move {
-                if let Err(error) = this.cancel_all_imports().await {
-                    this.diagnostics.report_bug("cancel every waiting import", &error);
-                }
-            },
-            // Reported; no one waits to hear more.
-            |_| {},
-        );
-    }
-
-    /// End an import cancelled while it waited, and announce it: the worker
-    /// skips it, so it never will.
-    async fn end_cancelled_import(
-        &self,
-        candidate_key: &crate::CandidateKey,
-        import_id: String,
-    ) -> Result<(), crate::ImportError> {
-        info!("Import of {candidate_key} was cancelled before it started");
-        self.runtime.move_import(candidate_key, &import_id, None).await?;
-        self.event_tx.send(ImportEvent::ImportProgress {
-            candidate_key: candidate_key.clone(),
-            progress: ImportProgress::Cancelled { import_id },
-        });
-        Ok(())
-    }
-
     /// Every import event since the service started, for the one
     /// identification queue that takes it (see
     /// [`super::ImportEventBus::take_feed`]).
@@ -793,4 +640,17 @@ impl ImportServiceHandle {
         });
         scan_events
     }
+
+    async fn release_import_claim(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        import_id: &str,
+    ) -> Result<(), crate::ImportError> {
+        let _commit = self.folder_state_commit.lock("release an import claim").await;
+        Ok(self.runtime.move_import(candidate_key, import_id, None).await?)
+    }
 }
+
+#[cfg(test)]
+#[path = "import_tests.rs"]
+mod tests;

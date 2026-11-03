@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use super::{ImportService, PreparedMetadata};
-use crate::handle::remap_links;
 use bae_db::WorkGraphRows;
 
 fn retain_referenced_artists(
@@ -179,3 +178,29 @@ impl ImportService {
 #[cfg(test)]
 #[path = "reconcile_tests.rs"]
 mod tests;
+
+/// Remap the parsed (temporary) IDs a link row points at to their actual DB IDs.
+///
+/// A `ReleaseRows`'s link rows reference artist and work IDs minted when the
+/// rows were built; reconcile may have resolved those to existing DB rows. `label` names
+/// the endpoint being remapped in the unmapped-ID error.
+fn remap_links<T: Clone>(
+    links: &[T],
+    id_map: &HashMap<String, String>,
+    label: &str,
+    target_id: impl Fn(&T) -> &str,
+    assign_target_id: impl Fn(&mut T, String),
+) -> Result<Vec<T>, crate::ImportError> {
+    links
+        .iter()
+        .map(|link| {
+            let parsed_id = target_id(link);
+            let actual_id = id_map.get(parsed_id).ok_or_else(|| crate::ImportError::Internal {
+                detail: format!("{label} ID {parsed_id} not found in the import's ID map"),
+            })?;
+            let mut remapped = link.clone();
+            assign_target_id(&mut remapped, actual_id.clone());
+            Ok(remapped)
+        })
+        .collect()
+}

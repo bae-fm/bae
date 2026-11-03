@@ -108,3 +108,7 @@ impl ImportServiceHandle {
         self.tables.subscribe_invalid_candidate(initial)
     }
 }
+
+#[cfg(test)]
+#[path = "list_tests.rs"]
+mod tests;

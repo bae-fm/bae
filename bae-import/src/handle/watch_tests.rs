@@ -1,3 +1,11 @@
+//! Removing a watched folder cancels the work in flight under it, and never
+//! waits behind a decision queued on it.
+
+use super::*;
+use crate::handle::tests::*;
+use bae_util::test_channels::HANG_GUARD;
+use std::path::Path;
+
 #[tokio::test(flavor = "multi_thread")]
 async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource};
@@ -65,9 +73,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         import_handle.wait_for_list(crate::ImportListView::default(), |projection| {
             projection.windows.iter().any(|window| {
                 window.items.iter().any(|item| match item {
-                    crate::ImportListItem::Candidate { row, .. } => {
-                        row.candidate_key == key
-                    }
+                    crate::ImportListItem::Candidate { row, .. } => row.candidate_key == key,
                     _ => false,
                 })
             })
@@ -115,8 +121,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         }
     }
     assert!(
-        analyzer.calls.load(Ordering::SeqCst)
-            <= crate::extraction::service::IMAGES_IN_FLIGHT,
+        analyzer.calls.load(Ordering::SeqCst) <= crate::extraction::service::IMAGES_IN_FLIGHT,
         "removing the folder must stop the OCR pass before the images not yet started",
     );
 }
@@ -131,29 +136,23 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     // A row under `Collection`, so the decision the removal races is one the
     // list offers.
     let folder = root.join("Collection").join("Album");
-    let generation =
-        tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     crate::store_scan_item(
         &tables,
         &bae_diagnostics::Diagnostics::noop(),
         &root,
         generation,
-        &crate::folder_scanner::ScanItem::Valid(
-            crate::folder_scanner::FolderCandidate {
-                path: folder.clone(),
-                file_root: folder.clone(),
-                name: "Album".to_string(),
-                files: crate::folder_scanner::CategorizedFiles {
-                    files: Vec::new(),
-                    parts: Vec::new(),
-                },
-                watched_folder_path: root.clone(),
-                scope: crate::folder_scanner::ReleaseFileScope::Recursive,
-                file_edit_revision: 0,
-                relative_folder: bae_db::RelativeFolder::test("Collection/Album"),
-                grouping: None,
-            },
-        ),
+        &crate::folder_scanner::ScanItem::Valid(crate::folder_scanner::FolderCandidate {
+            path: folder.clone(),
+            file_root: folder.clone(),
+            name: "Album".to_string(),
+            files: crate::folder_scanner::CategorizedFiles { files: Vec::new(), parts: Vec::new() },
+            watched_folder_path: root.clone(),
+            scope: crate::folder_scanner::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            relative_folder: bae_db::RelativeFolder::test("Collection/Album"),
+            grouping: None,
+        }),
     )
     .await
     .unwrap()

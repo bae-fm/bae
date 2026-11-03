@@ -1,96 +1,11 @@
-//! Linking a folder to the album its lookup's pressings are of, when the
-//! person cannot tell which of them their copy is.
+//! Linking a folder to the album its lookup's pressings share, when the
+//! person cannot tell which of them the folder is.
 
-use bae_catalogs::records::LookupRef;
 use super::*;
+use crate::handle::tests::*;
 use crate::{PendingStanding, ReleaseLink};
-use bae_identify::AlbumLink;
-use bae_catalogs::records::{MetadataRef};
-
-const ALBUM: &str = "album-group-1";
-
-/// One MusicBrainz pressing of the album, as the lookup offered it.
-fn offered(release_id: &str, year: i32) -> bae_catalogs::search::MetadataResult {
-    bae_catalogs::search::MetadataResult {
-        source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
-        release_id: release_id.to_string(),
-        title: "Album Title".to_string(),
-        artist: Some("Artist Name".to_string()),
-        year: Some(year),
-        labels: Vec::new(),
-        area: None,
-        status: None,
-        packaging: None,
-        discogs_details: Vec::new(),
-        barcodes: Vec::new(),
-        media: bae_types::pressing::StatedMedia::Undescribed,
-        links: Vec::new(),
-        cover_art: None,
-        source_group_id: Some(ALBUM.to_string()),
-        album_links: bae_catalogs::album_links::AlbumLinks::NotAsked,
-        source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 2 }),
-        document_failure: None,
-        album_first_year: None,
-        track_titles: Vec::new(),
-        notes: Vec::new(),
-    }
-}
-
-/// Store a verdict offering two pressings of one album for the fixture's
-/// candidate, each seeded where a read of it finds it, under its own
-/// catalog number.
-pub(super) async fn store_two_pressings(
-    handle: &ImportServiceHandle,
-    fakes: &FakeCatalogs,
-    hash: &str,
-) {
-    super::lookup_choices::seed_mb_release_with_catalog(fakes, "mb-pressing-1", "CAT-100");
-    super::lookup_choices::seed_mb_release_with_catalog(fakes, "mb-pressing-2", "CAT-200");
-    let prep = crate::preparation::import_preparation(&handle.tables, hash)
-        .await
-        .unwrap()
-        .expect("the fixture candidate is prepared");
-    let stored = handle
-        .preparations
-        .store_verdict(&crate::tables::NewImportCandidateVerdict {
-            content_hash: hash.to_string(),
-            file_edit_revision: prep.file_edit_revision,
-            candidate_key: crate::CandidateKey::from_bytes(Vec::new()),
-            verdict: bae_identify::TerminalVerdict::Found {
-                findings: bae_identify::Findings {
-                    matches: vec![offered("mb-pressing-1", 1996), offered("mb-pressing-2", 2004)],
-                    pressings: vec![0, 1],
-                    narrowed_out: Default::default(),
-                    medium_conflict: None,
-                    named_notes: Vec::new(),
-                },
-                track_count: 2,
-                ledger: None,
-            },
-            signals: bae_identify::signals::Signals {
-                origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: bae_identify::signals::DiscIdSignal::Absent,
-                barcode: bae_identify::signals::BarcodeSignal::Absent,
-                text: bae_identify::signals::TextSignal::Settled {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
-                },
-                text_pool: Vec::new(),
-                isrcs: Vec::new(),
-                track_titles: Vec::new(),
-            },
-            pick: None,
-            releases: Vec::new(),
-        })
-        .await
-        .unwrap();
-    assert!(stored, "the verdict lands on the fixture candidate");
-}
-
-fn album() -> AlbumLink {
-    AlbumLink::new([MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, ALBUM)])
-        .expect("one album")
-}
+use bae_catalogs::fake_catalogs::FakeCatalogs;
+use bae_catalogs::records::LookupRef;
 
 async fn link(handle: &ImportServiceHandle, hash: &str) -> Option<ReleaseLink> {
     let tables = handle.tables.clone();
@@ -156,10 +71,7 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     );
     assert_eq!(
         after.placement,
-        crate::CandidatePanePlacement::Pending {
-            folder_check: None,
-            records: album().records(),
-        }
+        crate::CandidatePanePlacement::Pending { folder_check: None, records: album().records() }
     );
     shut_down(handle).await;
 }
@@ -190,12 +102,15 @@ async fn a_pick_replaces_the_album_link() {
     store_two_pressings(&handle, &fakes, &hash).await;
     handle.link_candidate_shared_album(key.clone()).await.unwrap();
 
-    super::lookup_choices::pick(&handle, &key, "mb-pressing-2").await;
+    pick(&handle, &key, "mb-pressing-2").await;
 
     assert_eq!(
         link(&handle, &hash).await,
         Some(ReleaseLink::Pressing(bae_identify::PressingLink {
-            record: LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-pressing-2"),
+            record: LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+                "mb-pressing-2"
+            ),
             partners: Vec::new(),
         }))
     );

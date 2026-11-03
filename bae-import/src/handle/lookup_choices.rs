@@ -55,3 +55,7 @@ impl ImportServiceHandle {
         Ok(change)
     }
 }
+
+#[cfg(test)]
+#[path = "lookup_choices_tests.rs"]
+mod tests;
