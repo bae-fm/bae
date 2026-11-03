@@ -27,10 +27,9 @@ impl PublishedDevices {
         Self { values }
     }
 
-    /// Follow the list. The current snapshot is available immediately on the
-    /// returned receiver, which is then notified on each later publish.
-    pub(crate) fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
-        self.values.subscribe()
+    /// Follow the list: the returned watch hears each later publish.
+    pub(crate) fn subscribe(&self) -> DeviceListWatch {
+        DeviceListWatch(self.values.subscribe())
     }
 
     /// The current snapshot, for a caller answering a one-shot request rather
@@ -51,5 +50,17 @@ impl PublishedDevices {
     /// snapshot from a previous one isn't shown before the first result.
     pub(crate) fn clear(&self) {
         self.publish(Vec::new());
+    }
+}
+
+/// Hears each publish of one discovery's device list, from the published
+/// devices that made it.
+pub struct DeviceListWatch(tokio::sync::watch::Receiver<Vec<RendererDevice>>);
+
+impl DeviceListWatch {
+    /// Wait for the next publish of the list; an error once the discovery is
+    /// gone.
+    pub async fn changed(&mut self) -> Result<(), tokio::sync::watch::error::RecvError> {
+        self.0.changed().await
     }
 }

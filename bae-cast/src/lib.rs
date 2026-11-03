@@ -337,10 +337,7 @@ impl CastController {
     /// merged into the next. A panic merging the lists is reported, and so is
     /// a write that fails; the next change is merged and written again. The
     /// writer ends once every source has.
-    fn spawn_device_list_writer(
-        self: &Arc<Self>,
-        sources: Vec<tokio::sync::watch::Receiver<Vec<RendererDevice>>>,
-    ) {
+    fn spawn_device_list_writer(self: &Arc<Self>, sources: Vec<crate::renderer::DeviceListWatch>) {
         let (changed, mut changes) = tokio::sync::mpsc::unbounded_channel();
         for mut source in sources {
             let changed = changed.clone();

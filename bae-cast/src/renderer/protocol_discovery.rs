@@ -35,9 +35,8 @@ pub(crate) struct ProtocolDiscovery<B: Browse> {
 }
 
 impl<B: Browse> ProtocolDiscovery<B> {
-    /// Subscribe to the live device list. The current snapshot is available
-    /// immediately on the returned receiver.
-    pub(crate) fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
+    /// Follow the live device list.
+    pub(crate) fn subscribe(&self) -> crate::renderer::DeviceListWatch {
         self.devices.subscribe()
     }
 

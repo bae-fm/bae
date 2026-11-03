@@ -16,3 +16,4 @@ pub use device::{RendererConnection, RendererDevice};
 pub use discovery::{
     RendererDiscovery, RendererServiceType, ReportedRenderer, RENDERER_SERVICE_TYPES,
 };
+pub use published_devices::DeviceListWatch;

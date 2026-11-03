@@ -281,6 +281,8 @@ PlaybackPositionsWatch = "PlaybackProgressHandle"
 # tells it.
 HeldRangesWatch = "SparseStreamingBuffer"
 TrackBufferedFollow = "PlaybackHandle"
+# A watch on one discovery's device list.
+DeviceListWatch = "PublishedDevices"
 # One request a rate limiter let through, settled against the limiter.
 Admitted = "RateLimiter"
 # One reader of a sparse buffer, with its own slot in the buffer's demands.

@@ -118,9 +118,8 @@ impl ReportedDiscovery {
         Self { devices: PublishedDevices::new(), reported: None }
     }
 
-    /// Subscribe to the live device list. The current snapshot is available
-    /// immediately on the returned receiver.
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
+    /// Follow the live device list.
+    pub fn subscribe(&self) -> crate::renderer::DeviceListWatch {
         self.devices.subscribe()
     }
 
@@ -285,7 +284,7 @@ impl RendererDiscovery {
 
     /// Every list to watch for changes — one per underlying browse — so a caller
     /// can invalidate an open picker as devices come and go.
-    pub fn subscribe(&self) -> Vec<tokio::sync::watch::Receiver<Vec<RendererDevice>>> {
+    pub fn subscribe(&self) -> Vec<crate::renderer::DeviceListWatch> {
         match self {
             Self::Builtin(builtin) => vec![
                 builtin.cast.subscribe(),
