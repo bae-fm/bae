@@ -54,16 +54,17 @@ impl FetchArbiter {
         })
     }
 
-    /// Designate `track_id`, reading from `buffer_id`, as the foreground
-    /// (playing) track. Wakes any waiting preload in case the previous
-    /// foreground is gone.
-    pub fn set_foreground(&self, buffer_id: u64, track_id: &str) {
-        self.waits.set_foreground(buffer_id, track_id);
+    /// Designate `track_id`, reading from the buffers `buffer_ids`, one per
+    /// file it reads, as the foreground (playing) track. Wakes any waiting
+    /// preload in case the previous foreground is gone.
+    pub fn set_foreground(&self, buffer_ids: Vec<u64>, track_id: &str) {
+        self.waits.set_foreground(buffer_ids, track_id);
         self.idle.notify_waiters();
     }
 
-    fn is_foreground(&self, buffer_id: u64) -> bool {
-        self.waits.foreground_buffer() == Some(buffer_id)
+    /// Whether a fetch into `buffer_id` is the playing track's.
+    pub fn is_foreground(&self, buffer_id: u64) -> bool {
+        self.waits.is_foreground(buffer_id)
     }
 
     /// The track a load the person waits on is for, or `None` once nothing
@@ -255,13 +256,22 @@ fn read_error_for_file_read(error: bae_db::DbError) -> TrackReadError {
     }
 }
 
-/// Streams a release file's plaintext from one opened source. The
-/// single playback reader: coven resolves locality and proves the file's identity
-/// when the stream opens, so playback never branches on locality and every window
-/// after that costs only its own bytes.
+/// Streams a release file's plaintext from one opened source. The single
+/// reader of release files: coven resolves locality and proves the file's
+/// identity when the stream opens, so no reader branches on locality and every
+/// window after that costs only its own bytes.
 pub struct CovenFileReader {
     db: bae_db::Database,
     file_id: String,
+    /// How playback reads the file, for a reader playback started; `None`
+    /// for one that reads it start to finish with nobody waiting to hear it.
+    playback: Option<PlaybackRead>,
+    diagnostics: Diagnostics,
+}
+
+/// How playback reads a release file: its fetches gated by the arbiter that
+/// puts the playing track's first, and the windows it fetches up front.
+struct PlaybackRead {
     arbiter: Arc<FetchArbiter>,
     /// The byte the playing track's audio starts at, when it's past the header
     /// (a track that seeks into the file). The reader fetches this window up
@@ -274,11 +284,19 @@ pub struct CovenFileReader {
     /// the open would otherwise stall on a serial ranged fetch. The shared album
     /// buffer keeps the window, so it's pulled once per image.
     prefetch_file_end: bool,
-    diagnostics: Diagnostics,
 }
 
 impl CovenFileReader {
-    pub fn new(
+    /// A reader of `file_id` start to finish, for work nobody listens to
+    /// while it reads — a save, a transcode, a decode for import.
+    pub fn new(db: bae_db::Database, file_id: String, diagnostics: Diagnostics) -> Self {
+        Self { db, file_id, playback: None, diagnostics }
+    }
+
+    /// A reader of `file_id` for playback: its fetches gated by `arbiter`,
+    /// with the window at `prefetch_byte` and, when `prefetch_file_end`, the
+    /// file's last window fetched up front.
+    pub fn for_playback(
         db: bae_db::Database,
         file_id: String,
         arbiter: Arc<FetchArbiter>,
@@ -286,7 +304,31 @@ impl CovenFileReader {
         prefetch_file_end: bool,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { db, file_id, arbiter, prefetch_byte, prefetch_file_end, diagnostics }
+        let playback = PlaybackRead { arbiter, prefetch_byte, prefetch_file_end };
+        Self { db, file_id, playback: Some(playback), diagnostics }
+    }
+}
+
+/// One window's read off `stream`: for playback, gated so the playing track
+/// fetches immediately and a preload waits while the playing track has a
+/// fetch in flight, and told to the arbiter's storage waits; otherwise read
+/// as it comes. Says which kind of read it was, for the log.
+async fn read_window(
+    stream: &coven::FileStream,
+    playback: Option<&PlaybackRead>,
+    buffer_id: u64,
+    offset: u64,
+    len: u64,
+) -> (Result<Vec<u8>, coven::FileReadError>, &'static str) {
+    match playback {
+        Some(playback) => {
+            let read = playback.arbiter.read_progress(buffer_id);
+            let foreground = playback.arbiter.is_foreground(buffer_id);
+            let fetch = stream.read_at_reporting(offset, len, read.progress());
+            let data = playback.arbiter.run_gated(foreground, fetch).await;
+            (data, if foreground { "playing" } else { "preload" })
+        }
+        None => (stream.read_at(offset, len).await, "read"),
     }
 }
 
@@ -296,8 +338,7 @@ impl AudioDataReader for CovenFileReader {
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let CovenFileReader { db, file_id, arbiter, prefetch_byte, prefetch_file_end, diagnostics } =
-            *self;
+        let CovenFileReader { db, file_id, playback, diagnostics } = *self;
         let buffer_id = buffer.id();
         let fill_buffer = buffer.clone();
         let prefetch_diagnostics = diagnostics.clone();
@@ -311,38 +352,43 @@ impl AudioDataReader for CovenFileReader {
             // The length coven proved when it opened the stream, not a number the
             // caller tracked: it bounds the prefetch windows below.
             let source_size = stream.plaintext_size();
-            let prefetch = |start: u64, what: &'static str| {
-                spawn_window_prefetch(
-                    &prefetch_diagnostics,
-                    stream.clone(),
-                    arbiter.clone(),
-                    &buffer,
-                    source_size,
-                    start,
-                    what,
-                )
-            };
 
-            // Prefetch the track's start window in parallel with the demuxer's header
-            // probe. The decoder reads the header at byte 0, then seeks to the track,
-            // and the fill only fetches what a registered reader is already demanding —
-            // so without this the seek blocks while the fill notices the new demand and
-            // comes round to it. Since the stored `start_byte` is the exact seektable
-            // landing (the playback seek lands there — a by-byte FLAC seek jumps
-            // straight to it, and APE sample-seeks its index to it), pull that window
-            // now, concurrent with the probe, so the seek lands on buffered bytes.
-            if let Some(start) = prefetch_byte {
-                if start < source_size {
-                    prefetch(start, "track-start");
+            if let Some(playback) = &playback {
+                let prefetch = |start: u64, what: &'static str| {
+                    spawn_window_prefetch(
+                        &prefetch_diagnostics,
+                        stream.clone(),
+                        playback.arbiter.clone(),
+                        &buffer,
+                        source_size,
+                        start,
+                        what,
+                    )
+                };
+
+                // Prefetch the track's start window in parallel with the demuxer's
+                // header probe. The decoder reads the header at byte 0, then seeks
+                // to the track, and the fill only fetches what a registered reader is
+                // already demanding — so without this the seek blocks while the fill
+                // notices the new demand and comes round to it. Since the stored
+                // `start_byte` is the exact seektable landing (the playback seek lands
+                // there — a by-byte FLAC seek jumps straight to it, and APE
+                // sample-seeks its index to it), pull that window now, concurrent with
+                // the probe, so the seek lands on buffered bytes.
+                if let Some(start) = playback.prefetch_byte {
+                    if start < source_size {
+                        prefetch(start, "track-start");
+                    }
                 }
-            }
 
-            // APE reads the file's end when its demuxer opens (its index lives in the
-            // tail), so prefetch that window too — otherwise the open stalls the same
-            // way, waiting for the fill to come round to a tail nobody had demanded
-            // yet. Skipped when the file is a single window (the fill covers it).
-            if prefetch_file_end && source_size > CLOUD_STREAM_READ_SIZE {
-                prefetch(source_size - CLOUD_STREAM_READ_SIZE, "file-end");
+                // APE reads the file's end when its demuxer opens (its index lives in
+                // the tail), so prefetch that window too — otherwise the open stalls
+                // the same way, waiting for the fill to come round to a tail nobody
+                // had demanded yet. Skipped when the file is a single window (the
+                // fill covers it).
+                if playback.prefetch_file_end && source_size > CLOUD_STREAM_READ_SIZE {
+                    prefetch(source_size - CLOUD_STREAM_READ_SIZE, "file-end");
+                }
             }
 
             info!("CovenFileReader: buffer={buffer_id} source_size={source_size}");
@@ -355,27 +401,21 @@ impl AudioDataReader for CovenFileReader {
             buffer
                 .fill_on_demand(FILL_WINDOW_SIZE, |src_off, len| {
                     let stream = &stream;
-                    let arbiter = &arbiter;
+                    let playback = playback.as_ref();
                     let fetched = &fetched;
                     async move {
-                        let read = arbiter.read_progress(buffer_id);
-                        let fut = stream.read_at_reporting(src_off, len, read.progress());
-                        // The playing track fetches immediately; a preload waits
-                        // while the playing track has a fetch in flight so it can't
-                        // slow the current track's start.
-                        let foreground = arbiter.is_foreground(buffer_id);
                         debug!(
-                            "fetch start buffer={buffer_id} {} off={src_off} len={len} {}ms",
-                            if foreground { "playing" } else { "preload" },
+                            "fetch start buffer={buffer_id} off={src_off} len={len} {}ms",
                             started.elapsed().as_millis(),
                         );
                         let fetch_started = Instant::now();
-                        let data = match arbiter.run_gated(foreground, fut).await {
+                        let (data, kind) =
+                            read_window(stream, playback, buffer_id, src_off, len).await;
+                        let data = match data {
                             Ok(data) => data,
                             Err(e) => {
                                 debug!(
-                                    "fetch failed buffer={buffer_id} {} off={src_off} len={len} waited={}ms error={e}",
-                                    if foreground { "playing" } else { "preload" },
+                                    "fetch failed buffer={buffer_id} {kind} off={src_off} len={len} waited={}ms error={e}",
                                     fetch_started.elapsed().as_millis(),
                                 );
                                 return Err(read_error_for_file_read(e.into()));
@@ -384,8 +424,7 @@ impl AudioDataReader for CovenFileReader {
                         let total = fetched.fetch_add(data.len() as u64, Ordering::Relaxed)
                             + data.len() as u64;
                         debug!(
-                            "fetch buffer={buffer_id} {} off={src_off} len={len} total={total}B {}ms",
-                            if foreground { "playing" } else { "preload" },
+                            "fetch buffer={buffer_id} {kind} off={src_off} len={len} total={total}B {}ms",
                             started.elapsed().as_millis(),
                         );
                         Ok(data)

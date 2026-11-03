@@ -1,0 +1,29 @@
+use super::*;
+use crate::service::tests::*;
+
+/// A track whose audio reads from two files — its pregap at the end of the
+/// file before — fetches from both as the playing track, so a preload yields
+/// to it in either.
+#[test]
+fn every_file_the_playing_track_reads_fetches_as_the_playing_one() {
+    let arbiter = FetchArbiter::new();
+    let buffers = FileBuffers::new(arbiter.clone(), tokio::sync::watch::channel(None).0);
+    let pregap = create_sparse_buffer(1_024);
+    let main = create_sparse_buffer(1_024);
+    let mut prepared = test_prepared_track_with_file("track", "main-file", main.clone());
+    prepared.segments.insert(
+        0,
+        PreparedAudioSegment {
+            role: DbAudioSegmentRole::AudioPregap,
+            file_id: "pregap-file".to_string(),
+            buffer: pregap.clone(),
+            span: bae_db::SegmentSpan::whole_file(),
+            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
+        },
+    );
+
+    buffers.mark_foreground(&prepared);
+
+    assert!(arbiter.is_foreground(pregap.id()), "the pregap's file fetches as the playing one");
+    assert!(arbiter.is_foreground(main.id()), "the main file fetches as the playing one");
+}

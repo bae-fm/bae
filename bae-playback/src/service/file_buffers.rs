@@ -42,14 +42,13 @@ impl FileBuffers {
         Self { cached: HashMap::new(), retired: Vec::new(), arbiter, playing }
     }
 
-    /// Designate this track's buffer as the foreground for fetch priority, so
-    /// its reader fetches immediately and a next-track preload's reader yields
-    /// to it, and follow the bytes it plays from INDEX 01. Called wherever a
-    /// track becomes the current one.
+    /// Designate this track's buffers — one per file it reads — as the
+    /// foreground for fetch priority, so its readers fetch immediately and a
+    /// next-track preload's reader yields to them, and follow the bytes it
+    /// plays from INDEX 01. Called wherever a track becomes the current one.
     pub(super) fn mark_foreground(&self, prepared: &PlaybackPreparedTrack) {
-        if let Some(segment) = prepared.segments.first() {
-            self.arbiter.set_foreground(segment.buffer.id(), &prepared.track_id);
-        }
+        let buffer_ids = prepared.segments.iter().map(|segment| segment.buffer.id()).collect();
+        self.arbiter.set_foreground(buffer_ids, &prepared.track_id);
         self.playing.send_replace(prepared.playing_bytes());
     }
 
@@ -158,7 +157,7 @@ pub(super) async fn prepare_track_for_playback(
             }
             None => {
                 let buffer = create_sparse_buffer(segment.file_size);
-                let reader = Box::new(bae_track_audio::data_source::CovenFileReader::new(
+                let reader = Box::new(bae_track_audio::data_source::CovenFileReader::for_playback(
                     database.clone(),
                     segment.file_id.clone(),
                     file_buffers.arbiter.clone(),
@@ -208,3 +207,7 @@ fn playback_fill_error_handler(
         dispatch_command(&command_tx, PlaybackCommand::ReadFailed { buffer_id, error });
     })
 }
+
+#[cfg(test)]
+#[path = "file_buffers_tests.rs"]
+mod tests;

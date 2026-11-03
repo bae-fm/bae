@@ -86,11 +86,7 @@ impl LibraryManager {
     /// file shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
     fn open_save_source(&self, file: &bae_db::DbFile) -> SourceStream {
-        use bae_track_audio::data_source::FetchArbiter;
-
-        // A fresh arbiter per file: save has no foreground track to prioritize,
-        // so every fetch runs ungated.
-        let reader = self.create_audio_reader(&file.id, FetchArbiter::new(), None, false);
+        let reader = self.create_audio_reader(&file.id);
         let file_id = file.id.clone();
         SourceStream::start(
             reader,

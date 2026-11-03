@@ -6,7 +6,7 @@ const PRELOAD: u64 = 2;
 /// Waits whose playing track is "track-1", reading from `PLAYING`.
 fn playing() -> Arc<StorageWaits> {
     let waits = Arc::new(StorageWaits::new());
-    waits.set_foreground(PLAYING, "track-1");
+    waits.set_foreground(vec![PLAYING], "track-1");
     waits
 }
 
@@ -85,6 +85,6 @@ fn a_load_of_another_track_waits_on_none_of_the_playing_ones_reads() {
 
     let next = waits.read(PRELOAD);
     tell(&next, PRELOAD);
-    waits.set_foreground(PRELOAD, "track-2");
+    waits.set_foreground(vec![PRELOAD], "track-2");
     assert_eq!(told.waiting(), waiting("track-2"));
 }

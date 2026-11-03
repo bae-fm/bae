@@ -11,10 +11,10 @@ use std::sync::{Arc, Mutex};
 
 use tokio::sync::watch;
 
-/// The playing track and the buffer its first segment reads from: the reads
-/// that buffer runs are the ones its load waits on.
+/// The playing track and the buffers of the files it reads: the reads those
+/// buffers run are the ones its load waits on.
 struct Foreground {
-    buffer_id: u64,
+    buffer_ids: Vec<u64>,
     track_id: String,
 }
 
@@ -55,15 +55,19 @@ impl StorageWaits {
         StorageWaitWatch(self.tx.subscribe())
     }
 
-    /// Make `track_id`, reading from `buffer_id`, the playing track.
-    pub(crate) fn set_foreground(&self, buffer_id: u64, track_id: &str) {
+    /// Make `track_id`, reading from `buffer_ids`, the playing track.
+    pub(crate) fn set_foreground(&self, buffer_ids: Vec<u64>, track_id: &str) {
         self.change(|state| {
-            state.foreground = Some(Foreground { buffer_id, track_id: track_id.to_string() })
+            state.foreground = Some(Foreground { buffer_ids, track_id: track_id.to_string() })
         });
     }
 
-    pub(crate) fn foreground_buffer(&self) -> Option<u64> {
-        self.lock().foreground.as_ref().map(|foreground| foreground.buffer_id)
+    /// Whether `buffer_id` is one the playing track reads from.
+    pub(crate) fn is_foreground(&self, buffer_id: u64) -> bool {
+        self.lock()
+            .foreground
+            .as_ref()
+            .is_some_and(|foreground| foreground.buffer_ids.contains(&buffer_id))
     }
 
     /// The track a load the person waits on is for, or `None` once nothing
@@ -132,7 +136,7 @@ fn waiting_on_storage(state: &WaitsState) -> Option<String> {
     state
         .fetching
         .values()
-        .any(|buffer_id| *buffer_id == foreground.buffer_id)
+        .any(|buffer_id| foreground.buffer_ids.contains(buffer_id))
         .then(|| foreground.track_id.clone())
 }
 

@@ -3146,7 +3146,9 @@ of the playing track's reads fetches from storage (coven tells a read that
 fetches how many of its bytes are in hand), an arc turns around the
 play/pause control. Reading ahead while the track plays, a preload of the
 next track, and a load this device serves from its own copy or the cache show
-no arc. The control itself shows pause while a track loads to play, and a
+no arc. The playing track's reads, in every file it plays from (a pregap at
+the end of the file before included), go ahead of a preload's, which waits
+while one of them is fetching. The control itself shows pause while a track loads to play, and a
 press lands the load paused.
 
 Offline, a track whose bytes aren't on the device stops playback with a typed

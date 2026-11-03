@@ -4,19 +4,15 @@
 use super::*;
 
 impl LibraryManager {
+    /// A reader of `file_id`'s stored audio start to finish, for work nobody
+    /// listens to while it reads.
     pub fn create_audio_reader(
         &self,
         file_id: &str,
-        arbiter: Arc<bae_track_audio::data_source::FetchArbiter>,
-        prefetch_byte: Option<u64>,
-        prefetch_file_end: bool,
     ) -> Box<dyn bae_track_audio::data_source::AudioDataReader> {
         Box::new(bae_track_audio::data_source::CovenFileReader::new(
             self.database.clone(),
             file_id.to_string(),
-            arbiter,
-            prefetch_byte,
-            prefetch_file_end,
             self.diagnostics.clone(),
         ))
     }
@@ -29,12 +25,7 @@ impl LibraryManager {
         size: u64,
     ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
         let buffer = bae_audio::sparse_buffer::create_sparse_buffer(size);
-        let reader = self.create_audio_reader(
-            file_id,
-            bae_track_audio::data_source::FetchArbiter::new(),
-            None,
-            false,
-        );
+        let reader = self.create_audio_reader(file_id);
         let file_id = file_id.to_string();
         reader.start_reading(
             buffer.clone(),
