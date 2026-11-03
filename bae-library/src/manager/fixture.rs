@@ -163,7 +163,7 @@ impl LibraryManager {
             })
             .collect();
         let cover = match &album.cover {
-            Some(path) => Some(self.fixture_cover(path, &release_id, added).await?),
+            Some(path) => Some(self.fixture_cover(path, &release_id).await?),
             None => None,
         };
         Ok(SeededAlbum {
@@ -217,7 +217,6 @@ impl LibraryManager {
         &self,
         path: &std::path::Path,
         release_id: &str,
-        added: chrono::DateTime<chrono::Utc>,
     ) -> Result<(DbLibraryImage, Vec<u8>), LibraryFixtureError> {
         let failed =
             |detail: String| LibraryFixtureError::Cover { path: path.to_path_buf(), detail };
@@ -229,7 +228,7 @@ impl LibraryManager {
         .await
         .map_err(|task| failed(self.bug(task).to_string()))?
         .map_err(failed)?;
-        let image = DbLibraryImage::cover(release_id, added);
+        let image = DbLibraryImage::cover(release_id);
         Ok((image, bytes))
     }
 }

@@ -79,7 +79,6 @@ impl ImportCover {
         self,
         discovered_files: &[CandidateFile],
         release_id: &str,
-        now: chrono::DateTime<chrono::Utc>,
         diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<(bae_db::DbLibraryImage, Vec<u8>), ImportError> {
         let source = match self {
@@ -93,7 +92,7 @@ impl ImportCover {
         .await
         .map_err(|failed| diagnostics.bug(failed))?
         .map_err(|detail| ImportError::CoverArt { detail })?;
-        Ok((bae_db::DbLibraryImage::cover(release_id, now), bytes))
+        Ok((bae_db::DbLibraryImage::cover(release_id), bytes))
     }
 }
 

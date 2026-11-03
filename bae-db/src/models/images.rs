@@ -87,29 +87,19 @@ pub struct DbLibraryImage {
     pub id: String,
     pub image_type: LibraryImageType,
     pub content_type: ContentType,
-    pub width: Option<i32>,
-    pub height: Option<i32>,
-    pub created_at: DateTime<Utc>,
 }
 
 impl DbLibraryImage {
     /// The row describing a release's cover, a JPEG
     /// [`bae_util::stored_image::stored_jpeg`] made.
-    pub fn cover(release_id: &str, now: DateTime<Utc>) -> Self {
-        Self::stored_jpeg(LibraryImageType::Cover, release_id, now)
+    pub fn cover(release_id: &str) -> Self {
+        Self::stored_jpeg(LibraryImageType::Cover, release_id)
     }
 
     /// The row describing the image of `image_type` kept for `id`, a JPEG
     /// [`bae_util::stored_image::stored_jpeg`] made, whose bytes the write
     /// stages with coven.
-    pub fn stored_jpeg(image_type: LibraryImageType, id: &str, now: DateTime<Utc>) -> Self {
-        DbLibraryImage {
-            id: id.to_string(),
-            image_type,
-            content_type: ContentType::Jpeg,
-            width: None,
-            height: None,
-            created_at: now,
-        }
+    pub fn stored_jpeg(image_type: LibraryImageType, id: &str) -> Self {
+        DbLibraryImage { id: id.to_string(), image_type, content_type: ContentType::Jpeg }
     }
 }

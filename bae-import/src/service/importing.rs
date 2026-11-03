@@ -557,16 +557,9 @@ impl ImportService {
 
         // Finalize writes the cover's bytes and row in one coven batch.
         let cover_winner = match cover {
-            Some(cover) => Some(
-                cover
-                    .stored(
-                        discovered_files,
-                        &db_release.id,
-                        self.clock.now().into(),
-                        &self.diagnostics,
-                    )
-                    .await?,
-            ),
+            Some(cover) => {
+                Some(cover.stored(discovered_files, &db_release.id, &self.diagnostics).await?)
+            }
             None => None,
         };
         let library_image = cover_winner.as_ref().map(|(image, bytes)| (image, bytes.as_slice()));

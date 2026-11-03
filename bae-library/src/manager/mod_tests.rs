@@ -430,7 +430,7 @@ pub(super) async fn playback_error_reason_for_file(
 /// and its file in one coven batch. Storing different bytes again replaces the
 /// cover, as `change_cover` does.
 pub(super) async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u8]) {
-    let cover = DbLibraryImage::cover(release_id, manager.clock.now().into());
+    let cover = DbLibraryImage::cover(release_id);
     manager.store_library_image(&cover, bytes).await.unwrap();
 }
 

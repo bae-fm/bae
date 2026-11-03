@@ -69,7 +69,7 @@ impl ImportService {
             self.tables.resolve_artists(artists.credits, artists.picked, content_hash).await?;
         Ok(StagedArtistPictures {
             expected_new_artists: expected.inserts.iter().map(|artist| artist.id.clone()).collect(),
-            images: artist_image_rows(&expected.inserts, fetched, self.clock.now().into())?,
+            images: artist_image_rows(&expected.inserts, fetched)?,
         })
     }
 
@@ -109,7 +109,7 @@ impl ImportService {
 }
 
 /// The library image rows of the pictures `fetched` for the new artists an
-/// import creates, stamped `now`. An artist the import links to keeps its own
+/// import creates. An artist the import links to keeps its own
 /// picture; this constructs rows only.
 ///
 /// A new Discogs artist with no answer among `fetched` was a library artist
@@ -118,7 +118,6 @@ impl ImportService {
 fn artist_image_rows(
     inserted_artists: &[bae_db::DbArtist],
     fetched: &[DiscogsArtistImage],
-    now: chrono::DateTime<chrono::Utc>,
 ) -> Result<Vec<(bae_db::DbLibraryImage, Vec<u8>)>, crate::ImportError> {
     let by_discogs_id: HashMap<_, _> =
         fetched.iter().map(|answer| (answer.discogs_artist_id(), answer)).collect();
@@ -138,8 +137,7 @@ fn artist_image_rows(
         let DiscogsArtistImage::Image { jpeg, .. } = answer else {
             continue;
         };
-        let row =
-            bae_db::DbLibraryImage::stored_jpeg(bae_db::LibraryImageType::Artist, &artist.id, now);
+        let row = bae_db::DbLibraryImage::stored_jpeg(bae_db::LibraryImageType::Artist, &artist.id);
         images.push((row, jpeg.clone()));
     }
     Ok(images)

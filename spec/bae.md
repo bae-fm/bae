@@ -4013,7 +4013,7 @@ All sync.
 | `artist_merges` | artist absorbed into another (§2.3); the view `merged_artist_survivors` follows each chain to the artist it shows as |
 | `labels` | record label: name, name key, MusicBrainz and Discogs ids (§2.3) |
 | `label_merges` | label absorbed into another (§2.3); the view `merged_label_survivors` follows each chain to the label it shows as |
-| `artist_images` | artist's picture, keyed by the artist: the coven file it references (`file`), with an index by it, its type and size in pixels |
+| `artist_images` | artist's picture, keyed by the artist: the coven file it references (`file`), with an index by it, and its type |
 | `albums` | album: title, year, compilation flag |
 | `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
 | `works` | MusicBrainz work |
@@ -4023,7 +4023,7 @@ All sync.
 | `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
 | `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
-| `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, its type and size in pixels |
+| `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, and its type |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, as the catalog stated it |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |

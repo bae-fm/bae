@@ -47,9 +47,6 @@ pub async fn write_artist_image(db: &Database, artist: &str, content: &str) -> S
             id: artist.into(),
             image_type: LibraryImageType::Artist,
             content_type: ContentType::Jpeg,
-            width: None,
-            height: None,
-            created_at: super::fixed_now(),
         },
         bytes,
     )

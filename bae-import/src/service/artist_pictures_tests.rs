@@ -33,7 +33,7 @@ fn each_new_discogs_artist_with_a_picture_gets_its_row() {
     let artists = [artist("a", Some("1")), artist("b", Some("2")), artist("c", None)];
     let fetched =
         [picture_answer("1"), DiscogsArtistImage::Nothing { discogs_artist_id: "2".into() }];
-    let rows = artist_image_rows(&artists, &fetched, chrono::DateTime::UNIX_EPOCH).unwrap();
+    let rows = artist_image_rows(&artists, &fetched).unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].1, [1, 2, 3]);
 }
@@ -41,18 +41,13 @@ fn each_new_discogs_artist_with_a_picture_gets_its_row() {
 #[test]
 fn a_new_artist_no_picture_was_fetched_for_means_the_library_changed() {
     let artists = [artist("a", Some("1"))];
-    let error = artist_image_rows(&artists, &[], chrono::DateTime::UNIX_EPOCH).unwrap_err();
+    let error = artist_image_rows(&artists, &[]).unwrap_err();
     assert!(matches!(error, crate::ImportError::LibraryChanged));
 }
 
 #[test]
 fn two_answers_for_one_artist_are_refused() {
-    let error = artist_image_rows(
-        &[],
-        &[picture_answer("1"), picture_answer("1")],
-        chrono::DateTime::UNIX_EPOCH,
-    )
-    .unwrap_err();
+    let error = artist_image_rows(&[], &[picture_answer("1"), picture_answer("1")]).unwrap_err();
     assert!(matches!(error, crate::ImportError::Internal { .. }));
 }
 

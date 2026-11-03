@@ -177,7 +177,7 @@ async fn an_image_over_the_bound_limit_is_refused() {
     let first = cover_file(&manager, &release.id).await;
 
     let oversized = vec![0u8; usize::try_from(coven::BOUND_FILE_LIMIT).unwrap() + 1];
-    let cover = DbLibraryImage::cover(&release.id, manager.clock.now().into());
+    let cover = DbLibraryImage::cover(&release.id);
     let error = manager
         .store_library_image(&cover, &oversized)
         .await
@@ -231,7 +231,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     store_test_cover(&manager, &release.id, b"first cover").await;
     let concurrent = manager.clone();
     let concurrent_release = release.id.clone();
-    let late = DbLibraryImage::cover(&release.id, manager.clock.now().into());
+    let late = DbLibraryImage::cover(&release.id);
 
     let error = manager
         .database

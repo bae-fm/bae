@@ -91,10 +91,7 @@ impl LibraryManager {
             .await
             .map_err(|failed| self.bug(failed))?
             .map_err(|detail| bae_import::ImportError::CoverArt { detail })?;
-        let library_image = DbLibraryImage::cover(
-            release_id,
-            chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
-        );
+        let library_image = DbLibraryImage::cover(release_id);
 
         self.store_library_image(&library_image, &bytes).await?;
 

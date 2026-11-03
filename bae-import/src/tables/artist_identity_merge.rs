@@ -196,8 +196,8 @@ fn apply_artist_identity_merge(
 
     if matches!(&plan.images, (None, Some(_))) {
         sql.execute(
-            "INSERT INTO artist_images (id, file, content_type, width, height, created_at) \
-             SELECT ?, file, content_type, width, height, created_at FROM artist_images \
+            "INSERT INTO artist_images (id, file, content_type) \
+             SELECT ?, file, content_type FROM artist_images \
              WHERE id = ?",
             params![plan.surviving_artist_id, plan.absorbed_artist_id],
         )?;

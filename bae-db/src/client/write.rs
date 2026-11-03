@@ -629,22 +629,12 @@ pub fn upsert_library_image_row(
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, file, content_type, width, height, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, file, content_type) VALUES (?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
                  file = excluded.file, \
-                 content_type = excluded.content_type, \
-                 width = excluded.width, \
-                 height = excluded.height"
+                 content_type = excluded.content_type"
         ),
-        params![
-            image.id,
-            file,
-            image.content_type.as_str(),
-            image.width,
-            image.height,
-            image.created_at.to_rfc3339(),
-        ],
+        params![image.id, file, image.content_type.as_str()],
     )
     .map(|_| ())
     .map_err(DbError::from)

@@ -231,9 +231,6 @@ async fn store_artist_image(db: &Database, artist_id: &str, bytes: &[u8]) {
             id: artist_id.to_string(),
             image_type: LibraryImageType::Artist,
             content_type: bae_util::content_type::ContentType::Jpeg,
-            width: None,
-            height: None,
-            created_at: fixed_now(),
         },
         bytes,
     )

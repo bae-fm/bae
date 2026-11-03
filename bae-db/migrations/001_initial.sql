@@ -80,9 +80,6 @@ CREATE TABLE IF NOT EXISTS artist_images (
     id TEXT PRIMARY KEY,
     file TEXT NOT NULL,
     content_type TEXT NOT NULL,
-    width INTEGER,
-    height INTEGER,
-    created_at TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -321,9 +318,6 @@ CREATE TABLE IF NOT EXISTS covers (
     id TEXT PRIMARY KEY,
     file TEXT NOT NULL,
     content_type TEXT NOT NULL,
-    width INTEGER,
-    height INTEGER,
-    created_at TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 

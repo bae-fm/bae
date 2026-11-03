@@ -265,9 +265,6 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
                 id: lib.per_track_release.clone(),
                 image_type: bae_db::LibraryImageType::Cover,
                 content_type: bae_util::content_type::ContentType::Png,
-                width: None,
-                height: None,
-                created_at: chrono::Utc::now(),
             },
             &bae_catalogs::test_image_host::cover_png(),
         )
@@ -302,9 +299,6 @@ async fn an_artist_cover_art_is_the_artist_image() {
                 id: artist_id,
                 image_type: bae_db::LibraryImageType::Artist,
                 content_type: bae_util::content_type::ContentType::Png,
-                width: None,
-                height: None,
-                created_at: chrono::Utc::now(),
             },
             &image,
         )

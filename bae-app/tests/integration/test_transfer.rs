@@ -201,9 +201,6 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
             id: release_id.clone(),
             image_type: bae_db::LibraryImageType::Cover,
             content_type: bae_util::content_type::ContentType::Jpeg,
-            width: None,
-            height: None,
-            created_at: chrono::Utc::now(),
         },
         bytes,
     )

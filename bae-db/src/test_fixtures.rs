@@ -84,7 +84,7 @@ pub async fn exec_batch(db: &crate::Database, sql: &str) {
 /// and return the version reads report for it.
 pub async fn write_cover(db: &crate::Database, release: &str, content: &str) -> String {
     let bytes = content.as_bytes();
-    let image = crate::DbLibraryImage::cover(release, fixed_now());
+    let image = crate::DbLibraryImage::cover(release);
     db.write_library_image(&image, bytes).await.unwrap();
     stored_image_version(db, crate::synced::COVERS_NAMESPACE, release).await
 }
