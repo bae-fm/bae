@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android's backup on Android 11 and below. What core keeps belongs to this
+     device: its libraries and their stores under .bae, and the keyring,
+     encrypted with a Keystore key no backup carries. A restored copy would be
+     a second copy of this device. The restore code is backed up on its own,
+     in Block Store. -->
+<full-backup-content>
+    <exclude domain="file" path=".bae/" />
+    <exclude domain="sharedpref" path="keyring-default.xml" />
+</full-backup-content>

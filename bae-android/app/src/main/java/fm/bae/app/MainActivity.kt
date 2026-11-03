@@ -1,13 +1,10 @@
 package fm.bae.app
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -24,16 +21,6 @@ internal fun mainActivityIntent(context: Context): Intent =
     }
 
 class MainActivity : ComponentActivity() {
-    // Android 13+ asks for this runtime permission before an app's
-    // notifications show. Media-session notifications are exempt, so playback
-    // and its lock-screen, Bluetooth and Android Auto controls work without it.
-    // Launching is a no-op after the first decision, so it's safe to fire on
-    // every launch.
-    private val requestNotificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            logger.info("POST_NOTIFICATIONS granted=$granted")
-        }
-
     // The app shortcut (res/xml/shortcuts.xml) that launched or re-entered this
     // Activity, if any. Compose reads it to drive the one-shot open action
     // (resume playback / open search); the UI clears it once handled so a later
@@ -43,9 +30,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
         pendingShortcut = shortcutActionFromIntent(intent)
         val app = application as BaeApp
         setContent {

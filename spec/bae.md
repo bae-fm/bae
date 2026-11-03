@@ -2914,6 +2914,13 @@ is told apart from a broken one: the host asks again after unlock instead of
 reporting the library unusable. A device can forget the key, which locks the
 library until it is unlocked again.
 
+**Backups of the phone.** Android's backup and its transfer to a new phone
+leave out every library and its stores and the keyring: they are this
+device's, and a copy elsewhere would be a second copy of it (coven's
+[§19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)).
+The restore code saved in Block Store goes with the backup, so a phone set up
+from one lists it on its first screen (§5.6).
+
 **Removing a library from a device.** Dan stops using his old laptop. Removing
 Household from it first removes the laptop from the library, then deletes its
 directory and the secrets the laptop keeps for it; the cloud copy stays. Leaving

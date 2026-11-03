@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android's backup and device-to-device transfer on Android 12 and above.
+     What core keeps belongs to this device: its libraries and their stores
+     under .bae, and the keyring, encrypted with a Keystore key neither
+     carries. A restored or transferred copy would be a second copy of this
+     device. The restore code moves on its own, in Block Store. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path=".bae/" />
+        <exclude domain="sharedpref" path="keyring-default.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path=".bae/" />
+        <exclude domain="sharedpref" path="keyring-default.xml" />
+    </device-transfer>
+</data-extraction-rules>
