@@ -34,7 +34,9 @@ go in scripts/loc-skeleton-allowlist.txt as `locale\tkey` (or
 loc-orphans-allowlist.txt's mechanics.
 
 Also verifies, for every value: the placeholder multiset
-(%@ / %lld / %n$… / {token}) matches its en source exactly. A mismatch is a
+(%@ / %lld / %n$… / {token}) matches its en source exactly (a zero, one or
+two plural branch may spell its count out), and it carries no ICU `#` count
+placeholder, which neither catalog format substitutes. A mismatch is a
 translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
@@ -154,19 +156,26 @@ def positional_signature(s):
     return signature
 
 
-def placeholders_match(en_value, target_value, plural_leaf):
+# The plural categories that can each stand for a single number, whose branch
+# may spell the count out instead of printing it. "few", "many" and "other"
+# always cover several numbers, so their branches must print the count.
+_SINGLE_NUMBER_FORMS = ("zero", "one", "two")
+
+
+def placeholders_match(en_value, target_value, plural_form):
     """Same arguments, whatever order the target puts them in.
 
-    `plural_leaf` is a single branch of a plural (an .xcstrings plural
-    variation, an Android `<plurals>` item). There the count itself may be
-    spelled out — Arabic's "one" branch reads "ملف واحد", not "1 ملف" — so a
-    branch may drop the integer argument. Every other argument must be
-    present; dropping one means the value can't say what it promises."""
+    `plural_form` names the branch of a plural (an .xcstrings plural
+    variation, an Android `<plurals>` item) the value is, or is None. In a
+    zero, one or two branch the count itself may be spelled out — Arabic's
+    "one" branch reads "ملف واحد", not "1 ملف" — so that branch may drop the
+    integer argument. Every other argument must be present; dropping one
+    means the value can't say what it promises."""
     en_signature = positional_signature(en_value)
     target_signature = positional_signature(target_value)
     if en_signature == target_signature:
         return True
-    if not plural_leaf:
+    if plural_form not in _SINGLE_NUMBER_FORMS:
         return False
     dropped = {k: v for k, v in en_signature.items() if k not in target_signature}
     return (
@@ -174,6 +183,13 @@ def placeholders_match(en_value, target_value, plural_leaf):
         and next(iter(dropped.values())) in _INT_SPECIFIERS
         and all(target_signature[k] == en_signature[k] for k in target_signature)
     )
+
+
+def icu_count_placeholder(en_value, target_value):
+    """A `#` the English source doesn't have is ICU MessageFormat's count
+    placeholder. Neither String Catalogs nor Android resources substitute it,
+    so the person reads a literal "#"."""
+    return "#" in target_value and "#" not in en_value
 
 
 def tokenize(s):
@@ -309,13 +325,16 @@ def load_allowlist():
 
 def xcstrings_leaves(path):
     """Yield (key, plural_form_or_None, en_value, {locale: value}) for every
-    stringUnit / plural-variation leaf in the catalog."""
+    stringUnit / plural-variation leaf in the catalog.
+
+    The key is the English source when the catalog keeps no en slot. A locale
+    may vary by plural where English doesn't ("%lld selected" is one English
+    form, several Polish ones); each of its plural leaves is held against the
+    one English value."""
     data = json.loads((ROOT / path).read_text(encoding="utf-8"))
     for key, entry in data["strings"].items():
         locs = entry.get("localizations", {})
-        en = locs.get("en")
-        if en is None:
-            continue
+        en = locs.get("en", {"stringUnit": {"value": key}})
         if "stringUnit" in en:
             en_value = en["stringUnit"]["value"]
             values = {}
@@ -323,6 +342,9 @@ def xcstrings_leaves(path):
                 lv = locs.get(loc)
                 if lv and "stringUnit" in lv:
                     values[loc] = lv["stringUnit"]["value"]
+                elif lv and "variations" in lv:
+                    for form, pf in lv["variations"].get("plural", {}).items():
+                        yield key, form, en_value, {loc: pf["stringUnit"]["value"]}
             yield key, None, en_value, values
         elif "variations" in en:
             plural = en["variations"].get("plural", {})
@@ -417,7 +439,9 @@ def placeholder_mismatches(leaves):
         en_multiset = placeholder_multiset(en_value)
         for locale, target_value in values.items():
             target_multiset = placeholder_multiset(target_value)
-            if not placeholders_match(en_value, target_value, form is not None):
+            if not placeholders_match(
+                en_value, target_value, form
+            ) or icu_count_placeholder(en_value, target_value):
                 mismatches.append({
                     "key": key, "form": form, "locale": locale,
                     "en": en_value, "value": target_value,

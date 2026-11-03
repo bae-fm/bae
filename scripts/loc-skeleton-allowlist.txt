@@ -238,3 +238,7 @@ da	Rip log
 fr	PDF document
 nl	PDF document
 ro	PDF document
+
+# "privégeschiedenis" is the Dutch compound privé + geschiedenis; its "-s" is
+# the noun's own ending, not an English plural glued on.
+nl	They lose access to the library. Their private history and private playlists are deleted; what they shared stays.
