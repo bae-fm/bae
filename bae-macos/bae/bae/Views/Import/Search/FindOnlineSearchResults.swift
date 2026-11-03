@@ -55,7 +55,7 @@ struct FindOnlineSearchResults: View {
     @ViewBuilder
     private var emptyLine: some View {
         if search.status == .noMatches {
-            Text("No matches \u{2014} try different terms")
+            Text("No matches. Try different terms.")
                 .themeText(.body)
                 .foregroundStyle(.secondary)
         }

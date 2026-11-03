@@ -3,8 +3,9 @@
 //! `validate` guards each message against the mistakes that would otherwise
 //! surface as a wrong or missing string at runtime: an undeclared placeholder, a
 //! declared argument the message never uses, a plural over a non-integer, a
-//! malformed MF1 value, an id outside the `core.`/`ui.` namespaces, or a source
-//! or translation that ends a sentence twice ("。。").
+//! malformed MF1 value, an id outside the `core.`/`ui.` namespaces, a source
+//! or translation that ends a sentence twice ("。。"), or an English source
+//! that breaks a sentence with a dash.
 //!
 //! `locale_coverage` holds the catalog to `TARGET_LOCALES`. A message missing a
 //! target locale emits the English source under that locale (see
@@ -61,6 +62,12 @@ pub fn validate(cat: &Catalog) -> Result<(), Vec<String>> {
             if let Some(stop) = doubled_sentence_stop(text) {
                 errs.push(format!("{id} [{locale}]: `{stop}` ends one sentence twice"));
             }
+        }
+        // A pause is a comma and a new thought a new sentence, never a dash.
+        // Only the English is checked: Ukrainian writes its omitted "is" as a
+        // dash.
+        if msg.value.contains('—') || msg.value.contains(" – ") {
+            errs.push(format!("{id}: the English source breaks a sentence with a dash"));
         }
     }
     if errs.is_empty() {

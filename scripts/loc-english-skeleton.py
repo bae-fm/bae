@@ -450,6 +450,28 @@ def placeholder_mismatches(leaves):
     return mismatches
 
 
+# An English sentence is never broken with a dash: a pause is a comma, a new
+# thought a new sentence (projects/bae-rules/no-dash-as-sentence-punctuation).
+# Only the source is held to it; Ukrainian, for one, writes its copula as a dash.
+SENTENCE_DASH_RE = re.compile(r"—| – ")
+
+
+def dashed_sources(leaves):
+    """The English source values that use a dash as sentence punctuation."""
+    return sorted({
+        (key, en_value) for key, _form, en_value, _values in leaves
+        if SENTENCE_DASH_RE.search(en_value)
+    })
+
+
+def print_dashed(label, dashed):
+    if dashed:
+        print(f"=== {label}: {len(dashed)} English source(s) with a sentence dash ===")
+        for key, en_value in dashed:
+            print(f"  {key!r}: {en_value!r}")
+    return len(dashed)
+
+
 def print_hits(label, hits, allowed):
     unallowed = [h for h in hits if (h["locale"], h["key"], h["form"] or "") not in allowed]
     print(f"=== {label}: {len(hits)} hit(s), {len(unallowed)} not allowlisted ===")
@@ -475,6 +497,8 @@ def main():
         unallowed = print_hits(f"{label} (strict)", detector_hits, allowed)
         total_gating_failures += len(unallowed)
 
+        total_gating_failures += print_dashed(label, dashed_sources(leaves))
+
         mismatches = placeholder_mismatches(leaves)
         if mismatches:
             print(f"=== {label}: {len(mismatches)} placeholder-multiset mismatch(es) ===")
@@ -496,6 +520,10 @@ def main():
         detector_hits, band_hits = scan_leaves(android_leaves_all)
         unallowed = print_hits("Android strings.xml (strict)", detector_hits, allowed)
         total_gating_failures += len(unallowed)
+
+        total_gating_failures += print_dashed(
+            "Android strings.xml", dashed_sources(android_leaves_all)
+        )
 
         mismatches = placeholder_mismatches(android_leaves_all)
         if mismatches:

@@ -27,7 +27,7 @@ struct ImportSettingsTab: View {
                         "Identify automatically: new candidates are identified as they are added."
                     )
                     Text(
-                        "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went — including identifications you start yourself."
+                        "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went, including identifications you start yourself."
                     )
                 }
                 .themeText(.detail)

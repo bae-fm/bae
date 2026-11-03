@@ -8402,50 +8402,50 @@
         }
       }
     },
-    "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went — including identifications you start yourself." : {
+    "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went, including identifications you start yourself." : {
       "comment" : "Import settings footer: what importing automatically when identified does, for identifications started automatically or by the person",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الاستيراد تلقائيًا عند تحديد الهوية: ما دام هذا مفعّلًا، يُستورد فورًا المرشح الذي لا يحتاج تحديد هويته إلى شيء منك، إلى حيث ذهب آخر استيراد لك — بما في ذلك عمليات تحديد الهوية التي تبدؤها بنفسك."
+            "value" : "الاستيراد تلقائيًا عند تحديد الهوية: ما دام هذا مفعّلًا، يُستورد فورًا المرشح الذي لا يحتاج تحديد هويته إلى شيء منك، إلى حيث ذهب آخر استيراد لك، بما في ذلك عمليات تحديد الهوية التي تبدؤها بنفسك."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Автоматичен импорт при идентифициране: докато това е включено, кандидат, чието идентифициране не се нуждае от нищо от вас, се импортира веднага там, където отиде последният ви импорт — включително идентифицирания, които стартирате сами."
+            "value" : "Автоматичен импорт при идентифициране: докато това е включено, кандидат, чието идентифициране не се нуждае от нищо от вас, се импортира веднага там, където отиде последният ви импорт, включително идентифицирания, които стартирате сами."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importovat automaticky po identifikaci: dokud je tato volba zapnutá, kandidát, jehož identifikace od vás nic nepotřebuje, se hned importuje tam, kam šel váš poslední import — i když identifikaci spustíte sami."
+            "value" : "Importovat automaticky po identifikaci: dokud je tato volba zapnutá, kandidát, jehož identifikace od vás nic nepotřebuje, se hned importuje tam, kam šel váš poslední import, i když identifikaci spustíte sami."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importér automatisk, når den er identificeret: så længe dette er slået til, importeres en kandidat, hvis identifikation ikke behøver noget fra dig, med det samme der, hvor din seneste import gik hen – også når du selv starter identifikationen."
+            "value" : "Importér automatisk, når den er identificeret: så længe dette er slået til, importeres en kandidat, hvis identifikation ikke behøver noget fra dig, med det samme der, hvor din seneste import gik hen, også når du selv starter identifikationen."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nach dem Identifizieren automatisch importieren: Solange dies an ist, wird ein Kandidat, dessen Identifizierung nichts von dir braucht, sofort importiert – dorthin, wohin dein letzter Import ging. Das gilt auch für Identifizierungen, die du selbst startest."
+            "value" : "Nach dem Identifizieren automatisch importieren: Solange dies an ist, wird ein Kandidat, dessen Identifizierung nichts von dir braucht, sofort dorthin importiert, wohin dein letzter Import ging. Das gilt auch für Identifizierungen, die du selbst startest."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αυτόματη εισαγωγή μετά την ταυτοποίηση: όσο αυτό είναι ενεργό, ένας υποψήφιος του οποίου η ταυτοποίηση δεν χρειάζεται τίποτα από εσάς εισάγεται αμέσως, εκεί όπου πήγε η τελευταία σας εισαγωγή — ακόμη και όταν ξεκινάτε εσείς την ταυτοποίηση."
+            "value" : "Αυτόματη εισαγωγή μετά την ταυτοποίηση: όσο αυτό είναι ενεργό, ένας υποψήφιος του οποίου η ταυτοποίηση δεν χρειάζεται τίποτα από εσάς εισάγεται αμέσως, εκεί όπου πήγε η τελευταία σας εισαγωγή, ακόμη και όταν ξεκινάτε εσείς την ταυτοποίηση."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went — including identifications you start yourself."
+            "value" : "Import automatically when identified: while this is on, a candidate whose identification needs nothing from you is imported right away, where your last import went, including identifications you start yourself."
           }
         },
         "es" : {
@@ -8457,31 +8457,31 @@
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tuo automaattisesti, kun tunnistettu: kun tämä on päällä, ehdokas, jonka tunnistus ei tarvitse sinulta mitään, tuodaan heti sinne, minne viimeisin tuontisi meni – myös silloin, kun aloitat tunnistuksen itse."
+            "value" : "Tuo automaattisesti, kun tunnistettu: kun tämä on päällä, ehdokas, jonka tunnistus ei tarvitse sinulta mitään, tuodaan heti sinne, minne viimeisin tuontisi meni, myös silloin, kun aloitat tunnistuksen itse."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importer automatiquement une fois identifié : tant que cette option est activée, un candidat dont l'identification n'a besoin de rien de votre part est importé aussitôt, là où est allée votre dernière importation — y compris quand vous lancez l'identification vous-même."
+            "value" : "Importer automatiquement une fois identifié : tant que cette option est activée, un candidat dont l'identification n'a besoin de rien de votre part est importé aussitôt, là où est allée votre dernière importation, y compris quand vous lancez l'identification vous-même."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ייבוא אוטומטי לאחר זיהוי: כל עוד זה פעיל, מועמד שהזיהוי שלו אינו צריך דבר ממך מיובא מיד, למקום שאליו הלך הייבוא האחרון שלך — כולל זיהויים שהפעלת בעצמך."
+            "value" : "ייבוא אוטומטי לאחר זיהוי: כל עוד זה פעיל, מועמד שהזיהוי שלו אינו צריך דבר ממך מיובא מיד, למקום שאליו הלך הייבוא האחרון שלך, כולל זיהויים שהפעלת בעצמך."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatski uvezi nakon identifikacije: dok je ovo uključeno, kandidat čija identifikacija od vas ništa ne treba odmah se uvozi, onamo kamo je otišao vaš posljednji uvoz — i kad identifikaciju pokrenete sami."
+            "value" : "Automatski uvezi nakon identifikacije: dok je ovo uključeno, kandidat čija identifikacija od vas ništa ne treba odmah se uvozi, onamo kamo je otišao vaš posljednji uvoz, i kad identifikaciju pokrenete sami."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatikus importálás azonosítás után: amíg ez be van kapcsolva, az a jelölt, amelynek azonosításához nincs szükség semmire tőled, azonnal importálódik oda, ahová a legutóbbi importálásod került – akkor is, ha az azonosítást te magad indítod."
+            "value" : "Automatikus importálás azonosítás után: amíg ez be van kapcsolva, az a jelölt, amelynek azonosításához nincs szükség semmire tőled, azonnal importálódik oda, ahová a legutóbbi importálásod került, akkor is, ha az azonosítást te magad indítod."
           }
         },
         "it" : {
@@ -8505,49 +8505,49 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importer automatisk når den er identifisert: så lenge dette er på, importeres en kandidat der identifiseringen ikke trenger noe fra deg, med en gang dit den siste importen din gikk – også når du starter identifiseringen selv."
+            "value" : "Importer automatisk når den er identifisert: så lenge dette er på, importeres en kandidat der identifiseringen ikke trenger noe fra deg, med en gang dit den siste importen din gikk, også når du starter identifiseringen selv."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatisch importeren na identificatie: zolang dit aan staat, wordt een kandidaat waarvan de identificatie niets van je nodig heeft meteen geïmporteerd, naar waar je laatste import ging – ook als je de identificatie zelf start."
+            "value" : "Automatisch importeren na identificatie: zolang dit aan staat, wordt een kandidaat waarvan de identificatie niets van je nodig heeft meteen geïmporteerd, naar waar je laatste import ging, ook als je de identificatie zelf start."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importuj automatycznie po identyfikacji: dopóki to jest włączone, kandydat, którego identyfikacja niczego od ciebie nie potrzebuje, jest od razu importowany tam, gdzie trafił twój ostatni import — także gdy uruchamiasz identyfikację samodzielnie."
+            "value" : "Importuj automatycznie po identyfikacji: dopóki to jest włączone, kandydat, którego identyfikacja niczego od ciebie nie potrzebuje, jest od razu importowany tam, gdzie trafił twój ostatni import, także gdy uruchamiasz identyfikację samodzielnie."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importar automaticamente ao identificar: enquanto isto estiver ativado, um candidato cuja identificação não precise de nada de você é importado na hora, para onde foi sua última importação — inclusive identificações que você inicia."
+            "value" : "Importar automaticamente ao identificar: enquanto isto estiver ativado, um candidato cuja identificação não precise de nada de você é importado na hora, para onde foi sua última importação, inclusive identificações que você inicia."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importar automaticamente ao identificar: enquanto isto estiver ativado, um candidato cuja identificação não precise de nada de si é importado de imediato, para onde foi a sua última importação — incluindo identificações que inicia."
+            "value" : "Importar automaticamente ao identificar: enquanto isto estiver ativado, um candidato cuja identificação não precise de nada de si é importado de imediato, para onde foi a sua última importação, incluindo identificações que inicia."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importă automat după identificare: cât timp este activat, un candidat a cărui identificare nu are nevoie de nimic de la tine este importat imediat, acolo unde a mers ultimul tău import — inclusiv identificările pe care le pornești tu."
+            "value" : "Importă automat după identificare: cât timp este activat, un candidat a cărui identificare nu are nevoie de nimic de la tine este importat imediat, acolo unde a mers ultimul tău import, inclusiv identificările pe care le pornești tu."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importovať automaticky po identifikácii: kým je to zapnuté, kandidát, ktorého identifikácia od vás nič nepotrebuje, sa hneď importuje tam, kam išiel váš posledný import — aj keď identifikáciu spustíte sami."
+            "value" : "Importovať automaticky po identifikácii: kým je to zapnuté, kandidát, ktorého identifikácia od vás nič nepotrebuje, sa hneď importuje tam, kam išiel váš posledný import, aj keď identifikáciu spustíte sami."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importera automatiskt när den har identifierats: så länge detta är på importeras en kandidat vars identifiering inte behöver något från dig direkt, dit din senaste import gick – även när du startar identifieringen själv."
+            "value" : "Importera automatiskt när den har identifierats: så länge detta är på importeras en kandidat vars identifiering inte behöver något från dig direkt, dit din senaste import gick, även när du startar identifieringen själv."
           }
         },
         "tr" : {
@@ -8559,7 +8559,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Імпортувати автоматично після ідентифікації: поки це ввімкнено, кандидат, ідентифікації якого від вас нічого не потрібно, імпортується одразу туди, куди пішов ваш останній імпорт, — зокрема коли ідентифікацію запускаєте ви самі."
+            "value" : "Імпортувати автоматично після ідентифікації: поки це ввімкнено, кандидат, ідентифікації якого від вас нічого не потрібно, імпортується одразу туди, куди пішов ваш останній імпорт, зокрема коли ідентифікацію запускаєте ви самі."
           }
         },
         "zh-Hans" : {
@@ -90958,175 +90958,175 @@
         }
       }
     },
-    "No matches — try different terms" : {
+    "No matches. Try different terms." : {
       "comment" : "Find online search section: empty state when every source answered with nothing",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا توجد تطابقات — جرّب مصطلحات أخرى"
+            "value" : "لا توجد تطابقات. جرّب مصطلحات أخرى."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Няма съвпадения — опитайте с други думи"
+            "value" : "Няма съвпадения. Опитайте с други думи."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Žádné shody — zkuste jiné výrazy"
+            "value" : "Žádné shody. Zkuste jiné výrazy."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ingen match — prøv andre søgeord"
+            "value" : "Ingen match. Prøv andre søgeord."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No matches — try different terms"
+            "value" : "No matches. Try different terms."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Treffer — andere Begriffe versuchen"
+            "value" : "Keine Treffer. Andere Begriffe versuchen."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Καμία αντιστοίχιση — δοκιμάστε άλλους όρους"
+            "value" : "Καμία αντιστοίχιση. Δοκιμάστε άλλους όρους."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sin coincidencias — prueba con otros términos"
+            "value" : "Sin coincidencias. Prueba con otros términos."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ei osumia — kokeile toisia hakusanoja"
+            "value" : "Ei osumia. Kokeile toisia hakusanoja."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune correspondance — essayez d'autres termes"
+            "value" : "Aucune correspondance. Essayez d'autres termes."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אין התאמות — נסה מונחים אחרים"
+            "value" : "אין התאמות. נסה מונחים אחרים."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nema podudaranja — pokušajte s drugim pojmovima"
+            "value" : "Nema podudaranja. Pokušajte s drugim pojmovima."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nincs találat — próbálj más kifejezéseket"
+            "value" : "Nincs találat. Próbálj más kifejezéseket."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessuna corrispondenza — prova altri termini"
+            "value" : "Nessuna corrispondenza. Prova altri termini."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一致なし — 別の語句で試してください"
+            "value" : "一致なし。別の語句で試してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "일치 없음 — 다른 검색어로 시도하세요"
+            "value" : "일치 없음. 다른 검색어로 시도하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ingen treff — prøv andre søkeord"
+            "value" : "Ingen treff. Prøv andre søkeord."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geen matches — probeer andere termen"
+            "value" : "Geen matches. Probeer andere termen."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brak dopasowań — spróbuj innych słów"
+            "value" : "Brak dopasowań. Spróbuj innych słów."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sem correspondências — tente outros termos"
+            "value" : "Sem correspondências. Tente outros termos."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sem correspondências — experimente outros termos"
+            "value" : "Sem correspondências. Experimente outros termos."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nicio potrivire — încearcă alți termeni"
+            "value" : "Nicio potrivire. Încearcă alți termeni."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Žiadne zhody — skús iné výrazy"
+            "value" : "Žiadne zhody. Skús iné výrazy."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inga träffar — prova andra sökord"
+            "value" : "Inga träffar. Prova andra sökord."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eşleşme yok — farklı terimler deneyin"
+            "value" : "Eşleşme yok. Farklı terimler deneyin."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Немає збігів — спробуйте інші слова"
+            "value" : "Немає збігів. Спробуйте інші слова."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无匹配项 — 换个搜索词试试"
+            "value" : "无匹配项。换个搜索词试试。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "沒有符合項目 — 換個搜尋字詞試試"
+            "value" : "沒有符合項目。換個搜尋字詞試試。"
           }
         }
       }
