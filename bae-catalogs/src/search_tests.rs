@@ -250,64 +250,6 @@ fn discid_metadata_carries_every_medium_into_pairing() {
     );
 }
 
-/// A typed query builds one request per provider from the same fields.
-#[test]
-fn a_general_query_builds_both_providers_requests() {
-    let query = SearchQuery::General {
-        artist: "Artist Name".to_string(),
-        album: "Album Title".to_string(),
-    };
-    let musicbrainz = query.musicbrainz_params();
-    assert_eq!(musicbrainz.artist.as_deref(), Some("Artist Name"));
-    assert_eq!(musicbrainz.album.as_deref(), Some("Album Title"));
-    let discogs = query.discogs_params();
-    assert_eq!(
-        discogs.text.as_deref(),
-        Some("Artist Name"),
-        "the artist is matched as words, not as Discogs's main artist name"
-    );
-    assert_eq!(discogs.release_title.as_deref(), Some("Album Title"));
-}
-
-#[test]
-fn catalog_and_barcode_queries_fill_their_own_provider_fields() {
-    let catalog = SearchQuery::CatalogNumber { catalog_number: "CAT-7".to_string() };
-    assert_eq!(catalog.musicbrainz_params().catalog_number.as_deref(), Some("CAT-7"));
-    assert_eq!(catalog.discogs_params().catno.as_deref(), Some("CAT-7"));
-
-    // A code is asked for in its one spelling: a UPC-A as its EAN-13,
-    // however it was typed.
-    for typed in ["012345678905", " 0 12345 67890 5 ", "0012345678905"] {
-        let barcode = SearchQuery::Barcode { barcode: typed.to_string() };
-        assert_eq!(
-            barcode.musicbrainz_params().barcode.as_deref(),
-            Some("0012345678905"),
-            "{typed}"
-        );
-        assert_eq!(barcode.discogs_params().barcode.as_deref(), Some("0012345678905"), "{typed}");
-    }
-
-    // A value whose check digit fails is still asked for, by its digits.
-    let mistyped = SearchQuery::Barcode { barcode: "0 12345 67890 6".to_string() };
-    assert_eq!(mistyped.musicbrainz_params().barcode.as_deref(), Some("012345678906"));
-}
-
-#[test]
-fn a_barcode_query_names_why_its_value_is_no_product_code() {
-    use bae_types::barcode::Unusable;
-    let unusable =
-        |typed: &str| SearchQuery::Barcode { barcode: typed.to_string() }.unusable_barcode();
-    assert_eq!(unusable("CAT-719"), Some(Unusable::NotACode));
-    assert_eq!(unusable("12345"), Some(Unusable::TooShort));
-    assert_eq!(unusable("0000000000000"), Some(Unusable::Placeholder));
-    assert_eq!(unusable("2100000123457"), Some(Unusable::StoreInternal));
-    assert_eq!(unusable("0 12345 67890 5"), None);
-    assert_eq!(unusable("0 12345 67890 6"), None, "a check-digit slip is still a code");
-
-    let catalog = SearchQuery::CatalogNumber { catalog_number: "CAT-719".to_string() };
-    assert_eq!(catalog.unusable_barcode(), None);
-}
-
 #[test]
 fn discogs_title_splits_into_artist_and_album() {
     let m = discogs_search_result_to_metadata(result_with_title("Artist Name - Album Title"));
@@ -813,9 +755,6 @@ fn a_discogs_search_result_reads_its_format_entries() {
     );
 }
 
-#[path = "search_tests/labels.rs"]
-mod labels;
-
 /// A recording the search returned under no asked code answers nothing; a
 /// release two recordings are on answers once; and a release that states no
 /// credit of its own is the recording's.
@@ -853,4 +792,92 @@ fn the_isrc_search_answers_each_release_of_an_asked_recording_once() {
             .collect::<Vec<_>>(),
         vec![("rel-album", Some("Artist Name")), ("rel-compilation", Some("Various Artists")),]
     );
+}
+
+/// A MusicBrainz search response lists every label with its number, and the
+/// result keeps each pair in order.
+#[test]
+fn a_musicbrainz_search_result_keeps_every_label() {
+    let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
+        "id": "mb-release-1",
+        "title": "Album",
+        "label-info": [
+            { "catalog-number": "AB 100", "label": { "name": "Label A" } },
+            { "catalog-number": "CL 719", "label": { "name": "Label B" } }
+        ]
+    }))
+    .expect("search release parses");
+    assert_eq!(
+        search_release_to_metadata(release, None).labels,
+        vec![
+            ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+            ReleaseLabel::of(Some("Label B"), Some("CL 719")),
+        ]
+    );
+}
+
+/// A Discogs search result states the first label's number and no other, and
+/// lists label and company names together: the result reads the first label
+/// alone, its name with its number.
+#[test]
+fn a_discogs_search_result_reads_its_first_label() {
+    let mut result = result_with_title("Artist - Album");
+    result.label =
+        Some(vec!["Label A".to_string(), "Label B".to_string(), "Pressing Plant".to_string()]);
+    result.catno = Some("AB 100".to_string());
+    assert_eq!(
+        discogs_search_result_to_metadata(result).labels,
+        vec![ReleaseLabel::of(Some("Label A"), Some("AB 100"))]
+    );
+}
+
+/// A Discogs search result's `none` catalog number is no number: the first
+/// label keeps its name alone.
+#[test]
+fn a_discogs_search_results_none_catalog_number_is_no_number() {
+    let mut result = result_with_title("Artist - Album");
+    result.label = Some(vec!["Label A".to_string()]);
+    result.catno = Some("none".to_string());
+    assert_eq!(
+        discogs_search_result_to_metadata(result).labels,
+        vec![ReleaseLabel::of(Some("Label A"), None)]
+    );
+}
+
+/// A search result carries the free text its catalog writes about the
+/// pressing before any document is read: a MusicBrainz release's
+/// disambiguation, and what a Discogs format entry writes beside its name.
+#[test]
+fn a_search_result_carries_its_notes() {
+    let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
+        "id": "mb-release-1",
+        "title": "Album Title",
+        "disambiguation": "made in Nordland",
+    }))
+    .expect("search release parses");
+    assert_eq!(
+        search_release_to_metadata(release, None).notes,
+        vec!["made in Nordland".to_string()]
+    );
+
+    let result = crate::discogs::client::DiscogsSearchResult {
+        id: 1,
+        title: "Artist - Album".to_string(),
+        year: None,
+        formats: vec![crate::discogs::DiscogsFormat {
+            name: "Vinyl".to_string(),
+            qty: "1".to_string(),
+            descriptions: vec!["LP".to_string()],
+            text: Some("Small label".to_string()),
+        }],
+        country: None,
+        label: None,
+        catno: None,
+        barcode: Vec::new(),
+        cover_image: None,
+        thumb: None,
+        master_id: None,
+        result_type: "release".to_string(),
+    };
+    assert_eq!(discogs_search_result_to_metadata(result).notes, vec!["Small label".to_string()]);
 }

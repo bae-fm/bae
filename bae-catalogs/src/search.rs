@@ -10,15 +10,19 @@ use crate::parse_year;
 use crate::providers::CatalogSession;
 use crate::rate_limiter::CallPriority;
 use crate::records::{LookupRef, MetadataRef};
-use crate::remote_image::{RemoteCover, RemoteImageError};
+use crate::remote_image::RemoteCover;
 use crate::CatalogError;
-use crate::{Failure, InternalFailure, LookupFailure};
-use bae_types::barcode::{comparison_key, written_digits, Barcode, Unusable};
+use crate::{Failure, LookupFailure};
 use bae_types::pressing::{
     DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseLabel, ReleaseStatus, StatedMedia,
 };
-use bae_types::text_match::catalog_key;
 use tracing::warn;
+
+mod failure;
+mod query;
+use failure::mb_failure;
+pub use failure::{lookup_or_internal, provider_failure, remote_image_failure};
+pub use query::{CatalogNumberSearch, ProviderQuery, SearchQuery};
 
 /// A metadata search result from either MusicBrainz or Discogs.
 ///
@@ -520,90 +524,6 @@ pub async fn search_discogs(
     Ok(results.into_iter().map(discogs_search_result_to_metadata).collect())
 }
 
-/// The failure MusicBrainz answered with, or `None` for one bae met reading
-/// its answer. A release it does not have is its answer, as a 404; a disc ID
-/// it does not know never reaches here — callers read that as no matches.
-fn mb_provider_failure(e: &musicbrainz::MusicBrainzError) -> Option<LookupFailure> {
-    use musicbrainz::MusicBrainzError;
-    match e {
-        MusicBrainzError::Network(_) => Some(LookupFailure::Network),
-        MusicBrainzError::Timeout => Some(LookupFailure::Timeout),
-        MusicBrainzError::Provider { status, .. } => {
-            Some(LookupFailure::Provider { status: *status })
-        }
-        MusicBrainzError::NotFound(_) => Some(LookupFailure::Provider { status: Some(404) }),
-        MusicBrainzError::Request(_) | MusicBrainzError::Other(_) => None,
-    }
-}
-
-/// The failure a request that got no usable answer is, or `None` for one bae
-/// could not make: a URL reqwest would not build, a redirect loop.
-fn transport_failure(error: &reqwest::Error) -> Option<LookupFailure> {
-    if error.is_builder() || error.is_redirect() {
-        None
-    } else if error.is_timeout() {
-        Some(LookupFailure::Timeout)
-    } else if let Some(status) = error.status() {
-        Some(LookupFailure::Provider { status: Some(status.as_u16()) })
-    } else {
-        Some(LookupFailure::Network)
-    }
-}
-
-/// Why a MusicBrainz lookup did not answer: its failure, or bae's own.
-fn mb_failure(e: &musicbrainz::MusicBrainzError, what: &str) -> Failure {
-    lookup_or_internal(mb_provider_failure(e), what, e)
-}
-
-/// A provider's failure, warned with the error that carried it — the typed
-/// failure a surface renders keeps no cause, so this is where the DNS, TLS or
-/// status behind it is recorded — or bae's own, logged as an internal one.
-pub fn lookup_or_internal(
-    failure: Option<LookupFailure>,
-    what: &str,
-    error: &dyn std::fmt::Display,
-) -> Failure {
-    match failure {
-        Some(failure) => {
-            warn!("{what}: {error}");
-            Failure::Lookup(failure)
-        }
-        None => Failure::Internal(InternalFailure::logged(what, error)),
-    }
-}
-
-/// The failure a catalog answered with, or `None` for an error bae met on its
-/// own side: a request it could not build, an answer it could not parse.
-pub fn provider_failure(error: &CatalogError) -> Option<LookupFailure> {
-    match error {
-        CatalogError::MusicBrainz(error) => mb_provider_failure(error),
-        CatalogError::RemoteImage(error) => remote_image_failure(error),
-        CatalogError::Discogs(error) => match error {
-            DiscogsError::Transport(error) => transport_failure(error),
-            DiscogsError::Provider { status, .. } => {
-                Some(LookupFailure::Provider { status: Some(status.as_u16()) })
-            }
-            DiscogsError::InvalidApiKey => Some(LookupFailure::Provider { status: Some(401) }),
-            DiscogsError::NotFound => Some(LookupFailure::Provider { status: Some(404) }),
-            DiscogsError::Serialization(_) => None,
-        },
-        _ => None,
-    }
-}
-
-/// The failure an artwork host answered with, or `None` for one bae met on
-/// its own side: a request it could not build, bytes that are not an image,
-/// a cache task that did not finish.
-pub fn remote_image_failure(error: &RemoteImageError) -> Option<LookupFailure> {
-    match error {
-        RemoteImageError::Transport { error, .. } => transport_failure(error),
-        RemoteImageError::Status { status, .. } => {
-            Some(LookupFailure::Provider { status: Some(*status) })
-        }
-        RemoteImageError::Unusable { .. } | RemoteImageError::CacheTask(_) => None,
-    }
-}
-
 /// One provider's answer to one lookup.
 pub type SourceLookup = Result<Vec<MetadataResult>, Failure>;
 
@@ -613,149 +533,6 @@ pub type SourceLookup = Result<Vec<MetadataResult>, Failure>;
 pub struct SourceFailure {
     pub source: Catalog,
     pub failure: LookupFailure,
-}
-
-/// What one provider is asked: the request in each catalog's own terms, and
-/// which of the releases it answers with answer the question.
-pub trait ProviderQuery: std::fmt::Debug {
-    fn musicbrainz_params(&self) -> ReleaseSearchParams;
-    fn discogs_params(&self) -> DiscogsSearchParams;
-    /// Drop from `results` what the catalog returned that does not answer.
-    fn keep_answers(&self, results: &mut Vec<MetadataResult>);
-}
-
-/// A typed manual search, one of three modes. Every configured provider is
-/// asked; [`search_source`] runs one of them.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SearchQuery {
-    General { artist: String, album: String },
-    CatalogNumber { catalog_number: String },
-    Barcode { barcode: String },
-}
-
-impl SearchQuery {
-    /// Why a barcode query's value names no product, which a surface states
-    /// beside what the search turned up. `None` for a code — one whose check
-    /// digit fails too — and for every other query.
-    pub fn unusable_barcode(&self) -> Option<Unusable> {
-        match self {
-            SearchQuery::Barcode { barcode } => comparison_key(barcode).err(),
-            SearchQuery::General { .. } | SearchQuery::CatalogNumber { .. } => None,
-        }
-    }
-}
-
-impl ProviderQuery for SearchQuery {
-    fn keep_answers(&self, results: &mut Vec<MetadataResult>) {
-        match self {
-            SearchQuery::CatalogNumber { catalog_number } => keep_numbered(catalog_number, results),
-            SearchQuery::General { .. } | SearchQuery::Barcode { .. } => {}
-        }
-    }
-
-    fn musicbrainz_params(&self) -> ReleaseSearchParams {
-        match self {
-            SearchQuery::General { artist, album } => ReleaseSearchParams {
-                artist: Some(artist.clone()),
-                album: Some(album.clone()),
-                ..Default::default()
-            },
-            SearchQuery::CatalogNumber { catalog_number } => ReleaseSearchParams {
-                catalog_number: Some(catalog_number.clone()),
-                ..Default::default()
-            },
-            SearchQuery::Barcode { barcode } => {
-                ReleaseSearchParams { barcode: Some(barcode_query(barcode)), ..Default::default() }
-            }
-        }
-    }
-
-    fn discogs_params(&self) -> DiscogsSearchParams {
-        match self {
-            SearchQuery::General { artist, album } => DiscogsSearchParams {
-                text: (!artist.trim().is_empty()).then(|| artist.clone()),
-                release_title: Some(album.clone()),
-                ..Default::default()
-            },
-            SearchQuery::CatalogNumber { catalog_number } => {
-                DiscogsSearchParams { catno: Some(catalog_number.clone()), ..Default::default() }
-            }
-            SearchQuery::Barcode { barcode } => {
-                DiscogsSearchParams { barcode: Some(barcode_query(barcode)), ..Default::default() }
-            }
-        }
-    }
-}
-
-/// A run's search by catalog number, narrowed to what it knows of the release
-/// it looks for. A short number is printed by hundreds of unrelated releases,
-/// and a catalog serves them a page at a time; naming the artist and the
-/// label leaves the ones that share them.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CatalogNumberSearch {
-    pub number: String,
-    /// The artist the release is credited to. Discogs matches it as words
-    /// anywhere on a release, as a title search's artist is (see
-    /// [`DiscogsSearchParams::text`]).
-    pub artist: Option<String>,
-    /// The label the release prints the number under.
-    pub label: Option<String>,
-}
-
-impl ProviderQuery for CatalogNumberSearch {
-    fn keep_answers(&self, results: &mut Vec<MetadataResult>) {
-        keep_numbered(&self.number, results);
-    }
-
-    fn musicbrainz_params(&self) -> ReleaseSearchParams {
-        ReleaseSearchParams {
-            artist: self.artist.clone(),
-            label: self.label.clone(),
-            catalog_number: Some(self.number.clone()),
-            ..Default::default()
-        }
-    }
-
-    fn discogs_params(&self) -> DiscogsSearchParams {
-        DiscogsSearchParams {
-            text: self.artist.clone(),
-            label: self.label.clone(),
-            catno: Some(self.number.clone()),
-            ..Default::default()
-        }
-    }
-}
-
-/// Keep only the releases printing `number`. Both catalogs match a catalog
-/// number loosely — asking for `CL 719` returns `CL 1719` and `WPCL-719` — so
-/// a release answers only when one of its labels' numbers is the asked one,
-/// compared as [`catalog_key`] compares them.
-fn keep_numbered(number: &str, results: &mut Vec<MetadataResult>) {
-    let Some(asked) = catalog_key(number) else {
-        return;
-    };
-    results.retain(|result| {
-        result
-            .labels
-            .iter()
-            .filter_map(ReleaseLabel::catalog_number)
-            .filter_map(catalog_key)
-            .any(|stated| stated == asked)
-    });
-}
-
-/// The barcode a `Barcode` query asks for. A code is asked for in the one
-/// spelling [`Barcode`] gives it — the spelling identify's own lookups use —
-/// so a code typed with its print spacing, or as a twelve-digit UPC-A, is the
-/// same question as the one the run asks. A value that fails its check digit
-/// is still asked for, by its digits: a person may be looking for a record
-/// that states it that way. Anything not written as a code is asked for as
-/// written.
-fn barcode_query(barcode: &str) -> String {
-    Barcode::stated(barcode)
-        .map(Barcode::into_string)
-        .or_else(|| written_digits(barcode))
-        .unwrap_or_else(|| barcode.to_string())
 }
 
 /// Ask one provider a typed query, in the provider's own error type — for a
@@ -863,12 +640,4 @@ fn isrc_releases_to_metadata(
 
 #[cfg(test)]
 #[path = "search_tests.rs"]
-mod search_tests;
-
-#[cfg(test)]
-#[path = "search_notes_tests.rs"]
-mod search_notes_tests;
-
-#[cfg(test)]
-#[path = "remote_image_failure_tests.rs"]
-mod remote_image_failure_tests;
+mod tests;
