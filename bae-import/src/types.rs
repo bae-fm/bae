@@ -55,16 +55,6 @@ pub use candidate_draft::{
 #[cfg(desktop)]
 pub use candidate_draft::{CandidateMetadataDraft, CandidatePreparedAssets};
 
-/// Trim a raw pressing field; empty (after trim) becomes `None`.
-fn trim_to_option(raw: &str) -> Option<String> {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
-}
-
 #[cfg(test)]
 #[path = "types_tests.rs"]
 mod tests;

@@ -145,6 +145,16 @@ pub enum EditValidationError {
     InvalidYear,
 }
 
+/// Typed text trimmed; empty after trimming is `None`.
+pub(super) fn trim_to_option(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
 #[expect(
     clippy::map_err_ignore,
     reason = "the year is the person's own text; which character failed adds nothing to it"

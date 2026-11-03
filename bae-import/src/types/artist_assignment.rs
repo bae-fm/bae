@@ -1,7 +1,7 @@
 //! An artist credited on an album or track, as a draft or an edit holds it,
 //! and how such a credit stands to the library when it is read.
 
-use super::trim_to_option;
+use super::raw_release_edit::trim_to_option;
 use bae_catalogs::credits::{ArtistCredit, SourceCredit};
 use bae_db::{CreditResolution, ExistingArtist, ResolvedCredit};
 use serde::{Deserialize, Serialize};
