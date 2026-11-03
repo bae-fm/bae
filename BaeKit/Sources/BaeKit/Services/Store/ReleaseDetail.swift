@@ -50,7 +50,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
         displayName = bridge.name.text
         pressingSummary = PressingText.line(bridge.pressingSummary)
         pressingDetails = PressingText.line(bridge.pressingDetails)
-        let separator = QueueSummary.message("core.audio.list_separator")
+        let separator = localizedCoreString("core.audio.list_separator")
         // The play time ends the line, in the words core chose for it
         // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
         pressingLine = [
@@ -81,7 +81,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
         _ lines: [BridgeLabelLine],
         separator: String
     ) -> String {
-        let within = QueueSummary.message("core.label.list_separator")
+        let within = localizedCoreString("core.label.list_separator")
         return
             lines.map { line in
                 [

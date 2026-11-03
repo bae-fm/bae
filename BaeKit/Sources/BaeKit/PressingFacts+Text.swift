@@ -16,7 +16,7 @@ public enum PressingText {
     public static func line(_ terms: [BridgeFactTerm]) -> String {
         terms.map(\.text)
             .joined(
-                separator: QueueSummary.message("core.audio.list_separator")
+                separator: localizedCoreString("core.audio.list_separator")
             )
     }
 
@@ -31,7 +31,7 @@ extension BridgeTermLabel {
     public var text: String {
         switch self {
         case .localized(let key):
-            QueueSummary.message(key)
+            localizedCoreString(key)
         case .verbatim(let text):
             text
         }
@@ -47,7 +47,7 @@ extension BridgeFactTerm {
             label.text
         case .counted(let count, let label):
             String.localizedStringWithFormat(
-                QueueSummary.message("core.pressing.media_count"),
+                localizedCoreString("core.pressing.media_count"),
                 Int(count),
                 label.text
             )
@@ -62,7 +62,7 @@ extension BridgeReleaseArea {
         case .country(let code):
             PressingText.countryName(code)
         case .region(let region):
-            QueueSummary.message(bridgeRegionKey(region: region))
+            localizedCoreString(bridgeRegionKey(region: region))
         }
     }
 }
@@ -81,7 +81,7 @@ extension BridgeReleaseName {
                 .joined(separator: " ")
         case .numbered(let number):
             String.localizedStringWithFormat(
-                QueueSummary.message("core.release.numbered"),
+                localizedCoreString("core.release.numbered"),
                 Int(number)
             )
         }
@@ -99,7 +99,7 @@ extension BridgeWorkReleaseSummary {
         case .named, .numbered:
             ([name.text] + (media.isEmpty ? [] : [PressingText.line(media)]))
                 .joined(
-                    separator: QueueSummary.message("core.audio.list_separator")
+                    separator: localizedCoreString("core.audio.list_separator")
                 )
         }
     }

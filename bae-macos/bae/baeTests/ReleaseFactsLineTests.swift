@@ -20,8 +20,8 @@ struct ReleaseFactsLineTests {
     @Test("the labels line shows each name group once, then its numbers")
     func theLabelsLineShowsCoreGroups() throws {
         let release = try Self.release("a-21")
-        let separator = QueueSummary.message("core.audio.list_separator")
-        let within = QueueSummary.message("core.label.list_separator")
+        let separator = localizedCoreString("core.audio.list_separator")
+        let within = localizedCoreString("core.label.list_separator")
 
         #expect(!release.pressingLine.isEmpty)
         #expect(

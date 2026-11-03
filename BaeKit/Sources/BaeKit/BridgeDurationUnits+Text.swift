@@ -17,7 +17,7 @@ extension BridgeDurationUnits {
             Self.minutesText(minutes)
         case .hoursAndMinutes(let hours, let minutes):
             String(
-                format: QueueSummary.message("core.duration.hours_minutes"),
+                format: localizedCoreString("core.duration.hours_minutes"),
                 Self.hoursText(hours),
                 Self.minutesText(minutes)
             )
@@ -26,14 +26,14 @@ extension BridgeDurationUnits {
 
     private static func hoursText(_ hours: UInt64) -> String {
         String.localizedStringWithFormat(
-            QueueSummary.message("core.duration.hours"),
+            localizedCoreString("core.duration.hours"),
             Int(hours)
         )
     }
 
     private static func minutesText(_ minutes: UInt64) -> String {
         String.localizedStringWithFormat(
-            QueueSummary.message("core.duration.minutes"),
+            localizedCoreString("core.duration.minutes"),
             Int(minutes)
         )
     }

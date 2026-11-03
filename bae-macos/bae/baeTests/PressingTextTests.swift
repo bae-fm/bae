@@ -7,7 +7,7 @@ import Testing
 /// place and the media, then what sets it apart.
 struct PressingTextTests {
     private var separator: String {
-        QueueSummary.message("core.audio.list_separator")
+        localizedCoreString("core.audio.list_separator")
     }
 
     /// A pressing's lines, as core words them onto its record.
@@ -44,14 +44,14 @@ struct PressingTextTests {
         )
         #expect(
             details(musicBrainz)
-                == QueueSummary.message("core.pressing.packaging.jewel_case"),
+                == localizedCoreString("core.pressing.packaging.jewel_case"),
             "an official release is not set apart by being official"
         )
         #expect(
             details(discogs)
                 == [
-                    QueueSummary.message("core.pressing.status.promotion"),
-                    QueueSummary.message("core.pressing.discogs.reissue"),
+                    localizedCoreString("core.pressing.status.promotion"),
+                    localizedCoreString("core.pressing.discogs.reissue"),
                     "FLAC",
                 ]
                 .joined(separator: separator)
@@ -71,7 +71,7 @@ struct PressingTextTests {
         let facts = PreviewData.pressingFacts(region: .ukAndEurope)
         #expect(
             summary(facts)
-                == QueueSummary.message("core.pressing.region.uk_and_europe")
+                == localizedCoreString("core.pressing.region.uk_and_europe")
         )
         #expect(
             summary(facts) != "core.pressing.region.uk_and_europe"

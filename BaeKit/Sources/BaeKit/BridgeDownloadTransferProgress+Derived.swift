@@ -8,12 +8,7 @@ extension BridgeDownloadTransferProgress {
 
 func formattedDownloadBytesProgress(done: UInt64, total: UInt64) -> String {
     String(
-        format: NSLocalizedString(
-            "core.download.bytes_progress",
-            tableName: "Core",
-            bundle: .module,
-            comment: "Transferred bytes out of total bytes"
-        ),
+        format: localizedCoreString("core.download.bytes_progress"),
         done.formattedDownloadBytes,
         total.formattedDownloadBytes
     )

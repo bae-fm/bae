@@ -1,7 +1,8 @@
 import Foundation
 
-/// Resolve a bae-library message key against the generated `Core` string table.
-/// One source of the table lookup for the error/playback lines below.
+/// Resolve a bae-library message key against the generated `Core` string
+/// table: the one lookup of that table, for every core line BaeKit and the
+/// app show.
 public func localizedCoreString(_ key: String) -> String {
     NSLocalizedString(key, tableName: "Core", bundle: .module, comment: "")
 }

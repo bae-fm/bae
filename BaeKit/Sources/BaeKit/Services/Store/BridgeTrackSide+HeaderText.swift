@@ -5,12 +5,7 @@ extension BridgeTrackSide {
     /// section is flat.
     public func headerText(key: String?) -> String {
         guard let key else { return "" }
-        let format = NSLocalizedString(
-            key,
-            tableName: "Core",
-            bundle: .module,
-            comment: ""
-        )
+        let format = localizedCoreString(key)
         switch self {
         case .sided(let sideLetter):
             return String(format: format, sideLetter)

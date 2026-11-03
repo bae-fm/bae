@@ -171,7 +171,7 @@ struct ReleaseStatusPicker: View {
     }
 
     static func text(_ status: BridgeReleaseStatus) -> String {
-        QueueSummary.message(bridgeReleaseStatusKey(status: status))
+        localizedCoreString(bridgeReleaseStatusKey(status: status))
     }
 
     private func choose(_ status: BridgeReleaseStatus?) {
@@ -200,7 +200,7 @@ struct PackagingPicker: View {
     }
 
     static func text(_ packaging: BridgePackaging) -> String {
-        QueueSummary.message(bridgePackagingKey(packaging: packaging))
+        localizedCoreString(bridgePackagingKey(packaging: packaging))
     }
 
     private func choose(_ packaging: BridgePackaging?) {

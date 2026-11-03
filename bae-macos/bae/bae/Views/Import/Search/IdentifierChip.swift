@@ -344,7 +344,7 @@ struct LookupReleaseLine: View {
                 if !label.names.isEmpty {
                     Text(
                         label.names.joined(
-                            separator: QueueSummary.message(
+                            separator: localizedCoreString(
                                 "core.label.list_separator"
                             )
                         )
