@@ -122,10 +122,10 @@ struct FormatsSettingsTab: View {
 
     /// Adds a FLAC preset and opens its editor once config holds it.
     private func addPreset() {
-        let codec = SavePresetKind.flac.defaultCodec
+        let codec = bridgeSaveFormatDefaultCodec(format: .flac)
         let preset = BridgeSavePreset(
             id: UUID().uuidString.replacingOccurrences(of: "-", with: ""),
-            name: SavePresetKind.flac.label,
+            name: BridgeSaveFormat.flac.label,
             codec: codec,
             extension: codec.fileExtension,
             filenameTokens: Self.defaultPresetFilenameTokens,

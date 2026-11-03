@@ -83,9 +83,13 @@ struct SavePresetEditor: View {
     /// The bitrate draft parses and lands in the codec's supported range;
     /// lossless codecs carry no bitrate to validate.
     private var bitrateValid: Bool {
-        guard let range = preset.codec.kind.bitrateRange else { return true }
+        guard
+            let accepted = bridgeSaveFormatBitratesKbps(
+                format: preset.codec.format
+            )
+        else { return true }
         guard let value = UInt32(bitrateDraft) else { return false }
-        return range.contains(value)
+        return (accepted.min...accepted.max).contains(value)
     }
 
     private var nameRow: some View {
@@ -106,6 +110,9 @@ struct SavePresetEditor: View {
         .presetEditorRowInsets()
     }
 
+    /// The formats the picker offers, in core's order.
+    private static let formats = bridgeSaveFormats()
+
     private var formatRow: some View {
         LabeledContent("Format") {
             formatPicker
@@ -117,15 +124,15 @@ struct SavePresetEditor: View {
         Picker(
             "Format",
             selection: Binding(
-                get: { preset.codec.kind },
-                set: { kind in
+                get: { preset.codec.format },
+                set: { format in
                     var changed = preset
-                    changed.codec = preset.codec.switched(to: kind)
+                    changed.codec = preset.codec.switched(to: format)
                     changed.extension = changed.codec.fileExtension
                     // A default name follows the format; a name the user typed
                     // stays put.
-                    if preset.name == preset.codec.kind.label {
-                        changed.name = kind.label
+                    if preset.name == preset.codec.format.label {
+                        changed.name = format.label
                     }
                     if changed.pregapPlacement == .singleFileWithCue,
                         !changed.codec.supportsSingleFileCue
@@ -136,8 +143,8 @@ struct SavePresetEditor: View {
                 }
             )
         ) {
-            ForEach(SavePresetKind.allCases, id: \.self) { kind in
-                Text(kind.label).tag(kind)
+            ForEach(Self.formats, id: \.self) { format in
+                Text(format.label).tag(format)
             }
         }
         .labelsHidden()

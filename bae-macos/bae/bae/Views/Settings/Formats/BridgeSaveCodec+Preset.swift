@@ -2,30 +2,26 @@ import BaeKit
 import Foundation
 
 extension BridgeSaveCodec {
-    var kind: SavePresetKind {
-        switch self {
-        case .flac: .flac
-        case .mp3: .mp3
-        case .aac: .aac
-        case .opusOgg: .opusOgg
-        case .wav: .wav
-        case .aiff: .aiff
-        }
-    }
+    /// The format this codec saves as, as core reads it.
+    var format: BridgeSaveFormat { bridgeSaveCodecFormat(codec: self) }
 
-    /// Switch codec family, carrying the parameter that still applies: bit
-    /// depth across lossless codecs, bitrate across lossy ones (clamped into
-    /// the target family's supported range). A cross-family switch takes the
-    /// family default.
-    func switched(to kind: SavePresetKind) -> BridgeSaveCodec {
-        switch kind {
-        case .flac: .flac(bitDepth: bitDepth ?? .bits24)
-        case .wav: .wav(bitDepth: bitDepth ?? .bits24)
-        case .aiff: .aiff(bitDepth: bitDepth ?? .bits24)
-        case .mp3: .mp3(bitrateKbps: min(max(bitrateKbps ?? 320, 32), 320))
-        case .aac: .aac(bitrateKbps: min(max(bitrateKbps ?? 256, 32), 512))
-        case .opusOgg: .opusOgg(bitrateKbps: bitrateKbps ?? 192)
+    /// Switch format, carrying the setting that still applies: bit depth
+    /// across lossless formats, bitrate across lossy ones (clamped into the
+    /// bitrates the target saves at). A switch between lossless and lossy
+    /// takes the target's starting codec, all as core gives them.
+    func switched(to format: BridgeSaveFormat) -> BridgeSaveCodec {
+        let start = bridgeSaveFormatDefaultCodec(format: format)
+        if let bitDepth, start.bitDepth != nil {
+            return start.with(bitDepth: bitDepth)
         }
+        if let bitrateKbps,
+            let accepted = bridgeSaveFormatBitratesKbps(format: format)
+        {
+            return start.with(
+                bitrateKbps: min(max(bitrateKbps, accepted.min), accepted.max)
+            )
+        }
+        return start
     }
 
     /// The lossless family's bit depth; nil for lossy codecs.

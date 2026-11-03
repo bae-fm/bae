@@ -55,3 +55,38 @@ fn aac_bitrate_is_validated_against_its_bounds() {
     let err = preset(513).validate().expect_err("a bitrate above the maximum must be rejected");
     assert!(err.to_string().contains("unsupported AAC bitrate"));
 }
+
+/// A preset switched to any format starts at a codec of that format that
+/// saves, and a lossy format accepts exactly the bitrates it offers.
+#[test]
+fn each_format_starts_at_a_codec_of_its_own_that_saves() {
+    for format in SaveFormat::ALL {
+        let codec = format.default_codec();
+        assert_eq!(codec.format(), format);
+        let preset = |codec: SaveCodec| SavePreset {
+            id: "preset".to_string(),
+            name: "Preset".to_string(),
+            codec,
+            filename_tokens: default_save_filename_tokens(),
+            pregap_placement: default_export_pregap_placement(),
+            applies_to_track: true,
+            applies_to_release: true,
+            embed_cover: true,
+        };
+        preset(codec.clone()).validate().unwrap();
+        if let Some(accepted) = format.bitrates_kbps() {
+            let at = |bitrate_kbps| match codec {
+                SaveCodec::Mp3 { .. } => SaveCodec::Mp3 { bitrate_kbps },
+                SaveCodec::Aac { .. } => SaveCodec::Aac { bitrate_kbps },
+                SaveCodec::OpusOgg { .. } => SaveCodec::OpusOgg { bitrate_kbps },
+                SaveCodec::Flac { .. } | SaveCodec::Wav { .. } | SaveCodec::Aiff { .. } => {
+                    panic!("{format:?} is lossless and has no bitrates")
+                }
+            };
+            preset(at(*accepted.start())).validate().unwrap();
+            preset(at(*accepted.end())).validate().unwrap();
+            preset(at(accepted.start() - 1)).validate().expect_err("below the range");
+            preset(at(accepted.end() + 1)).validate().expect_err("above the range");
+        }
+    }
+}

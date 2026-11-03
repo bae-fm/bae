@@ -31,9 +31,12 @@ struct PresetBitrateRow: View {
     }
 
     private func commitBitrate() {
-        guard let range = preset.codec.kind.bitrateRange,
+        guard
+            let accepted = bridgeSaveFormatBitratesKbps(
+                format: preset.codec.format
+            ),
             let value = UInt32(bitrateDraft),
-            range.contains(value),
+            (accepted.min...accepted.max).contains(value),
             value != preset.codec.bitrateKbps
         else { return }
         var changed = preset

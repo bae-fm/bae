@@ -1,4 +1,6 @@
 use super::PreferencesError;
+use std::ops::RangeInclusive;
+
 use serde::{Deserialize, Serialize};
 
 /// One piece of an export filename pattern. A pattern is an ordered token list;
@@ -52,7 +54,69 @@ pub enum SaveCodec {
     Aiff { bit_depth: SaveBitDepth },
 }
 
+/// A format a preset saves as. Each codec is one format at its own settings:
+/// a lossless format's bit depth or a lossy one's bitrate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SaveFormat {
+    Flac,
+    Mp3,
+    Aac,
+    OpusOgg,
+    Wav,
+    Aiff,
+}
+
+impl SaveFormat {
+    /// Every format, in the order a format picker offers them.
+    pub const ALL: [SaveFormat; 6] =
+        [Self::Flac, Self::Mp3, Self::Aac, Self::OpusOgg, Self::Wav, Self::Aiff];
+
+    /// The codec a preset of this format starts at.
+    pub fn default_codec(self) -> SaveCodec {
+        match self {
+            Self::Flac => SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
+            Self::Mp3 => SaveCodec::Mp3 { bitrate_kbps: 320 },
+            Self::Aac => SaveCodec::Aac { bitrate_kbps: 256 },
+            Self::OpusOgg => SaveCodec::OpusOgg { bitrate_kbps: 192 },
+            Self::Wav => SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
+            Self::Aiff => SaveCodec::Aiff { bit_depth: SaveBitDepth::Bits24 },
+        }
+    }
+
+    /// The bitrates a lossy format saves at, in kbps; `None` for a lossless
+    /// one, which has a bit depth instead.
+    pub fn bitrates_kbps(self) -> Option<RangeInclusive<u32>> {
+        match self {
+            Self::Mp3 => Some(32..=320),
+            Self::Aac | Self::OpusOgg => Some(32..=512),
+            Self::Flac | Self::Wav | Self::Aiff => None,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Flac => "FLAC",
+            Self::Mp3 => "MP3",
+            Self::Aac => "AAC",
+            Self::OpusOgg => "Opus",
+            Self::Wav => "WAV",
+            Self::Aiff => "AIFF",
+        }
+    }
+}
+
 impl SaveCodec {
+    pub fn format(&self) -> SaveFormat {
+        match self {
+            Self::Flac { .. } => SaveFormat::Flac,
+            Self::Mp3 { .. } => SaveFormat::Mp3,
+            Self::Aac { .. } => SaveFormat::Aac,
+            Self::OpusOgg { .. } => SaveFormat::OpusOgg,
+            Self::Wav { .. } => SaveFormat::Wav,
+            Self::Aiff { .. } => SaveFormat::Aiff,
+        }
+    }
+
     pub fn extension(&self) -> &'static str {
         match self {
             Self::Flac { .. } => "flac",
@@ -132,32 +196,20 @@ impl SavePreset {
                 self.id
             )));
         }
-        match self.codec {
-            SaveCodec::Mp3 { bitrate_kbps } => {
-                if !(32..=320).contains(&bitrate_kbps) {
-                    return Err(PreferencesError::Invalid(format!(
-                        "export preset {} has unsupported MP3 bitrate {}",
-                        self.id, bitrate_kbps
-                    )));
-                }
+        if let SaveCodec::Mp3 { bitrate_kbps }
+        | SaveCodec::Aac { bitrate_kbps }
+        | SaveCodec::OpusOgg { bitrate_kbps } = self.codec
+        {
+            let format = self.codec.format();
+            let accepted = format.bitrates_kbps().expect("a lossy format has a bitrate range");
+            if !accepted.contains(&bitrate_kbps) {
+                return Err(PreferencesError::Invalid(format!(
+                    "export preset {} has unsupported {} bitrate {}",
+                    self.id,
+                    format.name(),
+                    bitrate_kbps
+                )));
             }
-            SaveCodec::Aac { bitrate_kbps } => {
-                if !(32..=512).contains(&bitrate_kbps) {
-                    return Err(PreferencesError::Invalid(format!(
-                        "export preset {} has unsupported AAC bitrate {}",
-                        self.id, bitrate_kbps
-                    )));
-                }
-            }
-            SaveCodec::OpusOgg { bitrate_kbps } => {
-                if !(32..=512).contains(&bitrate_kbps) {
-                    return Err(PreferencesError::Invalid(format!(
-                        "export preset {} has unsupported Opus bitrate {}",
-                        self.id, bitrate_kbps
-                    )));
-                }
-            }
-            SaveCodec::Flac { .. } | SaveCodec::Wav { .. } | SaveCodec::Aiff { .. } => {}
         }
         Ok(())
     }
@@ -171,7 +223,7 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
         SavePreset {
             id: "flac".to_string(),
             name: "FLAC".to_string(),
-            codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
+            codec: SaveFormat::Flac.default_codec(),
             filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
@@ -181,7 +233,7 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
         SavePreset {
             id: "mp3".to_string(),
             name: "MP3".to_string(),
-            codec: SaveCodec::Mp3 { bitrate_kbps: 320 },
+            codec: SaveFormat::Mp3.default_codec(),
             filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,

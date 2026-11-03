@@ -4366,11 +4366,14 @@ Replay gain has no control in the apps.
 | `mcp_enabled`, `mcp_port` | off, 47777 | the MCP server; its token is in the keyring |
 | `subsonic_enabled`, `_port`, `_username`, `_bind_address` | off, 4533, none, 127.0.0.1 | the Subsonic server; its password is in the keyring |
 
-A save preset holds a codec (FLAC, WAV or AIFF at 16, 24 or 32 bits; MP3, AAC
-or Opus at a bitrate), a filename pattern of tokens (title, artist, album, year,
+A save preset holds a codec (FLAC, WAV or AIFF at 16, 24 or 32 bits; MP3 at
+32 to 320 kbps, AAC or Opus at 32 to 512 kbps), a filename pattern of tokens (title, artist, album, year,
 track number, disc number, track total), where pregaps go (appended to the
 track before, with or without the hidden first-track audio; left out; or one
-file with a CUE sheet), and whether it embeds the cover.
+file with a CUE sheet), and whether it embeds the cover. A preset switched to
+another format keeps its bit depth between lossless formats and its bitrate
+between lossy ones, brought into the new format's range; otherwise it starts
+at 24 bits, or MP3 at 320, AAC at 256 and Opus at 192 kbps.
 
 Platform settings, such as the appearance and restoring playback on launch,
 live in each app. The apps start in the system's light or dark mode with the
