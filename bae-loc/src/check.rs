@@ -3,7 +3,8 @@
 //! `validate` guards each message against the mistakes that would otherwise
 //! surface as a wrong or missing string at runtime: an undeclared placeholder, a
 //! declared argument the message never uses, a plural over a non-integer, a
-//! malformed MF1 value, or an id outside the `core.`/`ui.` namespaces.
+//! malformed MF1 value, an id outside the `core.`/`ui.` namespaces, or a source
+//! or translation that ends a sentence twice ("。。").
 //!
 //! `locale_coverage` holds the catalog to `TARGET_LOCALES`. A message missing a
 //! target locale emits the English source under that locale (see
@@ -54,12 +55,50 @@ pub fn validate(cat: &Catalog) -> Result<(), Vec<String>> {
                 }
             }
         }
+        let texts = std::iter::once(("en", &msg.value))
+            .chain(msg.translations.iter().map(|(locale, text)| (locale.as_str(), text)));
+        for (locale, text) in texts {
+            if let Some(stop) = doubled_sentence_stop(text) {
+                errs.push(format!("{id} [{locale}]: `{stop}` ends one sentence twice"));
+            }
+        }
     }
     if errs.is_empty() {
         Ok(())
     } else {
         Err(errs)
     }
+}
+
+/// The marks that end a sentence, in the scripts bae ships.
+const SENTENCE_STOPS: &[char] = &['.', '。', '!', '?', '！', '？'];
+
+/// A sentence ended twice: a stop repeated ("。。", "!!") or a full stop beside
+/// another stop ("。.", "?."), most often a translator's own full stop kept
+/// beside the source's. Three ASCII dots are an ellipsis and "?!" is one
+/// deliberate mark, so neither counts.
+fn doubled_sentence_stop(text: &str) -> Option<String> {
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if !SENTENCE_STOPS.contains(&c) {
+            continue;
+        }
+        let mut run = String::from(c);
+        while let Some(&next) = chars.peek() {
+            if !SENTENCE_STOPS.contains(&next) {
+                break;
+            }
+            run.push(next);
+            chars.next();
+        }
+        let repeats = run.chars().zip(run.chars().skip(1)).any(|(a, b)| a == b);
+        let doubled =
+            run != "..." && run.chars().count() > 1 && (repeats || run.contains(['.', '。']));
+        if doubled {
+            return Some(run);
+        }
+    }
+    None
 }
 
 /// Hold every message's `translations` table to `TARGET_LOCALES` exactly.
