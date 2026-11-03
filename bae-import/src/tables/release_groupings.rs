@@ -461,11 +461,12 @@ fn anchored_at(
     sql: &(impl QueryOne + QueryRows),
     anchor: &Path,
 ) -> Result<FolderReleaseDecisionKey, DbError> {
-    let root = super::import_state::watched_folder_among_on(sql, anchor.ancestors())?.ok_or_else(
-        || DbError::Message(format!("{} is under no watched folder", coven::path_text(anchor))),
-    )?;
+    let root = super::watched_folders::watched_folder_among_on(sql, anchor.ancestors())?
+        .ok_or_else(|| {
+            DbError::Message(format!("{} is under no watched folder", coven::path_text(anchor)))
+        })?;
     Ok(FolderReleaseDecisionKey {
-        relative_folder: super::import_state::relative_below(&root, anchor)?,
+        relative_folder: super::watched_folders::relative_below(&root, anchor)?,
         watched_folder_path: root,
     })
 }

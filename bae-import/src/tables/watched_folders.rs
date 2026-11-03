@@ -1,0 +1,170 @@
+//! The watched folders, `watched_import_folders`: which folders import reads,
+//! each keyed by its canonical spelling and in the order it was added. No two
+//! overlap. Every folder a scan, a decision or a skip stores lies under one.
+
+use super::*;
+use bae_db::RelativeFolder;
+use std::path::{Path, PathBuf};
+
+mod removal;
+
+/// `folder`, a stored folder under the watched folder `root`, as the folder
+/// below it.
+pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {
+    bae_db::watched_path::candidate_relative_path(root, folder)
+        .map_err(|error| DbError::Message(error.to_string()))
+}
+
+/// The watched folder covering `folder`. A decision about a folder is deleted
+/// with the watched folder covering it, so one stored outside every watched
+/// folder would never be deleted.
+pub(super) fn require_watched(sql: &CovenWrite<'_>, folder: &Path) -> Result<PathBuf, DbError> {
+    watched_folder_among_on(sql, folder.ancestors())?.ok_or_else(|| {
+        DbError::Message(format!("{} is under no watched folder", coven::path_text(folder)))
+    })
+}
+
+/// The watched folder among `folders`, each looked up by the watched
+/// folders' key. Watched folders never overlap, so the ancestors of one
+/// folder name at most one.
+pub(super) fn watched_folder_among_on<'a>(
+    sql: &(impl QueryOne + QueryRows),
+    folders: impl Iterator<Item = &'a Path>,
+) -> Result<Option<PathBuf>, DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT path FROM watched_import_folders \
+             WHERE path IN (SELECT unhex(value) FROM json_each(?))",
+            [path_column::hex_list(folders)],
+            |row| path_column::get(row, 0),
+        )
+        .optional()?)
+}
+
+impl ImportTables {
+    /// Every watched folder, in the order they were added. A stored root that
+    /// is not canonical, or overlaps another, fails the read.
+    pub async fn load_watched_import_folders(&self) -> Result<Vec<crate::WatchedFolder>, DbError> {
+        let roots = self.watched_import_roots().await?;
+        for (index, root) in roots.iter().enumerate() {
+            bae_db::watched_path::validate_absolute_root(root)?;
+            if let Some(conflict) = roots[index + 1..]
+                .iter()
+                .find(|other| crate::watched_folder::paths_overlap(root, other))
+            {
+                return Err(DbError::Message(format!(
+                    "watched folders cannot overlap: {} conflicts with {}",
+                    coven::path_text(root),
+                    coven::path_text(conflict)
+                )));
+            }
+        }
+        Ok(roots.into_iter().map(crate::WatchedFolder::from_path).collect())
+    }
+
+    /// Whether `path`, spelled as the store keys it, is a watched folder,
+    /// read by the watched folders' key.
+    pub async fn is_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
+        let path = coven::path_bytes(path);
+        self.database
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM watched_import_folders WHERE path = ?)",
+                    [path],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+    }
+
+    /// The watched folder that holds `path` inside it, not `path` itself.
+    pub async fn watched_import_folder_above(
+        &self,
+        path: &Path,
+    ) -> Result<Option<PathBuf>, DbError> {
+        let path = path.to_path_buf();
+        self.database.read(move |sql| watched_folder_among_on(&sql, path.ancestors().skip(1))).await
+    }
+
+    /// The watched folders inside `path`, not `path` itself, in their order:
+    /// those whose key lies in the range of paths below it.
+    pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {
+        let (first, past) = bae_db::watched_path::paths_below(path);
+        let path = coven::path_bytes(path);
+        self.database
+            .read(move |sql| {
+                Ok(sql.query(
+                    "SELECT path FROM watched_import_folders \
+                 WHERE path >= ? AND path < ? AND path <> ? ORDER BY position",
+                    params![first, past, path],
+                    |row| path_column::get(row, 0),
+                )?)
+            })
+            .await
+    }
+
+    /// Every watched root, in the order they were added.
+    async fn watched_import_roots(&self) -> Result<Vec<PathBuf>, DbError> {
+        self.database
+            .read(move |sql| {
+                Ok(sql.query(
+                    "SELECT path FROM watched_import_folders ORDER BY position",
+                    [],
+                    |row| path_column::get(row, 0),
+                )?)
+            })
+            .await
+    }
+
+    /// Watch the folder `path` names, keyed by its canonical spelling; `false`
+    /// when it is already watched.
+    ///
+    /// The overlap check runs inside the inserting write, so two overlapping
+    /// folders added at once cannot both pass. Already-watched is answered by
+    /// a read first, since the store refuses a write that changes nothing; a
+    /// folder watched in between fails the write.
+    pub async fn add_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
+        let path = bae_db::watched_path::canonical_absolute_root(path)?;
+        if self.is_watched_import_folder(&path).await? {
+            return Ok(false);
+        }
+        self.database
+            .call(move |sql| {
+                let roots: Vec<PathBuf> = sql.query(
+                    "SELECT path FROM watched_import_folders ORDER BY position",
+                    [],
+                    |row| path_column::get(row, 0),
+                )?;
+                if roots.iter().any(|root| root.as_os_str() == path.as_os_str()) {
+                    return Err(DbError::Message(format!(
+                        "watched folder {} was added while this add was deciding",
+                        coven::path_text(&path)
+                    )));
+                }
+                if let Some(conflict) =
+                    roots.iter().find(|root| crate::watched_folder::paths_overlap(&path, root))
+                {
+                    return Err(DbError::Message(format!(
+                        "watched folders cannot overlap: {} conflicts with {}",
+                        coven::path_text(&path),
+                        coven::path_text(conflict)
+                    )));
+                }
+                let position: i64 = sql.query_row(
+                    "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
+                    [],
+                    |row| row.get(0),
+                )?;
+                sql.execute(
+                    "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
+                    params![coven::path_bytes(&path), position],
+                )?;
+                Ok(true)
+            })
+            .await
+    }
+}
+
+#[cfg(test)]
+#[path = "watched_folders_tests.rs"]
+mod tests;

@@ -79,7 +79,7 @@ impl ImportTables {
                 // Every candidate under the folders leaves the scan, and its
                 // identification with it.
                 for key in &removed {
-                    super::end_file_work_unless_of_on(sql, key, None)?;
+                    super::import_state::end_file_work_unless_of_on(sql, key, None)?;
                 }
                 Ok(Some(removed))
             })
@@ -212,5 +212,5 @@ fn forget_folders_under(
 }
 
 #[cfg(test)]
-#[path = "watched_folder_removal_tests.rs"]
+#[path = "removal_tests.rs"]
 mod tests;

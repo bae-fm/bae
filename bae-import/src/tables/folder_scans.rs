@@ -744,7 +744,7 @@ pub(super) fn store_folder_reading(
     let combined =
         matches!(decision, crate::folder_scanner::FolderReleaseDecision::CombineAsOneRelease);
     let anchor = bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
-    let covering = super::import_state::require_watched(sql, &anchor)?;
+    let covering = super::watched_folders::require_watched(sql, &anchor)?;
     if covering.as_os_str() != key.watched_folder_path.as_os_str() {
         return Err(DbError::Message(format!(
             "{} is watched under {}, not {}",

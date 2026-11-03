@@ -17,6 +17,7 @@ mod label_identity_choice;
 mod models;
 mod release_groupings;
 mod source_releases;
+mod watched_folders;
 
 pub use folder_scans::{FinishedScan, ScanItemWrite};
 pub(crate) use folder_scans::{
