@@ -198,18 +198,6 @@ impl ResolvedTrackAudio {
             .then_some(segment)
     }
 
-    /// The WAV the track's stream is served as uncompressed: PCM at the depth
-    /// it was stored at (16, 24 or 32 bits), or 16 for a lossy codec, which
-    /// has no stored depth and decodes to nothing finer.
-    pub fn wav_stream_format(&self) -> bae_audio::StreamEncodeFormat {
-        let bits_per_sample = match self.bits_per_sample {
-            Some(17..=24) => 24,
-            Some(25..) => 32,
-            Some(_) | None => 16,
-        };
-        bae_audio::StreamEncodeFormat::PcmWav { bits_per_sample }
-    }
-
     /// The silent frames bae generates before the track's first stored sample,
     /// from a CUE `PREGAP` directive; zero without one. The track's stream
     /// starts with them wherever it is decoded from its start — playback, and

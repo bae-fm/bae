@@ -27,7 +27,7 @@ use tracing::{debug, warn};
 use crate::envelope::Element;
 use crate::error::SubError;
 use crate::id::SubId;
-use crate::library_map::lib_err;
+use crate::library_map::{lib_err, wav_stream_format};
 use crate::params::Params;
 use crate::AppState;
 
@@ -81,7 +81,7 @@ async fn stream_inner(
     if wants_original {
         match audio.whole_file() {
             Some(file) => stream_file(state, file, headers).await,
-            None => stream_encoded(state, &audio, audio.wav_stream_format(), None).await,
+            None => stream_encoded(state, &audio, wav_stream_format(&audio), None).await,
         }
     } else {
         let format = transcode_format(&audio, requested_format, max_bitrate);
@@ -290,7 +290,7 @@ fn transcode_format(
 ) -> StreamEncodeFormat {
     let bitrate = max_bitrate.filter(|&b| b > 0).unwrap_or(128) as u32;
     match requested_format {
-        Some("wav") => audio.wav_stream_format(),
+        Some("wav") => wav_stream_format(audio),
         Some("opus") | Some("ogg") => {
             StreamEncodeFormat::OpusOgg { bitrate_kbps: bitrate.clamp(32, 512) }
         }

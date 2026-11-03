@@ -5,8 +5,9 @@
 //! release into an `AlbumID3` and a track into a `Child`, resolving the audio
 //! format, artists, and backing file each `Child` requires.
 
+use bae_audio::StreamEncodeFormat;
 use bae_catalogs::catalog::Catalog;
-use bae_core::db::{DbFile, DbRelease, DbTrack};
+use bae_core::db::{DbFile, DbRelease, DbTrack, ResolvedTrackAudio};
 use bae_core::library::{AppServices, LibraryError};
 
 use crate::error::SubError;
@@ -14,6 +15,18 @@ use crate::id::SubId;
 use crate::model::{
     album_wire_id, artist_wire_id, track_wire_id, AlbumId3, ArtistId3, Child, CreditedArtist,
 };
+
+/// The WAV `audio`'s stream is served as uncompressed: PCM at the depth it
+/// was stored at (16, 24 or 32 bits), or 16 for a lossy codec, which has no
+/// stored depth and decodes to nothing finer.
+pub(crate) fn wav_stream_format(audio: &ResolvedTrackAudio) -> StreamEncodeFormat {
+    let bits_per_sample = match audio.bits_per_sample {
+        Some(17..=24) => 24,
+        Some(25..) => 32,
+        Some(_) | None => 16,
+    };
+    StreamEncodeFormat::PcmWav { bits_per_sample }
+}
 
 /// A library error is opaque to a Subsonic client — surface it as a generic
 /// error (code 0) carrying the message.
@@ -152,7 +165,7 @@ async fn resolve_audio_fields(
             )
         }
         None => {
-            let format = audio.wav_stream_format();
+            let format = wav_stream_format(&audio);
             (format.content_type().to_string(), Some(format.extension().to_string()), None)
         }
     };
