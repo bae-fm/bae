@@ -29,4 +29,5 @@ pub use picker::{CastDevice, CastPicker, RendererKind};
 pub use session::{EventCallback, RendererSession, RendererSessionEvent};
 
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;
