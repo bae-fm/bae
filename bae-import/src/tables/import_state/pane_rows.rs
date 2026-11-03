@@ -322,15 +322,7 @@ pub(super) fn load_draft_and_cover_on(
     {
         return Ok((draft, load_cover_on(sql, content_hash)?));
     }
-    let imported = sql
-        .query_row(
-            "SELECT 1 FROM local_release_origin WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if imported {
+    if crate::tables::import_origin::imported_release_on(sql, content_hash)?.is_some() {
         return Err(DbError::Message(format!(
             "candidate {content_hash} was imported, and holds no draft"
         )));

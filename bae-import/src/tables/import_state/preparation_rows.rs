@@ -143,13 +143,7 @@ pub(super) fn load_preparation_on(
     else {
         return Ok(None);
     };
-    if let Some(release_id) = sql
-        .query_row(
-            "SELECT release_id FROM local_release_origin WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get(0),
-        )
-        .optional()?
+    if let Some(release_id) = crate::tables::import_origin::imported_release_on(sql, content_hash)?
     {
         return Ok(Some(CandidatePreparationRead::Imported { release_id }));
     }

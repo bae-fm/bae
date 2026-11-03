@@ -290,15 +290,7 @@ pub(crate) fn ensure_candidate_state(
     if !created {
         return Ok(());
     }
-    let imported = sql
-        .query_row(
-            "SELECT 1 FROM local_release_origin WHERE content_hash = ?",
-            [&content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if imported {
+    if crate::tables::import_origin::imported_release_on(sql, &content_hash)?.is_some() {
         return Ok(());
     }
     // The folder's own cover is stored with the candidate so readers never

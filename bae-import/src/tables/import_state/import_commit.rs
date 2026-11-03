@@ -124,32 +124,14 @@ fn record_import_origin_on(
 ) -> Result<(), ImportCommitError> {
     match guard {
         ImportCommitGuard::Candidate { expectation, .. } => {
-            let content_hash = &expectation.candidate.content_hash;
-            match sql.execute(
-                "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
-                params![release_id, content_hash],
-            ) {
-                Ok(_) => Ok(()),
-                // The unique hash is the one unique constraint the insert can
-                // break: the release id is the one this commit just made.
-                Err(rusqlite::Error::SqliteFailure(failure, message))
-                    if failure.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE =>
-                {
-                    let imported: Option<String> = sql
-                        .query_row(
-                            "SELECT release_id FROM local_release_origin WHERE content_hash = ?",
-                            [content_hash],
-                            |row| row.get(0),
-                        )
-                        .optional()?;
-                    match imported {
-                        Some(release_id) => {
-                            Err(ImportCommitError::FilesAlreadyImported { release_id })
-                        }
-                        None => Err(rusqlite::Error::SqliteFailure(failure, message).into()),
-                    }
+            use crate::tables::import_origin::{record_on, OriginRecord};
+            match record_on(sql, release_id, &expectation.candidate.content_hash)
+                .map_err(|error| ImportCommitError::Write(error.into()))?
+            {
+                OriginRecord::Recorded => Ok(()),
+                OriginRecord::Taken { release_id } => {
+                    Err(ImportCommitError::FilesAlreadyImported { release_id })
                 }
-                Err(error) => Err(error.into()),
             }
         }
         #[cfg(test)]
