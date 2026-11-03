@@ -240,8 +240,6 @@ pub use error::ImportError;
 pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityConflictChoice};
 #[cfg(desktop)]
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
-#[cfg(all(desktop, any(test, feature = "test-utils")))]
-pub use file_metadata_seed::store_scan_item;
 #[cfg(desktop)]
 pub use folder_scan_status::{
     ActiveFolderScan, FolderScanActivity, FolderScanProgress, FolderScanStatus,
@@ -292,6 +290,8 @@ pub use preparations::CandidatePreparations;
 pub use release_reads::ReleaseReads;
 #[cfg(desktop)]
 pub(crate) use remote_images::RemoteImages;
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use scan_passes::store_scan_item;
 #[cfg(desktop)]
 pub use service::ImportService;
 pub use session::{

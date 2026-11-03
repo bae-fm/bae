@@ -320,7 +320,7 @@ impl ImportServiceHandle {
             grouping: None,
         };
         let item = crate::folder_scanner::ScanItem::Valid(candidate.clone());
-        let seed = crate::file_metadata_seed::scan_item_seed(
+        let seed = crate::scan_passes::scan_item_seed(
             &self.tables,
             &self.diagnostics,
             &item,

@@ -224,7 +224,7 @@ async fn read_folder_again(
         })
         .await
         .map_err(|failed| services.diagnostics.bug(failed))??;
-        let seed = crate::file_metadata_seed::scan_item_seed(
+        let seed = super::scan_item_seed(
             tables,
             &services.diagnostics,
             &item,
