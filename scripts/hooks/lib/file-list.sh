@@ -49,10 +49,19 @@ for package in metadata["packages"]:
 '
 }
 
-# What the checks of the crates named as arguments turn on: a "feature
-# <crate>/<feature>" line for each test feature a crate declares
-# (`test-utils`, `test-instrumentation`), and a "mobile <crate>" line for each
-# crate the mobile apps build: bae-library and the workspace crates it depends on.
+# What the checks of the directly changed crates named as arguments cover,
+# one line each:
+# - "crate <crate>" for each crate a change to theirs can break: the changed
+#   crates, each crate whose library depends on one of them (a normal or build
+#   dependency, through any chain of such dependencies), and each crate whose
+#   tests use one of those (a dev-dependency). A changed public path or
+#   signature reaches all of their libraries and tests, integration tests
+#   included; the libraries of a crate that only tests with one are unchanged,
+#   so the crates above it are not covered through it.
+# - "feature <crate>/<feature>" for each test feature a covered crate declares
+#   (`test-utils`, `test-instrumentation`).
+# - "mobile <crate>" for each covered crate the mobile apps build: bae-library
+#   and the workspace crates it depends on.
 crate_check_plan() {
     python3 - "$@" <<'PLAN'
 import json, subprocess, sys
@@ -72,12 +81,32 @@ while pending:
         normal = any(kind["kind"] is None for kind in dependency["dep_kinds"])
         if dependency["pkg"] in members and normal:
             pending.append(dependency["pkg"])
-for name in sys.argv[1:]:
-    package = packages[by_name[name]]
+# Each member's dependents among the members, from the dependencies their
+# manifests declare, optional ones included: (dependent, whether its library
+# uses it).
+dependents = {member: [] for member in members}
+for member in members:
+    for declared in packages[member]["dependencies"]:
+        if declared["name"] in by_name and declared.get("path"):
+            dependents[by_name[declared["name"]]].append(
+                (member, declared["kind"] != "dev"))
+libraries, pending = set(), [by_name[name] for name in sys.argv[1:]]
+while pending:
+    member = pending.pop()
+    if member in libraries:
+        continue
+    libraries.add(member)
+    pending.extend(dependent for dependent, library in dependents[member] if library)
+covered = libraries | {
+    dependent for member in libraries for dependent, library in dependents[member]
+    if not library}
+for member in sorted(covered, key=lambda member: packages[member]["name"]):
+    name = packages[member]["name"]
+    print("crate", name)
     for feature in ("test-utils", "test-instrumentation"):
-        if feature in package["features"]:
+        if feature in packages[member]["features"]:
             print("feature", f"{name}/{feature}")
-    if by_name[name] in mobile:
+    if member in mobile:
         print("mobile", name)
 PLAN
 }

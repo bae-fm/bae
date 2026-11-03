@@ -180,35 +180,39 @@ while IFS= read -r crate; do
 done < <(changed_workspace_crates <<< "$WORKSPACE_CRATES")
 
 if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
+    # The changed crates and every crate a change to them can break: a
+    # changed public path or signature breaks a dependent's library or tests,
+    # which a check of the changed crates alone never builds.
     CLIPPY_ARGS=(clippy --all-targets)
     MOBILE_CHECK_ARGS=(check --lib --target aarch64-apple-ios)
-    MOBILE_CHANGED=0
-    for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
-        CLIPPY_ARGS+=(-p "$crate")
-    done
+    MOBILE_COVERED=0
     CHECK_PLAN=$(crate_check_plan "${DIRECTLY_CHANGED_CRATES[@]}")
     while read -r kind value; do
         case "$kind" in
+            crate) CLIPPY_ARGS+=(-p "$value") ;;
             feature) CLIPPY_ARGS+=(--features "$value") ;;
             mobile)
-                MOBILE_CHANGED=1
+                MOBILE_COVERED=1
                 MOBILE_CHECK_ARGS+=(-p "$value")
                 ;;
         esac
     done <<< "$CHECK_PLAN"
     CLIPPY_ARGS+=(-- -D warnings)
-    run_check "clippy (directly changed crates)" scripts/cargo.sh "${CLIPPY_ARGS[@]}" || {
+    run_check "clippy (changed crates and their dependents)" scripts/cargo.sh "${CLIPPY_ARGS[@]}" || {
         echo "Fix the warnings above and try again"
         exit 1
     }
 
     # CI documents the workspace with warnings as errors; clippy does not see
-    # doc links, so a link to a private item only failed there.
+    # doc links, so a link to a private item only failed there. Only the
+    # changed crates are documented: documenting every dependent again costs
+    # more than the rest of the hook, and a dependent's doc link a change
+    # breaks fails CI on main, where it is fixed forward.
     DOC_ARGS=(doc --no-deps)
     for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
         DOC_ARGS+=(-p "$crate")
     done
-    run_check "rustdoc (directly changed crates)" env RUSTDOCFLAGS="-D warnings" scripts/cargo.sh "${DOC_ARGS[@]}" || {
+    run_check "rustdoc (changed crates)" env RUSTDOCFLAGS="-D warnings" scripts/cargo.sh "${DOC_ARGS[@]}" || {
         echo "Fix the documentation errors above and try again"
         exit 1
     }
@@ -216,7 +220,7 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     # The mobile apps build bae-library and the crates below it without their
     # desktop-only modules, where anything only those modules use is dead code
     # and fails the build.
-    if [ "$MOBILE_CHANGED" -eq 1 ]; then
+    if [ "$MOBILE_COVERED" -eq 1 ]; then
         run_check "bae-library and the crates below it for iOS (desktop-only code)" \
             scripts/cargo.sh "${MOBILE_CHECK_ARGS[@]}" || {
             echo "Gate code only desktop modules use with the same cfg and try again"

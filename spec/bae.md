@@ -3953,7 +3953,8 @@ each device and hands playback the channel or sink.
 
 ### 11.3 Checks
 
-A pre-commit hook formats and lints the changed crates. CI runs, on macOS,
+A pre-commit hook formats and lints the changed crates and the crates that
+depend on them, their tests included. CI runs, on macOS,
 iOS, Android, Linux and Windows: formatting, the file-size limit, visibility
 and ownership boundaries, the crates' dependency order, clippy for each
 feature set, dead-code and unused-dependency checks, cargo deny, docs, every

@@ -71,6 +71,37 @@ if [ "$kotlin_files" != $'bae-android/app/src/main/java/fm/bae/ImportPane.kt\nno
     exit 1
 fi
 
+# A change reaches the crates whose libraries depend on the changed crate,
+# through any chain, and the tests of the crates that test with one of those;
+# not the crates above a crate that only tests with one, nor its dependencies.
+plan_workspace=$(mktemp -d)
+mkdir -p "$plan_workspace"/{base,bae-library,tester,above-tester,unrelated}/src
+printf '[workspace]\nmembers = ["base", "bae-library", "tester", "above-tester", "unrelated"]\nresolver = "2"\n' \
+    > "$plan_workspace/Cargo.toml"
+plan_crate() {
+    local name="$1" dependencies="$2" rest="${3:-}"
+    printf '[package]\nname = "%s"\nversion = "0.1.0"\nedition = "2024"\n\n%s\n%s\n' \
+        "$name" "$dependencies" "$rest" > "$plan_workspace/$name/Cargo.toml"
+    : > "$plan_workspace/$name/src/lib.rs"
+}
+plan_crate base "" $'[features]\ntest-utils = []'
+plan_crate bae-library $'[dependencies]\nbase = { path = "../base" }'
+plan_crate tester $'[dev-dependencies]\nbae-library = { path = "../bae-library" }'
+plan_crate above-tester $'[dependencies]\ntester = { path = "../tester" }'
+plan_crate unrelated ""
+if ! plan=$(cd "$plan_workspace" && crate_check_plan base); then
+    rm -rf "$plan_workspace"
+    echo "the check plan of a planted workspace failed"
+    exit 1
+fi
+rm -rf "$plan_workspace"
+expected_plan=$'crate bae-library\nmobile bae-library\ncrate base\nfeature base/test-utils\nmobile base\ncrate tester'
+if [ "$plan" != "$expected_plan" ]; then
+    echo "the crates a change to base reaches were planned incorrectly:"
+    echo "$plan"
+    exit 1
+fi
+
 repo=$(mktemp -d)
 trap 'rm -rf "$repo"' EXIT
 git -C "$repo" init -q
