@@ -229,6 +229,7 @@ impl BridgeConfig {
             side_pause_countdown: BridgeSidePauseCountdown::from_core(*side_pause_countdown),
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
+            max_concurrent_transfers: bae_preferences::MAX_CONCURRENT_TRANSFERS,
             identify_automatically: *automatic,
             import_when_identified: *import_when_identified,
             import_storage: BridgeImportStorage { cloud: *cloud, pinned: *pinned },

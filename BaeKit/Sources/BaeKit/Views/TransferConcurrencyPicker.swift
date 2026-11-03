@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// A segmented 1...8 picker for a file-transfer concurrency setting —
-/// simultaneous uploads or downloads. Reads the current value from the config
-/// mirror and writes it through `setValue`; a failed write (an out-of-range
+/// A segmented picker, 1 up to core's limit, for a file-transfer concurrency
+/// setting: simultaneous uploads or downloads. Reads the current value from the
+/// config mirror and writes it through `setValue`; a failed write (an out-of-range
 /// value, a config-write error) is surfaced and the picker keeps showing the
 /// stored value. It holds no optimistic state: the selection binding reads the
 /// mirror, which only changes once the config subscription delivers a
@@ -11,6 +11,8 @@ import SwiftUI
 public struct TransferConcurrencyPicker: View {
     public let title: LocalizedStringKey
     public let value: UInt32
+    /// The most core accepts (`BridgeConfig.maxConcurrentTransfers`).
+    public let limit: UInt32
     public let setValue: @Sendable (UInt32) async throws -> Void
     /// Takes the error, not a rendered line: whether a failure is worth showing
     /// is core's answer, and the sink is the one place that drops it.
@@ -19,22 +21,20 @@ public struct TransferConcurrencyPicker: View {
     public init(
         title: LocalizedStringKey,
         value: UInt32,
+        limit: UInt32,
         setValue: @escaping @Sendable (UInt32) async throws -> Void,
         showError: @escaping @MainActor (any Error) -> Void
     ) {
         self.title = title
         self.value = value
+        self.limit = limit
         self.setValue = setValue
         self.showError = showError
     }
 
-    /// The range the setters accept (bae-library's `MAX_CONCURRENT_TRANSFERS`);
-    /// the bridge carries the value, not the bound, so the UI states it.
-    private static let choices: [UInt32] = Array(1...8)
-
     public var body: some View {
         Picker(title, selection: binding) {
-            ForEach(Self.choices, id: \.self) { n in
+            ForEach(Array(1...limit), id: \.self) { n in
                 Text(n.formatted()).tag(n)
             }
         }

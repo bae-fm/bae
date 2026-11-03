@@ -46,6 +46,7 @@ struct TransfersSettingsTab: View {
             TransferConcurrencyPicker(
                 title: label,
                 value: value,
+                limit: configStore.config.maxConcurrentTransfers,
                 setValue: setValue,
                 showError: { uiStore.showError($0) }
             )

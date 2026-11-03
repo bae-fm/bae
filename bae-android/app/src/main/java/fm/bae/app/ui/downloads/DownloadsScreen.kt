@@ -80,6 +80,7 @@ internal fun DownloadsScreen(
         DownloadConcurrencyRow(
             session = session,
             value = config.maxConcurrentDownloads,
+            limit = config.maxConcurrentTransfers,
         )
         HorizontalDivider()
         DownloadsBody(

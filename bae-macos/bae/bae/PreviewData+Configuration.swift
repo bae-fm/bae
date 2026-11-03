@@ -87,6 +87,7 @@
                         sidePauseCountdown: .off,
                         maxConcurrentUploads: 3,
                         maxConcurrentDownloads: 3,
+                        maxConcurrentTransfers: 8,
                         identifyAutomatically: identifyAutomatically,
                         importWhenIdentified: false,
                         importStorage: BridgeImportStorage(

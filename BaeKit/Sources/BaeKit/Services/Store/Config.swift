@@ -14,10 +14,13 @@ public struct Config: Equatable {
     /// long. Settings show it only while `pauseBetweenSides` is on.
     public let sidePauseCountdown: BridgeSidePauseCountdown
     /// How many file uploads run at once, and how many downloads a pin fetches at
-    /// once. Device-local (a per-machine choice), range 1...8. The storage manager
-    /// reads them here and writes through the bridge setters.
+    /// once. Device-local (a per-machine choice), 1 up to
+    /// `maxConcurrentTransfers`. The storage manager reads them here and writes
+    /// through the bridge setters.
     public let maxConcurrentUploads: UInt32
     public let maxConcurrentDownloads: UInt32
+    /// The most uploads, and the most downloads, core lets run at once.
+    public let maxConcurrentTransfers: UInt32
     /// Whether identification starts on its own: a newly added candidate is
     /// identified as it arrives.
     public let identifyAutomatically: Bool
@@ -67,6 +70,7 @@ public struct Config: Equatable {
         sidePauseCountdown = bridge.sidePauseCountdown
         maxConcurrentUploads = bridge.maxConcurrentUploads
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
+        maxConcurrentTransfers = bridge.maxConcurrentTransfers
         identifyAutomatically = bridge.identifyAutomatically
         importWhenIdentified = bridge.importWhenIdentified
         importStorage = bridge.importStorage

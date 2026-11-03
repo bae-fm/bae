@@ -257,6 +257,7 @@ object BridgeFixtures {
             sidePauseCountdown = BridgeSidePauseCountdown.OFF,
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
+            maxConcurrentTransfers = 8u,
             identifyAutomatically = true,
             importWhenIdentified = false,
             importStorage = BridgeImportStorage(cloud = true, pinned = true),

@@ -8,11 +8,16 @@ pub struct BridgeConfig {
     /// Whether a side or disc pause ends on its own after a countdown, and how
     /// long. Settings show it only while `pause_between_sides` is on.
     pub side_pause_countdown: BridgeSidePauseCountdown,
-    /// How many file uploads run at once. Device-local; range 1..=8. Desktop
-    /// exposes a control for it, mobile does not (mobile makes no uploads).
+    /// How many file uploads run at once. Device-local; 1 up to
+    /// `max_concurrent_transfers`. Desktop exposes a control for it, mobile
+    /// does not (mobile makes no uploads).
     pub max_concurrent_uploads: u32,
-    /// How many file downloads a pin fetches at once. Device-local; range 1..=8.
+    /// How many file downloads a pin fetches at once. Device-local; 1 up to
+    /// `max_concurrent_transfers`.
     pub max_concurrent_downloads: u32,
+    /// The most uploads, and the most downloads, that can be set to run at
+    /// once: the concurrency pickers offer 1 up to this.
+    pub max_concurrent_transfers: u32,
     /// Whether a candidate found while this is on is identified on its own.
     /// Changing it affects no candidate already found or queued.
     pub identify_automatically: bool,

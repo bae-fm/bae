@@ -188,6 +188,7 @@ struct SyncStatusStoreTests {
             sidePauseCountdown: .off,
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,
+            maxConcurrentTransfers: 8,
             identifyAutomatically: true,
             importWhenIdentified: false,
             importStorage: BridgeImportStorage(

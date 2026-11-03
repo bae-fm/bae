@@ -24,9 +24,11 @@ import kotlinx.coroutines.withContext
 internal fun DownloadConcurrencyRow(
     session: OpenLibrary,
     value: UInt,
+    limit: UInt,
 ) {
     DownloadConcurrencySelector(
         value = value,
+        limit = limit,
         onSelect = { option ->
             session.messages.perform("set download concurrency") {
                 withContext(Dispatchers.IO) { session.appHandle.setMaxConcurrentDownloads(option) }
@@ -35,14 +37,15 @@ internal fun DownloadConcurrencyRow(
     )
 }
 
-/** The concurrency picker, with [value] selected and each tap reported through [onSelect]. */
+/** The concurrency picker, offering 1 up to [limit], with [value] selected and each tap reported
+ *  through [onSelect]. */
 @Composable
 private fun DownloadConcurrencySelector(
     value: UInt,
+    limit: UInt,
     onSelect: (UInt) -> Unit,
 ) {
-    // bae-library's MAX_CONCURRENT_TRANSFERS; the bridge carries the value but not the bound.
-    val options = (1u..8u).toList()
+    val options = (1u..limit).toList()
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
     ) {
@@ -68,6 +71,6 @@ private fun DownloadConcurrencySelector(
 @Composable
 private fun DownloadConcurrencySelectorPreview() {
     BaeTheme {
-        DownloadConcurrencySelector(value = 3u, onSelect = {})
+        DownloadConcurrencySelector(value = 3u, limit = 8u, onSelect = {})
     }
 }

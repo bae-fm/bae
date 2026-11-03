@@ -24,8 +24,8 @@ fn pull_until(
     })
 }
 
-/// The preferences start at a new library's and follow each setter's write;
-/// cancelling ends the pulls.
+/// The preferences start at a new library's, with core's transfer limit, and
+/// follow each setter's write; cancelling ends the pulls.
 #[test]
 fn the_preferences_follow_each_write_until_cancelled() {
     let (handle, _root) = super::super::tests::fresh_bridge_handle("config-pulls");
@@ -34,6 +34,11 @@ fn the_preferences_follow_each_write_until_cancelled() {
     let first = pull_until(&handle, &values, |_| true);
     assert!(!first.show_remaining_time);
     assert_eq!(first.max_concurrent_uploads, 3);
+    assert_eq!(
+        first.max_concurrent_transfers,
+        bae_preferences::MAX_CONCURRENT_TRANSFERS,
+        "the pickers offer up to core's limit"
+    );
     assert_eq!(first.library_id.len(), 36, "{}", first.library_id);
 
     handle.runtime.block_on(handle.clone().set_show_remaining_time(true)).unwrap();
