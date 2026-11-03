@@ -65,6 +65,29 @@ fn every_update_of_trigger_names_columns_its_table_has() {
     assert!(missing.is_empty(), "triggers name absent columns: {missing:?}");
 }
 
+/// Whether this device imported a folder's files is a lookup by its hash,
+/// which the hash's uniqueness indexes.
+#[test]
+fn imported_content_hash_lookup_uses_its_unique_index() {
+    let conn = crate::schema::bare_library_connection();
+    let plan: Vec<String> = conn
+        .prepare(
+            "EXPLAIN QUERY PLAN \
+             SELECT release_id FROM local_release_origin WHERE content_hash = ?",
+        )
+        .unwrap()
+        .query_map(["hash"], |row| row.get(3))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+
+    assert!(
+        plan.iter()
+            .any(|detail| detail.contains("INDEX") && detail.contains("local_release_origin")),
+        "query plan did not use the content-hash index: {plan:?}"
+    );
+}
+
 #[tokio::test]
 async fn deleting_an_artist_removes_local_draft_references() {
     for removed in [ARTIST_A, ARTIST_B] {

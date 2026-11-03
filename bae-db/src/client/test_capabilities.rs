@@ -305,19 +305,6 @@ impl Database {
         })
         .await
     }
-
-    pub async fn content_hash_query_plan_for_test(&self) -> Result<Vec<String>, DbError> {
-        self.read(|sql| {
-            sql.query(
-                "EXPLAIN QUERY PLAN \
-                 SELECT release_id FROM local_release_origin WHERE content_hash = ?",
-                ["hash"],
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-    }
 }
 
 /// The column of `table` that references a coven file.
