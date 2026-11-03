@@ -1,13 +1,18 @@
 //! Where import and the library get the catalog session an operation asks
 //! with.
 //!
-//! The client for the stored Discogs key, with its validation callback, is
-//! built here and handed out inside a session; no caller receives the
-//! database the callback writes to.
+//! CatalogSessions owns the library's Discogs key and what Discogs said of
+//! it: every write of either is made here, under one lock. The client for
+//! the stored key, with its validation callback, is built here and handed
+//! out inside a session; no caller receives the database the callback
+//! writes to. Each key stored has a generation of its own, and what a check
+//! or a call says about a key is recorded only while that key is still the
+//! one stored: an answer about a key replaced since says nothing about the
+//! new one.
 
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
-use bae_catalogs::providers::{CatalogSession, Providers};
+use bae_catalogs::providers::{CatalogSession, DiscogsCheck, Providers};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_db::{Database, DbError};
 use bae_diagnostics::Diagnostics;
@@ -43,6 +48,9 @@ pub enum DiscogsKeyError {
     Preferences(#[from] bae_preferences::PreferencesError),
     #[error(transparent)]
     Task(#[from] bae_util::task_failure::TaskFailed),
+    /// The preferences say a key is stored, and the keyring holds none.
+    #[error("the preferences say a Discogs key is stored but the keyring has none")]
+    Missing,
 }
 
 /// The catalogs as this library may ask them: the providers, and the one
@@ -55,11 +63,24 @@ pub struct CatalogSessions {
     database: Database,
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
+    /// The stored key's client and generation, under the one lock every
+    /// write of the key and its validation holds.
+    discogs: Arc<tokio::sync::Mutex<DiscogsKey>>,
+    /// The observer writes in flight, for a test to wait on.
+    #[cfg(test)]
+    signal_writes: tokio_util::task::TaskTracker,
+}
+
+/// The stored Discogs key as the sessions hold it.
+#[derive(Default)]
+struct DiscogsKey {
     /// The client for the stored key, built on first use and dropped when
     /// the key is set or cleared, so every Discogs call shares one key read
-    /// and one client. Held under one lock with the key's own writes, so no
-    /// client outlives the key it was built with.
-    discogs_client: Arc<tokio::sync::Mutex<Option<Arc<DiscogsClient>>>>,
+    /// and one client.
+    client: Option<Arc<DiscogsClient>>,
+    /// Which key is stored: it moves with every set or clear, so what is
+    /// learned about a key is written only while it is still the one stored.
+    generation: u64,
 }
 
 impl CatalogSessions {
@@ -76,7 +97,9 @@ impl CatalogSessions {
             database,
             diagnostics,
             runtime_handle,
-            discogs_client: Arc::new(tokio::sync::Mutex::new(None)),
+            discogs: Arc::default(),
+            #[cfg(test)]
+            signal_writes: tokio_util::task::TaskTracker::new(),
         }
     }
 
@@ -86,42 +109,74 @@ impl CatalogSessions {
     /// off the keyring once rather than on every call — and reused until the
     /// key is set or cleared.
     pub(crate) async fn session(&self) -> Result<CatalogSession, CatalogSessionError> {
-        let providers = self.providers.clone();
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
-        let mut cached = self.discogs_client.lock().await;
+        let mut key = self.discogs.lock().await;
         let validation = bae_preferences::preferences(&self.database).await?.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
-            return Ok(CatalogSession::new(None, providers));
+            return Ok(CatalogSession::new(None, self.providers.clone()));
         }
-        if cached.is_none() {
+        Ok(self.session_with(&mut key)?)
+    }
+
+    /// A session asking Discogs with the client for the stored key, built the
+    /// first time it is needed with an observer recording what each call
+    /// proves about that key; one without Discogs while the keyring holds no
+    /// key.
+    fn session_with(&self, key: &mut DiscogsKey) -> Result<CatalogSession, coven::KeyError> {
+        if key.client.is_none() {
+            // The client reports from its request path; recording the signal
+            // is a write, so it runs as its own task. Nothing waits on it, so
+            // a write that fails, or panics, is reported as a bug. The key it
+            // is recorded under is held weakly: the client lives inside it.
+            let held = Arc::downgrade(&self.discogs);
+            let generation = key.generation;
             let database = self.database.clone();
             let diagnostics = self.diagnostics.clone();
             let runtime = self.runtime_handle.clone();
-            // The client reports from its request path; recording the signal
-            // is a write, so it runs as its own task, and a failure to write
-            // is logged there. Nothing waits on it, so a panic in it is
-            // reported here.
+            #[cfg(test)]
+            let signal_writes = self.signal_writes.clone();
             let observer = Arc::new(move |signal| {
-                let database = database.clone();
-                let diagnostics = diagnostics.clone();
-                runtime.spawn(async move {
+                let (held, database, diagnostics) =
+                    (held.clone(), database.clone(), diagnostics.clone());
+                let recording = async move {
                     let recorded = bae_util::task_failure::caught(
                         "record a Discogs validation signal",
-                        record_discogs_validation_signal(&database, signal),
+                        record_signal(&held, &database, generation, signal),
                     )
                     .await;
-                    if let Err(failed) = recorded {
-                        diagnostics.bug(failed);
+                    match recorded {
+                        Ok(Ok(())) => {}
+                        Ok(Err(error)) => {
+                            diagnostics.report_bug("record a Discogs validation signal", &error)
+                        }
+                        Err(failed) => {
+                            diagnostics.bug(failed);
+                        }
                     }
-                });
+                };
+                #[cfg(test)]
+                let recording = signal_writes.track_future(recording);
+                runtime.spawn(recording);
             });
-            *cached = self
+            key.client = self
                 .database
                 .host_secret(DISCOGS_API_KEY)?
-                .map(|key| Arc::new(providers.discogs_client(key, Some(observer))));
+                .map(|stored| Arc::new(self.providers.discogs_client(stored, Some(observer))));
         }
-        Ok(CatalogSession::new(cached.clone(), providers))
+        Ok(CatalogSession::new(key.client.clone(), self.providers.clone()))
+    }
+
+    /// Wait until every signal write started so far has ended, for a test.
+    #[cfg(test)]
+    pub(crate) async fn signals_recorded(&self) {
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            while !self.signal_writes.is_empty() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("every Discogs signal is recorded");
     }
 
     /// The session a search of `catalog` asks with, holding only what that
@@ -230,23 +285,94 @@ impl CatalogSessions {
     }
 
     /// Run `change`, the writes that set or clear the stored key, with no
-    /// session built in between, and drop the client built for the key it
-    /// replaces.
+    /// session built and no validation recorded in between, and drop the
+    /// client built for the key it replaces: what is learned about that key
+    /// from here on is recorded nowhere.
     async fn change_discogs_key<T>(&self, change: impl Future<Output = T>) -> T {
-        let mut client = self.discogs_client.lock().await;
+        let mut key = self.discogs.lock().await;
         let changed = change.await;
-        *client = None;
+        key.client = None;
+        key.generation += 1;
         changed
     }
+
+    /// Check `token`, a key a person submitted, against Discogs, and store it
+    /// with what the check said unless Discogs rejected it.
+    pub(crate) async fn save_discogs_key(
+        &self,
+        token: &str,
+    ) -> Result<DiscogsCheck, DiscogsKeyError> {
+        let check = DiscogsCheck::of(self.try_discogs_key(token, CallPriority::Interactive).await);
+        if !matches!(check, DiscogsCheck::Rejected) {
+            self.store_discogs_key(token, DiscogsValidation::of(&check)).await?;
+        }
+        Ok(check)
+    }
+
+    /// Check the stored key against Discogs again when it is `Unvalidated`,
+    /// and record what Discogs said while that key is still the one stored.
+    /// `None`, asking nothing, while no key is stored or it is in any other
+    /// state.
+    pub(crate) async fn revalidate_discogs_key(
+        &self,
+    ) -> Result<Option<DiscogsCheck>, DiscogsKeyError> {
+        let (session, generation) = {
+            let mut key = self.discogs.lock().await;
+            let validation = bae_preferences::preferences(&self.database)
+                .await
+                .map_err(bae_preferences::PreferencesError::from)?
+                .discogs;
+            if validation != Some(DiscogsValidation::Unvalidated) {
+                return Ok(None);
+            }
+            (self.session_with(&mut key)?, key.generation)
+        };
+        let check = session.validate().await.ok_or(DiscogsKeyError::Missing)?;
+        let key = self.discogs.lock().await;
+        if key.generation == generation {
+            let validation = DiscogsValidation::of(&check);
+            bae_preferences::edit_preferences(&self.database, move |prefs| {
+                if prefs.discogs.is_some() {
+                    prefs.discogs = Some(validation);
+                }
+                Ok(())
+            })
+            .await?;
+        } else {
+            debug!("the Discogs key checked was replaced while Discogs answered");
+        }
+        drop(key);
+        Ok(Some(check))
+    }
+}
+
+/// Record what one Discogs call proved about the key of `generation`, while
+/// that key is still the one stored; nothing once the sessions are gone.
+async fn record_signal(
+    held: &std::sync::Weak<tokio::sync::Mutex<DiscogsKey>>,
+    database: &Database,
+    generation: u64,
+    signal: DiscogsKeySignal,
+) -> Result<(), bae_preferences::PreferencesError> {
+    let Some(held) = held.upgrade() else {
+        return Ok(());
+    };
+    let key = held.lock().await;
+    if key.generation != generation {
+        debug!("a Discogs signal about a key replaced since changes nothing");
+        return Ok(());
+    }
+    record_discogs_validation_signal(database, signal).await
 }
 
 /// Fold one Discogs call's outcome into the stored key's validation: a 401
 /// rejects it, and a success confirms a key nothing had confirmed yet.
-/// Decided in the write against the state it finds, so a signal racing a key
-/// change applies to the key it finds. A failure to write it is logged; the
-/// next call's outcome is recorded again.
-async fn record_discogs_validation_signal(database: &Database, signal: DiscogsKeySignal) {
-    let recorded = bae_preferences::edit_preferences(database, move |prefs| {
+/// Decided in the write against the state it finds.
+async fn record_discogs_validation_signal(
+    database: &Database,
+    signal: DiscogsKeySignal,
+) -> Result<(), bae_preferences::PreferencesError> {
+    bae_preferences::edit_preferences(database, move |prefs| {
         let next = match (prefs.discogs, &signal) {
             (None, _) => None,
             (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),
@@ -261,10 +387,7 @@ async fn record_discogs_validation_signal(database: &Database, signal: DiscogsKe
         }
         Ok(())
     })
-    .await;
-    if let Err(error) = recorded {
-        warn!("failed to record the Discogs key's validation: {error}");
-    }
+    .await
 }
 
 #[cfg(test)]

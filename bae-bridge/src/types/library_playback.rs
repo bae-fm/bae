@@ -26,12 +26,12 @@ pub enum BridgeDiscogsSaveOutcome {
 
 #[cfg(feature = "desktop")]
 impl BridgeDiscogsSaveOutcome {
-    pub(crate) fn from_core(outcome: bae_import::DiscogsSaveOutcome) -> Self {
-        use bae_import::DiscogsSaveOutcome as O;
-        match outcome {
-            O::Valid => Self::Valid,
-            O::Unvalidated(error) => Self::Unvalidated { detail: error.to_string() },
-            O::Rejected => Self::Rejected,
+    pub(crate) fn from_core(check: bae_catalogs::providers::DiscogsCheck) -> Self {
+        use bae_catalogs::providers::DiscogsCheck;
+        match check {
+            DiscogsCheck::Valid => Self::Valid,
+            DiscogsCheck::Unchecked(error) => Self::Unvalidated { detail: error.to_string() },
+            DiscogsCheck::Rejected => Self::Rejected,
         }
     }
 }

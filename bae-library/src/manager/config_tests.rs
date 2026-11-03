@@ -35,7 +35,8 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
 #[tokio::test]
 async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     use bae_catalogs::discogs::client::DiscogsError;
-    use bae_import::{DiscogsSaveOutcome, ImportError};
+    use bae_catalogs::providers::DiscogsCheck;
+    use bae_import::ImportError;
     use bae_preferences::DiscogsValidation;
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -45,7 +46,7 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
         .save_discogs_token("discogs-test-key")
         .await
         .expect("the key is stored though it went unchecked");
-    let DiscogsSaveOutcome::Unvalidated(reason) = outcome else {
+    let DiscogsCheck::Unchecked(reason) = outcome else {
         panic!("an unreachable Discogs leaves the key unchecked: {outcome:?}");
     };
     assert!(reason.to_string().contains("tcp connect error"), "{reason}");

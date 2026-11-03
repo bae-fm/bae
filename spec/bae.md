@@ -977,7 +977,12 @@ itself and at its own pace:
 
 Discogs needs an API key; without one it is not asked. Saving a key, or
 checking a stored one again, asks Discogs whether it works, and the key's
-setting says so while it asks. A Discogs label name
+setting says so while it asks. A call with the stored key that Discogs
+answers 401 marks it rejected, and one it answers confirms a key not yet
+checked. What a check or a call says of
+a key is recorded only while that key is still the one stored: an answer
+about a key replaced since leaves the new key as its own save recorded it. A
+Discogs label name
 loses the " (2)" Discogs adds to tell two labels of one name apart: the
 label's id tells them apart, and the name is what a release prints. Either catalog can be
 switched off. MusicBrainz is asked no more than once every 1.2 seconds, under

@@ -32,7 +32,6 @@ mod shared_album;
 mod verdict_write;
 mod watch;
 
-pub use discogs_key::DiscogsSaveOutcome;
 pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
 #[cfg(any(test, feature = "test-utils"))]
 pub use event_bus::{ImportProgressFeed, ScanEvents};

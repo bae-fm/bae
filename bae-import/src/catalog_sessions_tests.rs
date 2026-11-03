@@ -89,19 +89,120 @@ async fn discogs_validation_signals_confirm_and_reject() {
     let (_sessions, database, _temp_dir) = test_sessions().await;
     // A success confirms a stored Unvalidated key.
     record_validation(&database, DiscogsValidation::Unvalidated).await;
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await;
+    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await.unwrap();
     assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
 
     // A 401 rejects, from any prior state.
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Rejected).await;
+    record_discogs_validation_signal(&database, DiscogsKeySignal::Rejected).await.unwrap();
     assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Rejected));
 
     // A success does NOT flip an already-Rejected key back to Valid.
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await;
+    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await.unwrap();
     assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Rejected));
 
     // A success while already Valid is a no-op (only Unvalidated -> Valid).
     record_validation(&database, DiscogsValidation::Valid).await;
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await;
+    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await.unwrap();
     assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
+}
+
+/// Sessions over a fresh library asking a Discogs that `host` stands in for,
+/// reporting bugs to `bugs`.
+async fn sessions_over(
+    host: &bae_util::test_host::FakeHost,
+    bugs: Arc<bae_diagnostics::RecordingBugReporter>,
+) -> (CatalogSessions, Database, TempDir) {
+    let temp_dir = TempDir::new().unwrap();
+    let database = Database::new_test(
+        temp_dir.path().join("test.db").to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
+    let http = bae_util::http::Http::for_test().serve("api.discogs.com", host.base_url());
+    let providers = Providers::for_test(
+        http.clone(),
+        Arc::new(bae_catalogs::musicbrainz::MusicBrainz::for_test(http.clone())),
+        Arc::new(bae_catalogs::discogs::client::Discogs::new(http.clone())),
+        Arc::new(bae_catalogs::wikidata::Wikidata::for_test(http)),
+    );
+    let sessions = CatalogSessions::new(
+        providers,
+        database.clone(),
+        Diagnostics::noop().reporting_bugs_to(bugs),
+        tokio::runtime::Handle::current(),
+    );
+    (sessions, database, temp_dir)
+}
+
+const REJECTED: &str = r#"{"message": "Invalid consumer token."}"#;
+
+/// A check of the stored key that Discogs answers after the key was replaced
+/// is no answer about the new key: the new key keeps what its own store
+/// recorded.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_revalidation_answered_after_the_key_changed_leaves_the_new_key_alone() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    let (sessions, database, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    sessions.store_discogs_key("old-key", DiscogsValidation::Unvalidated).await.unwrap();
+    host.route("/database/search", 401, REJECTED);
+    host.hold("/database/search");
+
+    let revalidating = {
+        let sessions = sessions.clone();
+        tokio::spawn(async move { sessions.revalidate_discogs_key().await })
+    };
+    host.wait_for_request("/database/search", 1).await;
+    sessions.store_discogs_key("new-key", DiscogsValidation::Valid).await.unwrap();
+    host.release();
+
+    let check = revalidating.await.unwrap().unwrap();
+    assert!(matches!(check, Some(DiscogsCheck::Rejected)), "{check:?}");
+    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
+}
+
+/// What a call made with a replaced key proves is recorded nowhere: a 401 a
+/// client of the old key hears after the key changed leaves the new key as
+/// its store recorded it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_signal_about_a_replaced_key_leaves_the_new_key_alone() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    let (sessions, database, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    sessions.store_discogs_key("old-key", DiscogsValidation::Valid).await.unwrap();
+    let old = sessions.session().await.unwrap();
+    sessions.store_discogs_key("new-key", DiscogsValidation::Valid).await.unwrap();
+    host.route("/masters/", 401, REJECTED);
+
+    old.master_covers("909", CallPriority::Interactive).await.unwrap_err();
+    sessions.signals_recorded().await;
+
+    assert_eq!(host.count_containing("/masters/"), 1, "the old client asked");
+    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
+}
+
+/// A call's signal is recorded with no caller waiting on it, so a write of
+/// it that fails is reported as a bug.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_signal_that_cannot_be_recorded_is_reported() {
+    let host = bae_util::test_host::FakeHost::start().await;
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let (sessions, _database, temp_dir) = sessions_over(&host, bugs.clone()).await;
+    sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
+    let session = sessions.session().await.unwrap();
+    host.route("/masters/", 401, REJECTED);
+    crate::candidate_runtime::tests::add_to_library_schema(
+        temp_dir.path(),
+        "preferences",
+        "CREATE TRIGGER fail_preferences_write BEFORE UPDATE ON preferences \
+         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END;"
+            .to_string(),
+    )
+    .await;
+
+    session.master_covers("909", CallPriority::Interactive).await.unwrap_err();
+    sessions.signals_recorded().await;
+
+    let reports = bugs.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    assert_eq!(reports[0].0, "record a Discogs validation signal");
 }

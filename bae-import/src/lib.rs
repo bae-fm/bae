@@ -258,8 +258,8 @@ pub use grouping::GroupingBlock;
 pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
-    DiscogsSaveOutcome, GroupedSearchResults, ImportEvent, ImportEventBus, ImportEvents,
-    ImportServiceHandle, ImportStart, ScanEvent,
+    GroupedSearchResults, ImportEvent, ImportEventBus, ImportEvents, ImportServiceHandle,
+    ImportStart, ScanEvent,
 };
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub use handle::{ImportProgressFeed, ScanEvents};

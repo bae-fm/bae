@@ -418,7 +418,7 @@ impl ImportError {
                 crate::DiscogsKeyError::Keyring(_) | crate::DiscogsKeyError::Preferences(_) => {
                     C::Config
                 }
-                crate::DiscogsKeyError::Task(_) => C::Internal,
+                crate::DiscogsKeyError::Task(_) | crate::DiscogsKeyError::Missing => C::Internal,
             },
             #[cfg(desktop)]
             Self::Scan(_)

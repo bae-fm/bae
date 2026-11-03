@@ -39,7 +39,7 @@ impl AppServices {
     delegate_async!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: bae_import::CandidateKey) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_start_import => start_import(candidate_key: &bae_import::CandidateKey) -> Result<bae_import::ImportStart, bae_import::ImportError>);
     delegate_async!(import, import_selected => import_selected(candidate_key: &bae_import::CandidateKey) -> Result<bae_import::ImportStart, bae_import::ImportError>);
-    delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<bae_import::DiscogsSaveOutcome, bae_import::ImportError>);
+    delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<bae_catalogs::providers::DiscogsCheck, bae_import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), bae_import::ImportError>);
     delegate_async!(import, get_discogs_token => discogs_token() -> Result<Option<String>, bae_import::ImportError>);
     delegate_async!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), bae_import::ImportError>);
