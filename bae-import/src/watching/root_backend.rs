@@ -7,12 +7,13 @@ pub(super) trait RootRemovalBackend: Send + Sync {
     async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String>;
     async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String>;
     /// Stop watching `roots` in the store — watching `parent` in their place
-    /// when given — and return the keys of the releases that left the queue.
+    /// when given — and return the releases that left the queue and the
+    /// folders still watched, as the write left them.
     async fn remove_durable_roots(
         &self,
         roots: &[PathBuf],
         parent: Option<&Path>,
-    ) -> Result<Vec<crate::CandidateKey>, String>;
+    ) -> Result<crate::tables::WatchedFoldersRemoved, String>;
 }
 
 pub(super) struct ServiceRootRemovalBackend {
@@ -59,7 +60,7 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
         &self,
         roots: &[PathBuf],
         parent: Option<&Path>,
-    ) -> Result<Vec<crate::CandidateKey>, String> {
+    ) -> Result<crate::tables::WatchedFoldersRemoved, String> {
         self.tables
             .remove_watched_import_folders(roots.to_vec(), parent.map(Path::to_path_buf))
             .await

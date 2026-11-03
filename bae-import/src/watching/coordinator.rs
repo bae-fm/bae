@@ -333,8 +333,9 @@ impl Coordinator {
             return;
         };
         match outcome {
-            RemovalOutcome::Removed { commit, removed_keys, scan_waiters, callers } => {
-                let folders = watched_folders(&self.tables).await;
+            RemovalOutcome::Removed { commit, removed, scan_waiters, callers } => {
+                let crate::tables::WatchedFoldersRemoved { removed_keys, watched: folders } =
+                    removed;
                 for candidate_key in removed_keys {
                     self.event_tx.send(crate::handle::ImportEvent::Scan(
                         ScanEvent::CandidateRemoved { candidate_key },

@@ -174,6 +174,11 @@ pub(crate) struct FakeRemovalBackend {
     pub(crate) reinstall_started: tokio::sync::Notify,
     pub(crate) release_reinstall: tokio::sync::Notify,
     pub(crate) calls: Mutex<Vec<&'static str>>,
+    /// A store the removal leaves unreadable as a list of watched folders,
+    /// as a read that fails after the removal's write would find it.
+    pub(crate) unreadable_after_remove: Mutex<Option<Database>>,
+    /// The folders the removal's write leaves watched.
+    pub(crate) leaves_watched: Mutex<Vec<PathBuf>>,
 }
 
 #[async_trait::async_trait]
@@ -202,13 +207,43 @@ impl RootRemovalBackend for FakeRemovalBackend {
         &self,
         _roots: &[PathBuf],
         _parent: Option<&Path>,
-    ) -> Result<Vec<crate::CandidateKey>, String> {
+    ) -> Result<crate::tables::WatchedFoldersRemoved, String> {
         self.calls.lock().unwrap().push("remove");
+        let unreadable = self.unreadable_after_remove.lock().unwrap().take();
+        if let Some(database) = unreadable {
+            make_watched_folders_unreadable(&database).await;
+        }
         match self.remove_error.lock().unwrap().clone() {
             Some(error) => Err(error),
-            None => Ok(Vec::new()),
+            None => Ok(crate::tables::WatchedFoldersRemoved {
+                removed_keys: Vec::new(),
+                watched: self
+                    .leaves_watched
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .cloned()
+                    .map(crate::WatchedFolder::from_path)
+                    .collect(),
+            }),
         }
     }
+}
+
+/// Store a watched folder inside another, which every read of the watched
+/// folders refuses.
+async fn make_watched_folders_unreadable(database: &Database) {
+    let inner = coven::path_bytes(&root_path("/music/inner"));
+    database
+        .call(move |sql| {
+            sql.execute(
+                "INSERT INTO watched_import_folders (path, position) VALUES (?, 99)",
+                [inner],
+            )?;
+            Ok(())
+        })
+        .await
+        .unwrap();
 }
 
 pub(crate) struct CoordinatorHarness {
@@ -219,6 +254,8 @@ pub(crate) struct CoordinatorHarness {
     pub(crate) database: Database,
     pub(crate) folder_state_commit: crate::FolderStateCommit,
     pub(crate) removal_backend: Arc<FakeRemovalBackend>,
+    /// Every event the coordinator sent.
+    pub(crate) events: tokio::sync::Mutex<crate::ImportEvents>,
     pub(crate) coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
     pub(crate) _temp: TempDir,
 }
@@ -267,6 +304,7 @@ impl CoordinatorHarness {
         let folder_state_commit = crate::FolderStateCommit::default();
         let (scans, starter) = FakeScanStarter::new();
         let removal_backend = Arc::new(FakeRemovalBackend::default());
+        let events = tokio::sync::Mutex::new(test.event_tx().every_event());
         let coordinator_thread = coordinator::start_watcher_with_starter(
             command_rx,
             fs_rx,
@@ -287,6 +325,7 @@ impl CoordinatorHarness {
             database,
             folder_state_commit,
             removal_backend,
+            events,
             coordinator_thread: Mutex::new(Some(coordinator_thread)),
             _temp: temp,
         }

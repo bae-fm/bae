@@ -2,10 +2,20 @@ use super::*;
 use crate::CandidateKey;
 use std::path::{Path, PathBuf};
 
+/// What a removal of watched folders changed, as its write left the store.
+#[derive(Debug)]
+pub struct WatchedFoldersRemoved {
+    /// The releases that left the queue.
+    pub removed_keys: Vec<CandidateKey>,
+    /// The folders still watched, read in the removal's own write.
+    pub watched: Vec<crate::WatchedFolder>,
+}
+
 impl ImportTables {
     /// Stop watching `roots` in one write, watching `parent` in their place
-    /// when given. Returns the keys of the releases that left the queue, or
-    /// `None` when none of `roots` is watched and `parent`, if given, is.
+    /// when given. Returns the keys of the releases that left the queue and
+    /// the folders the write leaves watched, or `None` when none of `roots`
+    /// is watched and `parent`, if given, is.
     ///
     /// Each root's scan rows go with it. What is known about the folders under
     /// the roots — what was decided, and when each was found — stays when
@@ -18,7 +28,7 @@ impl ImportTables {
         &self,
         roots: Vec<PathBuf>,
         parent: Option<PathBuf>,
-    ) -> Result<Option<Vec<CandidateKey>>, DbError> {
+    ) -> Result<Option<WatchedFoldersRemoved>, DbError> {
         // Spelled the way the add keyed them.
         let roots = roots
             .iter()
@@ -81,7 +91,12 @@ impl ImportTables {
                 for key in &removed {
                     super::import_state::end_file_work_unless_of_on(sql, key, None)?;
                 }
-                Ok(Some(removed))
+                let watched = super::watched_folders_of(sql.query(
+                    "SELECT path FROM watched_import_folders ORDER BY position",
+                    [],
+                    |row| path_column::get(row, 0),
+                )?)?;
+                Ok(Some(WatchedFoldersRemoved { removed_keys: removed, watched }))
             })
             .await
     }

@@ -7,6 +7,7 @@ use bae_db::RelativeFolder;
 use std::path::{Path, PathBuf};
 
 mod removal;
+pub use removal::WatchedFoldersRemoved;
 
 /// The folders at or below one folder, as a condition on a stored folder
 /// column: the range each owner of rows kept by folder forgets when the
@@ -71,25 +72,30 @@ pub(super) fn watched_folder_among_on<'a>(
         .optional()?)
 }
 
+/// The watched folders `roots`, as stored in the order they were added. A
+/// root that is not canonical, or overlaps another, fails the read.
+fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, DbError> {
+    for (index, root) in roots.iter().enumerate() {
+        bae_db::watched_path::validate_absolute_root(root)?;
+        if let Some(conflict) = roots[index + 1..]
+            .iter()
+            .find(|other| crate::watched_folder::paths_overlap(root, other))
+        {
+            return Err(DbError::Message(format!(
+                "watched folders cannot overlap: {} conflicts with {}",
+                coven::path_text(root),
+                coven::path_text(conflict)
+            )));
+        }
+    }
+    Ok(roots.into_iter().map(crate::WatchedFolder::from_path).collect())
+}
+
 impl ImportTables {
     /// Every watched folder, in the order they were added. A stored root that
     /// is not canonical, or overlaps another, fails the read.
     pub async fn load_watched_import_folders(&self) -> Result<Vec<crate::WatchedFolder>, DbError> {
-        let roots = self.watched_import_roots().await?;
-        for (index, root) in roots.iter().enumerate() {
-            bae_db::watched_path::validate_absolute_root(root)?;
-            if let Some(conflict) = roots[index + 1..]
-                .iter()
-                .find(|other| crate::watched_folder::paths_overlap(root, other))
-            {
-                return Err(DbError::Message(format!(
-                    "watched folders cannot overlap: {} conflicts with {}",
-                    coven::path_text(root),
-                    coven::path_text(conflict)
-                )));
-            }
-        }
-        Ok(roots.into_iter().map(crate::WatchedFolder::from_path).collect())
+        watched_folders_of(self.watched_import_roots().await?)
     }
 
     /// Whether `path`, spelled as the store keys it, is a watched folder,

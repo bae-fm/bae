@@ -124,9 +124,10 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         .unwrap()
         .expect("the folder was watched");
     assert!(
-        removed.contains(&crate::CandidateKey::grouping("picked")),
+        removed.removed_keys.contains(&crate::CandidateKey::grouping("picked")),
         "the grouping's release leaves the queue with it: {removed:?}"
     );
+    assert!(removed.watched.is_empty(), "the write leaves nothing watched");
     assert!(tables.load_watched_import_folders().await.unwrap().is_empty());
     for table in FOLDER_TABLES {
         assert_eq!(rows_in(&db, table).await, 0, "{table} still holds rows");
@@ -200,12 +201,18 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         decided.push(rows_in(&db, table).await);
     }
 
-    let mut removed = tables
+    let removal = tables
         .remove_watched_import_folders(vec![one.clone(), two.clone()], Some(music.clone()))
         .await
         .unwrap()
         .expect("the inner folders were watched");
 
+    assert_eq!(
+        removal.watched.iter().map(|folder| &folder.path).collect::<Vec<_>>(),
+        [&music],
+        "the write leaves the parent watched in their place"
+    );
+    let mut removed = removal.removed_keys;
     removed.sort();
     let mut listed = vec![crate::CandidateKey::grouping("picked"), volume_a.key(), volume_b.key()];
     listed.sort();

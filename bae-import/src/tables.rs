@@ -34,6 +34,7 @@ pub(crate) use import_state::{
 pub use models::*;
 pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;
+pub use watched_folders::WatchedFoldersRemoved;
 
 use bae_catalogs::catalog::Catalog;
 use bae_db::client::list_windows::{

@@ -454,7 +454,7 @@ impl ActiveRoots {
         // A removal that panicked was reported where it ran.
         removal.task.ended().await;
         Some(match completion.result {
-            RootRemovalResult::Removed { commit, removed_keys } => {
+            RootRemovalResult::Removed { commit, removed } => {
                 let scan_waiters = match removal.parent {
                     // The parent's read covers every folder a waiter asked about.
                     Some(parent) => {
@@ -470,7 +470,7 @@ impl ActiveRoots {
                 };
                 RemovalOutcome::Removed {
                     commit,
-                    removed_keys,
+                    removed,
                     scan_waiters,
                     callers: removal.completions,
                 }
@@ -591,8 +591,9 @@ pub(super) enum RemovalOutcome {
     Removed {
         /// Held until the removal is announced, so nothing writes in between.
         commit: crate::FolderStateCommitGuard,
-        /// Releases that left the queue, announced so work on them stops.
-        removed_keys: Vec<crate::CandidateKey>,
+        /// The releases that left the queue, announced so work on them
+        /// stops, and the folders the removal left watched.
+        removed: crate::tables::WatchedFoldersRemoved,
         /// Refresh callers of folders no longer watched.
         scan_waiters: Vec<(PathBuf, RefreshCompletion)>,
         callers: Vec<RefreshCompletion>,
@@ -609,7 +610,7 @@ pub(super) struct RootRemovalCompletion {
 }
 
 enum RootRemovalResult {
-    Removed { commit: crate::FolderStateCommitGuard, removed_keys: Vec<crate::CandidateKey> },
+    Removed { commit: crate::FolderStateCommitGuard, removed: crate::tables::WatchedFoldersRemoved },
     Failed(String),
 }
 

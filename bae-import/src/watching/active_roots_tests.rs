@@ -44,6 +44,38 @@ async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
     harness.shutdown().await;
 }
 
+/// A removal announces the folders its write left watched, whatever a read
+/// after it would find.
+#[tokio::test]
+async fn a_removal_announces_the_folders_its_write_left_watched() {
+    let harness = CoordinatorHarness::with_roots(&["/music", "/other"]).await;
+    *harness.removal_backend.leaves_watched.lock().unwrap() = vec![root_path("/music")];
+    *harness.removal_backend.unreadable_after_remove.lock().unwrap() =
+        Some(harness.database.clone());
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove { roots: vec![root_path("/other")], parent: None, completion })
+        .unwrap();
+    assert_eq!(result.await.unwrap(), Ok(()));
+
+    let mut events = harness.events.lock().await;
+    let folders = loop {
+        match tokio::time::timeout(HANG_GUARD, events.recv()).await.unwrap().unwrap() {
+            crate::ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }) => {
+                break folders
+            }
+            _ => continue,
+        }
+    };
+    assert_eq!(
+        folders.into_iter().map(|folder| folder.path).collect::<Vec<_>>(),
+        [root_path("/music")]
+    );
+    drop(events);
+    harness.shutdown().await;
+}
+
 #[tokio::test]
 async fn coordinator_coalesces_duplicate_removals_for_one_root() {
     let harness = CoordinatorHarness::new().await;

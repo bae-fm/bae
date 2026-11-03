@@ -37,7 +37,7 @@ pub(super) async fn run_root_removal(
         })
         .await;
     match backend.remove_durable_roots(roots, parent).await {
-        Ok(removed_keys) => RootRemovalResult::Removed { commit, removed_keys },
+        Ok(removed) => RootRemovalResult::Removed { commit, removed },
         Err(error) => {
             drop(commit);
             let error = format!("could not remove {described}: {error}");
