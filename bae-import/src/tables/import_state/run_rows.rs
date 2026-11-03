@@ -89,6 +89,13 @@ pub(crate) fn load_stored_runtime_on(
 
 /// Every key something is running for: where it stands, what each of its
 /// runs in flight last published, and its typed search.
+/// Delete every run's published state: nothing a run published outlives
+/// the process that ran it.
+pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+    sql.execute("DELETE FROM import_identify_run", [])?;
+    Ok(())
+}
+
 fn load_stored_runtimes_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {

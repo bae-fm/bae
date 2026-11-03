@@ -489,8 +489,8 @@ impl ImportTables {
             .call(|sql| {
                 sql.execute("DELETE FROM import_candidate_standing", [])?;
                 sql.execute("DELETE FROM import_identification_batch", [])?;
-                sql.execute("DELETE FROM import_identify_run", [])?;
-                sql.execute("DELETE FROM import_candidate_search", [])?;
+                super::run_rows::delete_every_run_on(sql)?;
+                super::search_rows::delete_every_search_on(sql)?;
                 Ok(())
             })
             .await

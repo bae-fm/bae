@@ -27,6 +27,12 @@ use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::{Failure, InternalFailure};
 use std::str::FromStr;
 
+/// Delete every typed search: none outlives the process that asked it.
+pub(super) fn delete_every_search_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+    sql.execute("DELETE FROM import_candidate_search", [])?;
+    Ok(())
+}
+
 /// A query as its row's columns: the mode, and the values that mode asks.
 struct QueryColumns<'a> {
     mode: &'static str,
