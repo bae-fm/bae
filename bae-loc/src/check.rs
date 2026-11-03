@@ -4,8 +4,9 @@
 //! surface as a wrong or missing string at runtime: an undeclared placeholder, a
 //! declared argument the message never uses, a plural over a non-integer, a
 //! malformed MF1 value, an id outside the `core.`/`ui.` namespaces, a source
-//! or translation that ends a sentence twice ("。。"), or an English source
-//! that breaks a sentence with a dash.
+//! or translation that ends a sentence twice ("。。") or writes an ellipsis as
+//! three full stops ("..." for "…"), or an English source that breaks a
+//! sentence with a dash.
 //!
 //! `locale_coverage` holds the catalog to `TARGET_LOCALES`. A message missing a
 //! target locale emits the English source under that locale (see
@@ -62,6 +63,12 @@ pub fn validate(cat: &Catalog) -> Result<(), Vec<String>> {
             if let Some(stop) = doubled_sentence_stop(text) {
                 errs.push(format!("{id} [{locale}]: `{stop}` ends one sentence twice"));
             }
+            // One form for the ellipsis in every locale: the character.
+            if text.contains("...") {
+                errs.push(format!(
+                    "{id} [{locale}]: `...` is an ellipsis written as three full stops; write `…`"
+                ));
+            }
         }
         // A pause is a comma and a new thought a new sentence, never a dash.
         // Only the English is checked: Ukrainian writes its omitted "is" as a
@@ -82,8 +89,8 @@ const SENTENCE_STOPS: &[char] = &['.', '。', '!', '?', '！', '？'];
 
 /// A sentence ended twice: a stop repeated ("。。", "!!") or a full stop beside
 /// another stop ("。.", "?."), most often a translator's own full stop kept
-/// beside the source's. Three ASCII dots are an ellipsis and "?!" is one
-/// deliberate mark, so neither counts.
+/// beside the source's. Three ASCII dots are an ellipsis, which `validate`
+/// reports on its own, and "?!" is one deliberate mark, so neither counts.
 fn doubled_sentence_stop(text: &str) -> Option<String> {
     let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {

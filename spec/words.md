@@ -14,6 +14,12 @@ labels and notes, on every platform. The one exception is the macOS menu
 bar's menus and items, which use title case as every Mac app's do ("Rename
 Library…", "Open Library"). "bae" itself is always lowercase.
 
+## Punctuation
+
+An ellipsis is one character, "…", never three full stops, in every language
+("Sign in to Dropbox…", "Checking the bucket…"). bae-loc's catalog check
+refuses three full stops in a core string or any of its translations.
+
 ## The library and where it lives
 
 - **Library.** One catalog and its files. A synced library is kept in

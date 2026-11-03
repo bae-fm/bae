@@ -74,6 +74,33 @@ translations = { zh-Hans = "请重新连接以播放此发行版。。它尚未�
 }
 
 #[test]
+fn flags_three_full_stops_written_for_an_ellipsis() {
+    let c = cat(r#"
+[messages."core.x"]
+value = "Checking the bucket..."
+translations = { de = "Bucket wird geprüft..." }
+"#);
+    let errs = validate(&c).unwrap_err();
+    assert_eq!(
+        errs,
+        [
+            "core.x [en]: `...` is an ellipsis written as three full stops; write `…`",
+            "core.x [de]: `...` is an ellipsis written as three full stops; write `…`",
+        ]
+    );
+}
+
+#[test]
+fn accepts_the_ellipsis_character() {
+    let c = cat(r#"
+[messages."core.x"]
+value = "Checking the bucket…"
+translations = { de = "Bucket wird geprüft…" }
+"#);
+    assert!(validate(&c).is_ok());
+}
+
+#[test]
 fn flags_an_english_source_that_breaks_a_sentence_with_a_dash() {
     for value in ["No matches — try different terms", "No matches – try different terms"] {
         let c = cat(&format!("[messages.\"core.x\"]\nvalue = \"{value}\"\n"));
