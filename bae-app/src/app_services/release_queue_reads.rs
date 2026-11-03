@@ -22,9 +22,7 @@ impl AppServices {
             |read: bae_transfers::ReleaseQueueWindows<()>, request_revision, cause| {
                 bae_views::LibraryBrowseSnapshot {
                     windows: read.windows,
-                    sections: Vec::new(),
                     total_count: read.total_count,
-                    row_count: read.total_count,
                     request_revision,
                     cause,
                 }

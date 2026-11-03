@@ -238,15 +238,13 @@ impl AppServices {
         sort: &[bae_views::AlbumSortCriterion],
         group_by_artist: bool,
     ) -> bae_views::LiveAlbumBrowse {
-        let manager = self.inner.manager.clone();
+        let manager = &self.inner.manager;
         let query = manager.until_closed(self.inner.views.subscribe_album_browse(
             sort,
             group_by_artist,
             std::collections::BTreeSet::new(),
         ));
-        bae_views::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
-            bae_views::album::resolve_album_browse(projection, request_revision, cause)
-        })
+        bae_views::LiveLibraryBrowse::new(query, bae_views::album::resolve_album_browse)
     }
 
     /// Which of the albums the grid has selected are gone from the library,

@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun LibraryPageContent(
     session: OpenLibrary,
-    page: WindowedBrowserPageStore<*, *>,
+    page: WindowedBrowserPageStore<*, *, *>,
     emptyMessage: String,
     rows: @Composable () -> Unit,
 ) {

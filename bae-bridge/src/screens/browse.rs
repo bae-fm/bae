@@ -9,38 +9,18 @@ use std::sync::Arc;
 
 use crate::types::BridgeError;
 
-/// Album, artist, and composer browsing are one subscription over a different
-/// row. A macro rather than a generic: uniffi exports concrete objects and
-/// records, so each row needs its own named type — the window and snapshot
-/// records included, which is why they are declared here beside the conversion
-/// that fills them.
+/// Every windowed list is one subscription object over its own snapshot. A
+/// macro rather than a generic: uniffi exports concrete objects and records,
+/// so each list needs its own named types.
 macro_rules! browse_subscription {
     (
+        $(#[$meta:meta])*
         object: $object:ident,
         inner: $inner:ty,
         built by $make:ident,
         snapshot: $snapshot:ident,
-        window: $window:ident,
-        row: $core_row:ty => $bridge_row:ty,
     ) => {
-        /// One requested window of the list, with the rows that landed in it.
-        #[derive(Debug, Clone, uniffi::Record)]
-        pub struct $window {
-            pub window: crate::types::BridgeLibraryPageWindow,
-            pub rows: Vec<$bridge_row>,
-        }
-
-        /// Every requested window as of one revision, and what moved.
-        #[derive(Debug, Clone, uniffi::Record)]
-        pub struct $snapshot {
-            pub windows: Vec<$window>,
-            pub sections: Vec<crate::types::BridgeLibraryBrowseSection>,
-            pub total_count: u64,
-            pub row_count: u64,
-            pub request_revision: u64,
-            pub cause: crate::types::BridgeLiveQueryCause,
-        }
-
+        $(#[$meta])*
         #[derive(uniffi::Object)]
         pub struct $object {
             inner: $inner,
@@ -56,6 +36,8 @@ macro_rules! browse_subscription {
 
         #[uniffi::export(async_runtime = "tokio", cancellable)]
         impl $object {
+            /// Read `windows` of the list from now on, offsets counted from
+            /// its first row.
             pub fn set_windows(
                 &self,
                 windows: Vec<crate::types::BridgeLibraryPageWindow>,
@@ -82,32 +64,55 @@ macro_rules! browse_subscription {
                     .await
             }
         }
+    };
+}
+
+/// One requested window of a list, with the rows that landed in it, named
+/// for its row.
+macro_rules! browse_window {
+    ($(#[$meta:meta])* window: $window:ident, row: $core_row:ty => $bridge_row:ty,) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, uniffi::Record)]
+        pub struct $window {
+            pub window: crate::types::BridgeLibraryPageWindow,
+            pub rows: Vec<$bridge_row>,
+        }
+
+        impl $window {
+            fn from_core(window: bae_db::LibraryBrowseWindow<$core_row>) -> Self {
+                Self {
+                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
+                    rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
+                }
+            }
+        }
+    };
+}
+
+/// A list's snapshot that carries its windows and its row count and nothing
+/// beside them.
+macro_rules! browse_snapshot {
+    (snapshot: $snapshot:ident, window: $window:ident, row: $core_row:ty => $bridge_row:ty,) => {
+        browse_window! {
+            /// One requested window of the list, with the rows that landed in it.
+            window: $window,
+            row: $core_row => $bridge_row,
+        }
+
+        /// Every requested window as of one revision, and what moved.
+        #[derive(Debug, Clone, uniffi::Record)]
+        pub struct $snapshot {
+            pub windows: Vec<$window>,
+            pub total_count: u64,
+            pub request_revision: u64,
+            pub cause: crate::types::BridgeLiveQueryCause,
+        }
 
         impl $snapshot {
             fn from_core(snapshot: bae_views::LibraryBrowseSnapshot<$core_row>) -> Self {
                 Self {
-                    windows: snapshot
-                        .windows
-                        .into_iter()
-                        .map(|window| $window {
-                            window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                            rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
-                        })
-                        .collect(),
+                    windows: snapshot.windows.into_iter().map($window::from_core).collect(),
                     total_count: snapshot.total_count,
-                    row_count: snapshot.row_count,
-                    sections: snapshot
-                        .sections
-                        .into_iter()
-                        .map(|section| crate::types::BridgeLibraryBrowseSection {
-                            id: section.id,
-                            title: section.title,
-                            image: section.image.map(crate::types::BridgeImageRef::from_core),
-                            window: crate::types::BridgeLibraryPageWindow::from_core(
-                                section.window,
-                            ),
-                        })
-                        .collect(),
                     request_revision: snapshot.request_revision,
                     cause: crate::types::BridgeLiveQueryCause::from_core(snapshot.cause),
                 }
@@ -116,13 +121,60 @@ macro_rules! browse_subscription {
     };
 }
 
+browse_window! {
+    /// One requested window of the album grid, with the albums that landed in
+    /// it.
+    window: BridgeAlbumBrowseWindow,
+    row: bae_views::album_detail::AlbumAppearance => crate::types::BridgeAlbumAppearance,
+}
+
+/// The album grid as of one revision. Grouped by artist, an album shows once
+/// in each of its artists' sections, so the grid's positions count
+/// appearances: `row_count` of them, over `total_count` albums. Flat, the two
+/// are equal and there are no sections.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeAlbumBrowseSnapshot {
+    pub windows: Vec<BridgeAlbumBrowseWindow>,
+    pub sections: Vec<crate::types::BridgeLibraryBrowseSection>,
+    pub total_count: u64,
+    pub row_count: u64,
+    pub request_revision: u64,
+    pub cause: crate::types::BridgeLiveQueryCause,
+}
+
+impl BridgeAlbumBrowseSnapshot {
+    fn from_core(snapshot: bae_views::AlbumBrowseSnapshot) -> Self {
+        let bae_views::AlbumBrowseSnapshot { list, sections, row_count } = snapshot;
+        Self {
+            windows: list.windows.into_iter().map(BridgeAlbumBrowseWindow::from_core).collect(),
+            sections: sections
+                .into_iter()
+                .map(|section| crate::types::BridgeLibraryBrowseSection {
+                    id: section.id,
+                    title: section.title,
+                    image: section.image.map(crate::types::BridgeImageRef::from_core),
+                    window: crate::types::BridgeLibraryPageWindow::from_core(section.window),
+                })
+                .collect(),
+            total_count: list.total_count,
+            row_count,
+            request_revision: list.request_revision,
+            cause: crate::types::BridgeLiveQueryCause::from_core(list.cause),
+        }
+    }
+}
+
 browse_subscription! {
     object: AlbumBrowseSubscription,
     inner: bae_views::LiveAlbumBrowse,
     built by album_browse,
     snapshot: BridgeAlbumBrowseSnapshot,
-    window: BridgeAlbumBrowseWindow,
-    row: bae_views::album_detail::AlbumAppearance => crate::types::BridgeAlbumAppearance,
+}
+
+browse_snapshot! {
+    snapshot: BridgeArtistBrowseSnapshot,
+    window: BridgeArtistBrowseWindow,
+    row: bae_views::album_detail::ArtistSummary => crate::types::BridgeArtistSummary,
 }
 
 browse_subscription! {
@@ -130,8 +182,12 @@ browse_subscription! {
     inner: bae_views::LiveArtistBrowse,
     built by artist_browse,
     snapshot: BridgeArtistBrowseSnapshot,
-    window: BridgeArtistBrowseWindow,
-    row: bae_views::album_detail::ArtistSummary => crate::types::BridgeArtistSummary,
+}
+
+browse_snapshot! {
+    snapshot: BridgeComposerBrowseSnapshot,
+    window: BridgeComposerBrowseWindow,
+    row: bae_views::album_detail::ComposerSummary => crate::types::BridgeComposerSummary,
 }
 
 browse_subscription! {
@@ -139,8 +195,12 @@ browse_subscription! {
     inner: bae_views::LiveComposerBrowse,
     built by composer_browse,
     snapshot: BridgeComposerBrowseSnapshot,
-    window: BridgeComposerBrowseWindow,
-    row: bae_views::album_detail::ComposerSummary => crate::types::BridgeComposerSummary,
+}
+
+browse_snapshot! {
+    snapshot: BridgeComposerDetailRowsSnapshot,
+    window: BridgeComposerDetailRowsWindow,
+    row: bae_views::album_detail::ComposerDetailRow => crate::types::BridgeComposerDetailRow,
 }
 
 browse_subscription! {
@@ -148,8 +208,6 @@ browse_subscription! {
     inner: bae_views::LiveComposerDetailRows,
     built by composer_detail_rows,
     snapshot: BridgeComposerDetailRowsSnapshot,
-    window: BridgeComposerDetailRowsWindow,
-    row: bae_views::album_detail::ComposerDetailRow => crate::types::BridgeComposerDetailRow,
 }
 
 fn browse_error(error: bae_views::LiveLibraryBrowseError) -> BridgeError {
@@ -181,12 +239,11 @@ mirror_enum! {
     variants: { Request, Write, RequestAndWrite },
 }
 
-/// One requested window of the download queue, with its entries in the order
-/// queued.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeDownloadBrowseWindow {
-    pub window: crate::types::BridgeLibraryPageWindow,
-    pub rows: Vec<crate::types::BridgeDownloadOp>,
+browse_window! {
+    /// One requested window of the download queue, with its entries in the
+    /// order queued.
+    window: BridgeDownloadBrowseWindow,
+    row: bae_transfers::DownloadRow => crate::types::BridgeDownloadOp,
 }
 
 /// Every requested window as of one read, and how many entries the queue
@@ -197,57 +254,16 @@ pub struct BridgeDownloadBrowseSnapshot {
     pub total_count: u64,
 }
 
-/// The Downloads pane's read of the download queue: how many entries it
-/// holds, and the windows the pane draws of them, moved in place as it
-/// scrolls. The pane's summary and controls are the queue's counts
-/// ([`DownloadCountsSubscription`](crate::DownloadCountsSubscription)), and
-/// each download's bytes its transfers.
-#[derive(uniffi::Object)]
-pub struct DownloadBrowseSubscription {
+browse_subscription! {
+    /// The Downloads pane's read of the download queue: how many entries it
+    /// holds, and the windows the pane draws of them, moved in place as it
+    /// scrolls. The pane's summary and controls are the queue's counts
+    /// ([`DownloadCountsSubscription`](crate::DownloadCountsSubscription)), and
+    /// each download's bytes its transfers.
+    object: DownloadBrowseSubscription,
     inner: bae_views::LiveDownloadBrowse,
-    runtime: crate::operation_runtime::OperationRuntime,
-}
-
-pub(crate) fn download_browse(
-    inner: bae_views::LiveDownloadBrowse,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> Arc<DownloadBrowseSubscription> {
-    Arc::new(DownloadBrowseSubscription { inner, runtime })
-}
-
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl DownloadBrowseSubscription {
-    /// Read `windows` of the queue from now on, offsets counted from its
-    /// first entry.
-    pub fn set_windows(
-        &self,
-        windows: Vec<crate::types::BridgeLibraryPageWindow>,
-    ) -> Result<(), BridgeError> {
-        self.inner.set_windows(core_windows(windows)).map_err(browse_error)
-    }
-
-    pub async fn next(self: Arc<Self>) -> Result<BridgeDownloadBrowseSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("DownloadBrowseSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(BridgeDownloadBrowseSnapshot::from_core)
-                    .map_err(browse_error)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("DownloadBrowseSubscription.cancel", move || async move {
-                self.inner.cancel().await;
-                Ok(())
-            })
-            .await
-    }
+    built by download_browse,
+    snapshot: BridgeDownloadBrowseSnapshot,
 }
 
 impl BridgeDownloadBrowseSnapshot {
@@ -256,14 +272,7 @@ impl BridgeDownloadBrowseSnapshot {
             windows: snapshot
                 .windows
                 .into_iter()
-                .map(|window| BridgeDownloadBrowseWindow {
-                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                    rows: window
-                        .rows
-                        .into_iter()
-                        .map(crate::types::BridgeDownloadOp::from_core)
-                        .collect(),
-                })
+                .map(BridgeDownloadBrowseWindow::from_core)
                 .collect(),
             total_count: snapshot.total_count,
         }

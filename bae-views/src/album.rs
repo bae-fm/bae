@@ -323,25 +323,27 @@ pub fn resolve_album_browse(
     projection: AlbumBrowseProjection,
     request_revision: u64,
     cause: coven::LiveQueryCause,
-) -> crate::LibraryBrowseSnapshot<crate::album_detail::AlbumAppearance> {
-    crate::LibraryBrowseSnapshot {
-        windows: projection
-            .windows
-            .into_iter()
-            .map(|window| bae_db::LibraryBrowseWindow {
-                window: window.window,
-                rows: window
-                    .rows
-                    .into_iter()
-                    .map(crate::album_detail::AlbumAppearance::from_raw)
-                    .collect(),
-            })
-            .collect(),
-        total_count: projection.total_count,
-        row_count: projection.row_count,
+) -> crate::AlbumBrowseSnapshot {
+    crate::AlbumBrowseSnapshot {
+        list: crate::LibraryBrowseSnapshot {
+            windows: projection
+                .windows
+                .into_iter()
+                .map(|window| bae_db::LibraryBrowseWindow {
+                    window: window.window,
+                    rows: window
+                        .rows
+                        .into_iter()
+                        .map(crate::album_detail::AlbumAppearance::from_raw)
+                        .collect(),
+                })
+                .collect(),
+            total_count: projection.total_count,
+            request_revision,
+            cause,
+        },
         sections: projection.sections,
-        request_revision,
-        cause,
+        row_count: projection.row_count,
     }
 }
 

@@ -34,10 +34,10 @@ class BrowserPageStoresTest {
         store.activate("grouped")
         store.queries.single().emit(window(0), "album", sections)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(sections, store.sections)
+        assertEquals(sections, store.beside)
         assertEquals("album", store.rows[0])
         store.deactivate()
-        assertTrue(store.sections.isEmpty())
+        assertTrue(store.beside.isEmpty())
     }
 
     @Test
@@ -132,14 +132,19 @@ class BrowserPageStoresTest {
     private class RecordingPageStore(
         scope: CoroutineScope,
         loadMoreFailed: Int = R.string.library_load_more_albums_failed,
-    ) : WindowedBrowserPageStore<String, String>(RuntimeEnvironment.getApplication(), scope, loadMoreFailed) {
+    ) : WindowedBrowserPageStore<String, String, AlbumGridSections>(
+            RuntimeEnvironment.getApplication(),
+            scope,
+            emptyList(),
+            loadMoreFailed,
+        ) {
         val queries = mutableListOf<RecordingQuery>()
 
-        override fun open(parameter: String): BrowseRowsQuery<String> = RecordingQuery().also(queries::add)
+        override fun open(parameter: String): BrowseRowsQuery<String, AlbumGridSections> = RecordingQuery().also(queries::add)
     }
 
-    private class RecordingQuery : BrowseRowsQuery<String> {
-        private val values = Channel<Result<BrowseRows<String>>>(Channel.UNLIMITED)
+    private class RecordingQuery : BrowseRowsQuery<String, AlbumGridSections> {
+        private val values = Channel<Result<BrowseRows<String, AlbumGridSections>>>(Channel.UNLIMITED)
         var windows = emptyList<BridgeLibraryPageWindow>()
             private set
         var cancelled = false
@@ -149,7 +154,7 @@ class BrowserPageStoresTest {
             this.windows = windows
         }
 
-        override suspend fun next(): BrowseRows<String> = values.receive().getOrThrow()
+        override suspend fun next(): BrowseRows<String, AlbumGridSections> = values.receive().getOrThrow()
 
         override suspend fun cancel() {
             cancelled = true
@@ -158,9 +163,9 @@ class BrowserPageStoresTest {
         fun emit(
             window: BridgeLibraryPageWindow,
             row: String,
-            sections: List<BridgeLibraryBrowseSection> = emptyList(),
+            sections: AlbumGridSections = emptyList(),
         ) {
-            values.trySend(Result.success(BrowseRows(listOf(window to listOf(row)), totalCount = 500, sections = sections)))
+            values.trySend(Result.success(BrowseRows(listOf(window to listOf(row)), totalCount = 500, beside = sections)))
         }
 
         fun fail(error: BridgeException) {

@@ -122,8 +122,6 @@ pub fn resolve_composer_detail_rows(
             })
             .collect(),
         total_count: projection.total_count,
-        row_count: projection.total_count,
-        sections: Vec::new(),
         request_revision,
         cause,
     }

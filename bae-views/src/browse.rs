@@ -18,31 +18,48 @@ pub struct LibraryBrowseSection {
     pub window: LibraryPageWindow,
 }
 
+/// One delivery of a windowed list: each requested window with its rows, and
+/// how many rows the list holds.
 #[derive(Debug, Clone)]
 pub struct LibraryBrowseSnapshot<Row> {
     pub windows: Vec<LibraryBrowseWindow<Row>>,
-    pub sections: Vec<LibraryBrowseSection>,
     pub total_count: u64,
-    /// Number of displayed appearances, including albums in multiple sections.
-    pub row_count: u64,
     pub request_revision: u64,
     pub cause: coven::LiveQueryCause,
 }
 
-pub type LiveAlbumBrowse =
-    LiveLibraryBrowse<crate::AlbumBrowseProjection, crate::album_detail::AlbumAppearance>;
-pub type LiveArtistBrowse =
-    LiveLibraryBrowse<crate::ArtistBrowseProjection, crate::album_detail::ArtistSummary>;
-pub type LiveComposerBrowse =
-    LiveLibraryBrowse<crate::ComposerBrowseProjection, crate::album_detail::ComposerSummary>;
+/// One delivery of the album grid. Grouped by artist, an album shows once in
+/// each of its artists' sections, so the grid's positions count appearances:
+/// `row_count` of them, over the list's `total_count` albums. Flat, the two
+/// are equal and there are no sections.
+#[derive(Debug, Clone)]
+pub struct AlbumBrowseSnapshot {
+    pub list: LibraryBrowseSnapshot<crate::album_detail::AlbumAppearance>,
+    pub sections: Vec<LibraryBrowseSection>,
+    pub row_count: u64,
+}
+
+pub type LiveAlbumBrowse = LiveLibraryBrowse<crate::AlbumBrowseProjection, AlbumBrowseSnapshot>;
+pub type LiveArtistBrowse = LiveLibraryBrowse<
+    crate::ArtistBrowseProjection,
+    LibraryBrowseSnapshot<crate::album_detail::ArtistSummary>,
+>;
+pub type LiveComposerBrowse = LiveLibraryBrowse<
+    crate::ComposerBrowseProjection,
+    LibraryBrowseSnapshot<crate::album_detail::ComposerSummary>,
+>;
 /// A composer's page's rows, in the windows its screen shows.
-pub type LiveComposerDetailRows =
-    LiveLibraryBrowse<crate::ComposerDetailRowsProjection, crate::album_detail::ComposerDetailRow>;
+pub type LiveComposerDetailRows = LiveLibraryBrowse<
+    crate::ComposerDetailRowsProjection,
+    LibraryBrowseSnapshot<crate::album_detail::ComposerDetailRow>,
+>;
 
 /// The download queue as the Downloads pane draws it: its windows, each row
 /// an entry beside its release.
-pub type LiveDownloadBrowse =
-    LiveLibraryBrowse<bae_transfers::ReleaseQueueWindows<()>, bae_transfers::DownloadRow>;
+pub type LiveDownloadBrowse = LiveLibraryBrowse<
+    bae_transfers::ReleaseQueueWindows<()>,
+    LibraryBrowseSnapshot<bae_transfers::DownloadRow>,
+>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum LiveLibraryBrowseError {
@@ -59,24 +76,21 @@ impl From<bae_db::live_query::LiveQueryCancelled> for LiveLibraryBrowseError {
     }
 }
 
-pub struct LiveLibraryBrowse<Projection, Row> {
+/// A windowed list read live: the windows it reads move in place, and each
+/// read resolves to the `Snapshot` its screen takes.
+pub struct LiveLibraryBrowse<Projection, Snapshot> {
     query: CancellableLiveQuery<LibraryPageWindows, Projection>,
-    resolve: Arc<
-        dyn Fn(Projection, u64, coven::LiveQueryCause) -> LibraryBrowseSnapshot<Row> + Send + Sync,
-    >,
+    resolve: Arc<dyn Fn(Projection, u64, coven::LiveQueryCause) -> Snapshot + Send + Sync>,
 }
 
-impl<Projection, Row> LiveLibraryBrowse<Projection, Row>
+impl<Projection, Snapshot> LiveLibraryBrowse<Projection, Snapshot>
 where
     Projection: Clone + PartialEq + Send + 'static,
-    Row: Send + 'static,
+    Snapshot: Send + 'static,
 {
     pub fn new(
         query: CancellableLiveQuery<LibraryPageWindows, Projection>,
-        resolve: impl Fn(Projection, u64, coven::LiveQueryCause) -> LibraryBrowseSnapshot<Row>
-            + Send
-            + Sync
-            + 'static,
+        resolve: impl Fn(Projection, u64, coven::LiveQueryCause) -> Snapshot + Send + Sync + 'static,
     ) -> Self {
         Self { query, resolve: Arc::new(resolve) }
     }
@@ -85,7 +99,7 @@ where
         self.query.set(windows).map(|_| ()).map_err(LiveLibraryBrowseError::from)
     }
 
-    pub async fn next(&self) -> Result<LibraryBrowseSnapshot<Row>, LiveLibraryBrowseError> {
+    pub async fn next(&self) -> Result<Snapshot, LiveLibraryBrowseError> {
         let event = self.query.next().await.map_err(LiveLibraryBrowseError::from)?;
         let revision = event.revision.0;
         let cause = event.cause;

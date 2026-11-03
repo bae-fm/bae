@@ -381,7 +381,7 @@ internal class FakeComposerBrowseSubscription(
     var cancelled = false
 
     init {
-        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), emptyList(), 0uL, 0uL, revision, BridgeLiveQueryCause.REQUEST))
+        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), 0uL, revision, BridgeLiveQueryCause.REQUEST))
     }
 
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
@@ -392,8 +392,6 @@ internal class FakeComposerBrowseSubscription(
         events.trySend(
             BridgeComposerBrowseSnapshot(
                 projected,
-                emptyList(),
-                projected.sumOf { it.rows.size }.toULong(),
                 projected.sumOf { it.rows.size }.toULong(),
                 revision,
                 BridgeLiveQueryCause.REQUEST,
@@ -432,8 +430,6 @@ internal class FakeComposerDetailRowsSubscription(
                     rows.drop(window.offset.toInt()).take(window.limit.toInt()),
                 )
             },
-            emptyList(),
-            rows.size.toULong(),
             rows.size.toULong(),
             revision,
             BridgeLiveQueryCause.REQUEST,
