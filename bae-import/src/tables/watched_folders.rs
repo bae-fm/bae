@@ -152,17 +152,21 @@ impl ImportTables {
             .await
     }
 
-    /// Watch the folder `path` names, keyed by its canonical spelling; `false`
-    /// when it is already watched.
+    /// Watch the folder `path` names, keyed by its canonical spelling, and
+    /// return the folders watched after the add, read inside its write;
+    /// `None` when it is already watched.
     ///
     /// The overlap check runs inside the inserting write, so two overlapping
     /// folders added at once cannot both pass. Already-watched is answered by
     /// a read first, since the store refuses a write that changes nothing; a
     /// folder watched in between fails the write.
-    pub async fn add_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
+    pub async fn add_watched_import_folder(
+        &self,
+        path: &Path,
+    ) -> Result<Option<Vec<crate::WatchedFolder>>, DbError> {
         let path = bae_db::watched_path::canonical_absolute_root(path)?;
         if self.is_watched_import_folder(&path).await? {
-            return Ok(false);
+            return Ok(None);
         }
         self.database
             .call(move |sql| {
@@ -195,7 +199,12 @@ impl ImportTables {
                     "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
                     params![coven::path_bytes(&path), position],
                 )?;
-                Ok(true)
+                let watched = watched_folders_of(sql.query(
+                    "SELECT path FROM watched_import_folders ORDER BY position",
+                    [],
+                    |row| path_column::get(row, 0),
+                )?)?;
+                Ok(Some(watched))
             })
             .await
     }

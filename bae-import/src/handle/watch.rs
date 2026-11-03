@@ -67,15 +67,14 @@ impl ImportServiceHandle {
         let _commit = self.folder_state_commit.lock("add a watched folder").await;
         let added = self.tables.add_watched_import_folder(&path).await?;
         let read = WatcherCommand::Rescan(path.clone());
-        if !added {
+        let Some(folders) = added else {
             info!("{shown} is already watched; re-reading it");
             return self.send_watcher_command(read, "Failed to start watching folder");
-        }
+        };
         if let Err(error) = self.send_watcher_command(read, "Failed to start watching folder") {
             self.tables.remove_watched_import_folders(vec![path], None).await?;
             return Err(error);
         }
-        let folders = self.watched_folders().await?;
         self.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }));
         Ok(())
     }

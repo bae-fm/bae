@@ -664,8 +664,9 @@ scan keeps both old and new entries. A pass that panics fails the scan as an
 error does, stored with the panic's message and reported as a bug; the folder
 is free for its next read, and whoever waited on the pass is answered. A
 panic while removing a watched folder fails the removal the same way, and the
-folder is read again. A removal announces the watched folders as its own
-write left them, read inside that write. Each entry's write reads only that entry
+folder is read again. An add or a removal announces the watched folders as
+its own write left them, read inside that write; a write that leaves folders
+no read can list is refused whole. Each entry's write reads only that entry
 and the entries reading the same files, which it finds by their folders, so it
 costs the same however much else the watched folder holds.
 

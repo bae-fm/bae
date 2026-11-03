@@ -183,3 +183,31 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     removal.unwrap();
     tokio::task::spawn_blocking(move || handle.stop_and_join()).await.unwrap();
 }
+
+/// An add that fails leaves nothing watched: the folders it announces are
+/// the ones its own write left, read inside that write, and a write whose
+/// folders cannot be read is refused whole.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_add_that_fails_leaves_nothing_watched() {
+    let (parts, _, tmp) = setup_test_import().await;
+    let root = tmp.path().join("watch-root");
+    std::fs::create_dir_all(&root).unwrap();
+    // A row inside each added folder, which every read of the watched
+    // folders refuses as overlapping.
+    crate::candidate_runtime::tests::add_to_library_schema(
+        tmp.path(),
+        "watched_import_folders",
+        "CREATE TRIGGER overlap_each_added_folder AFTER INSERT ON watched_import_folders \
+         WHEN NEW.position <> 99 BEGIN \
+         INSERT INTO watched_import_folders (path, position) \
+         VALUES (CAST(CAST(NEW.path AS TEXT) || '/inner' AS BLOB), 99); END;"
+            .to_string(),
+    )
+    .await;
+    let import_handle = parts.start().await.unwrap();
+
+    import_handle.add_watched_folder(root).await.unwrap_err();
+
+    assert!(import_handle.watched_folders().await.unwrap().is_empty());
+    shut_down(import_handle).await;
+}

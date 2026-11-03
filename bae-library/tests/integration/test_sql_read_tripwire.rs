@@ -50,7 +50,7 @@ async fn pure_reads_use_the_read_connection() {
     bae_playback::tables::clear_playback_state(&db).await.unwrap();
     bae_playback::tables::clear_playback_state(&db).await.unwrap();
     tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
-    assert!(!tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap());
+    assert!(tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap().is_none());
     let album = std::path::Path::new(root).join("Album");
     let album = album.to_str().unwrap();
     let never_skipped = std::path::Path::new(root).join("Never Skipped");

@@ -171,12 +171,8 @@ pub(super) async fn scanned_key(
 
 /// Make every write of a candidate's standing that one of `failing` names —
 /// a statement (`INSERT`, `UPDATE`, `DELETE`) and the condition on its row,
-/// `NEW` or `OLD`, that it fails for — fail, as a full disk fails it: a
-/// trigger on the table of the library under `directory`, added from a
-/// connection of its own, since no write of the library makes a schema
-/// change.
+/// `NEW` or `OLD`, that it fails for — fail, as a full disk fails it.
 pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &[(&str, &str)]) {
-    let directory = directory.to_path_buf();
     let triggers: String = failing
         .iter()
         .enumerate()
@@ -188,6 +184,18 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
             )
         })
         .collect();
+    add_to_library_schema(directory, "import_candidate_standing", triggers).await;
+}
+
+/// Run `statements`, a schema change, on the library under `directory`, the
+/// database holding `table`, from a connection of its own: no write of the
+/// library makes a schema change.
+pub(crate) async fn add_to_library_schema(
+    directory: &std::path::Path,
+    table: &'static str,
+    statements: String,
+) {
+    let directory = directory.to_path_buf();
     tokio::task::spawn_blocking(move || {
         let mut found = false;
         let mut dirs = vec![directory];
@@ -204,22 +212,21 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
                     continue;
                 }
                 let connection = rusqlite::Connection::open(&path).unwrap();
-                let holds_standings: bool = connection
+                let holds_table: bool = connection
                     .query_row(
-                        "SELECT EXISTS (SELECT 1 FROM sqlite_master \
-                         WHERE name = 'import_candidate_standing')",
-                        [],
+                        "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE name = ?)",
+                        [table],
                         |row| row.get(0),
                     )
                     .unwrap();
-                if !holds_standings {
+                if !holds_table {
                     continue;
                 }
-                connection.execute_batch(&triggers).unwrap();
+                connection.execute_batch(&statements).unwrap();
                 found = true;
             }
         }
-        assert!(found, "the library under the directory holds the standings table");
+        assert!(found, "the library under the directory holds {table}");
     })
     .await
     .unwrap();

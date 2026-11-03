@@ -24,7 +24,7 @@ async fn overlapping_folders_added_at_once_keep_only_one() {
             tables.add_watched_import_folder(&inner),
         );
 
-        let added = [&first, &second].iter().filter(|result| matches!(result, Ok(true))).count();
+        let added = [&first, &second].iter().filter(|result| matches!(result, Ok(Some(_)))).count();
         let refused = [&first, &second]
             .iter()
             .filter(|result| {
@@ -85,7 +85,7 @@ async fn watched_root_overlap_uses_paths_not_sql_patterns() {
     let (db, _tmp) = empty_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for root in ["/music/100%", "/music/name_value"] {
-        assert!(tables.add_watched_import_folder(&host_root(root)).await.unwrap());
+        assert!(tables.add_watched_import_folder(&host_root(root)).await.unwrap().is_some());
     }
     for child in ["/music/100%/child", "/music/name_value/child"] {
         let error = tables.add_watched_import_folder(&host_root(child)).await.unwrap_err();
@@ -101,7 +101,7 @@ async fn watched_root_order_survives_middle_removal_and_later_add() {
         tables.add_watched_import_folder(&host_root(root)).await.unwrap();
     }
     tables.remove_watched_import_folders(vec![host_root("/two")], None).await.unwrap();
-    tables.add_watched_import_folder(&host_root("/four")).await.unwrap();
+    let added = tables.add_watched_import_folder(&host_root("/four")).await.unwrap();
     let paths: Vec<_> = tables
         .load_watched_import_folders()
         .await
@@ -110,6 +110,15 @@ async fn watched_root_order_survives_middle_removal_and_later_add() {
         .map(|folder| folder.path)
         .collect();
     assert_eq!(paths, vec![host_root("/one"), host_root("/three"), host_root("/four")]);
+    assert_eq!(
+        added
+            .expect("/four was not watched")
+            .into_iter()
+            .map(|folder| folder.path)
+            .collect::<Vec<_>>(),
+        paths,
+        "the add answers the folders its write left watched"
+    );
 }
 
 /// Every spelling of a watched folder is the same row, keyed by the canonical
@@ -119,7 +128,7 @@ async fn watched_root_spellings_settle_on_one_row() {
     let (db, _tmp) = empty_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let canonical = host_root("/music/rips");
-    assert!(tables.add_watched_import_folder(&canonical).await.unwrap());
+    assert!(tables.add_watched_import_folder(&canonical).await.unwrap().is_some());
 
     // The drive-lettered, forward-slashed form a `bae://import` link and a
     // `file://` folder drop give on Windows.
@@ -135,7 +144,7 @@ async fn watched_root_spellings_settle_on_one_row() {
         spellings.iter().map(PathBuf::as_path).chain(URL_SPELLINGS.iter().map(std::path::Path::new))
     {
         assert!(
-            !tables.add_watched_import_folder(spelling).await.unwrap(),
+            tables.add_watched_import_folder(spelling).await.unwrap().is_none(),
             "{} is the folder already watched, not a new one",
             spelling.display()
         );
