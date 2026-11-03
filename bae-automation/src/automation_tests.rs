@@ -72,7 +72,7 @@ pub(super) async fn automation_over() -> Fixture {
     let services = bae_app::test_services::start_services(&library)
         .await
         .expect("the test library's services start");
-    let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
+    let automation = Automation::new(services.clone());
     Fixture { automation, tables, services, tmp }
 }
 
@@ -440,7 +440,7 @@ mod release_album {
         let services = bae_app::test_services::start_services(&library)
             .await
             .expect("the test library's services start");
-        let automation = Automation::new(services, &tokio::runtime::Handle::current());
+        let automation = Automation::new(services);
 
         automation
             .call_tool(

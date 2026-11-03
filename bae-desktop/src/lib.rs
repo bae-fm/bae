@@ -37,7 +37,7 @@ impl DesktopServices {
     /// step with later config changes. A panic in either server, a request or
     /// a config change is reported to `diagnostics`.
     pub async fn start(services: AppServices, runtime: Handle, diagnostics: Diagnostics) -> Self {
-        let automation = Automation::new(services.clone(), &runtime);
+        let automation = Automation::new(services.clone());
         let token_manager = services.clone();
         let controller = McpServerController::new(
             automation,

@@ -1,8 +1,7 @@
 use super::*;
 
 impl Automation {
-    pub fn new(services: AppServices, runtime_handle: &tokio::runtime::Handle) -> Self {
-        let _ = runtime_handle;
+    pub fn new(services: AppServices) -> Self {
         Self { services }
     }
 
