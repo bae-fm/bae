@@ -671,3 +671,7 @@ pub struct ComposerDetailProjection {
 pub struct WorkDetailProjection {
     pub detail: Option<DbWorkDetail>,
 }
+
+#[cfg(test)]
+#[path = "composer_tests.rs"]
+mod tests;

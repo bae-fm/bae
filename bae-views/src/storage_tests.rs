@@ -1,212 +1,140 @@
-//! The paged lists' windows read from a row beside them: every seek of
-//! every sort an index search, and a live list read from its last read's rows
-//! only while none of them has moved.
+//! The Storage Manager list: its counts, sizes and sorts as release files
+//! change, its search, and every storage sort and the download queue read
+//! from an index.
 
-use bae_db::client::list_windows::OrderKey;
-
-use bae_db::client::list_windows::{Keyed, ListOrder, Seek};
-
-use bae_db::test_fixtures::*;
-
-use crate::album::album_browse_order;
+use crate::tests::{assert_seeks_search, both_ways, key_at, library};
 use crate::*;
+use bae_db::test_fixtures::aggregate_ordering::aggregate_db;
+use bae_db::test_fixtures::exec_batch;
+use bae_db::test_fixtures::storage_listing::*;
+use bae_db::test_fixtures::*;
 use bae_db::{LibraryPageWindow, LibraryPageWindows};
 
-/// The plan of `statement` under `seek`'s parameters and `extra`, one line
-/// per step.
-async fn plan(
-    db: &Database,
-    statement: String,
-    seek: Seek,
-    extra: Vec<(&'static str, rusqlite::types::Value)>,
-) -> Vec<String> {
-    db.read(move |sql| {
-        seek.bound(50, 0, |params| {
-            let mut params = params.to_vec();
-            params.extend(extra.iter().map(|(name, value)| (*name, value as &dyn rusqlite::ToSql)));
-            Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params.as_slice(), |row| {
-                row.get::<_, String>(3)
-            })?)
-        })
-    })
-    .await
-    .unwrap()
-}
-
-/// The aliases the lists' statements read their rows as, which a seek reads
-/// by an index search, never a scan.
-const LIST_ALIASES: &[&str] = &["listing", "artist", "link", "a", "r", "q"];
-
-/// Hold every seek beside the row at `key` of `order`'s rows to an index:
-/// `statement` builds the seek's statement. Only the grid grouped by artist
-/// sorts, and only one artist's albums at a time: each artist's as it
-/// reaches it (`LAST … TERMS`), or, holding the artist's sort key and id (the
-/// first `sorted_within` terms) equal, that artist's alone.
-async fn assert_seeks_search(
-    db: &Database,
-    what: &str,
-    order: &ListOrder,
-    key: OrderKey,
-    statement: impl Fn(&Seek) -> String,
-    extra: Vec<(&'static str, rusqlite::types::Value)>,
-) {
-    assert_seeks_search_sorting(db, what, order, key, statement, extra, usize::MAX).await
-}
-
-async fn assert_seeks_search_sorting(
-    db: &Database,
-    what: &str,
-    order: &ListOrder,
-    key: OrderKey,
-    statement: impl Fn(&Seek) -> String,
-    extra: Vec<(&'static str, rusqlite::types::Value)>,
-    sorted_within: usize,
-) {
-    for seek in order.seeks_beside(&key) {
-        let sorts_by_artist = sorted_within != usize::MAX;
-        let sorts = seek.held_equal() >= sorted_within;
-        let steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
-        // The grid grouped by artist sorts each artist's albums as it reaches
-        // the artist (`RIGHT PART`); nothing sorts the list whole.
-        assert!(
-            !steps.iter().any(|step| {
-                LIST_ALIASES.iter().any(|alias| {
-                    step.starts_with(&format!("SCAN {alias} ")) || step == &format!("SCAN {alias}")
-                }) || (!sorts && step.contains("TEMP B-TREE FOR ORDER BY"))
-                    || (!sorts_by_artist && step.contains("TEMP B-TREE FOR LAST"))
-            }),
-            "{what} {seek:?}: {steps:?}"
-        );
-    }
-}
-
-/// A library of 300 albums, each with an artist, a release, files and a
-/// work, every release queued to download and every track in the lane.
-async fn library() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = temp_db().await;
-    super::window_cost::seed(&db, &tmp.path().join("originals"), 0, 300).await;
-    (db, tmp)
-}
-
-fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
-    [(field, SortDirection::Ascending), (field, SortDirection::Descending)]
-}
-
-/// The key of row `at` of `order`, read by `rows`.
-async fn key_at<R: Send + 'static>(
-    db: &Database,
-    order: &ListOrder,
-    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>
-        + Send
-        + 'static,
-    at: u64,
-) -> OrderKey {
-    let order = order.clone();
-    db.read(move |sql| Ok(rows(&sql, &order, &order.everything(), 1, at)?.pop().unwrap().1))
+/// The Storage Manager list's release ids in `field` order, ascending.
+async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
+    crate::LibraryViews::new(db.clone())
+        .get_storage_page(
+            &StorageSortCriterion { field, direction: SortDirection::Ascending },
+            StorageFilter::All,
+            0,
+            50,
+        )
         .await
         .unwrap()
+        .rows
+        .into_iter()
+        .map(|row| row.release.id)
+        .collect()
 }
 
 #[tokio::test]
-async fn every_album_sort_seeks_its_windows_through_an_index() {
-    let (db, _tmp) = library().await;
-    let mut sorts = vec![Vec::new()];
-    for field in [
-        AlbumSortField::Title,
-        AlbumSortField::Artist,
-        AlbumSortField::Year,
-        AlbumSortField::DateAdded,
+async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
+    let (db, tmp) = bae_db::test_fixtures::temp_db().await;
+    exec_batch(&db, LIBRARY).await;
+    // The first release has two files, of 10 and 20 bytes; the second none.
+    for file in [
+        ("d3edb846-9b0b-4a64-b0f6-3f117b686bc0", RELEASE_EARLY, "cover.jpg", 10),
+        ("161dd6f3-3bdd-4312-b5d3-8b9d83b53694", RELEASE_EARLY, "back.jpg", 20),
     ] {
-        for (field, direction) in both_ways(field) {
-            sorts.push(vec![AlbumSortCriterion { field, direction }]);
-        }
+        insert_file(&db, tmp.path(), file).await;
     }
-    for group_by_artist in [false, true] {
-        for sort in &sorts {
-            let (relation, order) = album_browse_order(sort, group_by_artist);
-            let read = relation.clone();
-            let key = key_at(
-                &db,
-                &order,
-                move |sql, order, seek, limit, offset| {
-                    crate::album::album_rows_on(
-                        sql,
-                        &read,
-                        group_by_artist,
-                        order,
-                        seek,
-                        limit,
-                        offset,
-                    )
-                },
-                150,
-            )
-            .await;
-            // Grouped by artist, a seek holding the artist's sort key and id
-            // reads that artist's albums alone.
-            let sorted_within = if group_by_artist { 2 } else { usize::MAX };
-            assert_seeks_search_sorting(
-                &db,
-                &format!("albums {sort:?} grouped {group_by_artist}"),
-                &order,
-                key,
-                |seek| {
-                    crate::album::album_window_statement(&relation, group_by_artist, &order, seek)
-                },
-                Vec::new(),
-                sorted_within,
-            )
-            .await;
-        }
+    let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
+
+    assert_eq!(
+        crate::LibraryViews::new(db.clone()).get_storage_count(StorageFilter::All).await.unwrap(),
+        2
+    );
+    assert_eq!(
+        crate::LibraryViews::new(db.clone()).get_storage_count(StorageFilter::Local).await.unwrap(),
+        2
+    );
+    assert_eq!(
+        crate::LibraryViews::new(db.clone())
+            .get_storage_count(StorageFilter::Remote)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        crate::LibraryViews::new(db.clone())
+            .get_storage_total_size(StorageFilter::All)
+            .await
+            .unwrap(),
+        30
+    );
+    assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
+
+    exec_batch(&db, "DELETE FROM release_files WHERE id = '161dd6f3-3bdd-4312-b5d3-8b9d83b53694';")
+        .await;
+    for file in [
+        ("f5008044-8ffe-4227-bdc3-238f85a6a4a6", RELEASE_LATE, "one.jpg", 1),
+        ("cda4c2ec-c6fa-422c-a224-d4f56ca5f3f3", RELEASE_LATE, "two.jpg", 2),
+    ] {
+        insert_file(&db, tmp.path(), file).await;
     }
+    assert_eq!(
+        crate::LibraryViews::new(db.clone())
+            .get_storage_total_size(StorageFilter::All)
+            .await
+            .unwrap(),
+        13
+    );
+    assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_EARLY, RELEASE_LATE]));
+    assert_eq!(page(&db, StorageSortField::TotalSize).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
+
+    // Retitling the first album sorts its release after the second.
+    exec_batch(
+        &db,
+        "UPDATE albums SET title = 'Album Title C' WHERE id = '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d';",
+    )
+    .await;
+    assert_eq!(page(&db, StorageSortField::AlbumTitle).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
+
+    exec_batch(&db, "DELETE FROM releases WHERE id = 'd439555e-9883-4037-a580-48ea33c2c57b';")
+        .await;
+    assert_eq!(
+        crate::LibraryViews::new(db.clone()).get_storage_count(StorageFilter::All).await.unwrap(),
+        1
+    );
+    assert_eq!(
+        crate::LibraryViews::new(db.clone())
+            .get_storage_total_size(StorageFilter::All)
+            .await
+            .unwrap(),
+        3
+    );
 }
 
+/// Sorting by storage reads a window from an index of the listing in either
+/// direction, under every filter: SQLite never sorts the list itself.
 #[tokio::test]
-async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
-    let (db, _tmp) = library().await;
-    let mut artist_sorts = vec![Vec::new()];
-    for (field, direction) in
-        both_ways(ArtistSortField::Name).into_iter().chain(both_ways(ArtistSortField::AlbumCount))
-    {
-        artist_sorts.push(vec![ArtistSortCriterion { field, direction }]);
-    }
-    for sort in artist_sorts {
-        let order = crate::artist::artist_order(&sort);
-        let key = key_at(&db, &order, crate::artist::artist_rows_on, 150).await;
-        assert_seeks_search(
-            &db,
-            &format!("artists {sort:?}"),
-            &order,
-            key,
-            |seek| crate::listing_window_query(crate::artist::artist_listing_query, &order, seek),
-            Vec::new(),
-        )
-        .await;
-    }
-    let mut composer_sorts = vec![Vec::new()];
-    for field in [
-        ComposerSortField::Name,
-        ComposerSortField::WorkCount,
-        ComposerSortField::LinkedReleaseCount,
-    ] {
-        for (field, direction) in both_ways(field) {
-            composer_sorts.push(vec![ComposerSortCriterion { field, direction }]);
+async fn the_storage_sort_reads_a_window_from_an_index() {
+    let (db, _tmp) = bae_db::test_fixtures::temp_db().await;
+    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
+        for direction in [SortDirection::Ascending, SortDirection::Descending] {
+            let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
+            let order = crate::storage::storage_order(&sort);
+            let steps = plan(
+                &db,
+                crate::storage::storage_window_query(
+                    &order,
+                    filter,
+                    crate::storage::StorageRows::Listed,
+                    &order.everything(),
+                )
+                .replace("LIMIT :limit OFFSET :offset", "LIMIT 50 OFFSET 0"),
+            )
+            .await;
+            assert!(
+                steps.iter().any(|step| step.contains("USING INDEX idx_release_listing_")
+                    && step.contains("storage")),
+                "{filter:?} {direction:?}: {steps:?}"
+            );
+            assert!(
+                !steps.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                "{filter:?} {direction:?}: {steps:?}"
+            );
         }
-    }
-    for sort in composer_sorts {
-        let order = crate::composer::composer_order(&sort);
-        let key = key_at(&db, &order, crate::composer::composer_rows_on, 150).await;
-        assert_seeks_search(
-            &db,
-            &format!("composers {sort:?}"),
-            &order,
-            key,
-            |seek| {
-                crate::listing_window_query(crate::composer::composer_listing_query, &order, seek)
-            },
-            Vec::new(),
-        )
-        .await;
     }
 }
 
@@ -362,7 +290,8 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                         crate::storage::StorageRows::SearchedInOrder,
                         &seek,
                     );
-                    let steps = plan(&db, statement, seek.clone(), search.clone()).await;
+                    let steps =
+                        crate::tests::plan(&db, statement, seek.clone(), search.clone()).await;
                     assert!(
                         reads_search_text_by_entry(&steps),
                         "in order {what} {seek:?}: {steps:?}"
@@ -373,7 +302,8 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                         crate::storage::StorageRows::Found,
                         &seek,
                     );
-                    let steps = plan(&db, statement, seek.clone(), search.clone()).await;
+                    let steps =
+                        crate::tests::plan(&db, statement, seek.clone(), search.clone()).await;
                     assert!(
                         !scans(&steps, SEARCH_ALIASES)
                             && steps
@@ -663,82 +593,6 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
     }
 }
 
-/// The album list's ids at `window`, as a read by offset finds them.
-async fn albums_at(db: &Database, window: &LibraryPageWindow) -> Vec<String> {
-    crate::LibraryViews::new(db.clone())
-        .get_album_page(&[], window.offset, window.limit)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|album| album.id)
-        .collect()
-}
-
-/// The next value of the album list's live query once `windows` are asked
-/// for, as each window's ids.
-async fn read_albums(
-    query: &mut coven::ReconfigurableLiveQuery<LibraryPageWindows, AlbumBrowseProjection>,
-    windows: LibraryPageWindows,
-) -> Vec<Vec<String>> {
-    query.requests().set(windows.clone()).unwrap();
-    loop {
-        let event = query.next().await.unwrap();
-        if event.request == windows {
-            return event
-                .result
-                .unwrap()
-                .windows
-                .into_iter()
-                .map(|window| window.rows.into_iter().map(|row| row.album.id).collect())
-                .collect();
-        }
-    }
-}
-
-/// A live album list scrolled a window at a time, down then back up, holds
-/// what reads by offset hold at each window; and after a write adds an
-/// album above the window it scrolls from, the next window still holds what
-/// a read by offset does, not the rows past where the last read's row sat
-/// before the write.
-#[tokio::test]
-async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
-    let (db, _tmp) = library().await;
-    let window = |offset| LibraryPageWindow { offset, limit: 50 };
-    let mut query = crate::LibraryViews::new(db.clone()).subscribe_album_browse(
-        &[],
-        false,
-        LibraryPageWindows::new(),
-    );
-    query.next().await.unwrap().result.unwrap();
-    for offset in [100, 150, 200, 150, 100] {
-        assert_eq!(
-            read_albums(&mut query, LibraryPageWindows::from([window(offset)])).await,
-            vec![albums_at(&db, &window(offset)).await],
-            "at {offset}"
-        );
-    }
-    // The newest album sorts first in the default order.
-    db.call(|conn| {
-        conn.execute_batch(
-            "INSERT INTO albums (id, title, created_at) VALUES \
-                 ('f0000000-0000-4000-8000-000000000001', 'Album Title', '2099-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, album_order, created_at) VALUES \
-                 ('f0000000-0000-4000-8000-000000000002', 'f0000000-0000-4000-8000-000000000001', \
-                  0, '2099-01-01T00:00:00Z');",
-        )
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
-    for offset in [150, 50] {
-        assert_eq!(
-            read_albums(&mut query, LibraryPageWindows::from([window(offset)])).await,
-            vec![albums_at(&db, &window(offset)).await],
-            "at {offset} after the write"
-        );
-    }
-}
-
 #[tokio::test]
 async fn the_download_queue_seeks_its_windows_through_its_key() {
     let (db, _tmp) = library().await;
@@ -762,4 +616,25 @@ async fn the_download_queue_seeks_its_windows_through_its_key() {
         Vec::new(),
     )
     .await;
+}
+
+#[tokio::test]
+async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
+    let (db, _tmp) = aggregate_db().await;
+    let sort = StorageSortCriterion {
+        field: StorageSortField::AlbumTitle,
+        direction: SortDirection::Ascending,
+    };
+    let rows = crate::LibraryViews::new(db.clone())
+        .get_storage_page(&sort, StorageFilter::All, 0, 10)
+        .await
+        .unwrap()
+        .rows;
+    let row = rows.first().expect("storage row");
+
+    assert_eq!(
+        row.album.artist_names,
+        "Artist Name Primary, Artist Name First, Artist Name Second"
+    );
+    assert_eq!(row.album.release_ids, vec![RELEASE_Z, RELEASE_A, RELEASE_B]);
 }

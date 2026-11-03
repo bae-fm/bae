@@ -259,3 +259,7 @@ fn artist_search_rows_on(
     )
     .map_err(DbError::from)
 }
+
+#[cfg(test)]
+#[path = "artist_search_tests.rs"]
+mod tests;

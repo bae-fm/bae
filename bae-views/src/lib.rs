@@ -107,4 +107,5 @@ pub(crate) fn listing_window_query(
 }
 
 #[cfg(test)]
+#[path = "lib_tests.rs"]
 mod tests;

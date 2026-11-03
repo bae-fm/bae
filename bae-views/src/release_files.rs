@@ -95,3 +95,7 @@ impl LibraryViews {
             .process(Ok)
     }
 }
+
+#[cfg(test)]
+#[path = "release_files_tests.rs"]
+mod tests;

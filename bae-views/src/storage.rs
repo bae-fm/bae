@@ -730,3 +730,7 @@ pub struct StorageBrowseProjection {
     /// says.
     pub has_cloud_home: bool,
 }
+
+#[cfg(test)]
+#[path = "storage_tests.rs"]
+mod tests;

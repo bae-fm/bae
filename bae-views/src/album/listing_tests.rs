@@ -1,5 +1,163 @@
+//! The album grid's rows: how they sort, flat or grouped by artist, how a
+//! release leaving or an artist merging moves them, and every sort's windows
+//! read from an index.
+
+use crate::album::album_browse_order;
+use crate::tests::{assert_seeks_search_sorting, both_ways, key_at, library};
 use crate::*;
+use bae_db::test_fixtures::album_listing::*;
 use bae_db::test_fixtures::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
+use bae_db::{LibraryPageWindow, LibraryPageWindows};
+use std::collections::BTreeSet;
+
+/// The grid's album ids in `field` order, `direction`.
+async fn album_ids(db: &Database, field: AlbumSortField, direction: SortDirection) -> Vec<String> {
+    crate::LibraryViews::new(db.clone())
+        .get_album_page(&[AlbumSortCriterion { field, direction }], 0, 50)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|album| album.id)
+        .collect()
+}
+
+/// The artist list: each artist's id and album count, by name.
+async fn artists(db: &Database) -> Vec<(String, i64)> {
+    crate::LibraryViews::new(db.clone())
+        .get_artist_page(&[], 0, 50)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|artist| (artist.raw.artist.id, artist.raw.album_count))
+        .collect()
+}
+
+/// The grid grouped by artist: each section's artist, its first row and its
+/// length, and the album ids of the rows in order.
+async fn grouped(db: &Database) -> (Vec<(String, u64, u64)>, Vec<String>) {
+    let windows = [LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect::<BTreeSet<_>>();
+    let mut live = crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, windows);
+    let shown = live.next().await.expect("the query stays open").result.unwrap();
+    (
+        shown
+            .sections
+            .iter()
+            .map(|section| (section.id.clone(), section.window.offset, section.window.limit))
+            .collect(),
+        shown.windows[0].rows.iter().map(|row| row.album.id.clone()).collect(),
+    )
+}
+
+#[tokio::test]
+async fn album_grid_sorts_by_credits_as_their_artists_change() {
+    let (db, _tmp) = listed_db().await;
+    let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
+    // Alpha's album, then Bravo's, then Bravo and Alpha's: the credit list
+    // compares in order, so a longer list sorts after its first name alone.
+    assert_eq!(
+        album_ids(&db, AlbumSortField::Artist, SortDirection::Ascending).await,
+        ids(&[ALBUM_TWO, ALBUM_ONE, ALBUM_THREE])
+    );
+
+    exec_batch(
+        &db,
+        "UPDATE artists SET sort_name = 'Zulu Sort Name' WHERE id = '4309b580-a6bf-455e-92ea-ec58ee7129e7';",
+    )
+    .await;
+    assert_eq!(
+        album_ids(&db, AlbumSortField::Artist, SortDirection::Ascending).await,
+        ids(&[ALBUM_ONE, ALBUM_THREE, ALBUM_TWO])
+    );
+    assert_eq!(
+        album_ids(&db, AlbumSortField::Artist, SortDirection::Descending).await,
+        ids(&[ALBUM_TWO, ALBUM_THREE, ALBUM_ONE])
+    );
+}
+
+#[tokio::test]
+async fn album_grid_puts_unknown_years_last_ascending_and_first_descending() {
+    let (db, _tmp) = listed_db().await;
+    let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
+    assert_eq!(
+        album_ids(&db, AlbumSortField::Year, SortDirection::Ascending).await,
+        ids(&[ALBUM_THREE, ALBUM_ONE, ALBUM_TWO])
+    );
+    assert_eq!(
+        album_ids(&db, AlbumSortField::Year, SortDirection::Descending).await,
+        ids(&[ALBUM_TWO, ALBUM_ONE, ALBUM_THREE])
+    );
+}
+
+#[tokio::test]
+async fn an_album_leaves_the_lists_with_its_last_release() {
+    let (db, _tmp) = listed_db().await;
+    assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 3);
+    assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
+
+    exec_batch(&db, "DELETE FROM releases WHERE id = '5a905d5d-d400-42f3-a9a8-b858f18dcbc3';")
+        .await;
+    assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 2);
+    assert!(!album_ids(&db, AlbumSortField::Title, SortDirection::Ascending)
+        .await
+        .contains(&ALBUM_ONE.to_string()));
+    assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 1)]);
+    assert_eq!(crate::LibraryViews::new(db.clone()).get_artist_count().await.unwrap(), 2);
+
+    // A release arriving under the album lists it again.
+    exec_batch(
+        &db,
+        "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+            ('24b929ff-1f01-4621-9891-81abea7fbe87', '07d22f7d-3980-4c81-9d27-8fcd50ee3464', '2026-01-01T00:00:00Z', 0);",
+    )
+    .await;
+    assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 3);
+    assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
+}
+
+#[tokio::test]
+async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
+    let (db, _tmp) = listed_db().await;
+    // Newest first under each artist; Alpha's section before Bravo's.
+    assert_eq!(
+        grouped(&db).await,
+        (
+            vec![(ALPHA.to_string(), 0, 2), (BRAVO.to_string(), 2, 2)],
+            vec![
+                ALBUM_THREE.to_string(),
+                ALBUM_TWO.to_string(),
+                ALBUM_THREE.to_string(),
+                ALBUM_ONE.to_string(),
+            ]
+        )
+    );
+
+    exec_batch(
+        &db,
+        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES
+            ('4309b580-a6bf-455e-92ea-ec58ee7129e7', 'f392a38b-f264-41a0-a225-c6935b8a8262', '2026-01-01T00:00:00Z');",
+    )
+    .await;
+    assert_eq!(
+        grouped(&db).await,
+        (
+            vec![(BRAVO.to_string(), 0, 3)],
+            vec![ALBUM_THREE.to_string(), ALBUM_TWO.to_string(), ALBUM_ONE.to_string(),]
+        ),
+        "the third album credits the survivor twice and lists once"
+    );
+    assert_eq!(artists(&db).await, vec![(BRAVO.to_string(), 3)]);
+    let survivor = crate::LibraryViews::new(db.clone())
+        .find_artist_detail(BRAVO)
+        .await
+        .unwrap()
+        .expect("listed");
+    assert_eq!(survivor.albums.len(), 3);
+    assert!(crate::LibraryViews::new(db.clone())
+        .find_artist_detail(ALPHA)
+        .await
+        .unwrap()
+        .is_none());
+}
 
 async fn grouped_library() -> (Database, tempfile::TempDir) {
     let (db, dir) = temp_db().await;
@@ -319,4 +477,132 @@ async fn an_artist_section_carries_the_artists_picture() {
         images,
         [(ARTIST_A, None), (ARTIST_B, Some(version.as_str())), (ARTIST_C, None)].into()
     );
+}
+
+#[tokio::test]
+async fn every_album_sort_seeks_its_windows_through_an_index() {
+    let (db, _tmp) = library().await;
+    let mut sorts = vec![Vec::new()];
+    for field in [
+        AlbumSortField::Title,
+        AlbumSortField::Artist,
+        AlbumSortField::Year,
+        AlbumSortField::DateAdded,
+    ] {
+        for (field, direction) in both_ways(field) {
+            sorts.push(vec![AlbumSortCriterion { field, direction }]);
+        }
+    }
+    for group_by_artist in [false, true] {
+        for sort in &sorts {
+            let (relation, order) = album_browse_order(sort, group_by_artist);
+            let read = relation.clone();
+            let key = key_at(
+                &db,
+                &order,
+                move |sql, order, seek, limit, offset| {
+                    crate::album::album_rows_on(
+                        sql,
+                        &read,
+                        group_by_artist,
+                        order,
+                        seek,
+                        limit,
+                        offset,
+                    )
+                },
+                150,
+            )
+            .await;
+            // Grouped by artist, a seek holding the artist's sort key and id
+            // reads that artist's albums alone.
+            let sorted_within = if group_by_artist { 2 } else { usize::MAX };
+            assert_seeks_search_sorting(
+                &db,
+                &format!("albums {sort:?} grouped {group_by_artist}"),
+                &order,
+                key,
+                |seek| super::album_window_statement(&relation, group_by_artist, &order, seek),
+                Vec::new(),
+                sorted_within,
+            )
+            .await;
+        }
+    }
+}
+
+/// The album list's ids at `window`, as a read by offset finds them.
+async fn albums_at(db: &Database, window: &LibraryPageWindow) -> Vec<String> {
+    crate::LibraryViews::new(db.clone())
+        .get_album_page(&[], window.offset, window.limit)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|album| album.id)
+        .collect()
+}
+
+/// The next value of the album list's live query once `windows` are asked
+/// for, as each window's ids.
+async fn read_albums(
+    query: &mut coven::ReconfigurableLiveQuery<LibraryPageWindows, AlbumBrowseProjection>,
+    windows: LibraryPageWindows,
+) -> Vec<Vec<String>> {
+    query.requests().set(windows.clone()).unwrap();
+    loop {
+        let event = query.next().await.unwrap();
+        if event.request == windows {
+            return event
+                .result
+                .unwrap()
+                .windows
+                .into_iter()
+                .map(|window| window.rows.into_iter().map(|row| row.album.id).collect())
+                .collect();
+        }
+    }
+}
+
+/// A live album list scrolled a window at a time, down then back up, holds
+/// what reads by offset hold at each window; and after a write adds an
+/// album above the window it scrolls from, the next window still holds what
+/// a read by offset does, not the rows past where the last read's row sat
+/// before the write.
+#[tokio::test]
+async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
+    let (db, _tmp) = library().await;
+    let window = |offset| LibraryPageWindow { offset, limit: 50 };
+    let mut query = crate::LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        false,
+        LibraryPageWindows::new(),
+    );
+    query.next().await.unwrap().result.unwrap();
+    for offset in [100, 150, 200, 150, 100] {
+        assert_eq!(
+            read_albums(&mut query, LibraryPageWindows::from([window(offset)])).await,
+            vec![albums_at(&db, &window(offset)).await],
+            "at {offset}"
+        );
+    }
+    // The newest album sorts first in the default order.
+    db.call(|conn| {
+        conn.execute_batch(
+            "INSERT INTO albums (id, title, created_at) VALUES \
+                 ('f0000000-0000-4000-8000-000000000001', 'Album Title', '2099-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, album_order, created_at) VALUES \
+                 ('f0000000-0000-4000-8000-000000000002', 'f0000000-0000-4000-8000-000000000001', \
+                  0, '2099-01-01T00:00:00Z');",
+        )
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+    for offset in [150, 50] {
+        assert_eq!(
+            read_albums(&mut query, LibraryPageWindows::from([window(offset)])).await,
+            vec![albums_at(&db, &window(offset)).await],
+            "at {offset} after the write"
+        );
+    }
 }

@@ -1,5 +1,11 @@
+//! The artist views: the artist list, its search and sorts, an artist's
+//! detail, and the list's live query.
+
 use crate::*;
+use bae_db::test_fixtures::live_query::*;
 use bae_db::test_fixtures::{temp_db, ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
+use std::collections::BTreeSet;
+use std::time::Duration;
 
 const ALBUM_1999: &str = "88f57246-3e65-4eb9-8d36-ee8d40326cfc";
 const ALBUM_2001_LOWER: &str = "88183677-683b-485e-8224-f6a328c233c7";
@@ -307,4 +313,35 @@ async fn artist_detail_absent_or_album_less_artist_is_none() {
         .await
         .unwrap()
         .is_none());
+}
+
+/// The artist grid reads the artists its windows hold, and follows the images
+/// of those artists only: an image on an artist outside every window changes
+/// nothing it delivers.
+#[tokio::test]
+async fn artist_browse_reads_its_windows_and_their_images() {
+    let (db, _temp) = live_db().await;
+    let mut live = crate::LibraryViews::new(db.clone()).subscribe_artist_browse(&[], first_page());
+
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(initial.total_count, 1);
+    assert_eq!(initial.windows[0].rows[0].artist.id, ARTIST_ID);
+    assert!(initial.windows[0].rows[0].image.is_none());
+
+    let artist_image = write_artist_image(&db, ARTIST_ID, "artist image bytes").await;
+    let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("an image on a listed artist wakes artist browse")
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(
+        imaged.windows[0].rows[0].image.as_ref().map(|image| image.version.as_str()),
+        Some(artist_image.as_str())
+    );
+
+    live.requests().set(BTreeSet::new()).unwrap();
+    let count_only = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(count_only.total_count, 1);
+    assert!(count_only.windows.is_empty());
 }

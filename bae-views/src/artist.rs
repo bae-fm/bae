@@ -293,3 +293,7 @@ pub struct ArtistBrowseProjection {
 pub struct ArtistDetailProjection {
     pub detail: Option<DbArtistDetail>,
 }
+
+#[cfg(test)]
+#[path = "artist_tests.rs"]
+mod tests;

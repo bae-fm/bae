@@ -187,3 +187,7 @@ impl ReleaseDetailRows {
         ReleaseDetailRead { detail: self.rows.process(), transfers: self.transfers }
     }
 }
+
+#[cfg(test)]
+#[path = "release_tests.rs"]
+mod tests;
