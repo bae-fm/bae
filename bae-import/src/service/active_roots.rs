@@ -619,3 +619,7 @@ enum RootRemovalResult {
     Removed { commit: crate::FolderStateCommitGuard, removed_keys: Vec<crate::CandidateKey> },
     Failed(String),
 }
+
+#[cfg(test)]
+#[path = "active_roots_tests.rs"]
+mod tests;

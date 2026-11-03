@@ -1,0 +1,265 @@
+//! The coordinator's loop: what a watch report asks to have read, a watch
+//! that lost track, the network check, and its shutdown.
+
+use super::*;
+use crate::service::tests::*;
+use bae_util::test_channels::HANG_GUARD;
+
+/// A read is not a change: Linux reports the scan's own reads as events, and
+/// scanning on them would make every scan schedule the next.
+#[tokio::test]
+async fn a_file_opened_under_a_watched_root_starts_no_scan() {
+    use notify::event::{AccessKind, AccessMode};
+
+    let harness = CoordinatorHarness::with_roots(&["/music", "/downloads"]).await;
+    harness
+        .fs_events
+        .send(Ok(vec![
+            watch_event(
+                notify::EventKind::Access(AccessKind::Open(AccessMode::Any)),
+                root_path("/music").join("Album/01.flac"),
+            ),
+            watch_event(
+                notify::EventKind::Access(AccessKind::Close(AccessMode::Read)),
+                root_path("/music").join("Album/01.flac"),
+            ),
+        ]))
+        .unwrap();
+    // Handled after the first batch, so once its scan starts the reads have
+    // been seen.
+    harness
+        .fs_events
+        .send(Ok(vec![watch_event(
+            notify::EventKind::Create(notify::event::CreateKind::File),
+            root_path("/downloads").join("Album/01.flac"),
+        )]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(
+        harness.scans.path(0),
+        root_path("/downloads"),
+        "the only scan is the created file's; the opened file started none"
+    );
+
+    harness.scans.complete(0);
+    harness.shutdown().await;
+}
+
+/// A close that ended a write, which is how a finished copy shows up on Linux,
+/// reads again the folder it landed in and nothing else under the root.
+#[tokio::test]
+async fn a_finished_write_under_a_watched_root_reads_its_folder_again() {
+    use notify::event::{AccessKind, AccessMode};
+
+    let harness = CoordinatorHarness::new().await;
+    harness
+        .fs_events
+        .send(Ok(vec![watch_event(
+            notify::EventKind::Access(AccessKind::Close(AccessMode::Write)),
+            root_path("/music").join("Album/01.flac"),
+        )]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.path(0), root_path("/music"));
+    assert_eq!(harness.scans.folders(0), Some(vec!["Album".into()]));
+
+    harness.scans.complete(0);
+    harness.shutdown().await;
+}
+
+/// Changes that arrive during a folder reading are read once afterwards, each
+/// changed folder once.
+#[tokio::test]
+async fn changes_during_a_folder_reading_are_read_once_afterwards() {
+    let harness = CoordinatorHarness::new().await;
+    let change = |folder: &str, file: &str| {
+        Ok(vec![watch_event(
+            notify::EventKind::Create(notify::event::CreateKind::File),
+            root_path("/music").join(folder).join(file),
+        )])
+    };
+    harness.fs_events.send(change("One", "01.flac")).unwrap();
+    harness.scans.wait_for_count(1).await;
+    for (folder, file) in [("Two", "01.flac"), ("Two", "02.flac"), ("One", "03.flac")] {
+        harness.watch_report(change(folder, file)).await;
+    }
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
+
+    harness.scans.complete(0);
+    harness.scans.wait_for_count(2).await;
+    assert_eq!(harness.scans.folders(1), Some(vec!["One".into(), "Two".into()]));
+    harness.scans.complete(1);
+    assert_next_pass_reads_only_a_later_change(&harness, 2).await;
+    harness.shutdown().await;
+}
+
+/// A watch that lost track of changes without naming a path (inotify's queue
+/// overflowing) could have missed anything, so the root is read whole.
+#[tokio::test]
+async fn a_watch_that_lost_track_of_no_path_reads_the_root_whole() {
+    let harness = CoordinatorHarness::new().await;
+    harness.fs_events.send(Ok(vec![lost_track(None)])).unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.path(0), root_path("/music"));
+    assert_eq!(harness.scans.folders(0), None);
+    assert!(harness.scans.reading(0).is_none(), "the root is read whole");
+
+    harness.scans.complete(0);
+    harness.shutdown().await;
+}
+
+/// A watch that lost track above the root (FSEvents dropping events for the
+/// whole stream) reads the root whole.
+#[tokio::test]
+async fn a_watch_that_lost_track_above_the_root_reads_it_whole() {
+    let harness = CoordinatorHarness::new().await;
+    let above = root_path("/music").parent().unwrap().to_path_buf();
+    harness.fs_events.send(Ok(vec![lost_track(Some(above))])).unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.folders(0), None);
+    assert!(harness.scans.reading(0).is_none(), "the root is read whole");
+
+    harness.scans.complete(0);
+    harness.shutdown().await;
+}
+
+/// A watch that lost track inside one album (FSEvents' must-scan-subdirs)
+/// reads again only the top-level folder holding it.
+#[tokio::test]
+async fn a_watch_that_lost_track_inside_one_folder_reads_only_that_folder() {
+    let harness = CoordinatorHarness::new().await;
+    harness
+        .fs_events
+        .send(Ok(vec![lost_track(Some(root_path("/music").join("Artist").join("Album")))]))
+        .unwrap();
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.path(0), root_path("/music"));
+    assert_eq!(harness.scans.folders(0), Some(vec!["Artist".into()]));
+
+    harness.scans.complete(0);
+    assert_next_pass_reads_only_a_later_change(&harness, 1).await;
+    harness.shutdown().await;
+}
+
+/// A rescan-flagged event, as a watch that lost track reports, naming where to
+/// read again or nothing.
+fn lost_track(path: Option<PathBuf>) -> notify::Event {
+    let event = notify::Event::new(notify::EventKind::Other).set_flag(notify::event::Flag::Rescan);
+    match path {
+        Some(path) => event.add_path(path),
+        None => event,
+    }
+}
+
+/// A pass's end is taken ahead of watch reports that are already waiting.
+/// A rescan of another root is taken ahead of both, and the coordinator is
+/// held starting its pass while a hundred reports, each naming a folder of its
+/// own under `/music`, queue up ahead of `/music`'s pass end. Had it taken any
+/// report first, that folder would wait on the running pass and be read by the
+/// pass its end starts; it takes the end first, leaving the root idle, so the
+/// first report starts a pass that reads its folder alone.
+#[tokio::test]
+async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
+    let harness = CoordinatorHarness::with_roots(&["/music", "/other"]).await;
+    let music = root_path("/music");
+    let result = request_refresh(&harness, "/music");
+    harness.scans.wait_for_count(1).await;
+
+    let held = harness.scans.hold_starts();
+    harness.commands.send(WatcherCommand::Rescan(root_path("/other"))).unwrap();
+    for folder in 0..100 {
+        harness
+            .fs_events
+            .send(Ok(vec![watch_event(
+                notify::EventKind::Create(notify::event::CreateKind::File),
+                music.join(format!("Folder {folder:03}")).join("01.flac"),
+            )]))
+            .unwrap();
+    }
+    harness.scans.complete(0);
+    drop(held);
+
+    assert_eq!(
+        tokio::time::timeout(HANG_GUARD, result).await.expect("the refresh is answered").unwrap(),
+        Ok(())
+    );
+    harness.scans.wait_for_count(3).await;
+    assert_eq!(harness.scans.path(1), root_path("/other"));
+    assert_eq!(harness.scans.path(2), music);
+    assert_eq!(
+        harness.scans.folders(2),
+        Some(vec!["Folder 000".into()]),
+        "no report was taken ahead of the pass end"
+    );
+    // Ended without telling the coordinator, so the reports still waiting
+    // start no further pass for the shutdown to wait on.
+    harness.scans.abort(1);
+    harness.scans.abort(2);
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_shutdown_waits_for_active_scan() {
+    let harness = CoordinatorHarness::new().await;
+    harness.commands.send(WatcherCommand::Rescan(root_path("/music"))).unwrap();
+    harness.scans.wait_for_count(1).await;
+    let (shutdown_completion, shutdown_done) = std::sync::mpsc::channel();
+    harness.commands.send(WatcherCommand::Shutdown { completion: shutdown_completion }).unwrap();
+    tokio::task::yield_now().await;
+    assert!(matches!(shutdown_done.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty)));
+    harness.scans.complete(0);
+    tokio::task::spawn_blocking(move || shutdown_done.recv()).await.unwrap().unwrap();
+}
+
+/// A network folder whose check finds it as its last scan left it is checked
+/// again: the check answers whatever it finds, and its answer frees the
+/// folder for the next check.
+#[tokio::test]
+async fn a_network_folder_found_unchanged_is_checked_again() {
+    let TestService { service, temp: tmp, .. } = setup_import_service().await;
+    let tables = service.tables.clone();
+    let root = tmp.path().join("watched");
+    std::fs::create_dir(&root).unwrap();
+    let modified_at = directory_modified_at(&root).expect("the folder's mtime reads");
+    tables.add_watched_import_folder(&root).await.unwrap();
+    tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.record_folder_scan_directories(&root, &[(root.clone(), modified_at)]).await.unwrap();
+    let (_scans, starter) = FakeScanStarter::new();
+    let (active_roots, _scan_completions, _removal_completions) = ActiveRoots::new(
+        starter,
+        Arc::new(FakeRemovalBackend::default()),
+        crate::FolderStateCommit::default(),
+        service.diagnostics.clone(),
+    );
+    let (mut coordinator, mut checks) = crate::service::coordinator::Coordinator::new(
+        active_roots,
+        service.event_tx.clone(),
+        tables,
+        service.diagnostics.clone(),
+    );
+
+    for check in ["first", "second"] {
+        assert!(coordinator.start_network_check(root.clone()), "the {check} check starts");
+        assert!(
+            !coordinator.start_network_check(root.clone()),
+            "one check of the folder runs at a time"
+        );
+        let (checked, found) = tokio::time::timeout(HANG_GUARD, checks.recv())
+            .await
+            .expect("the check answers")
+            .expect("the coordinator still hears checks");
+        assert_eq!(checked, root);
+        assert_eq!(found, crate::service::coordinator::NetworkCheck::Unchanged);
+        coordinator
+            .take(crate::service::coordinator::CoordinatorEvent::NetworkChecked {
+                root: checked,
+                found,
+            })
+            .await;
+    }
+}

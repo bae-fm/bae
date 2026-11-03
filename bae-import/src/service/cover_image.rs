@@ -49,3 +49,7 @@ impl ImportService {
         Ok(bytes)
     }
 }
+
+#[cfg(test)]
+#[path = "cover_image_tests.rs"]
+mod tests;

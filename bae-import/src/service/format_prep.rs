@@ -1,8 +1,8 @@
-//! Build the audio-format and content-type records for an import from scan facts.
+//! Build the audio-format records for an import from scan facts.
 //!
-//! Resolves each discovered file's `ContentType`, derives per-track
-//! `DbAudioFormat` rows (CUE-backed tracks share their image's analysis;
-//! standalone files reuse their scan facts), and computes CUE track byte windows.
+//! Derives per-track `DbAudioFormat` rows (CUE-backed tracks share their
+//! image's analysis; standalone files reuse their scan facts), each with the
+//! segments of the file it plays from.
 
 use std::collections::HashMap;
 use std::num::NonZeroU32;
@@ -10,12 +10,13 @@ use std::path::{Path, PathBuf};
 
 use crate::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::ImportError;
-use bae_audio::ProbeResult;
 use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
-use bae_util::content_type::ContentType;
-use bae_util::content_type_hint::ContentTypeHint;
 
 use super::ImportService;
+
+mod cue_segments;
+
+use cue_segments::{cue_audio_pregap, cue_file_landing_bytes};
 
 fn ensure_probe_audio_format(
     path: &Path,
@@ -41,64 +42,6 @@ fn ensure_probe_audio_format(
         });
     }
     Ok(())
-}
-
-/// The `ContentType` a release file is stored with, decided by the role the
-/// scan read it as.
-///
-/// Audio reuses the scan's probe facts: only the decoder knows which codec the
-/// container holds — a `.m4a` could be ALAC or AAC, and the extension can't
-/// say. A damaged image is plain bytes: its extension names a picture its
-/// bytes are not, and the library reads anything stored as an image as one.
-/// Every other file takes its `ContentType` from the extension hint, an honest
-/// mapping for images (an extension on image bytes does predict the codec),
-/// text, and PDF. Anything the hint can't classify becomes `OctetStream` and
-/// flows through the DB as-is — including a file with no extension at all,
-/// which a rip folder can legitimately hold (a `README`, a `.`-less checksum
-/// file) and which the release carries like any other file.
-pub(super) fn resolve_file_content_type(
-    entry: &crate::folder_scanner::CandidateFile,
-) -> Result<ContentType, ImportError> {
-    use crate::folder_scanner::FileRole;
-
-    let path = &entry.file.path;
-    match entry.role {
-        FileRole::Audio => {
-            return entry
-                .file
-                .source_audio
-                .as_ref()
-                .map(|audio| audio.content_type.clone())
-                .ok_or_else(|| ImportError::UnusableFile {
-                    detail: format!("{} has no scanned audio facts", path.display()),
-                })
-        }
-        FileRole::DamagedImage => return Ok(ContentType::OctetStream),
-        FileRole::TrackSheet { .. } | FileRole::Artwork | FileRole::Document | FileRole::Other => {}
-    }
-    let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
-        return Ok(ContentType::OctetStream);
-    };
-    let hint = ContentTypeHint::from_extension(ext);
-
-    if hint.is_audio() {
-        return Err(ImportError::UnusableFile {
-            detail: format!("{} is named as audio the scan did not read as audio", path.display()),
-        });
-    }
-
-    Ok(match hint {
-        ContentTypeHint::Jpeg => ContentType::Jpeg,
-        ContentTypeHint::Png => ContentType::Png,
-        ContentTypeHint::Gif => ContentType::Gif,
-        ContentTypeHint::Webp => ContentType::Webp,
-        ContentTypeHint::Bmp => ContentType::Bmp,
-        ContentTypeHint::Svg => ContentType::Svg,
-        ContentTypeHint::PlainText => ContentType::PlainText,
-        ContentTypeHint::Pdf => ContentType::Pdf,
-        // Audio hints were handled above; anything else is unknown binary.
-        _ => ContentType::OctetStream,
-    })
 }
 
 /// A track's sample rate or channel count as its audio format row stores it:
@@ -150,56 +93,6 @@ fn cue_audio_file<'a>(
     cue_pair.audio_file(file_reference).ok_or_else(|| ImportError::Internal {
         detail: format!("CUE references audio without scan facts: {file_reference}"),
     })
-}
-
-struct CueAudioPregap {
-    file_reference: String,
-    start_sample: u64,
-    end_sample: u64,
-}
-
-fn probe_duration_samples(probe: &ProbeResult) -> Result<u64, ImportError> {
-    u64::try_from(probe.duration.as_nanos() * u128::from(probe.sample_rate) / 1_000_000_000)
-        .map_err(|error| ImportError::Internal {
-            detail: format!("CUE audio duration exceeds the sample-count range: {error}"),
-        })
-}
-
-/// Resolve an audio pregap in the coordinate system of the file containing its
-/// INDEX 00. When INDEX 01 moves to another file, the pregap is the tail of the
-/// file before, so it runs to that file's end rather than to INDEX 01's
-/// file-local zero.
-fn cue_audio_pregap(
-    cue_pair: &CueFlacAnalysis,
-    cue_index: usize,
-) -> Result<Option<CueAudioPregap>, ImportError> {
-    let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
-    let Some(index) = cue_track.audio_pregap() else {
-        return Ok(None);
-    };
-    let audio = cue_audio_file(cue_pair, &index.file_reference)?;
-    let probe = &audio.probe;
-    ensure_probe_audio_format(&audio.path, probe)?;
-    let sample_rate = u64::from(probe.sample_rate);
-    let start_sample = crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate);
-    let end_sample = if index.file_reference == cue_track.file_reference {
-        crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate)
-    } else {
-        probe_duration_samples(probe)?
-    };
-    if end_sample < start_sample {
-        return Err(ImportError::Internal {
-            detail: format!(
-                "CUE track {} pregap starts after it ends in {}",
-                cue_track.number, index.file_reference
-            ),
-        });
-    }
-    Ok(Some(CueAudioPregap {
-        file_reference: index.file_reference.clone(),
-        start_sample,
-        end_sample,
-    }))
 }
 
 /// Build track-level audio format metadata for a CUE-backed track.
@@ -257,36 +150,6 @@ fn standalone_audio_format(
     ))
 }
 
-/// The byte each CUE track's audio *starts* on within the shared file: where the
-/// demuxer lands when seeking to that track's `start_sample`, from
-/// `seek_landing_bytes` (one open per file, no decode).
-///
-/// This one list gives both boundaries of every track, because a CUE track's
-/// byte range is `[start[i], start[i + 1])` — track `i` ends exactly where track
-/// `i + 1`'s audio begins, so its read-ahead ceiling is the next track's start
-/// byte. The last track has no next start and runs to EOF, and the first starts
-/// at byte 0 with nothing to prefetch, so the caller stores `None` for both.
-///
-/// The scan opened and probed every image a sheet names, and admitted only
-/// audio of a usable format, so these offsets can always be read.
-/// An error saying why they couldn't is a bug, which the caller reports.
-fn cue_file_landing_bytes(
-    file: &crate::types::CueAnalyzedAudioFile,
-    cue_sheet: &crate::cue_flac::CueSheet,
-) -> Result<HashMap<u64, u64>, String> {
-    ensure_probe_audio_format(&file.path, &file.probe).map_err(|error| error.to_string())?;
-    let sample_rate = file.probe.sample_rate;
-    let start_samples: Vec<u64> = cue_sheet
-        .playable_tracks()
-        .flat_map(|track| track.indexes.iter())
-        .filter(|index| index.file_reference == file.file_reference)
-        .filter(|index| matches!(index.number, 0 | 1))
-        .map(|index| crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate as u64))
-        .collect();
-    let landings = bae_audio::seek_landing_bytes(&file.path, &start_samples)?;
-    Ok(start_samples.into_iter().zip(landings).collect())
-}
-
 impl ImportService {
     fn audio_segment(
         audio_format_id: &str,
@@ -309,88 +172,6 @@ impl ImportService {
             end_byte: span.end_byte,
             created_at: now,
         }
-    }
-
-    fn cue_segment_byte(
-        byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
-        file_path: &Path,
-        sample: u64,
-    ) -> Option<u64> {
-        if sample == 0 {
-            return None;
-        }
-        byte_landings_by_file
-            .get(file_path)
-            .and_then(|map| map.as_ref())
-            .and_then(|map| map.get(&sample))
-            .copied()
-    }
-
-    fn cue_segments(
-        audio_format_id: &str,
-        cue_pair: &CueFlacAnalysis,
-        cue_index: usize,
-        file_ids: &HashMap<PathBuf, String>,
-        byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
-        ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> Result<Vec<DbAudioSegment>, ImportError> {
-        let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
-        let main_audio = cue_audio_file(cue_pair, &cue_track.file_reference)?;
-        let main_path = main_audio.path.as_path();
-        let probe = &main_audio.probe;
-        ensure_probe_audio_format(main_path, probe)?;
-        let sample_rate = probe.sample_rate as u64;
-        let mut segments = Vec::new();
-
-        if let Some(pregap) = cue_audio_pregap(cue_pair, cue_index)? {
-            let pregap_path = cue_audio_file(cue_pair, &pregap.file_reference)?.path.as_path();
-            let pregap_file_id =
-                file_ids.get(pregap_path).ok_or_else(|| ImportError::Internal {
-                    detail: format!("No DbFile registered for CUE pregap source {pregap_path:?}"),
-                })?;
-            let start_sample = pregap.start_sample;
-            let end_sample = Some(pregap.end_sample);
-            let start_byte =
-                Self::cue_segment_byte(byte_landings_by_file, pregap_path, start_sample);
-            let end_byte = end_sample.and_then(|sample| {
-                Self::cue_segment_byte(byte_landings_by_file, pregap_path, sample)
-            });
-            segments.push(Self::audio_segment(
-                audio_format_id,
-                segments.len() as i64,
-                DbAudioSegmentRole::AudioPregap,
-                pregap_file_id,
-                SegmentSpan { start_sample, end_sample, start_byte, end_byte },
-                ids,
-                now,
-            ));
-        }
-
-        let main_file_id = file_ids.get(main_path).ok_or_else(|| ImportError::Internal {
-            detail: format!("No DbFile registered for CUE source {main_path:?}"),
-        })?;
-        let start_sample =
-            crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
-        // Where the sheet's slice ends — the same boundary its length and its
-        // audition window read.
-        let end_sample = cue_track
-            .end_cue_frames
-            .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate));
-        let start_byte = Self::cue_segment_byte(byte_landings_by_file, main_path, start_sample);
-        let end_byte = end_sample
-            .and_then(|sample| Self::cue_segment_byte(byte_landings_by_file, main_path, sample));
-        segments.push(Self::audio_segment(
-            audio_format_id,
-            segments.len() as i64,
-            DbAudioSegmentRole::Main,
-            main_file_id,
-            SegmentSpan { start_sample, end_sample, start_byte, end_byte },
-            ids,
-            now,
-        ));
-
-        Ok(segments)
     }
 
     /// Build audio format records for all tracks from the scan's stored facts,

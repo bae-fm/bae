@@ -1,3 +1,12 @@
+//! What a pass stores and announces of what it read: each file read only
+//! when it is new or changed, the tags stored for unchanged tracks kept, a
+//! candidate seeded from its files' tags, and an unchanged folder announcing
+//! nothing.
+
+use super::*;
+use crate::service::tests::*;
+use std::sync::Mutex;
+
 /// A pass that reads two disc folders as one release probes each disc's audio
 /// once: the release reuses the facts the disc folders were read with.
 #[tokio::test]
@@ -134,19 +143,13 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         let expected = u64::from(!(*read == "tags" && path.ends_with("Broken/03.flac")));
         assert_eq!(*count, expected, "{read} of {}", path.display());
     }
-    let stored = tables
-        .load_folder_scan_items(std::path::Path::new(&root_key))
-        .await
-        .unwrap();
+    let stored = tables.load_folder_scan_items(std::path::Path::new(&root_key)).await.unwrap();
     assert!(
         stored.iter().any(|item| matches!(item, ScanItem::Invalid(_))),
         "the broken folder is stored as one that can't be imported: {stored:?}"
     );
     let reading = tables
-        .load_candidate_file_tag_snapshot(
-            &root_key,
-            &crate::CandidateKey::folder(&files.album),
-        )
+        .load_candidate_file_tag_snapshot(&root_key, &crate::CandidateKey::folder(&files.album))
         .await
         .unwrap()
         .unwrap()
@@ -157,18 +160,12 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
 
     assert_eq!(files.reads(&tags), first, "the rescan reads no file again");
     assert_eq!(
-        tables
-            .load_folder_scan_items(std::path::Path::new(&root_key))
-            .await
-            .unwrap(),
+        tables.load_folder_scan_items(std::path::Path::new(&root_key)).await.unwrap(),
         stored,
         "the rescan stores what the scan before it stored"
     );
     let reread = tables
-        .load_candidate_file_tag_snapshot(
-            &root_key,
-            &crate::CandidateKey::folder(&files.album),
-        )
+        .load_candidate_file_tag_snapshot(&root_key, &crate::CandidateKey::folder(&files.album))
         .await
         .unwrap()
         .unwrap()
@@ -195,10 +192,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     }
     let root = bae_db::watched_path::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    tables
-        .add_watched_import_folder(std::path::Path::new(&root_key))
-        .await
-        .unwrap();
+    tables.add_watched_import_folder(std::path::Path::new(&root_key)).await.unwrap();
     let tracks: Vec<PathBuf> = ["Disc 1/01", "Disc 1/02", "Disc 2/01", "Disc 2/02"]
         .iter()
         .map(|track| root.join("Album").join(format!("{track}.flac")))
@@ -213,10 +207,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
             .collect::<Vec<_>>()
     };
     scan.rescan(&root).await.unwrap();
-    let stored = tables
-        .load_folder_scan_items(std::path::Path::new(&root_key))
-        .await
-        .unwrap();
+    let stored = tables.load_folder_scan_items(std::path::Path::new(&root_key)).await.unwrap();
     let releases: Vec<usize> = stored
         .iter()
         .filter_map(|item| match item {
@@ -232,10 +223,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
 
     assert_eq!(reads(), vec![(1, 1); 4], "the rescan reads no track again");
     assert_eq!(
-        tables
-            .load_folder_scan_items(std::path::Path::new(&root_key))
-            .await
-            .unwrap(),
+        tables.load_folder_scan_items(std::path::Path::new(&root_key)).await.unwrap(),
         stored,
         "the rescan stores what the scan before it stored"
     );
@@ -287,31 +275,28 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let root_key = files.root.to_path_buf();
     let album_key = crate::CandidateKey::folder(&files.album);
     scan.rescan(&files.root).await.unwrap();
-    let reading = tables
-        .load_candidate_file_tag_snapshot(&root_key, &album_key)
-        .await
-        .unwrap()
-        .unwrap();
+    let reading =
+        tables.load_candidate_file_tag_snapshot(&root_key, &album_key).await.unwrap().unwrap();
     std::fs::write(files.album.join("notes.txt"), "Rip notes").unwrap();
     let before = files.reads(&tags);
 
     scan.rescan(&files.root).await.unwrap();
 
     assert_eq!(files.reads(&tags), before, "no file is read again");
-    let stored = tables
-        .load_candidate_file_tag_snapshot(&root_key, &album_key)
-        .await
-        .unwrap()
-        .unwrap();
+    let stored =
+        tables.load_candidate_file_tag_snapshot(&root_key, &album_key).await.unwrap().unwrap();
     assert_ne!(
         stored.candidate.files.content_hash(),
         reading.candidate.files.content_hash(),
         "the release holds a new file"
     );
-    let preparation = crate::preparation::import_preparation(&test.service.tables, &stored.candidate.files.content_hash())
-        .await
-        .unwrap()
-        .expect("the release with the new file is stored");
+    let preparation = crate::preparation::import_preparation(
+        &test.service.tables,
+        &stored.candidate.files.content_hash(),
+    )
+    .await
+    .unwrap()
+    .expect("the release with the new file is stored");
     assert_eq!(preparation.draft.tracks.len(), 2);
     assert!(stored.snapshot.unwrap().same_reading(&reading.snapshot.unwrap()));
 }
@@ -339,10 +324,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     }
     let root = bae_db::watched_path::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    tables
-        .add_watched_import_folder(std::path::Path::new(&root_key))
-        .await
-        .unwrap();
+    tables.add_watched_import_folder(std::path::Path::new(&root_key)).await.unwrap();
     let tags = Arc::new(CountingTagReader::default());
     let (scan, _) =
         test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
@@ -411,10 +393,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     write_test_jpeg(&picture_path);
     let root = bae_db::watched_path::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    tables
-        .add_watched_import_folder(std::path::Path::new(&root_key))
-        .await
-        .unwrap();
+    tables.add_watched_import_folder(std::path::Path::new(&root_key)).await.unwrap();
     let tags = Arc::new(EmbeddingTagReader {
         counted: CountingTagReader::default(),
         picture: std::fs::read(&picture_path).unwrap(),
@@ -450,4 +429,147 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
         reading.embedded_cover.map(|cover| cover.source_relative_path),
         Some("CD1/01.flac".to_string())
     );
+}
+
+/// Re-reading a folder nothing has touched is a scan that finds what it found
+/// last time. It must write nothing and announce nothing: a watched folder is
+/// re-read on a timer, and a pass that rewrites and re-announces every row it
+/// already holds is work the whole app pays for — a database transaction, an
+/// event, and a list rebuilt — once per row, forever, over a folder that did
+/// not change.
+#[tokio::test]
+async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
+    let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
+    let root = test.temp.path().join("watched");
+    for album in ["Artist - One", "Artist - Two"] {
+        let album = root.join(album);
+        std::fs::create_dir_all(&album).unwrap();
+        std::fs::write(album.join("01.flac"), flac()).unwrap();
+        std::fs::write(album.join("02.flac"), flac()).unwrap();
+    }
+    tables.add_watched_import_folder(&root).await.unwrap();
+
+    let (scan, mut events) = test.scan();
+    let pass = async || scan.rescan(&root).await.expect("the pass reads the folder");
+    pass().await;
+    while events.try_recv().is_ok() {}
+    pass().await;
+
+    assert_eq!(announced_candidates(&mut events), Vec::<String>::new());
+
+    // And a folder that did change still announces — once, and only itself.
+    std::fs::write(root.join("Artist - Two").join("03.flac"), flac()).unwrap();
+    pass().await;
+
+    assert_eq!(announced_candidates(&mut events), vec!["Artist - Two"]);
+}
+
+/// Discovery seeds the draft from what the folder's own files say, in the
+/// same write that stores the candidate: the album, its artist and its tracks
+/// are there the first time anyone looks, and the reading they came from is
+/// stored beside them.
+/// Counts what reading tags opens, file by file, and answers with what the
+/// files really say.
+#[derive(Default)]
+struct CountingTagReader {
+    reads: Mutex<std::collections::HashMap<PathBuf, u64>>,
+}
+
+impl CountingTagReader {
+    /// Every read, of every file.
+    fn reads(&self) -> u64 {
+        self.reads.lock().unwrap().values().sum()
+    }
+
+    fn reads_of(&self, path: &Path) -> u64 {
+        self.reads.lock().unwrap().get(path).copied().unwrap_or(0)
+    }
+}
+
+impl crate::file_tag_snapshot::FileTagReader for CountingTagReader {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_snapshot::FileTagRead, crate::ImportError> {
+        *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
+        crate::file_tag_snapshot::LoftyFileTagReader.read(path)
+    }
+}
+
+#[tokio::test]
+async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
+    let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
+    let root = test.temp.path().join("watched");
+    let album = root.join("Candidate");
+    std::fs::create_dir_all(&album).unwrap();
+    for name in TAGGED_FLAC_FIXTURES {
+        std::fs::copy(bae_audio::test_fixtures::cue_flac_dir().join(name), album.join(name))
+            .unwrap();
+    }
+    let root_text = root.to_string_lossy().into_owned();
+    tables.add_watched_import_folder(std::path::Path::new(&root_text)).await.unwrap();
+
+    let reader = std::sync::Arc::new(CountingTagReader::default());
+    let (scan, mut events) =
+        test.scan_with(reader.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
+    scan.rescan(&root).await.expect("the candidate is read and stored");
+
+    // Two writes store one candidate — it arrives tentative, then valid — and
+    // the second finds the draft the first seeded, so the folder's two tracks
+    // are opened once between them.
+    assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
+
+    let key = crate::CandidateKey::folder(&album);
+    let detail =
+        tables.load_import_candidate(&key).await.unwrap().expect("the candidate is stored");
+    assert_eq!(
+        detail.draft().unwrap().metadata_provenance,
+        Some(crate::MetadataProvenance::FileMetadata)
+    );
+    assert_eq!(detail.draft().unwrap().metadata_draft.album_title, "Test Album");
+    assert_eq!(
+        detail
+            .draft()
+            .unwrap()
+            .metadata_draft
+            .tracks
+            .iter()
+            .map(|track| track.title.clone())
+            .collect::<Vec<_>>(),
+        vec!["Track Two (White Noise)".to_string(), "Track Three (Brown Noise)".to_string(),]
+    );
+    let snapshot = tables
+        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
+        .await
+        .unwrap()
+        .expect("the candidate has a snapshot")
+        .snapshot
+        .expect("the reading the draft was projected from is stored");
+    assert_eq!(snapshot.file_edit_revision, 0);
+
+    // A scan of a folder nobody touched re-reads no tags: the candidate holds
+    // its draft, and the reading it was projected from is carried forward.
+    scan.rescan(&root).await.expect("the folder is read again");
+    assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
+    assert!(tables
+        .load_candidate_file_tag_snapshot(std::path::Path::new(&root_text), &key)
+        .await
+        .unwrap()
+        .expect("the candidate is still stored")
+        .snapshot
+        .is_some());
+
+    while let Ok(event) = events.try_recv() {
+        if let crate::handle::ImportEvent::Scan(crate::ScanEvent::FolderCandidate {
+            candidate,
+            ..
+        }) = event
+        {
+            assert_eq!(candidate.path, album);
+            return;
+        }
+    }
+    panic!("the seeded candidate was not announced");
 }

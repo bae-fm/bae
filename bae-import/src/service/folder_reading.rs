@@ -423,3 +423,7 @@ fn read_top_level_folder(
 pub(super) fn new_grouping_key(ids: &dyn coven::IdSource) -> CandidateKey {
     CandidateKey::grouping(&ids.new_id().to_string())
 }
+
+#[cfg(test)]
+#[path = "folder_reading_tests.rs"]
+mod tests;

@@ -536,3 +536,7 @@ async fn watched_folders(tables: &crate::tables::ImportTables) -> Vec<crate::Wat
 async fn watched_roots(tables: &crate::tables::ImportTables) -> Vec<PathBuf> {
     watched_folders(tables).await.into_iter().map(|folder| folder.path).collect()
 }
+
+#[cfg(test)]
+#[path = "coordinator_tests.rs"]
+mod tests;

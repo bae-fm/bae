@@ -1,33 +1,70 @@
+//! The fixtures the service's tests share: a service over a test library, a
+//! scan over it, and a coordinator whose passes and removals a test drives;
+//! and a pass's start.
+
 use super::*;
-use crate::folder_scanner::ScannedFile;
-use crate::import_cancel::ImportStop;
 use bae_db::watched_path::host_root;
 use bae_db::Database;
 use bae_util::test_channels::HANG_GUARD;
-use coven::FixedClock;
-use coven::SequentialIds;
 use std::sync::Mutex;
-use std::time::Duration;
 use tempfile::TempDir;
 
 /// A `/`-spelled watched root in the host's spelling, since a watched root must
 /// be absolute by the OS's own rule.
-fn root_path(posix: &str) -> PathBuf {
+pub(super) fn root_path(posix: &str) -> PathBuf {
     host_root(posix)
 }
 
 /// A worker for a test, with the candidate-preparations writer over the same
 /// database.
-struct TestService {
-    service: ImportService,
-    preparations: crate::CandidatePreparations,
+pub(super) struct TestService {
+    pub(super) service: ImportService,
+    pub(super) preparations: crate::CandidatePreparations,
     /// The library the service imports into, for a test that reads or seeds
     /// rows no call reads or writes on its own.
-    database: Database,
-    temp: TempDir,
+    pub(super) database: Database,
+    pub(super) temp: TempDir,
 }
 
-async fn setup_import_service() -> TestService {
+impl TestService {
+    /// A scan over this service's library, and the stream it announces on.
+    pub(super) fn scan(
+        &self,
+    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
+        self.scan_with(
+            Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+            Arc::new(crate::folder_scanner::OsDirectoryReader),
+        )
+    }
+
+    /// The same scan, reading tags through `file_tags` and listings through
+    /// `directories`.
+    pub(super) fn scan_with(
+        &self,
+        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+        directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
+    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
+        let event_tx = crate::ImportEventBus::new(self.service.runtime.clone());
+        let events = event_tx.every_event();
+        let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
+        let scan = TestScan {
+            services: test_scan_services(
+                &self.service,
+                &self.database,
+                &self.preparations,
+                event_tx,
+                Arc::new(FolderWatcher::new(fs_tx, bae_diagnostics::Diagnostics::noop())),
+                file_tags,
+                directories,
+            ),
+            cancellation: crate::folder_scanner::ScanCancellation::new(),
+            _fs_rx: fs_rx,
+        };
+        (scan, events)
+    }
+}
+
+pub(super) async fn setup_import_service() -> TestService {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database =
@@ -76,7 +113,7 @@ impl ImportService {
     /// Queue `import_id` of the candidate at `key` as asking for an import
     /// does — its claim on the candidate and its cancel — for a test that runs
     /// the worker's steps itself.
-    async fn queue_import_for_test(&self, key: &crate::CandidateKey, import_id: &str) {
+    pub(super) async fn queue_import_for_test(&self, key: &crate::CandidateKey, import_id: &str) {
         self.runtime
             .claim_for_import(key, import_id, false)
             .await
@@ -85,7 +122,7 @@ impl ImportService {
     }
 }
 
-async fn prepare_named_candidate(
+pub(super) async fn prepare_named_candidate(
     service: &ImportService,
     preparations: &crate::CandidatePreparations,
     content_hash: &str,
@@ -124,7 +161,7 @@ async fn prepare_named_candidate(
 /// Store `folder` as a scanned candidate of its own watched root with a named
 /// draft, returning its candidate key and what an import of it is queued
 /// against: its revisions and the tag reading the scan stored.
-async fn store_scanned_candidate(
+pub(super) async fn store_scanned_candidate(
     test: &TestService,
     folder: &Path,
     name: &str,
@@ -191,31 +228,16 @@ async fn store_scanned_candidate(
 }
 
 #[derive(Clone)]
-struct FakeScanStarter {
-    scans: Arc<Mutex<Vec<FakeStartedScan>>>,
-    started: Arc<tokio::sync::Notify>,
+pub(super) struct FakeScanStarter {
+    pub(super) scans: Arc<Mutex<Vec<FakeStartedScan>>>,
+    pub(super) started: Arc<tokio::sync::Notify>,
     /// Taken by every start before anything else: while a test holds it, a
     /// coordinator starting a pass waits there, taking nothing else.
-    start_gate: Arc<Mutex<()>>,
-}
-
-struct FakeStartedScan {
-    path: PathBuf,
-    /// The folder decision this pass stores, with the caller it answers.
-    reading: Option<FolderReadingRequest>,
-    /// The folders this pass reads again because they changed on disk.
-    folders: Option<std::collections::BTreeSet<std::ffi::OsString>>,
-    cancellation: crate::folder_scanner::ScanCancellation,
-    /// Ends the pass's task, then tells the coordinator the pass is over.
-    completion: Option<(
-        tokio::sync::oneshot::Sender<()>,
-        tokio::sync::mpsc::UnboundedSender<RootScanCompletion>,
-        RootScanCompletion,
-    )>,
+    pub(super) start_gate: Arc<Mutex<()>>,
 }
 
 impl FakeScanStarter {
-    fn new() -> (Self, RootScanStarter) {
+    pub(super) fn new() -> (Self, RootScanStarter) {
         let fake = Self {
             scans: Arc::new(Mutex::new(Vec::new())),
             started: Arc::new(tokio::sync::Notify::new()),
@@ -260,11 +282,11 @@ impl FakeScanStarter {
     }
 
     /// Hold every pass start until the guard drops.
-    fn hold_starts(&self) -> std::sync::MutexGuard<'_, ()> {
+    pub(super) fn hold_starts(&self) -> std::sync::MutexGuard<'_, ()> {
         self.start_gate.lock().unwrap()
     }
 
-    async fn wait_for_count(&self, count: usize) {
+    pub(super) async fn wait_for_count(&self, count: usize) {
         while self.scans.lock().unwrap().len() < count {
             tokio::time::timeout(HANG_GUARD, self.started.notified())
                 .await
@@ -281,7 +303,7 @@ impl FakeScanStarter {
     /// one after another, and the end can arrive after it found the others
     /// empty. A test that needs its commands taken first waits for them with
     /// [`CoordinatorHarness::commands_handled`].
-    fn complete(&self, index: usize) {
+    pub(super) fn complete(&self, index: usize) {
         if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
             reading.answer(Ok(Vec::new()));
         }
@@ -294,7 +316,7 @@ impl FakeScanStarter {
     }
 
     /// The folder decision the pass at `index` stores, if it is one.
-    fn reading(
+    pub(super) fn reading(
         &self,
         index: usize,
     ) -> Option<(crate::FolderReleaseDecisionKey, crate::FolderReleaseDecision)> {
@@ -302,23 +324,23 @@ impl FakeScanStarter {
     }
 
     /// The changed folders the pass at `index` reads again, if it is one.
-    fn folders(&self, index: usize) -> Option<Vec<std::ffi::OsString>> {
+    pub(super) fn folders(&self, index: usize) -> Option<Vec<std::ffi::OsString>> {
         self.scans.lock().unwrap()[index]
             .folders
             .as_ref()
             .map(|folders| folders.iter().cloned().collect())
     }
 
-    fn path(&self, index: usize) -> PathBuf {
+    pub(super) fn path(&self, index: usize) -> PathBuf {
         self.scans.lock().unwrap()[index].path.clone()
     }
 
-    fn cancellation(&self, index: usize) -> crate::folder_scanner::ScanCancellation {
+    pub(super) fn cancellation(&self, index: usize) -> crate::folder_scanner::ScanCancellation {
         self.scans.lock().unwrap()[index].cancellation.clone()
     }
 
     /// End the pass at `index` without telling the coordinator it ended.
-    fn abort(&self, index: usize) {
+    pub(super) fn abort(&self, index: usize) {
         drop(
             self.scans.lock().unwrap()[index]
                 .completion
@@ -327,7 +349,7 @@ impl FakeScanStarter {
         );
     }
 
-    async fn wait_for_cancellation(&self, index: usize) {
+    pub(super) async fn wait_for_cancellation(&self, index: usize) {
         tokio::time::timeout(HANG_GUARD, async {
             while !self.cancellation(index).is_cancelled() {
                 tokio::task::yield_now().await;
@@ -338,15 +360,30 @@ impl FakeScanStarter {
     }
 }
 
+pub(super) struct FakeStartedScan {
+    pub(super) path: PathBuf,
+    /// The folder decision this pass stores, with the caller it answers.
+    pub(super) reading: Option<FolderReadingRequest>,
+    /// The folders this pass reads again because they changed on disk.
+    pub(super) folders: Option<std::collections::BTreeSet<std::ffi::OsString>>,
+    pub(super) cancellation: crate::folder_scanner::ScanCancellation,
+    /// Ends the pass's task, then tells the coordinator the pass is over.
+    pub(super) completion: Option<(
+        tokio::sync::oneshot::Sender<()>,
+        tokio::sync::mpsc::UnboundedSender<RootScanCompletion>,
+        RootScanCompletion,
+    )>,
+}
+
 #[derive(Default)]
-struct FakeRemovalBackend {
-    uninstall_error: Mutex<Option<String>>,
-    remove_error: Mutex<Option<String>>,
-    reinstall_error: Mutex<Option<String>>,
-    block_reinstall: std::sync::atomic::AtomicBool,
-    reinstall_started: tokio::sync::Notify,
-    release_reinstall: tokio::sync::Notify,
-    calls: Mutex<Vec<&'static str>>,
+pub(super) struct FakeRemovalBackend {
+    pub(super) uninstall_error: Mutex<Option<String>>,
+    pub(super) remove_error: Mutex<Option<String>>,
+    pub(super) reinstall_error: Mutex<Option<String>>,
+    pub(super) block_reinstall: std::sync::atomic::AtomicBool,
+    pub(super) reinstall_started: tokio::sync::Notify,
+    pub(super) release_reinstall: tokio::sync::Notify,
+    pub(super) calls: Mutex<Vec<&'static str>>,
 }
 
 #[async_trait::async_trait]
@@ -384,26 +421,26 @@ impl RootRemovalBackend for FakeRemovalBackend {
     }
 }
 
-struct CoordinatorHarness {
-    commands: tokio::sync::mpsc::UnboundedSender<WatcherCommand>,
-    fs_events: tokio::sync::mpsc::UnboundedSender<WatchReport>,
-    scans: FakeScanStarter,
+pub(super) struct CoordinatorHarness {
+    pub(super) commands: tokio::sync::mpsc::UnboundedSender<WatcherCommand>,
+    pub(super) fs_events: tokio::sync::mpsc::UnboundedSender<WatchReport>,
+    pub(super) scans: FakeScanStarter,
     /// The store the coordinator reads which folders are watched from.
-    database: Database,
-    folder_state_commit: crate::FolderStateCommit,
-    removal_backend: Arc<FakeRemovalBackend>,
-    coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
-    _temp: TempDir,
+    pub(super) database: Database,
+    pub(super) folder_state_commit: crate::FolderStateCommit,
+    pub(super) removal_backend: Arc<FakeRemovalBackend>,
+    pub(super) coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
+    pub(super) _temp: TempDir,
 }
 
 impl CoordinatorHarness {
-    async fn new() -> Self {
+    pub(super) async fn new() -> Self {
         Self::with_roots(&["/music"]).await
     }
 
     /// `roots` are `/`-spelled; each is registered in the host's spelling, as
     /// [`root_path`] gives it.
-    async fn with_roots(roots: &[&str]) -> Self {
+    pub(super) async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
         let TestService { service, preparations, database, temp } = setup_import_service().await;
         let tables = service.tables.clone();
@@ -476,7 +513,7 @@ impl CoordinatorHarness {
 
     /// Hand the coordinator `report` as its watch would, and wait until it
     /// has asked for the reads the report calls for.
-    async fn watch_report(&self, report: WatchReport) {
+    pub(super) async fn watch_report(&self, report: WatchReport) {
         let (taken, wait) = tokio::sync::oneshot::channel();
         self.commands.send(WatcherCommand::WatchReport { report, taken }).unwrap();
         tokio::time::timeout(HANG_GUARD, wait)
@@ -488,11 +525,11 @@ impl CoordinatorHarness {
     /// Wait until the coordinator has handled every command sent before this
     /// one: commands are taken in order, and a report of no changes asks for
     /// nothing.
-    async fn commands_handled(&self) {
+    pub(super) async fn commands_handled(&self) {
         self.watch_report(Ok(Vec::new())).await;
     }
 
-    async fn shutdown(&self) {
+    pub(super) async fn shutdown(&self) {
         let (completion, done) = std::sync::mpsc::channel();
         self.commands.send(WatcherCommand::Shutdown { completion }).unwrap();
         tokio::task::spawn_blocking(move || done.recv()).await.unwrap().unwrap();
@@ -506,77 +543,9 @@ impl CoordinatorHarness {
     }
 }
 
-#[test]
-fn terminal_import_failure_preserves_a_label_identity_conflict() {
-    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let label = |id: &str| bae_db::ExistingLabel {
-        label_id: id.to_string(),
-        name: "Label Name".to_string(),
-        musicbrainz_label_id: None,
-        discogs_label_id: None,
-    };
-    let conflict = bae_db::LabelIdentityConflict {
-        incoming_label_name: "Label Name".to_string(),
-        discogs_label_id: "7190".to_string(),
-        musicbrainz_label_id: "mb-label".to_string(),
-        discogs_label: label("by-discogs"),
-        musicbrainz_label: label("by-musicbrainz"),
-    };
-    let error = crate::ImportError::from(bae_db::IdentityWriteError::LabelIdentityConflict(
-        Box::new(conflict.clone()),
-    ));
-
-    let failure = ImportService::terminal_failure(&error, failed_at);
-
-    assert_eq!(failure.identity_conflict, Some(crate::IdentityConflict::Label(conflict)));
-}
-
-#[test]
-fn terminal_import_failure_preserves_an_artist_identity_conflict() {
-    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let discogs_artist = bae_db::ExistingArtist {
-        artist_id: "artist-discogs".to_string(),
-        name: "Artist One".to_string(),
-        sort_name: None,
-        musicbrainz_artist_id: None,
-        discogs_artist_id: Some("discogs-1".to_string()),
-    };
-    let musicbrainz_artist = bae_db::ExistingArtist {
-        artist_id: "artist-musicbrainz".to_string(),
-        name: "Artist Two".to_string(),
-        sort_name: None,
-        musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
-        discogs_artist_id: None,
-    };
-    let error =
-        crate::ImportError::ArtistIdentityConflict(Box::new(bae_db::ArtistIdentityConflict {
-            incoming_artist_name: "Mapped Artist".to_string(),
-            discogs_artist_id: "discogs-1".to_string(),
-            musicbrainz_artist_id: "musicbrainz-1".to_string(),
-            discogs_artist: discogs_artist.clone(),
-            musicbrainz_artist: musicbrainz_artist.clone(),
-        }));
-
-    let failure = ImportService::terminal_failure(&error, failed_at);
-
-    assert_eq!(failure.failed_at, failed_at);
-    assert!(matches!(
-        failure.identity_conflict,
-        Some(crate::IdentityConflict::Artist(bae_db::ArtistIdentityConflict {
-            discogs_artist: actual_discogs,
-            musicbrainz_artist: actual_musicbrainz,
-            ..
-        })) if actual_discogs == discogs_artist && actual_musicbrainz == musicbrainz_artist
-    ));
-}
-
 /// Scan dependencies over the test service's library, with a folder-state
 /// commit lock of their own.
-fn test_scan_services(
+pub(super) fn test_scan_services(
     service: &ImportService,
     database: &bae_db::Database,
     preparations: &crate::CandidatePreparations,
@@ -608,65 +577,346 @@ fn test_scan_services(
 
 /// What a test reads a folder with. `_fs_rx` keeps the folder watcher's sender
 /// connected while the scan runs.
-struct TestScan {
-    services: ScanServices,
-    cancellation: crate::folder_scanner::ScanCancellation,
-    _fs_rx: tokio::sync::mpsc::UnboundedReceiver<WatchReport>,
-}
-
-impl TestService {
-    /// A scan over this service's library, and the stream it announces on.
-    fn scan(&self) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
-        self.scan_with(
-            Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
-            Arc::new(crate::folder_scanner::OsDirectoryReader),
-        )
-    }
-
-    /// The same scan, reading tags through `file_tags` and listings through
-    /// `directories`.
-    fn scan_with(
-        &self,
-        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
-        directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
-    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
-        let event_tx = crate::ImportEventBus::new(self.service.runtime.clone());
-        let events = event_tx.every_event();
-        let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
-        let scan = TestScan {
-            services: test_scan_services(
-                &self.service,
-                &self.database,
-                &self.preparations,
-                event_tx,
-                Arc::new(FolderWatcher::new(fs_tx, bae_diagnostics::Diagnostics::noop())),
-                file_tags,
-                directories,
-            ),
-            cancellation: crate::folder_scanner::ScanCancellation::new(),
-            _fs_rx: fs_rx,
-        };
-        (scan, events)
-    }
+pub(super) struct TestScan {
+    pub(super) services: ScanServices,
+    pub(super) cancellation: crate::folder_scanner::ScanCancellation,
+    pub(super) _fs_rx: tokio::sync::mpsc::UnboundedReceiver<WatchReport>,
 }
 
 impl TestScan {
     /// Read `root` and reconcile what it holds against what is stored.
-    async fn rescan(&self, root: &Path) -> Result<(), crate::ImportError> {
+    pub(super) async fn rescan(&self, root: &Path) -> Result<(), crate::ImportError> {
         ImportService::rescan_and_reconcile(root, &self.services, &self.cancellation).await
     }
 }
 
-include!("tests/coordinator.rs");
-include!("tests/cover_and_rescan.rs");
-include!("tests/edits_and_formats.rs");
-include!("tests/folder_reading.rs");
-include!("tests/groupings.rs");
-include!("tests/progressive_scan.rs");
-include!("tests/reading_progress.rs");
-include!("tests/failed_import_retry.rs");
-include!("tests/panicked_import.rs");
-include!("tests/panicked_scan.rs");
-include!("tests/scan_reads.rs");
-include!("tests/spent_rows.rs");
-include!("tests/takeover.rs");
+/// Rescan `root`, wait for its scan to start, and return the root in the
+/// host's spelling.
+pub(super) async fn rescan_and_wait(harness: &CoordinatorHarness, root: &str) -> PathBuf {
+    let root = root_path(root);
+    harness.commands.send(WatcherCommand::Rescan(root.clone())).unwrap();
+    harness.scans.wait_for_count(1).await;
+    root
+}
+
+/// Ask to remove `root` while it is being scanned, and wait for the coordinator
+/// to cancel that scan. The caller ends the scan.
+pub(super) async fn removal_awaiting_its_cancelled_scan(
+    harness: &CoordinatorHarness,
+    root: &str,
+) -> tokio::sync::oneshot::Receiver<Result<(), String>> {
+    let root = rescan_and_wait(harness, root).await;
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove { roots: vec![root], parent: None, completion })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    result
+}
+
+pub(super) fn request_refresh(
+    harness: &CoordinatorHarness,
+    root: &str,
+) -> tokio::sync::oneshot::Receiver<Result<(), String>> {
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness.commands.send(WatcherCommand::Refresh { path: root_path(root), completion }).unwrap();
+    result
+}
+
+/// Ask for `Group` under `root` to become one release.
+pub(super) fn request_group_decision(
+    harness: &CoordinatorHarness,
+    root: &Path,
+) -> tokio::sync::oneshot::Receiver<Result<Vec<crate::CandidateKey>, String>> {
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::SetFolderReleaseDecision {
+            target: (
+                crate::FolderReleaseDecisionKey {
+                    watched_folder_path: root.to_path_buf(),
+                    relative_folder: bae_db::RelativeFolder::test("Group"),
+                },
+                crate::FolderReleaseDecision::CombineAsOneRelease,
+            ),
+            completion,
+        })
+        .unwrap();
+    result
+}
+
+/// Report a file created in a folder of `/music` nothing else touches, and
+/// assert that the pass it starts, the `index`th, is the root's next one and
+/// reads that folder alone. The coordinator may take this report before or
+/// after the completed pass's end; either way, a pass that end still owed
+/// starts as the `index`th, covering the change or leaving it queued behind.
+pub(super) async fn assert_next_pass_reads_only_a_later_change(
+    harness: &CoordinatorHarness,
+    index: usize,
+) {
+    harness
+        .fs_events
+        .send(Ok(vec![watch_event(
+            notify::EventKind::Create(notify::event::CreateKind::File),
+            root_path("/music").join("Later").join("01.flac"),
+        )]))
+        .unwrap();
+    harness.scans.wait_for_count(index + 1).await;
+    assert_eq!(
+        harness.scans.folders(index),
+        Some(vec!["Later".into()]),
+        "a pass was owed before the later change"
+    );
+    harness.scans.complete(index);
+}
+
+/// Whether `result` has been answered yet.
+pub(super) fn is_answered<T>(
+    result: &mut tokio::sync::oneshot::Receiver<Result<T, String>>,
+) -> bool {
+    !matches!(result.try_recv(), Err(tokio::sync::oneshot::error::TryRecvError::Empty))
+}
+
+pub(super) fn watch_event(kind: notify::EventKind, path: PathBuf) -> notify::Event {
+    notify::Event::new(kind).add_path(path)
+}
+
+/// Lists folders as the OS does, and remembers every folder it was asked for.
+#[derive(Default)]
+pub(super) struct RecordingListing {
+    pub(super) read: std::sync::Mutex<Vec<PathBuf>>,
+}
+
+impl RecordingListing {
+    pub(super) fn take(&self) -> Vec<PathBuf> {
+        std::mem::take(&mut *self.read.lock().unwrap())
+    }
+}
+
+impl crate::folder_scanner::DirectoryReader for RecordingListing {
+    fn read(
+        &self,
+        root: &Path,
+        directory: &Path,
+        cancellation: &crate::folder_scanner::ScanCancellation,
+    ) -> Result<crate::folder_scanner::DirectoryListing, crate::folder_scanner::FolderScanError>
+    {
+        self.read.lock().unwrap().push(root.join(directory));
+        crate::folder_scanner::OsDirectoryReader.read(root, directory, cancellation)
+    }
+
+    fn folder_times(
+        &self,
+        root: &Path,
+        folders: &[PathBuf],
+        cancellation: &crate::folder_scanner::ScanCancellation,
+    ) -> Result<Vec<crate::folder_scanner::FolderTimes>, crate::folder_scanner::FolderScanError>
+    {
+        crate::folder_scanner::OsDirectoryReader.folder_times(root, folders, cancellation)
+    }
+}
+
+/// `count` playable FLAC files in `folder`, named `01.flac` onwards.
+pub(super) fn write_disc(folder: &Path, count: usize) {
+    std::fs::create_dir_all(folder).unwrap();
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
+    for track in 1..=count {
+        std::fs::copy(&fixture, folder.join(format!("{track:02}.flac"))).unwrap();
+    }
+}
+
+/// A watched root holding `Artist/Album` with two discs of `tracks` tracks
+/// named `discs`, and a sibling `Other/Record` with one track — read whole
+/// once, the way the folder was first added.
+pub(super) struct DecisionFixture {
+    pub(super) test: TestService,
+    pub(super) scan: TestScan,
+    pub(super) listing: Arc<RecordingListing>,
+    pub(super) root: PathBuf,
+}
+
+impl DecisionFixture {
+    pub(super) async fn new(discs: [&str; 2], tracks: usize) -> Self {
+        let test = setup_import_service().await;
+        let root = test.temp.path().join("music");
+        for disc in discs {
+            write_disc(&root.join("Artist").join("Album").join(disc), tracks);
+        }
+        write_disc(&root.join("Other").join("Record"), 1);
+        let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+        test.service.tables.add_watched_import_folder(&root).await.unwrap();
+        let listing = Arc::new(RecordingListing::default());
+        let (scan, _) =
+            test.scan_with(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader), listing.clone());
+        scan.rescan(&root).await.unwrap();
+        listing.take();
+        Self { test, scan, listing, root }
+    }
+
+    pub(super) fn album_key(&self) -> crate::FolderReleaseDecisionKey {
+        crate::FolderReleaseDecisionKey {
+            watched_folder_path: self.root.clone(),
+            relative_folder: bae_db::RelativeFolder::test("Artist/Album"),
+        }
+    }
+
+    pub(super) async fn stored_paths(&self) -> Vec<String> {
+        let mut paths: Vec<String> = self
+            .test
+            .service
+            .tables
+            .load_folder_scan_items(&self.root)
+            .await
+            .unwrap()
+            .iter()
+            .filter_map(|item| item.relative_folder().map(bae_db::RelativeFolder::text))
+            .collect();
+        paths.sort();
+        paths
+    }
+
+    /// Read `Artist/Album` as `decision`, watching the import list the whole
+    /// time: every list the live query delivered, up to the first one showing
+    /// `settled`.
+    pub(super) async fn decide_watching_the_list(
+        &self,
+        decision: crate::FolderReleaseDecision,
+        settled: &[&str],
+    ) -> Vec<Vec<String>> {
+        let tables = self.test.service.tables.clone();
+        let mut live = tables.subscribe_import_list(crate::ImportListRequest {
+            list: self
+                .test
+                .service
+                .tables
+                .open_import_list(crate::ImportListView {
+                    order: crate::ImportListOrder::PathAscending,
+                    ..crate::ImportListView::default()
+                })
+                .await
+                .unwrap(),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        });
+        let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
+        let watcher = tokio::spawn(async move {
+            loop {
+                let projection = live.next().await.expect("the query stays open").result.unwrap();
+                let names: Vec<String> = projection
+                    .windows
+                    .iter()
+                    .flat_map(|window| &window.items)
+                    .filter_map(|item| match item {
+                        crate::ImportListItem::Candidate { row, .. } => {
+                            Some(row.folder_name.clone())
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                if seen_tx.send(names).is_err() {
+                    return;
+                }
+            }
+        });
+        let first = seen_rx.recv().await.expect("the list delivers its first value");
+
+        ImportService::change_folder_reading(
+            &self.root,
+            &(self.album_key(), decision),
+            &self.scan.services,
+            &self.scan.cancellation,
+        )
+        .await
+        .unwrap();
+
+        let mut seen = vec![first];
+        let settled: Vec<String> = settled.iter().map(|name| name.to_string()).collect();
+        while !settled.iter().all(|name| seen.last().unwrap().contains(name)) {
+            seen.push(
+                tokio::time::timeout(HANG_GUARD, seen_rx.recv())
+                    .await
+                    .expect("the list shows the new reading")
+                    .expect("the list is still delivering"),
+            );
+        }
+        watcher.abort();
+        seen
+    }
+}
+
+pub(super) fn flac() -> Vec<u8> {
+    std::fs::read(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
+    )
+    .unwrap()
+}
+
+/// The two fixture tracks that carry real Vorbis comments — an album, its
+/// artist, and a title per track.
+pub(super) const TAGGED_FLAC_FIXTURES: [&str; 2] = [
+    "02 Test Artist - Track Two (White Noise).flac",
+    "03 Test Artist - Track Three (Brown Noise).flac",
+];
+
+#[tokio::test]
+async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
+    let TestService { service, preparations, database, temp: tmp } = setup_import_service().await;
+    let tables = service.tables.clone();
+    let root = tmp.path().join("watched");
+    std::fs::create_dir(&root).unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
+    let watcher = Arc::new(FolderWatcher::new(watch_tx, bae_diagnostics::Diagnostics::noop()));
+    let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut events = service.event_tx.every_event();
+
+    let scan = spawn_root_scan(
+        1,
+        root,
+        test_scan_services(
+            &service,
+            &database,
+            &preparations,
+            service.event_tx.clone(),
+            watcher,
+            std::sync::Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+            std::sync::Arc::new(crate::folder_scanner::OsDirectoryReader),
+        ),
+        completion_tx,
+    );
+    scan.cancellation.cancel();
+    tokio::time::timeout(HANG_GUARD, completion_rx.recv())
+        .await
+        .expect("cancelled scan did not report task completion")
+        .expect("scan task completion channel closed");
+    scan.task.ended().await;
+
+    assert!(tables.load_folder_scan_snapshots().await.unwrap().is_empty());
+    assert!(matches!(events.try_recv(), Err(tokio::sync::mpsc::error::TryRecvError::Empty)));
+}
+
+pub(super) fn write_test_jpeg(path: &Path) {
+    let image = ::image::RgbImage::from_pixel(1, 1, ::image::Rgb([0, 0, 0]));
+    image.save(path).unwrap();
+}
+
+/// The candidates a pass told anyone about, in the order it did.
+pub(super) fn announced_candidates(
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>,
+) -> Vec<String> {
+    let mut announced = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        match event {
+            crate::handle::ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. })
+            | crate::handle::ImportEvent::Scan(ScanEvent::CandidateDiscovered {
+                candidate, ..
+            }) => announced.push(candidate.relative_folder.text()),
+            crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+                announced.push(format!("removed {candidate_key}"))
+            }
+            _ => {}
+        }
+    }
+    announced
+}

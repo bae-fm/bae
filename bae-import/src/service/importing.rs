@@ -897,3 +897,7 @@ fn artist_image_rows(
     }
     Ok(images)
 }
+
+#[cfg(test)]
+#[path = "importing_tests.rs"]
+mod tests;
