@@ -276,6 +276,11 @@ StorageWaitWatch = "StorageWaits"
 # Every progress event playback reports, and where playback is.
 PlaybackProgressFeed = "PlaybackProgressHandle"
 PlaybackPositionsWatch = "PlaybackProgressHandle"
+# The ranges one sparse buffer holds, and the playing track's held
+# stretches, which the playback handle follows from the bytes the service
+# tells it.
+HeldRangesWatch = "SparseStreamingBuffer"
+TrackBufferedFollow = "PlaybackHandle"
 # One request a rate limiter let through, settled against the limiter.
 Admitted = "RateLimiter"
 # One reader of a sparse buffer, with its own slot in the buffer's demands.

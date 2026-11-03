@@ -10,6 +10,7 @@ use std::ops::Range;
 
 use tokio::sync::watch;
 
+use bae_audio::sparse_buffer::HeldRangesWatch;
 use bae_db::{ScrubPoint, SegmentSpan};
 
 /// A stretch of a track, as fractions of its length from INDEX 01: the unit
@@ -111,17 +112,24 @@ impl TrackBytes {
 /// The playing track's bytes and the buffer holding them.
 #[derive(Clone)]
 pub(crate) struct PlayingBytes {
-    pub(crate) track_id: String,
-    pub(crate) bytes: TrackBytes,
+    track_id: String,
+    bytes: TrackBytes,
     /// The byte ranges its file's buffer holds, as they change.
-    pub(crate) held: watch::Receiver<Vec<Range<u64>>>,
+    held: HeldRangesWatch,
+}
+
+impl PlayingBytes {
+    /// `track_id`'s `bytes`, in the buffer whose ranges `held` hears.
+    pub(crate) fn new(track_id: String, bytes: TrackBytes, held: HeldRangesWatch) -> Self {
+        Self { track_id, bytes, held }
+    }
 }
 
 /// The playing track's held stretches as they change, for a feed to write.
 pub struct TrackBufferedFollow {
     playing: watch::Receiver<Option<PlayingBytes>>,
     /// The playing track's buffer while it runs.
-    held: Option<watch::Receiver<Vec<Range<u64>>>>,
+    held: Option<HeldRangesWatch>,
     started: bool,
 }
 
@@ -181,7 +189,7 @@ impl TrackBufferedFollow {
         let playing = self.playing.borrow();
         let playing = playing.as_ref()?;
         let ranges = match &mut self.held {
-            Some(held) => playing.bytes.spans(&held.borrow_and_update()),
+            Some(held) => playing.bytes.spans(&held.held()),
             None => Vec::new(),
         };
         Some(TrackBuffered { track_id: playing.track_id.clone(), ranges })

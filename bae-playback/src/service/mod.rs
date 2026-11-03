@@ -228,16 +228,16 @@ impl PlaybackPreparedTrack {
             Some(end) => end.saturating_sub(main.span.start_sample),
             None => (duration.as_secs_f64() * f64::from(self.sample_rate)) as u64,
         };
-        Some(PlayingBytes {
-            track_id: self.track_id.clone(),
-            bytes: TrackBytes::new(
+        Some(PlayingBytes::new(
+            self.track_id.clone(),
+            TrackBytes::new(
                 main.span,
                 main.buffer.get_total_size(),
                 main.scrub_points.as_slice(),
                 samples,
             ),
-            held: main.buffer.subscribe_held(),
-        })
+            main.buffer.subscribe_held(),
+        ))
     }
 }
 

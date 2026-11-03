@@ -95,18 +95,19 @@ async fn the_playing_tracks_stretches_follow_its_buffer() {
     let mut follow = TrackBufferedFollow::new(playing_rx);
     assert_eq!(follow.next().await, Some(None));
 
-    let buffer = watch::Sender::new(held(&[(0, 250)]));
-    playing_tx.send_replace(Some(PlayingBytes {
-        track_id: "track-1".into(),
-        bytes: TrackBytes::new(span(None, None), 1_000, &[], 1_000),
-        held: buffer.subscribe(),
-    }));
+    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(1_000);
+    buffer.append_at(0, &[0; 250]);
+    playing_tx.send_replace(Some(PlayingBytes::new(
+        "track-1".into(),
+        TrackBytes::new(span(None, None), 1_000, &[], 1_000),
+        buffer.subscribe_held(),
+    )));
     assert_eq!(
         follow.next().await,
         Some(Some(TrackBuffered { track_id: "track-1".into(), ranges: vec![stretch(0.0, 0.25)] }))
     );
 
-    buffer.send_replace(held(&[(0, 1_000)]));
+    buffer.append_at(250, &[0; 750]);
     assert_eq!(
         follow.next().await,
         Some(Some(TrackBuffered { track_id: "track-1".into(), ranges: vec![stretch(0.0, 1.0)] }))

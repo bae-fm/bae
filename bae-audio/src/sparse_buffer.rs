@@ -267,10 +267,9 @@ impl SparseStreamingBuffer {
         self.id
     }
 
-    /// The byte ranges the buffer holds now and each time they change,
-    /// sorted and none touching.
-    pub fn subscribe_held(&self) -> tokio::sync::watch::Receiver<Vec<Range<u64>>> {
-        self.held.subscribe()
+    /// Hear the byte ranges the buffer holds now and each time they change.
+    pub fn subscribe_held(&self) -> HeldRangesWatch {
+        HeldRangesWatch(self.held.subscribe())
     }
 
     /// Tell the byte ranges `inner` holds, which just changed.
@@ -742,6 +741,31 @@ impl Drop for SparseStreamingBuffer {
 
 /// Shared sparse buffer wrapped in Arc.
 pub type SharedSparseBuffer = Arc<SparseStreamingBuffer>;
+
+/// The byte ranges one [`SparseStreamingBuffer`] holds, sorted and none
+/// touching, as they change; closed once the buffer is gone.
+#[derive(Clone)]
+pub struct HeldRangesWatch(tokio::sync::watch::Receiver<Vec<Range<u64>>>);
+
+impl HeldRangesWatch {
+    /// The ranges held now; the value seen from here on.
+    pub fn held(&mut self) -> Vec<Range<u64>> {
+        self.0.borrow_and_update().clone()
+    }
+
+    /// Wait until the ranges differ from the ones last seen; an error once
+    /// the buffer is gone.
+    pub async fn changed(&mut self) -> Result<(), tokio::sync::watch::error::RecvError> {
+        self.0.changed().await
+    }
+
+    /// Whether the ranges changed since they were last seen; an error once
+    /// the buffer is gone.
+    #[cfg(test)]
+    pub(crate) fn has_changed(&self) -> Result<bool, tokio::sync::watch::error::RecvError> {
+        self.0.has_changed()
+    }
+}
 
 /// Create a new shared sparse buffer over a file of `total_size` bytes.
 pub fn create_sparse_buffer(total_size: u64) -> SharedSparseBuffer {
