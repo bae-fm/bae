@@ -247,7 +247,6 @@ object PreviewData {
             title = title,
             disambiguation = null,
             workType = null,
-            parentWorkId = null,
             composerNames = "Composer Name",
             linkedReleaseCount = 2L,
             representativeReleaseId = "rel-1",

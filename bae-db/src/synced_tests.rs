@@ -169,6 +169,7 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     "composer_release",
     "composer_unlinked_credit",
     "composer_listing",
+    "composer_detail_row",
     "album_listing",
     "album_artist_link",
     "artist_listing",

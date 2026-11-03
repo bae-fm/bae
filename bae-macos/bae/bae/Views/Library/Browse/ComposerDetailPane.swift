@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The composer mode's detail pane: a composer's works and credits, in lazy
-/// stacks since they are unbounded, and a work's detail.
+/// The composer mode's detail pane: a composer's page (its works and
+/// credits, read a page at a time) and a work's detail.
 struct ComposerDetailPane: View {
     let paneDetail: ComposerPaneDetail
     @Environment(LibraryBrowseSession.self)
@@ -13,82 +13,20 @@ struct ComposerDetailPane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
-                if case .composer(let composerDetail, let loadedWorkDetail) =
-                    paneDetail
-                {
+                if case .composer(
+                    let composerDetail,
+                    let rows,
+                    let loadedWorkDetail
+                ) = paneDetail {
                     BrowseDetailHeader(summary: composerDetail.composer)
-                    if !composerDetail.workGroups.isEmpty {
-                        SectionHeader(title: String(localized: "Works"))
-                        // Every row is a child of this one stack so each row
-                        // loads lazily; a gap above a group's first row sets
-                        // the groups apart.
-                        LazyVStack(
-                            alignment: .leading,
-                            spacing: ThemeSpace.hairline
-                        ) {
-                            ForEach(
-                                Array(composerDetail.workGroups.enumerated()),
-                                id: \.element.id
-                            ) { groupIndex, group in
-                                let groupGap =
-                                    groupIndex == 0 ? 0 : ThemeSpace.edge
-                                if let parent = group.parent {
-                                    workRow(parent)
-                                        .padding(.top, groupGap)
-                                }
-                                ForEach(
-                                    Array(group.works.enumerated()),
-                                    id: \.element.workId
-                                ) { workIndex, work in
-                                    // Without a parent row, the first work
-                                    // is the group's first row.
-                                    let leadsGroup =
-                                        group.parent == nil && workIndex == 0
-                                    workRow(work)
-                                        .padding(
-                                            .leading,
-                                            group.parent == nil
-                                                ? 0 : ThemeSpace.edge
-                                        )
-                                        .padding(
-                                            .top,
-                                            leadsGroup ? groupGap : 0
-                                        )
-                                }
+                    if let rows {
+                        if let error = rows.initialLoadError {
+                            LoadFailureView(error: error) {
+                                Task { await rows.loadInitial() }
                             }
                         }
-                    }
-                    if !composerDetail.unlinkedReleaseRoles.isEmpty {
-                        SectionHeader(title: String(localized: "Credits"))
-                        LazyVStack(
-                            alignment: .leading,
-                            spacing: ThemeSpace.section
-                        ) {
-                            ForEach(
-                                composerDetail.unlinkedReleaseRoles,
-                                id: \.releaseId
-                            ) { role in
-                                CreditRow(
-                                    title: role.albumTitle,
-                                    subtitle: role.sourceCredit
-                                )
-                            }
-                        }
-                    }
-                    if !composerDetail.unlinkedTrackRoles.isEmpty {
-                        LazyVStack(
-                            alignment: .leading,
-                            spacing: ThemeSpace.section
-                        ) {
-                            ForEach(
-                                composerDetail.unlinkedTrackRoles,
-                                id: \.trackId
-                            ) { role in
-                                CreditRow(
-                                    title: role.trackTitle,
-                                    subtitle: role.albumTitle
-                                )
-                            }
+                        else {
+                            pageRows(rows)
                         }
                     }
                     if let loadedWorkDetail {
@@ -150,6 +88,78 @@ struct ComposerDetailPane: View {
         }
     }
 
+    /// The composer page's rows in core's order, in one lazy stack since
+    /// they are unbounded: each visible row holds the page it sits in. A
+    /// heading opens each part of the page, and a gap above a group's
+    /// heading work sets the groups apart.
+    private func pageRows(_ rows: ComposerDetailRowList) -> some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(0..<rows.totalCount, id: \.self) { index in
+                pageRow(rows.row(at: index), first: index == 0)
+                    .task(id: RowLoadID(epoch: rows.loadEpoch, index: index)) {
+                        await rows.holdPage(containing: index)
+                    }
+            }
+        }
+    }
+
+    /// One row of the page, or a placeholder of a row's height until its
+    /// page answers.
+    @ViewBuilder
+    private func pageRow(
+        _ row: BridgeComposerDetailRow?,
+        first: Bool
+    ) -> some View {
+        if let row {
+            VStack(alignment: .leading, spacing: 0) {
+                if let heading = row.heading {
+                    SectionHeader(title: headingTitle(heading))
+                        .padding(.top, first ? 0 : ThemeSpace.section)
+                        .padding(.bottom, ThemeSpace.section)
+                }
+                switch row.item {
+                case .work(let work, let part):
+                    workRow(work)
+                        .padding(.leading, part ? ThemeSpace.edge : 0)
+                        .padding(
+                            .top,
+                            part || row.heading != nil
+                                ? ThemeSpace.hairline : ThemeSpace.edge
+                        )
+                case .releaseCredit(let credit):
+                    CreditRow(
+                        title: credit.albumTitle,
+                        subtitle: credit.sourceCredit
+                    )
+                    .padding(
+                        .top,
+                        row.heading != nil ? 0 : ThemeSpace.section
+                    )
+                case .trackCredit(let credit):
+                    CreditRow(
+                        title: credit.trackTitle,
+                        subtitle: credit.albumTitle
+                    )
+                    .padding(
+                        .top,
+                        row.heading != nil ? 0 : ThemeSpace.section
+                    )
+                }
+            }
+        }
+        else {
+            Color.clear.frame(height: ThemeSize.rowArtwork)
+        }
+    }
+
+    private func headingTitle(_ heading: BridgeComposerHeading) -> String {
+        switch heading {
+        case .works: String(localized: "Works")
+        case .credits: String(localized: "Credits")
+        case .recordings: String(localized: "Recordings")
+        }
+    }
+
     /// One work in the works list; opens that work in this pane.
     private func workRow(_ work: BridgeWorkSummary) -> some View {
         Button(action: { openWork(work.workId) }) {
@@ -174,6 +184,7 @@ struct ComposerDetailPane: View {
     #Preview("Composer \u{2014} Detail") {
         let paneDetail = ComposerPaneDetail.composer(
             PreviewData.composerDetail,
+            rows: PreviewData.composerDetailRows(),
             work: PreviewData.workDetail
         )
         let uiStore = UiStore()
@@ -188,7 +199,8 @@ struct ComposerDetailPane: View {
 
     #Preview("Composer \u{2014} Many works") {
         let paneDetail = ComposerPaneDetail.composer(
-            PreviewData.largeComposerDetail(workCount: 2_000),
+            PreviewData.composerDetail,
+            rows: PreviewData.manyComposerDetailRows(workCount: 2_000),
             work: nil
         )
         let uiStore = UiStore()

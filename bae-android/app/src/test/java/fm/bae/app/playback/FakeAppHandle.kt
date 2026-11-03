@@ -21,6 +21,7 @@ import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
@@ -79,6 +80,7 @@ import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastDevicesSubscription
 import uniffi.bae_bridge.ComposerBrowseSubscription
+import uniffi.bae_bridge.ComposerDetailRowsSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigSubscription
 import uniffi.bae_bridge.DownloadBrowseSubscription
@@ -117,6 +119,7 @@ internal open class FakeAppHandle(
     private val composerPages: (offset: ULong, limit: ULong) -> List<BridgeComposerSummary> = { _, _ -> emptyList() },
     private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
     private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
+    private val composerDetailRows: Map<String, List<BridgeComposerDetailRow>> = emptyMap(),
     private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
@@ -227,6 +230,9 @@ internal open class FakeAppHandle(
 
     override fun subscribeComposerDetail(): ComposerDetailSubscription =
         FakeComposerDetailSubscription(FakeDetailRead { composerDetails[it] })
+
+    override fun subscribeComposerDetailRows(artistId: String): ComposerDetailRowsSubscription =
+        FakeComposerDetailRowsSubscription(composerDetailRows[artistId].orEmpty())
 
     override fun subscribeWorkDetail(): WorkDetailSubscription = FakeWorkDetailSubscription(FakeDetailRead { workDetails[it] })
 

@@ -35,6 +35,9 @@ pub type LiveArtistBrowse =
     LiveLibraryBrowse<crate::ArtistBrowseProjection, crate::album_detail::ArtistSummary>;
 pub type LiveComposerBrowse =
     LiveLibraryBrowse<crate::ComposerBrowseProjection, crate::album_detail::ComposerSummary>;
+/// A composer's page's rows, in the windows its screen shows.
+pub type LiveComposerDetailRows =
+    LiveLibraryBrowse<crate::ComposerDetailRowsProjection, crate::album_detail::ComposerDetailRow>;
 
 /// The download queue as the Downloads pane draws it: its windows, each row
 /// an entry beside its release.

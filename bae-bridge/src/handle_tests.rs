@@ -1,6 +1,7 @@
 use bae_db::{DbArtist, DbWork};
 use bae_views::album_detail::{
-    ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
+    ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading, ComposerSummary,
+    WorkDetail, WorkReleaseSummary, WorkSummary,
 };
 use bae_views::{DbComposerSummary, DbWorkSummary};
 use std::sync::Arc;
@@ -364,7 +365,7 @@ fn upload_progress_keeps_the_counts_and_their_phase() {
 }
 
 #[test]
-fn composer_detail_conversion_preserves_work_groups() {
+fn composer_detail_conversion_carries_the_composer_and_its_first_work() {
     let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
     let detail = ComposerDetail {
         composer: ComposerSummary {
@@ -383,45 +384,6 @@ fn composer_detail_conversion_preserves_work_groups() {
                 unlinked_credit_count: 0,
             },
         },
-        work_groups: vec![ComposerWorkGroup {
-            id: "work-parent-a".to_string(),
-            parent: Some(WorkSummary {
-                raw: DbWorkSummary {
-                    work: DbWork {
-                        id: "work-parent-a".to_string(),
-                        title: "Parent Work A".to_string(),
-                        disambiguation: None,
-                        work_type: Some("work".to_string()),
-                        musicbrainz_work_id: "mb-work-parent-a".to_string(),
-                        created_at,
-                    },
-                    parent_work_id: None,
-                    composer_names: Some("Composer Name A".to_string()),
-                    linked_release_count: 1,
-                    representative_release_id: Some("release-a".to_string()),
-                    representative_cover: None,
-                },
-            }),
-            works: vec![WorkSummary {
-                raw: DbWorkSummary {
-                    work: DbWork {
-                        id: "work-child-a".to_string(),
-                        title: "Child Work A".to_string(),
-                        disambiguation: None,
-                        work_type: Some("part".to_string()),
-                        musicbrainz_work_id: "mb-work-child-a".to_string(),
-                        created_at,
-                    },
-                    parent_work_id: Some("work-parent-a".to_string()),
-                    composer_names: Some("Composer Name A".to_string()),
-                    linked_release_count: 1,
-                    representative_release_id: Some("release-a".to_string()),
-                    representative_cover: None,
-                },
-            }],
-        }],
-        unlinked_release_roles: Vec::new(),
-        unlinked_track_roles: Vec::new(),
         default_work_id: Some("work-parent-a".to_string()),
     };
 
@@ -432,15 +394,46 @@ fn composer_detail_conversion_preserves_work_groups() {
         crate::types::BridgeCountLabel { key: "core.library.work_count".to_string(), count: 2 },
         "the composer's line counts its works"
     );
-    assert_eq!(bridge.work_groups.len(), 1);
     assert_eq!(bridge.default_work_id.as_deref(), Some("work-parent-a"));
-    let group = &bridge.work_groups[0];
-    assert_eq!(group.id, "work-parent-a");
-    assert_eq!(group.parent.as_ref().map(|work| work.work_id.as_str()), Some("work-parent-a"));
-    assert_eq!(group.works.len(), 1);
-    assert_eq!(group.works[0].work_id, "work-child-a");
-    assert_eq!(group.works[0].parent_work_id.as_deref(), Some("work-parent-a"));
-    assert_eq!(group.works[0].representative_release_id.as_deref(), Some("release-a"));
+}
+
+#[test]
+fn composer_detail_row_conversion_carries_its_heading_and_part() {
+    let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
+    let row = ComposerDetailRow {
+        id: 7,
+        heading: Some(ComposerHeading::Works),
+        item: ComposerDetailItem::Work {
+            work: WorkSummary {
+                raw: DbWorkSummary {
+                    work: DbWork {
+                        id: "work-child-a".to_string(),
+                        title: "Child Work A".to_string(),
+                        disambiguation: None,
+                        work_type: Some("part".to_string()),
+                        musicbrainz_work_id: "mb-work-child-a".to_string(),
+                        created_at,
+                    },
+                    composer_names: Some("Composer Name A".to_string()),
+                    linked_release_count: 1,
+                    representative_release_id: Some("release-a".to_string()),
+                    representative_cover: None,
+                },
+            },
+            part: true,
+        },
+    };
+
+    let bridge = crate::types::BridgeComposerDetailRow::from_core(row);
+
+    assert_eq!(bridge.id, 7);
+    assert!(matches!(bridge.heading, Some(crate::types::BridgeComposerHeading::Works)));
+    let crate::types::BridgeComposerDetailItem::Work { work, part } = bridge.item else {
+        panic!("a work row stays a work row");
+    };
+    assert!(part);
+    assert_eq!(work.work_id, "work-child-a");
+    assert_eq!(work.representative_release_id.as_deref(), Some("release-a"));
 }
 
 #[test]
@@ -456,7 +449,6 @@ fn work_detail_conversion_preserves_work_release_rows() {
                 musicbrainz_work_id: "mb-work-a".to_string(),
                 created_at,
             },
-            parent_work_id: None,
             composer_names: Some("Composer Name A".to_string()),
             linked_release_count: 1,
             representative_release_id: Some("release-a".to_string()),

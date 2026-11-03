@@ -50,6 +50,18 @@ impl AppHandle {
         )
     }
 
+    /// The rows of `artist_id`'s composer page, reading no windows until
+    /// `set_windows`.
+    pub fn subscribe_composer_detail_rows(
+        &self,
+        artist_id: String,
+    ) -> Arc<crate::ComposerDetailRowsSubscription> {
+        crate::screens::composer_detail_rows(
+            self.services.subscribe_composer_detail_rows(&artist_id),
+            self.runtime.clone(),
+        )
+    }
+
     /// A read of the download queue that reads no windows until
     /// `set_windows`.
     pub fn subscribe_download_browse(&self) -> Arc<crate::DownloadBrowseSubscription> {

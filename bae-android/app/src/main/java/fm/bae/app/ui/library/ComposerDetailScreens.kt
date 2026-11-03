@@ -11,19 +11,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ComposerDetailRowsPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.metadataText
@@ -34,9 +40,14 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.playback.NowPlayingBar
+import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerDetailItem
+import uniffi.bae_bridge.BridgeComposerDetailRow
+import uniffi.bae_bridge.BridgeComposerHeading
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.BridgeWorkSummary
 
@@ -51,11 +62,14 @@ internal fun ComposerDetailScreen(
     val query by session.libraryQueries.composer.state
         .collectAsState()
     val detail = query.value
+    val rows = session.browserPages.composerRows
     val appContext = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(artistId, session) {
         session.libraryQueries.composer.activate(artistId)
+        rows.activate(artistId)
         onDispose {
             session.libraryQueries.composer.deactivate(artistId)
+            rows.deactivate(artistId)
         }
     }
     val loadError =
@@ -88,6 +102,7 @@ internal fun ComposerDetailScreen(
                 }
                 ComposerDetailContent(
                     detail = loaded,
+                    rows = rows,
                     onSelectWork = onSelectWork,
                     onSelectAlbum = onSelectAlbum,
                 )
@@ -97,61 +112,105 @@ internal fun ComposerDetailScreen(
     }
 }
 
+/**
+ * The composer, then its page's rows in core's order, a window at a time: each part of the page
+ * opens with its heading, and a work listed as a part is indented under the work heading its
+ * group.
+ */
 @Composable
 private fun ComposerDetailContent(
     detail: BridgeComposerDetail,
+    rows: ComposerDetailRowsPageStore,
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item {
-            ComposerSummaryRow(
-                composer = detail.composer,
-                onClick = null,
-            )
+    val listState = rememberLazyListState()
+    LaunchedEffect(rows, listState) {
+        snapshotFlow {
+            // The composer's own row comes first; the page's rows follow it.
+            val visible = listState.layoutInfo.visibleItemsInfo
+            ((visible.firstOrNull()?.index ?: 0) - 1).coerceAtLeast(0) to
+                ((visible.lastOrNull()?.index ?: 0) - 1).coerceAtLeast(0)
+        }.distinctUntilChanged().collect { (first, last) ->
+            rows.reportVisibleRange(first, last)
         }
-        if (detail.workGroups.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_works)) }
-            detail.workGroups.forEach { group ->
-                group.parent?.let { parent ->
-                    item(key = "parent:${parent.workId}") {
-                        WorkSummaryRow(
-                            work = parent,
-                            onClick = { onSelectWork(parent.workId) },
-                        )
-                    }
-                }
-                items(group.works, key = { "work:${it.workId}" }) { work ->
-                    WorkSummaryRow(
-                        work = work,
-                        onClick = { onSelectWork(work.workId) },
+    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        rows.error?.let { failure ->
+            Column(modifier = Modifier.padding(ThemeSpace.related)) {
+                ErrorDetailDisclosure(failure.error)
+                TextButton(onClick = failure.onRetry) { Text(stringResource(R.string.retry)) }
+            }
+        }
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            item {
+                ComposerSummaryRow(
+                    composer = detail.composer,
+                    onClick = null,
+                )
+            }
+            items(
+                count = rows.totalCount,
+                key = { index -> rows.rows[index]?.id ?: "composer-row-slot-$index" },
+            ) { index ->
+                rows.rows[index]?.let { row ->
+                    ComposerDetailRowContent(
+                        row = row,
+                        onSelectWork = onSelectWork,
+                        onSelectAlbum = onSelectAlbum,
                     )
                 }
             }
         }
-        if (detail.unlinkedReleaseRoles.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_credits)) }
-            items(detail.unlinkedReleaseRoles, key = { it.releaseId }) { role ->
+    }
+}
+
+/** One row of a composer's page, under the heading it opens when it opens one. */
+@Composable
+private fun ComposerDetailRowContent(
+    row: BridgeComposerDetailRow,
+    onSelectWork: (String) -> Unit,
+    onSelectAlbum: (String, String) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        row.heading?.let { LibrarySectionHeader(stringResource(it.titleRes)) }
+        when (val item = row.item) {
+            is BridgeComposerDetailItem.Work -> {
+                WorkSummaryRow(
+                    work = item.work,
+                    part = item.part,
+                    onClick = { onSelectWork(item.work.workId) },
+                )
+            }
+
+            is BridgeComposerDetailItem.ReleaseCredit -> {
                 Text(
-                    text = role.albumTitle,
+                    text = item.credit.albumTitle,
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable { onSelectAlbum(role.albumId, role.releaseId) }
+                            .clickable { onSelectAlbum(item.credit.albumId, item.credit.releaseId) }
                             .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
                     style = ThemeText.rowTitle.style,
                     maxLines = 1,
                 )
             }
-        }
-        if (detail.unlinkedTrackRoles.isNotEmpty()) {
-            item { LibrarySectionHeader(stringResource(R.string.search_section_recordings)) }
-            items(detail.unlinkedTrackRoles, key = { it.trackId }) { role ->
-                TwoLineText(title = role.trackTitle, subtitle = role.albumTitle)
+
+            is BridgeComposerDetailItem.TrackCredit -> {
+                TwoLineText(title = item.credit.trackTitle, subtitle = item.credit.albumTitle)
             }
         }
     }
 }
+
+/** The words of the heading over a part of a composer's page. */
+private val BridgeComposerHeading.titleRes: Int
+    get() =
+        when (this) {
+            BridgeComposerHeading.WORKS -> R.string.search_section_works
+            BridgeComposerHeading.CREDITS -> R.string.search_section_credits
+            BridgeComposerHeading.RECORDINGS -> R.string.search_section_recordings
+        }
 
 @Composable
 internal fun WorkDetailScreen(
@@ -218,12 +277,13 @@ private fun WorkDetailContent(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { WorkSummaryRow(work = detail.work, onClick = null) }
+        item { WorkSummaryRow(work = detail.work, part = false, onClick = null) }
         if (detail.childWorks.isNotEmpty()) {
             item { LibrarySectionHeader(stringResource(R.string.search_section_works)) }
             items(detail.childWorks, key = { it.workId }) { work ->
                 WorkSummaryRow(
                     work = work,
+                    part = false,
                     onClick = { onSelectWork(work.workId) },
                 )
             }
@@ -260,9 +320,11 @@ private fun WorkDetailContent(
     }
 }
 
+/** A work's row; [part] indents it under the work heading its group on a composer's page. */
 @Composable
 private fun WorkSummaryRow(
     work: BridgeWorkSummary,
+    part: Boolean,
     onClick: (() -> Unit)?,
 ) {
     Row(
@@ -270,6 +332,7 @@ private fun WorkSummaryRow(
             Modifier
                 .fillMaxWidth()
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(start = if (part) ThemeSpace.edge else 0.dp)
                 .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -318,7 +381,7 @@ internal fun LibrarySectionHeader(title: String) {
 private fun WorkSummaryRowPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            WorkSummaryRow(work = PreviewData.workSummary(), onClick = {})
+            WorkSummaryRow(work = PreviewData.workSummary(), part = false, onClick = {})
         }
     }
 }

@@ -321,6 +321,24 @@ impl AppServices {
         bae_views::LiveLibraryBrowse::new(query, bae_views::composer::resolve_composer_browse)
     }
 
+    /// The rows of `artist_id`'s composer page, reading no windows until
+    /// they are set.
+    pub fn subscribe_composer_detail_rows(
+        &self,
+        artist_id: &str,
+    ) -> bae_views::LiveComposerDetailRows {
+        let manager = &self.inner.manager;
+        let query = manager.until_closed(
+            self.inner
+                .views
+                .subscribe_composer_detail_rows(artist_id, std::collections::BTreeSet::new()),
+        );
+        bae_views::LiveLibraryBrowse::new(
+            query,
+            bae_views::composer_detail::resolve_composer_detail_rows,
+        )
+    }
+
     pub fn subscribe_playback_progress(&self) -> bae_playback::PlaybackProgressFeed {
         self.inner.playback.subscribe_progress()
     }

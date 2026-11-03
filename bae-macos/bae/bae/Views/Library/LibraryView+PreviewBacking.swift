@@ -88,21 +88,29 @@
                         title: "Work Title \(index + 1)",
                         disambiguation: nil,
                         workType: nil,
-                        parentWorkId: nil,
                         composerNames: "Composer Name 1",
                         linkedReleaseCount: Int64(1 + index),
                         representativeReleaseId: nil,
                         representativeCover: nil,
                     )
                 }
-            let composerDetail = previewComposerDetail(
+            let composerDetail = BridgeComposerDetail(
                 composer: composers[0],
-                works: works
+                defaultWorkId: "work-0"
             )
+            let rows = works.enumerated()
+                .map { index, work in
+                    BridgeComposerDetailRow(
+                        id: Int64(index),
+                        heading: index == 0 ? .works : nil,
+                        item: .work(work: work, part: false)
+                    )
+                }
             let workDetail = previewWorkDetail(work: works[0])
             let library = Library(
                 composerBrowse: { _ in .fixed(composers) },
                 composerDetail: { .fixed { _ in composerDetail } },
+                composerDetailRows: { _ in .fixed(rows) },
                 workDetail: { .fixed { _ in workDetail } },
             )
             let session = LibraryBrowseSession(
@@ -129,25 +137,6 @@
                         image: nil,
                     )
                 }
-        }
-
-        private static func previewComposerDetail(
-            composer: BridgeComposerSummary,
-            works: [BridgeWorkSummary]
-        ) -> BridgeComposerDetail {
-            BridgeComposerDetail(
-                composer: composer,
-                workGroups: [
-                    BridgeComposerWorkGroup(
-                        id: "group-0",
-                        parent: nil,
-                        works: works
-                    )
-                ],
-                unlinkedReleaseRoles: [],
-                unlinkedTrackRoles: [],
-                defaultWorkId: "work-0",
-            )
         }
 
         private static func previewWorkDetail(

@@ -34,6 +34,21 @@ extension BridgeComposerSummary: Identifiable {
     public var id: String { artistId }
 }
 
+/// One composer's page rows, served by one query over the windows the
+/// visible pages ask for.
+public typealias LibraryComposerDetailPageSource = LibraryBrowsePageSource<
+    BridgeComposerDetailRow
+>
+
+extension LibraryBrowsePageSource where Row == BridgeComposerDetailRow {
+    public convenience init(library: Library, artistId: String) {
+        self.init(query: library.composerDetailRows(artistId))
+    }
+}
+
+/// A composer page row's `id` is core's: the row's number on the page.
+extension BridgeComposerDetailRow: Identifiable {}
+
 public typealias LibraryArtistPageSource = LibraryBrowsePageSource<
     BridgeArtistSummary
 >
@@ -63,6 +78,8 @@ extension BridgeStorageRow: Identifiable {
 /// grid's query returned at its position.
 public typealias AlbumList = PaginatedList<BridgeAlbum>
 public typealias ComposerList = PaginatedList<BridgeComposerSummary>
+/// A composer's page rows, a page at a time.
+public typealias ComposerDetailRowList = PaginatedList<BridgeComposerDetailRow>
 public typealias ArtistList = PaginatedList<BridgeArtistSummary>
 
 /// The storage manager's paginated list; each row draws the

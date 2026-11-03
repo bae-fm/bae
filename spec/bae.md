@@ -427,8 +427,23 @@ under the artist it shows as. Each row counts the artist's works, the releases
 a track of which performs one of them, and the unlinked credits; the list sorts
 by name, works or releases, ties going by name, then id. Under its name a
 composer's row, its page and its search result say how many works it is
-credited on ("1 work", "3 works"), in core's words for each language. An
-artist's composer page lists those works and unlinked credits.
+credited on ("1 work", "3 works"), in core's words for each language.
+
+**An artist's composer page** lists its works, then its unlinked release
+credits, then its unlinked track credits, each part opened by a heading:
+*Works*, *Credits*, *Recordings*. A credited work is listed under every work
+the library holds that it is part of, each of those heading its group whether
+the artist is credited on it or not, with its parts indented below it; a
+credited work part of none heads a group of its own, and a work is listed once
+in a group however many of its parts are credited. Groups sort by their
+heading work's title, its parts after it by title. Each credit is listed under
+its release: releases by album title, then the release's place among its
+album's; a release's credits by track, then their own order. Titles compare
+without case, as the album grid's do. The page is read a window at a time, as
+the lists are (§9.2), and opens the first work it lists. Rows from another
+device can arrive before what they name: a part whose parent work hasn't
+arrived heads its own group until it does, and a credit whose release or album
+hasn't arrived waits for it.
 
 ### 2.5 Catalog records
 
@@ -3326,7 +3341,8 @@ when it ends. Desktops play without asking.
 controls playback browses the library and plays from it through the system's
 media session. Covers reach it as links it opens itself. Only an app connected
 to the session can open them, and it loses access when its last connection
-ends or the session closes.
+ends or the session closes. A composer there lists its page's rows (§2.4), a
+work opening its parts and releases and a credit opening its album.
 
 ### 7.8 What a device remembers
 
@@ -3499,9 +3515,9 @@ Reads come two ways:
 - **One-time reads** return the library as it stands: an album's detail, a
   release's tracks and files, an artist, a work, a search.
 - **Live subscriptions** deliver a value, then a new one each time the rows it
-  read change. The album grid, the artist and composer lists, a search, an
-  editor's artist search, the import list, sync status, uploads, downloads and
-  the queue are all live. A read that fails is delivered as a value and the
+  read change. The album grid, the artist and composer lists, a composer's
+  page, a search, an editor's artist search, the import list, sync status,
+  uploads, downloads and the queue are all live. A read that fails is delivered as a value and the
   subscription goes on, but one that fails because the store closed, or
   because the library can no longer read or write it, is delivered once and
   ends the subscription. A subscription that shows a window of a long list is
@@ -4101,12 +4117,13 @@ Beside them, device-local tables:
 | `composer_release` | release and artist shown credited on a work one of its tracks performs |
 | `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
 | `composer_listing` | artist the composer list shows (§2.4): its name and its counts of works, releases and unlinked credits, with an index for each of the list's sorts |
+| `composer_detail_row` | row of a composer's page (§2.4): a credited work under a work it is part of, a work heading a group, or an unlinked credit under its release, with what the page sorts it by, the heading work's title or the release's album title and place, and an index of the page's order |
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
-| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `release_listing`, `download_queue`, `output_queue`, for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`, and `library_search` for what library search finds of albums, which the Storage Manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
+| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, `download_queue`, `output_queue`, for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`, and `library_search` for what library search finds of albums, which the Storage Manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 

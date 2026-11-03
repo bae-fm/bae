@@ -8,13 +8,12 @@ use crate::types::BridgeDiscogsSaveOutcome;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
     BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog, BridgeComposerDetail,
-    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup,
-    BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
-    BridgePreviewTarget, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
-    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
-    BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus, BridgeStorageSort,
-    BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
-    BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
+    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeCoverSelection, BridgeError,
+    BridgeFile, BridgeGalleryItem, BridgeGallerySource, BridgePreviewTarget, BridgeRelease,
+    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
+    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow,
+    BridgeStorageRowStatus, BridgeStorageSort, BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup,
+    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
     BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]

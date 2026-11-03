@@ -40,20 +40,44 @@ impl WorkSummary {
     }
 }
 
+/// A composer's page above its rows: the composer, and the work the page
+/// opens first, the first its rows list.
 #[derive(Debug, Clone)]
 pub struct ComposerDetail {
     pub composer: ComposerSummary,
-    pub work_groups: Vec<ComposerWorkGroup>,
-    pub unlinked_release_roles: Vec<ReleaseRoleSummary>,
-    pub unlinked_track_roles: Vec<TrackRoleSummary>,
     pub default_work_id: Option<String>,
 }
 
+/// One row of a composer's page: its id, the heading it opens when it is the
+/// first of its part of the page, and what it shows.
 #[derive(Debug, Clone)]
-pub struct ComposerWorkGroup {
-    pub id: String,
-    pub parent: Option<WorkSummary>,
-    pub works: Vec<WorkSummary>,
+pub struct ComposerDetailRow {
+    pub id: i64,
+    pub heading: Option<ComposerHeading>,
+    pub item: ComposerDetailItem,
+}
+
+/// The heading over a part of a composer's page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComposerHeading {
+    /// Over its works.
+    Works,
+    /// Over its unlinked release credits.
+    Credits,
+    /// Over its unlinked track credits.
+    Recordings,
+}
+
+/// What a row of a composer's page shows.
+#[derive(Debug, Clone)]
+pub enum ComposerDetailItem {
+    /// A work, `part` when it is listed under the work heading its group.
+    Work {
+        work: WorkSummary,
+        part: bool,
+    },
+    ReleaseCredit(ReleaseRoleSummary),
+    TrackCredit(TrackRoleSummary),
 }
 
 #[derive(Debug, Clone)]

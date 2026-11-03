@@ -178,7 +178,6 @@ object BridgeFixtures {
             title = title,
             disambiguation = null,
             workType = null,
-            parentWorkId = null,
             composerNames = "Composer Name",
             linkedReleaseCount = 1L,
             representativeReleaseId = "rel-1",

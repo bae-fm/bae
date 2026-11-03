@@ -1,11 +1,8 @@
-//! The composer views: the composer list, a composer's detail, and a work's
-//! detail.
+//! The composer views: the composer list and a work's detail. A composer's
+//! own page is `composer_detail`.
 
 use super::*;
-use crate::album_detail::{
-    ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
-};
-use std::collections::HashMap;
+use crate::album_detail::{ComposerSummary, WorkDetail, WorkReleaseSummary, WorkSummary};
 
 impl LibraryViews {
     #[cfg(test)]
@@ -52,36 +49,6 @@ impl LibraryViews {
                 total_count,
             })
         })
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn find_composer_detail(
-        &self,
-        artist_id: &str,
-    ) -> Result<Option<DbComposerDetail>, DbError> {
-        let artist_id = artist_id.to_string();
-        self.database
-            .read(move |sql| find_composer_detail_on(&sql, &artist_id))
-            .process(|rows| Ok(rows.map(ComposerDetailRows::process)))
-            .await
-    }
-
-    /// Follow the composer `initial` names, or none. The detail view moves to
-    /// another composer through the request handle, not another query.
-    pub fn subscribe_composer_detail(
-        &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection> {
-        self.database
-            .subscribe_reconfigurable(initial, |artist_id, sql| {
-                let Some(artist_id) = artist_id else {
-                    return Ok(None);
-                };
-                find_composer_detail_on(&sql, artist_id).map_err(CovenError::from)
-            })
-            .process(|detail| {
-                Ok(ComposerDetailProjection { detail: detail.map(ComposerDetailRows::process) })
-            })
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -137,37 +104,6 @@ pub fn resolve_composer_browse(
         request_revision,
         cause,
     }
-}
-
-/// One delivery of the composer detail as the detail view shows it: its
-/// works grouped under their parents, and the work the view opens first.
-pub fn resolve_composer_detail_projection(
-    projection: ComposerDetailProjection,
-) -> Option<ComposerDetail> {
-    let raw = projection.detail?;
-    let work_groups = raw
-        .work_groups
-        .into_iter()
-        .map(|group| ComposerWorkGroup {
-            id: group.id,
-            parent: group.parent.map(WorkSummary::from_raw),
-            works: group.works.into_iter().map(WorkSummary::from_raw).collect(),
-        })
-        .collect::<Vec<_>>();
-    let default_work_id = work_groups.first().and_then(|group| {
-        group
-            .parent
-            .as_ref()
-            .map(|work| work.raw.work.id.clone())
-            .or_else(|| group.works.first().map(|work| work.raw.work.id.clone()))
-    });
-    Some(ComposerDetail {
-        composer: ComposerSummary::from_raw(raw.composer),
-        work_groups,
-        unlinked_release_roles: raw.unlinked_release_roles,
-        unlinked_track_roles: raw.unlinked_track_roles,
-        default_work_id,
-    })
 }
 
 /// One delivery of the work detail as the detail view shows it.
@@ -245,170 +181,6 @@ fn find_work_detail_on(
     Ok(Some(DbWorkDetail { work, child_works, releases, tracks }))
 }
 
-fn find_composer_detail_on(
-    sql: &SqlReadContext<'_>,
-    artist_id: &str,
-) -> Result<Option<ComposerDetailRows>, DbError> {
-    let composer = sql
-        .query_row(
-            &composer_listing_query(None, Some("WHERE listing.artist_id = ?"), None),
-            params![artist_id],
-            row_to_composer_summary,
-        )
-        .optional()?;
-    let Some(composer) = composer else {
-        return Ok(None);
-    };
-    let works = sql.query(
-        &work_summary_query(
-            Some(
-                "JOIN composer_work credited ON credited.work_id = w.id AND credited.artist_id = ?",
-            ),
-            Some("ORDER BY w.title"),
-        ),
-        params![composer.artist.id],
-        row_to_work_summary,
-    )?;
-    let parent_ids = works
-        .iter()
-        .filter_map(|work| work.parent_work_id.clone())
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    let parent_summaries = if parent_ids.is_empty() {
-        HashMap::new()
-    } else {
-        let placeholders = (0..parent_ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
-        let filter = format!("WHERE w.id IN ({placeholders})");
-        let query = work_summary_query(Some(&filter), None);
-        sql.query(&query, rusqlite::params_from_iter(parent_ids.iter()), |row| {
-            row_to_work_summary(row).map(|summary| (summary.work.id.clone(), summary))
-        })?
-        .into_iter()
-        .collect::<HashMap<_, _>>()
-    };
-    let release_roles_query = "SELECT rar.id AS release_artist_role_id, rar.release_id,
-                rar.artist_id, rar.position,
-                rar.source AS role_source, rar.source_credit, rar.created_at,
-                a.id AS album_id, a.title AS album_title,
-                a.year AS album_year,
-                a.is_compilation AS album_is_compilation,
-                a.created_at AS album_created_at
-         FROM composer_unlinked_credit unlinked
-         JOIN release_artist_roles rar ON rar.id = unlinked.credit_id
-         JOIN releases r ON r.id = rar.release_id
-         JOIN albums a ON a.id = r.album_id
-         WHERE unlinked.artist_id = ?
-         ORDER BY a.title, r.album_order, r.id, rar.position";
-    let unlinked_release_roles =
-        sql.query(release_roles_query, params![composer.artist.id], |row| {
-            Ok(DbReleaseRoleSummary {
-                role: DbReleaseArtistRole {
-                    id: row.get("release_artist_role_id")?,
-                    release_id: row.get("release_id")?,
-                    artist_id: row.get("artist_id")?,
-                    position: row.get("position")?,
-                    source: parsed_column(row, "role_source")?,
-                    source_credit: row.get("source_credit")?,
-                    created_at: rfc3339_column(row, "created_at")?,
-                },
-                album: row_to_album_with_prefix(row, "album_")?,
-            })
-        })?;
-    let track_roles_query = "SELECT tar.id AS track_artist_role_id, tar.track_id, tar.artist_id,
-                tar.position, tar.source AS role_source,
-                tar.source_credit, tar.created_at,
-                t.id AS track_id, t.release_id AS track_release_id,
-                t.title AS track_title, t.medium_id AS track_medium_id, t.side AS track_side,
-                t.track_number AS track_track_number,
-                t.duration_ms AS track_duration_ms,
-                t.created_at AS track_created_at,
-                a.id AS album_id, a.title AS album_title,
-                a.year AS album_year,
-                a.is_compilation AS album_is_compilation,
-                a.created_at AS album_created_at,
-                art.id AS artist_id, art.name AS artist_name,
-                art.sort_name AS artist_sort_name,
-                art.discogs_artist_id AS artist_discogs_artist_id,
-                art.musicbrainz_artist_id AS artist_musicbrainz_artist_id,
-                art.created_at AS artist_created_at
-         FROM composer_unlinked_credit unlinked
-         JOIN track_artist_roles tar ON tar.id = unlinked.credit_id
-         JOIN tracks t ON t.id = tar.track_id
-         JOIN releases r ON r.id = t.release_id
-         JOIN albums a ON a.id = r.album_id
-         JOIN artists art ON art.id = unlinked.artist_id
-         WHERE unlinked.artist_id = ?
-         ORDER BY a.title, r.album_order, r.id, t.position, tar.position";
-    let unlinked_track_roles =
-        sql.query(track_roles_query, params![composer.artist.id], row_to_track_role_summary)?;
-    Ok(Some(ComposerDetailRows {
-        composer,
-        works,
-        parents: parent_summaries,
-        unlinked_release_roles,
-        unlinked_track_roles,
-    }))
-}
-
-#[derive(Clone, PartialEq)]
-struct ComposerDetailRows {
-    composer: DbComposerSummary,
-    works: Vec<DbWorkSummary>,
-    parents: HashMap<String, DbWorkSummary>,
-    unlinked_release_roles: Vec<DbReleaseRoleSummary>,
-    unlinked_track_roles: Vec<DbTrackRoleSummary>,
-}
-
-impl ComposerDetailRows {
-    fn process(self) -> DbComposerDetail {
-        let Self {
-            composer,
-            works,
-            parents: parent_summaries,
-            unlinked_release_roles,
-            unlinked_track_roles,
-        } = self;
-        let mut grouped: HashMap<String, Vec<DbWorkSummary>> = HashMap::new();
-        let mut ungrouped = Vec::new();
-        for work in works {
-            if let Some(parent_id) = work.parent_work_id.clone() {
-                grouped.entry(parent_id).or_default().push(work);
-            } else {
-                let id = work.work.id.clone();
-                ungrouped.push(DbComposerWorkGroup { id, parent: None, works: vec![work] });
-            }
-        }
-        let mut work_groups = grouped
-            .into_iter()
-            .map(|(parent_id, mut works)| {
-                works.sort_by_key(work_summary_sort_key);
-                DbComposerWorkGroup {
-                    id: parent_id.clone(),
-                    parent: parent_summaries.get(&parent_id).cloned(),
-                    works,
-                }
-            })
-            .collect::<Vec<_>>();
-        work_groups.extend(ungrouped);
-        work_groups.sort_by_key(composer_work_group_sort_key);
-
-        DbComposerDetail { composer, work_groups, unlinked_release_roles, unlinked_track_roles }
-    }
-}
-
-fn composer_work_group_sort_key(group: &DbComposerWorkGroup) -> String {
-    if let Some(parent) = group.parent.as_ref() {
-        return work_summary_sort_key(parent);
-    }
-    let work = group.works.first().expect("composer work group without parent must contain a work");
-    work_summary_sort_key(work)
-}
-
-fn work_summary_sort_key(work: &DbWorkSummary) -> String {
-    work.work.title.to_lowercase()
-}
-
 fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
     sql.query_row("SELECT COUNT(*) FROM composer_listing", [], |row| row.get::<_, i64>(0))
         .map(|count| count as u64)
@@ -476,21 +248,17 @@ const WORK_REPRESENTATIVE_RELEASE: &str = "(
                     LIMIT 1
                 )";
 
-pub(crate) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
-    let mut query = format!(
-        "SELECT w.id AS work_id,
+/// The columns [`row_to_work_summary`] reads of the work `w`: its own, the
+/// release whose cover it shows, its composers' names in credit order, and how
+/// many releases perform it.
+pub(crate) fn work_summary_columns() -> String {
+    format!(
+        "w.id AS work_id,
                 w.title AS work_title,
                 w.disambiguation AS work_disambiguation,
                 w.work_type AS work_type,
                 w.musicbrainz_work_id AS work_musicbrainz_id,
                 w.created_at AS work_created_at,
-                (
-                    SELECT wp.parent_work_id
-                    FROM work_parts wp
-                    WHERE wp.child_work_id = w.id
-                    ORDER BY wp.position, wp.parent_work_id
-                    LIMIT 1
-                ) AS parent_work_id,
                 {WORK_REPRESENTATIVE_RELEASE} AS representative_release_id,
                 {representative_cover} AS representative_cover_version,
                 (
@@ -503,22 +271,24 @@ pub(crate) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
                     ) credit
                     JOIN artists composer ON composer.id = credit.artist_id
                 ) AS composer_names,
-                COUNT(DISTINCT tr.release_id) AS linked_release_count
-         FROM works w
-         LEFT JOIN track_works tw ON tw.work_id = w.id
-         LEFT JOIN tracks tr ON tr.id = tw.track_id
-         ",
+                (
+                    SELECT COUNT(DISTINCT tr.release_id)
+                    FROM track_works tw
+                    JOIN tracks tr ON tr.id = tw.track_id
+                    WHERE tw.work_id = w.id
+                ) AS linked_release_count",
         work_artist = shown_artist_id("wa.artist_id"),
         representative_cover = cover_version_sql(WORK_REPRESENTATIVE_RELEASE),
-    );
+    )
+}
+
+/// The works `filter` names, each as [`row_to_work_summary`] reads it;
+/// `filter` follows `FROM works w` and `tail` follows it.
+pub(crate) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
+    let mut query = format!("SELECT {}\n         FROM works w\n         ", work_summary_columns());
     if let Some(filter) = filter {
         query.push_str(filter);
     }
-    query.push_str(
-        "
-         GROUP BY w.id, w.title, w.disambiguation, w.work_type, w.musicbrainz_work_id, \
-                  w.created_at",
-    );
     if let Some(tail) = tail {
         query.push('\n');
         query.push_str(tail);
@@ -541,7 +311,6 @@ pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
             musicbrainz_work_id: row.get("work_musicbrainz_id")?,
             created_at: rfc3339_column(row, "work_created_at")?,
         },
-        parent_work_id: row.get("parent_work_id")?,
         representative_release_id,
         representative_cover,
         composer_names: row.get("composer_names")?,
@@ -557,23 +326,6 @@ pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
         unlinked_credit_count: row.get("unlinked_credit_count")?,
-    })
-}
-
-fn row_to_track_role_summary(row: &Row<'_>) -> rusqlite::Result<DbTrackRoleSummary> {
-    Ok(DbTrackRoleSummary {
-        role: DbTrackArtistRole {
-            id: row.get("track_artist_role_id")?,
-            track_id: row.get("track_id")?,
-            artist_id: row.get("artist_id")?,
-            position: row.get("position")?,
-            source: parsed_column(row, "role_source")?,
-            source_credit: row.get("source_credit")?,
-            created_at: rfc3339_column(row, "created_at")?,
-        },
-        track: row_to_track_with_prefix(row, "track_")?,
-        album: row_to_album_with_prefix(row, "album_")?,
-        artist: row_to_artist_with_prefix(row, "artist_")?,
     })
 }
 
@@ -660,11 +412,6 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
 pub struct ComposerBrowseProjection {
     pub windows: Vec<bae_db::LibraryBrowseWindow<DbComposerSummary>>,
     pub total_count: u64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ComposerDetailProjection {
-    pub detail: Option<DbComposerDetail>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

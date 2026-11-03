@@ -3,6 +3,8 @@ package fm.bae.app.playback
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import uniffi.bae_bridge.BridgeComposerDetailItem
+import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
@@ -67,6 +69,17 @@ internal class BrowseNodeFactory(
             mediaType = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
             subtitle = work.composerNames,
         )
+
+    /**
+     * A row of a composer's page: a work opens its parts and releases, and a credit opens its
+     * album.
+     */
+    fun composerPageRow(row: BridgeComposerDetailRow): MediaItem =
+        when (val item = row.item) {
+            is BridgeComposerDetailItem.Work -> work(item.work)
+            is BridgeComposerDetailItem.ReleaseCredit -> album(item.credit.albumId, item.credit.albumTitle, null)
+            is BridgeComposerDetailItem.TrackCredit -> album(item.credit.albumId, item.credit.albumTitle, null)
+        }
 
     /** A playable track node, carrying its release and track ids so the player
      *  starts the release at that track. */

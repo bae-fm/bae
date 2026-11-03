@@ -16,8 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
@@ -49,7 +47,7 @@ internal data class BrowseLabels(
     val composers: String,
 )
 
-private data class BrowsePage(
+internal data class BrowsePage(
     val items: List<MediaItem>,
     val totalCount: Int,
 )
@@ -237,6 +235,9 @@ internal class LibraryBrowseTree<Owner : Any>(
     private var albums: CollectionProjection<uniffi.bae_bridge.BridgeAlbum, BridgeAlbumBrowseSnapshot>? = null
     private var composers:
         CollectionProjection<uniffi.bae_bridge.BridgeComposerSummary, BridgeComposerBrowseSnapshot>? = null
+
+    /** Each retained composer's page rows, by the composer's media id. */
+    private val composerPages = mutableMapOf<String, ComposerPageProjection>()
     private var closed = false
 
     /** [parentId]'s children on the page asked for, or null for a parent or page that names nothing. */
@@ -282,8 +283,13 @@ internal class LibraryBrowseTree<Owner : Any>(
                 composerProjection().rows(BrowsePaging.window(page, pageSize)).map(nodes::composer)
             }
 
+            is BrowseId.Composer -> {
+                composerPageProjection(parentId, id.artistId)
+                    .rows(BrowsePaging.window(page, pageSize))
+                    .map(nodes::composerPageRow)
+            }
+
             is BrowseId.Album,
-            is BrowseId.Composer,
             is BrowseId.Work,
             -> {
                 BrowsePaging.paginate(fixedParent(parentId).value().items, page, pageSize)
@@ -376,13 +382,14 @@ internal class LibraryBrowseTree<Owner : Any>(
                 )
             }
         retainedParent.evictedParentIds.forEach { closeParentIfUnused(it) }
-        when (BrowseId.parse(parentId)) {
+        when (val id = BrowseId.parse(parentId)) {
             BrowseId.Albums -> albumProjection().awaitReady()
 
             BrowseId.Composers -> composerProjection().awaitReady()
 
+            is BrowseId.Composer -> composerPageProjection(parentId, id.artistId).awaitReady()
+
             is BrowseId.Album,
-            is BrowseId.Composer,
             is BrowseId.Work,
             -> fixedParent(parentId).value()
 
@@ -475,14 +482,17 @@ internal class LibraryBrowseTree<Owner : Any>(
     fun close() = runBlocking { closeSuspending() }
 
     private suspend fun closeSuspending() {
+        val pages = mutableListOf<ComposerPageProjection>()
         val state =
             synchronized(lock) {
                 if (closed) return
                 closed = true
                 val state = Triple(albums to composers, fixedParents.values.toList(), searchesByOwner.values.toList())
+                pages += composerPages.values
                 albums = null
                 composers = null
                 fixedParents.clear()
+                composerPages.clear()
                 searchesByOwner.clear()
                 parentsByOwner.clear()
                 state
@@ -490,6 +500,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         state.first.first?.close()
         state.first.second?.close()
         state.second.forEach { it.close() }
+        pages.forEach { it.close() }
         state.third.forEach { it.close() }
         val error = treeClosedError()
         albumDetails.cancelAll(error)
@@ -521,11 +532,26 @@ internal class LibraryBrowseTree<Owner : Any>(
             ).also { composers = it }
         }
 
+    /** [artistId]'s page rows for the composer node [parentId], opened on first use. */
+    private fun composerPageProjection(
+        parentId: String,
+        artistId: String,
+    ): ComposerPageProjection =
+        synchronized(lock) {
+            check(!closed)
+            composerPages[parentId] ?: composerPageCollectionProjection(
+                scope,
+                library.composerDetailRows(artistId),
+                onChanged = { count -> notifyParent(parentId, count) },
+                onError = onQueryError,
+            ).also { composerPages[parentId] = it }
+        }
+
     private fun fixedParent(parentId: String): FixedProjection<BrowsePage> =
         synchronized(lock) {
             fixedParents[parentId] ?: FixedProjection(
                 scope,
-                parentFlow(parentId),
+                parentFlow(library, nodes, reportBug, parentId),
                 onChanged = { notifyParent(parentId, it.totalCount) },
                 onError = onQueryError,
             ).also { fixedParents[parentId] = it }
@@ -540,6 +566,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         when (BrowseId.parse(parentId)) {
             BrowseId.Albums -> synchronized(lock) { albums.also { albums = null } }?.close()
             BrowseId.Composers -> synchronized(lock) { composers.also { composers = null } }?.close()
+            is BrowseId.Composer -> synchronized(lock) { composerPages.remove(parentId) }?.close()
             else -> synchronized(lock) { fixedParents.remove(parentId) }?.close()
         }
     }
@@ -561,46 +588,6 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 
-    private fun parentFlow(parentId: String): Flow<LiveQueryEvent<BrowsePage>> =
-        when (val id = checkNotNull(BrowseId.parse(parentId))) {
-            is BrowseId.Album -> {
-                library.albumDetails(id.albumId).map { event ->
-                    when (event) {
-                        is LiveQueryEvent.Error -> event
-                        is LiveQueryEvent.Value -> albumPage(event.value, nodes, reportBug)
-                    }
-                }
-            }
-
-            is BrowseId.Composer -> {
-                library.composerDetails(id.artistId).mapBrowse { detail ->
-                    detail
-                        ?.let {
-                            it.workGroups
-                                .flatMap { group -> listOfNotNull(group.parent) + group.works }
-                                .map(nodes::work) +
-                                it.unlinkedReleaseRoles.map { role -> nodes.album(role.albumId, role.albumTitle, null) }
-                        }.orEmpty()
-                }
-            }
-
-            is BrowseId.Work -> {
-                library.workDetails(id.workId).mapBrowse { detail ->
-                    detail
-                        ?.let {
-                            it.childWorks.map(nodes::work) +
-                                it.releases.map { release ->
-                                    nodes.album(release.albumId, release.albumTitle, release.cover)
-                                }
-                        }.orEmpty()
-                }
-            }
-
-            else -> {
-                error("$parentId has no fixed parent query")
-            }
-        }
-
     private fun checkOpen() {
         synchronized(lock) {
             if (closed) throw treeClosedError()
@@ -614,34 +601,10 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 }
 
-private typealias OptionalLiveQuery<Value> = Flow<LiveQueryEvent<Value?>>
-private typealias BrowsePageQuery = Flow<LiveQueryEvent<BrowsePage>>
-
-private fun <Value> OptionalLiveQuery<Value>.mapBrowse(rows: (Value?) -> List<MediaItem>): BrowsePageQuery =
-    map { event ->
-        event.mapValue { value -> rows(value).let { BrowsePage(it, it.size) } }
-    }
-
-private fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
-
-/**
- * An album's children: its main release's tracks, or none once the album is
- * gone. An album whose main release isn't among its releases is a bug,
- * reported, and an error for the controller instead of another release's
- * tracks.
- */
-private fun albumPage(
-    detail: BridgeAlbumDetail?,
-    nodes: BrowseNodeFactory,
-    reportBug: (operation: String, error: Throwable) -> Unit,
-): LiveQueryEvent<BrowsePage> {
-    val release = detail?.let { it.mainRelease() ?: return LiveQueryEvent.Error(missingMainRelease(it, reportBug)) }
-    val tracks = release?.let { flatTracks(it).map { track -> nodes.track(it, track) } }.orEmpty()
-    return LiveQueryEvent.Value(BrowsePage(tracks, tracks.size))
-}
+internal fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
 /** Report an album with no main release among its releases as a bug; what the controller is answered with. */
-private fun missingMainRelease(
+internal fun missingMainRelease(
     detail: BridgeAlbumDetail,
     reportBug: (operation: String, error: Throwable) -> Unit,
 ): BridgeException {

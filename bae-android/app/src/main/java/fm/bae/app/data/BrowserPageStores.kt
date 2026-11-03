@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSummary
+import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -91,6 +92,11 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
         query = opened
         deliveries = deliver(opened, generation)
         requestWindows(setOf(0))
+    }
+
+    /** Stop reading [parameter]'s list, unless another has been activated since. */
+    fun deactivate(parameter: Parameter) {
+        if (this.parameter == parameter) deactivate()
     }
 
     fun deactivate() {
@@ -266,6 +272,23 @@ internal class ComposerPageStore(
         }
 }
 
+/** One composer's page rows, by window; another composer is another read. */
+internal class ComposerDetailRowsPageStore(
+    private val library: Library,
+    appContext: Context,
+    scope: CoroutineScope,
+) : WindowedBrowserPageStore<String, BridgeComposerDetailRow>(
+        appContext,
+        scope,
+        loadMoreFailed = R.string.composer_detail_load_failed,
+        loadFailed = R.string.composer_detail_load_failed,
+    ) {
+    override fun open(parameter: String): BrowseRowsQuery<BridgeComposerDetailRow> =
+        SnapshotRowsQuery(library.composerDetailRows(parameter)) { snapshot ->
+            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
+        }
+}
+
 /** The download queue as the Downloads screen draws it: its entries in the order queued, by window. */
 internal class DownloadPageStore(
     private val library: Library,
@@ -300,12 +323,14 @@ internal class BrowserPageStores(
     val albums = AlbumPageStore(library, appContext, scope)
     val artists = ArtistPageStore(library, appContext, scope)
     val composers = ComposerPageStore(library, appContext, scope)
+    val composerRows = ComposerDetailRowsPageStore(library, appContext, scope)
     val downloads = DownloadPageStore(library, appContext, scope)
 
     fun cancel() {
         albums.deactivate()
         artists.deactivate()
         composers.deactivate()
+        composerRows.deactivate()
         downloads.deactivate()
     }
 }

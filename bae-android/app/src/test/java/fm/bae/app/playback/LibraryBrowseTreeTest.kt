@@ -20,9 +20,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeCatalog
+import uniffi.bae_bridge.BridgeComposerDetailItem
+import uniffi.bae_bridge.BridgeComposerDetailRow
+import uniffi.bae_bridge.BridgeComposerHeading
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLiveQueryCause
+import uniffi.bae_bridge.BridgeReleaseRoleSummary
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -82,6 +87,40 @@ class LibraryBrowseTreeTest {
                 runBlocking { tree.children(BrowseId.Album("album-1").mediaId, 0, 20) }
             }
             assertTrue(bugs.single().second is MissingMainRelease)
+            tree.close()
+        }
+
+    /** A composer's children are its page's rows, the window the car asks for: works, then credits as their albums. */
+    @Test
+    fun aComposersChildrenAreItsPageRowsInTheWindowAsked() =
+        runBlocking {
+            val rows =
+                listOf(
+                    BridgeComposerDetailRow(
+                        0L,
+                        BridgeComposerHeading.WORKS,
+                        BridgeComposerDetailItem.Work(PreviewData.workSummary(workId = "work-head"), false),
+                    ),
+                    BridgeComposerDetailRow(
+                        1L,
+                        null,
+                        BridgeComposerDetailItem.Work(PreviewData.workSummary(workId = "work-part"), true),
+                    ),
+                    BridgeComposerDetailRow(
+                        2L,
+                        BridgeComposerHeading.CREDITS,
+                        BridgeComposerDetailItem.ReleaseCredit(
+                            BridgeReleaseRoleSummary("rel-1", "album-credited", "Album Title", BridgeCatalog.DISCOGS, "Written-By"),
+                        ),
+                    ),
+                )
+            val tree = tree(FakeAppHandle(composerDetailRows = mapOf("artist-1" to rows)))
+
+            val first = tree.children(BrowseId.Composer("artist-1").mediaId, 0, 2)!!
+            val second = tree.children(BrowseId.Composer("artist-1").mediaId, 1, 2)!!
+
+            assertEquals(listOf(BrowseId.Work("work-head").mediaId, BrowseId.Work("work-part").mediaId), first.map { it.mediaId })
+            assertEquals(listOf(BrowseId.Album("album-credited").mediaId), second.map { it.mediaId })
             tree.close()
         }
 

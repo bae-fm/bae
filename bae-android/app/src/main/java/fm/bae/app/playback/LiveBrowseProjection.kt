@@ -4,6 +4,7 @@ import androidx.media3.common.MediaItem
 import fm.bae.app.data.AlbumBrowseQuery
 import fm.bae.app.data.CollectionBrowseQuery
 import fm.bae.app.data.ComposerBrowseQuery
+import fm.bae.app.data.ComposerDetailRowsQuery
 import fm.bae.app.data.LiveQueryEvent
 import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
@@ -58,6 +59,26 @@ internal fun albumCollectionProjection(
 internal fun composerCollectionProjection(
     scope: CoroutineScope,
     query: ComposerBrowseQuery,
+    onChanged: (Int) -> Unit,
+    onError: (BridgeException) -> Unit,
+) = CollectionProjection(
+    scope,
+    query,
+    CollectionSnapshotReader(
+        windows = { snapshot -> snapshot.windows.associate { it.window to it.rows } },
+        totalCount = { it.totalCount.toInt() },
+        cause = { it.cause },
+    ),
+    onChanged,
+    onError,
+)
+
+internal typealias ComposerPageProjection =
+    CollectionProjection<uniffi.bae_bridge.BridgeComposerDetailRow, uniffi.bae_bridge.BridgeComposerDetailRowsSnapshot>
+
+internal fun composerPageCollectionProjection(
+    scope: CoroutineScope,
+    query: ComposerDetailRowsQuery,
     onChanged: (Int) -> Unit,
     onError: (BridgeException) -> Unit,
 ) = CollectionProjection(

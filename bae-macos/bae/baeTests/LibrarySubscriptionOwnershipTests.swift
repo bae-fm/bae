@@ -198,8 +198,15 @@ struct LibraryProjectionStoreDetailTests {
     )
     func composerPaneMovesOneRead() async throws {
         let feed = DetailFeed<BridgeComposerDetail>()
+        let rowReads = ComposerRowReads()
         let store = LibraryProjectionStore(
-            library: Library(composerDetail: { feed.query() })
+            library: Library(
+                composerDetail: { feed.query() },
+                composerDetailRows: { artistId in
+                    rowReads.opened(artistId)
+                    return .fixed([])
+                }
+            )
         )
 
         store.activateComposer("composer-1")
@@ -207,9 +214,14 @@ struct LibraryProjectionStoreDetailTests {
         feed.emit(id: "composer-1", value: nil)
         feed.emit(id: "composer-2", value: nil)
         try await Wait.until { store.composer.delivered }
+        try await Wait.until { store.composerRows?.artistId == "composer-2" }
 
         #expect(feed.opened == 1)
         #expect(feed.requested == ["composer-1", "composer-2"])
+        #expect(
+            rowReads.artistIds == ["composer-1", "composer-2"],
+            "each composer's page rows are a list of their own"
+        )
 
         store.deactivateComposer("composer-1")
         #expect(
@@ -217,6 +229,7 @@ struct LibraryProjectionStoreDetailTests {
             "a composer no longer shown is not the one read"
         )
         store.deactivateComposer("composer-2")
+        #expect(store.composerRows == nil, "a cleared pane reads no rows")
         store.activateComposer("composer-3")
 
         #expect(
@@ -224,6 +237,18 @@ struct LibraryProjectionStoreDetailTests {
         )
         #expect(feed.opened == 1)
         #expect(!feed.isCancelled(read: 0))
+    }
+}
+
+/// The composers whose page rows a store opened, in order.
+private final class ComposerRowReads: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [String] = []
+
+    var artistIds: [String] { lock.withLock { recorded } }
+
+    func opened(_ artistId: String) {
+        lock.withLock { recorded.append(artistId) }
     }
 }
 

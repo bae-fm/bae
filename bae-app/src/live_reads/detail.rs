@@ -86,8 +86,9 @@ pub fn subscribe_artist_detail(
     )
 }
 
-/// The composer detail view's composer as it changes; another composer
-/// is a new id on the same read.
+/// The composer detail view's composer and the work its page opens first,
+/// as they change; another composer is a new id on the same read. The page's
+/// rows are a list of their own (`AppServices::subscribe_composer_detail_rows`).
 pub fn subscribe_composer_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
@@ -96,7 +97,7 @@ pub fn subscribe_composer_detail(
     detail_read(
         library.clone(),
         move |id| views.subscribe_composer_detail(id),
-        bae_views::composer::resolve_composer_detail_projection,
+        bae_views::composer_detail::resolve_composer_detail_projection,
     )
 }
 

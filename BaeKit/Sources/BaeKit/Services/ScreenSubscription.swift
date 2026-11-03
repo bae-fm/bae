@@ -171,6 +171,7 @@ extension LibraryNameSubscription: PulledSubscription {}
 extension AlbumBrowseSubscription: PulledSubscription {}
 extension ArtistBrowseSubscription: PulledSubscription {}
 extension ComposerBrowseSubscription: PulledSubscription {}
+extension ComposerDetailRowsSubscription: PulledSubscription {}
 extension AlbumSelectionSubscription: PulledSubscription {}
 extension LibrarySearchSubscription: PulledSubscription {}
 extension ArtistSearchSubscription: PulledSubscription {}

@@ -40,65 +40,103 @@
                 )
             }
 
-        /// One parent work with its children (the indented branch of the works
-        /// list), then a lone work in a group of its own.
         static let composerDetail = BridgeComposerDetail(
             composer: composerSummary,
-            workGroups: [
-                BridgeComposerWorkGroup(
-                    id: "group-0",
-                    parent: workSummaries[0],
-                    works: Array(workSummaries[1..<3]),
-                ),
-                BridgeComposerWorkGroup(
-                    id: "group-1",
-                    parent: nil,
-                    works: [workSummaries[3]],
-                ),
-            ],
-            unlinkedReleaseRoles: [
-                BridgeReleaseRoleSummary(
-                    releaseId: "release-credit-0",
-                    albumId: "album-credit-0",
-                    albumTitle: "Album Title",
-                    source: .musicBrainz,
-                    sourceCredit: "Arranger",
-                )
-            ],
-            unlinkedTrackRoles: [
-                BridgeTrackRoleSummary(
-                    trackId: "track-credit-0",
-                    trackTitle: "Track Title",
-                    releaseId: "release-credit-0",
-                    albumId: "album-credit-0",
-                    albumTitle: "Album Title",
-                    artistId: "artist-0",
-                    artistName: "Artist Name",
-                    source: .musicBrainz,
-                    sourceCredit: "Orchestrator",
-                )
-            ],
             defaultWorkId: "work-0",
         )
 
-        /// A composer detail whose works list runs far past any viewport: one
-        /// single-work group per work, each work carrying its own cover
-        /// reference, so a mounted row shows up as a distinct image request.
-        static func largeComposerDetail(
+        /// One parent work with its parts (the indented branch of the works
+        /// list), a lone work heading a group of its own, then a release
+        /// credit and a track credit, each part of the page under its
+        /// heading.
+        static let composerDetailRowValues: [BridgeComposerDetailRow] = [
+            BridgeComposerDetailRow(
+                id: 0,
+                heading: .works,
+                item: .work(work: workSummaries[0], part: false)
+            ),
+            BridgeComposerDetailRow(
+                id: 1,
+                heading: nil,
+                item: .work(work: workSummaries[1], part: true)
+            ),
+            BridgeComposerDetailRow(
+                id: 2,
+                heading: nil,
+                item: .work(work: workSummaries[2], part: true)
+            ),
+            BridgeComposerDetailRow(
+                id: 3,
+                heading: nil,
+                item: .work(work: workSummaries[3], part: false)
+            ),
+            BridgeComposerDetailRow(
+                id: 4,
+                heading: .credits,
+                item: .releaseCredit(
+                    credit: BridgeReleaseRoleSummary(
+                        releaseId: "release-credit-0",
+                        albumId: "album-credit-0",
+                        albumTitle: "Album Title",
+                        source: .musicBrainz,
+                        sourceCredit: "Arranger",
+                    )
+                )
+            ),
+            BridgeComposerDetailRow(
+                id: 5,
+                heading: .recordings,
+                item: .trackCredit(
+                    credit: BridgeTrackRoleSummary(
+                        trackId: "track-credit-0",
+                        trackTitle: "Track Title",
+                        releaseId: "release-credit-0",
+                        albumId: "album-credit-0",
+                        albumTitle: "Album Title",
+                        artistId: "artist-0",
+                        artistName: "Artist Name",
+                        source: .musicBrainz,
+                        sourceCredit: "Orchestrator",
+                    )
+                )
+            ),
+        ]
+
+        /// The page rows of `rows`, seeded so they render without an async
+        /// page fetch.
+        @MainActor
+        static func composerDetailRows(
+            _ rows: [BridgeComposerDetailRow] = composerDetailRowValues
+        ) -> ComposerDetailRowList {
+            let list = ComposerDetailRowList(
+                pageSource: LibraryComposerDetailPageSource(
+                    query: .fixed(rows)
+                ),
+                onError: { _ in },
+            )
+            list.preloadForPreview(rows: rows)
+            return list
+        }
+
+        /// A composer page whose works run far past any viewport: one lone
+        /// work per row, each carrying its own cover reference, so a mounted
+        /// row shows up as a distinct image request. Read through its fixed
+        /// query a page at a time, as the app reads core's.
+        @MainActor
+        static func manyComposerDetailRows(
             workCount: Int
-        ) -> BridgeComposerDetail {
-            let workGroups = (0..<workCount)
-                .map { (index: Int) -> BridgeComposerWorkGroup in
-                    BridgeComposerWorkGroup(
-                        id: "group-\(index)",
-                        parent: nil,
-                        works: [
-                            BridgeWorkSummary(
+        ) -> ComposerDetailRowList {
+            let rows = (0..<workCount)
+                .map { (index: Int) -> BridgeComposerDetailRow in
+                    BridgeComposerDetailRow(
+                        id: Int64(index),
+                        heading: index == 0 ? .works : nil,
+                        item: .work(
+                            work: BridgeWorkSummary(
                                 workId: "work-\(index)",
                                 title: "Work Title \(index + 1)",
                                 disambiguation: nil,
                                 workType: nil,
-                                parentWorkId: nil,
                                 composerNames: "Composer Name",
                                 linkedReleaseCount: 1,
                                 representativeReleaseId: nil,
@@ -107,16 +145,16 @@
                                     version: "1",
                                     imageType: .cover
                                 ),
-                            )
-                        ],
+                            ),
+                            part: false
+                        )
                     )
                 }
-            return BridgeComposerDetail(
-                composer: composerSummary,
-                workGroups: workGroups,
-                unlinkedReleaseRoles: [],
-                unlinkedTrackRoles: [],
-                defaultWorkId: nil,
+            return ComposerDetailRowList(
+                pageSource: LibraryComposerDetailPageSource(
+                    query: .fixed(rows)
+                ),
+                onError: { _ in },
             )
         }
 
@@ -129,7 +167,6 @@
                     title: "Work Title \(index + 1)",
                     disambiguation: nil,
                     workType: nil,
-                    parentWorkId: nil,
                     composerNames: "Composer Name",
                     linkedReleaseCount: Int64(1 + index),
                     representativeReleaseId: nil,

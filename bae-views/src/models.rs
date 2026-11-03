@@ -119,7 +119,6 @@ pub struct DbArtistDetail {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkSummary {
     pub work: DbWork,
-    pub parent_work_id: Option<String>,
     pub representative_release_id: Option<String>,
     /// That release's cover, at the version its row read; `None` when it has
     /// none.
@@ -128,19 +127,33 @@ pub struct DbWorkSummary {
     pub linked_release_count: i64,
 }
 
+/// A composer's page above its rows: the composer, and the first work its
+/// page lists, if it lists any.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbComposerDetail {
     pub composer: DbComposerSummary,
-    pub work_groups: Vec<DbComposerWorkGroup>,
-    pub unlinked_release_roles: Vec<DbReleaseRoleSummary>,
-    pub unlinked_track_roles: Vec<DbTrackRoleSummary>,
+    pub default_work_id: Option<String>,
 }
 
+/// One row of a composer's page (`composer_detail_row`): its number, whether
+/// it opens a heading over its part of the page, and what it shows.
 #[derive(Debug, Clone, PartialEq)]
-pub struct DbComposerWorkGroup {
-    pub id: String,
-    pub parent: Option<DbWorkSummary>,
-    pub works: Vec<DbWorkSummary>,
+pub struct DbComposerDetailRow {
+    pub entry: i64,
+    pub opens_heading: bool,
+    pub item: DbComposerDetailItem,
+}
+
+/// What a row of a composer's page shows.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DbComposerDetailItem {
+    /// A work, `part` when it is listed under the work heading its group.
+    Work {
+        work: DbWorkSummary,
+        part: bool,
+    },
+    ReleaseCredit(DbReleaseRoleSummary),
+    TrackCredit(DbTrackRoleSummary),
 }
 
 #[derive(Debug, Clone, PartialEq)]

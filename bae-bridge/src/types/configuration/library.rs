@@ -56,7 +56,6 @@ pub struct BridgeWorkSummary {
     pub title: String,
     pub disambiguation: Option<String>,
     pub work_type: Option<String>,
-    pub parent_work_id: Option<String>,
     pub composer_names: Option<String>,
     pub linked_release_count: i64,
     pub representative_release_id: Option<String>,
@@ -105,20 +104,50 @@ pub struct BridgeWorkReleaseSummary {
     pub cover: Option<BridgeImageRef>,
 }
 
+/// A composer's page above its rows: the composer, and the work the page
+/// opens first. Its rows are read in windows
+/// (`AppHandle::subscribe_composer_detail_rows`).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeComposerDetail {
     pub composer: BridgeComposerSummary,
-    pub work_groups: Vec<BridgeComposerWorkGroup>,
-    pub unlinked_release_roles: Vec<BridgeReleaseRoleSummary>,
-    pub unlinked_track_roles: Vec<BridgeTrackRoleSummary>,
     pub default_work_id: Option<String>,
 }
 
+/// One row of a composer's page, in the page's order: its works, then its
+/// unlinked release credits, then its unlinked track credits.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeComposerWorkGroup {
-    pub id: String,
-    pub parent: Option<BridgeWorkSummary>,
-    pub works: Vec<BridgeWorkSummary>,
+pub struct BridgeComposerDetailRow {
+    /// What a screen tells the row apart by.
+    pub id: i64,
+    /// The heading to draw above the row: set on the first row of each part
+    /// of the page.
+    pub heading: Option<BridgeComposerHeading>,
+    pub item: BridgeComposerDetailItem,
+}
+
+/// The heading over a part of a composer's page.
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeComposerHeading {
+    Works,
+    Credits,
+    Recordings,
+}
+
+/// What a row of a composer's page shows.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeComposerDetailItem {
+    /// A work; `part` when it is listed under the work heading its group,
+    /// which the page indents it below.
+    Work {
+        work: BridgeWorkSummary,
+        part: bool,
+    },
+    ReleaseCredit {
+        credit: BridgeReleaseRoleSummary,
+    },
+    TrackCredit {
+        credit: BridgeTrackRoleSummary,
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

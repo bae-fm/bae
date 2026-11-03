@@ -535,7 +535,6 @@
                         title: "Work Title A",
                         disambiguation: nil,
                         workType: "work",
-                        parentWorkId: nil,
                         composerNames: "Composer Name A",
                         linkedReleaseCount: 2,
                         representativeReleaseId: "release-a",

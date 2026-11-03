@@ -424,7 +424,6 @@ impl BridgeWorkSummary {
         let bae_views::album_detail::WorkSummary { raw } = s;
         let bae_views::DbWorkSummary {
             work,
-            parent_work_id,
             representative_release_id,
             representative_cover,
             composer_names,
@@ -445,7 +444,6 @@ impl BridgeWorkSummary {
             title,
             disambiguation,
             work_type,
-            parent_work_id,
             composer_names,
             linked_release_count,
             representative_release_id,
@@ -592,25 +590,44 @@ impl BridgeWorkReleaseSummary {
 }
 
 mirror_struct! {
-    BridgeComposerWorkGroup = bae_views::album_detail::ComposerWorkGroup,
-    from_core: pub(super) fn,
-    fields: {
-        id,
-        parent: (opt BridgeWorkSummary),
-        works: (each BridgeWorkSummary),
-    },
-}
-
-mirror_struct! {
     BridgeComposerDetail = bae_views::album_detail::ComposerDetail,
     from_core: pub(crate) fn,
     fields: {
         composer: (BridgeComposerSummary),
-        work_groups: (each BridgeComposerWorkGroup),
-        unlinked_release_roles: (each BridgeReleaseRoleSummary),
-        unlinked_track_roles: (each BridgeTrackRoleSummary),
         default_work_id,
     },
+}
+
+mirror_enum! {
+    crate::types::BridgeComposerHeading = bae_views::album_detail::ComposerHeading,
+    from_core: pub(super) fn,
+    variants: { Works, Credits, Recordings },
+}
+
+impl crate::types::BridgeComposerDetailRow {
+    pub(crate) fn from_core(row: bae_views::album_detail::ComposerDetailRow) -> Self {
+        use bae_views::album_detail::ComposerDetailItem;
+        let bae_views::album_detail::ComposerDetailRow { id, heading, item } = row;
+        let item = match item {
+            ComposerDetailItem::Work { work, part } => {
+                crate::types::BridgeComposerDetailItem::Work {
+                    work: BridgeWorkSummary::from_core(work),
+                    part,
+                }
+            }
+            ComposerDetailItem::ReleaseCredit(credit) => {
+                crate::types::BridgeComposerDetailItem::ReleaseCredit {
+                    credit: BridgeReleaseRoleSummary::from_core(credit),
+                }
+            }
+            ComposerDetailItem::TrackCredit(credit) => {
+                crate::types::BridgeComposerDetailItem::TrackCredit {
+                    credit: BridgeTrackRoleSummary::from_core(credit),
+                }
+            }
+        };
+        Self { id, heading: heading.map(crate::types::BridgeComposerHeading::from_core), item }
+    }
 }
 
 mirror_struct! {

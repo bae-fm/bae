@@ -1,6 +1,13 @@
 import Foundation
 import Observation
 
+/// One composer's page rows: the list a composer's page draws, opened for
+/// that composer alone.
+public struct ComposerPageRows {
+    public let artistId: String
+    public let list: ComposerDetailRowList
+}
+
 public struct LibraryProjectionState<Value: Sendable>: Sendable {
     public let value: Value?
     public let delivered: Bool
@@ -22,6 +29,9 @@ public struct LibraryProjectionState<Value: Sendable>: Sendable {
 public final class LibraryProjectionStore {
     public private(set) var composer =
         LibraryProjectionState<BridgeComposerDetail>()
+    /// The rows of the composer page shown now, once their first page has
+    /// answered; another composer opens a list of its own.
+    public private(set) var composerRows: ComposerPageRows?
     public private(set) var artist =
         LibraryProjectionState<BridgeArtistDetail>()
     public private(set) var work = LibraryProjectionState<BridgeWorkDetail>()
@@ -32,6 +42,12 @@ public final class LibraryProjectionStore {
     /// Each detail pane's one read, moved to the item the pane shows.
     @ObservationIgnored
     private var composerReader: DetailReader<BridgeComposerDetail>?
+    /// The composer whose rows are opening or shown, and the first read of
+    /// a list opening for it.
+    @ObservationIgnored
+    private var composerRowsArtistId: String?
+    @ObservationIgnored
+    private var composerRowsLoad: Task<Void, Never>?
     @ObservationIgnored
     private var artistReader: DetailReader<BridgeArtistDetail>?
     @ObservationIgnored
@@ -63,6 +79,47 @@ public final class LibraryProjectionStore {
                 state: \.composer
             )
         composerReader?.show(id)
+        openComposerRows(id)
+    }
+
+    /// Open `id`'s page rows unless they are open already; the list shown
+    /// stays until the new one's first page has answered.
+    private func openComposerRows(_ id: String) {
+        guard composerRowsArtistId != id else { return }
+        composerRowsArtistId = id
+        composerRowsLoad?.cancel()
+        let list = ComposerDetailRowList(
+            pageSource: LibraryComposerDetailPageSource(
+                library: library,
+                artistId: id
+            ),
+            onError: { [weak self] error in
+                guard let self else { return }
+                composer = LibraryProjectionState(
+                    value: composer.value,
+                    delivered: composer.delivered,
+                    error: DisplayError(error)
+                )
+            }
+        )
+        composerRowsLoad = Task { [weak self] in
+            await list.loadInitial()
+            guard let self, !Task.isCancelled, composerRowsArtistId == id
+            else {
+                list.cancel()
+                return
+            }
+            composerRows?.list.cancel()
+            composerRows = ComposerPageRows(artistId: id, list: list)
+        }
+    }
+
+    private func closeComposerRows() {
+        composerRowsLoad?.cancel()
+        composerRowsLoad = nil
+        composerRowsArtistId = nil
+        composerRows?.list.cancel()
+        composerRows = nil
     }
 
     public func activateArtist(_ id: String) {
@@ -189,6 +246,7 @@ public final class LibraryProjectionStore {
     public func deactivateComposer(_ id: String) {
         guard composerReader?.id == id else { return }
         composerReader?.clear()
+        closeComposerRows()
     }
 
     public func deactivateArtist(_ id: String) {

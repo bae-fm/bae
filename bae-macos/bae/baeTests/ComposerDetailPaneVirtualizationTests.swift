@@ -9,7 +9,8 @@ import Testing
 struct ComposerDetailPaneVirtualizationTests {
     /// Core caps neither a composer's work count nor its credits, so opening a
     /// prolific composer must not mount — and must not start a cover load for
-    /// — the work rows hundreds of slots below the viewport.
+    /// — the work rows hundreds of slots below the viewport, nor read their
+    /// pages.
     @MainActor
     @Test("only rows near the viewport ask for their cover")
     func loadsOnlyNearTheViewport() async throws {
@@ -22,13 +23,20 @@ struct ComposerDetailPaneVirtualizationTests {
         )
         let uiStore = UiStore()
         let backing = LibraryView.previewComposerBacking(uiStore: uiStore)
-        let detail = PreviewData.largeComposerDetail(workCount: 5_000)
+        let rows = PreviewData.manyComposerDetailRows(workCount: 5_000)
+        await rows.loadInitial()
         let size = NSSize(width: 620, height: 720)
         try await SnapshotTestSupport.withHostedWindow(
-            ComposerDetailPane(paneDetail: .composer(detail, work: nil))
-                .environment(backing.session)
-                .environment(uiStore)
-                .environment(imageStore),
+            ComposerDetailPane(
+                paneDetail: .composer(
+                    PreviewData.composerDetail,
+                    rows: rows,
+                    work: nil
+                )
+            )
+            .environment(backing.session)
+            .environment(uiStore)
+            .environment(imageStore),
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)

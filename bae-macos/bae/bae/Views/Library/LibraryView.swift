@@ -381,7 +381,12 @@ extension LibraryView {
             let selectedWork = workId.flatMap { selectedId in
                 workDetail?.work.id == selectedId ? workDetail : nil
             }
-            return .composer(composerDetail, work: selectedWork)
+            let rows = libraryProjections.composerRows
+            return .composer(
+                composerDetail,
+                rows: rows?.artistId == artistId ? rows?.list : nil,
+                work: selectedWork
+            )
         case .work(let workId):
             guard workDetail?.work.id == workId, let workDetail else {
                 return .empty

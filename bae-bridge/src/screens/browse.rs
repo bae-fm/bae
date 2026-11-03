@@ -1,5 +1,6 @@
 //! The library's lists as their screens pull them: album, artist and
-//! composer browsing, the download queue, and the album grid's selection.
+//! composer browsing, a composer's page, the download queue, and the album
+//! grid's selection.
 //! Each is one live query for as long as its screen is open, whose windows
 //! or ids move in place.
 
@@ -140,6 +141,15 @@ browse_subscription! {
     snapshot: BridgeComposerBrowseSnapshot,
     window: BridgeComposerBrowseWindow,
     row: bae_views::album_detail::ComposerSummary => crate::types::BridgeComposerSummary,
+}
+
+browse_subscription! {
+    object: ComposerDetailRowsSubscription,
+    inner: bae_views::LiveComposerDetailRows,
+    built by composer_detail_rows,
+    snapshot: BridgeComposerDetailRowsSnapshot,
+    window: BridgeComposerDetailRowsWindow,
+    row: bae_views::album_detail::ComposerDetailRow => crate::types::BridgeComposerDetailRow,
 }
 
 fn browse_error(error: bae_views::LiveLibraryBrowseError) -> BridgeError {

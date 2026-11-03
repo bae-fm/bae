@@ -41,6 +41,9 @@ import uniffi.bae_bridge.BridgeAlbumDetailSnapshot
 import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerBrowseWindow
 import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerDetailRow
+import uniffi.bae_bridge.BridgeComposerDetailRowsSnapshot
+import uniffi.bae_bridge.BridgeComposerDetailRowsWindow
 import uniffi.bae_bridge.BridgeComposerDetailSnapshot
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -54,6 +57,7 @@ import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.BridgeWorkDetailSnapshot
 import uniffi.bae_bridge.ComposerBrowseSubscription
+import uniffi.bae_bridge.ComposerDetailRowsSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.NoHandle
@@ -402,6 +406,42 @@ internal class FakeComposerBrowseSubscription(
     override suspend fun cancel() {
         cancelled = true
     }
+}
+
+/** A composer's page over fixed rows: each window answers with its slice of them. */
+internal class FakeComposerDetailRowsSubscription(
+    private val rows: List<BridgeComposerDetailRow>,
+) : ComposerDetailRowsSubscription(NoHandle) {
+    private val events = Channel<BridgeComposerDetailRowsSnapshot>(Channel.UNLIMITED)
+    private var revision = 0uL
+
+    init {
+        events.trySend(snapshot(emptyList()))
+    }
+
+    override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
+        revision++
+        events.trySend(snapshot(windows))
+    }
+
+    private fun snapshot(windows: List<BridgeLibraryPageWindow>) =
+        BridgeComposerDetailRowsSnapshot(
+            windows.map { window ->
+                BridgeComposerDetailRowsWindow(
+                    window,
+                    rows.drop(window.offset.toInt()).take(window.limit.toInt()),
+                )
+            },
+            emptyList(),
+            rows.size.toULong(),
+            rows.size.toULong(),
+            revision,
+            BridgeLiveQueryCause.REQUEST,
+        )
+
+    override suspend fun next(): BridgeComposerDetailRowsSnapshot = events.receive()
+
+    override suspend fun cancel() = Unit
 }
 
 private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.Internal, "temporary")

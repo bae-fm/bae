@@ -39,6 +39,11 @@ public final class Library: Sendable, Observable {
     public let releaseDetail: @Sendable () -> DetailQuery<BridgeRelease>
     public let artistDetail: @Sendable () -> DetailQuery<BridgeArtistDetail>
     public let composerDetail: @Sendable () -> DetailQuery<BridgeComposerDetail>
+    /// The rows of one composer's page, read through the windows its visible
+    /// pages ask for.
+    public let composerDetailRows:
+        @Sendable (_ artistId: String)
+            -> LibraryBrowseQuery<BridgeComposerDetailRow>
     public let workDetail: @Sendable () -> DetailQuery<BridgeWorkDetail>
     /// One live read of the album grid's multi-selection, pointed at each new
     /// selection in place.
@@ -114,6 +119,11 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable () -> DetailQuery<BridgeComposerDetail> = {
                 fatalError("Library composer detail is not installed")
             },
+        composerDetailRows:
+            @escaping @Sendable (String)
+            -> LibraryBrowseQuery<BridgeComposerDetailRow> = { _ in
+                fatalError("Library composer detail rows are not installed")
+            },
         workDetail: @escaping @Sendable () -> DetailQuery<BridgeWorkDetail> = {
             fatalError("Library work detail is not installed")
         },
@@ -156,6 +166,7 @@ public final class Library: Sendable, Observable {
         self.releaseDetail = releaseDetail
         self.artistDetail = artistDetail
         self.composerDetail = composerDetail
+        self.composerDetailRows = composerDetailRows
         self.workDetail = workDetail
         self.albumSelection = albumSelection
         self.artistSearch = artistSearch
@@ -167,6 +178,13 @@ public final class Library: Sendable, Observable {
         self.setLibraryFullWidth = setLibraryFullWidth
     }
 
+    #if DEBUG
+        // periphery:ignore
+        public static func stub() -> Library { Library() }
+    #endif
+}
+
+extension Library {
     // The desktop import surfaces reach the import service through `Importer`,
     // not here; this `handle`-wiring convenience initializer covers the reads
     // the desktop library page makes, some of them absent from the iOS
@@ -195,6 +213,11 @@ public final class Library: Sendable, Observable {
                 artistDetail: { DetailQuery(handle.subscribeArtistDetail()) },
                 composerDetail: {
                     DetailQuery(handle.subscribeComposerDetail())
+                },
+                composerDetailRows: {
+                    LibraryBrowseQuery(
+                        handle.subscribeComposerDetailRows(artistId: $0)
+                    )
                 },
                 workDetail: { DetailQuery(handle.subscribeWorkDetail()) },
                 albumSelection: {
@@ -278,11 +301,6 @@ public final class Library: Sendable, Observable {
             }
         }
     #endif
-
-    #if DEBUG
-        // periphery:ignore
-        public static func stub() -> Library { Library() }
-    #endif
 }
 
 extension LibraryBrowseQuery where Row == BridgeAlbum {
@@ -305,6 +323,22 @@ extension LibraryBrowseQuery where Row == BridgeAlbum {
 
 extension LibraryBrowseQuery where Row == BridgeComposerSummary {
     init(_ subscription: ComposerBrowseSubscription) {
+        self.init(
+            setWindows: { try subscription.setWindows(windows: $0) },
+            values: PulledValues(subscription) { snapshot in
+                LibraryBrowseDelivery(
+                    windows: snapshot.windows.map {
+                        .init(window: $0.window, rows: $0.rows)
+                    },
+                    totalCount: Int(snapshot.totalCount)
+                )
+            }
+        )
+    }
+}
+
+extension LibraryBrowseQuery where Row == BridgeComposerDetailRow {
+    init(_ subscription: ComposerDetailRowsSubscription) {
         self.init(
             setWindows: { try subscription.setWindows(windows: $0) },
             values: PulledValues(subscription) { snapshot in

@@ -16,6 +16,7 @@ import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerDetail
+import uniffi.bae_bridge.BridgeComposerDetailRowsSnapshot
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeDownloadBrowseSnapshot
 import uniffi.bae_bridge.BridgeException
@@ -176,6 +177,12 @@ class Library(
             BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
         }
 
+    /** One composer's page rows, in windows that move as its screen scrolls. */
+    internal fun composerDetailRows(artistId: String): ComposerDetailRowsQuery =
+        handle.subscribeComposerDetailRows(artistId).let {
+            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+        }
+
     internal fun artistBrowse(sortCriterion: BridgeArtistSortCriterion): ArtistBrowseQuery =
         handle.subscribeArtistBrowse(listOf(sortCriterion)).let {
             BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
@@ -234,6 +241,8 @@ private class BridgeBrowseQuery<Snapshot>(
 internal typealias AlbumBrowseQuery = CollectionBrowseQuery<BridgeAlbumBrowseSnapshot>
 
 internal typealias ComposerBrowseQuery = CollectionBrowseQuery<BridgeComposerBrowseSnapshot>
+
+internal typealias ComposerDetailRowsQuery = CollectionBrowseQuery<BridgeComposerDetailRowsSnapshot>
 
 internal typealias ArtistBrowseQuery = CollectionBrowseQuery<BridgeArtistBrowseSnapshot>
 

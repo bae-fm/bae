@@ -12,6 +12,7 @@ pub mod artist;
 pub mod artist_search;
 mod browse;
 pub mod composer;
+pub mod composer_detail;
 mod invites;
 mod models;
 pub mod release;
@@ -43,7 +44,8 @@ pub use sync_activity::{DownloadsInFlight, SyncActivity, UploadQueueCounts, Uplo
 pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{ArtistBrowseProjection, ArtistDetailProjection};
 pub use artist_search::{ArtistSearchProjection, DbArtistSearchRow};
-pub use composer::{ComposerBrowseProjection, ComposerDetailProjection, WorkDetailProjection};
+pub use composer::{ComposerBrowseProjection, WorkDetailProjection};
+pub use composer_detail::{ComposerDetailProjection, ComposerDetailRowsProjection};
 pub use models::*;
 pub use release::ReleaseDetailProjection;
 pub use storage::{StorageBrowseProjection, StorageBrowseRequest};

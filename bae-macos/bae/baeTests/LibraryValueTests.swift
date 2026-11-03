@@ -232,7 +232,6 @@ struct SearchResultsTests {
                         title: "Work Title A",
                         disambiguation: nil,
                         workType: "part",
-                        parentWorkId: "work-parent-a",
                         composerNames: "Composer Name A",
                         linkedReleaseCount: 1,
                         representativeReleaseId: "release-a",

@@ -99,7 +99,6 @@ async fn search_library_matches_composer_and_work_sort_names() {
         crate::LibraryViews::new(db.clone()).search_rows("Displayed Work", 10).await.unwrap();
     assert_eq!(work_results.works.len(), 1);
     assert_eq!(work_results.works[0].work.id, WORK_CHILD_A);
-    assert_eq!(work_results.works[0].parent_work_id.as_deref(), Some(WORK_PARENT_A));
     assert_eq!(work_results.works[0].representative_release_id.as_deref(), Some(RELEASE_A));
 }
 
@@ -155,22 +154,30 @@ async fn search_library_treats_like_metacharacters_as_literals() {
 }
 
 #[tokio::test]
-async fn composer_detail_carries_work_parent_and_representative_release() {
+async fn composer_page_lists_a_part_under_its_parent_with_its_representative_release() {
     let (db, _tmp) = seeded_db().await;
 
-    let detail = crate::LibraryViews::new(db.clone())
-        .find_composer_detail(ARTIST_COMPOSER)
+    let rows = crate::LibraryViews::new(db.clone())
+        .get_composer_detail_rows(ARTIST_COMPOSER, 0, 10)
         .await
-        .unwrap()
-        .expect("composer detail");
+        .unwrap();
 
-    assert_eq!(detail.work_groups.len(), 1);
-    let group = &detail.work_groups[0];
-    assert_eq!(group.parent.as_ref().map(|work| work.work.id.as_str()), Some(WORK_PARENT_A));
-    assert_eq!(group.works.len(), 1);
-    assert_eq!(group.works[0].work.id, WORK_CHILD_A);
-    assert_eq!(group.works[0].parent_work_id.as_deref(), Some(WORK_PARENT_A));
-    assert_eq!(group.works[0].representative_release_id.as_deref(), Some(RELEASE_A));
+    let works = rows
+        .into_iter()
+        .map(|row| match row.item {
+            DbComposerDetailItem::Work { work, part } => {
+                (work.work.id, part, work.representative_release_id)
+            }
+            other => panic!("the composer holds no credits: {other:?}"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        works,
+        vec![
+            (WORK_PARENT_A.to_string(), false, None),
+            (WORK_CHILD_A.to_string(), true, Some(RELEASE_A.to_string())),
+        ]
+    );
 }
 
 #[tokio::test]
@@ -398,7 +405,16 @@ async fn composer_list_counts_a_merged_composer_under_its_survivor() {
         .await
         .unwrap()
         .expect("the survivor is a composer");
-    assert_eq!(survivor.work_groups.len(), 2);
+    assert_eq!(survivor.default_work_id.as_deref(), Some("65c7e99f-2638-4086-aac4-9dceab1ae6ef"));
+    assert_eq!(
+        crate::LibraryViews::new(db.clone())
+            .get_composer_detail_rows(LISTED_SURVIVOR, 0, 10)
+            .await
+            .unwrap()
+            .len(),
+        2,
+        "the absorbed composer's work is on the survivor's page"
+    );
     assert!(crate::LibraryViews::new(db.clone())
         .find_composer_detail(LISTED_ABSORBED)
         .await
@@ -438,8 +454,25 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
         .await
         .unwrap()
         .expect("an artist with unlinked credits is a composer");
-    assert_eq!(credited.unlinked_track_roles.len(), 1);
-    assert_eq!(credited.unlinked_release_roles.len(), 1);
+    assert_eq!(credited.default_work_id, None);
+    let credits = crate::LibraryViews::new(db.clone())
+        .get_composer_detail_rows(LISTED_CREDITED, 0, 10)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|row| match row.item {
+            DbComposerDetailItem::ReleaseCredit(credit) => ("release", credit.role.id),
+            DbComposerDetailItem::TrackCredit(credit) => ("track", credit.role.id),
+            DbComposerDetailItem::Work { .. } => panic!("the artist is credited on no work"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        credits,
+        vec![
+            ("release", "1f1d760c-41ce-4db7-9c9a-7145f87d1864".to_string()),
+            ("track", "d413a2a9-7cc4-4d1c-a0bb-da462bb79f03".to_string()),
+        ]
+    );
 
     // The track performs a work the artist wrote: both credits are linked.
     exec_listed(
@@ -455,13 +488,19 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
     )
     .await;
     assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 1, 0)]);
-    let credited = crate::LibraryViews::new(db.clone())
+    crate::LibraryViews::new(db.clone())
         .find_composer_detail(LISTED_CREDITED)
         .await
         .unwrap()
         .expect("the work's composer");
-    assert!(credited.unlinked_track_roles.is_empty());
-    assert!(credited.unlinked_release_roles.is_empty());
+    let rows = crate::LibraryViews::new(db.clone())
+        .get_composer_detail_rows(LISTED_CREDITED, 0, 10)
+        .await
+        .unwrap();
+    assert!(
+        rows.iter().all(|row| matches!(row.item, DbComposerDetailItem::Work { .. })),
+        "linked credits leave the page: {rows:?}"
+    );
 
     // Deleting the release takes its track, credits and links with it; the
     // work stays.
