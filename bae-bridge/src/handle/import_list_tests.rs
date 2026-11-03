@@ -26,7 +26,7 @@ fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
 
 /// The list's values until one `accept` admits.
 fn until(
-    handle: &super::super::AppHandle,
+    handle: &crate::handle::AppHandle,
     list: &Arc<crate::ImportListSubscription>,
     accept: impl Fn(&BridgeImportListSnapshot) -> bool,
 ) -> BridgeImportListSnapshot {
@@ -48,7 +48,7 @@ fn until(
 /// returns, as combining selects the release it makes.
 #[test]
 fn separating_the_selection_selects_the_releases_it_returns() {
-    let (handle, root) = super::super::tests::fresh_bridge_handle("separate-selection");
+    let (handle, root) = crate::handle::tests::fresh_bridge_handle("separate-selection");
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let music = root.join("music");
     for part in ["Part A", "Part B"] {
@@ -106,7 +106,7 @@ fn separating_the_selection_selects_the_releases_it_returns() {
 /// stream, an action run after writes nothing into it.
 #[test]
 fn a_cancelled_progress_stream_hears_no_later_action() {
-    let (handle, root) = super::super::tests::fresh_bridge_handle("cancelled-selection-progress");
+    let (handle, root) = crate::handle::tests::fresh_bridge_handle("cancelled-selection-progress");
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let music = root.join("music");
     let folder = music.join("Album");
