@@ -76,7 +76,7 @@ impl LibraryManager {
             tasks: BackgroundTasks::new(closing),
             sync,
             detach_cancels: Default::default(),
-            make_local_transfers: crate::make_local_transfers::MakeLocalTransfers::new(),
+            make_local_transfers: bae_transfers::ReleaseTransfers::new(),
             downloads,
             #[cfg(desktop)]
             outputs,
@@ -452,24 +452,20 @@ impl LibraryManager {
         self.downloads.subscribe_counts()
     }
 
-    /// The bytes the active download has moved, by release, and each change
-    /// to them.
-    pub fn subscribe_download_transfers(
+    /// Hear the bytes the active download has moved, by release, and each
+    /// change to them.
+    pub fn watch_download_transfers(
         &self,
-    ) -> tokio::sync::watch::Receiver<
-        std::collections::BTreeMap<String, bae_transfers::DownloadTransferProgress>,
-    > {
-        self.downloads.subscribe_transfers()
+    ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransferProgress> {
+        self.downloads.watch_transfers()
     }
 
-    /// The bytes each release this process is making local has downloaded,
-    /// by release, and each change to them.
-    pub fn subscribe_make_local_transfers(
+    /// Hear the bytes each release this process is making local has
+    /// downloaded, by release, and each change to them.
+    pub fn watch_make_local_transfers(
         &self,
-    ) -> tokio::sync::watch::Receiver<
-        std::collections::BTreeMap<String, crate::MakeLocalTransferProgress>,
-    > {
-        self.make_local_transfers.subscribe()
+    ) -> bae_transfers::ReleaseTransfersWatch<crate::MakeLocalTransferProgress> {
+        self.make_local_transfers.watch()
     }
 
     /// The export queue as it stands now, each entry beside its release, the
@@ -493,13 +489,11 @@ impl LibraryManager {
         self.outputs.subscribe()
     }
 
-    /// The percent the active export has reached, by release, and each
+    /// Hear the percent the active export has reached, by release, and each
     /// change to it.
     #[cfg(desktop)]
-    pub fn subscribe_output_transfers(
-        &self,
-    ) -> tokio::sync::watch::Receiver<std::collections::BTreeMap<String, u8>> {
-        self.outputs.subscribe_transfers()
+    pub fn watch_output_transfers(&self) -> bae_transfers::ReleaseTransfersWatch<u8> {
+        self.outputs.watch_transfers()
     }
 
     /// A transfer queue's own table failed to read or write in its worker,

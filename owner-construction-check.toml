@@ -264,9 +264,11 @@ task_types = [
 ClosingSteps = "BridgeLibraryClosing"
 # Where one setup call writes its steps, the same way.
 SetupSteps = "BridgeLibrarySetup"
-# One release's make-local progress, written into every release's progress
-# while its copies download; dropping it removes the release.
-MakeLocalReport = "MakeLocalTransfers"
+# One release's progress, listed among every release's transfer of its kind
+# while that transfer runs; dropping it removes the release. And a watch on
+# every release's progress.
+ReleaseTransferReport = "ReleaseTransfers"
+ReleaseTransfersWatch = "ReleaseTransfers"
 # A release's place in the transfers this process can stop between files,
 # held while its transfer runs; dropping it removes the release's token.
 DetachRegistration = "DetachCancels"

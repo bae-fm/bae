@@ -1,5 +1,6 @@
 use super::*;
 use crate::release_queue::ReleaseQueueState;
+use std::collections::BTreeMap;
 
 const RELEASE_A: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
 const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
@@ -265,19 +266,19 @@ async fn a_cancel_while_running_aborts_the_work_and_is_no_failure() {
     let (task, done) = worker(&queue, |_entry| async {
         Ok((7, spawned(tokio::spawn(std::future::pending::<()>()))))
     });
-    let mut transfers = queue.subscribe_transfers();
-    transfers.wait_for(|transfers| transfers.get(RELEASE_A) == Some(&7)).await.unwrap();
+    let mut transfers = queue.watch_transfers();
+    transfers.until(|transfers| transfers.get(RELEASE_A) == Some(&7)).await.unwrap();
     assert_eq!(
         phases(&queue).await,
         vec![(RELEASE_A.to_string(), ReleaseQueueState::Active { progress: () })]
     );
 
     queue.cancel(RELEASE_A).await.unwrap();
-    transfers.wait_for(|transfers| transfers.is_empty()).await.unwrap();
+    transfers.until(|transfers| transfers.is_empty()).await.unwrap();
     assert!(phases(&queue).await.is_empty());
     // The worker has seen the abort once it starts the next entry.
     queue.enqueue_all(vec![entry(RELEASE_B)]).await.unwrap();
-    transfers.wait_for(|transfers| transfers.contains_key(RELEASE_B)).await.unwrap();
+    transfers.until(|transfers| transfers.contains_key(RELEASE_B)).await.unwrap();
     task.abort();
     assert!(done.lock().unwrap().is_empty(), "a cancel is not an outcome");
 }
@@ -291,12 +292,15 @@ async fn progress_is_the_running_entrys_alone() {
     let (task, _done) = worker(&queue, |_entry| async {
         Ok((0, spawned(tokio::spawn(std::future::pending::<()>()))))
     });
-    let mut transfers = queue.subscribe_transfers();
-    transfers.wait_for(|transfers| transfers.contains_key(RELEASE_A)).await.unwrap();
+    let mut transfers = queue.watch_transfers();
+    transfers.until(|transfers| transfers.contains_key(RELEASE_A)).await.unwrap();
 
     assert!(queue.set_active_progress(RELEASE_A, 50));
     assert!(!queue.set_active_progress(RELEASE_B, 10));
-    assert_eq!(*transfers.borrow_and_update(), BTreeMap::from([(RELEASE_A.to_string(), 50)]));
+    assert_eq!(
+        transfers.until(|transfers| transfers.get(RELEASE_A) == Some(&50)).await.unwrap(),
+        BTreeMap::from([(RELEASE_A.to_string(), 50)])
+    );
     assert_eq!(queue.active_progress(), BTreeMap::from([(RELEASE_A.to_string(), 50)]));
     task.abort();
 }

@@ -49,16 +49,18 @@ impl AppServices {
     }
 
     /// The bytes each downloading release has moved, sent as they move.
-    pub fn watch_download_transfers(&self) -> bae_library::DownloadTransfersWatch {
-        bae_library::DownloadTransfersWatch::of(self.inner.manager.subscribe_download_transfers())
+    pub fn watch_download_transfers(
+        &self,
+    ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransferProgress> {
+        self.inner.manager.watch_download_transfers()
     }
 
     /// The bytes each release this process is making local has downloaded,
     /// sent as they move.
-    pub fn watch_make_local_transfers(&self) -> bae_library::MakeLocalTransfersWatch {
-        bae_library::MakeLocalTransfersWatch::of(
-            self.inner.manager.subscribe_make_local_transfers(),
-        )
+    pub fn watch_make_local_transfers(
+        &self,
+    ) -> bae_transfers::ReleaseTransfersWatch<bae_library::MakeLocalTransferProgress> {
+        self.inner.manager.watch_make_local_transfers()
     }
 
     /// The export queue as it stands now, each entry beside its release, the
@@ -71,7 +73,7 @@ impl AppServices {
 
     /// The percent each exporting release has reached, sent as it moves.
     #[cfg(desktop)]
-    pub fn watch_output_transfers(&self) -> bae_library::OutputTransfersWatch {
-        bae_library::OutputTransfersWatch::of(self.inner.manager.subscribe_output_transfers())
+    pub fn watch_output_transfers(&self) -> bae_transfers::ReleaseTransfersWatch<u8> {
+        self.inner.manager.watch_output_transfers()
     }
 }

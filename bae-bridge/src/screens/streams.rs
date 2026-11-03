@@ -48,10 +48,10 @@ where
 /// names, then each one that moved or left.
 fn write_release_changes<Progress>(
     writer: &StreamWriter,
-    changes: Vec<bae_library::ReleaseTransferChange<Progress>>,
+    changes: Vec<bae_transfers::ReleaseTransferChange<Progress>>,
     value: impl Fn(Progress) -> BridgeFastValue,
 ) {
-    use bae_library::ReleaseTransferChange;
+    use bae_transfers::ReleaseTransferChange;
     for change in changes {
         match change {
             ReleaseTransferChange::Updated { release_id, progress } => {

@@ -600,7 +600,7 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
         resumed,
     )
     .await;
-    let mut transfers = manager.subscribe_make_local_transfers();
+    let mut transfers = manager.watch_make_local_transfers();
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
     let making = tokio::spawn({
@@ -613,16 +613,13 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
         }
     });
     observed.await.unwrap();
-    let listed = tokio::time::timeout(WAIT, async {
-        loop {
-            if let Some(progress) = transfers.borrow_and_update().get(&release_id).copied() {
-                return progress;
-            }
-            transfers.changed().await.unwrap();
-        }
-    })
+    let listed = tokio::time::timeout(
+        WAIT,
+        transfers.until(|transfers| transfers.contains_key(&release_id)),
+    )
     .await
-    .expect("the release is listed while its copy downloads");
+    .expect("the release is listed while its copy downloads")
+    .unwrap()[&release_id];
     assert!(listed.file_bytes_total > 0, "{listed:?}");
     assert!(listed.file_bytes_done < listed.file_bytes_total, "{listed:?}");
     assert!(listed.bytes_done < listed.bytes_total, "{listed:?}");
@@ -630,7 +627,10 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
 
     resume.send(()).unwrap();
     making.await.unwrap().unwrap();
-    assert!(transfers.borrow().is_empty(), "a release whose files switched is listed no more");
+    tokio::time::timeout(WAIT, transfers.until(|transfers| transfers.is_empty()))
+        .await
+        .expect("a release whose files switched is listed no more")
+        .unwrap();
 }
 
 #[tokio::test]

@@ -21,7 +21,6 @@ pub mod manager;
 mod outbox_watch;
 pub mod people;
 mod queue_upcoming;
-mod release_transfers;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
 pub mod storage;
@@ -60,10 +59,6 @@ pub use outbox_watch::{
     ReleaseUploadTransfer, UploadTransfer,
 };
 pub use queue_upcoming::{subscribe_queue_upcoming, LiveQueueUpcoming, QueueUpcomingSnapshot};
-pub use release_transfers::{
-    DownloadTransferChange, DownloadTransfersWatch, MakeLocalTransfersWatch, OutputTransferChange,
-    OutputTransfersWatch, ReleaseTransferChange, ReleaseTransfersWatch,
-};
 pub use upload_progress::{UploadBar, UploadState};
 
 pub use tokio_util::sync::CancellationToken;

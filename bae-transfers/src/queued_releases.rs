@@ -10,12 +10,11 @@ use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_db::{Database, DbError};
 use bae_util::task_failure::{caught, caught_sync, TaskFailed};
-use std::collections::BTreeMap;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 pub use tables::QueuedPayload;
-use tokio::sync::{watch, Notify};
+use tokio::sync::Notify;
 use tracing::{debug, error};
 
 /// A queued operation that has been started: the handle a cancel aborts, and the
@@ -53,7 +52,7 @@ struct Shared<Progress> {
     wake: Notify,
     running: Mutex<Option<Running<Progress>>>,
     /// The active entry's progress, by release, once it has started.
-    transfers: watch::Sender<BTreeMap<String, Progress>>,
+    transfers: crate::ReleaseTransfers<Progress>,
 }
 
 pub struct QueuedReleases<Extra, Progress> {
@@ -74,10 +73,13 @@ where
     Progress: Clone + PartialEq + Send + Sync + 'static,
 {
     pub fn new(database: Database) -> Self {
-        let (transfers, _) = watch::channel(BTreeMap::new());
         Self {
             database,
-            shared: Arc::new(Shared { wake: Notify::new(), running: Mutex::new(None), transfers }),
+            shared: Arc::new(Shared {
+                wake: Notify::new(),
+                running: Mutex::new(None),
+                transfers: crate::ReleaseTransfers::new(),
+            }),
             _extra: PhantomData,
         }
     }
@@ -147,9 +149,7 @@ where
             return;
         };
         stopped.abort.abort();
-        self.shared
-            .transfers
-            .send_if_modified(|transfers| transfers.remove(&stopped.release_id).is_some());
+        self.shared.transfers.remove(&stopped.release_id);
     }
 
     /// Record the active entry's progress. `false` when no task runs that
@@ -161,23 +161,16 @@ where
             return false;
         };
         running.progress = progress.clone();
-        self.shared.transfers.send_if_modified(|transfers| {
-            match transfers.get_mut(release_id) {
-                Some(shown) if *shown != progress => {
-                    *shown = progress;
-                    true
-                }
-                // Not started in the table yet: the start publishes it.
-                Some(_) | None => false,
-            }
-        });
+        // Not started in the table yet, the release is unlisted: the start
+        // publishes it.
+        self.shared.transfers.advance(release_id, progress);
         true
     }
 
     /// The running entry's progress, by release: an entry for every release
     /// a read of the table made before this one saw as active.
     #[cfg(any(desktop, test))]
-    pub fn active_progress(&self) -> BTreeMap<String, Progress> {
+    pub fn active_progress(&self) -> std::collections::BTreeMap<String, Progress> {
         self.shared
             .running
             .lock()
@@ -187,9 +180,9 @@ where
             .collect()
     }
 
-    /// The active entry's progress, by release, and each change to it.
-    pub fn subscribe_transfers(&self) -> watch::Receiver<BTreeMap<String, Progress>> {
-        self.shared.transfers.subscribe()
+    /// Hear the active entry's progress, by release, and each change to it.
+    pub fn watch_transfers(&self) -> crate::ReleaseTransfersWatch<Progress> {
+        self.shared.transfers.watch()
     }
 
     /// Every entry of the queue now.
@@ -250,10 +243,7 @@ where
         else {
             return;
         };
-        let progress = running.progress.clone();
-        self.shared.transfers.send_modify(|transfers| {
-            transfers.insert(release_id.to_string(), progress);
-        });
+        self.shared.transfers.set(release_id, running.progress.clone());
     }
 
     /// Start `release_id`'s entry with `abort` as its task, as the worker
@@ -285,7 +275,7 @@ where
         if running.as_ref().is_some_and(|running| running.release_id == release_id) {
             *running = None;
         }
-        self.shared.transfers.send_if_modified(|transfers| transfers.remove(release_id).is_some());
+        self.shared.transfers.remove(release_id);
     }
 
     /// Drain the queue serially, one release at a time, forever. The caller

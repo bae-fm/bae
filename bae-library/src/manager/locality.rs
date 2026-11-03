@@ -104,7 +104,9 @@ impl LibraryManager {
                                 &folder,
                                 files,
                                 &stopped,
-                                |progress| report.progress(progress),
+                                |progress| {
+                                    report.progress(crate::MakeLocalTransferProgress::of(progress))
+                                },
                             );
                             tokio::pin!(call);
                             // A cancel that came first stops the call before

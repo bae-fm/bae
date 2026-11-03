@@ -218,14 +218,14 @@ async fn download_transfers_report_each_driven_file_progress() {
         .await
         .unwrap());
 
-    let mut transfers = manager.downloads.subscribe_transfers();
+    let mut transfers = manager.downloads.watch_transfers();
     let bytes_done = |transfers: &std::collections::BTreeMap<
         String,
         bae_transfers::DownloadTransferProgress,
     >| {
         transfers.get("release-progress").expect("the active download has progress").clone()
     };
-    assert_eq!(bytes_done(&transfers.borrow_and_update()).bytes_done, 0);
+    assert_eq!(bytes_done(&transfers.until(|_| true).await.unwrap()).bytes_done, 0);
 
     let (progress_tx, progress_rx) = tokio::sync::mpsc::unbounded_channel();
     let driver = {
@@ -242,8 +242,12 @@ async fn download_transfers_report_each_driven_file_progress() {
                     .unwrap(),
             })
             .expect("the transfer driver is listening");
-        transfers.changed().await.expect("file progress value");
-        let progress = bytes_done(&transfers.borrow_and_update());
+        let progress = bytes_done(
+            &transfers
+                .until(|transfers| bytes_done(transfers).bytes_done == done)
+                .await
+                .expect("file progress value"),
+        );
         assert_eq!(progress.bytes_done, done);
         assert_eq!(progress.bytes_total, 7);
         assert_eq!(progress.fraction, done as f64 / 7.0);
