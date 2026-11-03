@@ -224,3 +224,7 @@ mirror_enum! {
         Running(phase: (AutomationImportPhase)),
     },
 }
+
+#[cfg(test)]
+#[path = "candidates_tests.rs"]
+mod tests;

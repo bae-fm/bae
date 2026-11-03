@@ -757,41 +757,5 @@ impl AutomationTrackSearchResult {
 }
 
 #[cfg(test)]
-mod record_tests {
-    use super::*;
-
-    #[test]
-    fn album_identity_is_exposed_without_a_pressing_or_draft_claim() {
-        let record = bae_catalogs::records::ReleaseRecord::album(&MetadataRef::new(
-            Catalog::MusicBrainz,
-            "group-1",
-        ));
-        let value = serde_json::to_value(AutomationReleaseRecord::from_core(record)).unwrap();
-        assert_eq!(
-            value,
-            serde_json::json!({
-                "kind": "album",
-                "album": { "catalog": "music_brainz", "key": "group-1" },
-                "url": "https://musicbrainz.org/release-group/group-1"
-            })
-        );
-    }
-
-    #[test]
-    fn pressing_identity_keeps_its_known_parent() {
-        let record = bae_catalogs::records::ReleaseRecord::new(
-            &MetadataRef::new(Catalog::Discogs, "42"),
-            Some("73".into()),
-        );
-        let value = serde_json::to_value(AutomationReleaseRecord::from_core(record)).unwrap();
-        assert_eq!(
-            value,
-            serde_json::json!({
-                "kind": "pressing",
-                "release": { "catalog": "discogs", "key": "42" },
-                "album_key": "73",
-                "url": "https://www.discogs.com/release/42"
-            })
-        );
-    }
-}
+#[path = "convert_tests.rs"]
+mod tests;

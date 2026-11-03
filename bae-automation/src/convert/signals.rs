@@ -135,3 +135,7 @@ impl AutomationSignals {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "signals_tests.rs"]
+mod tests;

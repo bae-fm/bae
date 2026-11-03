@@ -326,3 +326,7 @@ pub(crate) fn automation_identify_state(
         },
     }
 }
+
+#[cfg(test)]
+#[path = "identify_tests.rs"]
+mod tests;

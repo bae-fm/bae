@@ -45,7 +45,3 @@ pub use types::*;
 pub struct Automation {
     services: AppServices,
 }
-
-#[cfg(test)]
-#[path = "lib_tests.rs"]
-mod tests;

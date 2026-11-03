@@ -618,3 +618,7 @@ impl Automation {
 fn whole_list() -> bae_db::LibraryPageWindows {
     std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: u64::MAX }).collect()
 }
+
+#[cfg(test)]
+#[path = "automation_tests.rs"]
+mod tests;

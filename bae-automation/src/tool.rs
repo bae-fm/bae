@@ -239,3 +239,7 @@ struct AutomationToolDescriptor {
     /// `None` is a tool that takes no arguments.
     schema: Option<fn() -> Map<String, Value>>,
 }
+
+#[cfg(test)]
+#[path = "tool_tests.rs"]
+mod tests;

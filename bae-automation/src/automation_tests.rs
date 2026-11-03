@@ -1,3 +1,7 @@
+//! The automation calls against a real library in a temporary directory.
+//! Every call reads the import tables by key, so a key with nothing recorded
+//! names nothing.
+
 use super::*;
 use bae_import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
@@ -326,4 +330,221 @@ async fn a_scan_waited_on_names_a_folder_whose_read_failed() {
         .await
         .expect_err("the read of a folder that is gone fails");
     assert!(error.message().contains(&path), "{}", error.message());
+}
+
+/// A candidate key that names nothing fails as `not_found` before anything is
+/// fetched, so a typo never reads as a candidate awaiting identification.
+mod candidate_lookup {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_known_key_resolves() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "Album").await;
+
+        let found = fixture.get_candidate(&key).await.expect("a scanned candidate resolves");
+        assert_eq!(found.key(), key);
+        assert_eq!(
+            found.common().source_folders,
+            vec![coven::path_text(&fixture.root().join("Album"))]
+        );
+    }
+
+    /// Absence is not "no evidence yet" — it is a key that names nothing.
+    #[tokio::test]
+    async fn an_unknown_key_is_not_found_rather_than_empty_evidence() {
+        let fixture = automation_over().await;
+        scan(&fixture, "Album").await;
+
+        let missing = candidate_key_name(&CandidateKey::folder(&fixture.root().join("Albmu")));
+        let error = fixture
+            .get_candidate(&missing)
+            .await
+            .expect_err("a key naming nothing must not be answered");
+        assert_eq!(error.kind(), "not_found");
+        assert!(
+            error.message().contains(&missing),
+            "the error names the key that missed: {}",
+            error.message()
+        );
+    }
+
+    /// A name that is not the hex of a key's bytes names no key at all.
+    #[tokio::test]
+    async fn a_name_that_is_not_hex_is_refused() {
+        let fixture = automation_over().await;
+        let error =
+            fixture.get_candidate("/music/Album").await.expect_err("a path is not a key's name");
+        assert_eq!(error.kind(), "validation");
+    }
+
+    /// A candidate whose identification hasn't run still resolves.
+    #[tokio::test]
+    async fn a_candidate_with_no_identify_evidence_still_resolves() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "Album").await;
+
+        let found = fixture.get_candidate(&key).await.expect("resolves");
+        assert!(matches!(
+            found,
+            AutomationCandidate::Valid { ref runtime, .. }
+                if matches!(runtime.identify_state, AutomationIdentifyState::Idle)
+                    && runtime.import_status.is_none()
+        ));
+    }
+}
+
+/// MCP files a library release under a library album as the editor's album
+/// picker does: the release moves in and the album keeps its own title.
+mod release_album {
+    use super::*;
+
+    /// Write one tagged fixture track into `dir`.
+    fn one_track(dir: &std::path::Path) {
+        bae_import::test_fixtures::write_tagged_flac(dir, "01 Track One.flac", "Track One");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn release_album_set_moves_the_release_into_the_album_it_names() {
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+        let (library, imported) = bae_library::test_libraries::imported_release_setup_with(
+            &fakes,
+            bae_catalogs::test_releases::discogs_test_release(
+                "album-set-moved",
+                "Moved Album",
+                &[("Track One", "0:10")],
+            ),
+            "moved",
+            "album-set-moved-import".to_string(),
+            one_track,
+        )
+        .await
+        .expect("import the release that moves");
+        let picked_dir = imported.temp_dir.path().join("picked");
+        std::fs::create_dir_all(&picked_dir).expect("the second album's folder");
+        one_track(&picked_dir);
+        let picked_key =
+            fakes.seed_discogs_test_release(bae_catalogs::test_releases::discogs_test_release(
+                "album-set-picked",
+                "Picked Album",
+                &[("Track One", "0:10")],
+            ));
+        let picked_release = library.import_folder(&picked_dir, picked_key).await;
+        let picked_album =
+            library.get_album_id_for_release(&picked_release).await.expect("the picked album");
+        let moved_from = library
+            .get_album_id_for_release(&imported.release_id)
+            .await
+            .expect("the release's own album");
+        assert_ne!(moved_from, picked_album);
+        let services = bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start");
+        let automation = Automation::new(services, &tokio::runtime::Handle::current());
+
+        automation
+            .call_tool(
+                AutomationTool::from_name("release_album_set").expect("the tool is published"),
+                serde_json::json!({
+                    "release_id": imported.release_id,
+                    "album_id": picked_album,
+                }),
+            )
+            .await
+            .expect("the release moves");
+
+        assert_eq!(
+            library.get_album_id_for_release(&imported.release_id).await.unwrap(),
+            picked_album
+        );
+        assert_eq!(
+            library
+                .get_album_by_id(&picked_album)
+                .await
+                .unwrap()
+                .expect("the picked album stays")
+                .title,
+            "Picked Album",
+            "the album keeps its own title"
+        );
+        let refused = automation
+            .call_tool(
+                AutomationTool::ReleaseAlbumSet,
+                serde_json::json!({
+                    "release_id": imported.release_id,
+                    "album_id": "no-such-album",
+                }),
+            )
+            .await
+            .expect_err("an album the library does not hold cannot be picked");
+        assert_eq!(refused.kind(), "import");
+    }
+}
+
+/// `import_search` asks one source, and only a catalog that answers searches
+/// can be named as it.
+mod import_search_source {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_catalog_that_answers_no_searches_is_refused() {
+        let fixture = automation_over().await;
+        let refused = fixture
+            .automation()
+            .call_tool(
+                AutomationTool::ImportSearch,
+                serde_json::json!({
+                    "kind": "general",
+                    "artist": "Artist Name",
+                    "album": "Album Title",
+                    "source": "spotify",
+                }),
+            )
+            .await
+            .expect_err("a catalog that answers no searches cannot be asked one");
+        assert_eq!(refused.kind(), "validation");
+    }
+
+    /// The tool's schema offers the catalogs a search can be asked of, and
+    /// no other.
+    #[test]
+    fn the_schema_offers_only_the_catalogs_that_answer_searches() {
+        let schema = Value::Object(AutomationTool::ImportSearch.input_schema()).to_string();
+        for asked in ["music_brainz", "discogs"] {
+            assert!(schema.contains(&format!("\"{asked}\"")), "{asked} is offered: {schema}");
+        }
+        for linked in ["spotify", "wikidata", "all_music"] {
+            assert!(
+                !schema.contains(&format!("\"{linked}\"")),
+                "{linked} is not offered: {schema}"
+            );
+        }
+    }
+}
+
+/// A pick names the release a candidate's draft is read from, and only a
+/// catalog bae fetches releases from can be named as it.
+mod pick_record_catalog {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_release_on_a_catalog_bae_does_not_fetch_is_refused() {
+        let fixture = automation_over().await;
+        let key = scan(&fixture, "Album").await;
+        let refused = fixture
+            .automation()
+            .call_tool(
+                AutomationTool::ImportCandidateReleaseSelect,
+                serde_json::json!({
+                    "candidate_key": key,
+                    "link": {
+                        "record": { "catalog": "spotify", "key": "4242424242424242424242" },
+                        "partners": [],
+                    },
+                }),
+            )
+            .await
+            .expect_err("a release bae cannot fetch cannot be picked");
+        assert_eq!(refused.kind(), "validation");
+    }
 }
