@@ -308,19 +308,3 @@ pub(crate) use traversal::{fetch_documents, read_disc_id_release};
 #[cfg(test)]
 #[path = "payloads_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "payloads/enrichment_tests.rs"]
-mod enrichment_tests;
-
-#[cfg(test)]
-#[path = "payloads/supplemental_tests.rs"]
-mod supplemental_tests;
-
-#[cfg(test)]
-#[path = "payloads/ambiguity_tests.rs"]
-mod ambiguity_tests;
-
-#[cfg(test)]
-#[path = "payloads/statements_tests.rs"]
-mod statements_tests;

@@ -195,3 +195,7 @@ fn usable_supplemental_credits(
     }
     Ok(usable)
 }
+
+#[cfg(test)]
+#[path = "projection_tests.rs"]
+mod tests;

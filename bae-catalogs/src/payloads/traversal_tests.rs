@@ -1,5 +1,6 @@
 use super::*;
 use crate::source_release::UnfetchedDocument;
+use crate::test_documents::{linked_discogs_master, linked_discogs_release, linked_release_group};
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -852,4 +853,48 @@ async fn a_malformed_required_anchor_is_rejected() {
         server.requests(),
         HashMap::from([("/ws/2/release/required-shape-release".into(), 1)])
     );
+}
+
+/// A Discogs release's master names its MusicBrainz release group back, and
+/// the group names the album on other catalogs: the fetch follows the whole
+/// chain.
+#[tokio::test]
+async fn a_master_backlink_is_followed() {
+    let fakes = crate::fake_catalogs::FakeCatalogs::offline();
+    let providers = fakes.providers();
+    fakes.seed_discogs_release("7811", linked_discogs_release());
+    fakes.seed_discogs_master("7822", linked_discogs_master());
+    fakes.seed_discogs_page_lookup(&[
+        (crate::musicbrainz::DiscogsPage::Release("7811".into()), None),
+        (crate::musicbrainz::DiscogsPage::Master("7822".into()), Some("album-group")),
+    ]);
+    fakes.seed_musicbrainz_release_group("album-group", linked_release_group());
+    let client = fakes.discogs_client("test-token");
+    let fetched = providers
+        .fetch_payloads(
+            Some(&client),
+            &LookupRef::new(LookupCatalog::Discogs, "7811"),
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
+        .await
+        .unwrap()
+        .extract()
+        .unwrap();
+    let records = fetched.records();
+    assert!(records
+        .iter()
+        .any(|record| record.url() == "https://musicbrainz.org/release-group/album-group"));
+    assert!(records
+        .iter()
+        .any(|record| record.url() == "https://www.allmusic.com/album/mw0000007811"));
+    assert!(!records
+        .iter()
+        .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
+    let parsed = fetched.every_medium_values().unwrap();
+    assert_eq!(parsed.album_title, "Selected Album");
+    assert_eq!(parsed.album_year, Some(1980));
+    assert_eq!(parsed.pressing.year, Some(2005));
+    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(), Some("artist-id"));
 }

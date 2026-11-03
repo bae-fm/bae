@@ -280,3 +280,7 @@ impl ReleasePayloads {
         Ok(links.known())
     }
 }
+
+#[cfg(test)]
+#[path = "relationships_tests.rs"]
+mod tests;
