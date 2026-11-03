@@ -1,5 +1,7 @@
 package fm.bae.app.ui.appearance
 
+import android.graphics.drawable.ColorDrawable
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.toArgb
@@ -23,24 +25,28 @@ class AppearanceWindowTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun systemBarsFollowTheAppModeAndTone() {
+    fun theWindowAndItsBarsFollowTheAppModeAndTone() {
         val initial = AppearancePreferences(mode = AppearanceMode.DARK, tone = SurfaceTone.PLUM)
         val store = AppearanceStore(initial) {}
         compose.setContent { BaeTheme(store) { Text("Appearance") } }
         compose.runOnIdle {
             val window = compose.activity.window
-            val expected = appearanceColorScheme(initial, dark = true).background.toArgb()
-            assertEquals(expected, window.statusBarColor)
-            assertEquals(expected, window.navigationBarColor)
-            assertFalse(WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars)
+            assertEquals(appearanceColorScheme(initial, dark = true).background.toArgb(), window.backgroundColor())
+            val bars = WindowCompat.getInsetsController(window, window.decorView)
+            assertFalse(bars.isAppearanceLightStatusBars)
+            assertFalse(bars.isAppearanceLightNavigationBars)
         }
         compose.runOnIdle { runBlocking { store.setMode(AppearanceMode.LIGHT) } }
         compose.runOnIdle {
             val window = compose.activity.window
             val expected = appearanceColorScheme(store.preferences.value, dark = false).background.toArgb()
-            assertEquals(expected, window.statusBarColor)
-            assertEquals(expected, window.navigationBarColor)
-            assertTrue(WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars)
+            assertEquals(expected, window.backgroundColor())
+            val bars = WindowCompat.getInsetsController(window, window.decorView)
+            assertTrue(bars.isAppearanceLightStatusBars)
+            assertTrue(bars.isAppearanceLightNavigationBars)
         }
     }
 }
+
+/** The colour the window draws under the app, which shows through its clear bars. */
+private fun Window.backgroundColor(): Int = (decorView.background as ColorDrawable).color

@@ -1,7 +1,9 @@
 package fm.bae.app.ui
 
-import android.app.Activity
 import android.graphics.drawable.ColorDrawable
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.LocalTonalElevationEnabled
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +21,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import androidx.glance.appwidget.updateAll
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
@@ -85,16 +86,14 @@ fun BaeTheme(
     val colorScheme = remember(preferences, isDark) { appearanceColorScheme(preferences, isDark) }
     val view = LocalView.current
     if (!view.isInEditMode) {
-        val activity = view.context as Activity
+        val activity = view.context as ComponentActivity
         SideEffect {
-            val background = colorScheme.background.toArgb()
-            activity.window.setBackgroundDrawable(ColorDrawable(background))
-            // Only releases before Android 15 use these bar colors.
-            activity.window.statusBarColor = background
-            activity.window.navigationBarColor = background
-            val insetsController = WindowCompat.getInsetsController(activity.window, view)
-            insetsController.isAppearanceLightStatusBars = !isDark
-            insetsController.isAppearanceLightNavigationBars = !isDark
+            activity.window.setBackgroundDrawable(ColorDrawable(colorScheme.background.toArgb()))
+            // The app draws edge to edge on every release, as Android 15 and
+            // later require: the bars are clear over the window's background,
+            // with icons dark or light for the chosen appearance.
+            val bars = SystemBarStyle.auto(Color.Transparent.toArgb(), Color.Transparent.toArgb()) { isDark }
+            activity.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
         }
     }
     CompositionLocalProvider(
