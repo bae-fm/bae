@@ -22,7 +22,7 @@ pub(super) fn insert_artist_row(conn: &CovenWrite<'_>, artist: &DbArtist) -> Res
     .map_err(DbError::from)
 }
 
-pub fn update_artist_external_ids_row(
+pub(super) fn update_artist_external_ids_row(
     conn: &CovenWrite<'_>,
     id: &str,
     discogs_artist_id: Option<&str>,

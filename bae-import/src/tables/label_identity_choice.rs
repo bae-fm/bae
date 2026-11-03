@@ -163,24 +163,16 @@ fn merge_labels_on(
         absorbed,
         survivor,
     )?;
-    sql.execute(
-        "UPDATE labels SET \
-             musicbrainz_label_id = COALESCE(musicbrainz_label_id, ?2), \
-             discogs_label_id = COALESCE(discogs_label_id, ?3) \
-         WHERE id = ?1",
-        params![survivor, conflict.musicbrainz, conflict.discogs],
-    )?;
-    // A chain that ended at the absorbed label now ends at the survivor.
-    sql.execute(
-        "UPDATE label_merges SET into_label_id = ?1 WHERE into_label_id = ?2",
-        params![survivor, absorbed],
-    )?;
-    sql.execute(
-        "INSERT INTO label_merges (id, into_label_id, created_at) VALUES (?1, ?2, ?3) \
-         ON CONFLICT (id) DO UPDATE SET into_label_id = excluded.into_label_id",
-        params![absorbed, survivor, now],
-    )?;
-    Ok(())
+    bae_db::client::identity_merges::merge_label_on(
+        sql,
+        &bae_db::client::identity_merges::LabelMerge {
+            survivor,
+            absorbed,
+            discogs_label_id: &conflict.discogs,
+            musicbrainz_label_id: &conflict.musicbrainz,
+            at: now,
+        },
+    )
 }
 
 /// The answers the candidate `hash` holds for `labels`, each carrying both

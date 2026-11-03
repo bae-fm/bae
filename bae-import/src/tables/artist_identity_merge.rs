@@ -1,7 +1,6 @@
 //! Atomic consolidation of library artists after a persisted import conflict.
 
 use super::*;
-use bae_db::client::write::update_artist_external_ids_row;
 
 impl ImportTables {
     /// Consolidate the two library artists named by a candidate's persisted
@@ -177,19 +176,6 @@ fn apply_artist_identity_merge(
         &plan.surviving_artist_id,
     )?;
 
-    if matches!(&plan.images, (None, Some(_))) {
-        sql.execute(
-            "INSERT INTO artist_images (id, file, content_type) \
-             SELECT ?, file, content_type FROM artist_images \
-             WHERE id = ?",
-            params![plan.surviving_artist_id, plan.absorbed_artist_id],
-        )?;
-    }
-
-    if plan.images.1.is_some() {
-        sql.execute("DELETE FROM artist_images WHERE id = ?", [&plan.absorbed_artist_id])?;
-    }
-
     // Drafts and conflicts are this device's alone: they move to the survivor.
     // Library credits are shared and stay as written, since another device may
     // be crediting the absorbed artist right now; reads show every credit
@@ -207,33 +193,17 @@ fn apply_artist_identity_merge(
         )?;
     }
 
-    let changed = update_artist_external_ids_row(
+    bae_db::client::identity_merges::merge_artist_on(
         sql,
-        &plan.surviving_artist_id,
-        Some(&plan.discogs_artist_id),
-        Some(&plan.musicbrainz_artist_id),
-        plan.surviving_sort_name.as_deref(),
-    )?;
-    if changed != 1 {
-        return Err(DbError::Message(format!(
-            "artist identity merge updated {changed} surviving artists; expected exactly one"
-        )));
-    }
-    // The absorbed artist stays, recorded as merged: a chain that ended at it
-    // now ends at the survivor.
-    sql.execute(
-        "UPDATE artist_merges SET into_artist_id = ?1 \
-         WHERE into_artist_id = ?2",
-        params![plan.surviving_artist_id, plan.absorbed_artist_id],
-    )?;
-    sql.execute(
-        "INSERT INTO artist_merges (id, into_artist_id, created_at) \
-         VALUES (?1, ?2, ?3) \
-         ON CONFLICT (id) DO UPDATE SET \
-             into_artist_id = excluded.into_artist_id",
-        params![plan.absorbed_artist_id, plan.surviving_artist_id, plan.now],
-    )?;
-    Ok(())
+        &bae_db::client::identity_merges::ArtistMerge {
+            survivor: &plan.surviving_artist_id,
+            absorbed: &plan.absorbed_artist_id,
+            discogs_artist_id: &plan.discogs_artist_id,
+            musicbrainz_artist_id: &plan.musicbrainz_artist_id,
+            sort_name: plan.surviving_sort_name.as_deref(),
+            at: &plan.now,
+        },
+    )
 }
 
 fn merge_local_artist_references(
