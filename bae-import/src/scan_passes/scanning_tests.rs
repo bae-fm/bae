@@ -114,7 +114,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     let refresh = || {
         let (completion, answered) = tokio::sync::oneshot::channel();
         commands
-            .send(crate::handle::WatcherCommand::Refresh { path: root.clone(), completion })
+            .send(crate::watching::WatcherCommand::Refresh { path: root.clone(), completion })
             .unwrap();
         answered
     };
@@ -148,7 +148,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     assert!(matches!(root_scan_status(&test.database).await, crate::FolderScanStatus::Complete));
 
     let (completion, stopped) = std::sync::mpsc::channel();
-    commands.send(crate::handle::WatcherCommand::Shutdown { completion }).unwrap();
+    commands.send(crate::watching::WatcherCommand::Shutdown { completion }).unwrap();
     tokio::task::spawn_blocking(move || {
         stopped.recv().unwrap();
         coordinator.join().unwrap();

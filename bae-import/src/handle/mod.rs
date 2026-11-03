@@ -33,67 +33,20 @@ mod verdict_write;
 mod watch;
 
 pub use discogs_key::DiscogsSaveOutcome;
-pub use event_bus::ImportEventBus;
+pub use event_bus::{ImportEvent, ImportEventBus, ScanEvent};
 pub use import::ImportStart;
 pub(crate) use scan::external_metadata_with_cover;
+pub use search::GroupedSearchResults;
 pub(crate) use verdict_write::VerdictWrite;
 
 use super::candidate_runtime::CandidateRuntime;
 use super::candidates::{CandidateRuntimeSnapshot, ImportCandidateSnapshot};
 use crate::folder_scan_status::WatchedFolderScanStatus;
+use crate::watching::WatcherCommand;
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 pub(crate) mod tests;
-
-/// Every event the import service emits, on one channel.
-#[derive(Debug, Clone)]
-pub enum ImportEvent {
-    Scan(ScanEvent),
-    ImportProgress {
-        candidate_key: crate::CandidateKey,
-        progress: ImportProgress,
-    },
-    /// An identify run's new state, in full; the signals toolbar shows a
-    /// projection of it.
-    IdentifyStateChanged {
-        candidate_key: crate::CandidateKey,
-        /// The run this state belongs to. A settled run keeps reporting, so
-        /// a consumer waiting on a later run of the candidate matches on this,
-        /// not the key.
-        run: crate::IdentifyRunId,
-        state: bae_identify::IdentifyState,
-        /// The run's priority, which tells a candidate a person opened from
-        /// one the automatic admission picked up.
-        priority: bae_catalogs::rate_limiter::CallPriority,
-    },
-    /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
-    /// classified text), sent on every change of the extraction, including an
-    /// abort, which fails every signal.
-    SignalsUpdated {
-        candidate_key: crate::CandidateKey,
-        /// The identify run this snapshot was extracted for. Runs of one
-        /// candidate share its key, so a run's verdict is stored beside only
-        /// the snapshots that name that run.
-        run: crate::IdentifyRunId,
-        signals: bae_identify::signals::Signals,
-        /// Where the artwork pass feeding the snapshot has got to, shown as the
-        /// run's step. Kept outside the snapshot because a stored snapshot has
-        /// no pass.
-        artwork: bae_identify::signals::ArtworkScan,
-        /// The extraction's priority, as in
-        /// [`ImportEvent::IdentifyStateChanged`].
-        priority: bae_catalogs::rate_limiter::CallPriority,
-    },
-}
-
-/// Search results grouped by release group, with the per-release library dupe
-/// statuses the UI looks up by release id.
-#[derive(Debug, Clone)]
-pub struct GroupedSearchResults {
-    pub groups: Vec<bae_identify::release_group::ReleaseGroup>,
-    pub statuses: Vec<bae_db::LibraryStatus>,
-}
 
 /// Handle for sending import requests and subscribing to progress updates.
 #[derive(Clone)]
@@ -137,91 +90,6 @@ pub struct ImportServiceHandle {
     /// Cancelled when the library closes, before its store does: every list
     /// the handle opens ends with it.
     closing: tokio_util::sync::CancellationToken,
-}
-
-#[derive(Debug, Clone)]
-pub enum ScanEvent {
-    /// The full ordered watched-folder list, sent at load and after each
-    /// change.
-    WatchedFoldersChanged {
-        folders: Vec<WatchedFolder>,
-    },
-    FolderCandidate {
-        candidate: FolderCandidate,
-        /// The write this announces listed the release for the first time —
-        /// new to the library, or listed anew by a person's decision about
-        /// how its folder reads — while identification runs on its own.
-        found_while_automatic: bool,
-    },
-    CandidateDiscovered {
-        candidate: FolderCandidate,
-    },
-    /// A folder that looks like a release but failed validation (corrupt or
-    /// empty audio, corrupt image, a CUE sheet naming missing audio), keyed by
-    /// its folder path.
-    InvalidCandidate(InvalidCandidate),
-    /// A candidate is gone: a rescan no longer finds it, or its watched folder
-    /// was removed (one event per candidate).
-    CandidateRemoved {
-        candidate_key: crate::CandidateKey,
-    },
-    /// A person skipped or unskipped a candidate.
-    CandidateSkipChanged {
-        candidate_key: crate::CandidateKey,
-        skipped: bool,
-    },
-    /// A person bound one of a candidate's track sheets to an audio file, or
-    /// cleared the binding. Carries the re-derived candidate, since a bound
-    /// sheet is a different disc, and says its stored identify verdict was
-    /// cleared.
-    CandidateBindingChanged {
-        candidate: FolderCandidate,
-    },
-    /// The candidate's metadata draft, its provenance, or its release link
-    /// changed.
-    CandidateMetadataChanged {
-        candidate_key: crate::CandidateKey,
-    },
-    FolderScanStatusChanged {
-        status: WatchedFolderScanStatus,
-    },
-    Finished,
-}
-
-/// Commands to the folder scan coordinator.
-pub(crate) enum WatcherCommand {
-    /// Read every watched folder the store lists.
-    RescanAll,
-    Rescan(std::path::PathBuf),
-    Refresh {
-        path: std::path::PathBuf,
-        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
-    },
-    /// Read one folder as a person decided. `completion` hears the keys of
-    /// the releases the folder now reads as once they are stored, or why they
-    /// were not.
-    SetFolderReleaseDecision {
-        target: (FolderReleaseDecisionKey, FolderReleaseDecision),
-        completion: tokio::sync::oneshot::Sender<Result<Vec<crate::CandidateKey>, String>>,
-    },
-    /// Stop watching `roots` and, given `parent` (the folder holding exactly
-    /// them), watch it in their place. `completion` hears once the change is
-    /// stored, or why it was not.
-    Remove {
-        roots: Vec<std::path::PathBuf>,
-        parent: Option<std::path::PathBuf>,
-        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
-    },
-    /// Take `report` as if the filesystem watch had sent it; `taken` hears
-    /// once the reads it calls for are asked for.
-    #[cfg(test)]
-    WatchReport {
-        report: crate::watching::WatchReport,
-        taken: tokio::sync::oneshot::Sender<()>,
-    },
-    Shutdown {
-        completion: std::sync::mpsc::Sender<()>,
-    },
 }
 
 impl ImportServiceHandle {

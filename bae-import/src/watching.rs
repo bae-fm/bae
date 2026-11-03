@@ -3,7 +3,7 @@
 //! reports, and the periodic check of folders on network volumes), starting
 //! each pass over a root (`crate::scan_passes`) or its removal.
 
-use crate::handle::{ScanEvent, WatcherCommand};
+use crate::handle::ScanEvent;
 use crate::scan_passes::{
     spawn_root_pass, RootScanCompletion, RootScanStarter, RootScanTask, ScanServices,
 };
@@ -24,7 +24,7 @@ mod watch_batches;
 
 use active_roots::{ActiveRoots, RemovalOutcome};
 pub(crate) use active_roots::{FolderReadingRequest, RootPass};
-pub(crate) use coordinator::start_watcher;
+pub(crate) use coordinator::{start_watcher, WatcherCommand};
 use folder_watcher::FolderWatchSnapshot;
 pub(crate) use folder_watcher::FolderWatcher;
 use root_backend::{RootRemovalBackend, ServiceRootRemovalBackend};

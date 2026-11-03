@@ -1,7 +1,98 @@
-//! The import event channel: every event recorded in the candidate runtime,
-//! then handed to every reader, and the readers the handle gives out.
+//! The import event channel: the events the import service emits, each
+//! recorded in the candidate runtime, then handed to every reader, and the
+//! readers the handle gives out.
 
 use super::*;
+
+/// Every event the import service emits, on one channel.
+#[derive(Debug, Clone)]
+pub enum ImportEvent {
+    Scan(ScanEvent),
+    ImportProgress {
+        candidate_key: crate::CandidateKey,
+        progress: ImportProgress,
+    },
+    /// An identify run's new state, in full; the signals toolbar shows a
+    /// projection of it.
+    IdentifyStateChanged {
+        candidate_key: crate::CandidateKey,
+        /// The run this state belongs to. A settled run keeps reporting, so
+        /// a consumer waiting on a later run of the candidate matches on this,
+        /// not the key.
+        run: crate::IdentifyRunId,
+        state: bae_identify::IdentifyState,
+        /// The run's priority, which tells a candidate a person opened from
+        /// one the automatic admission picked up.
+        priority: bae_catalogs::rate_limiter::CallPriority,
+    },
+    /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
+    /// classified text), sent on every change of the extraction, including an
+    /// abort, which fails every signal.
+    SignalsUpdated {
+        candidate_key: crate::CandidateKey,
+        /// The identify run this snapshot was extracted for. Runs of one
+        /// candidate share its key, so a run's verdict is stored beside only
+        /// the snapshots that name that run.
+        run: crate::IdentifyRunId,
+        signals: bae_identify::signals::Signals,
+        /// Where the artwork pass feeding the snapshot has got to, shown as the
+        /// run's step. Kept outside the snapshot because a stored snapshot has
+        /// no pass.
+        artwork: bae_identify::signals::ArtworkScan,
+        /// The extraction's priority, as in
+        /// [`ImportEvent::IdentifyStateChanged`].
+        priority: bae_catalogs::rate_limiter::CallPriority,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum ScanEvent {
+    /// The full ordered watched-folder list, sent at load and after each
+    /// change.
+    WatchedFoldersChanged {
+        folders: Vec<WatchedFolder>,
+    },
+    FolderCandidate {
+        candidate: FolderCandidate,
+        /// The write this announces listed the release for the first time —
+        /// new to the library, or listed anew by a person's decision about
+        /// how its folder reads — while identification runs on its own.
+        found_while_automatic: bool,
+    },
+    CandidateDiscovered {
+        candidate: FolderCandidate,
+    },
+    /// A folder that looks like a release but failed validation (corrupt or
+    /// empty audio, corrupt image, a CUE sheet naming missing audio), keyed by
+    /// its folder path.
+    InvalidCandidate(InvalidCandidate),
+    /// A candidate is gone: a rescan no longer finds it, or its watched folder
+    /// was removed (one event per candidate).
+    CandidateRemoved {
+        candidate_key: crate::CandidateKey,
+    },
+    /// A person skipped or unskipped a candidate.
+    CandidateSkipChanged {
+        candidate_key: crate::CandidateKey,
+        skipped: bool,
+    },
+    /// A person bound one of a candidate's track sheets to an audio file, or
+    /// cleared the binding. Carries the re-derived candidate, since a bound
+    /// sheet is a different disc, and says its stored identify verdict was
+    /// cleared.
+    CandidateBindingChanged {
+        candidate: FolderCandidate,
+    },
+    /// The candidate's metadata draft, its provenance, or its release link
+    /// changed.
+    CandidateMetadataChanged {
+        candidate_key: crate::CandidateKey,
+    },
+    FolderScanStatusChanged {
+        status: WatchedFolderScanStatus,
+    },
+    Finished,
+}
 
 /// The import event channel and the candidate runtime it records into.
 ///

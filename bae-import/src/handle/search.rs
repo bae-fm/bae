@@ -4,6 +4,14 @@ use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_catalogs::search::SearchQuery;
 
+/// Search results grouped by release group, with the per-release library dupe
+/// statuses the UI looks up by release id.
+#[derive(Debug, Clone)]
+pub struct GroupedSearchResults {
+    pub groups: Vec<bae_identify::release_group::ReleaseGroup>,
+    pub statuses: Vec<bae_db::LibraryStatus>,
+}
+
 impl ImportServiceHandle {
     /// Submit a candidate's typed search, stored before any source is asked,
     /// over whatever search the candidate had: one search per candidate at a
