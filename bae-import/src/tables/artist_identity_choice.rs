@@ -257,3 +257,7 @@ impl ImportTables {
             .await
     }
 }
+
+#[cfg(test)]
+#[path = "artist_identity_choice_tests.rs"]
+mod tests;

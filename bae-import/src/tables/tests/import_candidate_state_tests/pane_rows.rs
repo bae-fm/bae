@@ -1,9 +1,3 @@
-#[path = "pane_rows/artist_identity_conflicts.rs"]
-mod artist_identity_conflicts;
-
-// What the pane stores under a candidate: the settled signals, the failure an import left, the cover, and the metadata and track
-// rows the user typed.
-
 use crate::ImportFailure;
 
 #[tokio::test]

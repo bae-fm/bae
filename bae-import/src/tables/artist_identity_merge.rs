@@ -279,3 +279,7 @@ fn merge_local_artist_references(
     )?;
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "artist_identity_merge_tests.rs"]
+mod tests;

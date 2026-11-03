@@ -1,7 +1,8 @@
-#[path = "artist_identity_choices.rs"]
-mod choices;
+//! Consolidating two library artists after an import's identity conflict.
 
 use super::*;
+use crate::tables::import_state::tests::*;
+use bae_db::test_fixtures::{empty_db, fixed_now};
 
 #[tokio::test]
 async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_the_failure() {
@@ -154,14 +155,15 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     tables.save_import_candidate_failure(&hash, 0, &failure).await.unwrap();
     tables.save_import_candidate_failure(&pending_hash, 0, &failure).await.unwrap();
 
-    tables.choose_import_artist_identity(
-        &hash,
-        0,
-        crate::ArtistIdentityConflictChoice::SameArtist,
-        &coven::UuidIds,
-    )
-    .await
-    .unwrap();
+    tables
+        .choose_import_artist_identity(
+            &hash,
+            0,
+            crate::ArtistIdentityConflictChoice::SameArtist,
+            &coven::UuidIds,
+        )
+        .await
+        .unwrap();
 
     let survivor = db.find_artist_by_id(&discogs.id).await.unwrap().unwrap();
     assert_eq!(survivor.discogs_artist_id.as_deref(), Some("discogs-1"));
@@ -279,18 +281,20 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
     db.insert_artist(&musicbrainz).await.unwrap();
     store_artist_image(&db, &musicbrainz.id, b"absorbed").await;
     let absorbed = artist_image_file(&db, &musicbrainz.id).await.id();
-    tables.save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
+    tables
+        .save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
         .await
         .unwrap();
 
-    tables.choose_import_artist_identity(
-        &hash,
-        0,
-        crate::ArtistIdentityConflictChoice::SameArtist,
-        &coven::UuidIds,
-    )
-    .await
-    .unwrap();
+    tables
+        .choose_import_artist_identity(
+            &hash,
+            0,
+            crate::ArtistIdentityConflictChoice::SameArtist,
+            &coven::UuidIds,
+        )
+        .await
+        .unwrap();
 
     assert_eq!(artist_image_file(&db, &discogs.id).await.id(), absorbed);
     assert_eq!(
@@ -331,18 +335,20 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
-    tables.save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
+    tables
+        .save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
         .await
         .unwrap();
 
-    tables.choose_import_artist_identity(
-        &hash,
-        0,
-        crate::ArtistIdentityConflictChoice::SameArtist,
-        &coven::UuidIds,
-    )
-    .await
-    .expect_err("a two-artist merge must not absorb an unrelated provider identity");
+    tables
+        .choose_import_artist_identity(
+            &hash,
+            0,
+            crate::ArtistIdentityConflictChoice::SameArtist,
+            &coven::UuidIds,
+        )
+        .await
+        .expect_err("a two-artist merge must not absorb an unrelated provider identity");
 
     assert!(db.find_artist_by_id(&discogs.id).await.unwrap().is_some());
     assert!(db.find_artist_by_id(&musicbrainz.id).await.unwrap().is_some());

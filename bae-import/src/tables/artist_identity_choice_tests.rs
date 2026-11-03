@@ -1,7 +1,13 @@
+//! Per-import answers to conflicting artist identities: what each answer
+//! makes of the imported credits, and when it stops holding.
+
 use super::*;
-use bae_db::ArtistCredits;
+use crate::tables::import_state::tests::*;
 use crate::tables::{ImportCommitGuard, ImportRows, NewArtistImages};
 use crate::ArtistIdentityConflictChoice as Choice;
+use bae_db::test_fixtures::{empty_db, fixed_now};
+use bae_db::ArtistCredits;
+use bae_util::content_type::ContentType;
 
 async fn fixture() -> (Database, tempfile::TempDir, String, DbArtist, DbArtist, DbArtist) {
     let (db, tmp) = empty_db().await;
@@ -28,7 +34,8 @@ async fn fixture() -> (Database, tempfile::TempDir, String, DbArtist, DbArtist, 
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
-    tables.save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
+    tables
+        .save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
         .await
         .unwrap();
     (db, tmp, hash, discogs, musicbrainz, incoming)
@@ -55,10 +62,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             assert!(tables.resolve_artists(&credits, &[], Some(&hash)).await.is_err());
             let pane = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
             assert!(pane.failure.is_some());
-            assert_eq!(
-                pane.session.unwrap().presentation,
-                crate::MetadataPresentation::FindOnline
-            );
+            assert_eq!(pane.session.unwrap().presentation, crate::MetadataPresentation::FindOnline);
             assert_eq!(db.find_artist_by_id(&discogs.id).await.unwrap().unwrap(), discogs);
             assert_eq!(db.find_artist_by_id(&musicbrainz.id).await.unwrap().unwrap(), musicbrainz);
             continue;
@@ -130,58 +134,59 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
         };
         let expected_new: Vec<_> =
             resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
-        tables.finalize_import_atomic(
-            ImportCommitGuard::UncheckedTestSetup { content_hash: Some(hash.clone()) },
-            Some(&album),
-            &release,
-            &tracks,
-            ImportRows {
-                mediums: &[bae_db::DbReleaseMedium::new_test(&release.id)],
-                artists: ArtistCredits { credits: &credits, picked: &[] },
-                album_artists: &[DbAlbumArtist::new(&album.id, &incoming.id, 0, now)],
-                track_artists: &[DbTrackArtist::new(&track.id, &incoming.id, 0, now)],
-                works: std::slice::from_ref(&work),
-                track_works: &[DbTrackWork::new(
-                    &track.id,
-                    &work.id,
-                    0,
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
-                    bae_util::test_ids::test_uuid("choice-track-work"),
-                    now,
-                )],
-                work_artists: &[DbWorkArtist::new(
-                    &work.id,
-                    &incoming.id,
-                    0,
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
-                    now,
-                )],
-                release_artist_roles: &[DbReleaseArtistRole::new(
-                    &release.id,
-                    &incoming.id,
-                    0,
-                    bae_catalogs::catalog::Catalog::Discogs,
-                    Some("Producer".into()),
-                    bae_util::test_ids::test_uuid("choice-release-role"),
-                    now,
-                )],
-                track_artist_roles: &[DbTrackArtistRole::new(
-                    &track.id,
-                    &incoming.id,
-                    0,
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
-                    Some("arranger".into()),
-                    bae_util::test_ids::test_uuid("choice-track-role"),
-                    now,
-                )],
-                ..Default::default()
-            },
-            Vec::new(),
-            None,
-            NewArtistImages { expected_new_artists: &expected_new, images: &[] },
-        )
-        .await
-        .unwrap();
+        tables
+            .finalize_import_atomic(
+                ImportCommitGuard::UncheckedTestSetup { content_hash: Some(hash.clone()) },
+                Some(&album),
+                &release,
+                &tracks,
+                ImportRows {
+                    mediums: &[bae_db::DbReleaseMedium::new_test(&release.id)],
+                    artists: ArtistCredits { credits: &credits, picked: &[] },
+                    album_artists: &[DbAlbumArtist::new(&album.id, &incoming.id, 0, now)],
+                    track_artists: &[DbTrackArtist::new(&track.id, &incoming.id, 0, now)],
+                    works: std::slice::from_ref(&work),
+                    track_works: &[DbTrackWork::new(
+                        &track.id,
+                        &work.id,
+                        0,
+                        bae_catalogs::catalog::Catalog::MusicBrainz,
+                        bae_util::test_ids::test_uuid("choice-track-work"),
+                        now,
+                    )],
+                    work_artists: &[DbWorkArtist::new(
+                        &work.id,
+                        &incoming.id,
+                        0,
+                        bae_catalogs::catalog::Catalog::MusicBrainz,
+                        now,
+                    )],
+                    release_artist_roles: &[DbReleaseArtistRole::new(
+                        &release.id,
+                        &incoming.id,
+                        0,
+                        bae_catalogs::catalog::Catalog::Discogs,
+                        Some("Producer".into()),
+                        bae_util::test_ids::test_uuid("choice-release-role"),
+                        now,
+                    )],
+                    track_artist_roles: &[DbTrackArtistRole::new(
+                        &track.id,
+                        &incoming.id,
+                        0,
+                        bae_catalogs::catalog::Catalog::MusicBrainz,
+                        Some("arranger".into()),
+                        bae_util::test_ids::test_uuid("choice-track-role"),
+                        now,
+                    )],
+                    ..Default::default()
+                },
+                Vec::new(),
+                None,
+                NewArtistImages { expected_new_artists: &expected_new, images: &[] },
+            )
+            .await
+            .unwrap();
         let expected = chosen.clone();
         db.read(move |sql| {
             for table in [
@@ -237,7 +242,8 @@ async fn a_stale_artist_identity_choice_changes_nothing() {
     ] {
         let (db, _tmp, hash, discogs, musicbrainz, incoming) = fixture().await;
         let tables = crate::tables::ImportTables::new(db.clone());
-        tables.choose_import_artist_identity(&hash, 1, choice, &coven::UuidIds)
+        tables
+            .choose_import_artist_identity(&hash, 1, choice, &coven::UuidIds)
             .await
             .expect_err("an answer to an old draft cannot change this one");
         assert_eq!(db.find_artist_by_id(&discogs.id).await.unwrap().unwrap(), discogs);
@@ -251,7 +257,8 @@ async fn a_stale_artist_identity_choice_changes_nothing() {
 async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
     let (db, _tmp, hash, discogs, _musicbrainz, incoming) = fixture().await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    tables.choose_import_artist_identity(&hash, 0, Choice::DiscogsArtist, &coven::UuidIds)
+    tables
+        .choose_import_artist_identity(&hash, 0, Choice::DiscogsArtist, &coven::UuidIds)
         .await
         .unwrap();
     crate::CandidatePreparations::new(db.clone())
@@ -259,10 +266,15 @@ async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
         .await
         .unwrap();
     assert_eq!(
-        tables.resolve_artists(std::slice::from_ref(&incoming), &[], Some(&hash)).await.unwrap().ids,
+        tables
+            .resolve_artists(std::slice::from_ref(&incoming), &[], Some(&hash))
+            .await
+            .unwrap()
+            .ids,
         [discogs.id]
     );
-    let mut prep = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+    let mut prep =
+        tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     let expected = crate::tables::CandidateSaveExpectation {
         edit_revision: prep.file_edits.revision,
         metadata_revision: prep.metadata_revision,
@@ -301,11 +313,7 @@ async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picke
     };
     let preview = db
         .read(move |sql| {
-            crate::tables::artist_identity_choice::resolve_import_credits_on(
-                &sql,
-                &hash,
-                [&credit],
-            )
+            crate::tables::artist_identity_choice::resolve_import_credits_on(&sql, &hash, [&credit])
         })
         .await
         .unwrap();
