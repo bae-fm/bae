@@ -24,10 +24,8 @@ pub mod candidate_search;
 pub(crate) mod candidates;
 #[cfg(desktop)]
 mod catalog_sessions;
-/// Reading a catalog release against a candidate's audio, once.
 #[cfg(desktop)]
 pub mod cover_art;
-/// Reading a CUE sheet and the FLAC it describes.
 #[doc(hidden)]
 #[cfg(desktop)]
 pub mod cue_flac;
@@ -35,7 +33,6 @@ pub mod cue_flac;
 pub mod discid;
 #[cfg(desktop)]
 mod discid_hash;
-/// A Discogs tracklist split into the mediums its positions name.
 mod error;
 #[cfg(desktop)]
 pub mod extraction;
@@ -79,7 +76,6 @@ mod loudness;
 pub mod loudness_meter;
 #[cfg(desktop)]
 pub mod mapping;
-/// Which of a release's mediums a folder's audio is a rip of.
 #[cfg(desktop)]
 pub mod pane;
 #[cfg(desktop)]
@@ -88,7 +84,6 @@ pub mod preparation;
 pub mod preparations;
 #[cfg(desktop)]
 pub mod probe;
-/// What one reading of a source says a release is, as plain values.
 #[cfg(desktop)]
 pub mod reading_draft;
 #[cfg(desktop)]

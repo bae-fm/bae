@@ -1,3 +1,5 @@
+//! Reading a CUE sheet and the FLAC it describes.
+
 use std::path::Path;
 use thiserror::Error;
 use tracing::warn;
