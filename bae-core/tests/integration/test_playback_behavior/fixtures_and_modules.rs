@@ -59,7 +59,7 @@ async fn seek_past_end_of_track_signals_rather_than_hanging() {
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
 
     let signaled =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(8), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(8), |event| {
             matches!(
                 event,
                 PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }

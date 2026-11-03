@@ -275,11 +275,13 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     playback_handle.play(track1.id.clone());
 
     let playback_duration_ms =
-        support::next_matching(&mut progress_rx, Duration::from_secs(5), |event| match event {
-            bae_core::playback::PlaybackProgress::StateChanged {
-                state: bae_core::playback::PlaybackState::Playing { track },
-            } if track.track_id == track1.id => Some(track.duration_ms),
-            _ => None,
+        bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(5), |event| {
+            match event {
+                bae_core::playback::PlaybackProgress::StateChanged {
+                    state: bae_core::playback::PlaybackState::Playing { track },
+                } if track.track_id == track1.id => Some(track.duration_ms),
+                _ => None,
+            }
         })
         .await;
 

@@ -87,7 +87,7 @@ async fn test_high_sample_rate_position_calculation() {
     // Wait for track to complete, keeping the last position seen before it.
     let mut final_position_ms: Option<i64> = None;
     let track_completed =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
             match event {
                 PlaybackProgress::PositionUpdate { position_ms, .. } => {
                     final_position_ms = Some(position_ms);
@@ -165,7 +165,7 @@ async fn test_seek_lands_near_target_position() {
 
     // Wait for track to complete and get decode stats
     let decode_stats =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
             match event {
                 PlaybackProgress::DecodeStats {
                     error_count,
@@ -224,7 +224,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 
     // Wait for playback to start
     let started =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
             matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
                 .then_some(())
         })
@@ -242,7 +242,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // advances into the next track within one persistent stream, so it reports
     // its decode stats at the boundary rather than via TrackCompleted.
     let decoded_samples =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(30), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(30), |event| {
             match event {
                 PlaybackProgress::DecodeStats { track_id: ref tid, samples_decoded, .. }
                     if *tid == track_id =>

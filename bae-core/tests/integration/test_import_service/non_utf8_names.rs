@@ -39,7 +39,7 @@ async fn scanned_releases(
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     let mut releases = Vec::new();
-    support::next_matching(&mut scan_rx, HANG_GUARD, |event| match event {
+    bae_util::test_channels::next_matching(&mut scan_rx, HANG_GUARD, |event| match event {
         ScanEvent::FolderCandidate { candidate, .. } => {
             releases.push(candidate);
             None

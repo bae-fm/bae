@@ -410,7 +410,7 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
     playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(40)));
 
     let mut saw_loading = false;
-    let saw_seeked = support::next_matching(
+    let saw_seeked = bae_util::test_channels::next_matching(
         &mut playback.progress_rx,
         Duration::from_secs(20),
         |event| match event {
@@ -462,7 +462,7 @@ async fn seek_past_end_of_track_signals_rather_than_hanging_over_sparse_buffer()
     playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
 
     let signaled =
-        support::next_matching(&mut playback.progress_rx, Duration::from_secs(15), |event| {
+        bae_util::test_channels::next_matching(&mut playback.progress_rx, Duration::from_secs(15), |event| {
             matches!(
                 event,
                 PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }

@@ -376,7 +376,7 @@ async fn test_cue_ape_seek() {
 
     // Wait for playback to start
     let started =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
             matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
                 .then_some(())
         })

@@ -58,7 +58,7 @@ pub use library::{
     setup_test_library_with_album_dir, start_test_services, test_library_from_handle, tracing_init,
 };
 pub use playback::{
-    next_capture_stream, next_matching, start_capture_playback, start_capture_playback_with_clock,
+    next_capture_stream, start_capture_playback, start_capture_playback_with_clock,
     start_playback_on, wait_for_seek, wait_until_playing, wall_playback_clock, CaptureStreamRx,
     TestAudioDevice,
 };

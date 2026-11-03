@@ -51,7 +51,7 @@ async fn test_cue_ape_next_track() {
     let max_alignment = sample_rate as usize * channels * 2;
 
     let track2_sample_count =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
             match event {
                 PlaybackProgress::DecodeStats { track_id, samples_decoded, .. }
                     if track_id == track2_id =>

@@ -662,7 +662,7 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     let mut saw_error = false;
     // `Some(true)` means the seek landed, `Some(false)` that playback stopped.
     let outcome =
-        support::next_matching(&mut progress_rx, Duration::from_secs(8), |event| match event {
+        bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(8), |event| match event {
             PlaybackProgress::Seeked { track_id, .. } if track_id == first => Some(true),
             PlaybackProgress::PlaybackError { .. } => {
                 saw_error = true;

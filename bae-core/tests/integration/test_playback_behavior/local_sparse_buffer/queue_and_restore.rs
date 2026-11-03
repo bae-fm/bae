@@ -280,7 +280,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
     playback.playback_handle.set_volume(0.3);
     playback.playback_handle.set_muted(true);
     let mut progress_rx = playback.playback_handle.subscribe_progress();
-    support::next_matching(&mut progress_rx, Duration::from_secs(3), |event| match event {
+    bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(3), |event| match event {
         PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
         _ => None,
     })
@@ -299,7 +299,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
     // after this subscribes.
     let mut progress_rx = handle.subscribe_progress();
     let mut announced = (None, None);
-    support::next_matching(&mut progress_rx, Duration::from_secs(20), |event| {
+    bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(20), |event| {
         match event {
             PlaybackProgress::VolumeChanged { volume } => announced.0 = Some(volume),
             PlaybackProgress::MuteChanged { is_muted } => announced.1 = Some(is_muted),

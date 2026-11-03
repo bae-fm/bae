@@ -334,11 +334,12 @@ fn get_process_cpu_time() -> Duration {
 
 /// Wait (up to `within`) for playback to report it is playing.
 async fn await_playing(fixture: &mut PlaybackTestFixture, within: Duration, label: &str) {
-    let started = support::next_matching(&mut fixture.progress_rx, within, |event| {
-        matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
-            .then_some(())
-    })
-    .await;
+    let started =
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, within, |event| {
+            matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
+                .then_some(())
+        })
+        .await;
     assert!(started.is_some(), "{label}: playback did not start within {within:?}");
 }
 

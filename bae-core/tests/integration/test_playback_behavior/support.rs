@@ -25,7 +25,7 @@ async fn wait_for_state_on<F>(
 where
     F: Fn(&PlaybackState) -> bool,
 {
-    support::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
         PlaybackProgress::StateChanged { state } if predicate(&state) => Some(state),
         _ => None,
     })
@@ -43,7 +43,7 @@ where
     F: Fn(&PlaybackState) -> bool,
 {
     let mut states = Vec::new();
-    support::next_matching(progress_rx, timeout_duration, |event| {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
         let PlaybackProgress::StateChanged { state } = event else {
             return None;
         };
@@ -61,7 +61,7 @@ async fn next_position(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> Option<i64> {
-    support::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, .. } => Some(position_ms),
         _ => None,
     })
@@ -92,7 +92,7 @@ async fn wait_for_track_position_where(
     track_id: &str,
     reached: impl Fn(i64) -> bool,
 ) -> Option<i64> {
-    support::next_matching(progress_rx, POSITION_BACKSTOP, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, POSITION_BACKSTOP, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. }
             if tid == track_id && reached(position_ms) =>
         {
@@ -111,7 +111,7 @@ async fn wait_for_position_advance(
     let anchor = next_position(progress_rx, Duration::from_secs(30))
         .await
         .expect("no position update arrived within 30s of requesting one");
-    support::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > anchor => {
             Some(position_ms)
         }
@@ -170,7 +170,7 @@ async fn wait_for_seeked_on(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> Option<u64> {
-    support::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
         PlaybackProgress::Seeked { position_ms, .. } => Some(
             u64::try_from(position_ms)
                 .expect("a seek target cannot be inside the pregap countdown"),
@@ -198,7 +198,7 @@ async fn settled_events_on(
 ) -> Vec<PlaybackProgress> {
     handle.set_volume(SENTINEL_VOLUME);
     let mut events = Vec::new();
-    support::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
         PlaybackProgress::VolumeChanged { volume } if volume == SENTINEL_VOLUME => Some(()),
         other => {
             events.push(other);
@@ -229,7 +229,7 @@ async fn wait_for_playing_capturing_queue_on(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
-    let playing = support::next_matching(progress_rx, timeout_duration, |event| {
+    let playing = bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
         matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
             .then_some(())
     })
@@ -268,7 +268,7 @@ async fn wait_for_track_position(
     track_id: &str,
     timeout_duration: Duration,
 ) -> Option<i64> {
-    support::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. } if tid == track_id => {
             Some(position_ms)
         }
@@ -282,7 +282,7 @@ async fn wait_for_mute(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> bool {
-    support::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
         PlaybackProgress::MuteChanged { is_muted } => Some(is_muted),
         _ => None,
     })
@@ -316,7 +316,7 @@ async fn observe_boundary(
         reached_incoming: false,
         decode_errors: 0,
     };
-    support::next_matching(progress_rx, timeout_duration, |event| {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
         match event {
             PlaybackProgress::DecodeStats { track_id, error_count, .. } => {
                 outcome.decode_errors += error_count;
@@ -484,7 +484,7 @@ impl PlaybackTestFixture {
     }
     /// Wait for a position update with timeout (returns position in ms)
     async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {
-        support::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
+        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
             PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
                 u64::try_from(position_ms)
                     .expect("this helper expects playback at or after track start"),
@@ -502,7 +502,7 @@ impl PlaybackTestFixture {
         timeout_duration: Duration,
     ) -> Option<u64> {
         let floor = i64::try_from(floor_ms).expect("position floor exceeds i64 range");
-        support::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
+        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
             PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => Some(
                 u64::try_from(position_ms)
                     .expect("position past a nonnegative floor is nonnegative"),

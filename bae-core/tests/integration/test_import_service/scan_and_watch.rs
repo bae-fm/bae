@@ -16,7 +16,7 @@ async fn folder_scan_produces_candidates() {
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
 
     let mut candidates = vec![];
-    support::next_matching(&mut scan_rx, HANG_GUARD, |event| match event {
+    bae_util::test_channels::next_matching(&mut scan_rx, HANG_GUARD, |event| match event {
         ScanEvent::FolderCandidate { candidate, .. } => {
             candidates.push(candidate);
             None
@@ -102,7 +102,7 @@ async fn scan_batch_until(
 ) -> ScanBatch {
     let mut added = Vec::new();
     let mut removed = Vec::new();
-    support::next_matching(rx, HANG_GUARD, |event| {
+    bae_util::test_channels::next_matching(rx, HANG_GUARD, |event| {
         let finished = done(&event);
         match &event {
             ScanEvent::FolderCandidate { candidate: c, .. } => {
@@ -173,7 +173,7 @@ async fn wait_for_scan_event(
     what: &str,
     mut pred: impl FnMut(&ScanEvent) -> bool,
 ) {
-    support::next_matching(rx, HANG_GUARD, |event| pred(&event).then_some(()))
+    bae_util::test_channels::next_matching(rx, HANG_GUARD, |event| pred(&event).then_some(()))
         .await
         .unwrap_or_else(|| panic!("timed out waiting for {what}"));
 }
@@ -322,7 +322,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     .unwrap();
     let mut events = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
-    let error = support::next_matching(&mut events, HANG_GUARD, |event| match event {
+    let error = bae_util::test_channels::next_matching(&mut events, HANG_GUARD, |event| match event {
         ScanEvent::FolderScanStatusChanged { status } if status.watched_folder_path == root_key => {
             match status.status {
                 bae_core::import::FolderScanStatus::Failed { error } => Some(error),

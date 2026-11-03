@@ -79,14 +79,18 @@ async fn scan(
     let start = Instant::now();
     services.import_add_watched_folder(root.to_path_buf()).await.unwrap();
     let mut announced = Vec::new();
-    support::next_matching(events, Duration::from_secs(3_600), |event| match event {
-        ScanEvent::FolderCandidate { .. } => {
-            announced.push(start.elapsed());
-            None
-        }
-        ScanEvent::Finished => Some(()),
-        _ => None,
-    })
+    bae_util::test_channels::next_matching(
+        events,
+        Duration::from_secs(3_600),
+        |event| match event {
+            ScanEvent::FolderCandidate { .. } => {
+                announced.push(start.elapsed());
+                None
+            }
+            ScanEvent::Finished => Some(()),
+            _ => None,
+        },
+    )
     .await
     .expect("the scan finishes");
     (announced, start.elapsed())

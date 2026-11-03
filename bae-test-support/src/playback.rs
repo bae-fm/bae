@@ -1,38 +1,5 @@
 //! Waiting on a progress stream, and playback running over a capture sink.
 
-/// Read events off `rx` until `matches` returns a value, discarding the ones it
-/// declines, and give up after `timeout_duration` (or when the channel closes)
-/// with `None`.
-///
-/// The drain loop every playback and import test wants. `matches` takes each
-/// event by value, so it can move data out of the one it accepts, and it is
-/// `FnMut`, so it can also accumulate across the events it declines — which is
-/// what a "watch the whole crossing, then report what was seen" wait needs.
-pub async fn next_matching<E, T>(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<E>,
-    timeout_duration: std::time::Duration,
-    mut matches: impl FnMut(E) -> Option<T>,
-) -> Option<T> {
-    let deadline = std::time::Instant::now() + timeout_duration;
-    loop {
-        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
-        if remaining.is_zero() {
-            return None;
-        }
-        match tokio::time::timeout(remaining, rx.recv()).await {
-            Ok(Some(event)) => {
-                if let Some(found) = matches(event) {
-                    return Some(found);
-                }
-            }
-            // The channel closed: no later event can arrive, so waiting out the
-            // deadline would only spin.
-            Ok(None) => return None,
-            Err(_) => return None,
-        }
-    }
-}
-
 /// Wait for playback to report `track_id` as the playing track, discarding
 /// every other progress event, and return whether it arrived in time.
 pub async fn wait_until_playing(
@@ -41,7 +8,7 @@ pub async fn wait_until_playing(
     timeout_duration: std::time::Duration,
 ) -> bool {
     use bae_core::playback::{PlaybackProgress, PlaybackState};
-    next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
         PlaybackProgress::StateChanged { state: PlaybackState::Playing { track } }
             if track.track_id == track_id =>
         {
@@ -60,14 +27,17 @@ pub async fn wait_for_seek(
     track_id: &str,
 ) {
     use bae_core::playback::PlaybackProgress;
-    let seeked =
-        next_matching(progress_rx, std::time::Duration::from_secs(10), |event| match event {
+    let seeked = bae_util::test_channels::next_matching(
+        progress_rx,
+        std::time::Duration::from_secs(10),
+        |event| match event {
             PlaybackProgress::Seeked { track_id: seeked_id, .. } if seeked_id == track_id => {
                 Some(())
             }
             _ => None,
-        })
-        .await;
+        },
+    )
+    .await;
     assert!(seeked.is_some(), "Should receive Seeked event");
 }
 

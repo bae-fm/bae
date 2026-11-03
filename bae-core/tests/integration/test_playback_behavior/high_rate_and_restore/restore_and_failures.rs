@@ -143,7 +143,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
         .playback_handle
         .preview_play(bae_track_audio::PreviewTarget::whole_file(preview_path));
     let saw_playing =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
             matches!(
                 event,
                 PlaybackProgress::PreviewStateChanged(
@@ -158,7 +158,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
     // Pause — wait for Paused state.
     fixture.playback_handle.preview_toggle_pause();
     let saw_paused =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(3), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(3), |event| {
             matches!(
                 event,
                 PlaybackProgress::PreviewStateChanged(
@@ -175,7 +175,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
     // the explicit emit in handle_preview_seek.
     fixture.playback_handle.preview_seek_by_ratio(0.5);
 
-    let saw_position_update = support::next_matching(
+    let saw_position_update = bae_util::test_channels::next_matching(
         &mut fixture.progress_rx,
         Duration::from_secs(3),
         |event| match event {

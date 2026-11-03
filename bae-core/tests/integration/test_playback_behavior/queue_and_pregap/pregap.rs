@@ -138,7 +138,7 @@ async fn test_cue_flac_seek() {
     let _play_stream = fixture.next_capture_stream().await;
 
     let started =
-        support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
             matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
                 .then_some(())
         })
@@ -226,7 +226,7 @@ async fn seek_lands_at_the_track_time_it_names() {
 
     fixture.playback_handle.seek(TrackTime::from_millis(4_000));
     let seeked =
-        support::next_matching(
+        bae_util::test_channels::next_matching(
             &mut fixture.progress_rx,
             PLAY_START_BACKSTOP,
             |event| match event {
@@ -267,7 +267,7 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
         start_capture_service(library_manager, &database, tokio::runtime::Handle::current()).await;
     let mut progress_rx = handle.subscribe_progress();
     let shown =
-        support::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| match event {
+        bae_util::test_channels::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| match event {
             PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
             _ => None,
         })
