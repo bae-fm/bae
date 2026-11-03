@@ -9,11 +9,8 @@ extension BridgeFolderCheck {
     /// current locale. `nil` for audio no CD holds whose rate is not at hand,
     /// which a sentence stating the rate cannot be written without.
     var localizedText: String? {
-        let template = NSLocalizedString(
-            bridgeFolderCheckKey(folderCheck: self),
-            tableName: "Core",
-            bundle: .main,
-            comment: ""
+        let template = localizedCoreString(
+            bridgeFolderCheckKey(folderCheck: self)
         )
         switch self {
         case .mediumDisagrees(.notCdAudio(let sampleRateHz)):

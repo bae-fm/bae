@@ -248,7 +248,7 @@ struct ReleaseFactsLine: View {
                         .foregroundStyle(.secondary)
                         .allowsHitTesting(false)
                         .accessibilityLabel(
-                            coreString("core.identity.identified")
+                            localizedCoreString("core.identity.identified")
                         )
                 }
                 .padding(.horizontal, ThemeSpace.compact)

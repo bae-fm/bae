@@ -65,21 +65,24 @@ extension BridgeSheetBound {
         switch self {
         case .describes(let container): container.name
         case .describesFiles(let audioFileCount):
-            coreString("ui.import.sheet.audio_files", Int(audioFileCount))
+            localizedCoreString(
+                "ui.import.sheet.audio_files",
+                Int(audioFileCount)
+            )
         case .unresolved(let requested):
             if requested.isEmpty {
-                coreString("ui.import.sheet.describes_nothing")
+                localizedCoreString("ui.import.sheet.describes_nothing")
             }
             else {
-                coreString(
+                localizedCoreString(
                     "ui.import.sheet.asked_for",
                     requested.formatted(.list(type: .and))
                 )
             }
         case .refusedCodec(let codec):
-            coreString(bridgeSheetRefusedCodecKey(), codec)
+            localizedCoreString(bridgeSheetRefusedCodecKey(), codec)
         case .refusedTiming:
-            coreString("core.import.sheet.refused_timing")
+            localizedCoreString("core.import.sheet.refused_timing")
         }
     }
 }

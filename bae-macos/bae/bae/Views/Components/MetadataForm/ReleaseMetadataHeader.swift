@@ -208,7 +208,7 @@ struct ReleasePressingFieldsGrid: View {
                     )
                 }
                 GridRow {
-                    rowLabel(coreString("core.release.media"))
+                    rowLabel(localizedCoreString("core.release.media"))
                     MediaCountsEditor(
                         media: values.pressing.facts.media,
                         write: writer.setPressingFact

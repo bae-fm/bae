@@ -41,7 +41,10 @@ enum ImportEvidence {
 
     /// What hovering one signal badge says, in the user's language.
     static func hoverText(_ evidence: BridgeFileEvidence) -> String {
-        coreString(bridgeFileEvidenceKey(evidence: evidence), evidence.value)
+        localizedCoreString(
+            bridgeFileEvidenceKey(evidence: evidence),
+            evidence.value
+        )
     }
 
     /// What hovering a file tile says when it carries several signal kinds.

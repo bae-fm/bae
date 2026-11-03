@@ -86,7 +86,7 @@ struct ImportMappingSourceCell: View {
     private func damageLine(_ file: BridgeMappingFile) -> String? {
         switch file.role {
         case .damagedImage:
-            coreString("ui.import.mapping.damaged_image")
+            localizedCoreString("ui.import.mapping.damaged_image")
         case .damagedAudio(let damage):
             damage.localizedText
         case .audio, .document, .other:
@@ -134,13 +134,13 @@ struct ImportMappingSourceCell: View {
         .buttonStyle(.plain)
         .help(
             isPreviewing
-                ? coreString("ui.import.slots.stop")
-                : coreString("ui.import.slots.play")
+                ? localizedCoreString("ui.import.slots.stop")
+                : localizedCoreString("ui.import.slots.play")
         )
         .accessibilityLabel(
             isPreviewing
-                ? coreString("ui.import.slots.stop")
-                : coreString("ui.import.slots.play")
+                ? localizedCoreString("ui.import.slots.stop")
+                : localizedCoreString("ui.import.slots.play")
         )
     }
 }

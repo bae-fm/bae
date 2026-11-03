@@ -15,7 +15,7 @@ struct RecordArrow: View {
             .themeIcon(.small)
             .foregroundStyle(.secondary)
             .accessibilityIdentifier("identified-glyph")
-            .accessibilityLabel(coreString("core.identity.identified"))
+            .accessibilityLabel(localizedCoreString("core.identity.identified"))
             .opacity(readFromRecord ? 1 : 0)
             .allowsHitTesting(false)
             .accessibilityHidden(!readFromRecord)

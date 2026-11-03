@@ -6,7 +6,7 @@ extension BridgeLookupFailure {
     /// including the status-vs-no-status split for `provider`; this formats
     /// the HTTP status into it.
     var badgeLine: String {
-        let format = coreString(bridgeLookupFailureKey(failure: self))
+        let format = localizedCoreString(bridgeLookupFailureKey(failure: self))
         if case .provider(let status) = self, let status {
             return String(format: format, NSNumber(value: status).intValue)
         }

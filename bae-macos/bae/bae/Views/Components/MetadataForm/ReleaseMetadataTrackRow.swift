@@ -22,7 +22,7 @@ struct ReleaseMetadataTrackRow: View {
                 .monospacedDigit()
                 .frame(width: ReleaseMetadataTrackColumns.track)
             CommittedTextField(
-                placeholder: coreString("ui.import.slots.untitled"),
+                placeholder: localizedCoreString("ui.import.slots.untitled"),
                 value: track.title,
                 chrome: .inline,
                 fillsWidth: true,
@@ -39,7 +39,7 @@ struct ReleaseMetadataTrackRow: View {
                 .themeText(.body)
                 .monospacedDigit()
                 .accessibilityLabel(
-                    coreString("ui.import.slots.column.length")
+                    localizedCoreString("ui.import.slots.column.length")
                 )
                 .accessibilityValue(duration)
                 .foregroundStyle(
@@ -59,7 +59,7 @@ struct ReleaseMetadataTrackRow: View {
     private var artistField: some View {
         ArtistAssignmentsField(
             assignments: explicitArtists,
-            placeholder: coreString("ui.import.mapping.column.artist"),
+            placeholder: localizedCoreString("ui.import.mapping.column.artist"),
             width: .column,
             inheritsAlbumArtists: inheritsAlbumArtists,
             onUseAlbumArtists: {

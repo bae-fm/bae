@@ -197,8 +197,6 @@ fi
 
 echo "Generating localization String Catalog (Apple)..."
 ./scripts/cargo.sh run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
-    emit --target apple --out-dir bae-macos/bae/bae
-./scripts/cargo.sh run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
     emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
 
 echo "Generating the theme (Apple)..."

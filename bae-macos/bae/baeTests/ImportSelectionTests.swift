@@ -126,7 +126,9 @@ struct ImportSelectionTests {
         #expect(line.contains("Other Album"))
         #expect(
             line.contains(
-                coreString("core.import.error.candidate_being_identified")
+                localizedCoreString(
+                    "core.import.error.candidate_being_identified"
+                )
             )
         )
         #expect(!selection.isRunning)

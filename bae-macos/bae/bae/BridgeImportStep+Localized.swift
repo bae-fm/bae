@@ -13,11 +13,6 @@ extension BridgeImportStep {
         case .running(let phase):
             key = bridgeImportPhaseKey(phase: phase)
         }
-        return NSLocalizedString(
-            key,
-            tableName: "Core",
-            bundle: .main,
-            comment: ""
-        )
+        return localizedCoreString(key)
     }
 }

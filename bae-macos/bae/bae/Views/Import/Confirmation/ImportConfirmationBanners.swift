@@ -206,7 +206,7 @@ struct ImportConfirmationBanners: View {
                     Text(incomingName)
                         .themeText(.strong)
                     Text(
-                        verbatim: coreString(
+                        verbatim: localizedCoreString(
                             "ui.import.\(kind)_identity_conflict.explanation"
                         )
                     )
@@ -222,7 +222,7 @@ struct ImportConfirmationBanners: View {
                             spacing: ThemeSpace.hairline
                         ) {
                             Text(
-                                verbatim: coreString(
+                                verbatim: localizedCoreString(
                                     "ui.import.\(kind)_identity_conflict.\(choice.key)"
                                 )
                             )

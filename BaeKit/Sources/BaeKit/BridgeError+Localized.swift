@@ -1,12 +1,5 @@
 import Foundation
 
-/// Resolve a bae-library message key against the generated `Core` string
-/// table: the one lookup of that table, for every core line BaeKit and the
-/// app show.
-public func localizedCoreString(_ key: String) -> String {
-    NSLocalizedString(key, tableName: "Core", bundle: .module, comment: "")
-}
-
 extension BridgeErrorCategory {
     /// The user-facing line for this category, resolved from the generated
     /// `Core` string table via the key bae-library owns, with the counts, disc

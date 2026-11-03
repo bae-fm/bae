@@ -173,7 +173,7 @@ struct FolderScanProgressIndicator: View {
                 .filterBarControl()
         }
         .buttonStyle(.plain)
-        .help(coreString("ui.import.scan.activity"))
+        .help(localizedCoreString("ui.import.scan.activity"))
         .popover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 ForEach(activity.folders, id: \.watchedFolderPath) { folder in
@@ -182,7 +182,7 @@ struct FolderScanProgressIndicator: View {
                             .lineLimit(1)
                         Spacer(minLength: ThemeSpace.group)
                         Text(
-                            verbatim: coreString(
+                            verbatim: localizedCoreString(
                                 "ui.import.scan.found",
                                 Int(folder.foundCount)
                             )

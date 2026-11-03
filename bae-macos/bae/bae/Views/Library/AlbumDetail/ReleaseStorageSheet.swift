@@ -153,7 +153,7 @@ struct ReleaseStorageSheet: View {
             ) { file in
                 Text(file.originalFilename).lineLimit(1)
             }
-            TableColumn(coreString("core.audio.label")) { file in
+            TableColumn(localizedCoreString("core.audio.label")) { file in
                 // Non-audio files (images, cue) leave the cell empty.
                 if let format = file.audioFormat {
                     Text(format.text)

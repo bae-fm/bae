@@ -22,7 +22,9 @@ struct FindOnlineSearchResults: View {
         VStack(alignment: .leading, spacing: 0) {
             if let unusable = search.unusableBarcode {
                 Label(
-                    coreString(bridgeUnusableBarcodeKey(reason: unusable)),
+                    localizedCoreString(
+                        bridgeUnusableBarcodeKey(reason: unusable)
+                    ),
                     systemImage: "info.circle"
                 )
                 .themeText(.body)

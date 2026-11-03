@@ -332,8 +332,10 @@ private struct ReadOnlyCandidateMappingTable: View {
                 .frame(width: columns.title, alignment: .leading)
             Eyebrow("Artist")
                 .frame(width: columns.artist, alignment: .leading)
-            Eyebrow(verbatim: coreString("ui.import.slots.column.length"))
-                .frame(width: ReleaseMetadataTrackColumns.length)
+            Eyebrow(
+                verbatim: localizedCoreString("ui.import.slots.column.length")
+            )
+            .frame(width: ReleaseMetadataTrackColumns.length)
         }
         .padding(.vertical, ThemeSpace.compact)
     }

@@ -228,7 +228,7 @@ struct ImportReleaseHeader: View {
                 }
                 if commit.untitledTrackCount > 0 {
                     Text(
-                        coreString(
+                        localizedCoreString(
                             "ui.import.commit.unanswered",
                             commit.untitledTrackCount
                         )

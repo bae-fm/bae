@@ -9,11 +9,11 @@ extension BridgeInvalidReason {
         let key = bridgeInvalidReasonKey(reason: self)
         switch self {
         case .sameName(let name):
-            return coreString(key, name)
+            return localizedCoreString(key, name)
         case .damagedAudio(let count):
-            return coreString(key, Int(count))
+            return localizedCoreString(key, Int(count))
         case .noValidAudio:
-            return coreString(key)
+            return localizedCoreString(key)
         }
     }
 }
@@ -21,7 +21,7 @@ extension BridgeInvalidReason {
 extension BridgeAudioDamage {
     /// Why the audio file can't be played, in the user's language.
     var localizedText: String {
-        coreString(bridgeAudioDamageKey(damage: self))
+        localizedCoreString(bridgeAudioDamageKey(damage: self))
     }
 }
 

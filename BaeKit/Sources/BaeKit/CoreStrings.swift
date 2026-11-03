@@ -2,9 +2,10 @@ import Foundation
 
 /// A message from the generated `Core` string table — the `core.*` wording core
 /// itself owns, and the `ui.*` chrome shared with the other platform UI, both
-/// emitted from `bae-bridge/loc/catalog.toml`. Keys come from core (a
-/// `bridge_*_key` function) or are named literally where the UI composes the
-/// sentence; the UI never invents the wording.
+/// emitted from `bae-bridge/loc/catalog.toml` into BaeKit's resources. This is
+/// the one lookup of that table, for every line BaeKit and the app show. Keys
+/// come from core (a `bridge_*_key` function) or are named literally where the
+/// UI composes the sentence; the UI never invents the wording.
 ///
 /// Arguments are **positional and ordered by the message's English value**.
 /// `bae-loc`'s Apple emitter (`bae-loc/src/emit.rs`, `apple_flat`) numbers a
@@ -21,11 +22,13 @@ import Foundation
 /// `String(format:locale:)` against `Locale.current` rather than the plain
 /// initializer, so a pluralized message picks its category from the locale's
 /// rules.
-func coreString(_ key: String, _ arguments: CVarArg...) -> String {
+public func localizedCoreString(_ key: String, _ arguments: CVarArg...)
+    -> String
+{
     let format = NSLocalizedString(
         key,
         tableName: "Core",
-        bundle: .main,
+        bundle: .module,
         comment: ""
     )
     guard !arguments.isEmpty else { return format }

@@ -210,7 +210,10 @@ struct ImportSheetDiscMenu: View {
                     onAssign(.disc(number: number))
                 } label: {
                     checkable(
-                        coreString("ui.import.sheet.disc", Int(number)),
+                        localizedCoreString(
+                            "ui.import.sheet.disc",
+                            Int(number)
+                        ),
                         selected: sheet.assignment == .disc(number: number)
                     )
                 }
@@ -220,7 +223,7 @@ struct ImportSheetDiscMenu: View {
                 onAssign(.ignored)
             } label: {
                 checkable(
-                    coreString("ui.import.sheet.ignored"),
+                    localizedCoreString("ui.import.sheet.ignored"),
                     selected: sheet.assignment == .ignored
                 )
             }
@@ -243,15 +246,15 @@ struct ImportSheetDiscMenu: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .onHover { hovering = $0 }
-        .help(coreString("ui.import.sheet.disc_help"))
+        .help(localizedCoreString("ui.import.sheet.disc_help"))
     }
 
     private var assignmentText: String {
         switch sheet.assignment {
         case .disc(let number):
-            coreString("ui.import.sheet.disc", Int(number))
+            localizedCoreString("ui.import.sheet.disc", Int(number))
         case .ignored:
-            coreString("ui.import.sheet.ignored")
+            localizedCoreString("ui.import.sheet.ignored")
         }
     }
 

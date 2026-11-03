@@ -43,7 +43,7 @@ enum StorageTableColumn: String, CaseIterable, Codable {
             )
         case .media:
             Spec(
-                title: coreString("core.release.media"),
+                title: localizedCoreString("core.release.media"),
                 width: 80,
                 minWidth: 60,
                 sortField: .media

@@ -43,8 +43,8 @@ extension BridgeSheetBindingOption {
             return nil
         }
         guard case .refusedCodec(let codec) = offer else {
-            return coreString(key)
+            return localizedCoreString(key)
         }
-        return coreString(key, codec)
+        return localizedCoreString(key, codec)
     }
 }

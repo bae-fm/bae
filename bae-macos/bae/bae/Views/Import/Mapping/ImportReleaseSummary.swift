@@ -34,7 +34,8 @@ struct ImportReleaseSummary {
             ])
         case .fileMetadata:
             factsLine = Self.factsLine([
-                coreString("core.import.metadata.file_metadata"), trackText,
+                localizedCoreString("core.import.metadata.file_metadata"),
+                trackText,
             ])
         case nil:
             factsLine = trackText
@@ -197,7 +198,7 @@ struct ImportSourceAudioSummaryView: View {
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(coreString("core.audio.label"))
+            .accessibilityLabel(localizedCoreString("core.audio.label"))
             .accessibilityValue(sourceAudio.summary.text)
     }
 }

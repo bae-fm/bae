@@ -260,7 +260,7 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
 
     /// The tooltip line saying how a network folder is checked.
     private static func networkLine() -> String {
-        coreString(
+        localizedCoreString(
             bridgeNetworkFolderWatchKey(),
             Int(bridgeNetworkFolderCheckMinutes())
         )

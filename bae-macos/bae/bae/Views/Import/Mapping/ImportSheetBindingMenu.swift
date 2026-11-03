@@ -16,7 +16,7 @@ struct ImportSheetBindingMenu: View {
         } label: {
             Text(
                 reference.fileId
-                    ?? coreString("ui.import.sheet.choose_audio")
+                    ?? localizedCoreString("ui.import.sheet.choose_audio")
             )
             .themeText(.mono)
             .foregroundStyle(
@@ -97,7 +97,9 @@ struct ImportSheetBindingItems: View {
                     onBind(nil)
                 } label: {
                     checkable(
-                        coreString("ui.import.sheet.describes_nothing"),
+                        localizedCoreString(
+                            "ui.import.sheet.describes_nothing"
+                        ),
                         selected: isBound
                     )
                 }

@@ -270,13 +270,8 @@ final class DesktopSubscriptions {
         { [uiStore] watchedFolderName, detail in
             uiStore.showError(
                 DisplayError(
-                    line: String(
-                        format: NSLocalizedString(
-                            "ui.import.folder.scan_failed",
-                            tableName: "Core",
-                            bundle: .main,
-                            comment: ""
-                        ),
+                    line: localizedCoreString(
+                        "ui.import.folder.scan_failed",
                         watchedFolderName
                     ),
                     detail: detail

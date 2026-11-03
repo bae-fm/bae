@@ -739,7 +739,7 @@ extension ImportMetadataCardLayoutTests {
                     "16\u{2011}bit", "24\u{2011}bit",
                 ]),
             ]
-            .joined(separator: coreString("core.audio.list_separator"))
+            .joined(separator: localizedCoreString("core.audio.list_separator"))
         )
     }
 

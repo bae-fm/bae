@@ -92,11 +92,13 @@ struct InvalidCandidatePane: View {
     /// gives its own files.
     private var files: some View {
         VStack(spacing: 0) {
-            Eyebrow(verbatim: coreString("ui.import.mapping.files_title"))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, ImportMappingColumns.rowPadding)
-                .padding(.top, ThemeSpace.inline)
-                .padding(.bottom, ThemeSpace.compact)
+            Eyebrow(
+                verbatim: localizedCoreString("ui.import.mapping.files_title")
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, ImportMappingColumns.rowPadding)
+            .padding(.top, ThemeSpace.inline)
+            .padding(.bottom, ThemeSpace.compact)
             ForEach(detail.files, id: \.fileId) { file in
                 ImportMappingFileRow(
                     file: file,

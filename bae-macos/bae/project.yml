@@ -40,18 +40,23 @@ targets:
       # not the app tree. A tree that built before the package move still has
       # the old gitignored bae/bae_bridge.swift on disk; excluding it keeps
       # xcodegen from sweeping it in and colliding with the BaeBridge module.
+      # The generated Core string table lives in BaeKit's resources, read
+      # through BaeKit's `localizedCoreString`; a tree that built before then
+      # still has the app's old gitignored copy, kept out the same way.
       - path: bae
         excludes:
           - bae_bridge.swift
+          - Core.xcstrings
           - Info.plist
     info:
       path: bae/Info.plist
       properties:
         CFBundleDisplayName: bae
         CFBundleDevelopmentRegion: en
-        # The shipping locales aren't listed here: the generated Core.xcstrings
-        # carries a slot per locale (single-sourced in bae-loc's TARGET_LOCALES),
-        # and xcstringstool's compiled per-language resources drive the bundle's
+        # The shipping locales aren't listed here: Localizable.xcstrings
+        # carries a translation for every locale bae-loc's TARGET_LOCALES names
+        # (scripts/check_localizable_strings.py holds it to that list), and
+        # xcstringstool's compiled per-language resources drive the bundle's
         # known regions — so the set lives in exactly one place.
         SUFeedURL: https://raw.githubusercontent.com/bae-fm/bae/appcast/appcast.xml
         SUPublicEDKey: cYiouOrDxmQrHspLwOf/XpQOQOMt3isdYDs6xEDBGs8=

@@ -214,7 +214,7 @@ struct ImportMappingTable: View {
     // MARK: - Shared chrome
 
     private func eyebrow(_ key: String) -> some View {
-        Eyebrow(verbatim: coreString(key))
+        Eyebrow(verbatim: localizedCoreString(key))
     }
 
     private func headerRow<Content: View>(

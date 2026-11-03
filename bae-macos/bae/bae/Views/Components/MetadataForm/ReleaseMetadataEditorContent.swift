@@ -270,7 +270,7 @@ struct ReleaseMetadataEditorContent: View {
     }
 
     private func eyebrow(_ key: String) -> some View {
-        Eyebrow(verbatim: coreString(key))
+        Eyebrow(verbatim: localizedCoreString(key))
     }
 }
 
@@ -284,7 +284,7 @@ struct ReleaseSourceAudioSummaryView: View {
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(coreString("core.audio.label"))
+            .accessibilityLabel(localizedCoreString("core.audio.label"))
             .accessibilityValue(sourceAudio.text)
     }
 }
