@@ -20,7 +20,8 @@ usage() {
     echo "  'x86_64-unknown-linux-gnu'; use 'aarch64-unknown-linux-gnu' for ARM64)."
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
     echo "  'oauth-providers,desktop'). BAE_BRIDGE_CSHARP_BINDINGS_DIR is the"
-    echo "  generated C# output directory."
+    echo "  generated C# output directory. A debug build adds 'test-keyring', the"
+    echo "  in-memory keychain the Avalonia smoke test starts its host with."
     echo ""
     echo "  FFmpeg comes from bae-ffmpeg/dist (FFMPEG_DIR in .cargo/config.toml);"
     echo "  scripts/setup-ffmpeg.sh populates it with the matching linux dist"
@@ -61,6 +62,14 @@ fi
 # the bridge functions whose features are on, so each edition gets bindings from
 # the matching feature set.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,desktop}"
+# The smoke test starts its host with an in-memory keychain, so it never
+# touches the person's keychain; a release build has none.
+if [[ "$CARGO_PROFILE" == "debug" ]]; then
+    case ",$BAE_BRIDGE_FEATURES," in
+        *,test-keyring,*) ;;
+        *) BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:+$BAE_BRIDGE_FEATURES,}test-keyring" ;;
+    esac
+fi
 if [[ -z "${BAE_BRIDGE_CSHARP_BINDINGS_DIR:-}" ]]; then
     echo "BAE_BRIDGE_CSHARP_BINDINGS_DIR is required" >&2
     exit 1

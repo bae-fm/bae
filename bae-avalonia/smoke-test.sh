@@ -47,7 +47,8 @@ export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
 # build and the binding generation that reads it.
 LIB_DIR="$REPO/bae-avalonia/bin/smoke"
 mkdir -p "$LIB_DIR"
-cargo rustc -p bae-bridge --lib --features oauth-providers,desktop \
+# test-keyring: the smoke test starts its host with an in-memory keychain.
+cargo rustc -p bae-bridge --lib --features oauth-providers,desktop,test-keyring \
     --crate-type cdylib --message-format=json-render-diagnostics \
     > "$LIB_DIR/cargo-artifacts.jsonl"
 ./scripts/record-build-use.sh < "$LIB_DIR/cargo-artifacts.jsonl"
