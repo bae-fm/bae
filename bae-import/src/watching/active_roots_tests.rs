@@ -3,7 +3,7 @@
 //! and a folder taking over the watched folders inside it.
 
 use super::*;
-use crate::service::tests::*;
+use crate::watching::tests::*;
 use bae_db::watched_path::host_root;
 use bae_util::test_channels::HANG_GUARD;
 

@@ -1,4 +1,5 @@
 use super::*;
+use crate::watching::{start_watcher, FolderWatcher, WatchReport};
 use bae_util::worker_thread::WorkerThread;
 
 impl ImportService {
@@ -95,9 +96,9 @@ impl ImportService {
         // watcher, only the `fs_rx` end of its event channel.
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx, diagnostics.clone()));
 
-        let scan = ScanServices::new(services.clone(), folder_watcher);
+        let watched = services.clone();
         let watcher = WorkerThread::spawn("folder scan coordinator", move |_, watcher_rx| {
-            ImportService::start_watcher(watcher_rx, fs_rx, scan)
+            start_watcher(watcher_rx, fs_rx, watched, folder_watcher)
         });
 
         let worker = WorkerThread::spawn("import worker thread", move |_, commands_rx| {

@@ -46,7 +46,7 @@ enum RootActivity {
 }
 
 /// What one pass over a root reads.
-pub(super) enum RootPass {
+pub(crate) enum RootPass {
     /// Every folder under the root.
     WholeRoot,
     /// One folder whose reading the person changed, stored with the
@@ -58,7 +58,7 @@ pub(super) enum RootPass {
 
 /// A person's answer for how one folder reads, and who hears the releases it
 /// stored, or why it was not stored.
-pub(super) struct FolderReadingRequest {
+pub(crate) struct FolderReadingRequest {
     target: (
         crate::folder_scanner::FolderReleaseDecisionKey,
         crate::folder_scanner::FolderReleaseDecision,
@@ -78,7 +78,7 @@ impl FolderReadingRequest {
     }
 
     /// The folder and how it is to read.
-    pub(super) fn target(
+    pub(crate) fn target(
         &self,
     ) -> &(
         crate::folder_scanner::FolderReleaseDecisionKey,
@@ -89,7 +89,7 @@ impl FolderReadingRequest {
 
     /// Tell whoever asked what became of it: the keys of the releases the
     /// folder now reads as, or why it was not stored.
-    pub(super) fn answer(self, result: Result<Vec<crate::CandidateKey>, String>) {
+    pub(crate) fn answer(self, result: Result<Vec<crate::CandidateKey>, String>) {
         if self.completion.send(result).is_err() {
             debug!(
                 "folder decision caller for {} dropped before it was answered",
@@ -290,7 +290,7 @@ impl ActiveRoots {
         match self.roots.get_mut(&path) {
             Some(RootActivity::Scanning(schedule)) => {
                 if schedule.whole_root {
-                    schedule.scan.cancellation.cancel();
+                    schedule.scan.cancel();
                     schedule.pending = true;
                     schedule.followup_waiters.append(&mut schedule.current_waiters);
                 }
@@ -319,7 +319,7 @@ impl ActiveRoots {
             return;
         };
         // A pass that panicked was reported where it ran.
-        schedule.scan.task.ended().await;
+        schedule.scan.ended().await;
         // The scan reports its own failure; a refresh caller only waits.
         for waiter in schedule.current_waiters.drain(..) {
             if waiter.send(Ok(())).is_err() {
@@ -385,7 +385,7 @@ impl ActiveRoots {
         let mut scan_waiters = Vec::new();
         for root in &roots {
             if let Some(RootActivity::Scanning(mut schedule)) = self.roots.remove(root) {
-                schedule.scan.cancellation.cancel();
+                schedule.scan.cancel();
                 scan_waiters.extend(
                     schedule
                         .current_waiters
@@ -520,7 +520,7 @@ impl ActiveRoots {
     pub(super) fn cancel_scans(&self) {
         for activity in self.roots.values() {
             if let RootActivity::Scanning(schedule) = activity {
-                schedule.scan.cancellation.cancel();
+                schedule.scan.cancel();
             }
         }
     }
@@ -532,7 +532,7 @@ impl ActiveRoots {
             let RootActivity::Scanning(schedule) = activity else {
                 continue;
             };
-            schedule.scan.cancellation.cancel();
+            schedule.scan.cancel();
             schedule.pending = false;
             for reading in schedule.readings.drain(..) {
                 reading.answer(Err("folder scan service stopped".to_string()));
@@ -547,7 +547,7 @@ impl ActiveRoots {
         }
         for (_, activity) in self.roots.drain() {
             if let RootActivity::Scanning(schedule) = activity {
-                schedule.scan.task.ended().await;
+                schedule.scan.ended().await;
             }
         }
         for (_, removal) in self.removals.drain() {

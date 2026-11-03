@@ -1,7 +1,7 @@
 //! What a change on disk under a watched root asks to have read again.
 
 use super::*;
-use crate::service::tests::*;
+use crate::scan_passes::tests::*;
 
 #[test]
 fn affected_roots_maps_changed_paths_to_their_watched_roots() {
@@ -94,7 +94,7 @@ fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
 #[tokio::test]
 async fn the_network_check_names_the_folders_that_moved() {
     let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
-    let tables = fixture.test.service.tables.clone();
+    let tables = fixture.test.tables().clone();
     let root = &fixture.root;
     let recorded = tables.load_folder_scan_directories(root).await.unwrap();
     assert_eq!(network_changes(root, &recorded), Some(Vec::new()));

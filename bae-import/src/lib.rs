@@ -96,6 +96,8 @@ mod remote_images;
 #[cfg(desktop)]
 pub mod rip_reading;
 #[cfg(desktop)]
+mod scan_passes;
+#[cfg(desktop)]
 pub mod selection;
 #[cfg(desktop)]
 pub mod service;
@@ -117,6 +119,8 @@ mod types;
 pub(crate) mod volume;
 #[cfg(desktop)]
 pub mod watched_folder;
+#[cfg(desktop)]
+mod watching;
 
 #[cfg(desktop)]
 pub use volume::check_period_minutes;

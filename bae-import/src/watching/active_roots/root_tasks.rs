@@ -15,7 +15,7 @@ pub(super) async fn run_root_removal(
     // Each pass is waited out, however it ended: one that panicked was
     // reported where it ran, and installs no more watches.
     for scan in scans {
-        scan.task.ended().await;
+        scan.ended().await;
     }
     let mut uninstalled: Vec<(&PathBuf, FolderWatchSnapshot)> = Vec::new();
     for root in roots {

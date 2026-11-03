@@ -230,7 +230,7 @@ pub(crate) enum WatcherCommand {
     /// once the reads it calls for are asked for.
     #[cfg(test)]
     WatchReport {
-        report: crate::service::WatchReport,
+        report: crate::watching::WatchReport,
         taken: tokio::sync::oneshot::Sender<()>,
     },
     Shutdown {

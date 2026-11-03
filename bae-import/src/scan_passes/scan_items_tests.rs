@@ -9,6 +9,7 @@ use super::*;
 use crate::extraction::ArtworkAnalysis;
 use crate::extraction::ArtworkAnalyzer;
 use crate::identification::tests::*;
+use crate::scan_passes::tests::*;
 use crate::service::tests::*;
 use bae_catalogs::test_releases::mb_release_json;
 use std::sync::atomic::AtomicUsize;
@@ -21,7 +22,7 @@ use std::time::Duration;
 #[tokio::test]
 async fn regrouping_disc_folders_probes_each_audio_file_once() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Album");
     let mut tracks = Vec::new();
@@ -87,7 +88,7 @@ impl ReadableFiles {
 /// track, an empty one, and one FFmpeg finds nothing in — and two releases
 /// beside a booklet neither owns.
 async fn readable_root(test: &TestService) -> ReadableFiles {
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Album");
     let broken = root.join("Broken");
@@ -139,7 +140,7 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
 #[tokio::test]
 async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let files = readable_root(&test).await;
     let tags = Arc::new(CountingTagReader::default());
     let (scan, _) =
@@ -190,7 +191,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
 #[tokio::test]
 async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let watched = test.temp.path().join("watched");
     for disc in ["Disc 1", "Disc 2"] {
         let folder = watched.join("Album").join(disc);
@@ -276,7 +277,7 @@ async fn a_rescan_reads_again_only_the_file_that_changed() {
 #[tokio::test]
 async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let files = readable_root(&test).await;
     let tags = Arc::new(CountingTagReader::default());
     let (scan, _) =
@@ -300,7 +301,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         "the release holds a new file"
     );
     let preparation = crate::preparation::import_preparation(
-        &test.service.tables,
+        test.tables(),
         &stored.candidate.files.content_hash(),
     )
     .await
@@ -316,7 +317,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
 #[tokio::test]
 async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let watched = test.temp.path().join("watched");
     let modified =
         std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
@@ -387,7 +388,7 @@ impl crate::file_tag_snapshot::FileTagReader for EmbeddingTagReader {
 #[tokio::test]
 async fn a_first_scan_reads_each_tracks_tags_once() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let watched = test.temp.path().join("watched");
     let mut tracks = Vec::new();
     for disc in ["CD1", "CD2"] {
@@ -449,7 +450,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
 #[tokio::test]
 async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     for album in ["Artist - One", "Artist - Two"] {
         let album = root.join(album);
@@ -509,7 +510,7 @@ impl crate::file_tag_snapshot::FileTagReader for CountingTagReader {
 #[tokio::test]
 async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Candidate");
     std::fs::create_dir_all(&album).unwrap();

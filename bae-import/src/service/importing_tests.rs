@@ -3,6 +3,7 @@
 //! progress, and committing after a pass found its folder unchanged.
 
 use super::*;
+use crate::folder_scanner::ScanItem;
 use crate::service::tests::*;
 
 #[test]

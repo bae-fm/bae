@@ -3,13 +3,14 @@
 //! cannot be read failing the pass and keeping what was stored.
 
 use super::*;
+use crate::scan_passes::tests::*;
 use crate::service::tests::*;
 use bae_db::Database;
 use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
 async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
-    async fn panic_during_walk() -> crate::service::FolderWalkOutcome {
+    async fn panic_during_walk() -> crate::scan_passes::FolderWalkOutcome {
         panic!("folder walk panic");
     }
 
@@ -18,7 +19,7 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
     let cancellation = crate::folder_scanner::ScanCancellation::new();
     let (item_tx, mut item_rx) = tokio::sync::mpsc::channel(1);
     drop(item_tx);
-    let error = ImportService::cancel_and_join_folder_walk(
+    let error = cancel_and_join_folder_walk(
         &cancellation,
         &mut item_rx,
         tokio::spawn(panic_during_walk()),
@@ -88,9 +89,9 @@ async fn root_scan_status(database: &Database) -> crate::FolderScanStatus {
 #[tokio::test]
 async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     let mut test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
-    test.service.diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    test.report_bugs_to(bugs.clone());
     let root = test.temp.path().join("watched");
     for name in ["Release A", "Release B"] {
         let folder = root.join(name);
@@ -104,10 +105,17 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     );
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
     let (_fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
-    let coordinator = ImportService::start_watcher(command_rx, fs_rx, scan.services.clone());
+    let coordinator = crate::watching::start_watcher(
+        command_rx,
+        fs_rx,
+        scan.services.services.clone(),
+        scan.services.folder_watcher.clone(),
+    );
     let refresh = || {
         let (completion, answered) = tokio::sync::oneshot::channel();
-        commands.send(WatcherCommand::Refresh { path: root.clone(), completion }).unwrap();
+        commands
+            .send(crate::handle::WatcherCommand::Refresh { path: root.clone(), completion })
+            .unwrap();
         answered
     };
 
@@ -140,7 +148,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     assert!(matches!(root_scan_status(&test.database).await, crate::FolderScanStatus::Complete));
 
     let (completion, stopped) = std::sync::mpsc::channel();
-    commands.send(WatcherCommand::Shutdown { completion }).unwrap();
+    commands.send(crate::handle::WatcherCommand::Shutdown { completion }).unwrap();
     tokio::task::spawn_blocking(move || {
         stopped.recv().unwrap();
         coordinator.join().unwrap();
@@ -249,7 +257,7 @@ impl Drop for OpensOnDrop<'_> {
 #[tokio::test]
 async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     for name in ["Release A", "Release B"] {
         let folder = root.join(name);
@@ -304,8 +312,7 @@ async fn rescan_seeded_root(
     tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>,
     Result<(), crate::ImportError>,
 ) {
-    let service = &test.service;
-    let tables = &service.tables;
+    let tables = test.tables();
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     crate::store_scan_item(
@@ -334,8 +341,8 @@ async fn rescan_seeded_root(
 }
 
 /// The invalid candidates the stored scan of `root` still holds.
-async fn stored_invalid_candidates(service: &ImportService, root: &Path) -> usize {
-    let tables = service.tables.clone();
+async fn stored_invalid_candidates(test: &TestService, root: &Path) -> usize {
+    let tables = test.tables().clone();
     tables
         .load_folder_scan_items(root)
         .await
@@ -372,7 +379,7 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
     // Unix, "The system cannot find the path specified" on Windows), so the
     // root — the part core promises — is what this asserts on.
     assert!(failed.contains(&root.to_string_lossy().into_owned()), "{failed}");
-    assert_eq!(stored_invalid_candidates(&test.service, &root).await, 1);
+    assert_eq!(stored_invalid_candidates(&test, &root).await, 1);
 }
 
 #[tokio::test]
@@ -399,7 +406,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
             event => panic!("expected scan status, got {event:?}"),
         }
     }
-    assert_eq!(stored_invalid_candidates(&test.service, &root).await, 1);
+    assert_eq!(stored_invalid_candidates(&test, &root).await, 1);
 }
 
 /// A completed pass records every directory it read and when it was last
@@ -412,7 +419,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
 #[tokio::test]
 async fn a_pass_records_the_directories_it_read() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Artist - Album");
     std::fs::create_dir_all(album.join("Artwork")).unwrap();

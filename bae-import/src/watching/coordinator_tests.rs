@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::service::tests::*;
+use crate::watching::tests::*;
 use bae_util::test_channels::HANG_GUARD;
 
 /// A read is not a change: Linux reports the scan's own reads as events, and
@@ -221,11 +222,12 @@ async fn coordinator_shutdown_waits_for_active_scan() {
 /// folder for the next check.
 #[tokio::test]
 async fn a_network_folder_found_unchanged_is_checked_again() {
-    let TestService { service, temp: tmp, .. } = setup_import_service().await;
-    let tables = service.tables.clone();
-    let root = tmp.path().join("watched");
+    let test = setup_import_service().await;
+    let tables = test.tables().clone();
+    let root = test.temp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
-    let modified_at = directory_modified_at(&root).expect("the folder's mtime reads");
+    let modified_at =
+        crate::volume::directory_modified_at(&root).expect("the folder's mtime reads");
     tables.add_watched_import_folder(&root).await.unwrap();
     tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.record_folder_scan_directories(&root, &[(root.clone(), modified_at)]).await.unwrap();
@@ -234,13 +236,13 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
         starter,
         Arc::new(FakeRemovalBackend::default()),
         crate::FolderStateCommit::default(),
-        service.diagnostics.clone(),
+        bae_diagnostics::Diagnostics::noop(),
     );
-    let (mut coordinator, mut checks) = crate::service::coordinator::Coordinator::new(
+    let (mut coordinator, mut checks) = crate::watching::coordinator::Coordinator::new(
         active_roots,
-        service.event_tx.clone(),
+        test.event_tx().clone(),
         tables,
-        service.diagnostics.clone(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     for check in ["first", "second"] {
@@ -254,9 +256,9 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
             .expect("the check answers")
             .expect("the coordinator still hears checks");
         assert_eq!(checked, root);
-        assert_eq!(found, crate::service::coordinator::NetworkCheck::Unchanged);
+        assert_eq!(found, crate::watching::coordinator::NetworkCheck::Unchanged);
         coordinator
-            .take(crate::service::coordinator::CoordinatorEvent::NetworkChecked {
+            .take(crate::watching::coordinator::CoordinatorEvent::NetworkChecked {
                 root: checked,
                 found,
             })

@@ -3,6 +3,7 @@
 //! releases and offers a reading of a folder's discs gives.
 
 use super::*;
+use crate::scan_passes::tests::*;
 use crate::service::tests::*;
 use bae_db::Database;
 use bae_util::test_channels::HANG_GUARD;
@@ -35,8 +36,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     let other = fixture.root.join("Other").join("Record");
     let sibling_before = fixture
         .test
-        .service
-        .tables
+        .tables()
         .load_folder_scan_item(&crate::CandidateKey::folder(&other))
         .await
         .unwrap();
@@ -60,8 +60,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     assert_eq!(
         fixture
             .test
-            .service
-            .tables
+            .tables()
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
@@ -81,8 +80,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     assert_eq!(
         fixture
             .test
-            .service
-            .tables
+            .tables()
             .load_folder_scan_item(&crate::CandidateKey::folder(&other))
             .await
             .unwrap(),
@@ -130,8 +128,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     let before = fixture.stored_paths().await;
     let decisions_before = fixture
         .test
-        .service
-        .tables
+        .tables()
         .load_folder_release_decisions(&fixture.root)
         .await
         .unwrap()
@@ -149,7 +146,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
         let services = fixture.scan.services.clone();
         let cancellation = fixture.scan.cancellation.clone();
         tokio::spawn(async move {
-            ImportService::change_folder_reading(
+            change_folder_reading(
                 &root,
                 &(key, crate::FolderReleaseDecision::KeepAsSeparateReleases),
                 &services,
@@ -165,13 +162,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     })
     .await
     .expect("the reading started walking");
-    fixture
-        .test
-        .service
-        .tables
-        .begin_folder_scan(&fixture.root, crate::VolumeKind::Local)
-        .await
-        .unwrap();
+    fixture.test.tables().begin_folder_scan(&fixture.root, crate::VolumeKind::Local).await.unwrap();
     drop(held);
 
     let error = reading.await.unwrap().unwrap_err();
@@ -180,8 +171,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     assert_eq!(
         fixture
             .test
-            .service
-            .tables
+            .tables()
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
@@ -201,8 +191,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     let album = root.join("Artist").join("Album");
     let album_before = fixture
         .test
-        .service
-        .tables
+        .tables()
         .load_folder_scan_item(&crate::CandidateKey::folder(&album))
         .await
         .unwrap();
@@ -210,13 +199,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     write_disc(&root.join("Other").join("Record"), 2);
     write_disc(&root.join("New").join("Record"), 1);
     let folders = ["New", "Other"].into_iter().map(std::ffi::OsString::from).collect();
-    ImportService::read_changed_folders(
-        root,
-        &folders,
-        &fixture.scan.services,
-        &fixture.scan.cancellation,
-    )
-    .await;
+    read_changed_folders(root, &folders, &fixture.scan.services, &fixture.scan.cancellation).await;
 
     assert_eq!(
         fixture.stored_paths().await,
@@ -224,8 +207,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     );
     let other = fixture
         .test
-        .service
-        .tables
+        .tables()
         .load_folder_scan_item(&crate::CandidateKey::folder(&root.join("Other").join("Record")))
         .await
         .unwrap();
@@ -243,8 +225,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     assert_eq!(
         fixture
             .test
-            .service
-            .tables
+            .tables()
             .load_folder_scan_item(&crate::CandidateKey::folder(&album))
             .await
             .unwrap(),
@@ -253,7 +234,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     );
 
     std::fs::remove_dir_all(root.join("New")).unwrap();
-    ImportService::read_changed_folders(
+    read_changed_folders(
         root,
         &[std::ffi::OsString::from("New")].into_iter().collect(),
         &fixture.scan.services,
@@ -305,7 +286,7 @@ async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)
 /// once.
 async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("music");
     for release in releases {
         write_disc(&root.join(release), 1);
@@ -358,7 +339,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         let (_, rows) = offers(&test.database).await;
         assert_eq!(rows, vec![(album.to_string(), true)], "{album}");
 
-        ImportService::change_folder_reading(
+        change_folder_reading(
             &root,
             &(folder_key(&root, album), crate::FolderReleaseDecision::KeepAsSeparateReleases),
             &scan.services,
@@ -380,7 +361,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
 #[tokio::test]
 async fn a_folders_release_keeps_its_key_across_readings() {
     let (test, scan, root) = scanned_root(&["Album/Disc 1", "Album/Disc 2"]).await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let grouping_of = || async {
         tables
             .load_folder_release_decisions(&root)
@@ -408,7 +389,7 @@ async fn a_folders_release_keeps_its_key_across_readings() {
         crate::FolderReleaseDecision::KeepAsSeparateReleases,
         crate::FolderReleaseDecision::CombineAsOneRelease,
     ] {
-        ImportService::change_folder_reading(
+        change_folder_reading(
             &root,
             &(folder_key(&root, "Album"), decision),
             &scan.services,
@@ -426,7 +407,7 @@ async fn a_folders_release_keeps_its_key_across_readings() {
 #[tokio::test]
 async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs() {
     let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+    let tables = test.tables().clone();
     let root = test.temp.path().join("music");
     for disc in ["Album/Disc 1", "Album/Disc 2"] {
         write_disc(&root.join(disc), 2);
