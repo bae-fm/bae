@@ -6,7 +6,6 @@ use super::files::cover_version_sql;
 use super::query::*;
 use super::read::*;
 use super::*;
-use crate::credits::LibraryCredit;
 use bae_util::content_type::ContentType;
 
 /// The release's rows as its detail reads them: its tracks with their
@@ -52,14 +51,12 @@ pub fn release_detail_rows_on(
     })
 }
 
-/// A release's rows as [`release_detail_rows_on`] read them, before the
-/// tracks' credit rows are folded into one entry per track, which runs after
-/// the read has let its connection go.
+/// A release's rows as [`release_detail_rows_on`] read them.
 #[derive(Clone, PartialEq)]
 pub struct DbReleaseDetailRows {
     release: DbRelease,
     mediums: DbReleaseMediums,
-    tracks: Vec<(DbTrack, Option<LibraryCredit>)>,
+    tracks: Vec<DbTrackWithArtists>,
     files: Vec<DbFile>,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
@@ -75,7 +72,7 @@ impl DbReleaseDetailRows {
         DbReleaseDetail {
             release: self.release,
             mediums: self.mediums,
-            tracks: process_tracks(self.tracks),
+            tracks: self.tracks,
             files: self.files,
             records: self.records,
             unstored_audio: self.unstored_audio,
@@ -87,13 +84,12 @@ impl DbReleaseDetailRows {
     }
 }
 
-/// One row per (track, artist) pair, so a track with several artists repeats.
-/// The rows arrive grouped by track and ordered by artist position, and the fold
-/// in [`process_tracks`] rebuilds one entry per track from that run.
+/// The release's tracks in playing order, each with its own credits and the
+/// credits it shows.
 fn get_tracks_with_artists_for_release_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
-) -> Result<Vec<(DbTrack, Option<LibraryCredit>)>, DbError> {
+) -> Result<Vec<DbTrackWithArtists>, DbError> {
     let query = format!(
         "SELECT
             track.id AS track_id,
@@ -104,42 +100,23 @@ fn get_tracks_with_artists_for_release_on(
             track.track_number AS track_track_number,
             track.duration_ms AS track_duration_ms,
             track.created_at AS track_created_at,
-            {LIBRARY_CREDIT_COLUMNS}
+            {own} AS own_credits,
+            {shown} AS shown_credits
          FROM tracks track
-         LEFT JOIN track_artists credit ON credit.track_id = track.id
-         LEFT JOIN artists artist ON artist.id = {}
-         LEFT JOIN artist_credits credit_name
-             ON credit_name.artist_id = credit.artist_id
-            AND credit_name.name_key = credit.credit_key
+         JOIN releases r ON r.id = track.release_id
+         JOIN albums a ON a.id = r.album_id
          WHERE track.release_id = ?
-         ORDER BY track.position, track.id, credit.position",
-        shown_artist_id("credit.artist_id")
+         ORDER BY track.position, track.id",
+        own = track_own_credits_json_sql("track"),
+        shown = track_credits_json_sql("track"),
     );
-    let joined = sql.query(&query, params![release_id], |row| {
-        let track = row_to_track_with_prefix(row, "track_")?;
-        let artist_id: Option<String> = row.get("artist_id")?;
-        let credit = match artist_id {
-            Some(_) => Some(row_to_library_credit(row)?),
-            None => None,
-        };
-        Ok((track, credit))
-    })?;
-
-    Ok(joined)
-}
-
-fn process_tracks(joined: Vec<(DbTrack, Option<LibraryCredit>)>) -> Vec<DbTrackWithArtists> {
-    let mut tracks: Vec<DbTrackWithArtists> = Vec::new();
-    for (track, artist) in joined {
-        if tracks.last().map(|last| last.track.id.as_str()) != Some(track.id.as_str()) {
-            tracks.push(DbTrackWithArtists { track, artists: Vec::new() });
-        }
-        if let Some(credit) = artist {
-            tracks.last_mut().expect("the row's track was just pushed").artists.push(credit);
-        }
-    }
-
-    tracks
+    Ok(sql.query(&query, params![release_id], |row| {
+        Ok(DbTrackWithArtists {
+            track: row_to_track_with_prefix(row, "track_")?,
+            artists: credits_column(row, "own_credits")?,
+            shown_artists: credits_column(row, "shown_credits")?,
+        })
+    })?)
 }
 
 /// What coven records this device holding for each of a release's audio

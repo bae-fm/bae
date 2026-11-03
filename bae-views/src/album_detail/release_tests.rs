@@ -6,7 +6,7 @@ fn track(id: &str, side: u8, number: u32, duration_ms: u64) -> bae_db::DbTrackWi
     let mut track = bae_db::DbTrack::new_test("release-id", id, "Track Title", number);
     track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
     track.duration_ms = duration_ms;
-    bae_db::DbTrackWithArtists { track, artists: Vec::new() }
+    bae_db::DbTrackWithArtists { track, artists: Vec::new(), shown_artists: Vec::new() }
 }
 
 /// The detail of a release holding `tracks`.
@@ -35,7 +35,6 @@ fn detail(tracks: Vec<bae_db::DbTrackWithArtists>) -> ReleaseDetail {
     ReleaseDetail::from_raw(
         raw,
         bae_transfers::ReleaseTransferState { download: None, action: None },
-        &[],
         0,
         &ctx,
     )

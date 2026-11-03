@@ -28,12 +28,9 @@ impl LibraryManager {
 
         let album_artists = self.database.get_artists_for_album(&album.id).await?;
         let album_artist = bae_db::credits::library_line(&album_artists);
-        let track_artists = self.database.get_artists_for_track(&track.id).await?;
-        let artist = if track_artists.is_empty() {
-            album_artist.clone()
-        } else {
-            bae_db::credits::library_line(&track_artists)
-        };
+        let artist = bae_db::credits::library_line(
+            &self.database.get_shown_artists_for_track(&track.id).await?,
+        );
 
         let total_tracks = self.database.count_tracks_for_release(&release.id).await?;
         let disc = self.database.get_release_mediums(&release.id).await?.disc_number(track);

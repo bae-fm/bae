@@ -112,13 +112,15 @@ pub enum OtherDevice {
     Former { name: String, state: crate::membership::FormerDeviceState },
 }
 
-/// A track row with its resolved artist rows (many-to-many join from the DB).
+/// A track row with its credits.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackWithArtists {
     pub track: DbTrack,
     /// The track's own credits, in list order; none when it takes the
     /// album's.
     pub artists: Vec<crate::credits::LibraryCredit>,
+    /// The credits the track shows: its own, else its album's.
+    pub shown_artists: Vec<crate::credits::LibraryCredit>,
 }
 
 /// A release's files in this device's upload queue, as one read finds them:

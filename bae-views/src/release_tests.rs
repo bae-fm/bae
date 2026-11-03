@@ -21,6 +21,21 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
         detail.tracks[0].artists.iter().map(|artist| artist.artist.name.as_str()).collect();
     assert_eq!(artist_names, vec!["Track Artist Name First", "Track Artist Name Second"]);
     assert!(detail.tracks[1].artists.is_empty());
+
+    // Each track shows its own credits, and one with none its album's: the
+    // detail and every other reader take that from the one SQL rule.
+    let names = |credits: &[bae_db::credits::LibraryCredit]| {
+        credits.iter().map(|credit| credit.artist.name.clone()).collect::<Vec<_>>()
+    };
+    let album_artists = db.get_artists_for_album(&detail.release.album_id).await.unwrap();
+    assert!(!album_artists.is_empty(), "the fixture's album credits an artist");
+    assert_eq!(names(&detail.tracks[0].shown_artists), artist_names);
+    assert_eq!(names(&detail.tracks[1].shown_artists), names(&album_artists));
+    for track in &detail.tracks {
+        let shown = db.get_shown_artists_for_track(&track.track.id).await.unwrap();
+        assert_eq!(names(&shown), names(&track.shown_artists), "{}", track.track.id);
+    }
+    assert!(db.get_shown_artists_for_track("no-such-track").await.unwrap().is_empty());
 }
 
 /// A release's detail lists its files in natural order of their names, case

@@ -378,13 +378,7 @@ fn resolve_album_detail(
             cover: bae_db::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
         };
-        releases.push(crate::album_detail::ReleaseDetail::from_raw(
-            detail,
-            transfers,
-            &raw.artists,
-            i,
-            &ctx,
-        ));
+        releases.push(crate::album_detail::ReleaseDetail::from_raw(detail, transfers, i, &ctx));
     }
 
     crate::album_detail::AlbumDetail {

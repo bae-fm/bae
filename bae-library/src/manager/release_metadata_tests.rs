@@ -100,7 +100,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     assert_eq!(stored_after.tracks[0].track.track_number, track.track_number);
     assert_eq!(
         manager
-            .get_artists_for_track(&track.id)
+            .get_shown_artists_for_track(&track.id)
             .await
             .unwrap()
             .into_iter()
@@ -258,7 +258,7 @@ async fn changing_one_track_credit_writes_only_that_credit() {
     let first_track = &manager.get_tracks_for_release(&release.id).await.unwrap()[0];
     assert_eq!(
         manager
-            .get_artists_for_track(&first_track.id)
+            .get_shown_artists_for_track(&first_track.id)
             .await
             .unwrap()
             .into_iter()

@@ -24,32 +24,30 @@ impl Database {
         let album_id = album_id.to_string();
         self.read(move |sql| get_artists_for_album_on(&sql, &album_id)).await
     }
-    /// The track's own credits in list order, each the artist it shows after
-    /// merges; a list naming one artist twice gives it twice.
-    pub async fn get_artists_for_track(
+    /// The credits the track shows, in list order: its own, else its
+    /// album's, each the artist it shows after merges. The rule is
+    /// [`super::query::track_credits_json_sql`]'s, which every read of a
+    /// track's shown credits goes through. None for an unknown track.
+    pub async fn get_shown_artists_for_track(
         &self,
         track_id: &str,
     ) -> Result<Vec<LibraryCredit>, DbError> {
         let track_id = track_id.to_string();
         self.read(move |sql| {
-            sql.query(
-                &format!(
-                    r#"
-                        SELECT {columns} FROM track_artists credit
-                        JOIN artists artist ON artist.id = {shown}
-                        LEFT JOIN artist_credits credit_name
-                            ON credit_name.artist_id = credit.artist_id
-                           AND credit_name.name_key = credit.credit_key
-                        WHERE credit.track_id = ?
-                        ORDER BY credit.position
-                        "#,
-                    columns = LIBRARY_CREDIT_COLUMNS,
-                    shown = shown_artist_id("credit.artist_id")
-                ),
-                params![track_id],
-                row_to_library_credit,
-            )
-            .map_err(DbError::from)
+            let credits: Option<String> = sql
+                .query_row(
+                    &format!(
+                        "SELECT {} FROM tracks t \
+                         JOIN releases r ON r.id = t.release_id \
+                         JOIN albums a ON a.id = r.album_id \
+                         WHERE t.id = ?",
+                        super::query::track_credits_json_sql("t")
+                    ),
+                    params![track_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            credits.map_or(Ok(Vec::new()), |json| super::read::credits_from_json(&json))
         })
         .await
     }

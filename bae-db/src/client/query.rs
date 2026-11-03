@@ -279,19 +279,22 @@ pub fn album_credits_json_sql() -> String {
     )
 }
 
+/// The track `track_alias`'s own credits as a JSON array, `[]` for none: a
+/// track with none takes its album's ([`track_credits_json_sql`]).
+pub fn track_own_credits_json_sql(track_alias: &str) -> String {
+    format!("COALESCE({}, '[]')", track_own_credits_sql(track_alias))
+}
+
 /// The credits the track `track_alias` shows, as a JSON array: its own, else
-/// its album `a`'s.
+/// its album `a`'s. The one place that rule is written: every read of a
+/// track's shown credits goes through it.
 pub fn track_credits_json_sql(track_alias: &str) -> String {
-    format!(
-        "COALESCE({}, {})",
-        credits_json_sql(
-            "track_artists",
-            "track_id",
-            &format!("{track_alias}.id"),
-            "track_credits"
-        ),
-        album_credits_json_sql(),
-    )
+    format!("COALESCE({}, {})", track_own_credits_sql(track_alias), album_credits_json_sql())
+}
+
+/// The track `track_alias`'s own credits as a JSON array, NULL for none.
+fn track_own_credits_sql(track_alias: &str) -> String {
+    credits_json_sql("track_artists", "track_id", &format!("{track_alias}.id"), "track_credits")
 }
 
 /// The album's releases in album order (see [`album_primary_release_sql`]).

@@ -38,8 +38,7 @@ impl LibraryViews {
             .await
     }
 
-    /// The raw release-detail aggregate, the release's album artists, and its
-    /// 0-based position among its album's releases — all from one database call.
+    /// The raw release-detail aggregate and its 0-based position among its album's releases — all from one database call.
     pub(crate) async fn find_release_detail_context(
         &self,
         release_id: &str,
@@ -92,14 +91,13 @@ fn resolve_release_detail(
     context: ReleaseDetailContext,
     has_cloud_home: bool,
 ) -> ReleaseDetail {
-    let ReleaseDetailContext { detail, transfers, album_artists, release_index, is_compilation } =
-        context;
+    let ReleaseDetailContext { detail, transfers, release_index, is_compilation } = context;
     let ctx = ReleaseResolveCtx {
         has_cloud_home,
         cover: bae_db::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
     };
-    ReleaseDetail::from_raw(detail, transfers, &album_artists, release_index, &ctx)
+    ReleaseDetail::from_raw(detail, transfers, release_index, &ctx)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -119,8 +117,7 @@ pub(crate) const RELEASE_INDEX_IN_ALBUM: &str = "SELECT COUNT(*) FROM releases A
            OR (earlier.album_order = shown.album_order AND earlier.id < shown.id)) \
      WHERE shown.id = ?1";
 
-/// The release's detail rows with its album's credits, its index among the
-/// album's releases, and whether the album is a compilation; `None` when
+/// The release's detail rows, its index among the album's releases, and whether the album is a compilation; `None` when
 /// the release doesn't exist.
 pub(crate) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
@@ -129,7 +126,6 @@ pub(crate) fn find_release_detail_context_on(
     let Some(release) = find_release_by_id_on(sql, release_id)? else {
         return Ok(None);
     };
-    let album_artists = get_artists_for_album_on(sql, &release.album_id)?;
     let release_index: i64 =
         sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release.id], |row| row.get(0))?;
     let release_index = usize::try_from(release_index)
@@ -138,7 +134,6 @@ pub(crate) fn find_release_detail_context_on(
         find_album_by_id_on(sql, &release.album_id)?.is_some_and(|album| album.is_compilation);
     Ok(Some(ReleaseContextRows {
         detail: build_release_detail_on(sql, release)?,
-        album_artists,
         release_index,
         is_compilation,
     }))
@@ -147,7 +142,6 @@ pub(crate) fn find_release_detail_context_on(
 #[derive(Clone, PartialEq)]
 pub(crate) struct ReleaseContextRows {
     detail: ReleaseDetailRows,
-    album_artists: Vec<LibraryCredit>,
     release_index: usize,
     is_compilation: bool,
 }
@@ -158,7 +152,6 @@ impl ReleaseContextRows {
         ReleaseDetailContext {
             detail,
             transfers,
-            album_artists: self.album_artists,
             release_index: self.release_index,
             is_compilation: self.is_compilation,
         }

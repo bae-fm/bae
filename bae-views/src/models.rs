@@ -220,7 +220,6 @@ pub struct ReleaseDetailContext {
     /// What the transfer queues and the storage transitions say of the
     /// release.
     pub transfers: bae_transfers::ReleaseTransferState,
-    pub album_artists: Vec<bae_db::credits::LibraryCredit>,
     pub release_index: usize,
     pub is_compilation: bool,
 }

@@ -200,7 +200,7 @@ pub(crate) async fn track_child(
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
 
-    let credits = shown_track_credits(services, &track.id, &release.album_id).await?;
+    let credits = shown_track_credits(services, &track.id).await?;
 
     Ok(Child {
         id: track_wire_id(&track.id),
@@ -246,7 +246,7 @@ pub(crate) async fn search_track_child(
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
     let cover_art = release_cover_art(services, &audio.release_id).await?;
-    let credits = shown_track_credits(services, track_id, &release.album_id).await?;
+    let credits = shown_track_credits(services, track_id).await?;
 
     Ok(Child {
         id: track_wire_id(track_id),
@@ -312,11 +312,6 @@ fn file_suffix(filename: &str) -> String {
 async fn shown_track_credits(
     services: &AppServices,
     track_id: &str,
-    album_id: &str,
 ) -> Result<Vec<bae_db::credits::LibraryCredit>, SubError> {
-    let own = services.get_artists_for_track(track_id).await.map_err(lib_err)?;
-    if !own.is_empty() {
-        return Ok(own);
-    }
-    services.get_artists_for_album(album_id).await.map_err(lib_err)
+    services.get_shown_artists_for_track(track_id).await.map_err(lib_err)
 }

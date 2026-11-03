@@ -116,7 +116,11 @@ fn missing_segment_file_is_an_editor_load_error() {
     let raw = bae_db::DbReleaseDetail {
         mediums: bae_db::DbReleaseMediums(vec![bae_db::DbReleaseMedium::new_test(&release.id)]),
         release,
-        tracks: vec![bae_db::DbTrackWithArtists { track: track.clone(), artists: Vec::new() }],
+        tracks: vec![bae_db::DbTrackWithArtists {
+            track: track.clone(),
+            artists: Vec::new(),
+            shown_artists: Vec::new(),
+        }],
         files: Vec::new(),
         records: Vec::new(),
         unstored_audio: Vec::new(),

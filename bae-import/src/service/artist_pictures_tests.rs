@@ -96,7 +96,7 @@ impl DiscogsPick {
             .next()
             .expect("the imported release has its first track");
         self.database
-            .get_artists_for_track(&first_track.id)
+            .get_shown_artists_for_track(&first_track.id)
             .await
             .unwrap()
             .into_iter()

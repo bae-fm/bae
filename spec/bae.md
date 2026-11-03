@@ -299,8 +299,11 @@ one artist twice keeps both credits. Every reader takes the whole list:
   (an artist's own name or the other name the credit prints). A query matches
   anywhere inside a title or a name, ignoring case by Unicode's lowercase
   (accents still count: `ecrin` doesn't find `Écrin`), and each kind of result
-  comes in title or name order, ties going by id. A track's search
-  row names the track's own credits, else its album's.
+  comes in title or name order, ties going by id.
+- A track shows its own credits, else its album's, wherever bae names a
+  track's artists: its search row, its row in an album's detail, what plays,
+  the tags of a saved copy, and Subsonic's songs. One rule in the library's
+  reads decides it.
 - Sorting albums by artist compares every credit's sort name (else its name)
   in list order, so an album by A comes before one by A and B, which comes
   before one by A and C. The storage table's artist column sorts the same way.

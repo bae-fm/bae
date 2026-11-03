@@ -16,11 +16,12 @@ impl LibraryManager {
         Ok(self.database.get_artists_for_album(album_id).await?)
     }
 
-    pub async fn get_artists_for_track(
+    /// The credits the track shows: its own, else its album's.
+    pub async fn get_shown_artists_for_track(
         &self,
         track_id: &str,
     ) -> Result<Vec<bae_db::credits::LibraryCredit>, LibraryError> {
-        Ok(self.database.get_artists_for_track(track_id).await?)
+        Ok(self.database.get_shown_artists_for_track(track_id).await?)
     }
 
     #[cfg(any(test, feature = "test-utils"))]

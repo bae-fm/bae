@@ -164,7 +164,7 @@ pub struct ReleaseDetail {
 }
 
 impl ReleaseDetail {
-    /// Joins per-track artist names (falling back to the album's), projects each
+    /// Joins each track's shown artist names, projects each
     /// file's stored scan facts, groups tracks by side, builds the gallery, derives
     /// `name`, and composes the slim [`ReleaseSummary`].
     ///
@@ -173,7 +173,6 @@ impl ReleaseDetail {
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
         transfers: bae_transfers::ReleaseTransferState,
-        album_artists: &[bae_db::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx,
     ) -> ReleaseDetail {
@@ -183,11 +182,7 @@ impl ReleaseDetail {
             .tracks
             .into_iter()
             .map(|entry| {
-                let artist_names = if entry.artists.is_empty() {
-                    bae_db::credits::library_line(album_artists)
-                } else {
-                    bae_db::credits::library_line(&entry.artists)
-                };
+                let artist_names = bae_db::credits::library_line(&entry.shown_artists);
                 let position = raw.mediums.position(&entry.track);
                 let position_text = position.text();
                 // On a compilation each row carries its own artist, because the
