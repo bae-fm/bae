@@ -289,7 +289,7 @@ pub struct BridgeQueueAddition {
 }
 
 mirror_struct! {
-    BridgeQueueAddition = bae_core::playback::QueueAddition,
+    BridgeQueueAddition = bae_playback::QueueAddition,
     from_core: pub(crate) fn,
     fields: { number, tracks },
 }
@@ -306,11 +306,12 @@ pub enum BridgePlaybackSourceKind {
 }
 
 impl BridgePlaybackSourceKind {
-    pub(crate) fn from_core(source: &bae_core::playback::ContextSource) -> Self {
+    pub(crate) fn from_core(source: &bae_playback::ContextSource) -> Self {
         match source {
-            bae_core::playback::ContextSource::Release(_)
-            | bae_core::playback::ContextSource::Releases => Self::Release,
-            bae_core::playback::ContextSource::Library => Self::Library,
+            bae_playback::ContextSource::Release(_) | bae_playback::ContextSource::Releases => {
+                Self::Release
+            }
+            bae_playback::ContextSource::Library => Self::Library,
         }
     }
 }

@@ -93,7 +93,7 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
         );
         assert!(matches!(
             playback_error_reason_for_file(devices.b().manager(), file).await,
-            crate::playback::PlaybackErrorReason::NotUploaded
+            bae_playback::PlaybackErrorReason::NotUploaded
         ));
     }
 }

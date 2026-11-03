@@ -19,8 +19,6 @@ pub mod followed;
 #[cfg(desktop)]
 pub mod loudness;
 pub mod people;
-pub mod playback;
-pub mod renderer;
 pub mod storage;
 pub mod sync;
 #[cfg(test)]

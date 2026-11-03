@@ -402,7 +402,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
                 store.to_string(),
                 200,
                 false,
-                crate::playback::AudioFocus::Unshared,
+                bae_playback::AudioFocus::Unshared,
                 bae_diagnostics::Diagnostics::noop(),
                 builder,
                 |_| (),

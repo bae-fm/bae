@@ -130,8 +130,8 @@ impl crate::types::BridgeOutputOp {
 }
 
 impl crate::types::BridgeQueueEntry {
-    pub(crate) fn from_core(i: bae_core::playback::QueueItem) -> Self {
-        let bae_core::playback::QueueItem { entry_id, track_id, display, duration_ms } = i;
+    pub(crate) fn from_core(i: bae_playback::QueueItem) -> Self {
+        let bae_playback::QueueItem { entry_id, track_id, display, duration_ms } = i;
         crate::types::BridgeQueueEntry {
             entry_id,
             track_id,
@@ -142,8 +142,8 @@ impl crate::types::BridgeQueueEntry {
 }
 
 impl crate::types::BridgePlaybackContext {
-    pub(super) fn from_core(context: bae_core::playback::ResolvedContext) -> Self {
-        let bae_core::playback::ResolvedContext { source, source_title, shuffled } = context;
+    pub(super) fn from_core(context: bae_playback::ResolvedContext) -> Self {
+        let bae_playback::ResolvedContext { source, source_title, shuffled } = context;
         crate::types::BridgePlaybackContext {
             kind: crate::types::BridgePlaybackSourceKind::from_core(&source),
             source_title,
@@ -153,7 +153,7 @@ impl crate::types::BridgePlaybackContext {
 }
 
 mirror_struct! {
-    crate::types::BridgeQueueSnapshot = bae_core::playback::ResolvedQueueSnapshot,
+    crate::types::BridgeQueueSnapshot = bae_playback::ResolvedQueueSnapshot,
     from_core: pub(crate) fn,
     fields: {
         manual: (each crate::types::BridgeQueueEntry),

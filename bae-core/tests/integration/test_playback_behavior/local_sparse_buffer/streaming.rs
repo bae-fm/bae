@@ -92,13 +92,13 @@ fn create_multi_window_cue_album() -> DiscogsRelease {
 /// over it, for tests that drive switches, advances, and boundaries against a
 /// sparsely buffered file.
 struct MultiWindowPlayback {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     library_manager: LibraryManager,
     database: bae_db::Database,
     runtime_handle: tokio::runtime::Handle,
-    _capture_stream_rx: support::CaptureStreamRx,
+    _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -636,7 +636,7 @@ async fn stopping_playback_closes_the_files_it_streamed() {
 
     playback_handle.play(imported.track_ids[0].clone());
     assert!(
-        support::wait_until_playing(
+        bae_playback::test_capture::wait_until_playing(
             &mut progress_rx,
             &imported.track_ids[0],
             Duration::from_secs(5)

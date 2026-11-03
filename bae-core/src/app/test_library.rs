@@ -94,8 +94,8 @@ impl TestLibrary {
     }
 
     /// The cast picker's list over its store.
-    pub(crate) fn cast_picker(&self) -> crate::renderer::CastPicker {
-        crate::renderer::CastPicker::new(self.database.clone())
+    pub(crate) fn cast_picker(&self) -> bae_playback::renderer::CastPicker {
+        bae_playback::renderer::CastPicker::new(self.database.clone())
     }
 
     /// The catalog sessions the library asks through.
@@ -118,10 +118,8 @@ impl TestLibrary {
             self.remote_images.clone(),
             50,
             false,
-            Arc::new(crate::playback::WallPlaybackClock::new(self.clock.clone())),
-            super::PlaybackOutput::Device(Box::new(
-                crate::playback::audio_output::FailingAudioDevice,
-            )),
+            Arc::new(bae_playback::WallPlaybackClock::new(self.clock.clone())),
+            super::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         )
         .await
     }
@@ -166,9 +164,9 @@ impl TestLibrary {
 
     /// The playback service alone, on a device that plays nothing, with no
     /// stored queue restored.
-    pub(crate) async fn start_playback(&self) -> crate::playback::PlaybackHandle {
+    pub(crate) async fn start_playback(&self) -> bae_playback::PlaybackHandle {
         self.start_playback_with(
-            Box::new(crate::playback::audio_output::FailingAudioDevice),
+            Box::new(bae_playback::audio_output::FailingAudioDevice),
             50,
             false,
         )
@@ -180,27 +178,27 @@ impl TestLibrary {
     /// queue when `restore_playback`.
     pub(crate) async fn start_playback_with(
         &self,
-        device: Box<dyn crate::playback::AudioOutputDevice>,
+        device: Box<dyn bae_playback::AudioOutputDevice>,
         position_update_interval_ms: u32,
         restore_playback: bool,
-    ) -> crate::playback::PlaybackHandle {
+    ) -> bae_playback::PlaybackHandle {
         self.manager
             .settle_playback_queue(restore_playback)
             .await
             .expect("settle the playback queue");
-        crate::playback::PlaybackService::start_with_audio_device(
+        bae_playback::PlaybackService::start_with_audio_device(
             self.database.clone(),
             self.ids.clone(),
-            crate::playback::tables::PlaybackQueueTables::new(self.database.clone()),
-            crate::playback::tables::PlaybackNowRow::new(self.database.clone()),
-            crate::playback::tables::PlaybackTimelineRow::new(self.database.clone()),
+            bae_playback::tables::PlaybackQueueTables::new(self.database.clone()),
+            bae_playback::tables::PlaybackNowRow::new(self.database.clone()),
+            bae_playback::tables::PlaybackTimelineRow::new(self.database.clone()),
             self.manager.subscribe_track_deletions(),
             self.diagnostics.clone(),
             tokio::runtime::Handle::current(),
             position_update_interval_ms,
             restore_playback,
             device,
-            Arc::new(crate::playback::WallPlaybackClock::new(self.clock.clone())),
+            Arc::new(bae_playback::WallPlaybackClock::new(self.clock.clone())),
         )
     }
 }

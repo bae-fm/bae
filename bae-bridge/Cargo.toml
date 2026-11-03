@@ -28,6 +28,8 @@ bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.
 bae-db = { workspace = true }
 # The preferences the settings screens mirror.
+# The playback service, its values and the renderers the bridge mirrors.
+bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 # The stretch of a file a preview plays.
 bae-track-audio = { workspace = true }

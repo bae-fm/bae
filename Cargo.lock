@@ -795,6 +795,7 @@ dependencies = [
  "bae-identify",
  "bae-loc",
  "bae-mirror",
+ "bae-playback",
  "bae-preferences",
  "bae-test-support",
  "bae-track-audio",
@@ -827,6 +828,7 @@ dependencies = [
  "bae-core",
  "bae-db",
  "bae-diagnostics",
+ "bae-playback",
  "bae-preferences",
  "bae-subsonic",
  "bae-test-support",
@@ -889,6 +891,7 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "bae-identify",
+ "bae-playback",
  "bae-preferences",
  "bae-test-support",
  "bae-track-audio",
@@ -896,9 +899,7 @@ dependencies = [
  "bae-util",
  "base64 0.22.1",
  "chrono",
- "coreaudio-rs",
  "coven",
- "cpal",
  "dirs",
  "ebur128",
  "encoding_rs",
@@ -910,14 +911,10 @@ dependencies = [
  "libc",
  "lofty",
  "natord",
- "ndk",
  "notify",
- "objc2-core-audio",
- "objc2-core-audio-types",
  "rand 0.9.2",
  "regex",
  "reqwest",
- "rtrb",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1036,6 +1033,36 @@ name = "bae-mirror"
 version = "0.1.0"
 
 [[package]]
+name = "bae-playback"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-audio",
+ "bae-db",
+ "bae-diagnostics",
+ "bae-preferences",
+ "bae-track-audio",
+ "bae-types",
+ "bae-util",
+ "chrono",
+ "coreaudio-rs",
+ "coven",
+ "cpal",
+ "ffmpeg-next",
+ "ndk",
+ "objc2-core-audio",
+ "objc2-core-audio-types",
+ "rtrb",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "bae-preferences"
 version = "0.0.0-dev"
 dependencies = [
@@ -1090,6 +1117,7 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "bae-identify",
+ "bae-playback",
  "bae-preferences",
  "bae-util",
  "coven",

@@ -859,7 +859,7 @@ pub enum BridgeRepeatMode {
 }
 
 mirror_enum! {
-    BridgeRepeatMode = bae_core::playback::RepeatMode,
+    BridgeRepeatMode = bae_playback::RepeatMode,
     from_core: pub fn,
     into_core: pub fn,
     variants: { Off, Track, Context },

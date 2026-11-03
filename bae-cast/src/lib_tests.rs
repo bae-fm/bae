@@ -205,10 +205,10 @@ fn the_picker_lists_the_devices_from_the_library() {
     let devices = until_listed(&["Kitchen", "Study"]);
     assert_eq!(
         devices[0],
-        bae_core::renderer::CastDevice {
+        bae_playback::renderer::CastDevice {
             id: "cast-1".to_string(),
             name: "Kitchen".to_string(),
-            kind: bae_core::renderer::RendererKind::Cast,
+            kind: bae_playback::renderer::RendererKind::Cast,
         }
     );
 

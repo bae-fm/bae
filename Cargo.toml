@@ -14,6 +14,7 @@ members = [
     "bae-loc",
     "bae-mcp",
     "bae-mirror",
+    "bae-playback",
     "bae-preferences",
     "bae-subsonic",
     "bae-test-support",
@@ -82,6 +83,7 @@ bae-identify = { path = "bae-identify" }
 bae-loc = { path = "bae-loc" }
 bae-mcp = { path = "bae-mcp" }
 bae-mirror = { path = "bae-mirror" }
+bae-playback = { path = "bae-playback" }
 bae-preferences = { path = "bae-preferences" }
 bae-subsonic = { path = "bae-subsonic" }
 bae-test-support = { path = "bae-test-support" }

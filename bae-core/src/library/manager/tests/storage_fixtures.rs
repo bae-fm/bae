@@ -330,7 +330,7 @@ async fn release_on_the_first_device(
 async fn playback_error_reason_for_file(
     manager: &LibraryManager,
     file: &DbFile,
-) -> crate::playback::PlaybackErrorReason {
+) -> bae_playback::PlaybackErrorReason {
     use bae_track_audio::data_source::FetchArbiter;
     use bae_audio::sparse_buffer::create_sparse_buffer;
 
@@ -355,7 +355,7 @@ async fn playback_error_reason_for_file(
         r.read(&mut b)
     });
     let reason = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        crate::playback::read_failure_reason(&error_rx.recv().await.expect("error channel open"))
+        bae_playback::read_failure_reason(&error_rx.recv().await.expect("error channel open"))
     })
     .await
     .expect("a playback error must be reported");

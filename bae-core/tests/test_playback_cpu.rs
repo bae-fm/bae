@@ -26,7 +26,7 @@
 //! two cases from overlapping within it, so neither needs `--test-threads=1`.
 
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_core::playback::{PlaybackProgress, PlaybackState};
+use bae_playback::{PlaybackProgress, PlaybackState};
 use bae_test_support as support;
 use serial_test::serial;
 use std::time::{Duration, Instant};
@@ -252,7 +252,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
 /// Imports an album and starts playback through the real-time probe sink (no
 /// audio device). Works with any format.
 struct PlaybackTestFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     /// The album's source audio file, kept so the test can decode it directly and
@@ -288,8 +288,8 @@ impl PlaybackTestFixture {
         let playback_handle = support::start_playback_on(
             &library_manager,
             &database,
-            Box::new(bae_core::playback::RealtimeProbeDevice),
-            support::wall_playback_clock(),
+            Box::new(bae_playback::RealtimeProbeDevice),
+            bae_playback::test_capture::wall_playback_clock(),
         )
         .await;
         let progress_rx = playback_handle.subscribe_progress();

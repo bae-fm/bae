@@ -3,7 +3,7 @@ use super::manager::LibraryManager;
 use crate::import::IdentificationHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::ImportServiceHandle;
-use crate::playback::PlaybackHandle;
+use bae_playback::PlaybackHandle;
 use std::sync::Arc;
 
 /// One track's stored audio, open for a single decode into a
@@ -110,7 +110,7 @@ struct AppServicesInner {
     views: crate::library::views::LibraryViews,
     playback: PlaybackHandle,
     /// The cast picker's list, which casting writes and the picker reads.
-    cast_picker: crate::renderer::CastPicker,
+    cast_picker: bae_playback::renderer::CastPicker,
     /// The import service, which also owns the identify driver and the
     /// extraction feeding it: one of each per library, reached through it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -169,7 +169,7 @@ impl AppServices {
         manager: LibraryManager,
         views: crate::library::views::LibraryViews,
         playback: PlaybackHandle,
-        cast_picker: crate::renderer::CastPicker,
+        cast_picker: bae_playback::renderer::CastPicker,
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         identification: IdentificationHandle,
@@ -378,7 +378,7 @@ impl AppServices {
 
     pub fn subscribe_playback_progress(
         &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<crate::playback::PlaybackProgress> {
+    ) -> tokio::sync::mpsc::UnboundedReceiver<bae_playback::PlaybackProgress> {
         self.inner.playback.subscribe_progress()
     }
 
@@ -500,8 +500,8 @@ impl AppServices {
     delegate_async!(manager, filter_existing_track_ids => filter_existing_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<bae_db::ResolvedTrackAudio, crate::library::LibraryError>);
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
-    delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<crate::playback::PlaybackTrackInfo, crate::library::LibraryError>);
-    delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<crate::playback::TrackDisplay, crate::library::LibraryError>);
+    delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<bae_playback::PlaybackTrackInfo, crate::library::LibraryError>);
+    delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<bae_playback::TrackDisplay, crate::library::LibraryError>);
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: crate::library::CoverSelection) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
@@ -595,25 +595,25 @@ impl AppServices {
     delegate_sync!(playback, playback_set_volume => set_volume(volume: f32) -> ());
     delegate_async!(playback, playback_get_volume => get_volume() -> f32);
     delegate_sync!(playback, playback_set_muted => set_muted(muted: bool) -> ());
-    delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn crate::renderer::RendererChannel>, device: crate::playback::RemoteDevice, media_source: crate::renderer::RendererMediaSource) -> ());
-    delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn crate::playback::airplay_output::AirPlaySink>, device: crate::playback::RemoteDevice) -> ());
+    delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn bae_playback::renderer::RendererChannel>, device: bae_playback::RemoteDevice, media_source: bae_playback::renderer::RendererMediaSource) -> ());
+    delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn bae_playback::airplay_output::AirPlaySink>, device: bae_playback::RemoteDevice) -> ());
     delegate_sync!(playback, playback_stop_remote => stop_remote() -> ());
     delegate_sync!(playback, playback_preview_play => preview_play(target: bae_track_audio::PreviewTarget) -> ());
     delegate_sync!(playback, playback_preview_stop => preview_stop() -> ());
     delegate_sync!(playback, playback_preview_toggle_pause => preview_toggle_pause() -> ());
     delegate_sync!(playback, playback_preview_seek_by_ratio => preview_seek_by_ratio(ratio: f64) -> ());
-    delegate_sync!(playback, playback_set_repeat_mode => set_repeat_mode(mode: crate::playback::RepeatMode) -> ());
+    delegate_sync!(playback, playback_set_repeat_mode => set_repeat_mode(mode: bae_playback::RepeatMode) -> ());
     delegate_sync!(playback, playback_set_shuffle => set_shuffle(on: bool) -> ());
     delegate_sync!(playback, playback_add_to_queue => add_to_queue(track_ids: Vec<String>) -> ());
     delegate_sync!(playback, playback_add_next => add_next(track_ids: Vec<String>) -> ());
     delegate_sync!(playback, playback_add_release_to_queue => add_release_to_queue(release_id: String) -> ());
     delegate_sync!(playback, playback_add_release_next => add_release_next(release_id: String) -> ());
     delegate_sync!(playback, playback_insert_in_queue => insert_in_queue(track_ids: Vec<String>, index: usize) -> ());
-    delegate_sync!(playback, playback_remove_entry => remove_entry(entry_id: crate::playback::QueueEntryId) -> ());
-    delegate_sync!(playback, playback_reorder_entry => reorder_entry(entry_id: crate::playback::QueueEntryId, before: Option<crate::playback::QueueEntryId>) -> ());
+    delegate_sync!(playback, playback_remove_entry => remove_entry(entry_id: bae_playback::QueueEntryId) -> ());
+    delegate_sync!(playback, playback_reorder_entry => reorder_entry(entry_id: bae_playback::QueueEntryId, before: Option<bae_playback::QueueEntryId>) -> ());
     delegate_sync!(playback, playback_clear_up_next => clear_up_next() -> ());
     delegate_sync!(playback, playback_clear_playing_from => clear_playing_from() -> ());
-    delegate_sync!(playback, playback_skip_to_entry => skip_to_entry(entry_id: crate::playback::QueueEntryId) -> ());
+    delegate_sync!(playback, playback_skip_to_entry => skip_to_entry(entry_id: bae_playback::QueueEntryId) -> ());
     delegate_async!(playback, playback_save_state => save_state() -> ());
 
     pub fn open_release_file_stream(

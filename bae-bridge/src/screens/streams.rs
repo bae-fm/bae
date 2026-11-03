@@ -329,7 +329,7 @@ pub(crate) fn export_percents(
 /// The playing track's position as its stream holds it: under its track's
 /// key, or nothing.
 fn track_positions(
-    positions: &bae_core::playback::PlaybackPositions,
+    positions: &bae_playback::PlaybackPositions,
 ) -> HashMap<Vec<u8>, BridgeFastValue> {
     positions
         .library
@@ -352,7 +352,7 @@ fn track_positions(
 /// The playing track's held stretches as their stream holds them: under its
 /// track's key, or nothing while no track plays.
 fn track_buffered_held(
-    buffered: Option<bae_core::playback::TrackBuffered>,
+    buffered: Option<bae_playback::TrackBuffered>,
 ) -> HashMap<Vec<u8>, BridgeFastValue> {
     buffered
         .map(|buffered| {

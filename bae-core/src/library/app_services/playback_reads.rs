@@ -14,7 +14,7 @@ impl AppServices {
     /// [`subscribe_playback_positions`](Self::subscribe_playback_positions).
     pub fn subscribe_playback_values(
         &self,
-    ) -> crate::live_query::LiveValues<Option<crate::playback::NowPlayingValues>> {
+    ) -> crate::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_now_playing())
     }
@@ -24,7 +24,7 @@ impl AppServices {
     /// or clip, so a surface shows it only against that one.
     pub fn subscribe_playback_positions(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::playback::PlaybackPositions> {
+    ) -> tokio::sync::watch::Receiver<bae_playback::PlaybackPositions> {
         self.inner.playback.subscribe_positions()
     }
 
@@ -38,7 +38,7 @@ impl AppServices {
     /// The parts of the playing track whose bytes this device holds, as
     /// fractions of its length, which change as its bytes arrive and as its
     /// buffer drops what playback has passed.
-    pub fn follow_track_buffered(&self) -> crate::playback::TrackBufferedFollow {
+    pub fn follow_track_buffered(&self) -> bae_playback::TrackBufferedFollow {
         self.inner.playback.follow_track_buffered()
     }
 
@@ -47,7 +47,7 @@ impl AppServices {
     /// once, then one each time playback leaves the line it holds.
     pub fn subscribe_playback_timeline(
         &self,
-    ) -> crate::live_query::LiveValues<crate::playback::PlaybackTimeline> {
+    ) -> crate::live_query::LiveValues<bae_playback::PlaybackTimeline> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_playback_timeline())
     }
@@ -56,7 +56,7 @@ impl AppServices {
     /// once, then one after each write that changes it.
     pub fn subscribe_cast_devices(
         &self,
-    ) -> crate::live_query::LiveValues<Vec<crate::renderer::CastDevice>> {
+    ) -> crate::live_query::LiveValues<Vec<bae_playback::renderer::CastDevice>> {
         self.inner.manager.values_until_closed(self.inner.cast_picker.subscribe())
     }
 
@@ -64,7 +64,7 @@ impl AppServices {
     /// list, in one write.
     pub async fn show_cast_devices(
         &self,
-        devices: Vec<crate::renderer::CastDevice>,
+        devices: Vec<bae_playback::renderer::CastDevice>,
     ) -> Result<(), bae_db::DbError> {
         self.inner.cast_picker.show(devices).await
     }

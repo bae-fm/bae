@@ -1,0 +1,99 @@
+[package]
+name = "bae-playback"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_playback"
+path = "src/lib.rs"
+
+[dependencies]
+# The decode a track plays from, its resampling and the stream the device
+# pulls.
+bae-audio = { workspace = true }
+# The store the queue, its resume point and history are kept in, and the
+# track audio playback resolves.
+bae-db = { workspace = true }
+# The bugs and telemetry a playback failure reports.
+bae-diagnostics = { workspace = true }
+# Replay gain, side pauses and the cast transcode a playback reads.
+bae-preferences = { workspace = true }
+# The readers a track's stored audio is read through for a decode.
+bae-track-audio = { workspace = true }
+# Track times and positions.
+bae-types = { workspace = true }
+# Content types, and work whose panic comes back as a value.
+bae-util = { workspace = true }
+# The store's files, clock and ids.
+coven = { workspace = true }
+chrono = { workspace = true }
+rusqlite = { workspace = true }
+# The ring the decoder fills and the device drains.
+rtrb = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+
+# CoreAudio, to read a Mac output device's format before cpal changes it and to
+# put it back when bae's streams on it end (src/device_formats.rs): cpal 0.18
+# reads and sets the format only inside its stream build. The same versions
+# cpal links.
+[target.'cfg(target_os = "macos")'.dependencies]
+coreaudio-rs = { workspace = true, features = ["core_audio", "audio_toolbox"] }
+objc2-core-audio = { workspace = true, features = ["std", "AudioHardware"] }
+objc2-core-audio-types = { workspace = true, features = ["std", "CoreAudioBaseTypes"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+# AAudio output sink for the in-core decode path (src/aaudio_output.rs).
+ndk = { workspace = true, features = ["audio"] }
+
+# cpal drives the audio sink on desktop and iOS (its CoreAudio/AudioUnit backend
+# covers both). Android uses AAudio (the `ndk` dep above) instead, so cpal is off
+# there.
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "ios"))'.dependencies]
+cpal = { workspace = true }
+
+[dev-dependencies]
+# The test codec helpers and the instrumentation the tests read.
+bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"] }
+# Test databases with bae's schema.
+bae-db = { workspace = true, features = ["test-utils"] }
+# The bug reporter and telemetry transport that record what they are handed.
+bae-diagnostics = { workspace = true, features = ["test-utils"] }
+# A new library's preferences, built without a library.
+bae-preferences = { workspace = true, features = ["test-utils"] }
+# What a decode's windows read.
+bae-track-audio = { workspace = true, features = ["test-utils"] }
+# Fixture ids, and waiting on a channel for an event.
+bae-util = { workspace = true, features = ["test-utils"] }
+# coven's deterministic clock and id fakes.
+coven = { workspace = true, features = ["test-utils"] }
+# The playback queue bench's no-op pre-update hook, which makes plain SQLite
+# delete row by row as coven's hook does.
+rusqlite = { workspace = true, features = ["preupdate_hook"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }
+uuid = { workspace = true, features = ["v4"] }
+
+# The scrub-point tests read a FLAC's frames straight off FFmpeg's demuxer.
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android", target_os = "ios"))'.dev-dependencies]
+ffmpeg-next = { workspace = true, features = ["codec", "format", "software-resampling"] }
+
+[features]
+default = []
+# The capture devices a test plays on and waiting on what they capture, the
+# manual playback clock, and the seams the playback tests of the crates above
+# read. Dev/test-only: a
+# production build never enables it.
+test-utils = ["bae-db/test-utils", "bae-util/test-utils"]
+
+[lints]
+workspace = true

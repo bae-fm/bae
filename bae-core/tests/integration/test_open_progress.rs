@@ -31,7 +31,7 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
         store.to_string(),
         200,
         false,
-        bae_core::playback::AudioFocus::Unshared,
+        bae_playback::AudioFocus::Unshared,
         bae_diagnostics::Diagnostics::noop(),
         installation.builder(app_dir.store_layout()),
         {

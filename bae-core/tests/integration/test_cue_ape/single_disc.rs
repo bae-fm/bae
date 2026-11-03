@@ -1,7 +1,7 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
-use bae_core::playback::{PlaybackProgress, PlaybackState};
+use bae_playback::{PlaybackProgress, PlaybackState};
 use bae_types::track_time::{TrackTime};
 use bae_test_support as support;
 use bae_util::content_type::ContentType;
@@ -251,10 +251,10 @@ async fn test_cue_ape_records_track_timing() {
 // ============================================================================
 
 struct CueApeTestFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
-    capture_stream_rx: support::CaptureStreamRx,
+    capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -271,7 +271,7 @@ impl CueApeTestFixture {
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, &database, support::TestAudioDevice::Capture)
+            support::start_capture_playback(&library_manager, &database, bae_playback::test_capture::TestAudioDevice::Capture)
                 .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
@@ -283,8 +283,8 @@ impl CueApeTestFixture {
         })
     }
 
-    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
-        support::next_capture_stream(&mut self.capture_stream_rx).await
+    async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
+        bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
 
@@ -312,7 +312,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
         let mut captured = fixture.next_capture_stream().await;
 
         // Wait for playback to start.
-        let started = support::wait_until_playing(
+        let started = bae_playback::test_capture::wait_until_playing(
             &mut fixture.progress_rx,
             &track_id,
             Duration::from_secs(5),
@@ -387,7 +387,7 @@ async fn test_cue_ape_seek() {
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(27)));
     let mut captured = fixture.next_capture_stream().await;
 
-    support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
+    bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
     // Snapshot captured samples after seek has had time to produce audio.
     // The seek allocated its own buffer, so the captured samples start at the
@@ -515,7 +515,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
 
     // Wait for track 1 to start
     let started =
-        support::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
+        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
             .await;
     assert!(started, "Track 1 should start playing");
 
@@ -527,7 +527,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
 
     // Wait for track 2 to start via auto-advance, then capture samples.
     let track2_started =
-        support::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(15))
+        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(15))
             .await;
     assert!(track2_started, "Track 2 should auto-advance after track 1 completes");
 

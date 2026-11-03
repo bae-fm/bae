@@ -25,9 +25,9 @@ fn the_upload_total_is_held_only_while_files_are_sent() {
 /// nothing is held while no track plays.
 #[test]
 fn a_tracks_held_stretches_are_held_under_its_track() {
-    let held = track_buffered_held(Some(bae_core::playback::TrackBuffered {
+    let held = track_buffered_held(Some(bae_playback::TrackBuffered {
         track_id: "track-1".into(),
-        ranges: vec![bae_core::playback::TrackSpan { start: 0.0, end: 0.25 }],
+        ranges: vec![bae_playback::TrackSpan { start: 0.0, end: 0.25 }],
     }));
     assert_eq!(
         held,

@@ -25,7 +25,7 @@ async fn queued_upload_fixture(folder: &str) -> (TestManager, TempDir, DbRelease
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
-    use crate::playback::PlaybackErrorReason;
+    use bae_playback::PlaybackErrorReason;
     let (manager, dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release_id = uploaded_release_with_files(
@@ -49,7 +49,7 @@ async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn pending_upload_with_missing_source_reports_the_missing_original() {
-    use crate::playback::PlaybackErrorReason;
+    use bae_playback::PlaybackErrorReason;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_partially_uploaded_release(&manager, temp_dir.path()).await;
@@ -75,7 +75,7 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
 #[test]
 fn a_file_on_another_device_is_not_uploaded() {
     crate::sync::test_devices::run_two_device_test(async |devices| {
-        use crate::playback::PlaybackErrorReason;
+        use bae_playback::PlaybackErrorReason;
         let originals = TempDir::new().unwrap();
         let release = release_on_the_first_device(devices, originals.path(), "Album").await;
         let manager = devices.b().manager();
@@ -614,7 +614,7 @@ async fn check_playability(
     elsewhere: &DbRelease,
 ) {
     use crate::album_detail::ReleasePlayability;
-    use crate::playback::PlaybackErrorReason;
+    use bae_playback::PlaybackErrorReason;
     let here = insert_local_release_with_files(
         manager,
         originals,

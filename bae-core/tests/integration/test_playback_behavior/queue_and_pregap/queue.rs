@@ -186,7 +186,7 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     expected: &str,
     mutate: F,
 ) where
-    F: FnOnce(&bae_core::playback::PlaybackHandle, &[bae_core::playback::QueueEntry]),
+    F: FnOnce(&bae_playback::PlaybackHandle, &[bae_playback::QueueEntry]),
 {
     fixture.playback_handle.add_to_queue(initial_queue);
     fixture.playback_handle.play(track0.to_string());
@@ -299,14 +299,14 @@ async fn test_remove_entry_refreshes_preloaded_track() {
 // mutation it follows).
 
 /// The release id of the currently-playing context, read off the projection.
-async fn current_release_id(handle: &bae_core::playback::PlaybackHandle) -> String {
+async fn current_release_id(handle: &bae_playback::PlaybackHandle) -> String {
     let proj = handle.queue_value().await.expect("queue value");
     match proj.context.expect("a playing context").source {
-        bae_core::playback::ContextSource::Release(id) => id,
-        bae_core::playback::ContextSource::Releases => {
+        bae_playback::ContextSource::Release(id) => id,
+        bae_playback::ContextSource::Releases => {
             panic!("expected a single-release context, got a multi-release one")
         }
-        bae_core::playback::ContextSource::Library => {
+        bae_playback::ContextSource::Library => {
             panic!("expected a release context, got the whole-library context")
         }
     }
@@ -437,7 +437,7 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
     let proj = fixture.playback_handle.queue_value().await.expect("queue value");
     let ctx = proj.context.expect("a library context");
     assert!(
-        matches!(ctx.source, bae_core::playback::ContextSource::Library),
+        matches!(ctx.source, bae_playback::ContextSource::Library),
         "PlayLibraryShuffled plays from the whole library"
     );
     assert!(ctx.shuffled, "the library context is shuffled");

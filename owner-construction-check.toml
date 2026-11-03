@@ -237,7 +237,7 @@ task_types = [
 # them, once per library the test opens.
 "bae-catalogs/src/fake_catalogs.rs" = ["FakeCatalogs::providers"]
 # Starts the playback service's task; its handle stops it.
-"bae-core/src/playback/service/runtime.rs" = [
+"bae-playback/src/service/runtime.rs" = [
     "PlaybackService::start",
     "PlaybackService::start_with_audio_device",
     "PlaybackService::start_inner",

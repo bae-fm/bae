@@ -144,9 +144,9 @@ pub async fn start_test_services(
         remote_images,
         50,
         false,
-        crate::wall_playback_clock(),
+        bae_playback::test_capture::wall_playback_clock(),
         bae_core::app::PlaybackOutput::Device(Box::new(
-            bae_core::playback::audio_output::FailingAudioDevice,
+            bae_playback::audio_output::FailingAudioDevice,
         )),
     )
     .await

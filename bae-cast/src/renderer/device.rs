@@ -8,7 +8,7 @@
 
 use std::net::IpAddr;
 
-use bae_core::renderer::{CastDevice, RendererKind};
+use bae_playback::renderer::{CastDevice, RendererKind};
 
 use crate::airplay::AirPlayCapabilities;
 
@@ -43,7 +43,7 @@ impl RendererDevice {
 }
 
 /// How to reach a device's control channel — the flavor-specific coordinates the
-/// cast controller uses to build the right [`bae_core::renderer::RendererChannel`].
+/// cast controller uses to build the right [`bae_playback::renderer::RendererChannel`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RendererConnection {
     /// A Cast receiver at a LAN address; the CASTV2 channel connects to it.

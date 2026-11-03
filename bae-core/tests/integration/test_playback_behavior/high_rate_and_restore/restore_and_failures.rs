@@ -147,7 +147,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
             matches!(
                 event,
                 PlaybackProgress::PreviewStateChanged(
-                    bae_core::playback::PreviewState::Playing { .. }
+                    bae_playback::PreviewState::Playing { .. }
                 )
             )
             .then_some(())
@@ -162,7 +162,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
             matches!(
                 event,
                 PlaybackProgress::PreviewStateChanged(
-                    bae_core::playback::PreviewState::Paused { .. }
+                    bae_playback::PreviewState::Paused { .. }
                 )
             )
             .then_some(())
@@ -194,13 +194,13 @@ async fn test_preview_seek_while_paused_emits_position_update() {
 /// streams in the background after `play_track` has already built the stream,
 /// so a cloud failure here is genuinely mid-flight — not a prepare-time error.
 struct CloudOnlyPlaybackFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     /// The services over the library and playback, as an app holds them.
     services: bae_core::library::AppServices,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     cloud: Arc<coven::MemoryStorage>,
     track_ids: Vec<String>,
-    _capture_stream_rx: support::CaptureStreamRx,
+    _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -270,7 +270,7 @@ impl CloudOnlyPlaybackFixture {
             library_manager,
             bae_core::library::views::LibraryViews::new(database.clone()),
             playback_handle.clone(),
-            bae_core::renderer::CastPicker::new(database.clone()),
+            bae_playback::renderer::CastPicker::new(database.clone()),
             import_handle,
             identification,
         );

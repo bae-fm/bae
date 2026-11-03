@@ -13,11 +13,11 @@ use coven::{ClockRef, IdSourceRef};
 pub enum PlaybackOutput {
     /// The system's audio output, shared with other apps as `AudioFocus`
     /// says.
-    System(crate::playback::AudioFocus),
+    System(bae_playback::AudioFocus),
     /// An output a test supplies: every output the service opens, the main
     /// player's and any preview's, comes from it.
     #[cfg(any(test, feature = "test-utils"))]
-    Device(Box<dyn crate::playback::AudioOutputDevice>),
+    Device(Box<dyn bae_playback::AudioOutputDevice>),
 }
 
 /// Open the library manager over the library's store, with the services it
@@ -76,21 +76,21 @@ pub async fn start_library_services(
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    playback_clock: crate::playback::PlaybackClockRef,
+    playback_clock: bae_playback::PlaybackClockRef,
     playback_output: PlaybackOutput,
 ) -> Result<AppServices, ServicesStartError> {
     manager.settle_playback_queue(restore_playback).await?;
-    let queue_tables = crate::playback::tables::PlaybackQueueTables::new(database.clone());
-    let now_row = crate::playback::tables::PlaybackNowRow::new(database.clone());
-    let timeline_row = crate::playback::tables::PlaybackTimelineRow::new(database.clone());
+    let queue_tables = bae_playback::tables::PlaybackQueueTables::new(database.clone());
+    let now_row = bae_playback::tables::PlaybackNowRow::new(database.clone());
+    let timeline_row = bae_playback::tables::PlaybackTimelineRow::new(database.clone());
     let track_deletions = manager.subscribe_track_deletions();
     let views = crate::library::views::LibraryViews::new(database.clone());
     // No discovery outlives the process that ran it: the cast picker's list
     // starts empty, before anything that writes or reads it can.
-    let cast_picker = crate::renderer::CastPicker::new(database.clone());
+    let cast_picker = bae_playback::renderer::CastPicker::new(database.clone());
     cast_picker.clear().await?;
     let playback = match playback_output {
-        PlaybackOutput::System(audio_focus) => crate::playback::PlaybackService::start(
+        PlaybackOutput::System(audio_focus) => bae_playback::PlaybackService::start(
             database.clone(),
             ids.clone(),
             queue_tables,
@@ -105,22 +105,20 @@ pub async fn start_library_services(
             audio_focus,
         ),
         #[cfg(any(test, feature = "test-utils"))]
-        PlaybackOutput::Device(device) => {
-            crate::playback::PlaybackService::start_with_audio_device(
-                database.clone(),
-                ids.clone(),
-                queue_tables,
-                now_row,
-                timeline_row,
-                track_deletions,
-                diagnostics.clone(),
-                runtime_handle.clone(),
-                position_update_interval_ms,
-                restore_playback,
-                device,
-                playback_clock,
-            )
-        }
+        PlaybackOutput::Device(device) => bae_playback::PlaybackService::start_with_audio_device(
+            database.clone(),
+            ids.clone(),
+            queue_tables,
+            now_row,
+            timeline_row,
+            track_deletions,
+            diagnostics.clone(),
+            runtime_handle.clone(),
+            position_update_interval_ms,
+            restore_playback,
+            device,
+            playback_clock,
+        ),
     };
     // The import pipeline (scanning, transcoding, identify) is desktop-only.
     // Mobile is a sync/playback client, so its `AppServices` carries just the

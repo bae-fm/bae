@@ -19,7 +19,7 @@ async fn test_cue_ape_next_track() {
 
     // Wait for track 1 to start
     let started =
-        support::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
+        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
             .await;
     assert!(started, "Track 1 should start playing");
 
@@ -29,7 +29,7 @@ async fn test_cue_ape_next_track() {
 
     // Wait for track 2 to start
     let track2_started =
-        support::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(10))
+        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(10))
             .await;
     assert!(track2_started, "Track 2 should start after Next");
 

@@ -223,14 +223,14 @@ pub enum BridgeRendererKind {
 
 mirror_enum! {
     #[cfg(feature = "cast")]
-    BridgeRendererKind = bae_core::renderer::RendererKind,
+    BridgeRendererKind = bae_playback::renderer::RendererKind,
     from_core: fn,
     variants: { Cast, Dlna, AirPlay },
 }
 
 mirror_struct! {
     #[cfg(feature = "cast")]
-    BridgeCastDevice = bae_core::renderer::CastDevice,
+    BridgeCastDevice = bae_playback::renderer::CastDevice,
     from_core: pub(crate) fn,
     fields: { id, name, kind: (BridgeRendererKind) },
 }

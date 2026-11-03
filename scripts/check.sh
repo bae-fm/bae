@@ -117,6 +117,8 @@ check "clippy (bae-track-audio + test-utils)" \
   scripts/cargo.sh clippy -p bae-track-audio --tests --features bae-track-audio/test-utils -- -D warnings
 check "clippy (bae-identify + test-utils)" \
   scripts/cargo.sh clippy -p bae-identify --tests --features bae-identify/test-utils -- -D warnings
+check "clippy (bae-playback + test-utils)" \
+  scripts/cargo.sh clippy -p bae-playback --tests --features bae-playback/test-utils -- -D warnings
 check "clippy (bae-bridge)"         scripts/cargo.sh clippy -p bae-bridge -- -D warnings
 check "clippy (bae-core --features oauth-providers)" \
   scripts/cargo.sh clippy -p bae-core --features oauth-providers -- -D warnings
@@ -152,6 +154,8 @@ check "dead_code (bae-track-audio lib only)" \
   scripts/cargo.sh rustc -p bae-track-audio --lib --profile check -- -D warnings
 check "dead_code (bae-identify lib only)" \
   scripts/cargo.sh rustc -p bae-identify --lib --profile check -- -D warnings
+check "dead_code (bae-playback lib only)" \
+  scripts/cargo.sh rustc -p bae-playback --lib --profile check -- -D warnings
 check "dead_code (bae-cast lib only)" \
   scripts/cargo.sh rustc -p bae-cast --lib --profile check -- -D warnings
 
@@ -185,6 +189,7 @@ check "cargo test (bae-db)"       scripts/cargo.sh test -p bae-db
 check "cargo test (bae-preferences)" scripts/cargo.sh test -p bae-preferences
 check "cargo test (bae-track-audio)"  scripts/cargo.sh test -p bae-track-audio
 check "cargo test (bae-identify)"     scripts/cargo.sh test -p bae-identify
+check "cargo test (bae-playback)"  scripts/cargo.sh test -p bae-playback
 check "cargo test (bae-loc)"         scripts/cargo.sh test -p bae-loc
 check "cargo test (bae-theme)"         scripts/cargo.sh test -p bae-theme
 # Both editions: default features are baeium's, `desktop` the full build's.

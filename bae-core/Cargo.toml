@@ -22,6 +22,7 @@ bae-diagnostics = { workspace = true }
 # The identify reducer, its view and its verdicts, which only the desktop
 # import pipeline drives; the crate is empty on mobile.
 bae-identify = { workspace = true }
+bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
 bae-types = { workspace = true }
@@ -48,7 +49,6 @@ base64 = { workspace = true }
 async-trait = { workspace = true }
 regex = { workspace = true }
 libc = { workspace = true }
-rtrb = { workspace = true }
 tokio-util = { workspace = true, features = ["io", "rt"] }
 rand = { workspace = true }
 tracing = { workspace = true }
@@ -58,19 +58,6 @@ tempfile = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
-
-# CoreAudio, to read a Mac output device's format before cpal changes it and to
-# put it back when bae's streams on it end (src/playback/device_formats.rs):
-# cpal 0.18 reads and sets the format only inside its stream build. The same
-# versions cpal links.
-[target.'cfg(target_os = "macos")'.dependencies]
-coreaudio-rs = { workspace = true, features = ["core_audio", "audio_toolbox"] }
-objc2-core-audio = { workspace = true, features = ["std", "AudioHardware"] }
-objc2-core-audio-types = { workspace = true, features = ["std", "CoreAudioBaseTypes"] }
-
-[target.'cfg(target_os = "android")'.dependencies]
-# AAudio output sink for the in-core decode path (src/playback/aaudio_output.rs).
-ndk = { workspace = true, features = ["audio"] }
 
 # The import pipeline's dependencies. The predicate is the pipeline's own, the
 # `desktop` cfg's (bae-util/build.rs): a mobile build is a sync/playback client
@@ -94,12 +81,6 @@ sha1 = { workspace = true }
 # a linear ratio (1.0 = 0 dBTP), stored verbatim as `*_peak_linear`.
 ebur128 = { workspace = true }
 
-# cpal drives the audio sink on desktop and iOS (its CoreAudio/AudioUnit backend
-# covers both). Android uses AAudio (the `ndk` dep above) instead, so cpal is off
-# there.
-[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "ios"))'.dependencies]
-cpal = { workspace = true }
-
 # Whether a watched folder is on a network volume (src/import/volume.rs): a
 # drive letter mapped to a share looks local by spelling, and only
 # `GetDriveTypeW` tells it apart.
@@ -115,6 +96,8 @@ bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 # Test databases with bae's schema and the rows db's fixtures seed them with.
 bae-db = { workspace = true, features = ["test-utils"] }
+# The capture devices and manual clock the playback tests run on.
+bae-playback = { workspace = true, features = ["test-utils"] }
 # A new library's preferences, built without a library.
 bae-preferences = { workspace = true, features = ["test-utils"] }
 # What the import tests read back of an identify run.
@@ -148,9 +131,6 @@ axum = { workspace = true, features = ["http1", "tokio", "json", "form"] }
 dirs = { workspace = true }
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
 coven = { workspace = true, features = ["test-utils"] }
-# The playback queue bench's no-op pre-update hook, which makes plain SQLite
-# delete row by row as coven's hook does.
-rusqlite = { workspace = true, features = ["preupdate_hook"] }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = { workspace = true }
@@ -192,14 +172,15 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # Forwards coven's test-utils so bae-core's own integration tests get the
 # re-exported clock/id fakes (FixedClock, …), bae-app-dir's so the fixtures
 # can put an app directory at a test's path, bae-db's so they get its test
-# databases and the rows they seed, bae-preferences' so they get a new
+# databases and the rows they seed, bae-playback's so they get its capture
+# devices and manual clock, bae-preferences' so they get a new
 # library's preferences without a library, bae-track-audio's so they read a
 # decode's windows back, bae-util's so they get its test
 # transport and a retry that sleeps no real time, bae-audio's so they get its
 # test codec helpers, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
 # and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

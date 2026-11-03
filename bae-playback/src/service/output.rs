@@ -1,0 +1,217 @@
+//! The main player's persistent output stream.
+//!
+//! One output stream lives per `(sample_rate, channels)` for as long as playback
+//! continues in that format. Track transitions — a fresh play, a seek, a manual
+//! next, a preload promotion — swap what the audio callback reads via
+//! `PlaybackSource::replace`; they don't rebuild the device stream. The stream is
+//! torn down and rebuilt only on a format change, `stop()`, a stream error, or
+//! the device's report that the stream can't go on (`follow_output_device`).
+//! The in-callback gapless crossing (`PlaybackSource::pull_samples`) swaps in
+//! place and never touches this.
+
+use super::*;
+use crate::audio_output::audio_event_channel;
+
+impl PlaybackService {
+    /// Attach `track_stream` to the output: if a stream for this format is already
+    /// live, swap the callback's source in place (`PlaybackSource::replace`) and
+    /// notify the sink so a capture sink starts a new stream; otherwise drop the old stream
+    /// (releasing the device / stopping the old capture thread) and build a fresh
+    /// one for this format. On a build failure the just-wrapped source is
+    /// cancelled and the error returned — the caller owns the decoder's token and
+    /// byte buffers.
+    pub(super) async fn attach_track(
+        &mut self,
+        track_stream: TrackStream,
+        fmt: TrackFmt,
+        sample_rate: u32,
+        channels: u32,
+        staged_next: StagedNextOnReplace,
+    ) -> Result<(), PlaybackError> {
+        if let Some(out) = &mut self.output {
+            if out.sample_rate == sample_rate && out.channels == channels {
+                // Swap the source and flush the receiver under the same lock every
+                // audio-event push takes, so the two are atomic: everything queued
+                // at that instant belongs to the outgoing track and is dropped (a
+                // stale `Completion` would otherwise stamp the incoming track
+                // `Completed` and mute it), and everything pushed after belongs to
+                // the new one.
+                {
+                    let mut source = out.source.lock().unwrap();
+                    match staged_next {
+                        StagedNextOnReplace::Discard => source.replace(track_stream, fmt),
+                        StagedNextOnReplace::Preserve => {
+                            source.replace_preserving_staged_next(track_stream, fmt)
+                        }
+                    }
+                    while out.audio_events.pop().is_some() {}
+                }
+                // A same-format swap keeps the one device stream; tell the sink so
+                // a capture sink starts a new stream, preserving "one stream per
+                // non-gapless transition" for the test capture sinks (a no-op on
+                // real devices).
+                self.audio_output.on_source_replaced();
+                return Ok(());
+            }
+        }
+
+        // Format differs (or nothing is attached yet): build a fresh stream over
+        // a new source for this track. A fresh source has no prior events to
+        // carry — an outgoing track's would be stale — so carry none.
+        let source = Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, fmt)));
+        self.build_output_over(source, sample_rate, channels, Vec::new())
+    }
+
+    /// What the person is told when `operation` couldn't start the audio
+    /// output: the device's or the speaker's problem by name, or bae's own
+    /// failure, which goes to the crash reporter. Either way the log keeps the
+    /// whole error with its causes.
+    pub(super) fn output_start_failed(
+        &self,
+        operation: &str,
+        error: &PlaybackError,
+    ) -> crate::PlaybackErrorReason {
+        let detail = bae_util::error_text::CauseChain(error);
+        if error.is_bug() {
+            self.diagnostics.report_bug(operation, &detail);
+        } else {
+            warn!("{operation}: the audio output didn't start: {detail}");
+        }
+        error.ui_reason()
+    }
+
+    /// The output stopped sending partway through a track — a conversion for
+    /// the AirPlay receiver failed, or the Android device stream failed or
+    /// couldn't be reopened on a new default device. That is bae's own
+    /// failure: report it, tell the person, and stop rather than play on with
+    /// audio missing.
+    pub(super) async fn output_stopped_sending(&mut self, detail: String) {
+        self.diagnostics.report_bug("keep the audio output playing", &detail);
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::PlaybackError {
+                reason: crate::PlaybackErrorReason::internal(detail),
+            },
+        );
+        self.stop().await;
+    }
+
+    /// Promote the stream already staged inside the live source. The source
+    /// performs the ownership-preserving swap; this owner synchronizes it with
+    /// event draining and output notification exactly like `attach_track`.
+    pub(super) fn promote_staged_track(&mut self) -> bool {
+        let Some(out) = &mut self.output else {
+            return false;
+        };
+        {
+            let mut source = out.source.lock().unwrap();
+            if !source.promote_staged_next() {
+                return false;
+            }
+            while out.audio_events.pop().is_some() {}
+        }
+        self.audio_output.on_source_replaced();
+        true
+    }
+
+    /// Drop the current output stream (if any) and build a fresh one over
+    /// `source`, resolving the current default device. Both the format-change
+    /// branch of `attach_track` and `follow_output_device` go through here — the
+    /// difference is only whether `source` wraps a new track or the live one. A
+    /// fresh stream always needs a fresh audio-events channel (the old sender
+    /// dies with the old drain); `carry_events` are events already queued for
+    /// the SAME source that must survive the new channel — the rebuild for an
+    /// invalidated stream passes the old receiver's pending events, since they can never
+    /// re-fire (a `Completion` latched the source's completion flag). A format
+    /// change wraps a new track, so it carries none. On a build failure the source
+    /// is cancelled (so a decoder filling its ring exits) and the error returned.
+    pub(super) fn build_output_over(
+        &mut self,
+        source: Arc<Mutex<source::PlaybackSource>>,
+        sample_rate: u32,
+        channels: u32,
+        carry_events: Vec<AudioEvent>,
+    ) -> Result<(), PlaybackError> {
+        // Drop the old stream first, so the device is released / the old capture
+        // thread joins before the new one binds. Cancel its source before dropping
+        // it: a format-change rebuild discards the outgoing track's source, whose
+        // decoder `teardown_local_playback` stopped only via its AVIO token — and a
+        // decoder parked writing a full ring unparks only on the sink's cancel
+        // flag, so without this it would park forever. (`follow_output_device`
+        // took `self.output` out before calling here and passes that same source
+        // back in, so there is nothing to cancel then.)
+        self.discard_output();
+
+        let (mut audio_event_tx, audio_events) = audio_event_channel();
+        for event in carry_events {
+            audio_event_tx.push(event);
+        }
+
+        let stream = match self.audio_output.create_stream(
+            source.clone(),
+            sample_rate,
+            channels,
+            audio_event_tx,
+            self.position_update_interval_ms,
+        ) {
+            Ok(stream) => stream,
+            Err(e) => {
+                // No output will drain this source's ring. Cancel it so a decoder
+                // filling it exits rather than parking on a full ring forever.
+                source.lock().unwrap().cancel();
+                return Err(PlaybackError::AudioOutput(e));
+            }
+        };
+
+        if let Err(e) = stream.play() {
+            source.lock().unwrap().cancel();
+            return Err(PlaybackError::AudioOutput(e));
+        }
+
+        self.output = Some(OutputStream { stream, source, audio_events, sample_rate, channels });
+        Ok(())
+    }
+
+    /// Drop the output stream, cancelling its source so a decoder filling the
+    /// source's ring exits. A source a panic poisoned is thrown away with the
+    /// stream, so it is cancelled all the same: cancelling only tells its
+    /// tracks' streams to end.
+    pub(super) fn discard_output(&mut self) {
+        if let Some(out) = self.output.take() {
+            out.source.lock().unwrap_or_else(std::sync::PoisonError::into_inner).cancel();
+        }
+    }
+
+    /// Replace the output stream its device stopped playing — `detail` is the
+    /// device's report — with one over the SAME `PlaybackSource`, on the
+    /// now-current default device. Playback position and state ride on the
+    /// source and the shared atomic, so they survive the swap; a brief glitch at
+    /// the switch is acceptable. A rebuild that can't get a device fails loud —
+    /// emit a `PlaybackError` and stop — rather than leaving a silently dead
+    /// stream.
+    pub(super) async fn follow_output_device(&mut self, out: OutputStream, detail: &str) {
+        let OutputStream { stream, source, mut audio_events, sample_rate, channels } = out;
+        // Release the old device before binding the new one.
+        drop(stream);
+        // Carry events already queued for this (unchanged) source onto the new
+        // channel — the callback pushed them under the source lock before the
+        // stream was dropped, and a `Completion` among them can never re-fire.
+        let mut pending = Vec::new();
+        while let Some(event) = audio_events.pop() {
+            pending.push(event);
+        }
+        info!(
+            detail,
+            "The output stream can't go on on its device; rebuilding it on the current default"
+        );
+        if let Err(error) = self.build_output_over(source, sample_rate, channels, pending) {
+            self.telemetry_playback_failed(PlaybackOperation::DeviceRebuild);
+            let reason = self.output_start_failed(
+                "rebuild the audio output on the current default device",
+                &error,
+            );
+            emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
+            self.stop().await;
+        }
+    }
+}

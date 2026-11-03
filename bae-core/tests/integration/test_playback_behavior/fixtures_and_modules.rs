@@ -162,22 +162,22 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
 /// test writes through `import`. Tests that seek or pause need
 /// `TestAudioDevice::RealtimeCapture`.
 struct CueFlacTestFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
-    capture_stream_rx: support::CaptureStreamRx,
+    capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
 impl CueFlacTestFixture {
-    async fn new(device: support::TestAudioDevice) -> Result<Self, Box<dyn std::error::Error>> {
+    async fn new(device: bae_playback::test_capture::TestAudioDevice) -> Result<Self, Box<dyn std::error::Error>> {
         Self::import(device, create_cue_flac_test_album(), generate_cue_flac_files).await
     }
 
     /// Import a three-track CUE/FLAC album that `generate_files` writes, and
     /// play it through `device`.
     async fn import(
-        device: support::TestAudioDevice,
+        device: bae_playback::test_capture::TestAudioDevice,
         album: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -198,23 +198,23 @@ impl CueFlacTestFixture {
     }
 
     /// The next transition's captured stream, in the order streams were created.
-    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
-        support::next_capture_stream(&mut self.capture_stream_rx).await
+    async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
+        bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
 
 /// The side-pause album playing through a capture sink, plus the library
 /// manager the side-pause setting is written through.
 struct SidePauseTestFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     library_manager: LibraryManager,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     release_id: String,
-    capture_stream_rx: support::CaptureStreamRx,
+    capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     /// The service's playback clock. Nothing moves it but the test, so a
     /// side-pause countdown runs out exactly when the test says.
-    clock: Arc<bae_core::playback::ManualPlaybackClock>,
+    clock: Arc<bae_playback::ManualPlaybackClock>,
     _temp_dir: TempDir,
 }
 
@@ -260,9 +260,9 @@ impl SidePauseTestFixture {
         // Paced to wall-clock time so commands issued after play land before
         // the track's boundary.
         let clock =
-            Arc::new(bae_core::playback::ManualPlaybackClock::new(side_pause_clock_start()));
+            Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
         let (playback_handle, capture_stream_rx) = support::start_capture_playback_with_clock(&library_manager, &database,
-            support::TestAudioDevice::RealtimeCapture,
+            bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
             clock.clone(),
         )
         .await;
@@ -307,8 +307,8 @@ impl SidePauseTestFixture {
         settled_events_on(&self.playback_handle, &mut self.progress_rx).await
     }
 
-    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
-        support::next_capture_stream(&mut self.capture_stream_rx).await
+    async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
+        bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
     }
 
     fn play_release_from(&self, track_id: &str) {

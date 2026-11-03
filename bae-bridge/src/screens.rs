@@ -128,8 +128,8 @@ pulled_values! {
     /// value whose playing track the library no longer holds is passed over:
     /// the value before it stands until playback moves off the track.
     PlaybackValuesSubscription:
-        Option<bae_core::playback::NowPlayingValues> => crate::types::BridgePlaybackValues,
-    converted by |values: Option<bae_core::playback::NowPlayingValues>| {
+        Option<bae_playback::NowPlayingValues> => crate::types::BridgePlaybackValues,
+    converted by |values: Option<bae_playback::NowPlayingValues>| {
         values.map(crate::types::BridgePlaybackValues::from_core)
     },
     when present,
@@ -140,7 +140,7 @@ pulled_values! {
     /// Where playback is, for a surface that moves the position on itself:
     /// the timeline now, then each time playback leaves the line it holds.
     PlaybackTimelineSubscription:
-        bae_core::playback::PlaybackTimeline => crate::types::BridgePlaybackTimeline,
+        bae_playback::PlaybackTimeline => crate::types::BridgePlaybackTimeline,
     converted by crate::types::BridgePlaybackTimeline::from_core,
     built by playback_timeline
 }
@@ -150,8 +150,8 @@ pulled_values! {
     /// addition, none before the first since playback started with the
     /// library.
     QueueAdditionsSubscription:
-        Option<bae_core::playback::QueueAddition> => crate::types::BridgeQueueAddition,
-    converted by |addition: Option<bae_core::playback::QueueAddition>| {
+        Option<bae_playback::QueueAddition> => crate::types::BridgeQueueAddition,
+    converted by |addition: Option<bae_playback::QueueAddition>| {
         addition.map(crate::types::BridgeQueueAddition::from_core)
     },
     when present,
@@ -182,8 +182,8 @@ pulled_values! {
 pulled_values! {
     /// The receivers the cast picker lists, by name.
     CastDevicesSubscription:
-        Vec<bae_core::renderer::CastDevice> => Vec<crate::types::BridgeCastDevice>,
-    converted by |devices: Vec<bae_core::renderer::CastDevice>| {
+        Vec<bae_playback::renderer::CastDevice> => Vec<crate::types::BridgeCastDevice>,
+    converted by |devices: Vec<bae_playback::renderer::CastDevice>| {
         devices.into_iter().map(crate::types::BridgeCastDevice::from_core).collect::<Vec<_>>()
     },
     built by cast_devices
@@ -199,7 +199,7 @@ pulled_values! {
 
 pulled_values! {
     /// The queue as its screens show it.
-    QueueSubscription: bae_core::playback::ResolvedQueueSnapshot => crate::types::BridgeQueueSnapshot,
+    QueueSubscription: bae_playback::ResolvedQueueSnapshot => crate::types::BridgeQueueSnapshot,
     converted by crate::types::BridgeQueueSnapshot::from_core,
     built by queue
 }

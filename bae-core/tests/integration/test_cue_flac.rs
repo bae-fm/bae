@@ -254,21 +254,21 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let expected_duration_ms: i64 = 8000; // Track 1 is 0:00 to 0:08
 
     library_manager.settle_playback_queue(true).await.expect("settle the playback queue");
-    let playback_handle = bae_core::playback::PlaybackService::start(
+    let playback_handle = bae_playback::PlaybackService::start(
         database.clone(),
         std::sync::Arc::new(coven::UuidIds),
-        bae_core::playback::tables::PlaybackQueueTables::new(database.clone()),
-        bae_core::playback::tables::PlaybackNowRow::new(database.clone()),
-        bae_core::playback::tables::PlaybackTimelineRow::new(database.clone()),
+        bae_playback::tables::PlaybackQueueTables::new(database.clone()),
+        bae_playback::tables::PlaybackNowRow::new(database.clone()),
+        bae_playback::tables::PlaybackTimelineRow::new(database.clone()),
         library_manager.subscribe_track_deletions(),
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         100,
         true,
-        std::sync::Arc::new(bae_core::playback::WallPlaybackClock::new(std::sync::Arc::new(
+        std::sync::Arc::new(bae_playback::WallPlaybackClock::new(std::sync::Arc::new(
             coven::SystemClock,
         ))),
-        bae_core::playback::AudioFocus::Unshared,
+        bae_playback::AudioFocus::Unshared,
     );
     playback_handle.set_volume(0.0);
     let mut progress_rx = playback_handle.subscribe_progress();
@@ -277,8 +277,8 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let playback_duration_ms =
         bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(5), |event| {
             match event {
-                bae_core::playback::PlaybackProgress::StateChanged {
-                    state: bae_core::playback::PlaybackState::Playing { track },
+                bae_playback::PlaybackProgress::StateChanged {
+                    state: bae_playback::PlaybackState::Playing { track },
                 } if track.track_id == track1.id => Some(track.duration_ms),
                 _ => None,
             }
@@ -338,9 +338,9 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, bae_db::D
 // ============================================================================
 
 struct CueFlacCaptureFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     track_ids: Vec<String>,
-    capture_stream_rx: support::CaptureStreamRx,
+    capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -359,7 +359,7 @@ impl CueFlacCaptureFixture {
         let (playback_handle, capture_stream_rx) = support::start_capture_playback(
             &library_manager,
             &database,
-            support::TestAudioDevice::Capture,
+            bae_playback::test_capture::TestAudioDevice::Capture,
         )
         .await;
         Ok(Self {
@@ -370,8 +370,8 @@ impl CueFlacCaptureFixture {
         })
     }
 
-    async fn next_capture_stream(&mut self) -> bae_core::playback::CapturedStream {
-        support::next_capture_stream(&mut self.capture_stream_rx).await
+    async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
+        bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
 

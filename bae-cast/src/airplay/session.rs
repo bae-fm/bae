@@ -14,7 +14,7 @@ use std::net::{IpAddr, UdpSocket};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use bae_core::playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::crypto::RaopCipher;
@@ -334,7 +334,7 @@ impl Drop for RaopSession {
 mod tests {
     use super::*;
     use crate::airplay::crypto::apple_public_key;
-    use bae_core::playback::airplay_output::AirPlayStreamControl;
+    use bae_playback::airplay_output::AirPlayStreamControl;
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
 

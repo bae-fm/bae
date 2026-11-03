@@ -450,14 +450,14 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     let release_id = manager.get_releases_for_album(&album_id).await.unwrap()[0].id.clone();
     let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1].id.clone();
 
-    let (device, _capture) = crate::playback::RealtimeCaptureAudioDevice::new();
+    let (device, _capture) = bae_playback::RealtimeCaptureAudioDevice::new();
     let playback = manager.start_playback_with(Box::new(device), 100, true).await;
     let values = manager.values_until_closed(manager.subscribe_now_playing());
     let mut positions = playback.subscribe_positions();
     let restored = tokio::time::timeout(std::time::Duration::from_secs(30), async {
         loop {
             let value = values.next().await.expect("the playback values resolve");
-            if let Some(crate::playback::PlaybackState::Paused { track, .. }) =
+            if let Some(bae_playback::PlaybackState::Paused { track, .. }) =
                 value.map(|value| value.playback.state)
             {
                 return track;

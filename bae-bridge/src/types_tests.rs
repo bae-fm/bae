@@ -171,9 +171,7 @@ mod conversion_roundtrip {
 
     #[test]
     fn side_pause_prompt_carries_its_kind_and_countdown_deadline_in_epoch_millis() {
-        use bae_core::playback::{
-            PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt,
-        };
+        use bae_playback::{PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt};
 
         let resumes_at = "2026-01-01T00:00:05Z".parse().unwrap();
         let prompt = BridgeSidePausePrompt::from_core(PlaybackSidePausePrompt {

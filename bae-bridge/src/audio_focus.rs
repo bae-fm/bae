@@ -37,8 +37,8 @@ impl PlatformAudioFocus {
     }
 }
 
-impl bae_core::playback::AudioFocusSystem for PlatformAudioFocus {
-    fn request(&self) -> Result<(), bae_core::playback::AudioFocusRefused> {
+impl bae_playback::AudioFocusSystem for PlatformAudioFocus {
+    fn request(&self) -> Result<(), bae_playback::AudioFocusRefused> {
         match crate::host_calls::host_call(
             |failed| self.diagnostics.bug(failed),
             "request audio focus",
@@ -46,9 +46,9 @@ impl bae_core::playback::AudioFocusSystem for PlatformAudioFocus {
         ) {
             Ok(BridgeAudioFocusAnswer::Granted) => Ok(()),
             Ok(BridgeAudioFocusAnswer::Refused { reason }) => {
-                Err(bae_core::playback::AudioFocusRefused(reason))
+                Err(bae_playback::AudioFocusRefused(reason))
             }
-            Err(failed) => Err(bae_core::playback::AudioFocusRefused(failed.to_string())),
+            Err(failed) => Err(bae_playback::AudioFocusRefused(failed.to_string())),
         }
     }
 
@@ -66,7 +66,7 @@ impl bae_core::playback::AudioFocusSystem for PlatformAudioFocus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bae_core::playback::AudioFocusSystem;
+    use bae_playback::AudioFocusSystem;
 
     struct Answering(BridgeAudioFocusAnswer);
 
@@ -88,7 +88,7 @@ mod tests {
         }));
         assert_eq!(
             refusing.request(),
-            Err(bae_core::playback::AudioFocusRefused("audio mode IN_CALL".to_string()))
+            Err(bae_playback::AudioFocusRefused("audio mode IN_CALL".to_string()))
         );
         let granting = platform(Answering(BridgeAudioFocusAnswer::Granted));
         assert_eq!(granting.request(), Ok(()));

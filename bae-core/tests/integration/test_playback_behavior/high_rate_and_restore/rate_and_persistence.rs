@@ -1,10 +1,10 @@
 /// Test fixture for high sample rate (96kHz) FLAC playback.
 /// This catches bugs where the playback pipeline assumes 44.1kHz.
 struct HighSampleRateTestFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: String,
-    _capture_stream_rx: support::CaptureStreamRx,
+    _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
@@ -210,7 +210,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // Real-time capture: at full speed track 2's decoder finishes the whole
     // track before the seek restarts it at 5s, so its sample count overshoots
     // the boundary (flaky under load). Real-time keeps the decoder on the seek.
-    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
+    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
 
@@ -236,7 +236,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_millis(seek_position_ms)));
     let mut captured = fixture.next_capture_stream().await;
 
-    support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
+    bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
     // Wait for the track's decode stats. Under gapless playback the seeked track
     // advances into the next track within one persistent stream, so it reports
@@ -408,7 +408,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {
-        if let Some(row) = bae_core::playback::tables::load_playback_state(&database).await.unwrap() {
+        if let Some(row) = bae_playback::tables::load_playback_state(&database).await.unwrap() {
             persisted = Some(row);
             break;
         }
@@ -422,14 +422,14 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .expect("queue value")
         .context
         .expect("playing a release fills the context lane");
-    assert_eq!(context.source, bae_core::playback::ContextSource::Release(release_id.clone()));
+    assert_eq!(context.source, bae_playback::ContextSource::Release(release_id.clone()));
 
     // Stopping clears it, so a restart wouldn't re-cue a finished session.
     handle.stop();
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut cleared = false;
     while Instant::now() < deadline {
-        if bae_core::playback::tables::load_playback_state(&database).await.unwrap().is_none() {
+        if bae_playback::tables::load_playback_state(&database).await.unwrap().is_none() {
             cleared = true;
             break;
         }
@@ -475,7 +475,7 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
                      with no Shutdown/SaveState sent"
             )
         });
-        let state = bae_core::playback::tables::load_playback_state(&fixture.database)
+        let state = bae_playback::tables::load_playback_state(&fixture.database)
             .await
             .expect("load_playback_state should succeed");
         if let Some(persisted_ms) =

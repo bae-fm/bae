@@ -1,0 +1,215 @@
+use super::*;
+
+impl PlaybackService {
+    /// Install the incoming track as current, in `phase`, at `position` in its
+    /// stream, and project its intent onto the audio-state atomic. Also hands
+    /// this track's reader fetch priority.
+    /// Does not emit a `StateChanged` — the caller decides whether the transition
+    /// surfaces one now (skip, gapless advance) or waits for the ready-watcher's
+    /// `TrackReady` (fresh play, seek). The stream/source/audio-events receiver
+    /// are already in `self.output`.
+    pub(super) fn install_active_track(
+        &mut self,
+        prepared: PlaybackPreparedTrack,
+        decoder: TrackDecoder,
+        phase: TrackPhase,
+        position: StreamPosition,
+    ) {
+        self.slot = PlaybackSlot::Active(CurrentTrack { prepared, decoder, phase, position });
+        self.mark_current_foreground();
+        self.sync_audio_state();
+        // A fresh install starts this track's starvation clock over, whatever
+        // the outgoing track's watchdog state was.
+        self.reset_starvation_episode();
+    }
+
+    /// Play `track_id` from scratch on the current renderer: tear down whatever
+    /// was playing, resolve and prepare it, and install it as current.
+    /// - `start`: a direct start (pregap skipped), a natural transition (pregap
+    ///   played), or a position in the track's stream.
+    /// - `target`: where the load lands once audio is ready (Playing, or Paused
+    ///   with a reason). Computed absolutely by the caller; a Playing target
+    ///   the system refuses the speaker lands paused.
+    /// - `transition`: how this start came about, for the `TrackStarted` event.
+    ///   Reported here at initiation for every caller that reaches `play_track`
+    ///   with a `Playing` target; a `Paused` target loads without playing and
+    ///   ships nothing.
+    pub(super) async fn play_track(
+        &mut self,
+        track_id: &str,
+        start: TrackStart,
+        target: PlayTarget,
+        transition: TrackTransition,
+    ) {
+        // Stamp the first-audio clock at the very start of the load, before any
+        // teardown/prepare work, so the measured wait covers the whole path to
+        // Playing.
+        let play_started_at = std::time::Instant::now();
+        // Ask the system first: a start it refuses loads the track paused.
+        let target = self.admit(target);
+        info!("Playing track: {} (start: {:?}, target: {:?})", track_id, start, target);
+
+        // Report the start now — before prepare/decoder, which may fail and ship
+        // their own `playback_failed`. A paused-target load isn't a start.
+        if matches!(target, PlayTarget::Playing) {
+            self.telemetry_track_started(track_id, transition);
+        }
+
+        // A remote renderer is a second renderer behind the same queue: load the
+        // track onto the device instead of the local decode pipeline. Everything
+        // above (telemetry) is shared.
+        if self.renderer.is_remote() {
+            self.play_track_remote(track_id, start, target).await;
+        } else {
+            self.play_track_local(track_id, start, target, play_started_at).await;
+        }
+        self.show_paused_load_position();
+    }
+
+    /// The local branch of `play_track`: prepare the track's byte buffers,
+    /// spawn its decoder, and install it as current. `play_started_at` is when
+    /// the load began, for the time-to-first-audio measurement.
+    async fn play_track_local(
+        &mut self,
+        track_id: &str,
+        start: TrackStart,
+        target: PlayTarget,
+        play_started_at: std::time::Instant,
+    ) {
+        // Tear the outgoing track and preload down first, so a manual switch
+        // silences the old audio at once and stops the old decoders. Their file
+        // buffers stay cached and live until the incoming track is prepared — only
+        // then is it known which files it shares (a CUE album's tracks all play
+        // from one file, whose buffer and fill task must survive the switch).
+        self.retire_current_track();
+        if !matches!(start, TrackStart::Position(_)) {
+            self.finish_listening().await;
+        }
+        self.retire_preloaded_track();
+
+        // First Loading emission: bare, before the metadata lookup.
+        self.slot =
+            PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: track_id.to_string() });
+        self.sync_audio_state();
+        self.emit_state();
+
+        let prepared = prepare_track_for_playback(
+            &self.database,
+            &self.diagnostics,
+            track_id,
+            &mut self.file_buffers,
+            &self.command_tx,
+        )
+        .await;
+        let prepared = match prepared {
+            Ok(p) => p,
+            Err(e) => {
+                error!("Failed to prepare track {}: {}", track_id, e);
+                self.telemetry_playback_failed(bae_diagnostics::PlaybackOperation::LoadContext);
+                emit_progress(
+                    &self.progress_tx,
+                    PlaybackProgress::PlaybackError { reason: e.ui_reason() },
+                );
+                // stop()'s cache-wide cancel releases the outgoing tracks'
+                // buffers.
+                self.stop().await;
+                return;
+            }
+        };
+
+        // The incoming track's files are known now: release the outgoing current
+        // and preload buffers, keeping any file the new track also plays.
+        self.file_buffers.release_retired(&prepared.file_ids());
+
+        // Second Loading emission: carries the target track's metadata so the bar
+        // switches from the prior track to the target while audio still downloads.
+        self.slot =
+            PlaybackSlot::Loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(&prepared)));
+        self.emit_state();
+
+        let start_position = start.position(prepared.timeline);
+        let include_pregap = start.includes_pregap();
+        let start_sample_offset =
+            if include_pregap { start_position.frames(prepared.sample_rate) } else { 0 };
+        let decode = prepared.decode_params(start_sample_offset, include_pregap);
+        let fmt = prepared.track_fmt(start_position);
+        let generation = self.next_load_generation();
+
+        // Measure time-to-Playing only for a load that actually plays; a paused
+        // target loads without playing, and clears any prior pending measurement
+        // so a superseded one never resolves.
+        self.first_audio_pending =
+            matches!(target, PlayTarget::Playing).then(|| FirstAudioMeasurement {
+                generation,
+                track_id: track_id.to_string(),
+                started_at: play_started_at,
+            });
+
+        if let Err(error) = self
+            .start_decoder_and_install(
+                prepared,
+                decode,
+                fmt,
+                generation,
+                StagedNextOnReplace::Discard,
+                TrackPhase::Loading { generation, target },
+                None,
+            )
+            .await
+        {
+            self.telemetry_playback_failed(bae_diagnostics::PlaybackOperation::AudioOutputInit);
+            let reason = self.output_start_failed(
+                &format!("start the audio output for track {track_id}"),
+                &error,
+            );
+            emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
+            self.stop().await;
+            return;
+        }
+
+        info!("Streaming playback started for track: {}", track_id);
+
+        self.preload_queue_front().await;
+
+        // Persist the now-playing state so a restart on this device resumes here.
+        self.persist_playback_state().await;
+    }
+
+    /// Show where a load that lands paused sits, once its track is installed
+    /// and announced. The audio callback reports position only while it plays,
+    /// so without this a paused load would leave the display on whatever it
+    /// last showed: the old position of a restarted track, or none for a new
+    /// one. A load headed for Playing shows its position through those reports
+    /// once audio flows. A load that failed or was abandoned left no paused
+    /// track, so it shows nothing.
+    pub(super) fn show_paused_load_position(&self) {
+        if matches!(
+            &self.slot,
+            PlaybackSlot::Active(cur) if cur.phase.intent() == PlayIntent::Paused
+        ) {
+            self.emit_position_display();
+        }
+    }
+
+    pub(super) async fn stop(&mut self) {
+        // Silence and sample the outgoing source before dropping it. Keep the
+        // renderer here until history has applied its audible-position offset.
+        self.teardown_local_playback();
+        self.finish_listening().await;
+        let was_playing_on_device = self.renderer.return_to_local_for_stop(&mut self.audio_output);
+        if was_playing_on_device {
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::RemoteStatusChanged { remote: crate::RemotePlayback::Local },
+            );
+        }
+        self.sync_audio_state();
+        self.emit_state();
+        // Nothing plays now: give the speaker back so another app can resume.
+        self.audio_focus.release();
+        // With the slot Stopped this clears the durable row — on every stop path
+        // (natural end, halt-on-error, the current track removed), not just the
+        // explicit Stop command.
+        self.persist_playback_state().await;
+    }
+}

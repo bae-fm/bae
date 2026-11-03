@@ -28,7 +28,7 @@ async fn a_track_whose_name_is_not_utf8_plays() {
         panic!("one track: {:?}", imported.track_ids);
     };
     let (playback_handle, _capture_stream_rx) = support::start_capture_playback(&library_manager, &database,
-        support::TestAudioDevice::RealtimeCapture,
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
     )
     .await;
     let mut progress_rx = playback_handle.subscribe_progress();

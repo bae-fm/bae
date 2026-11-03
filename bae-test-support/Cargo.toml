@@ -21,6 +21,8 @@ bae-core = { workspace = true, features = ["test-utils"] }
 bae-app-dir = { workspace = true }
 # The store the libraries the helpers open hold.
 bae-db = { workspace = true }
+# The playback service the helpers start, on a capture device.
+bae-playback = { workspace = true, features = ["test-utils"] }
 # The catalog pick an import draft names.
 bae-identify = { workspace = true }
 # The preferences the import helpers set.

@@ -1,5 +1,5 @@
 use bae_core::library::AppServices;
-use bae_core::playback::QueueEntryId;
+use bae_playback::QueueEntryId;
 use std::sync::PoisonError;
 use tracing::info;
 

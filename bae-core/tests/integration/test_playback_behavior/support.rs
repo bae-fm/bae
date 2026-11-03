@@ -2,7 +2,7 @@ use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_preferences::SidePauseCountdown;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
-use bae_core::playback::{LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode};
+use bae_playback::{LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode};
 use bae_types::track_time::{TrackTime};
 use bae_test_support as support;
 use coven::{IdSource, SequentialIds};
@@ -126,7 +126,7 @@ const PLAY_START_BACKSTOP: Duration = Duration::from_secs(30);
 
 /// Play `track_id` and wait for it to reach `Playing`.
 async fn play_and_wait_on(
-    handle: &bae_core::playback::PlaybackHandle,
+    handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
 ) {
@@ -148,10 +148,10 @@ async fn play_and_wait_on(
 /// Wait until `follow` tells that this device holds every byte of
 /// `track_id`: one stretch from its start to its end.
 async fn wait_for_whole_track(
-    follow: &mut bae_core::playback::TrackBufferedFollow,
+    follow: &mut bae_playback::TrackBufferedFollow,
     track_id: &str,
 ) {
-    let whole = vec![bae_core::playback::TrackSpan { start: 0.0, end: 1.0 }];
+    let whole = vec![bae_playback::TrackSpan { start: 0.0, end: 1.0 }];
     tokio::time::timeout(PLAY_START_BACKSTOP, async {
         loop {
             let told = follow.next().await.expect("playback runs");
@@ -193,7 +193,7 @@ const SENTINEL_VOLUME: f32 = 0.4321;
 /// volume steers neither transport nor the queue, and leaves a side-pause
 /// countdown running.
 async fn settled_events_on(
-    handle: &bae_core::playback::PlaybackHandle,
+    handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) -> Vec<PlaybackProgress> {
     handle.set_volume(SENTINEL_VOLUME);
@@ -225,10 +225,10 @@ fn states_in(events: &[PlaybackProgress]) -> Vec<&PlaybackState> {
 /// that moment. `play` gives queue entries fresh ids, so a test that edits the
 /// queue must use these.
 async fn wait_for_playing_capturing_queue_on(
-    playback_handle: &bae_core::playback::PlaybackHandle,
+    playback_handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
-) -> (bool, Vec<bae_core::playback::QueueEntry>) {
+) -> (bool, Vec<bae_playback::QueueEntry>) {
     let playing = bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
         matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
             .then_some(())
@@ -242,7 +242,7 @@ async fn wait_for_playing_capturing_queue_on(
         .manual
         .into_iter()
         .chain(playback_handle.queue_upcoming().await.expect("queue upcoming"))
-        .map(|item| bae_core::playback::QueueEntry {
+        .map(|item| bae_playback::QueueEntry {
             id: item.entry_id.parse().expect("a queue entry id"),
             track_id: item.track_id,
         })
@@ -353,7 +353,7 @@ async fn start_capture_service(
     library_manager: LibraryManager,
     database: &bae_db::Database,
     runtime_handle: tokio::runtime::Handle,
-) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
+) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
     start_capture_service_with_restore(library_manager, database, runtime_handle, true).await
 }
 
@@ -364,33 +364,33 @@ async fn start_capture_service_with_restore(
     database: &bae_db::Database,
     runtime_handle: tokio::runtime::Handle,
     restore_playback: bool,
-) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
-    let (capture_device, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioDevice::new();
+) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
+    let (capture_device, capture_stream_rx) = bae_playback::RealtimeCaptureAudioDevice::new();
     library_manager
         .settle_playback_queue(restore_playback)
         .await
         .expect("settle the playback queue");
     let track_deletions = library_manager.subscribe_track_deletions();
-    let handle = bae_core::playback::PlaybackService::start_with_audio_device(
+    let handle = bae_playback::PlaybackService::start_with_audio_device(
         database.clone(),
         Arc::new(coven::UuidIds),
-        bae_core::playback::tables::PlaybackQueueTables::new(database.clone()),
-        bae_core::playback::tables::PlaybackNowRow::new(database.clone()),
-        bae_core::playback::tables::PlaybackTimelineRow::new(database.clone()),
+        bae_playback::tables::PlaybackQueueTables::new(database.clone()),
+        bae_playback::tables::PlaybackNowRow::new(database.clone()),
+        bae_playback::tables::PlaybackTimelineRow::new(database.clone()),
         track_deletions,
         bae_diagnostics::Diagnostics::noop(),
         runtime_handle,
         100,
         restore_playback,
         Box::new(capture_device),
-        Arc::new(bae_core::playback::WallPlaybackClock::new(Arc::new(coven::SystemClock))),
+        Arc::new(bae_playback::WallPlaybackClock::new(Arc::new(coven::SystemClock))),
     );
     (handle, capture_stream_rx)
 }
 
 /// A playback service over an imported three-track album.
 struct PlaybackTestFixture {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     album_dir: std::path::PathBuf,
@@ -402,7 +402,7 @@ struct PlaybackTestFixture {
     catalogs: bae_core::import::CatalogSessions,
     closing: bae_core::library::CancellationToken,
     /// Dropping this receiver would make stream creation fail.
-    _capture_stream_rx: bae_core::playback::CapturedStreams,
+    _capture_stream_rx: bae_playback::CapturedStreams,
     _temp_dir: TempDir,
 }
 impl PlaybackTestFixture {
@@ -454,7 +454,7 @@ impl PlaybackTestFixture {
             self.library_manager.clone(),
             bae_core::library::views::LibraryViews::new(self.database.clone()),
             self.playback_handle.clone(),
-            bae_core::renderer::CastPicker::new(self.database.clone()),
+            bae_playback::renderer::CastPicker::new(self.database.clone()),
             import,
             identification,
         )
@@ -474,7 +474,7 @@ impl PlaybackTestFixture {
     async fn wait_for_playing_capturing_queue(
         &mut self,
         timeout_duration: Duration,
-    ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
+    ) -> (bool, Vec<bae_playback::QueueEntry>) {
         wait_for_playing_capturing_queue_on(
             &self.playback_handle,
             &mut self.progress_rx,

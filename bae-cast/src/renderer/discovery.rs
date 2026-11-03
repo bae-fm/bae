@@ -364,7 +364,7 @@ impl RendererDiscovery {
 mod tests {
     use super::*;
     use crate::renderer::RendererConnection;
-    use bae_core::renderer::RendererKind;
+    use bae_playback::renderer::RendererKind;
 
     fn cast_service(instance: &str, id: &str, addr: &str) -> ReportedRenderer {
         ReportedRenderer {

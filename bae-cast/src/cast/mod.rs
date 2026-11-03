@@ -1,10 +1,10 @@
 //! Google Cast: the CASTV2 wire of a remote renderer.
 //!
 //! bae plays to Chromecast/Nest devices as one flavor of remote renderer (see
-//! [`bae_core::renderer`]). This module holds only what's Cast-specific: mDNS
+//! [`bae_playback::renderer`]). This module holds only what's Cast-specific: mDNS
 //! discovery of devices ([`discovery`]) and the CASTV2 control channel
 //! ([`channel::RustCastChannel`]) that implements the shared
-//! [`bae_core::renderer::RendererChannel`]. The session, media, status, and format
+//! [`bae_playback::renderer::RendererChannel`]. The session, media, status, and format
 //! types it drives are the shared renderer ones — the receiver fetches audio over
 //! HTTP itself, exactly like a UPnP renderer.
 

@@ -316,10 +316,10 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let quiet_audio = f.library_manager.resolve_track_audio(&quiet.id).await.unwrap();
     let loud_audio = f.library_manager.resolve_track_audio(&loud.id).await.unwrap();
 
-    let quiet_gain = bae_core::playback::replay_gain_linear(&quiet_audio, ReplayGainMode::Track);
-    let loud_gain = bae_core::playback::replay_gain_linear(&loud_audio, ReplayGainMode::Track);
+    let quiet_gain = bae_playback::replay_gain_linear(&quiet_audio, ReplayGainMode::Track);
+    let loud_gain = bae_playback::replay_gain_linear(&loud_audio, ReplayGainMode::Track);
 
-    assert_eq!(bae_core::playback::replay_gain_linear(&quiet_audio, ReplayGainMode::Off), 1.0);
+    assert_eq!(bae_playback::replay_gain_linear(&quiet_audio, ReplayGainMode::Off), 1.0);
 
     assert!(
         quiet_gain > loud_gain,

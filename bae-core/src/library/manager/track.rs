@@ -41,15 +41,15 @@ impl LibraryManager {
     /// Follow the queue as its screens show it.
     pub(crate) fn subscribe_queue_value(
         &self,
-    ) -> coven::LiveQuery<crate::playback::ResolvedQueueSnapshot> {
-        crate::playback::tables::subscribe_queue_value(&self.database)
+    ) -> coven::LiveQuery<bae_playback::ResolvedQueueSnapshot> {
+        bae_playback::tables::subscribe_queue_value(&self.database)
     }
 
     /// Follow the queue's last addition to Up Next.
     pub(crate) fn subscribe_queue_addition(
         &self,
-    ) -> coven::LiveQuery<Option<crate::playback::QueueAddition>> {
-        crate::playback::tables::subscribe_queue_addition(&self.database)
+    ) -> coven::LiveQuery<Option<bae_playback::QueueAddition>> {
+        bae_playback::tables::subscribe_queue_addition(&self.database)
     }
 
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
@@ -58,9 +58,9 @@ impl LibraryManager {
         initial: bae_db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
         bae_db::LibraryPageWindows,
-        crate::playback::tables::QueueUpcomingRead,
+        bae_playback::tables::QueueUpcomingRead,
     > {
-        crate::playback::tables::subscribe_queue_upcoming(&self.database, initial)
+        bae_playback::tables::subscribe_queue_upcoming(&self.database, initial)
     }
 
     /// The file record for a file id — streaming looks the id up on the track's
@@ -94,8 +94,8 @@ impl LibraryManager {
     pub async fn get_playback_track_info(
         &self,
         track_id: &str,
-    ) -> Result<crate::playback::PlaybackTrackInfo, LibraryError> {
-        crate::playback::PlaybackTrackInfo::read(&self.database, track_id)
+    ) -> Result<bae_playback::PlaybackTrackInfo, LibraryError> {
+        bae_playback::PlaybackTrackInfo::read(&self.database, track_id)
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
     }
@@ -104,8 +104,8 @@ impl LibraryManager {
     pub async fn get_track_display(
         &self,
         track_id: &str,
-    ) -> Result<crate::playback::TrackDisplay, LibraryError> {
-        crate::playback::tables::track_display(&self.database, track_id)
+    ) -> Result<bae_playback::TrackDisplay, LibraryError> {
+        bae_playback::tables::track_display(&self.database, track_id)
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
     }
@@ -114,15 +114,15 @@ impl LibraryManager {
     /// themselves read it.
     pub(crate) fn subscribe_playback_timeline(
         &self,
-    ) -> coven::LiveQuery<crate::playback::PlaybackTimeline> {
-        crate::playback::tables::subscribe_playback_timeline(&self.database)
+    ) -> coven::LiveQuery<bae_playback::PlaybackTimeline> {
+        bae_playback::tables::subscribe_playback_timeline(&self.database)
     }
 
     /// Follow what playback is doing as its screens show it; `None` while it
     /// names a track the library no longer holds.
     pub(crate) fn subscribe_now_playing(
         &self,
-    ) -> coven::LiveQuery<Option<crate::playback::NowPlayingValues>> {
-        crate::playback::tables::subscribe_now_playing(&self.database)
+    ) -> coven::LiveQuery<Option<bae_playback::NowPlayingValues>> {
+        bae_playback::tables::subscribe_now_playing(&self.database)
     }
 }

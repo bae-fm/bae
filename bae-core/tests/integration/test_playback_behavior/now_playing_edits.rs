@@ -13,7 +13,7 @@ async fn playing_first_track(
     let mut progress = services.subscribe_playback_progress();
     services.playback_play_release(release_id.clone(), Some(fixture.track_ids[0].clone()), false);
     assert!(
-        support::wait_until_playing(&mut progress, &fixture.track_ids[0], PLAY_START_BACKSTOP)
+        bae_playback::test_capture::wait_until_playing(&mut progress, &fixture.track_ids[0], PLAY_START_BACKSTOP)
             .await,
         "the first track plays"
     );
@@ -34,11 +34,11 @@ async fn paused_on_first_track(
 /// paused and `accept` takes what it shows. The system media controls are
 /// handed the same value, so they must show it too.
 async fn now_playing_until(
-    values: &bae_core::live_query::LiveValues<Option<bae_core::playback::NowPlayingValues>>,
+    values: &bae_core::live_query::LiveValues<Option<bae_playback::NowPlayingValues>>,
     track_id: &str,
     what: &str,
-    accept: impl Fn(&bae_core::playback::TrackDisplay) -> bool,
-) -> bae_core::playback::TrackDisplay {
+    accept: impl Fn(&bae_playback::TrackDisplay) -> bool,
+) -> bae_playback::TrackDisplay {
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             let Some(value) = values.next().await.expect("the playback values resolve") else {
@@ -53,7 +53,7 @@ async fn now_playing_until(
             }
             assert_eq!(
                 media_control,
-                bae_core::playback::MediaControlPlayback::Library,
+                bae_playback::MediaControlPlayback::Library,
                 "the media controls show the library's paused track"
             );
             return track.display;
@@ -66,8 +66,8 @@ async fn now_playing_until(
 /// The queue's first upcoming item once `accept` takes it.
 async fn first_upcoming_until(
     queue: &bae_core::library::LiveQueueUpcoming,
-    accept: impl Fn(&bae_core::playback::QueueItem) -> bool,
-) -> bae_core::playback::QueueItem {
+    accept: impl Fn(&bae_playback::QueueItem) -> bool,
+) -> bae_playback::QueueItem {
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             let value = queue.next().await.expect("the queue's upcoming read resolves");

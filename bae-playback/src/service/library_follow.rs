@@ -1,0 +1,155 @@
+//! A live library read the run loop keeps pointed at what the service is
+//! playing, and wakes on when the library changes what it reads.
+//!
+//! The loop hands it its request every turn, like the side-pause countdown
+//! wait: an unchanged request keeps the query, a new one re-points it. The
+//! query runs on a task of its own, so the loop's `select!` dropping the
+//! branch never throws away a read in flight; the loop's only branch is a
+//! channel receive.
+
+use tracing::{error, warn};
+
+pub(super) struct LibraryFollow<Request, Value> {
+    requests: coven::LiveQueryRequests<Request>,
+    request: Request,
+    reads: tokio::sync::mpsc::UnboundedReceiver<(Request, Value)>,
+    task: bae_diagnostics::ReportedTask,
+}
+
+impl<Request, Value> LibraryFollow<Request, Value>
+where
+    Request: Clone + PartialEq + Send + Sync + std::fmt::Debug + 'static,
+    Value: Clone + PartialEq + Send + 'static,
+{
+    /// Follow `query` on a task of its own. A read that fails is logged under
+    /// `what` and the follow keeps running: the next change reads again. One
+    /// that fails because the store closed or its handle failed ends the
+    /// query, and the follow reads nothing more. A follow that panics is
+    /// reported through `diagnostics` and reads nothing more either.
+    pub(super) fn new(
+        mut query: coven::ReconfigurableLiveQuery<Request, Value>,
+        request: Request,
+        what: &'static str,
+        diagnostics: &bae_diagnostics::Diagnostics,
+    ) -> Self {
+        let requests = query.requests();
+        let (tx, reads) = tokio::sync::mpsc::unbounded_channel();
+        let task = diagnostics.spawn_reported(
+            &tokio::runtime::Handle::current(),
+            "follow a library read for playback",
+            async move {
+                while let Some(event) = query.next().await {
+                    let request = event.request.clone();
+                    match event.result {
+                        Ok(value) => {
+                            if tx.send((request, value)).is_err() {
+                                return;
+                            }
+                        }
+                        Err(error) => error!("reading {what} for {request:?} failed: {error}"),
+                    }
+                }
+            },
+            // Its sender went with the task, so `next` waits as it does for a
+            // closed store: the service plays on without the follow.
+            |_| {},
+        );
+        Self { requests, request, reads, task }
+    }
+
+    /// Point the read at `request`, unless it already reads it. A follow
+    /// whose query ended, once its store closed or its handle failed, reads
+    /// nothing more, for this request or any later one.
+    pub(super) fn follow(&mut self, request: Request) {
+        if request != self.request {
+            if self.requests.set(request.clone()).is_err() {
+                warn!("the follow's query has ended; {request:?} is not read");
+            }
+            self.request = request;
+        }
+    }
+
+    /// The next value read for the current request. Reads that answer an
+    /// earlier request are skipped.
+    pub(super) async fn next(&mut self) -> (Request, Value) {
+        loop {
+            let Some((request, value)) = self.reads.recv().await else {
+                return std::future::pending().await;
+            };
+            if request == self.request {
+                return (request, value);
+            }
+        }
+    }
+}
+
+impl<Request, Value> Drop for LibraryFollow<Request, Value> {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A follow whose store closes hears why and then ends: its task stops
+    /// instead of reading the closed store again and again.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_follow_ends_once_its_store_closes() {
+        let directory = tempfile::TempDir::new().unwrap();
+        let path = directory.path().join("library.db");
+        let database = bae_db::Database::new_test(
+            path.to_str().unwrap(),
+            std::sync::Arc::new(coven::SystemClock),
+        )
+        .await
+        .unwrap();
+        let mut follow = LibraryFollow::new(
+            crate::tables::subscribe_playback_track_infos(&database, Vec::new()),
+            Vec::new(),
+            "the tracks' sides",
+            &bae_diagnostics::Diagnostics::noop(),
+        );
+
+        database.close().await.unwrap();
+
+        follow_ends(&mut follow).await;
+    }
+
+    /// Wait for `follow`'s task to end, seen as its reads closing: the task
+    /// holds their sender until it ends.
+    async fn follow_ends<Request, Value>(follow: &mut LibraryFollow<Request, Value>) {
+        while tokio::time::timeout(std::time::Duration::from_secs(10), follow.reads.recv())
+            .await
+            .expect("the follow's task ends")
+            .is_some()
+        {}
+    }
+
+    /// Pointing a follow whose query ended at another request reads nothing,
+    /// and leaves the service that holds it running.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_ended_follow_takes_a_new_request() {
+        let directory = tempfile::TempDir::new().unwrap();
+        let path = directory.path().join("library.db");
+        let database = bae_db::Database::new_test(
+            path.to_str().unwrap(),
+            std::sync::Arc::new(coven::SystemClock),
+        )
+        .await
+        .unwrap();
+        let mut follow = LibraryFollow::new(
+            crate::tables::subscribe_playback_track_infos(&database, Vec::new()),
+            Vec::new(),
+            "the tracks' sides",
+            &bae_diagnostics::Diagnostics::noop(),
+        );
+        database.close().await.unwrap();
+        follow_ends(&mut follow).await;
+
+        follow.follow(vec!["another track".to_string()]);
+
+        assert_eq!(follow.request, vec!["another track".to_string()]);
+    }
+}

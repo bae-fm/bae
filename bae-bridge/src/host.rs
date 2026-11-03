@@ -16,7 +16,7 @@ pub struct BridgeHost {
     #[cfg(not(desktop))]
     presenter: Mutex<Option<Arc<dyn coven::OAuthPresenter>>>,
     /// How this platform shares the speaker, for every library's playback.
-    audio_focus: bae_core::playback::AudioFocus,
+    audio_focus: bae_playback::AudioFocus,
     closing_libraries: closing_libraries::ClosingLibraries,
 }
 
@@ -46,7 +46,7 @@ impl BridgeHost {
 
     /// How this platform shares the speaker, which an opened library's
     /// playback asks before every start.
-    pub(crate) fn audio_focus(&self) -> bae_core::playback::AudioFocus {
+    pub(crate) fn audio_focus(&self) -> bae_playback::AudioFocus {
         self.audio_focus.clone()
     }
 
@@ -158,7 +158,7 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
         keychain: bae_core::library::Keychain,
-        audio_focus: bae_core::playback::AudioFocus,
+        audio_focus: bae_playback::AudioFocus,
     ) -> Result<Arc<Self>, BridgeError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -201,7 +201,7 @@ impl BridgeHost {
             diagnostics,
             app_dir,
             bae_core::library::Keychain::in_memory(),
-            bae_core::playback::AudioFocus::Unshared,
+            bae_playback::AudioFocus::Unshared,
         )
     }
 }
@@ -219,7 +219,7 @@ impl BridgeHost {
             diagnostics,
             app_dir,
             bae_core::library::Keychain::System,
-            bae_core::playback::AudioFocus::Unshared,
+            bae_playback::AudioFocus::Unshared,
         )
     }
 }
@@ -240,7 +240,7 @@ impl BridgeHost {
             diagnostics,
             app_dir,
             bae_core::library::Keychain::System,
-            bae_core::playback::AudioFocus::Shared(Arc::new(audio_focus)),
+            bae_playback::AudioFocus::Shared(Arc::new(audio_focus)),
         )
     }
 }

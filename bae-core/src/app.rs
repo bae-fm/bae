@@ -152,7 +152,7 @@ pub fn bootstrap<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: crate::playback::AudioFocus,
+    audio_focus: bae_playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
@@ -184,7 +184,7 @@ pub fn bootstrap_prepared<T, F>(
     handle: coven::CovenHandle,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: crate::playback::AudioFocus,
+    audio_focus: bae_playback::AudioFocus,
     diagnostics: Diagnostics,
     compose: F,
 ) -> Result<T, BootstrapError>
@@ -221,7 +221,7 @@ pub fn bootstrap_on_fixture<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: crate::playback::AudioFocus,
+    audio_focus: bae_playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
@@ -307,7 +307,7 @@ fn bootstrap_opening<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: crate::playback::AudioFocus,
+    audio_focus: bae_playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: LibraryOpening,
@@ -357,7 +357,7 @@ fn bootstrap_inner<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: crate::playback::AudioFocus,
+    audio_focus: bae_playback::AudioFocus,
     diagnostics: Diagnostics,
 
     builder: LibraryOpening,
@@ -508,7 +508,7 @@ where
                     remote_images,
                     position_update_interval_ms,
                     restore_playback,
-                    Arc::new(crate::playback::WallPlaybackClock::new(Arc::clone(&clock))),
+                    Arc::new(bae_playback::WallPlaybackClock::new(Arc::clone(&clock))),
                     PlaybackOutput::System(audio_focus),
                 ))
             })
@@ -670,7 +670,7 @@ mod tests {
             library_id,
             50,
             false,
-            crate::playback::AudioFocus::Unshared,
+            bae_playback::AudioFocus::Unshared,
             bae_diagnostics::Diagnostics::noop(),
             super::LibraryOpening::Open(handle.clone()),
             |_services, _runtime| -> Result<(), BootstrapError> {

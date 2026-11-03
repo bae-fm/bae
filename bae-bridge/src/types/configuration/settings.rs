@@ -463,7 +463,7 @@ pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
 }
 
 /// What kept the audio output from starting. Mirrors
-/// `bae_core::playback::AudioOutputProblem`.
+/// `bae_playback::AudioOutputProblem`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAudioOutputProblem {
     /// The audio device was disconnected or is no longer available.
@@ -653,8 +653,8 @@ impl From<bae_core::library::CreateLibraryError> for BridgeError {
 }
 
 impl BridgePlaybackErrorReason {
-    pub(crate) fn from_core(reason: bae_core::playback::PlaybackErrorReason) -> Self {
-        use bae_core::playback::PlaybackErrorReason;
+    pub(crate) fn from_core(reason: bae_playback::PlaybackErrorReason) -> Self {
+        use bae_playback::PlaybackErrorReason;
         match reason {
             PlaybackErrorReason::SyncDisconnected => Self::SyncDisconnected,
             PlaybackErrorReason::UploadPending => Self::UploadPending,
@@ -674,7 +674,7 @@ impl BridgePlaybackErrorReason {
 }
 
 mirror_enum! {
-    BridgeAudioOutputProblem = bae_core::playback::AudioOutputProblem,
+    BridgeAudioOutputProblem = bae_playback::AudioOutputProblem,
     from_core: pub(crate) fn,
     variants: { DeviceUnavailable, UnsupportedFormat, AirPlayRefused },
 }

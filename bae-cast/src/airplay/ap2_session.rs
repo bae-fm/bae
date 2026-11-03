@@ -17,7 +17,7 @@ use std::net::{IpAddr, TcpStream, UdpSocket};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use bae_core::playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{PcmSource, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
 use super::airplay2::{Ap2AudioCipher, PairVerify};

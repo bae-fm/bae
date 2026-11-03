@@ -1,12 +1,12 @@
 /// Playback over uploaded files with neither originals nor cached audio present.
 struct RemoteMultiWindowPlayback {
-    playback_handle: bae_core::playback::PlaybackHandle,
+    playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     cloud: Arc<coven::MemoryStorage>,
     /// Where the album's FLAC is stored.
     flac_object: coven::ObjectPath,
-    _capture_stream_rx: support::CaptureStreamRx,
+    _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 

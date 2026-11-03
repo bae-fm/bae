@@ -4,7 +4,7 @@
 
 #[tokio::test]
 async fn test_direct_play_skips_pregap() {
-    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
+    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
     let pregapped_track_id = fixture.track_ids[1].clone();
@@ -34,7 +34,7 @@ async fn test_direct_play_skips_pregap() {
 
 #[tokio::test]
 async fn test_next_button_skips_pregap() {
-    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
+    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
     let first_track_id = fixture.track_ids[0].clone();
@@ -75,7 +75,7 @@ async fn test_next_button_skips_pregap() {
 
 #[tokio::test]
 async fn test_auto_advance_plays_pregap() {
-    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
+    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
     let first_track_id = fixture.track_ids[0].clone();
@@ -127,7 +127,7 @@ async fn test_cue_flac_seek() {
 
     // Real-time capture: at full speed the decoder can finish track 2 and move
     // to the next track before the seek lands, leaving nothing after the seek.
-    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
+    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
 
@@ -148,7 +148,7 @@ async fn test_cue_flac_seek() {
     fixture.playback_handle.seek(TrackTime::from_millis(3_000));
     let mut captured = fixture.next_capture_stream().await;
 
-    support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
+    bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
     let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
     let reference_data =
@@ -218,7 +218,7 @@ async fn test_cue_flac_seek() {
 /// from there.
 #[tokio::test]
 async fn seek_lands_at_the_track_time_it_names() {
-    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
+    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
         .await
         .expect("set up CUE/FLAC realtime capture fixture");
     let track_id = fixture.track_ids[1].clone();
@@ -283,7 +283,7 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
 async fn test_direct_play_skips_pregap_cue_flac() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::Capture)
+    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::Capture)
         .await
         .expect("set up CUE/FLAC capture fixture");
 
@@ -443,7 +443,7 @@ fn create_back_album() -> DiscogsRelease {
 #[tokio::test]
 async fn back_twice_on_a_pregapped_track_reaches_the_previous_track() {
     let mut fixture = CueFlacTestFixture::import(
-        support::TestAudioDevice::RealtimeCapture,
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
         create_back_album(),
         generate_back_album_files,
     )
@@ -458,7 +458,7 @@ async fn back_twice_on_a_pregapped_track_reaches_the_previous_track() {
 #[tokio::test]
 async fn back_twice_on_a_track_without_pregap_reaches_the_previous_track() {
     let mut fixture = CueFlacTestFixture::import(
-        support::TestAudioDevice::RealtimeCapture,
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
         create_back_album(),
         generate_back_album_files,
     )
@@ -530,7 +530,7 @@ async fn assert_back_twice_reaches_previous(
 #[tokio::test]
 async fn back_on_a_paused_track_shows_the_track_start() {
     let mut fixture = CueFlacTestFixture::import(
-        support::TestAudioDevice::RealtimeCapture,
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
         create_back_album(),
         generate_back_album_files,
     )
@@ -553,7 +553,7 @@ async fn back_on_a_paused_track_shows_the_track_start() {
 #[tokio::test]
 async fn next_on_a_paused_track_shows_the_next_track_start() {
     let mut fixture = CueFlacTestFixture::import(
-        support::TestAudioDevice::RealtimeCapture,
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
         create_back_album(),
         generate_back_album_files,
     )

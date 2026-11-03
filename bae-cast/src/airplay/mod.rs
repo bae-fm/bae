@@ -5,7 +5,7 @@
 //! push-audio one: unlike a Cast or UPnP receiver, an AirPlay receiver does *not*
 //! fetch a URL. bae keeps decoding locally and pushes timed, encrypted audio
 //! packets, so AirPlay is deliberately its own renderer variant rather than a
-//! [`bae_core::renderer::RendererChannel`] (whose contract is "the device fetches a
+//! [`bae_playback::renderer::RendererChannel`] (whose contract is "the device fetches a
 //! URL and is driven by transport commands").
 //!
 //! The sender speaks two dialects, chosen from a receiver's announced features,

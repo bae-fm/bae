@@ -3830,7 +3830,8 @@ bindings export none of their symbols.
 
 | Crate | Holds |
 |---|---|
-| bae-core | the library, import, identification, files, playback, outputs, sync integration, settings |
+| bae-core | the library, import, files, outputs, sync integration, settings |
+| bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local path, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
@@ -3850,13 +3851,13 @@ bindings export none of their symbols.
 | bae-mirror | the macros that write field-for-field conversions |
 | bae-loc | the string catalog: checks it and writes each platform's resources |
 | bae-theme | the shared theme, written as Swift and Kotlin |
-| bae-test-support | helpers for bae-core's integration tests |
+| bae-test-support | helpers for bae-core's integration tests that open a library |
 | bae-uniffi-bindgen | the bindings generator |
 
-bae-cast stands between bae-core, which holds the renderer session, and
+bae-cast stands between bae-playback, which holds the renderer session, and
 bae-subsonic, which serves the audio, because neither may depend on the other.
-Nothing in bae-core depends on a server crate. bae-core holds no device
-protocol: playback drives a fetching receiver through a command channel and an
+Nothing in bae-core or bae-playback depends on a server crate. bae-playback
+holds no device protocol: playback drives a fetching receiver through a command channel and an
 AirPlay receiver through a sink it hands decoded audio to, and bae-cast connects
 each device and hands playback the channel or sink.
 

@@ -32,7 +32,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
     )
     .await
     .expect("import the release");
-    let (device, _capture) = bae_core::playback::RealtimeCaptureAudioDevice::new();
+    let (device, _capture) = bae_playback::RealtimeCaptureAudioDevice::new();
     let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
     let services = bae_core::app::start_library_services(
         manager,
@@ -46,7 +46,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         100,
         false,
-        std::sync::Arc::new(bae_core::playback::WallPlaybackClock::new(clock)),
+        std::sync::Arc::new(bae_playback::WallPlaybackClock::new(clock)),
         bae_core::app::PlaybackOutput::Device(Box::new(device)),
     )
     .await
@@ -55,8 +55,12 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
 
     services.playback_play_release(imported.release_id.clone(), None, false);
     assert!(
-        support::wait_until_playing(&mut progress, &imported.track_ids[0], Duration::from_secs(30))
-            .await,
+        bae_playback::test_capture::wait_until_playing(
+            &mut progress,
+            &imported.track_ids[0],
+            Duration::from_secs(30)
+        )
+        .await,
         "the first track plays"
     );
     assert!(

@@ -9,9 +9,9 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use bae_core::playback::airplay_output::{AirPlaySink, AirPlayStreamControl, PcmSource};
-use bae_core::playback::AudioError;
 use bae_diagnostics::Diagnostics;
+use bae_playback::airplay_output::{AirPlaySink, AirPlayStreamControl, PcmSource};
+use bae_playback::AudioError;
 use tracing::warn;
 
 use super::airplay2::TimingProtocol;

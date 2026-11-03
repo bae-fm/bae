@@ -19,8 +19,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use bae_core::playback::airplay_output::{PcmSource, PCM_SAMPLE_RATE};
 use bae_diagnostics::{Diagnostics, ReportedThread};
+use bae_playback::airplay_output::{PcmSource, PCM_SAMPLE_RATE};
 use bae_util::task_failure::TaskFailed;
 use tracing::{debug, warn};
 
