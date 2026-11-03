@@ -37,7 +37,7 @@ struct ImportSearchState {
     /// far; a failed run still carries whatever the surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
-        case .found(_, let groups, _, _, _, _, _): groups
+        case .found(_, let groups, _, _, _, _, _, _): groups
         case .failed(_, _, let groups, _, _, _): groups
         case .triangulating(_, let groups, _, _): groups
         case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: []
@@ -54,7 +54,7 @@ struct ImportSearchState {
     /// keyed by release id — the row badges, and what ordered the rows.
     var identifiedAgreements: [String: BridgeAgreements] {
         switch identifyState {
-        case .found(_, _, _, let agreements, _, _, _): agreements
+        case .found(_, _, _, let agreements, _, _, _, _): agreements
         case .failed(_, _, _, let agreements, _, _): agreements
         case .triangulating(_, _, let agreements, _): agreements
         case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: [:]
@@ -84,12 +84,12 @@ struct ImportSearchState {
         return failureLines
     }
 
-    /// The pressing core picked on its own, whose row says it is being read
-    /// while it is read in full and the answer saves: the one pressing the
-    /// verdict offers. `nil` while no pick is being read.
-    var pickBeingRead: Pressing? {
+    /// The release core picked on its own, whose row says it is being read
+    /// while it is read in full and the answer saves. `nil` while no pick is
+    /// being read.
+    var pickBeingRead: String? {
         guard isReadingPick else { return nil }
-        return identifiedGroups.flatMap(\.pressings).first
+        return identifyState.unattendedPick
     }
 
     /// The pick being read on the run's list: the person's, else the run's
@@ -97,7 +97,7 @@ struct ImportSearchState {
     var identifiedLoadingPick: LoadingPick? {
         loadingPick
             ?? pickBeingRead.map {
-                LoadingPick(releaseId: $0.lead.releaseId, reading: .unattended)
+                LoadingPick(releaseId: $0, reading: .unattended)
             }
     }
 }

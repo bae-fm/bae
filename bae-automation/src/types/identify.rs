@@ -197,7 +197,9 @@ pub enum AutomationIdentifyState {
         /// Why the verdict picks none of its releases, when a check against
         /// the folder failed.
         folder_check: Option<AutomationFolderCheck>,
-        picks_unattended: bool,
+        /// The release the verdict picks without a person; `None` when it
+        /// picks none.
+        unattended_pick: Option<String>,
         /// Whether the offered rows are several pressings of one album, which
         /// the folder can be linked to with its pressing unknown.
         offers_shared_album: bool,

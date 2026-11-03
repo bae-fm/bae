@@ -156,6 +156,12 @@ impl VerdictSummary {
         self.kind == VerdictKind::Found && self.declined().is_none()
     }
 
+    /// The record the verdict picks without a person: the lead of its one
+    /// pressing, when it picks one.
+    pub fn unattended_pick(&self) -> Option<&LeadMatch> {
+        self.lead.as_ref().filter(|_| self.picks_unattended())
+    }
+
     /// Both judgements at once, for a test to compare in one assertion.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn judgement(&self) -> (bool, Option<FolderCheck>) {

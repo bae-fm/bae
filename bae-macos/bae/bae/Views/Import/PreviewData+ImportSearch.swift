@@ -601,6 +601,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             ),
             signals: settledSignals
@@ -647,6 +648,7 @@
                 ) { offered, _ in offered },
                 narrowedOutCount: 3,
                 folderCheck: nil,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             ),
             signals: settledSignals
@@ -665,6 +667,7 @@
             agreements: disagreementAgreements,
             narrowedOutCount: 0,
             folderCheck: nil,
+            unattendedPick: nil,
             offersSharedAlbum: false
         )
 
@@ -784,6 +787,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
+                unattendedPick: "rel-456",
                 offersSharedAlbum: false
             ),
             signals: settledSignals,
@@ -820,6 +824,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: .sourceTracksUnknown,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             ),
             signals: settledSignals
@@ -834,6 +839,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             ),
             search: searchRunInFlight,
@@ -849,6 +855,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             ),
             search: manualSearchRun,
@@ -864,6 +871,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             ),
             search: searchRunSourceFailed,
@@ -879,6 +887,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             ),
             search: searchRunEmpty,

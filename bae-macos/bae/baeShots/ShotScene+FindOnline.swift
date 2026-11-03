@@ -80,6 +80,7 @@ extension ShotScene {
                     agreements: PreviewData.searchAgreementsExact,
                     narrowedOutCount: 0,
                     folderCheck: nil,
+                    unattendedPick: nil,
                     offersSharedAlbum: true
                 ),
                 signals: PreviewData.settledSignals,

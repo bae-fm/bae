@@ -276,7 +276,7 @@ pub(crate) fn automation_identify_state(
             agreements,
             narrowed_out_count,
             folder_check,
-            picks_unattended,
+            unattended_pick,
             offers_shared_album,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -289,7 +289,7 @@ pub(crate) fn automation_identify_state(
             agreements: automation_agreements(agreements),
             narrowed_out_count,
             folder_check: folder_check.map(AutomationFolderCheck::from_core),
-            picks_unattended,
+            unattended_pick,
             offers_shared_album,
         },
         IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {

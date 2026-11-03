@@ -415,7 +415,7 @@ impl BridgeIdentifyState {
                 agreements,
                 narrowed_out_count,
                 folder_check,
-                picks_unattended: _,
+                unattended_pick,
                 offers_shared_album,
             } => BridgeIdentifyState::Found {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
@@ -428,6 +428,7 @@ impl BridgeIdentifyState {
                 narrowed_out_count,
                 folder_check: folder_check
                     .map(|check| crate::types::BridgeFolderCheck::with_rate(check, rate)),
+                unattended_pick,
                 offers_shared_album,
             },
             IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {

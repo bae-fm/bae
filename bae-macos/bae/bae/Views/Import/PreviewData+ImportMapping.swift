@@ -586,6 +586,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
+                unattendedPick: nil,
                 offersSharedAlbum: false
             )
             return candidate

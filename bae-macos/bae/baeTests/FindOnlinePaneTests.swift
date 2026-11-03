@@ -477,8 +477,7 @@ struct FindOnlineReadingPickTests {
     @Test("a sole match selects itself while core reads it")
     func aSoleMatchSelectsItself() {
         #expect(
-            PreviewData.searchStateReadingPick.pickBeingRead?.lead.releaseId
-                == "rel-456"
+            PreviewData.searchStateReadingPick.pickBeingRead == "rel-456"
         )
         #expect(PreviewData.searchStateFoundExact.pickBeingRead == nil)
     }

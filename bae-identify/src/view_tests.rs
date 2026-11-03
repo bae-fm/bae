@@ -700,20 +700,20 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
         ledger: None,
     };
     let judged = |verdict: TerminalVerdict| {
-        let IdentifyStateView::Found { folder_check, picks_unattended, .. } =
+        let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
             IdentifyStateView::from(verdict.resume_state(Default::default(), Default::default()))
         else {
             panic!("a found verdict resumes found");
         };
-        (picks_unattended, folder_check)
+        (unattended_pick, folder_check)
     };
     assert_eq!(
         judged(lone(bae_catalogs::search::SourceTracks::Nothing)),
-        (false, Some(crate::FolderCheck::SourceTracksUnknown))
+        (None, Some(crate::FolderCheck::SourceTracksUnknown))
     );
     assert_eq!(
         judged(lone(bae_catalogs::search::SourceTracks::Listed { count: 13 })),
-        (true, None)
+        (Some("dg-1".to_string()), None)
     );
 }
 

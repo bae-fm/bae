@@ -137,7 +137,7 @@ impl IdentifyStateView {
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
                     folder_check: summary.folder_check(),
-                    picks_unattended: summary.picks_unattended(),
+                    unattended_pick: summary.unattended_pick().map(|lead| lead.release_id.clone()),
                     offers_shared_album: folded.offers_shared_album,
                 }
             }
