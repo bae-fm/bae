@@ -1,8 +1,8 @@
 //! How records of the two catalogs pair into one pressing row: what the
-//! evidence they carry decides, and what a paired row's pick claims.
+//! evidence they carry decides, whatever order the records arrive in.
 
-use super::tests::*;
-use super::*;
+use crate::release_group::tests::*;
+use crate::release_group::*;
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 
 /// An artist one source spells differently, or leaves out, does not keep two
@@ -277,66 +277,6 @@ fn an_ambiguous_member_settles_alone_but_its_rivals_stay_open() {
     assert_eq!(rows, vec![vec!["dg-contested"], vec!["mb-first"], vec!["mb-second", "dg-below"]]);
 }
 
-/// A pair joins two groups on the same card, and a source's other group
-/// stays its own card: pairs decide the album grouping, not the shared group
-/// id.
-#[test]
-fn pairs_join_groups_and_leave_the_rest_apart() {
-    let mut one = mb("mb-1", Some("group-x"), Some(1992));
-    one.title = "Album Title: Subtitle".to_string();
-    one.barcodes = vec!["012345678905".to_string()];
-    let mut other = discogs("dg-1", Some("master-7"), Some(1992));
-    other.title = "Album Title - Subtitle".to_string();
-    other.barcodes = vec!["012345678905".to_string()];
-    let mut unrelated = discogs("dg-2", Some("master-8"), Some(2001));
-    unrelated.title = "Album Title - Subtitle".to_string();
-
-    let groups = grouped(vec![unrelated, one, other]);
-    assert_eq!(groups.len(), 2);
-    assert_eq!(groups[0].id, "master-8");
-    assert_eq!(groups[1].id, "group-x");
-    assert_eq!(lead_ids(&groups[1]), vec![vec!["mb-1", "dg-1"]]);
-}
-
-/// A row paired across both sources is picked whole: the lead is the
-/// document the draft is read from, and the other source's record of the
-/// same pressing rides along as a partner.
-#[test]
-fn a_paired_row_is_picked_with_its_partner() {
-    let mut one = mb("mb-1", Some("group-x"), Some(1992));
-    one.barcodes = vec!["012345678905".to_string()];
-    let mut other = discogs("dg-1", Some("master-7"), Some(1992));
-    other.barcodes = vec!["012345678905".to_string()];
-
-    let groups = grouped(vec![one, other]);
-    assert_eq!(
-        groups[0].sections[0].pressings[0].pick(),
-        crate::PressingLink {
-            record: bae_catalogs::records::LookupRef::new(
-                LookupCatalog::MusicBrainz,
-                "mb-1".to_string()
-            ),
-            partners: vec![bae_catalogs::records::LookupRef::new(LookupCatalog::Discogs, "dg-1")],
-        }
-    );
-}
-
-/// A pressing only one source lists claims only that source.
-#[test]
-fn a_lone_row_is_picked_with_no_partner() {
-    let groups = grouped(vec![discogs("dg-1", Some("master-7"), Some(1992))]);
-    assert_eq!(
-        groups[0].sections[0].pressings[0].pick(),
-        crate::PressingLink {
-            record: bae_catalogs::records::LookupRef::new(
-                LookupCatalog::Discogs,
-                "dg-1".to_string()
-            ),
-            partners: vec![],
-        }
-    );
-}
-
 /// Barcodes the two sources punctuate differently still name one pressing.
 #[test]
 fn releases_sharing_a_barcode_are_one_pressing() {
@@ -470,15 +410,6 @@ fn a_barcode_listed_second_pairs_the_records() {
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 }
 
-/// Records that name no album are two albums, whatever their titles say.
-#[test]
-fn records_naming_no_album_are_two_albums() {
-    let groups = grouped(vec![discogs("11", None, None), discogs("12", None, None)]);
-    assert_eq!(groups.len(), 2);
-    assert_eq!(groups[0].id, "11");
-    assert_eq!(groups[1].id, "12");
-}
-
 /// A record of a CD and a vinyl is one object with the other catalog's
 /// record naming the same two media, whichever it lists first, and not with
 /// one naming a cassette.
@@ -520,15 +451,68 @@ fn a_pressing_of_two_media_pairs_only_with_a_record_of_both() {
     }
 }
 
-/// Which record a row is read from decides what the row shows, not the
-/// order its catalogs are named in: a row led by its Discogs record still
-/// names MusicBrainz first, and a row one catalog lists names that one alone.
+/// A label's reissues print the pressing's barcode and catalog number
+/// again, so a code can name several of the other source's records. The
+/// pressing year is what tells them apart, ahead of the order the source
+/// listed them in.
 #[test]
-fn a_row_names_its_catalogs_in_the_order_surfaces_list_them() {
-    let discogs_led = Pressing {
-        releases: vec![discogs("dg-1", Some("7"), Some(1992)), mb("mb-1", Some("g"), Some(1992))],
-    };
-    assert_eq!(discogs_led.sources(), [LookupCatalog::MusicBrainz, LookupCatalog::Discogs]);
-    let unpaired = Pressing { releases: vec![mb("mb-1", Some("g"), Some(1992))] };
-    assert_eq!(unpaired.sources(), [LookupCatalog::MusicBrainz]);
+fn a_shared_barcode_pairs_with_the_record_pressed_the_same_year() {
+    let mut lead = mb("mb-1988", Some("group-x"), Some(1988));
+    lead.barcodes = vec!["4988014720311".to_string()];
+    let reissues: Vec<MetadataResult> = [Some(1991), Some(1988), None]
+        .into_iter()
+        .map(|year| {
+            let mut release = discogs(
+                &format!("dg-{}", year.map_or("undated".to_string(), |y| y.to_string())),
+                Some("master-7"),
+                year,
+            );
+            release.barcodes = vec!["4988014720311".to_string()];
+            release
+        })
+        .collect();
+
+    let groups = grouped(std::iter::once(lead).chain(reissues).collect());
+    assert_eq!(
+        lead_ids(&groups[0]),
+        vec![vec!["mb-1988", "dg-1988"], vec!["dg-1991"], vec!["dg-undated"]]
+    );
+}
+
+/// Two Discogs records print the MusicBrainz record's barcode and nothing
+/// else tells them apart. They are two records of one catalog, so they stay
+/// two rows, and which of them the MusicBrainz record is cannot be said: it
+/// settles alone.
+#[test]
+fn two_records_of_one_catalog_leave_their_common_match_alone() {
+    let mut lead = linked(mb("mb-1", Some("group-x"), None), "master-7");
+    lead.barcodes = vec!["4988014720311".to_string()];
+    let mut first = discogs("dg-first", Some("master-7"), None);
+    first.barcodes = vec!["4988014720311".to_string()];
+    let mut second = discogs("dg-second", Some("master-7"), None);
+    second.barcodes = vec!["4988014720311".to_string()];
+
+    let groups = grouped(vec![lead.clone(), first.clone(), second.clone()]);
+    let mut rows = lead_ids(&groups[0]);
+    rows.sort();
+    assert_eq!(rows, vec![vec!["dg-first"], vec!["dg-second"], vec!["mb-1"]]);
+    assert_eq!(pressing_count(vec![second, lead, first]), 3);
+}
+
+/// Two Discogs records print the barcode but contradict each other on the
+/// year, so which one the undated MusicBrainz record is cannot be said: it
+/// settles alone rather than the first listed being taken, and the two
+/// Discogs records, which are not one object, stay apart.
+#[test]
+fn records_that_contradict_each_other_leave_their_common_match_ambiguous() {
+    let mut lead = linked(mb("mb-1", Some("group-x"), None), "master-7");
+    lead.barcodes = vec!["4988014720311".to_string()];
+    let mut first = discogs("dg-first", Some("master-7"), Some(1991));
+    first.barcodes = vec!["4988014720311".to_string()];
+    let mut second = discogs("dg-second", Some("master-7"), Some(1993));
+    second.barcodes = vec!["4988014720311".to_string()];
+
+    let groups = grouped(vec![lead.clone(), first.clone(), second.clone()]);
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-first"], vec!["dg-second"], vec!["mb-1"]]);
+    assert_eq!(pressing_count(vec![second, lead, first]), 3);
 }

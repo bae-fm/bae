@@ -1,6 +1,10 @@
+//! How results become album cards: which albums share a card — a pressing
+//! both catalogs' records name, or a statement that one album is the other —
+//! how rows and cards are ordered by what the candidate's text agrees with,
+//! and what a card's heading reads: its sources, label and cover.
+
 use super::*;
 use bae_catalogs::album_links::AlbumLinks;
-use bae_types::pressing::{Medium, StatedMedia};
 
 /// The tests are about how results bucket, pair and order by year, none of
 /// which the candidate's text takes part in.
@@ -439,29 +443,344 @@ fn rows_either_side_of_the_disclosure_are_one_card() {
     assert_eq!(ids(&groups[1].sections[0].narrowed_out), vec!["mb-2"]);
 }
 
-/// A row of two records keeps each record's own facts: neither fills the
-/// other, and what a pick applies is the lead's.
+/// A pair joins two groups on the same card, and a source's other group
+/// stays its own card: pairs decide the album grouping, not the shared group
+/// id.
 #[test]
-fn a_pressings_records_keep_their_own_facts() {
-    use bae_types::pressing::{area, DiscogsDetail, ReleaseStatus};
-    let mut musicbrainz = mb("mb-1", Some("group-x"), Some(1992));
-    musicbrainz.barcodes = vec!["012345678905".to_string()];
-    musicbrainz.area = Some(area("JP"));
-    musicbrainz.status = Some(ReleaseStatus::Official);
-    musicbrainz.media = StatedMedia::PerMedium(vec![Some(Medium::Cd)]);
-    let mut discogs = discogs("dg-1", Some("master-7"), Some(1992));
-    discogs.barcodes = vec!["012345678905".to_string()];
-    discogs.status = Some(ReleaseStatus::Promotion);
-    discogs.discogs_details = vec![DiscogsDetail::Reissue];
-    let groups = grouped(vec![musicbrainz, discogs]);
-    let pressing = groups[0].sections[0].pressings[0].clone();
-    assert_eq!(pressing.releases.len(), 2, "the two records are one pressing");
-    let lead = pressing.lead().facts();
-    assert_eq!(lead.area, Some(area("JP")));
-    assert_eq!(lead.status, Some(ReleaseStatus::Official));
-    assert!(lead.discogs_details.is_empty(), "Discogs's details stay on its record");
-    let other = pressing.releases[1].facts();
-    assert_eq!(other.status, Some(ReleaseStatus::Promotion));
-    assert_eq!(other.discogs_details, vec![DiscogsDetail::Reissue]);
-    assert_eq!(other.area, None, "MusicBrainz's area stays on its record");
+fn pairs_join_groups_and_leave_the_rest_apart() {
+    let mut one = mb("mb-1", Some("group-x"), Some(1992));
+    one.title = "Album Title: Subtitle".to_string();
+    one.barcodes = vec!["012345678905".to_string()];
+    let mut other = discogs("dg-1", Some("master-7"), Some(1992));
+    other.title = "Album Title - Subtitle".to_string();
+    other.barcodes = vec!["012345678905".to_string()];
+    let mut unrelated = discogs("dg-2", Some("master-8"), Some(2001));
+    unrelated.title = "Album Title - Subtitle".to_string();
+
+    let groups = grouped(vec![unrelated, one, other]);
+    assert_eq!(groups.len(), 2);
+    assert_eq!(groups[0].id, "master-8");
+    assert_eq!(groups[1].id, "group-x");
+    assert_eq!(lead_ids(&groups[1]), vec![vec!["mb-1", "dg-1"]]);
+}
+
+/// Records that name no album are two albums, whatever their titles say.
+#[test]
+fn records_naming_no_album_are_two_albums() {
+    let groups = grouped(vec![discogs("11", None, None), discogs("12", None, None)]);
+    assert_eq!(groups.len(), 2);
+    assert_eq!(groups[0].id, "11");
+    assert_eq!(groups[1].id, "12");
+}
+
+pub(super) fn agreed(count: u32) -> Agreements {
+    Agreements {
+        disc_id: count >= 1,
+        barcode: count >= 2,
+        catalog: count >= 3,
+        label: count >= 4,
+        year: count >= 5,
+        country: count >= 6,
+        ..Agreements::NONE
+    }
+}
+
+/// The rows the candidate's own text says most about lead, whatever year
+/// they were pressed.
+#[test]
+fn rows_the_text_says_most_about_lead() {
+    let groups = group_results(
+        vec![
+            (mb("rel-early", Some("group-x"), Some(1976)), agreed(1)),
+            (mb("rel-late", Some("group-x"), Some(2003)), agreed(4)),
+        ],
+        None,
+    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-late"], vec!["rel-early"]]);
+}
+
+/// Rows the text says as much about keep the pressing-year order.
+#[test]
+fn rows_the_text_says_as_much_about_keep_the_year_order() {
+    let groups = group_results(
+        vec![
+            (mb("rel-late", Some("group-x"), Some(2003)), agreed(2)),
+            (mb("rel-early", Some("group-x"), Some(1976)), agreed(2)),
+        ],
+        None,
+    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-early"], vec!["rel-late"]]);
+}
+
+/// A row is picked whole, so what the text says about the row is what it
+/// says about every source's record of it — a record the text says nothing
+/// about does not hold its partner back.
+#[test]
+fn a_paired_row_ranks_by_its_records_together() {
+    let mut mb_release = mb("mb-1", Some("group-x"), Some(1976));
+    mb_release.barcodes = vec!["0075678169328".to_string()];
+    let mut dg_release = discogs("dg-1", Some("master-7"), Some(1976));
+    dg_release.barcodes = vec!["0075678169328".to_string()];
+    let groups = group_results(
+        vec![
+            (mb("mb-other", Some("group-x"), Some(1976)), agreed(2)),
+            (mb_release, Agreements::NONE),
+            (dg_release, agreed(4)),
+        ],
+        None,
+    );
+    assert_eq!(
+        lead_ids(&groups[0]),
+        vec![vec!["dg-1", "mb-1"], vec!["mb-other"]],
+        "and the record the text does say something about leads the row",
+    );
+}
+
+/// The two sources answer different questions about one object — a disc ID
+/// is MusicBrainz's alone, a Discogs record states the catalog number the
+/// sleeve prints — so a row outranks one that neither source says as much
+/// about, even though neither of its own records does.
+#[test]
+fn a_row_outranks_by_what_its_records_add_up_to() {
+    let mut mb_release = mb("mb-1", Some("group-x"), Some(1976));
+    mb_release.barcodes = vec!["0075678169328".to_string()];
+    let mut dg_release = discogs("dg-1", Some("master-7"), Some(1976));
+    dg_release.barcodes = vec!["0075678169328".to_string()];
+    let disc_id_only = Agreements { disc_id: true, ..Agreements::NONE };
+    let catalog_only = Agreements { catalog: true, ..Agreements::NONE };
+    let groups = group_results(
+        vec![
+            (mb_release, disc_id_only),
+            (dg_release, catalog_only),
+            (mb("mb-other", Some("group-x"), Some(1970)), disc_id_only),
+        ],
+        None,
+    );
+    assert_eq!(
+        lead_ids(&groups[0]),
+        vec![vec!["mb-1", "dg-1"], vec!["mb-other"]],
+        "two agreements between them beat one, whatever the years say",
+    );
+}
+
+/// Cards are ordered by their best row, so the album the folder describes
+/// is the one at the top of the list.
+#[test]
+fn cards_are_ordered_by_their_best_row() {
+    let groups = group_results(
+        vec![
+            (mb("rel-stranger", Some("group-stranger"), None), agreed(1)),
+            (mb("rel-named", Some("group-named"), None), agreed(4)),
+        ],
+        None,
+    );
+    assert_eq!(
+        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
+        vec!["group-named", "group-stranger"],
+    );
+}
+
+/// One pressing as both sources state it, paired by the barcode they share.
+pub(super) fn paired() -> (MetadataResult, MetadataResult) {
+    let mut one = mb("mb-1", Some("group-x"), Some(1976));
+    one.barcodes = vec!["0075678169328".to_string()];
+    let mut other = discogs("dg-1", Some("master-7"), Some(1976));
+    other.barcodes = vec!["0075678169328".to_string()];
+    (one, other)
+}
+
+/// The chips under an album's title name its sources in the one order surfaces
+/// list them in, whichever record the card's best row is read from.
+#[test]
+fn the_card_names_its_sources_in_the_order_surfaces_list_them() {
+    let (mb_release, dg_release) = paired();
+
+    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))], None);
+
+    assert_eq!(
+        lead_ids(&groups[0]),
+        vec![vec!["dg-1", "mb-1"]],
+        "the best row is read from the Discogs record",
+    );
+    assert_eq!(
+        groups[0].sources.iter().map(|source| source.source).collect::<Vec<_>>(),
+        vec![Catalog::MusicBrainz, Catalog::Discogs]
+    );
+}
+
+/// `release`'s group is `master` on Discogs because `release` links `twin`
+/// and `twin`'s own document files it under `master`.
+fn stated_through(mut release: MetadataResult, twin: &str, master: &str) -> MetadataResult {
+    release.links = vec![MetadataRef::new(Catalog::Discogs, twin)];
+    release.album_links = AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, master)]);
+    release
+}
+
+/// The case the statement exists for: the disc ID names one pressing on
+/// MusicBrainz, the barcode names two others on Discogs, and the release
+/// group's page links no master. The MusicBrainz release links its Discogs
+/// record, which is filed under the barcode's master — so one card carries
+/// both albums, and the twin is on the MusicBrainz release's row.
+#[test]
+fn a_release_link_s_master_joins_the_albums_and_its_twin_joins_the_row() {
+    let groups = grouped(vec![
+        stated_through(mb("mb-us", Some("group-a"), Some(2006)), "dg-us", "master-7"),
+        discogs("dg-eu-1", Some("master-7"), Some(2006)),
+        discogs("dg-eu-2", Some("master-7"), Some(2006)),
+        discogs("dg-us", Some("master-7"), Some(2006)),
+    ]);
+    assert_eq!(groups.len(), 1, "one album, one card");
+    assert_eq!(
+        groups[0].sources.iter().map(|source| source.source).collect::<Vec<_>>(),
+        vec![Catalog::MusicBrainz, Catalog::Discogs]
+    );
+    assert_eq!(rows(&groups), vec![vec!["mb-us", "dg-us"], vec!["dg-eu-1"], vec!["dg-eu-2"]]);
+}
+
+/// A twin filed under another master than any listed one joins its own
+/// master's album to the MusicBrainz release group, and nothing else: the
+/// listed master stays its own card.
+#[test]
+fn a_twin_under_another_master_joins_no_listed_album() {
+    let groups = grouped(vec![
+        stated_through(mb("mb-us", Some("group-a"), Some(2006)), "dg-us", "master-8"),
+        discogs("dg-eu-1", Some("master-7"), Some(2006)),
+        discogs("dg-us", Some("master-8"), Some(2006)),
+    ]);
+    assert_eq!(groups.len(), 2);
+    assert_eq!(rows(&groups[..1]), vec![vec!["mb-us", "dg-us"]]);
+    assert_eq!(rows(&groups[1..]), vec![vec!["dg-eu-1"]]);
+}
+
+/// The album a record's page names on Discogs is on the card's header, with
+/// its page, though no Discogs release is on the list.
+#[test]
+fn a_card_names_the_album_its_links_state_on_a_catalog_it_has_no_row_of() {
+    let mut stated = mb("mb-1", Some("group-a"), Some(1986));
+    stated.album_links = AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "8522")]);
+    let groups = grouped(vec![stated, mb("mb-2", Some("group-a"), None)]);
+    assert_eq!(groups.len(), 1);
+    assert_eq!(
+        groups[0]
+            .sources
+            .iter()
+            .map(|source| (source.source, source.group_url.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                Catalog::MusicBrainz,
+                Some("https://musicbrainz.org/release-group/group-a".to_string())
+            ),
+            (Catalog::Discogs, Some("https://www.discogs.com/master/8522".to_string())),
+        ]
+    );
+}
+
+fn cover() -> RemoteCover {
+    RemoteCover {
+        image: bae_catalogs::remote_image::RemoteImageSet::with_copies(
+            "https://caa.example/front.jpg".to_string(),
+            vec![bae_catalogs::remote_image::DownscaledCopy {
+                url: "https://caa.example/thumb.jpg".to_string(),
+                max_edge: 250,
+            }],
+        ),
+        label: bae_catalogs::catalog::LookupCatalog::MusicBrainz.cover_source_label().to_string(),
+        source: Catalog::MusicBrainz,
+        standing: bae_catalogs::remote_image::CoverStanding::Stated,
+    }
+}
+
+#[test]
+fn representative_cover_preserves_remote_cover_pair() {
+    let cover = cover();
+    let mut first = mb("rel-1", Some("group-x"), Some(1992));
+    first.cover_art = Some(cover.clone());
+
+    let groups = grouped(vec![first, mb("rel-2", Some("group-x"), Some(1994))]);
+
+    assert_eq!(groups[0].cover_art, Some(cover));
+}
+
+/// A merged card takes its cover from MusicBrainz when both sources offer
+/// one, whichever bucket was seen first.
+#[test]
+fn a_merged_card_prefers_the_musicbrainz_cover() {
+    let mut discogs_covered = discogs("dg-1", Some("master-7"), Some(2001));
+    discogs_covered.cover_art = Some(RemoteCover {
+        image: bae_catalogs::remote_image::RemoteImageSet::with_copies(
+            "https://discogs.example/front.jpg".to_string(),
+            vec![bae_catalogs::remote_image::DownscaledCopy {
+                url: "https://discogs.example/thumb.jpg".to_string(),
+                max_edge: 150,
+            }],
+        ),
+        label: bae_catalogs::catalog::LookupCatalog::Discogs.cover_source_label().to_string(),
+        source: Catalog::Discogs,
+        standing: bae_catalogs::remote_image::CoverStanding::Stated,
+    });
+    let mut mb_covered = linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7");
+    mb_covered.cover_art = Some(cover());
+
+    let groups = grouped(vec![discogs_covered, mb_covered]);
+    assert_eq!(groups[0].cover_art, Some(cover()));
+}
+
+/// A card's heading shows a cover a record states over an address a record
+/// said nothing about, whichever pressing surfaced first: here a MusicBrainz
+/// search result leads the card, and its archive address — which may hold
+/// nothing — gives way to the image a Discogs record lists.
+#[test]
+fn a_card_heading_prefers_a_stated_cover_to_an_unstated_address() {
+    let discogs_cover = |id: &str| {
+        bae_catalogs::discogs::remote_cover_from_urls(
+            Some(&format!("https://discogs.example/{id}.jpg")),
+            Some(&format!("https://discogs.example/{id}-150.jpg")),
+            "release",
+            1,
+        )
+    };
+    let cd = |mut release: MetadataResult, format: &str| {
+        let medium = match format {
+            "LP" => bae_types::pressing::Medium::Vinyl,
+            _ => bae_types::pressing::Medium::Cd,
+        };
+        release.media =
+            match release.source {
+                LookupCatalog::Discogs => bae_types::pressing::StatedMedia::Formats(vec![
+                    bae_types::pressing::StatedFormat { medium: Some(medium), quantity: 1 },
+                ]),
+                _ => bae_types::pressing::StatedMedia::PerMedium(vec![Some(medium)]),
+            };
+        release
+    };
+    let mut mb_2001 = cd(linked(mb("mb-2001", Some("group-x"), Some(2001)), "master-7"), "CD");
+    mb_2001.barcodes = vec!["012345678905".to_string()];
+    mb_2001.cover_art = Some(RemoteCover::musicbrainz_release("mb-2001"));
+    let mut dg_2001 = cd(discogs("dg-2001", Some("master-7"), Some(2001)), "CD");
+    dg_2001.barcodes = vec!["012345678905".to_string()];
+    dg_2001.cover_art = discogs_cover("dg-2001");
+    let mut dg_1988 = cd(discogs("dg-1988", Some("master-7"), Some(1988)), "LP");
+    dg_1988.cover_art = discogs_cover("dg-1988");
+    let mut mb_undated = cd(linked(mb("mb-undated", Some("group-x"), None), "master-7"), "CD");
+    mb_undated.cover_art = Some(RemoteCover::musicbrainz_release("mb-undated"));
+
+    let groups = grouped(vec![mb_2001, dg_2001.clone(), dg_1988, mb_undated]);
+
+    assert_eq!(groups.len(), 1, "one album: {:?}", rows(&groups));
+    assert_eq!(groups[0].cover_art, dg_2001.cover_art);
+}
+
+/// With no record stating a cover, the heading shows the first unstated
+/// address; a record stating it has none offers nothing.
+#[test]
+fn a_card_heading_falls_back_to_an_unstated_address() {
+    let mut stated_none = mb("mb-none", Some("group-x"), Some(1990));
+    stated_none.cover_art = None;
+    let mut unstated = mb("mb-search", Some("group-x"), Some(1991));
+    unstated.cover_art = Some(RemoteCover::musicbrainz_release("mb-search"));
+
+    let groups = grouped(vec![stated_none, unstated]);
+
+    assert_eq!(groups[0].cover_art, Some(RemoteCover::musicbrainz_release("mb-search")));
 }
