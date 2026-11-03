@@ -19,10 +19,10 @@ use super::{
 use crate::import::selection::{SelectedRows, SelectionChange};
 use crate::import::tables::{ImportTables, SelectionWrite};
 use crate::import::FolderReleaseDecisionKey;
-use crate::library::CancellationToken;
 use bae_db::live_query::CancellableLiveQuery;
 use bae_db::DbError;
 use bae_db::LibraryPageWindows;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 pub enum LiveImportListError {
