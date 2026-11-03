@@ -321,3 +321,14 @@ fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
         );
     }
 }
+
+/// FFmpeg states a stream's sample rate and channel count as signed ints. One
+/// that isn't positive states none, and is never read as a huge unsigned
+/// count.
+#[test]
+fn a_count_ffmpeg_states_as_zero_or_less_states_none() {
+    assert_eq!(stated_count(-1), None);
+    assert_eq!(stated_count(i32::MIN), None);
+    assert_eq!(stated_count(0), None);
+    assert_eq!(stated_count(44_100), Some(44_100));
+}

@@ -19,6 +19,7 @@ use tracing::{debug, warn};
 pub struct ProbeResult {
     pub content_type: ContentType,
     pub duration: std::time::Duration,
+    /// The stream's sample rate in Hz, never zero.
     pub sample_rate: u32,
     /// Source bit depth for lossless audio. Perceptual codecs are `None` even
     /// when FFmpeg exposes a coded-word width.
@@ -26,6 +27,7 @@ pub struct ProbeResult {
     /// Average coded-stream bitrate for perceptual codecs. Container metadata,
     /// embedded artwork, and other non-audio bytes are excluded.
     pub bitrate_kbps: Option<i64>,
+    /// The stream's channel count, never zero.
     pub channels: u32,
 }
 
@@ -266,6 +268,12 @@ unsafe fn probed_lossy_bitrate_kbps(
     kbps_from_bps(bps)
 }
 
+/// A count FFmpeg states as a signed int — a stream's sample rate or channel
+/// count — or `None` when it states none: zero, or less.
+fn stated_count(value: c_int) -> Option<u32> {
+    u32::try_from(value).ok().filter(|count| *count > 0)
+}
+
 /// The audio properties of the file at `path`, read from its current bytes.
 pub fn probe_audio_from_path(path: &Path) -> Option<ProbeResult> {
     open_and_probe(path)
@@ -273,7 +281,7 @@ pub fn probe_audio_from_path(path: &Path) -> Option<ProbeResult> {
 
 /// Open the file and read its best audio stream through FFmpeg. `None`
 /// (already logged) when it cannot be opened, has no audio stream, or states
-/// no usable duration.
+/// no sample rate, channels or usable duration.
 fn open_and_probe(path: &Path) -> Option<ProbeResult> {
     #[cfg(feature = "test-instrumentation")]
     crate::test_reads::record_probe(path);
@@ -291,7 +299,14 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
         let codecpar = (*stream).codecpar;
         let codec_id = (*codecpar).codec_id;
         let content_type = content_type_from_codec_id(codec_id);
-        let sample_rate = (*codecpar).sample_rate as u32;
+        let Some(sample_rate) = stated_count((*codecpar).sample_rate) else {
+            warn!(
+                "probe_audio_from_path: the audio stream states sample rate {} in {}",
+                (*codecpar).sample_rate,
+                path.display()
+            );
+            return None;
+        };
         let bits_per_sample = if !content_type.is_lossless_audio() {
             None
         } else if (*codecpar).bits_per_raw_sample > 0 {
@@ -301,7 +316,14 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
         } else {
             None
         };
-        let channels = (*codecpar).ch_layout.nb_channels as u32;
+        let Some(channels) = stated_count((*codecpar).ch_layout.nb_channels) else {
+            warn!(
+                "probe_audio_from_path: the audio stream states {} channels in {}",
+                (*codecpar).ch_layout.nb_channels,
+                path.display()
+            );
+            return None;
+        };
 
         let bitrate_kbps = if content_type.is_lossless_audio() {
             None
