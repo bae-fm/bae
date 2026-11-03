@@ -5,7 +5,7 @@
 //! off the page delivers one.
 
 use super::*;
-use crate::import::{LiveImportList, ImportListView, PendingFilter};
+use crate::import::{ImportListView, LiveImportList, PendingFilter};
 
 /// The list under one filter entry, and the keys and filter entries its last
 /// snapshot carried.
@@ -205,23 +205,26 @@ async fn one_row_on_the_page(
     crate::import::CandidateKey,
     crate::import::CandidateKey,
 ) {
-    let (manager, database, tmp) = setup_test_manager_with(providers).await;
+    let (parts, database, tmp) = setup_test_import_with(providers).await;
     let tables = crate::import::tables::ImportTables::new(database);
     let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&tables, &tmp, "Other Record").await;
     let root = first.watched_folder_path.clone();
-    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for candidate in [first, second] {
-        crate::import::store_scan_item(&tables, &bae_diagnostics::Diagnostics::noop(),
-                &root,
-                generation,
-                &crate::import::folder_scanner::ScanItem::Valid(candidate),
-            )
-            .await
-            .unwrap();
+        crate::import::store_scan_item(
+            &tables,
+            &bae_diagnostics::Diagnostics::noop(),
+            &root,
+            generation,
+            &crate::import::folder_scanner::ScanItem::Valid(candidate),
+        )
+        .await
+        .unwrap();
     }
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     for key in [&first_key, &second_key] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
@@ -303,11 +306,7 @@ async fn a_run_off_the_page_delivers_its_count() {
 async fn a_verdict_off_the_page_delivers_its_count() {
     let fakes = FakeCatalogs::offline();
     let (handle, _tmp, list, _on_page, off_page) = one_row_on_the_page(fakes.providers()).await;
-    super::lookup_choices::seed_mb_release_with_catalog(
-        &fakes,
-        "off-the-page",
-        "CAT-1",
-    );
+    super::lookup_choices::seed_mb_release_with_catalog(&fakes, "off-the-page", "CAT-1");
 
     super::lookup_choices::pick(&handle, &off_page, "off-the-page").await;
     // The pick's write and its cancelling the row's run each deliver; while

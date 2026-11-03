@@ -1,118 +1,5 @@
 use super::*;
 
-#[tokio::test(flavor = "multi_thread")]
-async fn selected_folders_from_different_roots_import_as_one_release() {
-    let (manager, database, _library) = setup_test_manager().await;
-    let tables = crate::import::tables::ImportTables::new(database);
-    let first_root = TempDir::new().unwrap();
-    let second_root = TempDir::new().unwrap();
-    let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume B").await;
-    let (second, second_key, _) = picked_candidate(&tables, &second_root, "Volume A").await;
-    let spare_root = TempDir::new().unwrap();
-    let (_spare, spare_key, _) = picked_candidate(&tables, &spare_root, "Volume C").await;
-    let original_paths = first
-        .files
-        .release_files()
-        .chain(second.files.release_files())
-        .map(|file| file.path.clone())
-        .collect::<Vec<_>>();
-    let handle = manager.start_import().await.unwrap();
-    // Combining takes the selection, not an order: core plays the folders in
-    // key order and names the release after the first of them.
-    let mut ordered = [first_key.clone(), second_key.clone()];
-    ordered.sort();
-    let leading = if ordered[0] == first_key { &first } else { &second };
-    let key = handle.combine_candidates(vec![second_key.clone(), first_key.clone()]).await.unwrap();
-    assert_eq!(
-        handle.candidate_source_folders(&key).await.unwrap(),
-        ordered.iter().map(crate::import::CandidateKey::test_folder).collect::<Vec<_>>()
-    );
-    assert!(handle
-        .get_release_candidate(&key)
-        .await
-        .unwrap()
-        .is_some_and(|candidate| candidate.grouping.as_ref() == Some(&key)));
-    assert!(handle.get_release_candidate(&first_key).await.unwrap().is_none());
-    assert!(handle.get_release_candidate(&second_key).await.unwrap().is_none());
-    assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_draft.album_title, leading.name);
-    // A combined key is not a folder to combine again; separating it first is.
-    // Every folder key sorts ahead of the combination key, so the folder in
-    // this selection is the one loaded first and the combination is what the
-    // call stops on.
-    assert!(handle
-        .combine_candidates(vec![key.clone(), spare_key.clone()])
-        .await
-        .unwrap_err()
-        .to_string()
-        .contains("separate an existing combination before combining its folders again"));
-    handle.read_candidate_file_tags_write(key.clone()).await.unwrap();
-    handle
-        .set_candidate_edit_field(
-            &key,
-            crate::import::DraftFieldEdit::Text {
-                field: crate::import::CandidateEditField::AlbumTitle,
-                value: "Collected Volumes".into(),
-            },
-        )
-        .await
-        .unwrap();
-    handle
-        .set_candidate_album_artists(
-            &key,
-            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
-                "Combined Artist",
-            ))],
-        )
-        .await
-        .unwrap();
-    let projected = pane(&handle, &key).await;
-    assert_eq!(projected.draft().unwrap().metadata_draft.tracks.len(), 4);
-    assert_eq!(
-        projected
-            .draft()
-            .unwrap()
-            .mapping
-            .track_sides
-            .iter()
-            .map(|side| side.side.clone())
-            .collect::<Vec<_>>(),
-        [
-            bae_types::mediums::TrackSide::Disc { disc: 1 },
-            bae_types::mediums::TrackSide::Disc { disc: 2 }
-        ],
-        "each folder is a disc"
-    );
-    let mut events = handle.every_event();
-    let import_id = handle.start_import(&key).await.unwrap().expect_queued();
-    let (release_id, _) = await_import_outcome(&mut events, &import_id)
-        .await
-        .unwrap_or_else(|error| panic!("combined import failed: {error}"));
-    let imported = manager.open_release_edit(&release_id).await.unwrap().opened().clone();
-    assert_eq!(imported.edit.album_title, "Collected Volumes");
-    assert_eq!(imported.edit.tracks.len(), 4);
-    let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
-    assert_eq!(
-        imported
-            .display
-            .sides
-            .iter()
-            .flat_map(|side| side
-                .tracks()
-                .map(|track| (side.side.clone(), track.position_text.as_str())))
-            .collect::<Vec<_>>(),
-        [(disc(1), "1"), (disc(1), "2"), (disc(2), "1"), (disc(2), "2")]
-    );
-    assert!(pane(&handle, &key).await.is_added());
-    handle.separate_candidate(&key).await.unwrap();
-    assert_eq!(
-        manager.open_release_edit(&release_id).await.unwrap().opened().clone(),
-        imported,
-        "separating source folders preserves the imported copy"
-    );
-    assert!(original_paths.iter().all(|path| path.is_file()));
-    shut_down(handle).await;
-}
-
 /// Pending rows the queue holds, by display path, in path order.
 async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
     let projection = handle
@@ -140,13 +27,13 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
 /// brings them back as they were, drafts and all.
 #[tokio::test(flavor = "multi_thread")]
 async fn separating_picked_folders_returns_them_as_they_were() {
-    let (manager, database, _library) = setup_test_manager().await;
+    let (parts, database, _library) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
     let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume A").await;
     let (_, second_key, _) = picked_candidate(&tables, &second_root, "Volume B").await;
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     let before = pane(&handle, &first_key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(pending(&handle).await.len(), 2);
 
@@ -177,7 +64,7 @@ async fn separating_picked_folders_returns_them_as_they_were() {
 /// keeps the folder's releases apart.
 #[tokio::test(flavor = "multi_thread")]
 async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
-    let (manager, database, _library) = setup_test_manager().await;
+    let (parts, database, _library) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let tmp = TempDir::new().unwrap();
     let root = tmp.path().join("music");
@@ -190,7 +77,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     }
     let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     assert_eq!(
         pending(&handle).await,
@@ -236,7 +123,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
 /// read as numbers.
 #[tokio::test(flavor = "multi_thread")]
 async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
-    let (manager, database, _library) = setup_test_manager().await;
+    let (parts, database, _library) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let tmp = TempDir::new().unwrap();
     let root = tmp.path().join("music");
@@ -249,7 +136,7 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
     }
     let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     let key_of = |live: &str| crate::import::CandidateKey::folder(&root.join("Artist").join(live));
 

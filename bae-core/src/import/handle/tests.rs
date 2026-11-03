@@ -4,54 +4,53 @@ const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882";
 const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967";
 
 use super::*;
-use crate::app::test_library::TestLibrary;
-use crate::library::{LibraryError, LibraryManager};
+use crate::import::test_import::TestImport;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
-use bae_db::{Database, DbArtist};
+use bae_db::{Database, DbAlbum, DbArtist, DbRelease};
 use bae_test_support::HANG_GUARD;
 use chrono::Utc;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-async fn setup_test_manager() -> (TestLibrary, Database, TempDir) {
-    setup_test_manager_with(bae_catalogs::providers::Providers::offline()).await
+/// What an import service is started from over a fresh store asking no
+/// catalog, the store, and the directory holding it.
+async fn setup_test_import() -> (TestImport, Database, TempDir) {
+    setup_test_import_with(bae_catalogs::providers::Providers::offline()).await
 }
 
-/// A library asking `providers`.
-async fn setup_test_manager_with(
+/// [`setup_test_import`] asking `providers`.
+async fn setup_test_import_with(
     providers: bae_catalogs::providers::Providers,
-) -> (TestLibrary, Database, TempDir) {
-    setup_test_manager_over(providers, bae_diagnostics::Diagnostics::noop()).await
+) -> (TestImport, Database, TempDir) {
+    setup_test_import_over(providers, bae_diagnostics::Diagnostics::noop()).await
 }
 
-/// A library reporting its bugs to `diagnostics`.
-async fn setup_test_manager_reporting_to(
+/// [`setup_test_import`] reporting its bugs to `diagnostics`.
+async fn setup_test_import_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (TestLibrary, Database, TempDir) {
-    setup_test_manager_over(bae_catalogs::providers::Providers::offline(), diagnostics).await
+) -> (TestImport, Database, TempDir) {
+    setup_test_import_over(bae_catalogs::providers::Providers::offline(), diagnostics).await
 }
 
-async fn setup_test_manager_over(
+async fn setup_test_import_over(
     providers: bae_catalogs::providers::Providers,
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (TestLibrary, Database, TempDir) {
+) -> (TestImport, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database =
         Database::new_test(db_path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
             .await
             .unwrap();
-    let library = TestLibrary::open_with(
+    let parts = TestImport::new(
         database.clone(),
-        bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         providers,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         diagnostics,
-    )
-    .await;
-    (library, database, temp_dir)
+    );
+    (parts, database, temp_dir)
 }
 
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
@@ -64,6 +63,29 @@ fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbA
         musicbrainz_artist_id: mb_id.map(|s| s.to_string()),
         created_at: now,
     }
+}
+
+/// An album of its own holding one release of one track, crediting the
+/// library artist `artist_id`, written as the library writes a release.
+async fn insert_library_release(
+    database: &Database,
+    artist_id: &str,
+    title: &str,
+) -> (DbAlbum, DbRelease) {
+    let album = DbAlbum::new_test(title);
+    let release = DbRelease::new_test(&album.id, &Uuid::new_v4().to_string());
+    database
+        .insert_album_with_release_and_tracks(
+            &album,
+            &[bae_db::DbAlbumArtist::new_test(&album.id, artist_id)],
+            &release,
+            &[bae_db::DbReleaseMedium::new_test(&release.id)],
+            &[bae_db::DbTrack::new_test(&release.id, &Uuid::new_v4().to_string(), "Track 1", 1)],
+            &[],
+        )
+        .await
+        .unwrap();
+    (album, release)
 }
 
 /// What the import `import_id` reported: the release and album it created, or
@@ -191,7 +213,6 @@ async fn start_run(
         .unwrap());
 }
 
-include!("tests/identity.rs");
 include!("tests/edit_shape.rs");
 include!("tests/candidate_state.rs");
 include!("tests/pane.rs");

@@ -48,4 +48,10 @@ mod schema_tests;
 mod release_medium_tests;
 
 #[cfg(test)]
+mod artist_identity_tests;
+
+#[cfg(test)]
+mod release_records_tests;
+
+#[cfg(test)]
 mod release_list_rows_tests;

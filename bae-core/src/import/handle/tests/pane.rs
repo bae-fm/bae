@@ -1,4 +1,3 @@
-mod album_detail_during_import;
 mod artist_pictures;
 mod candidate_mutation_race;
 mod commit_lock_waits;
@@ -70,9 +69,13 @@ fn set_modified(path: &Path, modified: std::time::SystemTime) {
 }
 
 /// [`rescan_into`] as a scan that could not read the folder's tags.
-async fn rescan_unread_into(tables: &crate::import::tables::ImportTables, candidate: FolderCandidate) {
+async fn rescan_unread_into(
+    tables: &crate::import::tables::ImportTables,
+    candidate: FolderCandidate,
+) {
     let root = candidate.watched_folder_path.clone();
-    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     let unread = crate::import::tables::ScanItemToWrite {
         item: crate::import::folder_scanner::ScanItem::Valid(candidate),
         seed: crate::import::tables::ScanItemSeed::Tags(None),
@@ -164,14 +167,17 @@ async fn unscanned_candidate(
 /// against.
 async fn rescan_into(tables: &crate::import::tables::ImportTables, candidate: FolderCandidate) {
     let root = candidate.watched_folder_path.clone();
-    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    crate::import::store_scan_item(tables, &bae_diagnostics::Diagnostics::noop(),
-            &root,
-            generation,
-            &crate::import::folder_scanner::ScanItem::Valid(candidate),
-        )
-        .await
-        .unwrap();
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    crate::import::store_scan_item(
+        tables,
+        &bae_diagnostics::Diagnostics::noop(),
+        &root,
+        generation,
+        &crate::import::folder_scanner::ScanItem::Valid(candidate),
+    )
+    .await
+    .unwrap();
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 
@@ -179,9 +185,9 @@ async fn rescan_into(tables: &crate::import::tables::ImportTables, candidate: Fo
 /// what every control in this file is addressed to.
 struct StoredCandidate {
     handle: ImportServiceHandle,
-    /// The library the service was started from, for the tests that restart the
-    /// service over it to read what survived the first one.
-    manager: TestLibrary,
+    /// What the service was started from, for the tests that start another
+    /// over the same store to read what survived the first one.
+    parts: TestImport,
     candidate: FolderCandidate,
     /// The key the pane's controls address the candidate by.
     key: crate::import::CandidateKey,
@@ -225,32 +231,31 @@ async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
     fixture
 }
 
-async fn stored_candidate_with(
-    providers: bae_catalogs::providers::Providers,
-) -> StoredCandidate {
-    let (manager, database, tmp) = setup_test_manager_with(providers).await;
+async fn stored_candidate_with(providers: bae_catalogs::providers::Providers) -> StoredCandidate {
+    let (parts, database, tmp) = setup_test_import_with(providers).await;
     let tables = crate::import::tables::ImportTables::new(database);
     let (candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
-    started(manager, candidate, key, tmp).await
+    started(parts, candidate, key, tmp).await
 }
 
 /// [`stored_candidate`] whose tags the scan could not read.
 async fn unread_stored_candidate() -> StoredCandidate {
-    let (manager, database, tmp) = setup_test_manager().await;
+    let (parts, database, tmp) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let (candidate, key, _hash) = unread_candidate(&tables, &tmp, "Album").await;
-    started(manager, candidate, key, tmp).await
+    started(parts, candidate, key, tmp).await
 }
 
-/// The import service over `manager`, addressed at the stored `candidate`.
+/// An import service started from `parts`, addressed at the stored
+/// `candidate`.
 async fn started(
-    manager: TestLibrary,
+    parts: TestImport,
     candidate: FolderCandidate,
     key: crate::import::CandidateKey,
     tmp: TempDir,
 ) -> StoredCandidate {
-    let handle = manager.start_import().await.unwrap();
-    StoredCandidate { handle, manager, candidate, key, tmp }
+    let handle = parts.start().await.unwrap();
+    StoredCandidate { handle, parts, candidate, key, tmp }
 }
 
 /// The handle, the key its controls address, and the hash its rows are stored
@@ -267,12 +272,6 @@ async fn pane_fixture_with(
     let fixture = picked_stored_candidate_with(providers).await;
     let hash = fixture.candidate.files.content_hash();
     (fixture.handle, fixture.tmp, fixture.key, hash)
-}
-
-/// [`pane_fixture`] with the library it was started from, for a test that
-/// reads what an import wrote through the library's own operations.
-async fn picked_stored_candidate() -> StoredCandidate {
-    picked_stored_candidate_with(bae_catalogs::providers::Providers::offline()).await
 }
 
 /// [`stored_candidate_with`] with the folder's own tags already picked.
@@ -321,21 +320,11 @@ async fn unlinked_cover_gallery_for_file_tags() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_library_release() {
-    let (manager, _, _tmp) = setup_test_db_with_artist().await;
-    let album = make_album("Album Title");
-    let release = make_release(&album.id);
-    manager
-        .insert_album_with_release_and_tracks(
-            &album,
-            &[bae_db::DbAlbumArtist::new_test(&album.id, TEST_ARTIST_ID)],
-            &release,
-            &[bae_db::DbReleaseMedium::new_test(&release.id)],
-            &[make_track(&release.id, 1)],
-            &[],
-        )
-        .await
-        .unwrap();
-    let handle = manager.start_import().await.unwrap();
+    let (parts, database, _tmp) = setup_test_import().await;
+    let artist = make_artist("Artist Name", None, None);
+    database.insert_artist(&artist).await.unwrap();
+    let (_album, release) = insert_library_release(&database, &artist.id, "Album Title").await;
+    let handle = parts.start().await.unwrap();
     let gallery = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await
@@ -346,16 +335,32 @@ async fn unlinked_cover_gallery_for_library_release() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
-    let (manager, _, _tmp, _album, release) =
-        album_with("Album Title", &[discogs_identity("11", "22")]).await;
-    let handle = manager.start_import().await.unwrap();
+    let (parts, database, _tmp) = setup_test_import().await;
+    let artist = make_artist("Artist Name", None, None);
+    database.insert_artist(&artist).await.unwrap();
+    let (_album, release) = insert_library_release(&database, &artist.id, "Album Title").await;
+    database
+        .insert_release_records(
+            &release.id,
+            &[bae_catalogs::records::ReleaseRecord::new(
+                &bae_catalogs::records::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::Discogs,
+                    "22",
+                ),
+                Some("11".to_string()),
+            )],
+        )
+        .await
+        .unwrap();
+    let handle = parts.start().await.unwrap();
     let result = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await;
     shut_down(handle).await;
-    assert!(matches!(result, Err(crate::import::ImportError::Catalog(
-        bae_catalogs::CatalogError::DiscogsNotConfigured
-    ))));
+    assert!(matches!(
+        result,
+        Err(crate::import::ImportError::Catalog(bae_catalogs::CatalogError::DiscogsNotConfigured))
+    ));
 }
 
 struct CountingFileTagReader {

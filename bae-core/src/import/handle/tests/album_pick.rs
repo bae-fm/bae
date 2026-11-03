@@ -10,20 +10,8 @@ async fn a_picked_album_shows_over_what_the_records_name() {
 
     let artist = make_artist("Artist Name", None, None);
     handle.database.insert_artist(&artist).await.unwrap();
-    let album = make_album("Library Album");
-    let release = make_release(&album.id);
-    handle
-        .database
-        .insert_album_with_release_and_tracks(
-            &album,
-            &[bae_db::DbAlbumArtist::new_test(&album.id, &artist.id)],
-            &release,
-            &[bae_db::DbReleaseMedium::new_test(&release.id)],
-            &[make_track(&release.id, 1)],
-            &[],
-        )
-        .await
-        .unwrap();
+    let (album, _release) =
+        insert_library_release(&handle.database, &artist.id, "Library Album").await;
 
     handle.set_candidate_album(&key, Some(album.id.clone())).await.unwrap();
     assert_eq!(

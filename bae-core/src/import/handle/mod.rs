@@ -555,6 +555,27 @@ impl ImportServiceHandle {
         Ok((release, partners))
     }
 
+    /// Stop the first thread that reports a measured percent of `phase` of
+    /// an import before the report is recorded or delivered, until
+    /// [`Self::release_progress`], for a test that acts while an import is
+    /// partway through.
+    #[cfg(test)]
+    pub(crate) fn hold_progress_at(&self, phase: crate::import::ImportPhase) {
+        self.event_tx.hold_progress_at(phase);
+    }
+
+    /// Wait until a thread is stopped where [`Self::hold_progress_at`] said.
+    #[cfg(test)]
+    pub(crate) async fn progress_held(&self) {
+        self.event_tx.send_held().await;
+    }
+
+    /// Let the stopped thread go on.
+    #[cfg(test)]
+    pub(crate) fn release_progress(&self) {
+        self.event_tx.release_send();
+    }
+
     /// Stop and join both worker threads; later calls do nothing. Called from
     /// `AppServicesInner`'s drop so the store-open lock is released before
     /// teardown returns. Each is sent `Shutdown` because `self` holds a live

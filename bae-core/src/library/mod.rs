@@ -8,6 +8,8 @@ pub(crate) mod detach_cancels;
 mod detail;
 pub mod download_snapshot;
 mod file_transfers;
+#[cfg(all(test, desktop))]
+mod import_tests;
 mod library_status;
 mod live_read;
 mod local_lifecycle;

@@ -133,12 +133,7 @@ async fn a_pick_ends_identification_in_its_write() {
         .await
         .unwrap();
     let release_id = "70000301";
-    super::metadata_application::seed_discogs_pressing(
-        &fakes,
-        release_id,
-        "Label Name",
-        "CAT-1",
-    );
+    super::metadata_application::seed_discogs_pressing(&fakes, release_id, "Label Name", "CAT-1");
     identifying(&handle, &key).await;
     let deciding = handle.clone();
     let decided_key = key.clone();
@@ -217,13 +212,13 @@ async fn a_skip_ends_identification_in_its_write() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn combining_ends_its_folders_identification_in_its_write() {
-    let (manager, database, _library) = setup_test_manager().await;
+    let (parts, database, _library) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&tables, &first_root, "Volume B").await;
     let (_, second, _) = picked_candidate(&tables, &second_root, "Volume A").await;
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     // A folder waiting for or running a run is refused a combination; one
     // whose answer is being written is combined, and the answer ends.
     // Each run has its own id, as the identify service hands them out.

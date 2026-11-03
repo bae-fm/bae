@@ -30,7 +30,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
     }
 
-    let (manager, _, tmp) = setup_test_manager().await;
+    let (parts, _, tmp) = setup_test_import().await;
     let root = tmp.path().join("watch-root");
     std::fs::create_dir_all(&root).unwrap();
     let release_folder = root.join("Artist Name - Album Title");
@@ -40,8 +40,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         std::fs::write(release_folder.join(format!("p{n}.jpg")), minimal_jpeg()).unwrap();
     }
 
-    let import_handle =
-        manager.start_import().await.unwrap();
+    let import_handle = parts.start().await.unwrap();
     let (gate, held, reached) = crate::test_gate::closed();
     let analyzer = std::sync::Arc::new(HeldAnalyzer { calls: AtomicUsize::new(0), held });
     import_handle.register_artwork_analyzer(analyzer.clone());
@@ -116,45 +115,49 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         }
     }
     assert!(
-        analyzer.calls.load(Ordering::SeqCst) <= crate::import::extraction::service::IMAGES_IN_FLIGHT,
+        analyzer.calls.load(Ordering::SeqCst)
+            <= crate::import::extraction::service::IMAGES_IN_FLIGHT,
         "removing the folder must stop the OCR pass before the images not yet started",
     );
 }
 
 #[tokio::test]
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
-    let (manager, database, _temp) = setup_test_manager().await;
+    let (parts, database, _temp) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let root = bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     // A row under `Collection`, so the decision the removal races is one the
     // list offers.
     let folder = root.join("Collection").join("Album");
-    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    crate::import::store_scan_item(&tables, &bae_diagnostics::Diagnostics::noop(),
-            &root,
-            generation,
-            &crate::import::folder_scanner::ScanItem::Valid(
-                crate::import::folder_scanner::FolderCandidate {
-                    path: folder.clone(),
-                    file_root: folder.clone(),
-                    name: "Album".to_string(),
-                    files: crate::import::folder_scanner::CategorizedFiles {
-                        files: Vec::new(),
-                        parts: Vec::new(),
-                    },
-                    watched_folder_path: root.clone(),
-                    scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
-                    file_edit_revision: 0,
-                    relative_folder: bae_db::RelativeFolder::test("Collection/Album"),
-                    grouping: None,
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    crate::import::store_scan_item(
+        &tables,
+        &bae_diagnostics::Diagnostics::noop(),
+        &root,
+        generation,
+        &crate::import::folder_scanner::ScanItem::Valid(
+            crate::import::folder_scanner::FolderCandidate {
+                path: folder.clone(),
+                file_root: folder.clone(),
+                name: "Album".to_string(),
+                files: crate::import::folder_scanner::CategorizedFiles {
+                    files: Vec::new(),
+                    parts: Vec::new(),
                 },
-            ),
-        )
-        .await
-        .unwrap()
-        .expect("the scan generation is current");
+                watched_folder_path: root.clone(),
+                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+                file_edit_revision: 0,
+                relative_folder: bae_db::RelativeFolder::test("Collection/Album"),
+                grouping: None,
+            },
+        ),
+    )
+    .await
+    .unwrap()
+    .expect("the scan generation is current");
     let key = FolderReleaseDecisionKey {
         watched_folder_path: root.clone(),
         relative_folder: bae_db::RelativeFolder::test("Collection"),

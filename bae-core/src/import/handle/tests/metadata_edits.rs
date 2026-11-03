@@ -151,8 +151,10 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
 async fn a_track_edit_cannot_change_the_audio_it_plays() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
-    let stored =
-        crate::import::preparation::import_preparation(&handle.tables, &hash).await.unwrap().unwrap();
+    let stored = crate::import::preparation::import_preparation(&handle.tables, &hash)
+        .await
+        .unwrap()
+        .unwrap();
 
     let error = handle
         .set_candidate_track_edit(
@@ -284,53 +286,6 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     shut_down(handle).await;
 }
 
-/// An imported candidate holds no draft: an edit of it is refused as an
-/// import of those files would be, and the library release stays as the
-/// import wrote it.
-#[tokio::test(flavor = "multi_thread")]
-async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
-    let StoredCandidate { handle, manager, key, tmp: _tmp, .. } = picked_stored_candidate().await;
-    handle
-        .set_candidate_album_artists(
-            &key,
-            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
-                "Fixture Artist",
-            ))],
-        )
-        .await
-        .unwrap();
-    let mut events = handle.every_event();
-    let import_id = handle
-        .start_import(&key)
-        .await
-        .expect("the prepared candidate enters the import queue")
-        .expect_queued();
-    let (release_id, _) = await_import_outcome(&mut events, &import_id)
-        .await
-        .unwrap_or_else(|error| panic!("import failed: {error}"));
-    let release_before =
-        manager.open_release_edit(&release_id).await.unwrap().opened().clone();
-
-    let refused = handle
-        .set_candidate_edit_field(
-            &key,
-            crate::import::DraftFieldEdit::Text {
-                field: crate::import::CandidateEditField::AlbumTitle,
-                value: "Edited candidate".into(),
-            },
-        )
-        .await;
-    assert_eq!(
-        refused.map_err(|error| error.to_string()),
-        Err(crate::import::ImportError::FilesAlreadyImported { release_id: release_id.clone() }
-            .to_string())
-    );
-    assert_eq!(
-        manager.open_release_edit(&release_id).await.unwrap().opened().clone(),
-        release_before
-    );
-}
-
 #[tokio::test(flavor = "multi_thread")]
 async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
     // The scan could not read the folder's tags, so its draft is blank.
@@ -444,7 +399,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
 /// artwork when file tags are applied, and the selection persists.
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
-    let StoredCandidate { mut handle, manager, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate { mut handle, parts, key, tmp: _tmp, .. } = stored_candidate().await;
     handle.file_tags =
         std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(vec![1, 2, 3, 4]));
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
@@ -459,7 +414,7 @@ async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
     assert_eq!(cover.selection, crate::import::CoverSelection::Local("cover.jpg".to_string()));
     shut_down(handle).await;
 
-    let reopened = manager.start_import().await.unwrap();
+    let reopened = parts.start().await.unwrap();
     assert_eq!(
         pane(&reopened, &key)
             .await

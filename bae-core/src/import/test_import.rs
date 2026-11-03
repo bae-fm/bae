@@ -72,6 +72,25 @@ impl TestImport {
         .await
     }
 
+    /// [`Self::start`] reading folders' tags through `file_tags`.
+    pub(crate) fn start_reading_tags_with(
+        &self,
+        file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    ) -> ImportServiceHandle {
+        crate::import::ImportService::start_reading_tags_with(
+            tokio::runtime::Handle::current(),
+            self.database.clone(),
+            self.catalogs.clone(),
+            self.remote_images.clone(),
+            self.diagnostics.clone(),
+            crate::import::CandidatePreparations::new(self.database.clone()),
+            self.clock.clone(),
+            self.ids.clone(),
+            self.closing.child_token(),
+            file_tags,
+        )
+    }
+
     /// Edit this library's preferences in one write of their row, as the
     /// settings screens do.
     pub(crate) async fn edit_preferences(

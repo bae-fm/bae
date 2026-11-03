@@ -12,9 +12,6 @@ struct DiscogsPick {
     handle: ImportServiceHandle,
     /// The catalog fakes the library asks, which the test seeds.
     fakes: FakeCatalogs,
-    /// The library the import writes the pictures into, whose stored bytes
-    /// a test reads.
-    manager: TestLibrary,
     tmp: TempDir,
     key: crate::import::CandidateKey,
     images: bae_test_support::RemoteImageHost,
@@ -65,20 +62,12 @@ impl DiscogsPick {
 
     /// The bytes of the picture the library holds for `artist_id`, if any.
     async fn picture_of(&self, artist_id: &str) -> Option<Vec<u8>> {
-        let mut search = crate::library::views::LibraryViews::new(self.handle.database.clone())
-            .subscribe_artist_search(crate::library::ArtistSearchView {
-                query: crate::library::LibrarySearchQuery::parse("Track Artist"),
-                windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
-            });
-        let found = search.next().await.expect("the artist search stays open").result.unwrap();
-        let result = crate::library::views::artist_search::resolve_artist_search(found, 0)
-            .windows
-            .into_iter()
-            .flat_map(|window| window.rows)
-            .find(|result| result.artist.id == artist_id)
-            .expect("the track artist is searchable");
-        let image = result.image?;
-        self.manager.read_image_bytes(&image).await.unwrap()
+        let database = &self.handle.database;
+        let file = database
+            .library_image_file(artist_id, &bae_db::LibraryImageType::Artist)
+            .await
+            .unwrap()?;
+        Some(database.read_file(&file).await.unwrap())
     }
 }
 
@@ -114,7 +103,7 @@ async fn picked_discogs_release() -> DiscogsPick {
     let fakes = FakeCatalogs::over(
         bae_util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
     );
-    let StoredCandidate { handle, manager, key, tmp, .. } =
+    let StoredCandidate { handle, key, tmp, .. } =
         picked_stored_candidate_with(fakes.providers()).await;
     handle
         .catalogs
@@ -169,7 +158,6 @@ async fn picked_discogs_release() -> DiscogsPick {
     DiscogsPick {
         handle,
         fakes,
-        manager,
         tmp,
         key,
         images,

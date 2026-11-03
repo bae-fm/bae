@@ -9,12 +9,12 @@ use super::*;
 /// have one import running while another waits behind it.
 async fn two_importable(
 ) -> (ImportServiceHandle, [TempDir; 2], crate::import::CandidateKey, crate::import::CandidateKey) {
-    let (manager, database, tmp) = setup_test_manager().await;
+    let (parts, database, tmp) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let other = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&tables, &tmp, "First Album").await;
     let (_, second, _) = picked_candidate(&tables, &other, "Second Album").await;
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     for key in [&first, &second] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
         handle
@@ -85,7 +85,7 @@ async fn assert_imports_again(handle: &ImportServiceHandle, key: &crate::import:
 }
 
 async fn album_count(handle: &ImportServiceHandle) -> usize {
-    crate::library::views::LibraryViews::new(handle.database.clone()).get_albums(&[]).await.unwrap().len()
+    bae_db::test_fixtures::row_count(&handle.database, "albums").await
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -7,7 +7,7 @@ use super::*;
 /// track, beside a cover — and a track of its own when `album_track` — read
 /// whole, with the album folder's discs kept as releases of their own.
 async fn album_of_discs(
-    manager: &TestLibrary,
+    parts: &TestImport,
     tables: &crate::import::tables::ImportTables,
     tmp: &TempDir,
     discs: &[&str],
@@ -27,7 +27,7 @@ async fn album_of_discs(
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager.start_import().await.unwrap();
+    let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     let reading = tables
         .load_folder_release_decisions(&root)
@@ -65,11 +65,11 @@ async fn files_of(handle: &ImportServiceHandle, key: &crate::import::CandidateKe
 /// discs hold only their own files again.
 #[tokio::test(flavor = "multi_thread")]
 async fn two_discs_of_three_take_the_album_folders_cover() {
-    let (manager, database, _library) = setup_test_manager().await;
+    let (parts, database, _library) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let tmp = TempDir::new().unwrap();
     let (handle, album) =
-        album_of_discs(&manager, &tables, &tmp, &["Disc 1", "Disc 2", "Disc 3"], false).await;
+        album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2", "Disc 3"], false).await;
     assert_eq!(files_of(&handle, &key_of(&album.join("Disc 3"))).await, ["01.flac"]);
 
     let key = handle
@@ -93,11 +93,10 @@ async fn two_discs_of_three_take_the_album_folders_cover() {
 /// with one of its discs holds it once, as its own.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_folder_that_is_a_release_keeps_its_cover() {
-    let (manager, database, _library) = setup_test_manager().await;
+    let (parts, database, _library) = setup_test_import().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let tmp = TempDir::new().unwrap();
-    let (handle, album) =
-        album_of_discs(&manager, &tables, &tmp, &["Disc 1", "Disc 2"], true).await;
+    let (handle, album) = album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2"], true).await;
     assert_eq!(files_of(&handle, &key_of(&album)).await, ["00.flac", "cover.jpg"]);
 
     let discs = handle
