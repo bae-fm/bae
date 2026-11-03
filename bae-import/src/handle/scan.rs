@@ -142,7 +142,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<
-        (crate::folder_scanner::FolderCandidate, crate::tables::DbCandidateImportPreparation),
+        (crate::folder_scanner::FolderCandidate, crate::preparation::CandidatePreparation),
         crate::ImportError,
     > {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
@@ -151,7 +151,7 @@ impl ImportServiceHandle {
             });
         };
         let current =
-            crate::preparation::import_preparation(&self.tables, &candidate.files.content_hash())
+            crate::preparation::stored_preparation(&self.tables, &candidate.files.content_hash())
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),
@@ -174,14 +174,14 @@ impl ImportServiceHandle {
             let seed = crate::file_metadata_seed::FileMetadataSeed::project(
                 &read.candidate,
                 read.snapshot,
-                Some(&current.draft.tracks),
+                Some(&current.metadata.draft.tracks),
             )?;
             let commit = self
                 .commit_lock_for_revision(
                     "pick file tags",
                     &candidate_key,
                     &content_hash,
-                    current.file_edit_revision,
+                    current.file_edits.revision,
                 )
                 .await?;
             // A scan that stored the candidate while its tags were read gave it
@@ -206,7 +206,7 @@ impl ImportServiceHandle {
                     &candidate_key,
                     &crate::CandidateAsRead {
                         content_hash: content_hash.clone(),
-                        file_edit_revision: current.file_edit_revision,
+                        file_edit_revision: current.file_edits.revision,
                         metadata_revision: current.metadata_revision,
                     },
                     &seed.snapshot,
@@ -283,7 +283,7 @@ impl ImportServiceHandle {
                 release,
                 values,
                 prepared_partners,
-                &current.draft,
+                &current.metadata.draft,
                 bae_identify::row_facts::folder_pressing_year(&text, &records),
                 steps,
             )
@@ -294,7 +294,7 @@ impl ImportServiceHandle {
                 "pick a release",
                 &candidate_key,
                 &content_hash,
-                current.file_edit_revision,
+                current.file_edits.revision,
             )
             .await?;
         self.preparations
@@ -341,19 +341,19 @@ impl ImportServiceHandle {
             });
         };
         let content_hash = candidate.files.content_hash();
-        let current = crate::preparation::import_preparation(&self.tables, &content_hash)
+        let current = crate::preparation::stored_preparation(&self.tables, &content_hash)
             .await?
             .ok_or_else(|| crate::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
         let mut draft = candidate.blank_draft();
-        crate::pane::keep_row_identities(&mut draft.tracks, &current.draft.tracks)?;
+        crate::pane::keep_row_identities(&mut draft.tracks, &current.metadata.draft.tracks)?;
         let _commit = self
             .commit_lock_for_revision(
                 "clear metadata",
                 &candidate_key,
                 &content_hash,
-                current.file_edit_revision,
+                current.file_edits.revision,
             )
             .await?;
         self.preparations
@@ -398,7 +398,7 @@ impl ImportServiceHandle {
             });
         };
         let content_hash = candidate.files.content_hash();
-        let current = crate::preparation::import_preparation(&self.tables, &content_hash)
+        let current = crate::preparation::stored_preparation(&self.tables, &content_hash)
             .await?
             .ok_or_else(|| crate::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
@@ -408,7 +408,7 @@ impl ImportServiceHandle {
                 "keep the folder's own draft",
                 &candidate_key,
                 &content_hash,
-                current.file_edit_revision,
+                current.file_edits.revision,
             )
             .await?;
         self.preparations
@@ -445,7 +445,7 @@ impl ImportServiceHandle {
                 "unlink the release",
                 &candidate_key,
                 &content_hash,
-                current.file_edit_revision,
+                current.file_edits.revision,
             )
             .await?;
         self.preparations

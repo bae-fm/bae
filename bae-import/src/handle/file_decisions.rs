@@ -197,9 +197,9 @@ impl ImportServiceHandle {
                 crate::preparation::CandidateWrite::FileDecisions,
             ));
         }
-        let preparation = crate::preparation::import_preparation(&self.tables, &content_hash)
+        let preparation = crate::preparation::stored_preparation(&self.tables, &content_hash)
             .await?
-            .filter(|preparation| preparation.file_edit_revision == expected_revision)
+            .filter(|preparation| preparation.file_edits.revision == expected_revision)
             .ok_or_else(|| crate::ImportError::Internal {
                 detail: format!(
                 "{candidate_key} has no complete preparation for file revision {expected_revision}"
@@ -272,7 +272,7 @@ impl ImportServiceHandle {
                 current_files,
                 settled_files,
                 initialized,
-                &preparation.draft,
+                &preparation.metadata.draft,
                 self.ids.as_ref(),
             );
 

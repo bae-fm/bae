@@ -339,22 +339,22 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let (files, hash) = stored_pane_candidate(&db).await;
     let stale = tables
-        .load_import_candidate_preparation(&hash)
+        .load_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::tables::DbPreparationRead::prepared)
+        .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the scanned candidate is prepared");
     crate::CandidatePreparations::new(db.clone())
         .store_file_decisions(
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
-                file_edit_revision: stale.file_edit_revision,
+                file_edit_revision: stale.file_edits.revision,
                 metadata_revision: stale.metadata_revision,
             },
             &pane_candidate_key(),
             &CandidateFileEdits::default(),
             &[(pane_candidate_key(), files)],
-            stale.draft.clone(),
+            stale.metadata.draft.clone(),
         )
         .await
         .unwrap();
@@ -364,15 +364,15 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
             &host_root("/music"),
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
-                file_edit_revision: stale.file_edit_revision,
+                file_edit_revision: stale.file_edits.revision,
                 metadata_revision: stale.metadata_revision,
             },
             &pane_candidate_key(),
             &crate::CandidateMetadataDraft {
-                draft: stale.draft,
-                provenance: stale.metadata_provenance,
-                cover: stale.cover,
-                assets: stale.assets,
+                draft: stale.metadata.draft,
+                provenance: stale.metadata.provenance,
+                cover: stale.metadata.cover,
+                assets: stale.metadata.assets,
             },
         )
         .await
@@ -386,10 +386,10 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let stale = tables
-        .load_import_candidate_preparation(&hash)
+        .load_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::tables::DbPreparationRead::prepared)
+        .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the scanned candidate is prepared");
     let root = host_root("/music");
     let mut replacement = scanned_candidate(&root, "Album");
@@ -410,15 +410,15 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
             &root,
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
-                file_edit_revision: stale.file_edit_revision,
+                file_edit_revision: stale.file_edits.revision,
                 metadata_revision: stale.metadata_revision,
             },
             &pane_candidate_key(),
             &crate::CandidateMetadataDraft {
-                draft: stale.draft,
-                provenance: stale.metadata_provenance,
-                cover: stale.cover,
-                assets: stale.assets,
+                draft: stale.metadata.draft,
+                provenance: stale.metadata.provenance,
+                cover: stale.metadata.cover,
+                assets: stale.metadata.assets,
             },
         )
         .await
@@ -559,10 +559,10 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
     let (files, hash) = stored_pane_candidate(&db).await;
     assert!(store_verdict_with_signals(&db, &hash, settled_signals(),).await);
     let stale = tables
-        .load_import_candidate_preparation(&hash)
+        .load_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::tables::DbPreparationRead::prepared)
+        .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the candidate is prepared");
     crate::CandidatePreparations::new(db.clone())
         .set_field(&hash, CandidateEditField::PressingYear, "1991")
@@ -577,13 +577,13 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         .store_file_decisions(
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
-                file_edit_revision: stale.file_edit_revision,
+                file_edit_revision: stale.file_edits.revision,
                 metadata_revision: stale.metadata_revision,
             },
             &pane_candidate_key(),
             &edits,
             &[(pane_candidate_key(), settled)],
-            stale.draft.clone(),
+            stale.metadata.draft.clone(),
         )
         .await
         .expect_err("file mappings prepared for the prior metadata are stale");
@@ -598,7 +598,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
     assert!(state.identify.is_some(), "the rejected write keeps its verdict");
     let pane = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(pane.draft.pressing.year, "1991");
-    assert_eq!(pane.draft.tracks, stale.draft.tracks);
+    assert_eq!(pane.draft.tracks, stale.metadata.draft.tracks);
 }
 
 /// A file decision reshapes the folder, so the extracted signals go with it. The caller's replacement mappings, metadata,
@@ -629,10 +629,10 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .await
         .unwrap();
     let preparation = tables
-        .load_import_candidate_preparation(&hash)
+        .load_candidate_preparation(&hash)
         .await
         .unwrap()
-        .and_then(crate::tables::DbPreparationRead::prepared)
+        .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the candidate has a stored preparation");
     crate::CandidatePreparations::new(db.clone())
         .set_track_edit_prepared(
@@ -640,13 +640,13 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
             &pane_candidate_key(),
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
-                file_edit_revision: preparation.file_edit_revision,
+                file_edit_revision: preparation.file_edits.revision,
                 metadata_revision: preparation.metadata_revision,
             },
             &edited_row(
                 "candidate-track-0",
                 "Track Title",
-                Some(preparation.draft.tracks[0].edit.file.clone()),
+                Some(preparation.metadata.draft.tracks[0].edit.file.clone()),
             ),
         )
         .await

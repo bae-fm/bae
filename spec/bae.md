@@ -520,7 +520,8 @@ sits now.
 
 One hash is one release on a device. An import of files this device already
 imported is refused when it is asked for, and nothing runs; the person is told
-this device already imported those files. Two imports of the same files asked
+this device already imported those files. An automatic import refused this way
+records no failed import: the folder is Done. Two imports of the same files asked
 for before either lands both run, and the one that comes second finds the hash
 taken, as it reads what to import or as it writes: it fails with the same
 words and writes nothing. The release imported

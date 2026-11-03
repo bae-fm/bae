@@ -1,7 +1,6 @@
 //! Starting an import: the claim one import holds on a candidate, the checks
 //! the start makes of its files and tags, what the import commits from the
-//! draft, and an automatic import that cannot start recorded as its failed
-//! import.
+//! draft, and the automatic starts that are refused without a failed import.
 
 use super::*;
 use crate::handle::tests::*;
@@ -446,8 +445,12 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         )
         .await
         .unwrap();
-    let draft =
-        crate::preparation::import_preparation(&handle.tables, &hash).await.unwrap().unwrap().draft;
+    let draft = crate::preparation::stored_preparation(&handle.tables, &hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .metadata
+        .draft;
     assert_eq!(
         draft.pressing.facts.media,
         bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1).media
@@ -550,54 +553,38 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     );
 }
 
-/// An automatic start the import path refuses is the candidate's failed
-/// import, shown where one that failed while running is, with nothing claimed.
+/// Files this device already imported are the Done candidate's own state: an
+/// automatic start over them, from a second folder holding the same files,
+/// is refused and records no failed import.
 #[tokio::test(flavor = "multi_thread")]
-async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import() {
+async fn an_automatic_start_over_already_imported_files_records_no_failure() {
     let fixture = Fixture::new("auto-import-refused").await;
-    let dir = fixture.disc_id_candidate("Album");
+    let imported = fixture.disc_id_candidate("Album");
+    fixture.identify_ready(&imported, "mb-refused", "rg-refused").await;
+    let mut events = fixture.import.every_event();
+    let import_id = fixture
+        .import
+        .start_import(&crate::CandidateKey::folder(&imported))
+        .await
+        .unwrap()
+        .expect_queued();
+    await_import_outcome(&mut events, &import_id).await.unwrap();
+    let dir = fixture.disc_id_candidate("Album Copy");
     let key = crate::CandidateKey::folder(&dir);
-    fixture.identify_ready(&dir, "mb-refused", "rg-refused").await;
-    // A remote cover whose stored bytes are gone is a broken candidate no
-    // import starts from.
-    let hash = fixture.content_hash(&dir);
-    fixture
-        .preparations
-        .set_cover(
-            &hash,
-            &crate::CoverSelection::Remote(
-                bae_catalogs::remote_image::RemoteImageSet::original(
-                    "https://example.invalid/cover".to_string(),
-                ),
-                bae_catalogs::catalog::Catalog::MusicBrainz,
-            ),
-            Some(&bae_catalogs::remote_image::RemoteImage {
-                bytes: vec![1, 2, 3],
-                content_type: bae_util::content_type::ContentType::Jpeg,
-            }),
-        )
-        .await
-        .unwrap();
-    fixture
-        .database
-        .execute_for_test(
-            "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
-            vec![hash],
-        )
-        .await
-        .unwrap();
+    fixture.rescan(&fixture.import, 2).await;
 
     let error = fixture
         .import
         .import_identified(&key)
         .await
-        .expect_err("a remote cover without its bytes does not start an import");
+        .expect_err("files this device imported do not start a second import");
 
-    let failure = fixture
-        .import_failure(&dir)
-        .await
-        .expect("the refused start is the candidate's failed import");
-    assert_eq!(failure.reason, crate::ImportFailureReason::error(error.to_string()));
+    assert!(matches!(error, crate::ImportError::FilesAlreadyImported { .. }), "{error:?}");
+    let rows = fixture.database.every_row_for_test().await.unwrap();
+    assert!(
+        rows.get("import_candidate_failure").is_none_or(Vec::is_empty),
+        "the refused start records no failed import"
+    );
     assert!(
         fixture
             .import

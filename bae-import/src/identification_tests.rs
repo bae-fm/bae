@@ -98,8 +98,6 @@ pub(crate) struct Fixture {
     pub(crate) parts: crate::tests::import::TestImport,
     /// The store under `import`, for a test that breaks a row directly.
     pub(crate) database: Database,
-    /// The writer the handle uses, for tests that write a candidate directly.
-    pub(crate) preparations: crate::CandidatePreparations,
     pub(crate) import: ImportServiceHandle,
     pub(crate) provider: bae_util::test_host::FakeHost,
     /// The MusicBrainz client those sessions ask, which a test seeds answers
@@ -140,7 +138,6 @@ impl Fixture {
             Database::new_test(temp.path().join("test.db").to_str().unwrap(), clock.clone())
                 .await
                 .unwrap();
-        let preparations = crate::CandidatePreparations::new(database.clone());
 
         let provider = bae_util::test_host::FakeHost::start().await;
         // Discogs goes to the fake too, so no test reaches the real API.
@@ -180,7 +177,6 @@ impl Fixture {
         Fixture {
             parts,
             database,
-            preparations,
             import,
             provider,
             musicbrainz,

@@ -95,7 +95,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             "Cover Album",
         )
         .await;
-        let preparation = crate::preparation::import_preparation(&test.service.tables, &hash)
+        let preparation = crate::preparation::stored_preparation(&test.service.tables, &hash)
             .await
             .unwrap()
             .unwrap();
@@ -110,10 +110,10 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                 },
                 &key,
                 &crate::CandidateMetadataDraft {
-                    draft: preparation.draft,
-                    provenance: preparation.metadata_provenance,
+                    draft: preparation.metadata.draft,
+                    provenance: preparation.metadata.provenance,
                     cover: explicit.then(|| CoverSelection::Embedded("01.flac".to_string())),
-                    assets: preparation.assets,
+                    assets: preparation.metadata.assets,
                 },
             )
             .await

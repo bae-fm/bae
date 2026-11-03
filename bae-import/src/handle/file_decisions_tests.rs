@@ -188,16 +188,22 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
         .await
         .unwrap();
 
-    let preparation = crate::preparation::import_preparation(&handle.tables, &hash)
+    let preparation = crate::preparation::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the reshaped candidate remains prepared");
     assert_eq!(
-        preparation.draft.tracks.iter().map(|track| track.edit.file.clone()).collect::<Vec<_>>(),
+        preparation
+            .metadata
+            .draft
+            .tracks
+            .iter()
+            .map(|track| track.edit.file.clone())
+            .collect::<Vec<_>>(),
         ["01 Track.flac", "02 Track.flac"]
             .map(|file_id| crate::AudioFile::Standalone { file_id: file_id.to_string() }),
     );
-    assert_eq!(preparation.draft.tracks[0].edit.title, "Renamed");
+    assert_eq!(preparation.metadata.draft.tracks[0].edit.title, "Renamed");
 
     shut_down(handle).await;
 }
@@ -214,12 +220,13 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     ] {
         handle.set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
         let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
-        let preparation = crate::preparation::import_preparation(&handle.tables, &hash)
+        let preparation = crate::preparation::stored_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .expect("the candidate remains prepared");
         assert_eq!(
             preparation
+                .metadata
                 .draft
                 .tracks
                 .iter()
@@ -239,10 +246,11 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
-    let before = crate::preparation::import_preparation(&fixture.tables(), &hash)
+    let before = crate::preparation::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
+        .metadata
         .draft;
     assert_eq!(before.tracks.len(), 5);
     let unchanged = before
@@ -262,10 +270,11 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .await
         .unwrap();
 
-    let after = crate::preparation::import_preparation(&fixture.tables(), &hash)
+    let after = crate::preparation::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
+        .metadata
         .draft;
     assert_eq!(after.tracks.len(), 3, "one image plus two loose tracks");
     assert!(after
@@ -295,10 +304,11 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         )
         .await
         .unwrap();
-    let restored = crate::preparation::import_preparation(&fixture.tables(), &hash)
+    let restored = crate::preparation::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
+        .metadata
         .draft;
     assert_eq!(restored.tracks.len(), 5);
     let slices = restored
@@ -411,11 +421,11 @@ async fn a_cleared_sheet_can_be_bound_again() {
     // became the sheet's three entries plus the two loose files, each with a
     // mapping of its own.
     let preparation =
-        crate::preparation::import_preparation(&fixture.tables(), &fixture.content_hash(&dir))
+        crate::preparation::stored_preparation(&fixture.tables(), &fixture.content_hash(&dir))
             .await
             .unwrap()
             .expect("the rebound candidate is prepared");
-    assert_eq!(preparation.draft.tracks.len(), 5);
+    assert_eq!(preparation.metadata.draft.tracks.len(), 5);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -425,10 +435,11 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
     let key = crate::CandidateKey::folder(&dir);
-    let before = crate::preparation::import_preparation(&fixture.tables(), &hash)
+    let before = crate::preparation::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
+        .metadata
         .draft;
     fixture
         .import
@@ -439,10 +450,11 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
         )
         .await
         .unwrap();
-    let after = crate::preparation::import_preparation(&fixture.tables(), &hash)
+    let after = crate::preparation::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
+        .metadata
         .draft;
     assert_eq!(after.mediums.len(), 2, "the loose audio and the sheet's disc");
     for original in before.tracks {

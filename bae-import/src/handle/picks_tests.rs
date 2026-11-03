@@ -125,10 +125,11 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
-        crate::preparation::import_preparation(&handle.tables, &hash)
+        crate::preparation::stored_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .expect("the picked candidate is prepared")
+            .metadata
             .cover,
         Some(crate::CoverSelection::Local("cover.jpg".to_string())),
         "neither claimed release holds an image, so the folder's cover stands"

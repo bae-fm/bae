@@ -42,12 +42,12 @@ pub(crate) async fn current_draft(
 ) -> (u64, crate::CandidateDraft) {
     let tables = crate::tables::ImportTables::new(db.clone());
     let preparation = tables
-        .load_import_candidate_preparation(content_hash)
+        .load_candidate_preparation(content_hash)
         .await
         .unwrap()
-        .and_then(crate::tables::DbPreparationRead::prepared)
+        .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the candidate has a stored preparation");
-    (preparation.metadata_revision, preparation.draft)
+    (preparation.metadata_revision, preparation.metadata.draft)
 }
 
 /// The sample verdict's ledger: a disc ID read off a rip log that named its

@@ -40,13 +40,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
     ) -> Result<Option<CandidatePreparation>, ImportError> {
-        match self.tables.load_candidate_preparation(content_hash).await? {
-            None => Ok(None),
-            Some(crate::tables::CandidatePreparationRead::Stored(prep)) => Ok(Some(prep)),
-            Some(crate::tables::CandidatePreparationRead::Imported { release_id }) => {
-                Err(ImportError::FilesAlreadyImported { release_id })
-            }
-        }
+        crate::preparation::stored_preparation(&self.tables, content_hash).await
     }
 
     /// Record one candidate's terminal verdict under its content hash, stamped

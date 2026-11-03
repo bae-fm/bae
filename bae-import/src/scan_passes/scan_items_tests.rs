@@ -300,14 +300,14 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         reading.candidate.files.content_hash(),
         "the release holds a new file"
     );
-    let preparation = crate::preparation::import_preparation(
+    let preparation = crate::preparation::stored_preparation(
         test.tables(),
         &stored.candidate.files.content_hash(),
     )
     .await
     .unwrap()
     .expect("the release with the new file is stored");
-    assert_eq!(preparation.draft.tracks.len(), 2);
+    assert_eq!(preparation.metadata.draft.tracks.len(), 2);
     assert!(stored.snapshot.unwrap().same_reading(&reading.snapshot.unwrap()));
 }
 

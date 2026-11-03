@@ -81,6 +81,9 @@ impl ImportServiceHandle {
                 Ok(_) => {}
                 // Another import owns the candidate and reports how it went.
                 Err(crate::ImportError::CandidateImportInProgress) => {}
+                // The files are in the library: that is the Done candidate's
+                // own state, not a failed import.
+                Err(crate::ImportError::FilesAlreadyImported { .. }) => {}
                 Err(error) => this.record_failed_start(&candidate_key, error).await,
             }
             started
@@ -159,18 +162,18 @@ impl ImportServiceHandle {
             }
         }
         let content_hash = candidate.files.content_hash();
-        let preparation = crate::preparation::import_preparation(&self.tables, &content_hash)
+        let preparation = crate::preparation::stored_preparation(&self.tables, &content_hash)
             .await?
-            .filter(|preparation| preparation.file_edit_revision == candidate.file_edit_revision)
+            .filter(|preparation| preparation.file_edits.revision == candidate.file_edit_revision)
             .ok_or_else(|| crate::ImportError::Internal {
                 detail: format!(
                     "{candidate_key} has no complete preparation for its current files"
                 ),
             })?;
-        let metadata_provenance = preparation.metadata_provenance.clone();
+        let metadata_provenance = preparation.metadata.provenance.clone();
         let needs_file_tag_snapshot =
             matches!(metadata_provenance, Some(crate::MetadataProvenance::FileMetadata))
-                || matches!(preparation.cover, Some(crate::CoverSelection::Embedded(_)));
+                || matches!(preparation.metadata.cover, Some(crate::CoverSelection::Embedded(_)));
         let file_tag_snapshot = if needs_file_tag_snapshot {
             let Some(stored) = self
                 .tables

@@ -180,12 +180,12 @@ impl ImportService {
         let categorized = stored_candidate.files;
 
         let preparation =
-            crate::preparation::import_preparation(&self.tables, &expected_content_hash)
+            crate::preparation::stored_preparation(&self.tables, &expected_content_hash)
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),
                 })?;
-        if preparation.file_edit_revision != expected_edit_revision
+        if preparation.file_edits.revision != expected_edit_revision
             || preparation.metadata_revision != expectation.candidate.metadata_revision
         {
             return Err(crate::ImportError::Internal {
@@ -195,7 +195,7 @@ impl ImportService {
             }
             .into());
         }
-        let release_link = preparation.release_link;
+        let release_link = preparation.link;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -209,8 +209,8 @@ impl ImportService {
             }
         }
         let cover = ImportCover::selected(
-            preparation.cover.as_ref(),
-            preparation.assets.remote_cover,
+            preparation.metadata.cover.as_ref(),
+            preparation.metadata.assets.remote_cover,
             file_tag_snapshot,
             &candidate_key,
         )?;
@@ -222,7 +222,7 @@ impl ImportService {
         // The draft holds every value the release is written with; nothing
         // is read from its source again.
         let assembled = crate::assemble::assemble_release(
-            &preparation.draft,
+            &preparation.metadata.draft,
             self.clock.as_ref(),
             self.ids.as_ref(),
         )?;

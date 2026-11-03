@@ -167,11 +167,11 @@ pub(crate) async fn prepare_named_candidate(
     candidate_path: &crate::CandidateKey,
     album_title: &str,
 ) -> u64 {
-    let preparation = crate::preparation::import_preparation(&service.tables, content_hash)
+    let preparation = crate::preparation::stored_preparation(&service.tables, content_hash)
         .await
         .unwrap()
         .expect("the scanned candidate has its initial preparation");
-    let mut draft = preparation.draft;
+    let mut draft = preparation.metadata.draft;
     draft.album_title = album_title.to_string();
     draft.album_artist_assignments =
         vec![crate::Credited::plain(crate::ArtistAssignment::named("Artist Name"))];
@@ -180,15 +180,15 @@ pub(crate) async fn prepare_named_candidate(
             watched_folder_path,
             &crate::CandidateAsRead {
                 content_hash: content_hash.to_string(),
-                file_edit_revision: preparation.file_edit_revision,
+                file_edit_revision: preparation.file_edits.revision,
                 metadata_revision: preparation.metadata_revision,
             },
             candidate_path,
             &crate::CandidateMetadataDraft {
                 draft,
-                provenance: preparation.metadata_provenance,
-                cover: preparation.cover,
-                assets: preparation.assets,
+                provenance: preparation.metadata.provenance,
+                cover: preparation.metadata.cover,
+                assets: preparation.metadata.assets,
             },
         )
         .await

@@ -205,7 +205,7 @@ async fn a_pick_leaves_the_person_s_choices_as_they_were() {
 /// Store settled signals for the fixture's candidate whose folder name,
 /// `printed`, is also its one catalog number.
 async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &str) {
-    let prep = crate::preparation::import_preparation(&handle.tables, hash)
+    let prep = crate::preparation::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -213,7 +213,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
         .preparations
         .store_verdict(&crate::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
-            file_edit_revision: prep.file_edit_revision,
+            file_edit_revision: prep.file_edits.revision,
             candidate_key: crate::CandidateKey::from_bytes(Vec::new()),
             verdict: bae_identify::TerminalVerdict::ManualOnly { track_count: 1, ledger: None },
             signals: bae_identify::signals::Signals {

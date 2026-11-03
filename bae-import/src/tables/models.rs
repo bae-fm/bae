@@ -129,40 +129,6 @@ pub struct DbCandidatePaneRows {
     pub failure: Option<crate::ImportFailure>,
 }
 
-/// What one read of a candidate's preparation found: the rows an import of
-/// it consumes, or the release this device already imported from its files,
-/// once the candidate holds no draft.
-#[derive(Debug, Clone, PartialEq)]
-pub enum DbPreparationRead {
-    Prepared(DbCandidateImportPreparation),
-    Imported { release_id: String },
-}
-
-#[cfg(test)]
-impl DbPreparationRead {
-    /// The rows an import consumes; `None` for an imported candidate.
-    pub(crate) fn prepared(self) -> Option<DbCandidateImportPreparation> {
-        match self {
-            Self::Prepared(preparation) => Some(preparation),
-            Self::Imported { .. } => None,
-        }
-    }
-}
-
-/// One atomic read of the existing candidate rows the import worker consumes.
-/// The revision is checked against the queued expectation before any source
-/// file is read.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbCandidateImportPreparation {
-    pub file_edit_revision: u64,
-    pub metadata_revision: u64,
-    pub metadata_provenance: Option<crate::MetadataProvenance>,
-    pub release_link: Option<crate::ReleaseLink>,
-    pub cover: Option<crate::CoverSelection>,
-    pub draft: crate::CandidateDraft,
-    pub assets: crate::CandidatePreparedAssets,
-}
-
 /// Every watched root with its status and every stored entry under it.
 /// Only tests read whole snapshots; production reads entries by key.
 #[cfg(test)]

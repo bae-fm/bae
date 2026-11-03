@@ -153,7 +153,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let stale = crate::preparation::import_preparation(&handle.tables, &hash)
+    let stale = crate::preparation::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate starts prepared");
@@ -179,12 +179,12 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
             &key,
             &crate::CandidateAsRead {
                 content_hash: hash.clone(),
-                file_edit_revision: stale.file_edit_revision,
+                file_edit_revision: stale.file_edits.revision,
                 metadata_revision: stale.metadata_revision,
             },
             &snapshot,
-            &stale.draft,
-            stale.cover.as_ref(),
+            &stale.metadata.draft,
+            stale.metadata.cover.as_ref(),
         )
         .await
         .expect_err("the new file snapshot cannot carry mappings from the old file revision");

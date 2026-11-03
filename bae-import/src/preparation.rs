@@ -181,7 +181,7 @@ impl CandidatePreparation {
 /// cover's bytes, fetched with the selection, and none for a cover the
 /// folder holds. A remote cover is never stored without its bytes, so a
 /// stored candidate's cover is always ready to import.
-pub(crate) fn check_cover_bytes(
+fn check_cover_bytes(
     cover: Option<&CoverSelection>,
     image: Option<&bae_catalogs::remote_image::RemoteImage>,
 ) -> Result<(), String> {
@@ -197,18 +197,18 @@ pub(crate) fn check_cover_bytes(
     }
 }
 
-/// The rows an import of the candidate `content_hash` consumes, or `None` for
-/// a hash no scan stored a candidate under. A candidate whose files this
-/// device already imported holds no draft, so reading it fails as an import of
-/// those files does.
-pub(crate) async fn import_preparation(
+/// The candidate `content_hash`'s whole stored state, or `None` for a hash no
+/// scan stored a candidate under. A candidate whose files this device already
+/// imported holds no draft, so reading it fails as an import of those files
+/// does.
+pub(crate) async fn stored_preparation(
     tables: &crate::tables::ImportTables,
     content_hash: &str,
-) -> Result<Option<crate::tables::DbCandidateImportPreparation>, crate::ImportError> {
-    match tables.load_import_candidate_preparation(content_hash).await? {
+) -> Result<Option<CandidatePreparation>, crate::ImportError> {
+    match tables.load_candidate_preparation(content_hash).await? {
         None => Ok(None),
-        Some(crate::tables::DbPreparationRead::Prepared(preparation)) => Ok(Some(preparation)),
-        Some(crate::tables::DbPreparationRead::Imported { release_id }) => {
+        Some(crate::tables::CandidatePreparationRead::Stored(preparation)) => Ok(Some(preparation)),
+        Some(crate::tables::CandidatePreparationRead::Imported { release_id }) => {
             Err(crate::ImportError::FilesAlreadyImported { release_id })
         }
     }

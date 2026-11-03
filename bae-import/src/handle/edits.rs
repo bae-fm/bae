@@ -286,12 +286,12 @@ impl ImportServiceHandle {
     ) -> Result<DraftEditBase, crate::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        let preparation = crate::preparation::import_preparation(&self.tables, &hash)
+        let preparation = crate::preparation::stored_preparation(&self.tables, &hash)
             .await?
             .ok_or_else(|| crate::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        if preparation.file_edit_revision != candidate.file_edit_revision {
+        if preparation.file_edits.revision != candidate.file_edit_revision {
             return Err(crate::ImportError::Internal {
                 detail: format!("{candidate_key} changed before its edit was prepared"),
             });
@@ -301,7 +301,7 @@ impl ImportServiceHandle {
             watched_folder_path: candidate.watched_folder_path,
             candidate: crate::CandidateAsRead {
                 content_hash: hash,
-                file_edit_revision: preparation.file_edit_revision,
+                file_edit_revision: preparation.file_edits.revision,
                 metadata_revision: preparation.metadata_revision,
             },
         })

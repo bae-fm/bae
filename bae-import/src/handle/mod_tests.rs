@@ -177,10 +177,11 @@ pub(super) async fn stored_draft(
     handle: &ImportServiceHandle,
     hash: &str,
 ) -> crate::CandidateDraft {
-    crate::preparation::import_preparation(&handle.tables, hash)
+    crate::preparation::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the candidate is prepared")
+        .metadata
         .draft
 }
 
@@ -730,7 +731,7 @@ pub(super) async fn store_two_pressings(
 ) {
     seed_mb_release_with_catalog(fakes, "mb-pressing-1", "CAT-100");
     seed_mb_release_with_catalog(fakes, "mb-pressing-2", "CAT-200");
-    let prep = crate::preparation::import_preparation(&handle.tables, hash)
+    let prep = crate::preparation::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -738,7 +739,7 @@ pub(super) async fn store_two_pressings(
         .preparations
         .store_verdict(&crate::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
-            file_edit_revision: prep.file_edit_revision,
+            file_edit_revision: prep.file_edits.revision,
             candidate_key: crate::CandidateKey::from_bytes(Vec::new()),
             verdict: bae_identify::TerminalVerdict::Found {
                 findings: bae_identify::Findings {

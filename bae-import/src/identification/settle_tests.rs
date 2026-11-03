@@ -74,13 +74,14 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 
     let folders_own = crate::CoverSelection::Local("cover.jpg".to_string());
     assert_eq!(
-        crate::preparation::import_preparation(
+        crate::preparation::stored_preparation(
             &fixture.context.tables,
             &fixture.content_hash(&dir)
         )
         .await
         .unwrap()
         .expect("the scanned candidate is prepared")
+        .metadata
         .cover,
         Some(folders_own.clone()),
         "the scan stores the cover the folder gives the candidate"
@@ -89,13 +90,14 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     fixture.drain_automatic().await;
 
     assert_eq!(
-        crate::preparation::import_preparation(
+        crate::preparation::stored_preparation(
             &fixture.context.tables,
             &fixture.content_hash(&dir)
         )
         .await
         .unwrap()
         .expect("the identified candidate is prepared")
+        .metadata
         .cover,
         Some(folders_own.clone()),
         "the settled release brought no image, so the folder's cover stands"

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CandidatePreparedAssets, CoverSelection};
+use crate::CandidatePreparedAssets;
 use bae_util::content_type::ContentType;
 
 /// Make the remote cover bytes stored under the hash the value's: in place
@@ -25,21 +25,8 @@ pub(super) fn store_asset_rows(
     Ok(())
 }
 
-/// The cover bytes stored under the hash, refused unless they are exactly
-/// what `cover` needs: a remote cover's, and none for any other.
-pub(super) fn load_prepared_assets_on(
-    sql: &SqlReadContext<'_>,
-    content_hash: &str,
-    cover: Option<&CoverSelection>,
-) -> Result<CandidatePreparedAssets, DbError> {
-    let assets = load_asset_rows_on(sql, content_hash)?;
-    crate::preparation::check_cover_bytes(cover, assets.remote_cover.as_ref())
-        .map_err(DbError::Message)?;
-    Ok(assets)
-}
-
-/// The rows under the hash as stored. No validation: the value they load
-/// into carries its own.
+/// The rows under the hash as stored. The save that writes them checks
+/// them against the cover ([`crate::preparation::CandidatePreparation::validate`]).
 pub(super) fn load_asset_rows_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,

@@ -205,7 +205,7 @@ async fn lead_metadata(
     partners: Vec<bae_catalogs::source_release::SourceRelease>,
     pressing_year: Option<i32>,
 ) -> Result<Option<crate::CandidateMetadataDraft>, Settled> {
-    let current = match crate::preparation::import_preparation(
+    let current = match crate::preparation::stored_preparation(
         &context.tables,
         &candidate.files.content_hash(),
     )
@@ -221,7 +221,7 @@ async fn lead_metadata(
     };
     // Files decided otherwise since the run read them make this an answer
     // for files the candidate no longer has.
-    if current.file_edit_revision != candidate.file_edit_revision {
+    if current.file_edits.revision != candidate.file_edit_revision {
         return Err(Settled::Abandoned);
     }
     let source_draft = release
@@ -230,7 +230,7 @@ async fn lead_metadata(
         .and_then(|values| {
             crate::ImportServiceHandle::external_candidate_draft(
                 values,
-                &current.draft,
+                &current.metadata.draft,
                 pressing_year,
             )
         })

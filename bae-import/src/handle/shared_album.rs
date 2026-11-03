@@ -78,7 +78,7 @@ impl ImportServiceHandle {
             releases.push(prepared.stored);
         }
         let draft = crate::shared_album::shared_draft(
-            &current.draft,
+            &current.metadata.draft,
             &offered,
             bae_identify::row_facts::folder_pressing_year(&text, &records),
         );
@@ -87,7 +87,7 @@ impl ImportServiceHandle {
                 "link the album",
                 &candidate_key,
                 &content_hash,
-                current.file_edit_revision,
+                current.file_edits.revision,
             )
             .await?;
         self.preparations

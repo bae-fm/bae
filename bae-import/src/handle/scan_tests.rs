@@ -15,7 +15,7 @@ use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 
 /// Store a verdict that found nothing for the fixture's candidate.
 async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
-    let prep = crate::preparation::import_preparation(&handle.tables, hash)
+    let prep = crate::preparation::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -23,7 +23,7 @@ async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
         .preparations
         .store_verdict(&crate::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
-            file_edit_revision: prep.file_edit_revision,
+            file_edit_revision: prep.file_edits.revision,
             candidate_key: crate::CandidateKey::from_bytes(Vec::new()),
             verdict: bae_identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_identify::signals::Signals {
@@ -304,26 +304,27 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
             .collect::<Vec<_>>()
     };
     let before = rows(
-        &crate::preparation::import_preparation(&handle.tables, &hash)
+        &crate::preparation::stored_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .unwrap()
+            .metadata
             .draft,
     );
 
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let reapplied = crate::preparation::import_preparation(&handle.tables, &hash)
+    let reapplied = crate::preparation::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the reapplied source remains prepared");
-    assert_eq!(rows(&reapplied.draft), before);
+    assert_eq!(rows(&reapplied.metadata.draft), before);
 
     handle.clear_candidate_metadata(key).await.unwrap();
-    let cleared = crate::preparation::import_preparation(&handle.tables, &hash)
+    let cleared = crate::preparation::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the cleared source remains prepared");
-    assert_eq!(rows(&cleared.draft), before);
+    assert_eq!(rows(&cleared.metadata.draft), before);
     shut_down(handle).await;
 }
 
