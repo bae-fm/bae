@@ -18,12 +18,12 @@
 //! its cards derived from the parts that have landed. The driver that runs
 //! the lookups is [`crate::import::ImportServiceHandle::start_candidate_search`].
 
-use crate::identify::release_group::{group_results, ReleaseGroup};
 use bae_catalogs::album_links::{self, AlbumLinks, GroupLinks};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::Failure;
+use bae_identify::release_group::{group_results, ReleaseGroup};
 use bae_preferences::{CatalogAvailability, SourceAvailability};
 
 /// The run a stored search is on: what each catalog's answer names to land
@@ -278,7 +278,7 @@ impl CandidateSearch {
         }
         // Typed search: nothing was judged against the candidate's own text,
         // so the rows keep the pressing-year order alone.
-        self.groups = group_results(crate::identify::release_group::unranked(results), None);
+        self.groups = group_results(bae_identify::release_group::unranked(results), None);
     }
 }
 

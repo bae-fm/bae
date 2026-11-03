@@ -181,8 +181,8 @@ impl ImportServiceHandle {
         // renders one card per release group with its pressings beneath.
         // A typed search has no candidate text behind it to rank by, so the
         // rows keep the pressing-year order alone.
-        let groups = crate::identify::release_group::group_results(
-            crate::identify::release_group::unranked(results),
+        let groups = bae_identify::release_group::group_results(
+            bae_identify::release_group::unranked(results),
             None,
         );
 
@@ -348,7 +348,7 @@ impl ImportServiceHandle {
         else {
             return Ok(false);
         };
-        let Some(crate::identify::TerminalVerdict::Found { findings, .. }) =
+        let Some(bae_identify::TerminalVerdict::Found { findings, .. }) =
             row.identify.map(|identify| identify.verdict)
         else {
             return Ok(false);
@@ -386,7 +386,7 @@ impl ImportServiceHandle {
     pub async fn select_candidate_release(
         &self,
         candidate_key: crate::import::CandidateKey,
-        link: crate::identify::PressingLink,
+        link: bae_identify::PressingLink,
         steps: crate::import::CatalogApplySteps,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();

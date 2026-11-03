@@ -417,7 +417,7 @@ pub(super) struct ListedMatch {
     /// the run decided its rows against.
     pub(super) pressing: u32,
     /// The note the folder's text names its row by — see
-    /// [`crate::identify::Findings::named_notes`].
+    /// [`bae_identify::Findings::named_notes`].
     pub(super) named_note: Option<String>,
 }
 

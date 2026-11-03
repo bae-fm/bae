@@ -1,5 +1,5 @@
 use super::*;
-use crate::identify::{ChoiceChange, LookupChoiceEdit, LookupChoices};
+use bae_identify::{ChoiceChange, LookupChoiceEdit, LookupChoices};
 
 fn barcode(code: &str) -> LookupChoiceEdit {
     LookupChoiceEdit::ToggleBarcode { code: code.to_string() }
@@ -212,18 +212,18 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edit_revision,
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
-            verdict: crate::identify::TerminalVerdict::ManualOnly { track_count: 1, ledger: None },
-            signals: crate::identify::signals::Signals {
+            verdict: bae_identify::TerminalVerdict::ManualOnly { track_count: 1, ledger: None },
+            signals: bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: crate::identify::signals::DiscIdSignal::Absent,
-                barcode: crate::identify::signals::BarcodeSignal::Absent,
-                text: crate::identify::signals::TextSignal::Settled {
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
                     catalogs: vec![printed.to_string()],
                     free_text: Vec::new(),
                 },
-                text_pool: vec![crate::identify::signals::TextLine {
+                text_pool: vec![bae_identify::signals::TextLine {
                     text: printed.to_string(),
-                    origin: crate::identify::signals::TextOrigin::FolderName,
+                    origin: bae_identify::signals::TextOrigin::FolderName,
                 }],
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
@@ -244,7 +244,7 @@ pub(super) async fn pick(
     handle
         .select_candidate_release(
             key.clone(),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id.to_string(),

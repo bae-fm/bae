@@ -10,14 +10,14 @@ use super::super::release_groupings::{load_candidate_on, skipped_on};
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::window::stored_embedded_cover;
 use super::*;
-use crate::identify::PressingLink;
-use crate::identify::VerdictSummary;
 use crate::import::cover_art::CoverChoice;
 use crate::import::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
 use crate::import::tables::source_releases::load_source_release_on;
 use crate::import::{CoverSelection, ReleaseLink};
 use crate::import::{DraftProjection, ProjectedStage};
 use bae_db::client::records::{album_records_name_on, check_releases_in_library_on};
+use bae_identify::PressingLink;
+use bae_identify::VerdictSummary;
 
 #[derive(Clone, PartialEq)]
 pub(super) struct CandidateDetailRows {
@@ -237,14 +237,14 @@ impl CandidateDetailRows {
         let audio = crate::import::probe::audio_facts(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let mut verdict = None;
-        let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
+        let mut resumed_identify_state = bae_identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
         if let Some(identify) = identify {
             verdict = Some(VerdictSummary::of(&identify.verdict, identify.kept_own_draft));
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed: striking a number out re-orders the
             // rows the next time they are read, with nothing asked again.
-            let text = crate::identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
+            let text = bae_identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
             resumed_identify_state = identify.verdict.clone().resume_state(text, audio.clone());
         }
         let stage = match stage {

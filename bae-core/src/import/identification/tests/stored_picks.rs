@@ -47,7 +47,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         queue_row(&fixture, &key).await.release_link.expect("the row carries the decision");
     assert_eq!(
         picked,
-        crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+        crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-answer-1".to_string()
@@ -138,7 +138,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
             import
                 .select_candidate_release(
                     key,
-                    crate::identify::PressingLink {
+                    bae_identify::PressingLink {
                         record: bae_catalogs::records::LookupRef::new(
                             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                             "mb-picked-1".to_string(),
@@ -177,7 +177,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     let row = queue_row(&fixture, &key).await;
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-picked-1".to_string(),
@@ -206,7 +206,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     fixture.archive("mb-answer-1", "rg-answer-1", &[probed, 0]).await;
     fixture.store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1").await;
 
-    let pick = crate::identify::PressingLink {
+    let pick = bae_identify::PressingLink {
         record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             "mb-answer-1".to_string(),
@@ -347,7 +347,7 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
     assert!(row.identify.is_some(), "the verdict is stored");
     let signals = row.signals.expect("the settled signals are stored");
     assert!(
-        matches!(signals.disc_id, crate::identify::signals::DiscIdSignal::Computed { .. }),
+        matches!(signals.disc_id, bae_identify::signals::DiscIdSignal::Computed { .. }),
         "the disc ID the lookup used reads back: {:?}",
         signals.disc_id
     );
@@ -536,7 +536,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         .import
         .select_candidate_release(
             key.clone(),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-stated-1".to_string(),

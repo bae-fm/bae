@@ -76,14 +76,14 @@ pub enum MetadataProvenance {
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseLink {
-    Pressing(crate::identify::PressingLink),
-    Album(crate::identify::AlbumLink),
+    Pressing(bae_identify::PressingLink),
+    Album(bae_identify::AlbumLink),
 }
 
 #[cfg(desktop)]
 impl ReleaseLink {
     /// The pressing the link names, where it names one.
-    pub fn pressing(&self) -> Option<&crate::identify::PressingLink> {
+    pub fn pressing(&self) -> Option<&bae_identify::PressingLink> {
         match self {
             Self::Pressing(pressing) => Some(pressing),
             Self::Album(_) => None,
@@ -391,7 +391,7 @@ pub struct ImportCommand {
     pub destination: ImportDestination,
     /// The release a test import picks for the candidate first.
     #[cfg(any(test, feature = "test-utils"))]
-    pub pick: Option<crate::identify::PressingLink>,
+    pub pick: Option<bae_identify::PressingLink>,
     /// Whether a test import then reads the draft from the files' tags.
     #[cfg(any(test, feature = "test-utils"))]
     pub read_file_tags: bool,

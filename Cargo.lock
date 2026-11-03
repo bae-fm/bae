@@ -765,6 +765,7 @@ dependencies = [
  "bae-core",
  "bae-db",
  "bae-diagnostics",
+ "bae-identify",
  "bae-mirror",
  "bae-preferences",
  "bae-test-support",
@@ -791,6 +792,7 @@ dependencies = [
  "bae-db",
  "bae-desktop",
  "bae-diagnostics",
+ "bae-identify",
  "bae-loc",
  "bae-mirror",
  "bae-preferences",
@@ -886,6 +888,7 @@ dependencies = [
  "bae-catalogs",
  "bae-db",
  "bae-diagnostics",
+ "bae-identify",
  "bae-preferences",
  "bae-test-support",
  "bae-track-audio",
@@ -993,6 +996,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-identify"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-catalogs",
+ "bae-types",
+ "bae-util",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "bae-loc"
 version = "0.1.0"
 dependencies = [
@@ -1045,6 +1060,7 @@ dependencies = [
  "bae-core",
  "bae-db",
  "bae-diagnostics",
+ "bae-identify",
  "bae-preferences",
  "bae-test-support",
  "bae-track-audio",
@@ -1073,6 +1089,7 @@ dependencies = [
  "bae-core",
  "bae-db",
  "bae-diagnostics",
+ "bae-identify",
  "bae-preferences",
  "bae-util",
  "coven",

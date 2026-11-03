@@ -280,7 +280,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
 
 fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerdict {
     TerminalVerdict::Found {
-        findings: crate::identify::Findings {
+        findings: bae_identify::Findings {
             matches: vec![MetadataResult {
                 source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 release_id: "mb-1".to_string(),
@@ -305,7 +305,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 notes: Vec::new(),
             }],
             pressings: vec![0],
-            narrowed_out: crate::identify::NarrowedOut::default(),
+            narrowed_out: bae_identify::NarrowedOut::default(),
             medium_conflict: None,
             named_notes: Vec::new(),
         },
@@ -330,7 +330,7 @@ fn the_lengths_a_source_states_do_not_decide() {
         bae_catalogs::reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
-        crate::identify::VerdictSummary::of(&found_verdict(3, Some(source)), false).judgement(),
+        bae_identify::VerdictSummary::of(&found_verdict(3, Some(source)), false).judgement(),
         (true, None),
         "the counts agree, whatever the lengths"
     );
@@ -346,7 +346,7 @@ fn a_document_lists_its_tracks_titles() {
         Vec::new(),
     );
     let release = payloads.extract().unwrap();
-    let document = crate::identify::documents::ReleaseDocument::of(
+    let document = bae_identify::documents::ReleaseDocument::of(
         bae_catalogs::source_release::PreparedRelease { stored: release.clone(), release },
         &bae_catalogs::reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
     );
@@ -477,7 +477,7 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
     let verdict = identify_result(&fixture.stored_for(&dir).await.expect("a verdict is stored"))
         .verdict
         .clone();
-    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
         &verdict
     else {
         panic!("expected the title search's release, got {verdict:?}");

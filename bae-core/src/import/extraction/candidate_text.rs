@@ -2,7 +2,7 @@
 //! Album free text, plus the extractors for folder names and file names. Pure
 //! string work.
 
-use crate::identify::signals::TextOrigin;
+use bae_identify::signals::TextOrigin;
 use bae_types::text_match::{normalize, printed_catalog_numbers, strip_trailing_brackets};
 use regex::Regex;
 use std::collections::HashSet;

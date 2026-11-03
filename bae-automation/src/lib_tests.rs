@@ -269,15 +269,13 @@ mod identify_mirrors {
     use super::*;
     use bae_catalogs::search::MetadataResult;
     use bae_catalogs::LookupFailure;
-    use bae_core::identify::signals::{
-        BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
-    };
-    use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
-    use bae_core::identify::{
+    use bae_db::LibraryStatus;
+    use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+    use bae_identify::state::{DiscIdEvidence, SignalsContext};
+    use bae_identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
         ProviderLookup, SignalKind, SignalState, ToolbarSignal, ValueLookup,
     };
-    use bae_db::LibraryStatus;
     /// A result with every field the mirrors render filled in.
     fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
@@ -298,7 +296,7 @@ mod identify_mirrors {
     fn empty_context() -> SignalsContext {
         SignalsContext {
             providers: Vec::new(),
-            artwork: bae_core::identify::signals::ArtworkScan::Absent,
+            artwork: bae_identify::signals::ArtworkScan::Absent,
             origin: bae_catalogs::AudioOrigin::default(),
             disc: Default::default(),
             barcode: Default::default(),
@@ -308,21 +306,21 @@ mod identify_mirrors {
             text_settled: true,
             audio: Default::default(),
             isrc: Default::default(),
-            documents: bae_core::identify::documents::DocumentReading::Pending,
+            documents: bae_identify::documents::DocumentReading::Pending,
             pressings: Vec::new(),
             track_titles: Vec::new(),
         }
     }
 
     /// The folder's text, carrying the barcode `code` and nothing else.
-    fn text_carrying(code: &str) -> bae_core::identify::CandidateText {
-        bae_core::identify::CandidateText::of(&[], &[], &[SourcedValue::new(code.to_string())])
+    fn text_carrying(code: &str) -> bae_identify::CandidateText {
+        bae_identify::CandidateText::of(&[], &[], &[SourcedValue::new(code.to_string())])
     }
 
     /// `state` as the automation surface shows it, each release it names
     /// read as not in the library.
     fn shown(state: IdentifyState) -> AutomationIdentifyState {
-        let view = bae_core::identify::IdentifyStateView::from(state);
+        let view = bae_identify::IdentifyStateView::from(state);
         let statuses = library_checks(&view)
             .iter()
             .map(|check| LibraryStatus::absent(&check.release_id))
@@ -343,9 +341,9 @@ mod identify_mirrors {
     /// ID agreement is read from.
     fn disc_id_ledger(
         found: &[bae_catalogs::search::MetadataResult],
-    ) -> bae_core::identify::IdentifyRunView {
-        use bae_core::identify::release_group::{group_results, unranked};
-        use bae_core::identify::{
+    ) -> bae_identify::IdentifyRunView {
+        use bae_identify::release_group::{group_results, unranked};
+        use bae_identify::{
             BarcodeStepView, CatalogStepView, DiscIdRow, DiscIdStepView, IdentifyRunView,
             IsrcStepView, LookupView, SearchStepView,
         };
@@ -375,7 +373,7 @@ mod identify_mirrors {
         ];
         let state = IdentifyState::Found {
             track_count: 12,
-            findings: bae_core::identify::Findings {
+            findings: bae_identify::Findings {
                 matches: matches.clone(),
                 // Two pressings of one album: each release is its own row.
                 pressings: vec![0, 1],
@@ -421,7 +419,7 @@ mod identify_mirrors {
     fn disagreeing_signals_become_one_found_over_several_groups() {
         let state = IdentifyState::Found {
             track_count: 9,
-            findings: bae_core::identify::Findings {
+            findings: bae_identify::Findings {
                 matches: vec![
                     metadata_result("rel-disc", "g-d"),
                     printing(metadata_result("rel-bar", "g-b"), "0123456789012"),
@@ -460,7 +458,7 @@ mod identify_mirrors {
     fn triangulating_lists_each_code_with_one_cell_per_provider() {
         let state = IdentifyState::Triangulating {
             discid: DiscidProgress::Lookups {
-                discs: vec![bae_core::identify::DiscLookup {
+                discs: vec![bae_identify::DiscLookup {
                     disc_id: "disc-hash".to_string(),
                     state: LookupState::LookingUp,
                 }],
@@ -501,20 +499,20 @@ mod identify_mirrors {
                 ],
             },
             catalog: CatalogProgress::Skipped,
-            isrc: bae_core::identify::IsrcProgress::Skipped,
-            search: bae_core::identify::SearchProgress::Pending,
+            isrc: bae_identify::IsrcProgress::Skipped,
+            search: bae_identify::SearchProgress::Pending,
             context: SignalsContext {
                 providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Computed {
-                        discs: vec![bae_core::identify::signals::ComputedDiscId {
+                        discs: vec![bae_identify::signals::ComputedDiscId {
                             disc_id: "disc-hash".to_string(),
                             source_file: Some("rip.log".to_string()),
                         }],
                     },
                     ..Default::default()
                 },
-                barcode: bae_core::identify::state::BarcodeEvidence {
+                barcode: bae_identify::state::BarcodeEvidence {
                     codes: vec![
                         SourcedValue::in_file("0123456789012".to_string(), "back.jpg".to_string()),
                         SourcedValue::in_file("9999999999999".to_string(), "inlay.jpg".to_string()),
@@ -589,7 +587,7 @@ mod identify_mirrors {
                 not_cd_rate: None,
             },
             disc_id: DiscIdSignal::Computed {
-                discs: vec![bae_core::identify::signals::ComputedDiscId {
+                discs: vec![bae_identify::signals::ComputedDiscId {
                     disc_id: "disc-hash".to_string(),
                     source_file: None,
                 }],

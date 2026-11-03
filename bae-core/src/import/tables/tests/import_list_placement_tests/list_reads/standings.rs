@@ -3,9 +3,9 @@
 //! what the entries count.
 
 use super::*;
-use crate::identify::MediumConflict;
 use crate::import::{NeedsYouReason, PendingFilterEntry, PendingStanding};
 use bae_catalogs::InternalFailure;
+use bae_identify::MediumConflict;
 
 impl Library {
     /// Write `title` into the draft of the release at `display_path` and

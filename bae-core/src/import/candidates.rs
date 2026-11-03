@@ -15,7 +15,7 @@
 
 use super::folder_scanner::{FolderCandidate, InvalidCandidate};
 use super::types::ImportStep;
-use crate::identify::PublishedRun;
+use bae_identify::PublishedRun;
 
 /// Where a stored candidate stands in the queue, read once from the three
 /// places that each hold one fact about it: the skip table, the releases this

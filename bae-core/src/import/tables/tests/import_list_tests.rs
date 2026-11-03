@@ -2,8 +2,8 @@
 //! and which tables it never touches.
 
 use super::super::*;
-use crate::identify::TerminalVerdict;
 use bae_catalogs::catalog::LookupCatalog;
+use bae_identify::TerminalVerdict;
 
 use super::{candidate, exec, fixed_now, watched_root};
 use crate::import::folder_scanner::{
@@ -39,9 +39,9 @@ async fn scanned(db: &Database, root: &std::path::Path, name: &str) -> FolderCan
     candidate
 }
 
-fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -> TerminalVerdict {
+fn verdict(release_id: &str, ledger: Option<bae_identify::IdentifyRunView>) -> TerminalVerdict {
     TerminalVerdict::Found {
-        findings: crate::identify::Findings {
+        findings: bae_identify::Findings {
             matches: vec![MetadataResult {
                 source: LookupCatalog::MusicBrainz,
                 release_id: release_id.to_string(),
@@ -66,7 +66,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 notes: Vec::new(),
             }],
             pressings: vec![0],
-            narrowed_out: crate::identify::NarrowedOut::default(),
+            narrowed_out: bae_identify::NarrowedOut::default(),
             medium_conflict: None,
             named_notes: Vec::new(),
         },
@@ -84,7 +84,7 @@ async fn save_verdict_with_ledger(
     db: &Database,
     candidate: &FolderCandidate,
     release_id: &str,
-    ledger: Option<crate::identify::IdentifyRunView>,
+    ledger: Option<bae_identify::IdentifyRunView>,
 ) {
     store_verdict(db, candidate, verdict(release_id, ledger)).await;
 }
@@ -97,11 +97,11 @@ async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: Term
             file_edit_revision: 0,
             candidate_key: candidate.key(),
             verdict,
-            signals: crate::identify::signals::Signals {
+            signals: bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: crate::identify::signals::DiscIdSignal::Absent,
-                barcode: crate::identify::signals::BarcodeSignal::Absent,
-                text: crate::identify::signals::TextSignal::Settled {
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
@@ -226,7 +226,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+            Some(&crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     LookupCatalog::MusicBrainz,
                     "mb-picked",
@@ -350,7 +350,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .await
         .unwrap();
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
-    let conflict = crate::identify::MediumConflict::NotCdAudio;
+    let conflict = bae_identify::MediumConflict::NotCdAudio;
     let TerminalVerdict::Found { mut findings, track_count, ledger } = verdict("mb-verdict", None)
     else {
         unreachable!("verdict builds a found verdict");
@@ -363,11 +363,11 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
             file_edit_revision: 0,
             candidate_key: candidate.key(),
             verdict: stored.clone(),
-            signals: crate::identify::signals::Signals {
+            signals: bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
-                disc_id: crate::identify::signals::DiscIdSignal::Absent,
-                barcode: crate::identify::signals::BarcodeSignal::Absent,
-                text: crate::identify::signals::TextSignal::Settled {
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
@@ -396,7 +396,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
     assert_eq!(
         pane.placement,
         crate::import::CandidatePanePlacement::Pending {
-            folder_check: Some(crate::identify::FolderCheck::MediumDisagrees { folder: conflict }),
+            folder_check: Some(bae_identify::FolderCheck::MediumDisagrees { folder: conflict }),
             records: Vec::new(),
         }
     );
@@ -442,9 +442,8 @@ async fn the_detail_resumes_the_stored_verdict() {
         .unwrap()
         .expect("the scanned candidate reads back");
 
-    let crate::identify::IdentifyState::Found {
-        findings: crate::identify::Findings { matches, .. },
-        ..
+    let bae_identify::IdentifyState::Found {
+        findings: bae_identify::Findings { matches, .. }, ..
     } = &detail.resumed_identify_state
     else {
         panic!("expected the stored Found, got {:?}", detail.resumed_identify_state);
@@ -468,18 +467,18 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         .expect("a found verdict holds findings")
         .matches
         .clone();
-    let ledger = crate::identify::IdentifyRunView {
+    let ledger = bae_identify::IdentifyRunView {
         providers: vec![LookupCatalog::MusicBrainz],
-        disc_id: crate::identify::DiscIdStepView::Read {
-            discs: vec![crate::identify::DiscIdRow {
+        disc_id: bae_identify::DiscIdStepView::Read {
+            discs: vec![bae_identify::DiscIdRow {
                 disc_id: "disc-1".to_string(),
-                lookup: crate::identify::LookupView::answered(&found),
+                lookup: bae_identify::LookupView::answered(&found),
             }],
         },
-        barcode: crate::identify::BarcodeStepView::Absent,
-        catalog: crate::identify::CatalogStepView::NoneFound,
-        isrc: crate::identify::IsrcStepView::Absent,
-        search: crate::identify::SearchStepView::NotNeeded,
+        barcode: bae_identify::BarcodeStepView::Absent,
+        catalog: bae_identify::CatalogStepView::NoneFound,
+        isrc: bae_identify::IsrcStepView::Absent,
+        search: bae_identify::SearchStepView::NotNeeded,
     };
     save_verdict_with_ledger(&db, &candidate, "mb-verdict", Some(ledger.clone())).await;
 
@@ -489,19 +488,19 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         .unwrap()
         .expect("the scanned candidate reads back");
 
-    let crate::identify::IdentifyStateView::Found { run: Some(run), .. } =
-        crate::identify::IdentifyStateView::from(detail.resumed_identify_state)
+    let bae_identify::IdentifyStateView::Found { run: Some(run), .. } =
+        bae_identify::IdentifyStateView::from(detail.resumed_identify_state)
     else {
         panic!("a stored Found resumes with the ledger its run recorded");
     };
     assert_eq!(run, ledger);
     assert_eq!(run.providers, vec![LookupCatalog::MusicBrainz]);
-    let crate::identify::DiscIdStepView::Read { discs } = run.disc_id else {
+    let bae_identify::DiscIdStepView::Read { discs } = run.disc_id else {
         panic!("the disc ID the run read");
     };
-    assert!(matches!(discs.as_slice(), [crate::identify::DiscIdRow {
+    assert!(matches!(discs.as_slice(), [bae_identify::DiscIdRow {
         disc_id,
-        lookup: crate::identify::LookupView::Found { count: 1, .. },
+        lookup: bae_identify::LookupView::Found { count: 1, .. },
     }] if disc_id == "disc-1"));
 }
 
@@ -530,7 +529,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         .unwrap()
         .expect("the scanned candidate still reads back");
 
-    assert!(matches!(detail.resumed_identify_state, crate::identify::IdentifyState::Idle));
+    assert!(matches!(detail.resumed_identify_state, bae_identify::IdentifyState::Idle));
     assert!(detail.verdict.is_none());
 }
 

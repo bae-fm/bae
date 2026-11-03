@@ -74,7 +74,7 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
 /// open question, so no match carries a settled tracklist.
 fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict {
     TerminalVerdict::Found {
-        findings: crate::identify::Findings {
+        findings: bae_identify::Findings {
             matches: release_ids
                 .iter()
                 .map(|release_id| MetadataResult {
@@ -104,7 +104,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
             // Each release is a pressing of its own: the group lists several, and
             // which one the folder is, is the open question.
             pressings: (0..release_ids.len() as u32).collect(),
-            narrowed_out: crate::identify::NarrowedOut::default(),
+            narrowed_out: bae_identify::NarrowedOut::default(),
             medium_conflict: None,
             named_notes: Vec::new(),
         },

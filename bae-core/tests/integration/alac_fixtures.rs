@@ -293,7 +293,7 @@ fn cue_alac_disc_id_is_stable() {
     let disc_id = read_rip_artifacts(&categorized).disc_id.computed();
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
-    let [computed]: [bae_core::identify::signals::ComputedDiscId; 1] =
+    let [computed]: [bae_identify::signals::ComputedDiscId; 1] =
         disc_id.try_into().expect("CUE+ALAC pair must produce one disc ID");
     assert_eq!(computed.disc_id.len(), 28, "MusicBrainz disc IDs are 28-char base64 strings");
     assert_eq!(

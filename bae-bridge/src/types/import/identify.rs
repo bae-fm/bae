@@ -5,7 +5,7 @@ use super::super::*;
 
 /// One change a person makes to what a candidate's identification asks about
 /// or counts; core applies it to the choices it holds. Mirrors
-/// `bae_core::identify::LookupChoiceEdit`.
+/// `bae_identify::LookupChoiceEdit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeLookupChoiceEdit {
     /// Ask about the disc ID again, or leave it out.
@@ -23,7 +23,7 @@ pub enum BridgeLookupChoiceEdit {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeLookupChoiceEdit = bae_core::identify::LookupChoiceEdit,
+    BridgeLookupChoiceEdit = bae_identify::LookupChoiceEdit,
     into_core: pub fn,
     variants: {
         ToggleDiscId,
@@ -96,7 +96,7 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> String {
 }
 
 /// Why a run did not ask about a value. Mirrors
-/// `bae_core::identify::NotAskedReason`.
+/// `bae_identify::NotAskedReason`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeNotAskedReason {
     /// The person left the value out of the run.
@@ -106,7 +106,7 @@ pub enum BridgeNotAskedReason {
 }
 
 /// How one provider's lookup of one value is going — one cell of the run's
-/// ledger. Mirrors `bae_core::identify::LookupView`.
+/// ledger. Mirrors `bae_identify::LookupView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeLookupState {
     /// Not asked yet: the codes are still being read off the artwork.
@@ -127,7 +127,7 @@ pub enum BridgeLookupState {
     },
 }
 
-/// Mirrors `bae_core::identify::ProviderCell`.
+/// Mirrors `bae_identify::ProviderCell`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeProviderCell {
     pub source: BridgeLookupCatalog,
@@ -135,7 +135,7 @@ pub struct BridgeProviderCell {
 }
 
 /// One value and every provider's lookup of it. Mirrors
-/// `bae_core::identify::SignalValueRow`.
+/// `bae_identify::SignalValueRow`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSignalValueRow {
     pub value: String,
@@ -147,7 +147,7 @@ pub struct BridgeSignalValueRow {
 }
 
 /// The disc-ID step: one lookup per disc ID, since only MusicBrainz answers
-/// disc IDs. Mirrors `bae_core::identify::DiscIdStepView`.
+/// disc IDs. Mirrors `bae_identify::DiscIdStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiscIdStep {
     Reading,
@@ -164,14 +164,14 @@ pub enum BridgeDiscIdStep {
     },
 }
 
-/// One disc ID and its lookup. Mirrors `bae_core::identify::DiscIdRow`.
+/// One disc ID and its lookup. Mirrors `bae_identify::DiscIdRow`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDiscIdRow {
     pub disc_id: String,
     pub lookup: BridgeLookupState,
 }
 
-/// Mirrors `bae_core::identify::BarcodeStepView`, without its `scanning`,
+/// Mirrors `bae_identify::BarcodeStepView`, without its `scanning`,
 /// which crosses once for the run as `BridgeIdentifyRun::reading_artwork`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeBarcodeStep {
@@ -184,13 +184,13 @@ pub enum BridgeBarcodeStep {
 }
 
 /// A catalog number the text offers that is not in effect. Mirrors
-/// `bae_core::identify::CatalogCandidateView`.
+/// `bae_identify::CatalogCandidateView`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeCatalogCandidate {
     pub value: String,
 }
 
-/// Mirrors `bae_core::identify::CatalogStepView`, without its `scanning`,
+/// Mirrors `bae_identify::CatalogStepView`, without its `scanning`,
 /// which crosses once for the run as `BridgeIdentifyRun::reading_artwork`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCatalogStep {
@@ -206,7 +206,7 @@ pub enum BridgeCatalogStep {
 }
 
 /// The ISRCs the audio's tags carry: one lookup, since only MusicBrainz is
-/// asked. Mirrors `bae_core::identify::IsrcStepView`.
+/// asked. Mirrors `bae_identify::IsrcStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeIsrcStep {
     Reading,
@@ -219,7 +219,7 @@ pub enum BridgeIsrcStep {
     },
 }
 
-/// Mirrors `bae_core::identify::SearchStepView`.
+/// Mirrors `bae_identify::SearchStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSearchStep {
     /// The identifiers answered; no search was needed.
@@ -237,7 +237,7 @@ pub enum BridgeSearchStep {
     },
 }
 
-/// Mirrors `bae_core::identify::IdentifyRunView`.
+/// Mirrors `bae_identify::IdentifyRunView`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeIdentifyRun {
     /// The providers the run asks, in the order their cells are listed.
@@ -252,7 +252,7 @@ pub struct BridgeIdentifyRun {
     pub reading_artwork: bool,
 }
 
-/// Mirrors `bae_core::identify::signals::TextSignal`.
+/// Mirrors `bae_identify::signals::TextSignal`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTextSignal {
     Scanning { catalogs: Vec<String>, free_text: Vec<String> },
@@ -260,7 +260,7 @@ pub enum BridgeTextSignal {
     Failed { failure: BridgeInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
 }
 
-/// The part of `bae_core::identify::signals::Signals` a surface reads: the text pools
+/// The part of `bae_identify::signals::Signals` a surface reads: the text pools
 /// that feed the search form's autocomplete.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSignals {
@@ -268,7 +268,7 @@ pub struct BridgeSignals {
 }
 
 /// What the candidate agrees with about one result: a row's badges, and what
-/// ordered the rows. Mirrors `bae_core::identify::RowAgreements`.
+/// ordered the rows. Mirrors `bae_identify::RowAgreements`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAgreements {
     pub disc_id: bool,

@@ -1,0 +1,834 @@
+//! Release-group bundling for the import results UI.
+//!
+//! Import search and identification return individual releases (pressings).
+//! The UI renders them grouped under the album they belong to — a
+//! release-group on MusicBrainz, a master on Discogs — with one card per
+//! group, and one row per physical pressing beneath it.
+//!
+//! The two providers answer independently, so the same album and the same
+//! pressing arrive twice. Both collapses happen here, pressings first: a
+//! record from each catalog becomes one row when the evidence they carry
+//! says they name the same physical object — what `pressing_evidence`
+//! weighs. Two records of one catalog stay two rows, because the catalog's
+//! editors separated them. Groups become one card
+//! when a row joins them or when a statement links one to the other — what
+//! MusicBrainz's release group is on Discogs, read from the group's page, the
+//! Wikidata item it links, or the Discogs release one of its releases names,
+//! and failing those, from a barcode or a catalog number under one label that
+//! a release of each prints (see [`bae_catalogs::album_links`]). A statement
+//! joins albums only: the two releases stay two rows unless the pressing
+//! evidence makes them one. A row is then a pressing under
+//! however many records name it, and picking it claims one record per
+//! catalog — [`Pressing::pick`] says exactly what.
+//!
+//! The order is decided here too, so no surface sorts anything: rows come
+//! most-agreed-with first — how much of the candidate's own text states the
+//! pressing — a row's own records come the same way, and cards come in the
+//! order of their best row. A caller with nothing to rank by, a typed search,
+//! hands over [`Agreements::NONE`] for every release, which leaves the
+//! pressing year ordering the rows and the source name ordering the records
+//! within one.
+
+use crate::agreements::Agreements;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_catalogs::records::{LookupRef, MetadataRef};
+use bae_catalogs::remote_image::RemoteCover;
+use bae_catalogs::search::MetadataResult;
+use pressing_sets::{formed_pressings, gather_pressings};
+
+/// The pressing a candidate is linked to: the row a person picked, or
+/// identification picked unattended, under every catalog's record of it that
+/// the pick claims.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PressingLink {
+    /// The catalog's release the pick names first.
+    pub record: LookupRef,
+    /// The other catalogs' releases the picked pressing paired with. Find
+    /// online pairs a MusicBrainz release and a Discogs release into one
+    /// pressing row when the evidence their records carry says they name one
+    /// physical object; picking the row claims both. Each names a different
+    /// source from the primary and from every other partner.
+    ///
+    /// This is what the person picked, not what one provider says about
+    /// another — a cross-reference an editor linked stays inferred from the
+    /// documents.
+    pub partners: Vec<LookupRef>,
+}
+
+impl PressingLink {
+    /// Every release the link claims, the primary first.
+    pub fn claimed(&self) -> impl Iterator<Item = &LookupRef> {
+        std::iter::once(&self.record).chain(&self.partners)
+    }
+}
+
+/// An album, as one or both sources describe it, with the pressings they
+/// surfaced for it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReleaseGroup {
+    /// Stable card identity: the first source's group id, or the lone
+    /// release's id when no source named a group.
+    pub id: String,
+    pub title: String,
+    pub artist: Option<String>,
+    /// The label the card names beside the artist: the one every pressing
+    /// naming a label agrees on, else none — no pressing speaks for the album
+    /// over another. Core's call, not a surface's.
+    pub label: Option<String>,
+    /// Representative cover for the card — the first pressing that surfaced
+    /// one, MusicBrainz first.
+    pub cover_art: Option<RemoteCover>,
+    /// Every catalog the album is known on, in the one order surfaces list
+    /// sources in, each with its editorial page when it names a group: the
+    /// catalogs of the card's records, and each catalog a statement its
+    /// records carry names the album on (see `album_links`) where the card
+    /// holds no record of it. The chips under an album's title and the names
+    /// on the rows beneath it read the same way round, whichever record a
+    /// row was read from.
+    pub sources: Vec<ReleaseGroupSource>,
+    /// Earliest and latest pressing year, for the UI's "1992 – 2012" span.
+    /// Both `None` when no pressing carries a year.
+    pub year_min: Option<i32>,
+    pub year_max: Option<i32>,
+    /// The card's pressing rows, album by album. A card holding one album of
+    /// each catalog at most is one section with no heading. A card holding
+    /// two albums of one catalog — two MusicBrainz groups a link or a pressing
+    /// joined, or two Discogs masters — splits its rows into one section per
+    /// album, each headed by that album, so what joined them can be seen and
+    /// a wrong link told apart.
+    pub sections: Vec<PressingSection>,
+}
+
+impl ReleaseGroup {
+    /// Every row the card offers, section by section.
+    pub fn pressings(&self) -> impl Iterator<Item = &Pressing> {
+        self.sections.iter().flat_map(|section| &section.pressings)
+    }
+
+    /// Every row on the card that a run's agreement set aside, section by
+    /// section.
+    pub fn narrowed_out(&self) -> impl Iterator<Item = &Pressing> {
+        self.sections.iter().flat_map(|section| &section.narrowed_out)
+    }
+
+    /// Every row the card offers, section by section, taken out of it.
+    pub fn into_pressings(self) -> impl Iterator<Item = Pressing> {
+        self.sections.into_iter().flat_map(|section| section.pressings)
+    }
+}
+
+/// One album's rows on a card.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PressingSection {
+    /// The album the rows are pressings of, where the card splits its rows by
+    /// album; `None` where it does not.
+    pub album: Option<AlbumHeading>,
+    /// The rows offered.
+    pub pressings: Vec<Pressing>,
+    /// The rows of this album a run's agreement set aside, which a surface
+    /// shows behind its "more" disclosure. Empty for a list that sets nothing
+    /// aside — a typed search, a lookup's own answer.
+    pub narrowed_out: Vec<Pressing>,
+}
+
+/// An album heading a card's section: its own title as its catalog states
+/// it, and its page there.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlbumHeading {
+    pub title: String,
+    pub source: ReleaseGroupSource,
+}
+
+/// One source carrying a group, and where its editorial page for it is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseGroupSource {
+    pub source: Catalog,
+    /// Editorial URL for the group on this source (release-group on
+    /// MusicBrainz, master on Discogs). `None` when the source returned the
+    /// release ungrouped, which has no group page to open.
+    pub group_url: Option<String>,
+    /// Whether what this album is on the other catalog could not be read —
+    /// its page, or a document a statement about it needed. Nothing then
+    /// says whether a card of the other catalog on the same list is this
+    /// album, so a surface says it may be listed twice.
+    pub album_links_unread: bool,
+}
+
+/// One physical pressing, under every record that names it. A row is picked
+/// whole: `releases[0]` is the release the draft is read from, and each
+/// further entry is the same pressing as another record has it — another
+/// catalog's, or the same catalog's second record of one object. The
+/// pressing's constructor says which record that first one is.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Pressing {
+    pub releases: Vec<MetadataResult>,
+}
+
+impl Pressing {
+    /// One pressing's records, ordered by what the folder says about each.
+    ///
+    /// Every record describes the same physical object, and none of them is
+    /// the one the draft is read from by name. The record whose tracklist fits
+    /// the folder's audio is, since the draft's rows are laid onto the audio
+    /// out of that tracklist and the verdict picks the row only when its lead
+    /// fits; then the record the candidate's own text agrees with most; among
+    /// records it says as much about, the one that states a tracklist. Where
+    /// they are indistinguishable on all of that the source name decides,
+    /// MusicBrainz first; and between one catalog's two records of the object,
+    /// the one another record of the pressing names as the same release stands
+    /// for that catalog, over the one nothing names.
+    fn of(mut releases: Vec<MetadataResult>, judged: &Judgements) -> Self {
+        let named: Vec<bool> = releases
+            .iter()
+            .map(|release| {
+                let reference = MetadataRef::from(release.release());
+                releases.iter().any(|other| other.links.contains(&reference))
+            })
+            .collect();
+        let mut order: Vec<usize> = (0..releases.len()).collect();
+        order.sort_by_key(|&at| {
+            let release = &releases[at];
+            (
+                judged.tracklist_rank(release),
+                std::cmp::Reverse(judged.of_release(release).count()),
+                !states_tracklist(release),
+                release.source.catalog().rank(),
+                !named[at],
+            )
+        });
+        let mut releases: Vec<Option<MetadataResult>> = releases.drain(..).map(Some).collect();
+        Self {
+            releases: order
+                .into_iter()
+                .map(|at| releases[at].take().expect("each record is placed once"))
+                .collect(),
+        }
+    }
+
+    /// Every catalog listing this pressing, in the order surfaces list
+    /// catalogs: the row's tags, whichever record the row is read from.
+    pub fn sources(&self) -> Vec<LookupCatalog> {
+        LookupCatalog::ALL
+            .into_iter()
+            .filter(|catalog| self.releases.iter().any(|release| release.source == *catalog))
+            .collect()
+    }
+
+    /// The release a row picks when the person picks the row itself.
+    pub fn lead(&self) -> &MetadataResult {
+        self.releases.first().expect("a pressing is built from at least one release")
+    }
+
+    /// What picking this row claims, as release references: the primary — the
+    /// document the draft is read from — and, for every other catalog that
+    /// names the pressing, its first record of it as a partner.
+    ///
+    /// A row is one pressing however many records name it, so this is the
+    /// whole of what picking it means. A claim names one record per catalog:
+    /// where a catalog lists the object twice, the record the folder says
+    /// most about stands for it and the other is the same object already
+    /// claimed. Deciding it here rather than on each surface is what keeps
+    /// macOS, Windows, Linux and the sweep picking the same thing.
+    pub fn claims(&self) -> (LookupRef, Vec<LookupRef>) {
+        let mut releases = self.releases.iter().map(MetadataResult::release);
+        let primary = releases.next().expect("a pressing is built from at least one release");
+        let mut partners: Vec<LookupRef> = Vec::new();
+        for release in releases {
+            let claimed = release.catalog == primary.catalog
+                || partners.iter().any(|partner| partner.catalog == release.catalog);
+            if !claimed {
+                partners.push(release);
+            }
+        }
+        (primary, partners)
+    }
+
+    /// What the candidate's own text agrees with about this row: every one of
+    /// its records' agreements together.
+    ///
+    /// A row is one physical object however many records name it, and it is
+    /// picked whole, so a catalog number only Discogs prints and a disc ID
+    /// only MusicBrainz answers are both true of the row.
+    pub fn agreements(&self, judged: &Judgements) -> Agreements {
+        self.releases
+            .iter()
+            .fold(Agreements::NONE, |so_far, release| so_far.with(judged.of_release(release)))
+    }
+
+    /// What picking this row claims — the primary release and each other
+    /// catalog's record of the same pressing — as the link a pick stores.
+    pub fn pick(&self) -> PressingLink {
+        let (primary, partners) = self.claims();
+        PressingLink { record: primary, partners }
+    }
+}
+
+/// What the candidate's own text agrees with about each release, by the key
+/// that tells releases apart, and how many tracks the folder holds, which
+/// each release's tracklist is read against.
+///
+/// Built once from the judged results, and read back after they have been
+/// paired: a pressing row is only known once pairing has run, and what the row
+/// agrees with is what its records agree with.
+#[derive(Debug, Clone, Default)]
+pub struct Judgements {
+    agreements: std::collections::HashMap<(LookupCatalog, String), Agreements>,
+    /// `None` where no folder is being identified: a typed search, one
+    /// lookup's own answer.
+    folder_track_count: Option<u32>,
+}
+
+impl Judgements {
+    /// What was said about these results, ready to be asked release by
+    /// release, against a folder of `folder_track_count` tracks.
+    pub fn of(results: &[Judged], folder_track_count: Option<u32>) -> Self {
+        Self {
+            agreements: results
+                .iter()
+                .map(|(release, agreements)| {
+                    ((release.source, release.release_id.clone()), *agreements)
+                })
+                .collect(),
+            folder_track_count,
+        }
+    }
+
+    /// What was said about one release. A release these were not built from
+    /// was never judged, which is nothing agreeing.
+    fn of_release(&self, release: &MetadataResult) -> Agreements {
+        self.agreements
+            .get(&(release.source, release.release_id.clone()))
+            .copied()
+            .unwrap_or(Agreements::NONE)
+    }
+
+    /// Where a release's tracklist puts it among its pressing's records as
+    /// the one the draft is read from. Every record ranks alike where there
+    /// is no folder to read it against.
+    fn tracklist_rank(&self, release: &MetadataResult) -> u8 {
+        self.folder_track_count.map_or(0, |count| {
+            crate::TracklistFit::of(release.source_tracks.as_ref(), count).lead_rank()
+        })
+    }
+}
+
+/// One source's bucket of releases under one of its groups: the releases'
+/// indexes into the result list, in the order the source listed them.
+struct Bucket {
+    source: Catalog,
+    source_group_id: Option<String>,
+    members: Vec<usize>,
+}
+
+/// One release and what the candidate's own text agrees with about it — what
+/// [`group_results`] orders the rows and the cards by.
+pub type Judged = (MetadataResult, Agreements);
+
+impl Bucket {
+    /// Whether a statement read about this bucket's album names `other`'s
+    /// album as the same: one of its releases carries it among its album
+    /// links.
+    fn links(&self, other: &Bucket, releases: &[MetadataResult]) -> bool {
+        let Some(group_id) = &other.source_group_id else {
+            return false;
+        };
+        let album = MetadataRef::new(other.source, group_id.clone());
+        self.members.iter().any(|&at| releases[at].album_links.names(&album))
+    }
+
+    fn as_source(&self, read: impl Fn(usize) -> bool) -> ReleaseGroupSource {
+        ReleaseGroupSource {
+            source: self.source,
+            group_url: self
+                .source_group_id
+                .as_deref()
+                .and_then(|group_id| self.source.group_url(group_id)),
+            album_links_unread: self.members.iter().any(|&at| !read(at)),
+        }
+    }
+}
+
+/// How many pressing rows a list holds, read off the row each of its
+/// releases belongs to.
+///
+/// The list shows one row per physical pressing and a row is picked whole, so
+/// "how many pressings did this candidate match" is this number rather than
+/// how many result rows came back: a MusicBrainz release and a Discogs release
+/// describing the same object are one answer, not two. The auto-import check and the
+/// sweep's settle step both ask it.
+///
+/// The rows are the run's own, so nothing counts one thing and shows another
+/// — and nothing re-forms a sublist's rows, which a run's own answer is not
+/// enough to rebuild: a record the run settled as ambiguous because of a
+/// record in the other list rolls up when it is grouped without it.
+pub fn row_count(rows: &[u32]) -> usize {
+    rows.iter().collect::<std::collections::HashSet<_>>().len()
+}
+
+/// The row each of these results belongs to, formed afresh: the list is
+/// grouped as it stands and the rows are numbered by where they first appear
+/// in it, which is the numbering a run gives its own answers.
+///
+/// Forming rows is what a run does with the whole of what it found. A reader
+/// of one of its lists reads the rows it recorded — [`group_formed_rows`] —
+/// because that list alone does not hold what the run decided them against.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn form_rows(results: &[MetadataResult]) -> Vec<u32> {
+    let mut grouped: std::collections::HashMap<(LookupCatalog, String), usize> =
+        std::collections::HashMap::new();
+    for (row, pressing) in group_results(unranked(results.to_vec()), None)
+        .iter()
+        .flat_map(ReleaseGroup::pressings)
+        .enumerate()
+    {
+        for release in &pressing.releases {
+            grouped.insert((release.source, release.release_id.clone()), row);
+        }
+    }
+    let mut numbered: Vec<usize> = Vec::new();
+    results
+        .iter()
+        .map(|result| {
+            let row = grouped
+                .get(&(result.source, result.release_id.clone()))
+                .copied()
+                .expect("the grouping is over this list's own releases");
+            match numbered.iter().position(|named| *named == row) {
+                Some(at) => at as u32,
+                None => {
+                    numbered.push(row);
+                    (numbered.len() - 1) as u32
+                }
+            }
+        })
+        .collect()
+}
+
+/// How many pressing rows these results make, by forming the rows afresh.
+///
+/// Production reads the rows a run built — [`row_count`] over what it
+/// recorded. This forms them, which is what the grouping's own tests assert
+/// about.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn pressing_count(results: Vec<MetadataResult>) -> usize {
+    // Counting is order-blind, so there is nothing to rank the rows by.
+    group_results(unranked(results), None).iter().map(|group| group.pressings().count()).sum()
+}
+
+/// Every release with nothing said about it — what a caller hands over when
+/// the rows are not being ranked.
+pub fn unranked(results: Vec<MetadataResult>) -> Vec<Judged> {
+    results.into_iter().map(|result| (result, Agreements::NONE)).collect()
+}
+
+/// Group results into album cards with one row per physical pressing.
+///
+/// Pressings are matched before albums are: the releases are gathered into
+/// pressings over the whole list by the evidence their records carry, so the
+/// spelling of an album's title never keeps two records of one object apart.
+/// Then each source's releases are bucketed by its own group, and buckets a
+/// pressing spans or an album link joins become one card. The rows are
+/// ordered by how much of the candidate's text agrees with them and then by
+/// pressing year, and the cards by their best row.
+pub fn group_results(results: Vec<Judged>, folder_track_count: Option<u32>) -> Vec<ReleaseGroup> {
+    let judgements = Judgements::of(&results, folder_track_count);
+    let releases: Vec<MetadataResult> = results.into_iter().map(|(release, _)| release).collect();
+    let pressings = gather_pressings(&releases);
+    let offered = releases.len();
+    cards(releases, pressings, &judgements, offered)
+}
+
+/// Group a run's answers into album cards over rows that are already formed:
+/// the rows it offered and the rows its agreement set aside, as one list, so
+/// an album is one card whichever side of the "more" disclosure its rows are
+/// on. The rows set aside are each card's `narrowed_out`.
+///
+/// Each list's rows say which row each of its results belongs to,
+/// index-aligned with the list and numbered within it: the numbers of the
+/// run's own grouping, as its verdict recorded them. Only the cards are built
+/// here — the rows are read, never re-formed, because a sublist of a run's
+/// answers does not hold what the run decided them against, and grouping it
+/// alone can roll up records the run kept apart.
+pub fn group_formed_rows(
+    offered: Vec<Judged>,
+    offered_rows: &[u32],
+    narrowed_out: Vec<Judged>,
+    narrowed_out_rows: &[u32],
+    folder_track_count: Option<u32>,
+) -> Vec<ReleaseGroup> {
+    assert_eq!(
+        offered.len(),
+        offered_rows.len(),
+        "each offered result names the row it belongs to"
+    );
+    assert_eq!(
+        narrowed_out.len(),
+        narrowed_out_rows.len(),
+        "each result set aside names the row it belongs to"
+    );
+    // The two lists number their rows apart; the rows set aside are
+    // renumbered past the offered ones so no number names a row of each.
+    let past_offered = offered_rows.iter().max().map_or(0, |row| row + 1);
+    let rows: Vec<u32> = offered_rows
+        .iter()
+        .copied()
+        .chain(narrowed_out_rows.iter().map(|row| row + past_offered))
+        .collect();
+    let offered_count = offered.len();
+    let results: Vec<Judged> = offered.into_iter().chain(narrowed_out).collect();
+    let judgements = Judgements::of(&results, folder_track_count);
+    let releases: Vec<MetadataResult> = results.into_iter().map(|(release, _)| release).collect();
+    let pressings = formed_pressings(&rows);
+    cards(releases, pressings, &judgements, offered_count)
+}
+
+/// The album cards `releases` make, given the pressing rows they are in. The
+/// first `offered` releases are offered and the rest were set aside.
+fn cards(
+    releases: Vec<MetadataResult>,
+    pressings: Vec<Vec<usize>>,
+    judgements: &Judgements,
+    offered: usize,
+) -> Vec<ReleaseGroup> {
+    let cards = merge_buckets(bucket_by_source_group(&releases), &releases, &pressings);
+    let mut releases: Vec<Option<MetadataResult>> = releases.into_iter().map(Some).collect();
+    let mut cards: Vec<(ReleaseGroup, CardRank)> = cards
+        .into_iter()
+        .map(|card| build_group(card, &mut releases, &pressings, judgements, offered))
+        .collect();
+    // Stable: cards nothing tells apart keep the order the signals named them
+    // in, which is the order they were bucketed.
+    cards.sort_by_key(|(_, rank)| std::cmp::Reverse(*rank));
+    cards.into_iter().map(|(group, _)| group).collect()
+}
+
+/// What orders cards against each other: a card offering a row before one
+/// whose rows were all set aside, and then how much the candidate's text
+/// agrees with its best row — its best offered row, where it offers one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct CardRank {
+    offers: bool,
+    best: u32,
+}
+
+/// Bucket by `(source, source_group_id)`, preserving first-seen order. A
+/// result without a group id can't share one, so it becomes its own bucket.
+fn bucket_by_source_group(releases: &[MetadataResult]) -> Vec<Bucket> {
+    use std::collections::HashMap;
+
+    let mut buckets: Vec<Bucket> = Vec::new();
+    let mut index: HashMap<(LookupCatalog, String), usize> = HashMap::new();
+    for (at, release) in releases.iter().enumerate() {
+        match release.source_group_id.clone() {
+            Some(group_id) => {
+                let key = (release.source, group_id.clone());
+                match index.get(&key) {
+                    Some(&bucket) => buckets[bucket].members.push(at),
+                    None => {
+                        index.insert(key, buckets.len());
+                        buckets.push(Bucket {
+                            source: release.source.catalog(),
+                            source_group_id: Some(group_id),
+                            members: vec![at],
+                        });
+                    }
+                }
+            }
+            None => buckets.push(Bucket {
+                source: release.source.catalog(),
+                source_group_id: None,
+                members: vec![at],
+            }),
+        }
+    }
+    buckets
+}
+
+/// The cards the buckets make: every bucket reachable from another through a
+/// pressing both hold a record of, or through an album link either states, is
+/// on one card. Which buckets those are depends on nothing but the links, so
+/// it is the same whatever order the results arrived in, and it may put more
+/// than one of a source's buckets on a card. A card sits at its earliest
+/// bucket's position, and its buckets are ordered by [`Catalog::rank`] and then
+/// first-seen — the order the card's title, label and cover are read in, and
+/// the order it names its sources in.
+fn merge_buckets(
+    buckets: Vec<Bucket>,
+    releases: &[MetadataResult],
+    pressings: &[Vec<usize>],
+) -> Vec<Vec<Bucket>> {
+    let mut bucket_of = vec![0usize; releases.len()];
+    for (at, bucket) in buckets.iter().enumerate() {
+        for &member in &bucket.members {
+            bucket_of[member] = at;
+        }
+    }
+    let joins = |a: usize, b: usize| -> bool {
+        pressings.iter().any(|pressing| {
+            pressing.iter().any(|&member| bucket_of[member] == a)
+                && pressing.iter().any(|&member| bucket_of[member] == b)
+        }) || buckets[a].links(&buckets[b], releases)
+            || buckets[b].links(&buckets[a], releases)
+    };
+    let mut cards: Vec<Vec<usize>> = Vec::new();
+    let mut placed = vec![false; buckets.len()];
+    for at in 0..buckets.len() {
+        if placed[at] {
+            continue;
+        }
+        // Everything reachable from this bucket, in the order it is reached.
+        placed[at] = true;
+        let mut joined = vec![at];
+        let mut next = 0;
+        while next < joined.len() {
+            let from = joined[next];
+            let reached: Vec<usize> =
+                (0..buckets.len()).filter(|&to| !placed[to] && joins(from, to)).collect();
+            for to in reached {
+                placed[to] = true;
+                joined.push(to);
+            }
+            next += 1;
+        }
+        cards.push(joined);
+    }
+    let mut buckets: Vec<Option<Bucket>> = buckets.into_iter().map(Some).collect();
+    cards
+        .into_iter()
+        .map(|joined| {
+            let mut card: Vec<Bucket> = joined
+                .into_iter()
+                .map(|bucket| buckets[bucket].take().expect("a bucket joins one card"))
+                .collect();
+            card.sort_by_key(|bucket| (bucket.source.rank(), bucket.members[0]));
+            card
+        })
+        .collect()
+}
+
+/// The card, and what orders it against the others.
+///
+/// Where the card splits its rows by album, a row sits under the album of
+/// its first record in the order surfaces list sources in: a MusicBrainz
+/// album's, where the row has a MusicBrainz record.
+///
+/// Takes the card's releases out of `releases`: each lands on exactly one
+/// card.
+fn build_group(
+    card: Vec<Bucket>,
+    releases: &mut [Option<MetadataResult>],
+    pressings: &[Vec<usize>],
+    judgements: &Judgements,
+    offered: usize,
+) -> (ReleaseGroup, CardRank) {
+    let members: Vec<usize> =
+        card.iter().flat_map(|bucket| bucket.members.iter().copied()).collect();
+    let read = |at: usize| -> &MetadataResult {
+        releases[at].as_ref().expect("a release is read before its card takes it")
+    };
+    // Whether a release's album links were read, or never needed asking.
+    let links_known =
+        |at: usize| !matches!(read(at).album_links, bae_catalogs::album_links::AlbumLinks::Unread);
+    let mut sources: Vec<ReleaseGroupSource> =
+        card.iter().map(|bucket| bucket.as_source(links_known)).collect();
+    // An album a record's statements name on a catalog the card holds no
+    // record of is still the album's: the card names it with its page.
+    for album in members.iter().flat_map(|&at| read(at).album_links.read()) {
+        let catalog = album.catalog;
+        if !sources.iter().any(|source| source.source == catalog) {
+            sources.push(ReleaseGroupSource {
+                source: catalog,
+                group_url: catalog.group_url(&album.key),
+                album_links_unread: false,
+            });
+        }
+    }
+    sources.sort_by_key(|source| source.source.rank());
+    let lead = read(*members.first().expect("a card is built from at least one release"));
+    let id = card
+        .iter()
+        .find_map(|bucket| bucket.source_group_id.clone())
+        .unwrap_or_else(|| lead.release_id.clone());
+    let title = lead.title.clone();
+    let artist = members.iter().find_map(|&at| read(at).artist.clone());
+    let cover_art = bae_catalogs::remote_image::preferred_cover(
+        members.iter().filter_map(|&at| read(at).cover_art.clone()),
+    );
+    let years: Vec<i32> = members.iter().filter_map(|&at| read(at).year).collect();
+    let year_min = years.iter().min().copied();
+    let year_max = years.iter().max().copied();
+
+    let splits = card
+        .iter()
+        .enumerate()
+        .any(|(at, bucket)| card[at + 1..].iter().any(|other| other.source == bucket.source));
+    let headings: Vec<AlbumHeading> = card
+        .iter()
+        .map(|bucket| AlbumHeading {
+            title: read(bucket.members[0]).title.clone(),
+            source: bucket.as_source(links_known),
+        })
+        .collect();
+    // Which of the card's buckets holds each release. The buckets are in
+    // source order, so a row's lowest bucket is its first record's album.
+    let bucket_of = |release: usize| -> usize {
+        card.iter()
+            .position(|bucket| bucket.members.contains(&release))
+            .expect("a card's releases are its buckets' members")
+    };
+
+    let mut rows: Vec<CardRow> = Vec::with_capacity(members.len());
+    for at in members {
+        let Some(release) = releases[at].take() else {
+            // Already taken as another record of its pressing.
+            continue;
+        };
+        let mut records = vec![release];
+        let mut album = bucket_of(at);
+        if let Some(pressing) = pressings.iter().find(|pressing| pressing.contains(&at)) {
+            for &other in pressing.iter().filter(|&&other| other != at) {
+                assert_eq!(
+                    other < offered,
+                    at < offered,
+                    "a row is offered whole or set aside whole"
+                );
+                album = album.min(bucket_of(other));
+                records.push(releases[other].take().expect("a pressing's records are on one card"));
+            }
+        }
+        let pressing = Pressing::of(records, judgements);
+        rows.push(CardRow {
+            album,
+            offered: at < offered,
+            row: Row { agreements: pressing.agreements(judgements).count(), pressing },
+        });
+    }
+    let label = agreed_label(rows.iter().map(|row| &row.row.pressing));
+    let best = |offered: bool| {
+        rows.iter().filter(|row| row.offered == offered).map(|row| row.row.agreements).max()
+    };
+    let rank = match best(true) {
+        Some(best) => CardRank { offers: true, best },
+        None => {
+            CardRank { offers: false, best: best(false).expect("a card holds at least one row") }
+        }
+    };
+    let section = |album: Option<AlbumHeading>, home: Option<usize>| -> Option<PressingSection> {
+        let of = |offered: bool| -> Vec<Pressing> {
+            ordered_rows(
+                rows.iter()
+                    .filter(|row| {
+                        row.offered == offered && home.is_none_or(|home| row.album == home)
+                    })
+                    .map(|row| row.row.clone())
+                    .collect(),
+            )
+            .into_iter()
+            .map(|row| row.pressing)
+            .collect()
+        };
+        let section = PressingSection { album, pressings: of(true), narrowed_out: of(false) };
+        (!section.pressings.is_empty() || !section.narrowed_out.is_empty()).then_some(section)
+    };
+    let sections: Vec<PressingSection> = if splits {
+        headings
+            .into_iter()
+            .enumerate()
+            .filter_map(|(album, heading)| section(Some(heading), Some(album)))
+            .collect()
+    } else {
+        section(None, None).into_iter().collect()
+    };
+
+    (
+        ReleaseGroup { id, title, artist, label, cover_art, sources, year_min, year_max, sections },
+        rank,
+    )
+}
+
+/// The label name every one of `pressings` that names a label agrees on: of
+/// the first naming one's labels, in its order, the first every other names
+/// too (two spellings of one name count as one). None where the pressings
+/// name different labels, or none names any: no pressing speaks for the
+/// album over another.
+fn agreed_label<'a>(pressings: impl Iterator<Item = &'a Pressing>) -> Option<String> {
+    let named: Vec<Vec<bae_types::pressing::ReleaseLabel>> = pressings
+        .map(Pressing::labels)
+        .filter(|labels| labels.iter().any(|label| label.name().is_some()))
+        .collect();
+    let (first, others) = named.split_first()?;
+    first
+        .iter()
+        .filter_map(bae_types::pressing::ReleaseLabel::name)
+        .find(|name| {
+            others.iter().all(|labels| {
+                labels
+                    .iter()
+                    .filter_map(bae_types::pressing::ReleaseLabel::name)
+                    .any(|other| bae_types::text_match::same_label_name(name, other))
+            })
+        })
+        .map(str::to_string)
+}
+
+/// One row as its card places it: the album it sits under, and whether it is
+/// offered or was set aside.
+struct CardRow {
+    album: usize,
+    offered: bool,
+    row: Row,
+}
+
+/// One pressing row and how much of the candidate's text agrees with it — its
+/// records' agreements together, since the row is picked whole.
+#[derive(Clone)]
+struct Row {
+    pressing: Pressing,
+    agreements: u32,
+}
+
+/// Whether the source listed this release's own tracks. A record that answered
+/// with a tracklist has rows to fill a draft with and lengths to check the
+/// audio against; one nobody has asked yet, and one that answered with
+/// nothing, have neither.
+fn states_tracklist(release: &MetadataResult) -> bool {
+    matches!(release.source_tracks, Some(bae_catalogs::search::SourceTracks::Listed { .. }))
+}
+
+/// Order the rows: most agreed with first, and among rows the candidate's text
+/// says as much about, by the year the row's lead release was pressed,
+/// earliest first, with a pressing whose year nobody states last. Stable, so
+/// rows nothing tells apart keep the order the sources listed them in.
+fn ordered_rows(mut rows: Vec<Row>) -> Vec<Row> {
+    rows.sort_by_key(|row| {
+        let lead = row.pressing.lead();
+        (std::cmp::Reverse(row.agreements), lead.year.is_none(), lead.year)
+    });
+    rows
+}
+
+#[path = "release_group/pressing_sets.rs"]
+mod pressing_sets;
+
+#[path = "release_group/labels.rs"]
+mod labels;
+
+#[cfg(test)]
+#[path = "release_group_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "release_group_cover_tests.rs"]
+mod cover_tests;
+
+#[cfg(test)]
+#[path = "release_group/pairing_tests.rs"]
+mod pairing_tests;
+
+#[cfg(test)]
+#[path = "release_group/ranking_tests.rs"]
+mod ranking_tests;
+
+#[cfg(test)]
+#[path = "release_group/statement_tests.rs"]
+mod statement_tests;

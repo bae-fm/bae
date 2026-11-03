@@ -402,11 +402,11 @@ async fn a_cancelled_candidate_writes_no_row() {
             IdentifyRunId::for_test(1),
             &candidate,
             &verdict,
-            crate::identify::signals::Signals {
+            bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: crate::identify::signals::DiscIdSignal::Absent,
-                barcode: crate::identify::signals::BarcodeSignal::Absent,
-                text: crate::identify::signals::TextSignal::Settled {
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },

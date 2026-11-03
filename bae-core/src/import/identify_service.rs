@@ -2,11 +2,6 @@
 //! per-candidate cancellation. One `IdentifyServiceHandle` per app; each
 //! candidate runs in its own spawned driver task.
 
-use crate::identify::documents::ReleaseToRead;
-use crate::identify::state::{
-    step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
-};
-use crate::identify::LookupChoices;
 use crate::import::candidate_runtime::RunSubject;
 use crate::import::extraction::{ExtractionWatch, SignalsSnapshot};
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
@@ -14,6 +9,11 @@ use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_catalogs::search::{CatalogNumberSearch, SearchQuery, SourceLookup};
 use bae_catalogs::{Failure, InternalFailure};
+use bae_identify::documents::ReleaseToRead;
+use bae_identify::state::{
+    step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
+};
+use bae_identify::LookupChoices;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -83,14 +83,14 @@ async fn lookup_and_resolve(
     disc_id: &str,
     catalogs: &crate::import::CatalogSessions,
     priority: CallPriority,
-) -> Result<crate::identify::DiscIdAnswer, Failure> {
+) -> Result<bae_identify::DiscIdAnswer, Failure> {
     let (results, documents) = catalogs
         .musicbrainz()
         .lookup_musicbrainz_discid(disc_id, priority)
         .await?
         .into_iter()
         .unzip();
-    Ok(crate::identify::DiscIdAnswer { results, documents })
+    Ok(bae_identify::DiscIdAnswer { results, documents })
 }
 
 /// Thread-safe handle to the running identify service.
@@ -492,7 +492,7 @@ impl Driver {
     async fn record(
         &self,
         state: &IdentifyState,
-        signals: Option<&crate::identify::signals::Signals>,
+        signals: Option<&bae_identify::signals::Signals>,
         standing: &mut RunStanding,
     ) {
         let candidates = &self.inner.candidates;
@@ -730,10 +730,9 @@ fn dispatch_effect(
                     else {
                         return;
                     };
-                    let document = stored.map(|stored| {
-                        crate::identify::documents::ReleaseDocument::of(stored, &audio)
-                    });
-                    read.push(crate::identify::documents::ReleaseReading {
+                    let document = stored
+                        .map(|stored| bae_identify::documents::ReleaseDocument::of(stored, &audio));
+                    read.push(bae_identify::documents::ReleaseReading {
                         release: release.release().clone(),
                         document,
                     });

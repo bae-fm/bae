@@ -190,7 +190,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         fixture.judgement_for(&dir).await,
         (
             false,
-            Some(FolderCheck::MediumDisagrees { folder: crate::identify::MediumConflict::CdRip })
+            Some(FolderCheck::MediumDisagrees { folder: bae_identify::MediumConflict::CdRip })
         )
     );
     let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
@@ -323,7 +323,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         .import
         .select_candidate_release(
             key.clone(),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-typed".to_string(),

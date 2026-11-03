@@ -272,7 +272,7 @@ pub enum ImportEvent {
         /// a consumer waiting on a later run of the candidate matches on this,
         /// not the key.
         run: crate::import::IdentifyRunId,
-        state: crate::identify::IdentifyState,
+        state: bae_identify::IdentifyState,
         /// The run's priority, which tells a candidate a person opened from
         /// one the automatic admission picked up.
         priority: bae_catalogs::rate_limiter::CallPriority,
@@ -286,11 +286,11 @@ pub enum ImportEvent {
         /// candidate share its key, so a run's verdict is stored beside only
         /// the snapshots that name that run.
         run: crate::import::IdentifyRunId,
-        signals: crate::identify::signals::Signals,
+        signals: bae_identify::signals::Signals,
         /// Where the artwork pass feeding the snapshot has got to, shown as the
         /// run's step. Kept outside the snapshot because a stored snapshot has
         /// no pass.
-        artwork: crate::identify::signals::ArtworkScan,
+        artwork: bae_identify::signals::ArtworkScan,
         /// The extraction's priority, as in
         /// [`ImportEvent::IdentifyStateChanged`].
         priority: bae_catalogs::rate_limiter::CallPriority,
@@ -301,7 +301,7 @@ pub enum ImportEvent {
 /// statuses the UI looks up by release id.
 #[derive(Debug, Clone)]
 pub struct GroupedSearchResults {
-    pub groups: Vec<crate::identify::release_group::ReleaseGroup>,
+    pub groups: Vec<bae_identify::release_group::ReleaseGroup>,
     pub statuses: Vec<bae_db::LibraryStatus>,
 }
 
@@ -660,7 +660,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
         run: crate::import::IdentifyRunId,
-        answer: &crate::identify::IdentifyState,
+        answer: &bae_identify::IdentifyState,
     ) {
         let candidate =
             self.get_release_candidate(key).await.unwrap().expect("the candidate is stored");

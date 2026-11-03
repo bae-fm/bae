@@ -73,13 +73,13 @@ async fn measuring(runtime: &CandidateRuntime, key: &crate::import::CandidateKey
     runtime.record_event(&progress(key, percent));
 }
 
-pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
-    crate::identify::state::SignalsContext {
+pub(crate) fn signals_context(track_count: u32) -> bae_identify::state::SignalsContext {
+    bae_identify::state::SignalsContext {
         origin: bae_catalogs::AudioOrigin::default(),
         providers: Vec::new(),
-        artwork: crate::identify::signals::ArtworkScan::Absent,
-        disc: crate::identify::state::DiscIdEvidence {
-            signal: crate::identify::signals::DiscIdSignal::Absent,
+        artwork: bae_identify::signals::ArtworkScan::Absent,
+        disc: bae_identify::state::DiscIdEvidence {
+            signal: bae_identify::signals::DiscIdSignal::Absent,
             ..Default::default()
         },
         barcode: Default::default(),
@@ -87,8 +87,8 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
         search: Default::default(),
         text: Default::default(),
         text_settled: true,
-        audio: crate::identify::signals::AudioFacts { track_count, ..Default::default() },
-        documents: crate::identify::documents::DocumentReading::Pending,
+        audio: bae_identify::signals::AudioFacts { track_count, ..Default::default() },
+        documents: bae_identify::documents::DocumentReading::Pending,
         pressings: Vec::new(),
         isrc: Default::default(),
         track_titles: Vec::new(),
@@ -100,19 +100,19 @@ fn run(number: u64) -> crate::import::IdentifyRunId {
 }
 
 /// A run's state partway through, which the runtime records as running.
-pub(crate) fn triangulating() -> crate::identify::IdentifyState {
-    crate::identify::IdentifyState::Triangulating {
-        discid: crate::identify::DiscidProgress::Computing,
-        barcode: crate::identify::BarcodeProgress::Scanning,
-        catalog: crate::identify::CatalogProgress::Skipped,
-        isrc: crate::identify::IsrcProgress::Skipped,
-        search: crate::identify::SearchProgress::Pending,
+pub(crate) fn triangulating() -> bae_identify::IdentifyState {
+    bae_identify::IdentifyState::Triangulating {
+        discid: bae_identify::DiscidProgress::Computing,
+        barcode: bae_identify::BarcodeProgress::Scanning,
+        catalog: bae_identify::CatalogProgress::Skipped,
+        isrc: bae_identify::IsrcProgress::Skipped,
+        search: bae_identify::SearchProgress::Pending,
         context: signals_context(9),
     }
 }
 
-pub(crate) fn manual_only() -> crate::identify::IdentifyState {
-    crate::identify::IdentifyState::ManualOnly {
+pub(crate) fn manual_only() -> bae_identify::IdentifyState {
+    bae_identify::IdentifyState::ManualOnly {
         ledger: None,
         track_count: 9,
         context: signals_context(9),
@@ -120,9 +120,9 @@ pub(crate) fn manual_only() -> crate::identify::IdentifyState {
 }
 
 /// `state` as its run's rows read it back, with no signals stored beside it.
-pub(crate) fn published(state: crate::identify::IdentifyState) -> crate::identify::PublishedRun {
-    crate::identify::PublishedRun {
-        outcome: crate::identify::RunOutcome::of(&state).expect("a test publishes a run's state"),
+pub(crate) fn published(state: bae_identify::IdentifyState) -> bae_identify::PublishedRun {
+    bae_identify::PublishedRun {
+        outcome: bae_identify::RunOutcome::of(&state).expect("a test publishes a run's state"),
         signals: None,
     }
 }
@@ -230,7 +230,7 @@ async fn report(
     key: &crate::import::CandidateKey,
     files: &CandidateFiles,
     run: crate::import::IdentifyRunId,
-    state: crate::identify::IdentifyState,
+    state: bae_identify::IdentifyState,
 ) {
     assert!(runtime.run_started(key, files, run, &state).await.unwrap());
     if state.is_terminal() {
@@ -246,12 +246,12 @@ async fn identification(
     runtime.standing_facts(key).await.unwrap().identification
 }
 
-fn extracted_signals() -> crate::identify::signals::Signals {
-    crate::identify::signals::Signals {
+fn extracted_signals() -> bae_identify::signals::Signals {
+    bae_identify::signals::Signals {
         origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: crate::identify::signals::DiscIdSignal::Absent,
-        barcode: crate::identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
-        text: crate::identify::signals::TextSignal::Settled {
+        disc_id: bae_identify::signals::DiscIdSignal::Absent,
+        barcode: bae_identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
+        text: bae_identify::signals::TextSignal::Settled {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
@@ -345,9 +345,9 @@ async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
     assert!(matches!(
         recorded.identification,
         Some(IdentificationRuntime::Saving(SavingAnswer {
-            state: crate::identify::PublishedRun {
-                outcome: crate::identify::RunOutcome::Answered(
-                    crate::identify::TerminalVerdict::ManualOnly { .. }
+            state: bae_identify::PublishedRun {
+                outcome: bae_identify::RunOutcome::Answered(
+                    bae_identify::TerminalVerdict::ManualOnly { .. }
                 ),
                 ..
             },
@@ -471,8 +471,8 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
     report(&runtime, key, &files, run(1), triangulating()).await;
     assert!(matches!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
-        Some(IdentificationRuntime::Running(crate::identify::PublishedRun {
-            outcome: crate::identify::RunOutcome::Running { .. },
+        Some(IdentificationRuntime::Running(bae_identify::PublishedRun {
+            outcome: bae_identify::RunOutcome::Running { .. },
             ..
         }))
     ));
@@ -486,9 +486,9 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
     assert!(matches!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::Saving(SavingAnswer {
-            state: crate::identify::PublishedRun {
-                outcome: crate::identify::RunOutcome::Answered(
-                    crate::identify::TerminalVerdict::ManualOnly { .. }
+            state: bae_identify::PublishedRun {
+                outcome: bae_identify::RunOutcome::Answered(
+                    bae_identify::TerminalVerdict::ManualOnly { .. }
                 ),
                 ..
             },

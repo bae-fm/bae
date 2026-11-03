@@ -5,11 +5,11 @@
 
 use super::verdict_rows::{unreadable, Owner};
 use super::*;
-use crate::identify::signals::{
-    BarcodeSignal, ComputedDiscId, DiscIdSignal, Signals, SourcedValue, TextLine, TextSignal,
-};
 use bae_catalogs::{
     AudioOrigin, AudioSource, CdProof, DownloadProof, InternalFailure, StoreMarker,
+};
+use bae_identify::signals::{
+    BarcodeSignal, ComputedDiscId, DiscIdSignal, Signals, SourcedValue, TextLine, TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str =

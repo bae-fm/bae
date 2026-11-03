@@ -16,6 +16,8 @@ path = "src/lib.rs"
 bae-core = { workspace = true }
 # The library's records its answers carry.
 bae-db = { workspace = true }
+# The identify views its answers carry.
+bae-identify = { workspace = true }
 # The MCP server's settings.
 bae-preferences = { workspace = true }
 bae-diagnostics = { workspace = true }

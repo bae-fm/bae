@@ -110,7 +110,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
     let applied = manager
         .apply_release_edit_catalog(
             &session,
-            &crate::identify::PressingLink {
+            &bae_identify::PressingLink {
                 record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
@@ -150,7 +150,7 @@ async fn an_applied_catalog_tells_its_catalog_read() {
     manager
         .apply_release_edit_catalog(
             &session,
-            &crate::identify::PressingLink {
+            &bae_identify::PressingLink {
                 record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },

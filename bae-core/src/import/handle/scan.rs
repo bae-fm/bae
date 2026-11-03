@@ -396,7 +396,7 @@ impl ImportServiceHandle {
     pub(super) async fn pick_candidate_release_write(
         &self,
         candidate_key: crate::import::CandidateKey,
-        link: crate::identify::PressingLink,
+        link: bae_identify::PressingLink,
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
@@ -448,7 +448,7 @@ impl ImportServiceHandle {
             .chain(prepared_partners.iter().map(bae_catalogs::search::MetadataResult::of_release))
             .collect();
         let state = self.tables.load_import_candidate_state(&content_hash).await?;
-        let text = crate::identify::CandidateText::of_stored(
+        let text = bae_identify::CandidateText::of_stored(
             state.as_ref().and_then(|state| state.signals.as_ref()),
             &state.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default(),
         );
@@ -458,11 +458,11 @@ impl ImportServiceHandle {
                 values,
                 prepared_partners,
                 &current.draft,
-                crate::identify::row_facts::folder_pressing_year(&text, &records),
+                bae_identify::row_facts::folder_pressing_year(&text, &records),
                 steps,
             )
             .await?;
-        let settled_by_choice = crate::identify::TerminalVerdict::of_pick(picked, folder_tracks);
+        let settled_by_choice = bae_identify::TerminalVerdict::of_pick(picked, folder_tracks);
         let _commit = self
             .commit_lock_for_revision(
                 "pick a release",

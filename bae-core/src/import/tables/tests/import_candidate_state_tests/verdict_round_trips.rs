@@ -164,7 +164,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     let matches = vec![musicbrainz, discogs, undescribed, unread, linked];
     let verdict = TerminalVerdict::Found {
         findings: Findings {
-            pressings: crate::identify::release_group::form_rows(&matches),
+            pressings: bae_identify::release_group::form_rows(&matches),
             matches: matches.clone(),
             narrowed_out: NarrowedOut::default(),
             medium_conflict: None,
@@ -184,12 +184,12 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     else {
         panic!("the verdict found releases");
     };
-    let live = crate::identify::release_group::group_results(
-        crate::identify::release_group::unranked(matches.clone()),
+    let live = bae_identify::release_group::group_results(
+        bae_identify::release_group::unranked(matches.clone()),
         None,
     );
-    let replayed = crate::identify::release_group::group_results(
-        crate::identify::release_group::unranked(stored_matches.clone()),
+    let replayed = bae_identify::release_group::group_results(
+        bae_identify::release_group::unranked(stored_matches.clone()),
         None,
     );
     assert_eq!(replayed, live);
@@ -203,7 +203,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         vec![2, 1, 1],
         "the linked pair is one row, the others their own"
     );
-    assert_eq!(crate::identify::release_group::pressing_count(matches), 4);
+    assert_eq!(bae_identify::release_group::pressing_count(matches), 4);
 }
 
 /// The candidate's text reads back whole, line by line, in order and with the
@@ -216,13 +216,13 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
     let pool = vec![
-        crate::identify::signals::TextLine {
+        bae_identify::signals::TextLine {
             text: "AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]".to_string(),
-            origin: crate::identify::signals::TextOrigin::FolderName,
+            origin: bae_identify::signals::TextOrigin::FolderName,
         },
-        crate::identify::signals::TextLine {
+        bae_identify::signals::TextLine {
             text: "Atlantic Records, Inc.".to_string(),
-            origin: crate::identify::signals::TextOrigin::Artwork,
+            origin: bae_identify::signals::TextOrigin::Artwork,
         },
     ];
     let mut row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());
@@ -250,7 +250,7 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
     let verdict = TerminalVerdict::Failed {
-        failures: vec![crate::identify::IdentifyFailure::Search(
+        failures: vec![bae_identify::IdentifyFailure::Search(
             bae_catalogs::search::SourceFailure {
                 source: bae_catalogs::catalog::Catalog::MusicBrainz,
                 failure: bae_catalogs::LookupFailure::Provider { status: Some(503) },
@@ -417,7 +417,7 @@ async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdict, Vec<Str
 /// listed in neither, which only its cell shows and counts.
 #[tokio::test]
 async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
-    use crate::identify::{
+    use bae_identify::{
         BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, IsrcStepView,
         NotAskedReason, ProviderCell, SearchStepView, SignalValueRow,
     };
@@ -502,7 +502,7 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
         search: SearchStepView::NotNeeded,
     };
     let verdict = TerminalVerdict::Failed {
-        failures: vec![crate::identify::IdentifyFailure::DiscId(LookupFailure::Timeout)],
+        failures: vec![bae_identify::IdentifyFailure::DiscId(LookupFailure::Timeout)],
         findings: Findings {
             matches: vec![offered.clone(), catalogued.clone()],
             pressings: vec![0, 1],
@@ -519,8 +519,8 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     assert_eq!(read, verdict);
     // The Disc ID agreement is read from the stored ledger: the releases a
     // disc ID's lookup found agree on it, and no other.
-    let crate::identify::IdentifyStateView::Failed { agreements, .. } =
-        crate::identify::IdentifyStateView::from(
+    let bae_identify::IdentifyStateView::Failed { agreements, .. } =
+        bae_identify::IdentifyStateView::from(
             read.clone().resume_state(Default::default(), Default::default()),
         )
     else {
@@ -574,7 +574,7 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
 /// ISRC and no title; and a title search reads back its words and its cells.
 #[tokio::test]
 async fn the_ledger_round_trips_how_each_clue_stood() {
-    use crate::identify::{
+    use bae_identify::{
         BarcodeStepView, CatalogStepView, IsrcStepView, ProviderCell, SearchStepView,
     };
     
@@ -631,7 +631,7 @@ async fn a_ledger_with_a_lookup_under_way_is_not_stored() {
     let hash = candidate.content_hash();
     let mut ledger = sample_ledger();
     ledger.disc_id = DiscIdStepView::Read {
-        discs: vec![crate::identify::DiscIdRow {
+        discs: vec![bae_identify::DiscIdRow {
             disc_id: "disc-1".to_string(),
             lookup: LookupView::LookingUp,
         }],

@@ -1,6 +1,6 @@
 use super::super::*;
 use bae_catalogs::catalog::LookupCatalog;
-use crate::identify::{
+use bae_identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
@@ -30,21 +30,21 @@ fn sample_ledger() -> IdentifyRunView {
     IdentifyRunView {
         providers: vec![LookupCatalog::MusicBrainz],
         disc_id: DiscIdStepView::Read {
-            discs: vec![crate::identify::DiscIdRow {
+            discs: vec![bae_identify::DiscIdRow {
                 disc_id: "disc-1".to_string(),
                 lookup: LookupView::Found {
                     count: 1,
-                    groups: crate::identify::release_group::group_results(
-                        crate::identify::release_group::unranked(vec![sample_match()]),
+                    groups: bae_identify::release_group::group_results(
+                        bae_identify::release_group::unranked(vec![sample_match()]),
                         None,
                     ),
                 },
             }],
         },
-        barcode: crate::identify::BarcodeStepView::Absent,
-        catalog: crate::identify::CatalogStepView::NoneFound,
-        isrc: crate::identify::IsrcStepView::Absent,
-        search: crate::identify::SearchStepView::NotNeeded,
+        barcode: bae_identify::BarcodeStepView::Absent,
+        catalog: bae_identify::CatalogStepView::NoneFound,
+        isrc: bae_identify::IsrcStepView::Absent,
+        search: bae_identify::SearchStepView::NotNeeded,
     }
 }
 
@@ -91,7 +91,7 @@ fn sample_findings() -> Findings {
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
         medium_conflict: None,
-        named_notes: vec![crate::identify::NamedNote {
+        named_notes: vec![bae_identify::NamedNote {
             release: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"),
             note: "Pressed By Plant Name".to_string(),
         }],
@@ -99,12 +99,12 @@ fn sample_findings() -> Findings {
 }
 
 /// Settled signals with nothing found.
-fn sample_signals() -> crate::identify::signals::Signals {
-    crate::identify::signals::Signals {
+fn sample_signals() -> bae_identify::signals::Signals {
+    bae_identify::signals::Signals {
         origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: crate::identify::signals::DiscIdSignal::Absent,
-        barcode: crate::identify::signals::BarcodeSignal::Absent,
-        text: crate::identify::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+        disc_id: bae_identify::signals::DiscIdSignal::Absent,
+        barcode: bae_identify::signals::BarcodeSignal::Absent,
+        text: bae_identify::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -197,8 +197,8 @@ fn fetched_release(release_id: &str) -> bae_catalogs::source_release::SourceRele
     .unwrap()
 }
 
-fn release_link(release_id: &str) -> crate::identify::PressingLink {
-    crate::identify::PressingLink {
+fn release_link(release_id: &str) -> bae_identify::PressingLink {
+    bae_identify::PressingLink {
         record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id.to_string(),
@@ -486,9 +486,9 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
 /// A transport failure is stored as a failed verdict.
 #[tokio::test]
 async fn a_transport_failure_round_trips_as_a_failed_verdict() {
-    use crate::identify::state::step as identify_step;
-    use crate::identify::{IdentifyEvent, IdentifyState};
-    use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+    use bae_identify::state::step as identify_step;
+    use bae_identify::{IdentifyEvent, IdentifyState};
+    use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
     use bae_catalogs::{LookupFailure};
 
     let (db, _tmp) = empty_db().await;
@@ -501,7 +501,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         IdentifyState::Idle,
         IdentifyEvent::Started {
             providers: vec![bae_catalogs::catalog::LookupCatalog::MusicBrainz],
-            choices: crate::identify::LookupChoices::default(),
+            choices: bae_identify::LookupChoices::default(),
             title_search: None,
         },
     );
@@ -511,7 +511,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
             signals: Signals {
                 origin: bae_catalogs::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Computed {
-                    discs: vec![crate::identify::signals::ComputedDiscId {
+                    discs: vec![bae_identify::signals::ComputedDiscId {
                         disc_id: "disc-hash".to_string(),
                         source_file: None,
                     }],
@@ -522,8 +522,8 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            audio: crate::identify::signals::AudioFacts::default(),
-            artwork: crate::identify::signals::ArtworkScan::Absent,
+            audio: bae_identify::signals::AudioFacts::default(),
+            artwork: bae_identify::signals::ArtworkScan::Absent,
         },
     );
     let (state, _) = identify_step(

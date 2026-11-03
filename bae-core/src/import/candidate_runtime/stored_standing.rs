@@ -40,7 +40,7 @@ impl StoredStanding {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct StoredRuntime {
     pub(crate) standing: StoredStanding,
-    pub(crate) runs: std::collections::BTreeMap<IdentifyRunId, crate::identify::PublishedRun>,
+    pub(crate) runs: std::collections::BTreeMap<IdentifyRunId, bae_identify::PublishedRun>,
     pub(crate) search: Option<crate::import::candidate_search::CandidateSearch>,
 }
 

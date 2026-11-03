@@ -118,7 +118,7 @@ impl CandidateRuntime {
         key: &CandidateKey,
         files: &CandidateFiles,
         run: IdentifyRunId,
-        state: &crate::identify::IdentifyState,
+        state: &bae_identify::IdentifyState,
     ) -> Result<bool, DbError> {
         let outcome = super::published_outcome(key, run, state)?;
         let moved = self

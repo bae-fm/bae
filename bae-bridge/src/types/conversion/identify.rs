@@ -132,13 +132,13 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeNotAskedReason = bae_core::identify::NotAskedReason,
+    BridgeNotAskedReason = bae_identify::NotAskedReason,
     from_core: fn,
     variants: { LeftOut, NoCatalog },
 }
 
 mirror_enum! {
-    BridgeLookupState = bae_core::identify::LookupView,
+    BridgeLookupState = bae_identify::LookupView,
     from_core: fn,
     variants: {
         Queued,
@@ -151,19 +151,19 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeProviderCell = bae_core::identify::ProviderCell,
+    BridgeProviderCell = bae_identify::ProviderCell,
     from_core: fn,
     fields: { source: (BridgeLookupCatalog), lookup: (BridgeLookupState) },
 }
 
 mirror_struct! {
-    BridgeDiscIdRow = bae_core::identify::DiscIdRow,
+    BridgeDiscIdRow = bae_identify::DiscIdRow,
     from_core: fn,
     fields: { disc_id, lookup: (BridgeLookupState) },
 }
 
 mirror_struct! {
-    BridgeSignalValueRow = bae_core::identify::SignalValueRow,
+    BridgeSignalValueRow = bae_identify::SignalValueRow,
     from_core: fn,
     fields: { value, excluded, cells: (each BridgeProviderCell) },
 }
@@ -171,8 +171,8 @@ mirror_struct! {
 impl BridgeDiscIdStep {
     /// Not a copy: an unread sheet crosses with the rate of the audio it was
     /// run over, which is what says why it was not read.
-    fn from_core(step: bae_core::identify::DiscIdStepView, rate: Option<u32>) -> Self {
-        use bae_core::identify::DiscIdStepView;
+    fn from_core(step: bae_identify::DiscIdStepView, rate: Option<u32>) -> Self {
+        use bae_identify::DiscIdStepView;
         match step {
             DiscIdStepView::Reading => Self::Reading,
             DiscIdStepView::Absent => Self::Absent,
@@ -187,8 +187,8 @@ impl BridgeDiscIdStep {
 impl BridgeBarcodeStep {
     /// Not a copy: `scanning` crosses once for the run, as
     /// `BridgeIdentifyRun::reading_artwork`.
-    fn from_core(step: bae_core::identify::BarcodeStepView) -> Self {
-        use bae_core::identify::BarcodeStepView;
+    fn from_core(step: bae_identify::BarcodeStepView) -> Self {
+        use bae_identify::BarcodeStepView;
         match step {
             BarcodeStepView::Absent => Self::Absent,
             BarcodeStepView::NoCodes => Self::NoCodes,
@@ -200,7 +200,7 @@ impl BridgeBarcodeStep {
 }
 
 mirror_struct! {
-    BridgeCatalogCandidate = bae_core::identify::CatalogCandidateView,
+    BridgeCatalogCandidate = bae_identify::CatalogCandidateView,
     from_core: fn,
     fields: { value },
 }
@@ -208,8 +208,8 @@ mirror_struct! {
 impl BridgeCatalogStep {
     /// Not a copy: `scanning` crosses once for the run, as
     /// `BridgeIdentifyRun::reading_artwork`.
-    fn from_core(step: bae_core::identify::CatalogStepView) -> Self {
-        use bae_core::identify::CatalogStepView;
+    fn from_core(step: bae_identify::CatalogStepView) -> Self {
+        use bae_identify::CatalogStepView;
         match step {
             CatalogStepView::NoneFound => Self::NoneFound,
             CatalogStepView::Numbers { scanning: _, rows, candidates } => Self::Numbers {
@@ -221,7 +221,7 @@ impl BridgeCatalogStep {
 }
 
 mirror_enum! {
-    BridgeSearchStep = bae_core::identify::SearchStepView,
+    BridgeSearchStep = bae_identify::SearchStepView,
     from_core: fn,
     variants: {
         NotNeeded,
@@ -232,7 +232,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeIsrcStep = bae_core::identify::IsrcStepView,
+    BridgeIsrcStep = bae_identify::IsrcStepView,
     from_core: fn,
     variants: {
         Reading,
@@ -244,16 +244,10 @@ mirror_enum! {
 impl BridgeIdentifyRun {
     /// The ledger, with the rate of the audio the run was over for its
     /// disc-ID step.
-    fn from_core(run: bae_core::identify::IdentifyRunView, rate: Option<u32>) -> Self {
+    fn from_core(run: bae_identify::IdentifyRunView, rate: Option<u32>) -> Self {
         let reading_artwork = run.reading_artwork();
-        let bae_core::identify::IdentifyRunView {
-            providers,
-            disc_id,
-            barcode,
-            catalog,
-            isrc,
-            search,
-        } = run;
+        let bae_identify::IdentifyRunView { providers, disc_id, barcode, catalog, isrc, search } =
+            run;
         Self {
             providers: providers.into_iter().map(BridgeLookupCatalog::from_core).collect(),
             disc_id: BridgeDiscIdStep::from_core(disc_id, rate),
@@ -267,14 +261,14 @@ impl BridgeIdentifyRun {
 }
 
 mirror_struct! {
-    BridgeReleaseGroupSource = bae_core::identify::release_group::ReleaseGroupSource,
+    BridgeReleaseGroupSource = bae_identify::release_group::ReleaseGroupSource,
     from_core: fn,
     fields: { source: (BridgeCatalog), group_url, album_links_unread },
 }
 
 impl BridgeReleaseGroup {
-    pub(crate) fn from_core(g: bae_core::identify::release_group::ReleaseGroup) -> Self {
-        let bae_core::identify::release_group::ReleaseGroup {
+    pub(crate) fn from_core(g: bae_identify::release_group::ReleaseGroup) -> Self {
+        let bae_identify::release_group::ReleaseGroup {
             id,
             title,
             artist,
@@ -300,8 +294,8 @@ impl BridgeReleaseGroup {
 }
 
 impl BridgePressingSection {
-    fn from_core(section: bae_core::identify::release_group::PressingSection) -> Self {
-        let bae_core::identify::release_group::PressingSection { album, pressings, narrowed_out } =
+    fn from_core(section: bae_identify::release_group::PressingSection) -> Self {
+        let bae_identify::release_group::PressingSection { album, pressings, narrowed_out } =
             section;
         BridgePressingSection {
             album: album.map(BridgeAlbumHeading::from_core),
@@ -312,13 +306,13 @@ impl BridgePressingSection {
 }
 
 mirror_struct! {
-    BridgeAlbumHeading = bae_core::identify::release_group::AlbumHeading,
+    BridgeAlbumHeading = bae_identify::release_group::AlbumHeading,
     from_core: fn,
     fields: { title, source: (BridgeReleaseGroupSource) },
 }
 
 impl BridgePressing {
-    fn from_core(pressing: bae_core::identify::release_group::Pressing) -> Self {
+    fn from_core(pressing: bae_identify::release_group::Pressing) -> Self {
         // The row's summary is what a pick applies: its lead record's facts.
         // Each record's own facts stay on it, in `releases`.
         let facts = BridgePressingFacts::from_core(pressing.lead().facts());
@@ -338,7 +332,7 @@ impl BridgePressing {
 }
 
 mirror_enum! {
-    BridgeTextSignal = bae_core::identify::signals::TextSignal,
+    BridgeTextSignal = bae_identify::signals::TextSignal,
     from_core: fn,
     variants: {
         Scanning { catalogs, free_text },
@@ -350,8 +344,8 @@ mirror_enum! {
 /// Not a `mirror_struct`: only the text pools cross; what a surface needs from
 /// the rest reaches it through the run's ledger and the file evidence.
 impl BridgeSignals {
-    pub(crate) fn from_core(s: bae_core::identify::signals::Signals) -> Self {
-        let bae_core::identify::signals::Signals {
+    pub(crate) fn from_core(s: bae_identify::signals::Signals) -> Self {
+        let bae_identify::signals::Signals {
             origin: _,
             disc_id: _,
             barcode: _,
@@ -367,9 +361,9 @@ impl BridgeSignals {
 impl BridgeAgreements {
     /// The row's agreements the list shows as badges. The album's title and
     /// artist rank the rows but are no badge.
-    fn from_core(agreements: bae_core::identify::RowAgreements) -> Self {
-        let bae_core::identify::RowAgreements { fields, notes } = agreements;
-        let bae_core::identify::Agreements {
+    fn from_core(agreements: bae_identify::RowAgreements) -> Self {
+        let bae_identify::RowAgreements { fields, notes } = agreements;
+        let bae_identify::Agreements {
             disc_id,
             barcode,
             catalog,
@@ -383,21 +377,21 @@ impl BridgeAgreements {
     }
 }
 
-/// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum, a field
+/// Mirror [`bae_identify::IdentifyStateView`] into the uniffi enum, a field
 /// copy per variant with the rate of the state's audio on its run.
 impl BridgeIdentifyState {
-    pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
+    pub(crate) fn from_core(s: bae_identify::IdentifyState) -> Self {
         let rate = s.audio().and_then(|audio| audio.rate_ruling_out_cd);
-        Self::from_view(bae_core::identify::IdentifyStateView::from(s), rate)
+        Self::from_view(bae_identify::IdentifyStateView::from(s), rate)
     }
 
     /// What a run published, as its rows hold it.
-    pub(crate) fn from_published(published: bae_core::identify::PublishedRun) -> Self {
+    pub(crate) fn from_published(published: bae_identify::PublishedRun) -> Self {
         Self::from_view(published.view(), published.rate_ruling_out_cd())
     }
 
-    fn from_view(view: bae_core::identify::IdentifyStateView, rate: Option<u32>) -> Self {
-        use bae_core::identify::IdentifyStateView;
+    fn from_view(view: bae_identify::IdentifyStateView, rate: Option<u32>) -> Self {
+        use bae_identify::IdentifyStateView;
         match view {
             IdentifyStateView::Idle => BridgeIdentifyState::Idle,
             IdentifyStateView::Error { failure } => BridgeIdentifyState::Error {
@@ -465,10 +459,8 @@ impl BridgeIdentifyState {
     }
 }
 
-fn identify_failure(
-    failure: bae_core::identify::IdentifyFailure,
-) -> crate::types::BridgeIdentifyFailure {
-    use bae_core::identify::IdentifyFailure;
+fn identify_failure(failure: bae_identify::IdentifyFailure) -> crate::types::BridgeIdentifyFailure {
+    use bae_identify::IdentifyFailure;
     match failure {
         IdentifyFailure::DiscId(failure) => crate::types::BridgeIdentifyFailure::DiscId {
             failure: BridgeLookupFailure::from_core(failure),
@@ -510,9 +502,9 @@ mod tests {
     use super::*;
     use bae_catalogs::catalog::LookupCatalog;
     use bae_catalogs::LookupFailure;
-    use bae_core::identify::signals::{DiscIdSignal, SourcedValue};
-    use bae_core::identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
-    use bae_core::identify::{
+    use bae_identify::signals::{DiscIdSignal, SourcedValue};
+    use bae_identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
+    use bae_identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
         ProviderLookup, ValueLookup,
     };
@@ -522,11 +514,11 @@ mod tests {
             discid: DiscidProgress::Skipped,
             barcode,
             catalog: CatalogProgress::Skipped,
-            isrc: bae_core::identify::IsrcProgress::Skipped,
-            search: bae_core::identify::SearchProgress::Skipped,
+            isrc: bae_identify::IsrcProgress::Skipped,
+            search: bae_identify::SearchProgress::Skipped,
             context: SignalsContext {
                 providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
-                artwork: bae_core::identify::signals::ArtworkScan::Absent,
+                artwork: bae_identify::signals::ArtworkScan::Absent,
                 origin: bae_catalogs::AudioOrigin::default(),
                 disc: DiscIdEvidence { signal: DiscIdSignal::Absent, ..Default::default() },
                 barcode: BarcodeEvidence {
@@ -541,13 +533,10 @@ mod tests {
                 search: Default::default(),
                 text: Default::default(),
                 text_settled: true,
-                audio: bae_core::identify::signals::AudioFacts {
-                    track_count: 9,
-                    ..Default::default()
-                },
+                audio: bae_identify::signals::AudioFacts { track_count: 9, ..Default::default() },
                 isrc: Default::default(),
                 track_titles: Vec::new(),
-                documents: bae_core::identify::documents::DocumentReading::Pending,
+                documents: bae_identify::documents::DocumentReading::Pending,
                 pressings: Vec::new(),
             },
         }
@@ -614,7 +603,7 @@ mod tests {
     fn a_code_left_out_crosses_as_a_row_that_says_so() {
         let mut state = in_flight(BarcodeProgress::NotAsked {
             codes: vec!["0123456789012".to_string()],
-            reason: bae_core::identify::NotAskedReason::LeftOut,
+            reason: bae_identify::NotAskedReason::LeftOut,
         });
         let IdentifyState::Triangulating { context, .. } = &mut state else {
             panic!("a run in flight");
@@ -635,7 +624,7 @@ mod tests {
     /// A disc ID nobody looked up crosses as read, with why.
     #[test]
     fn a_disc_id_nobody_looked_up_crosses_with_why() {
-        use bae_core::identify::NotAskedReason;
+        use bae_identify::NotAskedReason;
         let step = |reason: NotAskedReason| {
             let mut state = in_flight(BarcodeProgress::Skipped);
             let IdentifyState::Triangulating { discid, context, .. } = &mut state else {
@@ -643,7 +632,7 @@ mod tests {
             };
             *discid = DiscidProgress::NotAsked { reason };
             context.disc.signal = DiscIdSignal::Computed {
-                discs: vec![bae_core::identify::signals::ComputedDiscId {
+                discs: vec![bae_identify::signals::ComputedDiscId {
                     disc_id: "d".to_string(),
                     source_file: None,
                 }],

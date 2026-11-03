@@ -3,8 +3,6 @@
 
 use super::*;
 use crate::app::test_library::TestLibrary;
-use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
-use crate::identify::{FolderCheck, VerdictSummary};
 use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::import::tables::{
     DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
@@ -12,6 +10,8 @@ use crate::import::tables::{
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_db::Database;
+use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+use bae_identify::{FolderCheck, VerdictSummary};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -726,7 +726,7 @@ impl Fixture {
             track.edit.title = format!("Track {}", index + 1);
         }
         let verdict = TerminalVerdict::Found {
-            findings: crate::identify::Findings {
+            findings: bae_identify::Findings {
                 matches: vec![MetadataResult {
                     source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id: release_id.to_string(),
@@ -751,7 +751,7 @@ impl Fixture {
                     notes: Vec::new(),
                 }],
                 pressings: vec![0],
-                narrowed_out: crate::identify::NarrowedOut::default(),
+                narrowed_out: bae_identify::NarrowedOut::default(),
                 medium_conflict: None,
                 named_notes: Vec::new(),
             },
@@ -771,7 +771,7 @@ impl Fixture {
                     // A disc ID naming its log, for the evidence chip.
                     signals: Signals {
                         disc_id: DiscIdSignal::Computed {
-                            discs: vec![crate::identify::signals::ComputedDiscId {
+                            discs: vec![bae_identify::signals::ComputedDiscId {
                                 disc_id: SEEDED_DISC_ID.to_string(),
                                 source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
                             }],
@@ -784,7 +784,7 @@ impl Fixture {
                             release_id.to_string(),
                         );
                         crate::import::tables::VerdictPick {
-                            link: crate::identify::PressingLink {
+                            link: bae_identify::PressingLink {
                                 record: record.clone(),
                                 partners: vec![],
                             },

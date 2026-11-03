@@ -310,11 +310,11 @@ fn enqueue_export_missing_release_does_not_panic() {
 #[cfg(feature = "desktop")]
 #[test]
 fn a_run_s_signals_cross_with_its_runtime() {
-    let signals = bae_core::identify::signals::Signals {
+    let signals = bae_identify::signals::Signals {
         origin: bae_catalogs::AudioOrigin::default(),
-        disc_id: bae_core::identify::signals::DiscIdSignal::Absent,
-        barcode: bae_core::identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
-        text: bae_core::identify::signals::TextSignal::Settled {
+        disc_id: bae_identify::signals::DiscIdSignal::Absent,
+        barcode: bae_identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
+        text: bae_identify::signals::TextSignal::Settled {
             catalogs: vec!["CAT-1".to_string()],
             free_text: vec!["Album Title".to_string()],
         },
@@ -322,13 +322,13 @@ fn a_run_s_signals_cross_with_its_runtime() {
         isrcs: Vec::new(),
         track_titles: Vec::new(),
     };
-    let running = |signals: Option<bae_core::identify::signals::Signals>| {
+    let running = |signals: Option<bae_identify::signals::Signals>| {
         crate::types::BridgeCandidateRuntimeSnapshot::from_core(
             bae_core::import::CandidateRuntimeSnapshot {
                 identification: Some(bae_core::import::IdentificationRuntime::Running(
-                    bae_core::identify::PublishedRun {
-                        outcome: bae_core::identify::RunOutcome::Answered(
-                            bae_core::identify::TerminalVerdict::ManualOnly {
+                    bae_identify::PublishedRun {
+                        outcome: bae_identify::RunOutcome::Answered(
+                            bae_identify::TerminalVerdict::ManualOnly {
                                 track_count: 9,
                                 ledger: None,
                             },

@@ -353,7 +353,7 @@ fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
         .disc_id
         .computed()
         .try_into()
-        .map(|[disc]: [crate::identify::signals::ComputedDiscId; 1]| disc)
+        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
         .expect("the log carves one disc");
     assert_eq!(disc_id.source_file.as_deref(), Some("Album.log"));
 }
@@ -381,7 +381,7 @@ fn test_compute_discid_routes_cue_ape() {
         .disc_id
         .computed()
         .try_into()
-        .map(|[disc]: [crate::identify::signals::ComputedDiscId; 1]| disc)
+        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
         .expect("CUE+APE pair must compute one disc ID");
     assert_eq!(
         bae_audio::test_reads::probes(&audio_path),
@@ -446,7 +446,7 @@ fn test_compute_discid_routes_cue_mp3() {
         .disc_id
         .computed()
         .try_into()
-        .map(|[disc]: [crate::identify::signals::ComputedDiscId; 1]| disc)
+        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
         .expect("CUE+MP3 pair must compute one disc ID");
     assert_eq!(disc_id.disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
 }

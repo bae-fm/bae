@@ -113,7 +113,7 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
         .import
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
-            crate::identify::PressingLink { record: release.clone(), partners: vec![] },
+            bae_identify::PressingLink { record: release.clone(), partners: vec![] },
             crate::import::CatalogApplySteps::unread(),
         )
         .await
@@ -205,7 +205,7 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
     assert!(
         matches!(
             failures.as_slice(),
-            [crate::identify::IdentifyFailure::ReleaseDetails(
+            [bae_identify::IdentifyFailure::ReleaseDetails(
                 bae_catalogs::LookupFailure::Provider { status: Some(400) }
             )]
         ),

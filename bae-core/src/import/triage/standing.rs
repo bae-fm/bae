@@ -33,8 +33,8 @@
 //! A lookup error is a catalog's; an error is bae's own, which the row states
 //! with its text.
 
-use crate::identify::MediumConflict;
 use bae_catalogs::InternalFailure;
+use bae_identify::MediumConflict;
 
 /// One state a Found row is in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

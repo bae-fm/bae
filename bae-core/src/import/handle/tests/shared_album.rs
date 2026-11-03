@@ -4,7 +4,7 @@
 use bae_catalogs::records::LookupRef;
 use super::*;
 use crate::import::{PendingStanding, ReleaseLink};
-use crate::identify::AlbumLink;
+use bae_identify::AlbumLink;
 use bae_catalogs::records::{MetadataRef};
 
 const ALBUM: &str = "album-group-1";
@@ -56,8 +56,8 @@ pub(super) async fn store_two_pressings(
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edit_revision,
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
-            verdict: crate::identify::TerminalVerdict::Found {
-                findings: crate::identify::Findings {
+            verdict: bae_identify::TerminalVerdict::Found {
+                findings: bae_identify::Findings {
                     matches: vec![offered("mb-pressing-1", 1996), offered("mb-pressing-2", 2004)],
                     pressings: vec![0, 1],
                     narrowed_out: Default::default(),
@@ -67,11 +67,11 @@ pub(super) async fn store_two_pressings(
                 track_count: 2,
                 ledger: None,
             },
-            signals: crate::identify::signals::Signals {
+            signals: bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: crate::identify::signals::DiscIdSignal::Absent,
-                barcode: crate::identify::signals::BarcodeSignal::Absent,
-                text: crate::identify::signals::TextSignal::Settled {
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
@@ -112,8 +112,8 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
     store_two_pressings(&handle, &fakes, &hash).await;
     let before = pane(&handle, &key).await;
-    let crate::identify::IdentifyStateView::Found { offers_shared_album, .. } =
-        crate::identify::IdentifyStateView::from(before.resumed_identify_state.clone())
+    let bae_identify::IdentifyStateView::Found { offers_shared_album, .. } =
+        bae_identify::IdentifyStateView::from(before.resumed_identify_state.clone())
     else {
         panic!("the stored verdict reads back as found");
     };
@@ -194,7 +194,7 @@ async fn a_pick_replaces_the_album_link() {
 
     assert_eq!(
         link(&handle, &hash).await,
-        Some(ReleaseLink::Pressing(crate::identify::PressingLink {
+        Some(ReleaseLink::Pressing(bae_identify::PressingLink {
             record: LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-pressing-2"),
             partners: Vec::new(),
         }))

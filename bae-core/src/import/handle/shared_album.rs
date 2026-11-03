@@ -44,12 +44,10 @@ impl ImportServiceHandle {
         })?;
         // The rows as the pane lists them: ranked by the candidate's own text,
         // as it reads now.
-        let text = crate::identify::CandidateText::of_stored(
-            state.signals.as_ref(),
-            &state.lookup_choices,
-        );
+        let text =
+            bae_identify::CandidateText::of_stored(state.signals.as_ref(), &state.lookup_choices);
         let shared =
-            crate::identify::view::shared_album_of(identify.verdict, &text).ok_or_else(|| {
+            bae_identify::view::shared_album_of(identify.verdict, &text).ok_or_else(|| {
                 crate::import::ImportError::Internal {
                     detail: format!(
                         "{candidate_key}'s lookup offers no several pressings of one album"
@@ -82,7 +80,7 @@ impl ImportServiceHandle {
         let draft = crate::import::shared_album::shared_draft(
             &current.draft,
             &offered,
-            crate::identify::row_facts::folder_pressing_year(&text, &records),
+            bae_identify::row_facts::folder_pressing_year(&text, &records),
         );
         let _commit = self
             .commit_lock_for_revision(

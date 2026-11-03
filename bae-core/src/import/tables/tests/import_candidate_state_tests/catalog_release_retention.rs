@@ -5,7 +5,7 @@
 use bae_catalogs::records::LookupRef;
 use super::super::{exec, exec_batch};
 use super::*;
-use crate::identify::RunOutcome;
+use bae_identify::RunOutcome;
 use crate::import::IdentifyRunId;
 use bae_catalogs::source_release::{SourceRelease, UnfetchedDocument, UnfetchedReason};
 

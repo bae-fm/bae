@@ -1,9 +1,9 @@
 use super::*;
-use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
-use crate::identify::IdentifyState;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::LookupRef;
 use bae_db::Database;
+use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+use bae_identify::IdentifyState;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -121,8 +121,8 @@ fn reported_states(events: &mut UnboundedReceiver<ImportEvent>) -> Vec<IdentifyS
 fn settled_snapshot() -> SignalsSnapshot {
     SignalsSnapshot {
         signals: absent_signals(),
-        audio: crate::identify::signals::AudioFacts::default(),
-        artwork: crate::identify::signals::ArtworkScan::Absent,
+        audio: bae_identify::signals::AudioFacts::default(),
+        artwork: bae_identify::signals::ArtworkScan::Absent,
     }
 }
 
@@ -135,8 +135,8 @@ fn scanning_snapshot() -> SignalsSnapshot {
             text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
             ..absent_signals()
         },
-        audio: crate::identify::signals::AudioFacts::default(),
-        artwork: crate::identify::signals::ArtworkScan::Reading {
+        audio: bae_identify::signals::AudioFacts::default(),
+        artwork: bae_identify::signals::ArtworkScan::Reading {
             current: None,
             position: 1,
             total: 1,
@@ -307,13 +307,13 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
 /// all the same: a stored release of the album then names the other.
 #[tokio::test(flavor = "multi_thread")]
 async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
-    use crate::identify::documents::{DocumentReading, ReleaseDocument, ReleaseReading};
-    use crate::identify::state::{
+    use bae_catalogs::album_links::AlbumLinks;
+    use bae_catalogs::records::{MetadataRef, SourcePayload};
+    use bae_identify::documents::{DocumentReading, ReleaseDocument, ReleaseReading};
+    use bae_identify::state::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, SearchProgress,
         SignalsContext,
     };
-    use bae_catalogs::album_links::AlbumLinks;
-    use bae_catalogs::records::{MetadataRef, SourcePayload};
 
     let (inner, _tmp) = setup_inner().await;
     let tables = crate::import::tables::ImportTables::new(inner.database.clone());
@@ -340,9 +340,9 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     );
     let reading = IdentifyState::Triangulating {
         discid: DiscidProgress::Lookups {
-            discs: vec![crate::identify::DiscLookup {
+            discs: vec![bae_identify::DiscLookup {
                 disc_id: "d".to_string(),
-                state: crate::identify::LookupState::Done { results: vec![found] },
+                state: bae_identify::LookupState::Done { results: vec![found] },
             }],
         },
         barcode: BarcodeProgress::Skipped,

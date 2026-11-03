@@ -10,12 +10,12 @@ use super::verdict_rows::{
     identification_of, read_verdict_row, unreadable, verdict_columns, VerdictRow,
 };
 use super::*;
-use crate::identify::AlbumLink;
-use crate::identify::PressingLink;
 use crate::import::{MetadataProvenance, ReleaseLink};
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::{LookupRef, MetadataRef};
 use bae_db::client::query::CandidateRows;
+use bae_identify::AlbumLink;
+use bae_identify::PressingLink;
 use std::str::FromStr;
 
 /// The provenance as its columns. Only an external release names a source and

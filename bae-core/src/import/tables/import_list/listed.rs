@@ -5,12 +5,12 @@
 
 use super::order::tab_of;
 use super::*;
-use crate::identify::MediumConflict;
 use crate::import::{
     CandidateActionBasis, ListedRelease, NeedsYouReason, PendingStanding, StoredLookup,
     TriagePlacement, TriageTab,
 };
 use bae_catalogs::InternalFailure;
+use bae_identify::MediumConflict;
 
 /// The placement columns a release's command basis is read from, over the
 /// alias `p`, in the order [`BasisColumns::read`] reads them.

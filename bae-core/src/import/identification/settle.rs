@@ -43,7 +43,7 @@ pub(super) struct Finished {
 enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
-        link: crate::identify::PressingLink,
+        link: bae_identify::PressingLink,
         release: bae_catalogs::source_release::SourceRelease,
         partners: Vec<bae_catalogs::source_release::SourceRelease>,
         /// The primary and the partners as their read stores them, which the
@@ -264,7 +264,7 @@ async fn lead_metadata(
                 release.release().key,
                 failure.error
             );
-            verdict.fail(crate::identify::IdentifyFailure::Cover(
+            verdict.fail(bae_identify::IdentifyFailure::Cover(
                 bae_catalogs::search::SourceFailure { source: failure.source, failure: lookup },
             ));
             return Ok(None);
@@ -285,7 +285,7 @@ pub(super) async fn save(
     run: IdentifyRunId,
     candidate: &FolderCandidate,
     verdict: &TerminalVerdict,
-    signals: crate::identify::signals::Signals,
+    signals: bae_identify::signals::Signals,
     pick: Option<crate::import::tables::VerdictPick>,
     releases: Vec<bae_catalogs::source_release::SourceRelease>,
 ) -> Settled {
@@ -328,14 +328,14 @@ pub(super) async fn save(
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
-    text: &crate::identify::CandidateText,
+    text: &bae_identify::CandidateText,
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Result<SettledLead, Settled> {
     let TerminalVerdict::Found { findings, track_count, .. } = &*verdict else {
         return Ok(SettledLead::NoExternalRelease);
     };
-    let Ok(pick) = crate::identify::unattended_pick(
+    let Ok(pick) = bae_identify::unattended_pick(
         &findings.matches,
         &findings.pressings,
         findings.medium_conflict,
@@ -345,7 +345,7 @@ async fn settle_lead(
     };
     let pressing = pick.pressing();
     let (primary, partners) = pressing.claims();
-    let pressing_year = crate::identify::row_facts::folder_pressing_year(text, &pressing.releases);
+    let pressing_year = bae_identify::row_facts::folder_pressing_year(text, &pressing.releases);
 
     let settle = context.import.read_pick(&primary, &partners, priority);
     let prepared = tokio::select! {
@@ -366,7 +366,7 @@ async fn settle_lead(
                 "identification: could not settle {} ({error}); storing the failure",
                 primary.key
             );
-            verdict.fail(crate::identify::IdentifyFailure::ReleaseDetails(failure));
+            verdict.fail(bae_identify::IdentifyFailure::ReleaseDetails(failure));
             return Ok(SettledLead::NoExternalRelease);
         }
     };

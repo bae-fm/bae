@@ -826,13 +826,13 @@ pub(super) fn settle_scanned_candidates(
 /// The stored medium conflict of a verdict row.
 pub(super) fn medium_conflict_of(
     kind: Option<String>,
-) -> Result<Option<crate::identify::MediumConflict>, DbError> {
+) -> Result<Option<bae_identify::MediumConflict>, DbError> {
     let Some(kind) = kind else {
         return Ok(None);
     };
     Ok(Some(match kind.as_str() {
-        "cd_rip" => crate::identify::MediumConflict::CdRip,
-        "not_cd_audio" => crate::identify::MediumConflict::NotCdAudio,
+        "cd_rip" => bae_identify::MediumConflict::CdRip,
+        "not_cd_audio" => bae_identify::MediumConflict::NotCdAudio,
         other => return Err(verdict_rows::unreadable("medium_conflict", other)),
     }))
 }

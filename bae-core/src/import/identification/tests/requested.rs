@@ -137,7 +137,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     let row = fixture.await_identified_row(&dir).await;
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
         &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
@@ -183,7 +183,7 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         .expect("the explicit Lookup recorder stores the verdict");
 
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
         &verdict
     else {
         panic!("expected a single-match Found, got {verdict:?}");
@@ -360,7 +360,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
         while !fixture.identified_for(&dir).await.is_some_and(|result| {
             matches!(
                 &result.verdict,
-                TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. }
+                TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. }
                     if matches.iter().any(|m| m.release_id == "mb-asked-again")
             )
         }) {
@@ -520,7 +520,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
         .import
         .edit_candidate_lookup_choices(
             &key,
-            crate::identify::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
+            bae_identify::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
         )
         .await
         .unwrap();

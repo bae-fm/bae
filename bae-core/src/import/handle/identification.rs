@@ -46,8 +46,8 @@ impl ImportServiceHandle {
         key: crate::import::CandidateKey,
         source: crate::import::extraction::ExtractionSource,
         priority: bae_catalogs::rate_limiter::CallPriority,
-        choices: crate::identify::LookupChoices,
-        title_search: Option<crate::identify::TitleSearch>,
+        choices: bae_identify::LookupChoices,
+        title_search: Option<bae_identify::TitleSearch>,
     ) -> Result<bool, crate::import::ImportError> {
         let subject = match &source {
             crate::import::extraction::ExtractionSource::Candidate { candidate } => {
@@ -194,7 +194,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         run: crate::import::IdentifyRunId,
-    ) -> Result<Option<crate::identify::signals::Signals>, bae_db::DbError> {
+    ) -> Result<Option<bae_identify::signals::Signals>, bae_db::DbError> {
         self.runtime.run_signals(candidate_key, run).await
     }
 }

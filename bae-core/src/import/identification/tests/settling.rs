@@ -120,7 +120,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         .import
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-offline-1".to_string(),
@@ -191,7 +191,7 @@ async fn a_settled_lead_with_no_stored_release_fails_loud() {
         .import
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-missing-1".to_string(),
@@ -230,7 +230,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         "nothing has fetched this release yet"
     );
 
-    let pick = || crate::identify::PressingLink {
+    let pick = || bae_identify::PressingLink {
         record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             "mb-manual-1".to_string(),
@@ -318,7 +318,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
 
     let row = fixture.stored_for(&dir).await.expect("the paired candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
         &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
@@ -330,7 +330,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     );
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-paired-1".to_string()
@@ -406,7 +406,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found {
-        findings: crate::identify::Findings { matches, narrowed_out, .. },
+        findings: bae_identify::Findings { matches, narrowed_out, .. },
         ..
     } = &verdict
     else {
@@ -423,7 +423,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     );
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-paired-2".to_string()
@@ -496,7 +496,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
 
     let row = fixture.stored_for(&dir).await.expect("the paired candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
         &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
@@ -512,7 +512,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     );
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 "70000103".to_string()
@@ -577,7 +577,7 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
 
     let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
         &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
@@ -608,7 +608,7 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
         .import
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-two-2".to_string(),
@@ -707,7 +707,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
     let pane = fixture.pane(&dir).await.expect("the settled candidate has a pane");
     assert_eq!(
         pane.draft().unwrap().release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-catalog-1".to_string()
@@ -717,7 +717,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
     );
     assert_eq!(
         pane.draft().unwrap().lookup_choices,
-        crate::identify::LookupChoices::default(),
+        bae_identify::LookupChoices::default(),
         "the number the record carries and the folder prints is not chosen"
     );
 }

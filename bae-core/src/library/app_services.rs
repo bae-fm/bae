@@ -125,7 +125,7 @@ struct AppServicesInner {
     /// on, so they are held here from the session's first run to its end.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     release_lookup_choices: std::sync::Mutex<
-        std::collections::HashMap<crate::import::CandidateKey, crate::identify::LookupChoices>,
+        std::collections::HashMap<crate::import::CandidateKey, bae_identify::LookupChoices>,
     >,
 }
 
@@ -556,7 +556,7 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<crate::library::ReleaseEdit, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &crate::library::ReleaseEdit, link: &crate::identify::PressingLink, steps: &crate::import::CatalogApplySteps) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
+    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &crate::library::ReleaseEdit, link: &bae_identify::PressingLink, steps: &crate::import::CatalogApplySteps) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, save_release_edit => save_release_edit(session: &crate::library::ReleaseEdit, edit: &crate::import::RawReleaseEdit) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

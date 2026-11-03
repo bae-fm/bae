@@ -309,7 +309,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    crate::types::BridgeMediumMismatch = bae_core::identify::MediumConflict,
+    crate::types::BridgeMediumMismatch = bae_identify::MediumConflict,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { CdRip, NotCdAudio },
@@ -376,16 +376,16 @@ mirror_enum! {
 // only the pane has at hand.
 impl crate::types::BridgeFolderCheck {
     /// A check with the rate of the audio's files.
-    pub(crate) fn with_rate(check: bae_core::identify::FolderCheck, rate: Option<u32>) -> Self {
-        use bae_core::identify::FolderCheck;
+    pub(crate) fn with_rate(check: bae_identify::FolderCheck, rate: Option<u32>) -> Self {
+        use bae_identify::FolderCheck;
         match check {
             FolderCheck::SourceTracksUnknown => Self::SourceTracksUnknown,
             FolderCheck::MediumDisagrees { folder } => Self::MediumDisagrees {
                 folder: match folder {
-                    bae_core::identify::MediumConflict::CdRip => {
+                    bae_identify::MediumConflict::CdRip => {
                         crate::types::BridgeMediumConflict::CdRip
                     }
-                    bae_core::identify::MediumConflict::NotCdAudio => {
+                    bae_identify::MediumConflict::NotCdAudio => {
                         crate::types::BridgeMediumConflict::NotCdAudio { sample_rate_hz: rate }
                     }
                 },

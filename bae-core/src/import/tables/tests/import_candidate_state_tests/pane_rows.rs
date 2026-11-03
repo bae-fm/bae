@@ -5,7 +5,7 @@ mod preparation;
 use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc};
 use crate::import::{ArtistAssignment, AudioFile, CandidateEditField, CoverSelection, ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
 use bae_catalogs::credits::{ArtistCredit};
-use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 use bae_catalogs::{InternalFailure};
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
@@ -187,11 +187,11 @@ async fn every_settled_signal_shape_round_trips() {
             DiscIdSignal::Computed {
                 // One disc ID per disc, each with the log it was read off.
                 discs: vec![
-                    crate::identify::signals::ComputedDiscId {
+                    bae_identify::signals::ComputedDiscId {
                         disc_id: "disc-hash".to_string(),
                         source_file: Some("rip.log".to_string()),
                     },
-                    crate::identify::signals::ComputedDiscId {
+                    bae_identify::signals::ComputedDiscId {
                         disc_id: "second-disc-hash".to_string(),
                         source_file: Some("Disc 2/rip.log".to_string()),
                     },

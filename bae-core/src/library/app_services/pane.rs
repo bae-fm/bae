@@ -4,10 +4,10 @@
 //! shows what core stored rather than what a surface made of an error.
 
 use super::*;
-use crate::identify::LookupChoiceEdit;
-use crate::identify::PressingLink;
 use crate::import::{ImportError, PaneCommand, PaneMove, PaneOutcome};
 use bae_catalogs::SearchQuery;
+use bae_identify::LookupChoiceEdit;
+use bae_identify::PressingLink;
 
 impl AppServices {
     /// Import the candidate the pane shows.
@@ -225,10 +225,10 @@ impl AppServices {
     async fn edit_candidate_lookup_choices(
         &self,
         candidate_key: crate::import::CandidateKey,
-        edit: crate::identify::LookupChoiceEdit,
+        edit: bae_identify::LookupChoiceEdit,
     ) -> Result<(), crate::import::ImportError> {
         let change = self.inner.import.edit_candidate_lookup_choices(&candidate_key, edit).await?;
-        if change == crate::identify::ChoiceChange::Lookups {
+        if change == bae_identify::ChoiceChange::Lookups {
             self.inner.identification.rerun_identify(candidate_key);
         }
         Ok(())

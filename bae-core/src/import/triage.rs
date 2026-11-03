@@ -2,18 +2,18 @@
 //!
 //! The sidebar asks the same questions of every candidate — which tab it
 //! belongs to, what it leads with, and which commands it offers — and every
-//! one of them is a rule rather than a rendering. [`crate::identify::view`] is the precedent: shape the
+//! one of them is a rule rather than a rendering. [`bae_identify::view`] is the precedent: shape the
 //! state for the surfaces once, here, so both desktop UIs render the same
 //! decisions instead of each re-deriving them from a
 //! [`FolderCandidate`](crate::import::FolderCandidate) and a
-//! [`TerminalVerdict`](crate::identify::TerminalVerdict).
+//! [`TerminalVerdict`](bae_identify::TerminalVerdict).
 //!
 //! **Nothing here formats text.** Years, counts, durations and byte sizes cross
 //! as numbers, and a failed check against the folder crosses as its own
 //! [`FolderCheck`] variant carrying its operands, so each platform builds the
 //! sentence in its own locale.
 //!
-//! **Nothing here re-judges a verdict.** [`crate::identify::VerdictSummary`]
+//! **Nothing here re-judges a verdict.** [`bae_identify::VerdictSummary`]
 //! already says which check against the folder its release failed; this module
 //! decides where the row goes and what it shows. Which rows exist and in what
 //! order is [`crate::import::list`]'s.
@@ -22,7 +22,7 @@ use super::folder_scanner::FolderReleaseDecisionKey;
 use super::types::ReleaseLink;
 use super::ImportedRelease;
 use super::MetadataAuthor;
-use crate::identify::{FolderCheck, VerdictSummary};
+use bae_identify::{FolderCheck, VerdictSummary};
 
 mod actions;
 mod model;
@@ -155,10 +155,10 @@ impl TriageRuntimeFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::identify::LeadMatch;
     use bae_catalogs::catalog::Catalog;
     use bae_catalogs::catalog::LookupCatalog;
     use bae_catalogs::search::SourceTracks;
+    use bae_identify::LeadMatch;
 
     /// The pane states the found release's failed check while identification's
     /// pick or nobody's draft stands; a person's or the tags' valid draft is
@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn a_person_s_draft_states_no_folder_check() {
         let unchecked = VerdictSummary {
-            kind: crate::identify::VerdictKind::Found,
+            kind: bae_identify::VerdictKind::Found,
             track_count: Some(12),
             pressing_count: 1,
             lead: Some(LeadMatch {
@@ -240,7 +240,7 @@ mod tests {
     /// read into — the reading names them, it does not derive them.
     #[test]
     fn a_link_reads_as_identified_in_the_records_it_is_handed() {
-        let pick = ReleaseLink::Pressing(crate::identify::PressingLink {
+        let pick = ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 LookupCatalog::MusicBrainz,
                 "mb-1".to_string(),
@@ -256,7 +256,7 @@ mod tests {
     /// An album link reads as the album, pressing unknown, in its records.
     #[test]
     fn an_album_link_reads_as_its_album() {
-        let album = crate::identify::AlbumLink::new([bae_catalogs::records::MetadataRef::new(
+        let album = bae_identify::AlbumLink::new([bae_catalogs::records::MetadataRef::new(
             Catalog::MusicBrainz,
             "group-1",
         )])

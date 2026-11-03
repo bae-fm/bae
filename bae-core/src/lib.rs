@@ -5,8 +5,6 @@ pub mod app;
 pub mod cue_flac;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
-#[cfg(desktop)]
-pub mod identify;
 pub mod import;
 pub mod keys;
 pub mod library;

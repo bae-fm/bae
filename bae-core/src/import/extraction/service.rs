@@ -16,13 +16,13 @@ use super::candidate_text::{Source, SourcedLine};
 use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
-use crate::identify::signals::{
-    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
-};
 use crate::import::IdentifyRunId;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_catalogs::{AudioOrigin, InternalFailure};
+use bae_identify::signals::{
+    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
+};
 use bae_util::session_cache::SessionCache;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};

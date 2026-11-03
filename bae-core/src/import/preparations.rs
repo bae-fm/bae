@@ -308,9 +308,9 @@ impl CandidatePreparations {
         watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
         candidate_key: &crate::import::CandidateKey,
-        link: &crate::identify::PressingLink,
+        link: &bae_identify::PressingLink,
         metadata: &crate::import::CandidateMetadataDraft,
-        settled_by_choice: crate::identify::TerminalVerdict,
+        settled_by_choice: bae_identify::TerminalVerdict,
         releases: Vec<bae_catalogs::source_release::SourceRelease>,
     ) -> Result<u64, ImportError> {
         let mut prep = self.loaded_at(read).await?;
@@ -347,7 +347,7 @@ impl CandidatePreparations {
         watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
         candidate_key: &crate::import::CandidateKey,
-        link: &crate::identify::AlbumLink,
+        link: &bae_identify::AlbumLink,
         draft: crate::import::CandidateDraft,
         releases: Vec<bae_catalogs::source_release::SourceRelease>,
     ) -> Result<u64, ImportError> {

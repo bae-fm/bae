@@ -329,7 +329,7 @@ pub enum BridgeNeedsYouReason {
 }
 
 /// What the folder's own files prove against the releases found. Mirrors
-/// `bae_core::identify::MediumConflict`.
+/// `bae_identify::MediumConflict`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeMediumMismatch {
     /// The folder is a CD rip, and no release could be a CD.
@@ -592,7 +592,7 @@ impl BridgeReleaseLink {
 }
 
 /// The pressing a pick links a candidate to. Mirrors
-/// `bae_core::identify::PressingLink`.
+/// `bae_identify::PressingLink`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePressingLink {
     /// The catalog's release the pick names first.
@@ -603,7 +603,7 @@ pub struct BridgePressingLink {
 
 #[cfg(feature = "desktop")]
 impl BridgePressingLink {
-    pub(crate) fn from_core(link: bae_core::identify::PressingLink) -> Self {
+    pub(crate) fn from_core(link: bae_identify::PressingLink) -> Self {
         Self {
             record: crate::types::BridgeLookupRef::from_core(link.record),
             partners: link
@@ -614,8 +614,8 @@ impl BridgePressingLink {
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::identify::PressingLink {
-        bae_core::identify::PressingLink {
+    pub(crate) fn into_core(self) -> bae_identify::PressingLink {
+        bae_identify::PressingLink {
             record: self.record.into_core(),
             partners: self
                 .partners

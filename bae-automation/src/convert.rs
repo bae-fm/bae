@@ -273,14 +273,14 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationReleaseGroupSource = bae_core::identify::release_group::ReleaseGroupSource,
+    AutomationReleaseGroupSource = bae_identify::release_group::ReleaseGroupSource,
     from_core: pub(crate) fn,
     fields: { source: (into), group_url, album_links_unread },
 }
 
 impl AutomationPressing {
     /// `pick` is derived by core from the row's releases, not stored.
-    pub(crate) fn from_core(pressing: bae_core::identify::release_group::Pressing) -> Self {
+    pub(crate) fn from_core(pressing: bae_identify::release_group::Pressing) -> Self {
         Self {
             pick: AutomationPressingLink::from_core(pressing.pick()),
             releases: pressing
@@ -309,7 +309,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationPressingSection = bae_core::identify::release_group::PressingSection,
+    AutomationPressingSection = bae_identify::release_group::PressingSection,
     from_core: pub(crate) fn,
     fields: {
         album: (opt AutomationAlbumHeading),
@@ -319,7 +319,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationAlbumHeading = bae_core::identify::release_group::AlbumHeading,
+    AutomationAlbumHeading = bae_identify::release_group::AlbumHeading,
     from_core: pub(crate) fn,
     fields: { title, source: (AutomationReleaseGroupSource) },
 }
@@ -514,14 +514,14 @@ pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelec
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationSignalKind = bae_core::identify::SignalKind,
+    AutomationSignalKind = bae_identify::SignalKind,
     from_core: pub(crate) fn,
     variants: { DiscId, Barcode, Catalog, Isrc },
 }
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationSignalState = bae_core::identify::SignalState,
+    AutomationSignalState = bae_identify::SignalState,
     from_core: pub(crate) fn,
     variants: {
         LookingUp,
@@ -535,14 +535,14 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationSignalOption = bae_core::identify::SignalOption,
+    AutomationSignalOption = bae_identify::SignalOption,
     from_core: pub(crate) fn,
     fields: { value, chosen },
 }
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationToolbarSignal = bae_core::identify::ToolbarSignal,
+    AutomationToolbarSignal = bae_identify::ToolbarSignal,
     from_core: pub(crate) fn,
     fields: {
         kind: (AutomationSignalKind),

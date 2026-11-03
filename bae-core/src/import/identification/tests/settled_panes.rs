@@ -53,7 +53,7 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
 
     assert_eq!(
         fixture.judgement_for(&dir).await,
-        (false, Some(crate::identify::FolderCheck::SourceTracksUnknown))
+        (false, Some(bae_identify::FolderCheck::SourceTracksUnknown))
     );
     assert_eq!(
         fixture
@@ -97,7 +97,7 @@ async fn automatic_shows_a_stored_verdict_without_asking_again() {
         crate::import::FindOnlineSection::Automatic
     );
     assert!(
-        !matches!(pane.resumed_identify_state, crate::identify::IdentifyState::Idle),
+        !matches!(pane.resumed_identify_state, bae_identify::IdentifyState::Idle),
         "the stored verdict is what shows"
     );
     assert!(

@@ -19,12 +19,12 @@ use super::standing_rows::{change_identification_on, load_standing_on, load_stan
 use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_columns};
 use super::verdict_rows::{Outcome, Owner};
 use super::*;
-use crate::identify::signals::Signals;
-use crate::identify::{PublishedRun, RunOutcome};
 use crate::import::candidate_runtime::{IdentificationChange, IdentificationMove, StoredRuntime};
 use crate::import::candidates::CandidateFiles;
 use crate::import::IdentifyRunId;
 use bae_catalogs::source_release::SourceRelease;
+use bae_identify::signals::Signals;
+use bae_identify::{PublishedRun, RunOutcome};
 use std::collections::BTreeMap;
 
 /// What every run in flight, or `key`'s runs alone, last published, with the

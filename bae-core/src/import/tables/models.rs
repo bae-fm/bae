@@ -32,12 +32,12 @@ pub struct NewImportCandidateVerdict {
     /// Where the candidate was last seen on disk. Not identity — the hash is —
     /// so a moved folder keeps reading the same row under its unchanged hash.
     pub candidate_key: crate::import::CandidateKey,
-    pub verdict: crate::identify::TerminalVerdict,
+    pub verdict: bae_identify::TerminalVerdict,
     /// The settled signals the run reached this verdict on: the disc ID, the
     /// barcodes, the classified text, and what every audio unit plays for.
     /// Stored beside the verdict so the pane and the queue read them back
     /// instead of extracting them again.
-    pub signals: crate::identify::signals::Signals,
+    pub signals: bae_identify::signals::Signals,
     /// The release this verdict picked unattended and the draft read from
     /// it, or `None` where it picked none. Only a run that settled on one
     /// release picks one, and the pick replaces whatever link and draft
@@ -53,7 +53,7 @@ pub struct NewImportCandidateVerdict {
 /// read from it.
 #[derive(Debug, Clone)]
 pub struct VerdictPick {
-    pub link: crate::identify::PressingLink,
+    pub link: bae_identify::PressingLink,
     pub metadata: crate::import::CandidateMetadataDraft,
 }
 
@@ -62,7 +62,7 @@ pub struct VerdictPick {
 /// it, written or cleared in one transaction.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
-    pub verdict: crate::identify::TerminalVerdict,
+    pub verdict: bae_identify::TerminalVerdict,
     /// The person kept their own draft over what the verdict offered: none
     /// of its releases is the folder's, or it found none. A decision about
     /// this verdict, so the next one starts without it.
@@ -82,11 +82,11 @@ pub struct DbImportCandidateState {
     pub identify: Option<DbCandidateIdentifyResult>,
     /// The signals identification settled on, or `None` when nothing has
     /// extracted them.
-    pub signals: Option<crate::identify::signals::Signals>,
+    pub signals: Option<bae_identify::signals::Signals>,
     /// What a person decided this candidate's identification asks about. Every
     /// run of it reads this at its start; the default is what a candidate
     /// nobody has decided anything about runs with.
-    pub lookup_choices: crate::identify::LookupChoices,
+    pub lookup_choices: bae_identify::LookupChoices,
     /// The user's decisions about this candidate's files: which audio each
     /// track sheet describes, and which files are the release's tracks.
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,

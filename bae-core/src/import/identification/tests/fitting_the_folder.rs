@@ -40,7 +40,7 @@ async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
     let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found {
-        findings: crate::identify::Findings { matches, narrowed_out, .. },
+        findings: bae_identify::Findings { matches, narrowed_out, .. },
         ..
     } = &verdict
     else {

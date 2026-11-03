@@ -16,12 +16,12 @@ async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edit_revision,
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
-            verdict: crate::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
-            signals: crate::identify::signals::Signals {
+            verdict: bae_identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
+            signals: bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: crate::identify::signals::DiscIdSignal::Absent,
-                barcode: crate::identify::signals::BarcodeSignal::Absent,
-                text: crate::identify::signals::TextSignal::Settled {
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },

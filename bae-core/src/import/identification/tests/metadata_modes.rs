@@ -93,7 +93,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
         .import
         .select_candidate_release(
             key.clone(),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     "mb-chosen".to_string(),
@@ -110,7 +110,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
     assert!(
         matches!(
             &result.verdict,
-            crate::identify::TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. }
+            bae_identify::TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. }
                 if matches.len() == 1 && matches[0].release_id == "mb-chosen"
         ),
         "the result names the release they chose: {:?}",
@@ -128,7 +128,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
     );
     assert_eq!(
         fixture.stored_for(&dir).await.expect("the candidate is still stored").release_link,
-        Some(crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+        Some(crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 "mb-chosen".to_string()

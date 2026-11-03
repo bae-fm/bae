@@ -326,7 +326,7 @@ pub(super) fn save_preparation_on(
                     "candidate {content_hash} opens on a result it stores none of"
                 ))
             })?;
-            if crate::identify::VerdictSummary::of(
+            if bae_identify::VerdictSummary::of(
                 &identification.verdict,
                 identification.kept_own_draft,
             )

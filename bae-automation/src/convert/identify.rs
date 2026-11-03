@@ -7,14 +7,14 @@ use super::*;
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationNotAskedReason = bae_core::identify::NotAskedReason,
+    AutomationNotAskedReason = bae_identify::NotAskedReason,
     from_core: pub(crate) fn,
     variants: { LeftOut, NoCatalog },
 }
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationLookupState = bae_core::identify::LookupView,
+    AutomationLookupState = bae_identify::LookupView,
     from_core: pub(crate) fn,
     variants: {
         Queued,
@@ -28,14 +28,14 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationMediumConflict = bae_core::identify::MediumConflict,
+    AutomationMediumConflict = bae_identify::MediumConflict,
     from_core: pub(crate) fn,
     variants: { CdRip, NotCdAudio },
 }
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationFolderCheck = bae_core::identify::FolderCheck,
+    AutomationFolderCheck = bae_identify::FolderCheck,
     from_core: pub(crate) fn,
     variants: {
         SourceTracksUnknown,
@@ -45,14 +45,14 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationProviderCell = bae_core::identify::ProviderCell,
+    AutomationProviderCell = bae_identify::ProviderCell,
     from_core: pub(crate) fn,
     fields: { source: (AutomationLookupCatalog), lookup: (AutomationLookupState) },
 }
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationSignalValueRow = bae_core::identify::SignalValueRow,
+    AutomationSignalValueRow = bae_identify::SignalValueRow,
     from_core: pub(crate) fn,
     fields: {
         value,
@@ -63,7 +63,7 @@ mirror_struct! {
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationDiscIdStep = bae_core::identify::DiscIdStepView,
+    AutomationDiscIdStep = bae_identify::DiscIdStepView,
     from_core: pub(crate) fn,
     variants: {
         Reading,
@@ -75,7 +75,7 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationDiscIdRow = bae_core::identify::DiscIdRow,
+    AutomationDiscIdRow = bae_identify::DiscIdRow,
     from_core: pub(crate) fn,
     fields: {
         disc_id,
@@ -85,7 +85,7 @@ mirror_struct! {
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationBarcodeStep = bae_core::identify::BarcodeStepView,
+    AutomationBarcodeStep = bae_identify::BarcodeStepView,
     from_core: pub(crate) fn,
     variants: {
         Absent,
@@ -96,7 +96,7 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationIsrcStep = bae_core::identify::IsrcStepView,
+    AutomationIsrcStep = bae_identify::IsrcStepView,
     from_core: pub(crate) fn,
     variants: {
         Reading,
@@ -107,14 +107,14 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationCatalogCandidate = bae_core::identify::CatalogCandidateView,
+    AutomationCatalogCandidate = bae_identify::CatalogCandidateView,
     from_core: pub(crate) fn,
     fields: { value },
 }
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationCatalogStep = bae_core::identify::CatalogStepView,
+    AutomationCatalogStep = bae_identify::CatalogStepView,
     from_core: pub(crate) fn,
     variants: {
         NoneFound,
@@ -128,7 +128,7 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationSearchStep = bae_core::identify::SearchStepView,
+    AutomationSearchStep = bae_identify::SearchStepView,
     from_core: pub(crate) fn,
     variants: {
         NotNeeded,
@@ -140,7 +140,7 @@ mirror_enum! {
 
 mirror_struct! {
     #[cfg(desktop)]
-    AutomationIdentifyRun = bae_core::identify::IdentifyRunView,
+    AutomationIdentifyRun = bae_identify::IdentifyRunView,
     from_core: pub(crate) fn,
     fields: {
         providers: (each AutomationLookupCatalog),
@@ -155,8 +155,8 @@ mirror_struct! {
 impl AutomationIdentifyFailure {
     /// Names core's one `SourceFailure` payload as two fields.
     #[cfg(desktop)]
-    pub(crate) fn from_core(failure: bae_core::identify::IdentifyFailure) -> Self {
-        use bae_core::identify::IdentifyFailure;
+    pub(crate) fn from_core(failure: bae_identify::IdentifyFailure) -> Self {
+        use bae_identify::IdentifyFailure;
         match failure {
             IdentifyFailure::DiscId(failure) => {
                 Self::DiscId { failure: AutomationLookupFailure::from_core(failure) }
@@ -194,13 +194,13 @@ impl AutomationIdentifyFailure {
 /// Moves each pair's release id inside its entry.
 #[cfg(desktop)]
 fn automation_agreements(
-    agreements: Vec<(String, bae_core::identify::RowAgreements)>,
+    agreements: Vec<(String, bae_identify::RowAgreements)>,
 ) -> Vec<AutomationAgreements> {
     agreements
         .into_iter()
         .map(|(release_id, agreements)| {
-            let bae_core::identify::RowAgreements { fields, notes } = agreements;
-            let bae_core::identify::Agreements {
+            let bae_identify::RowAgreements { fields, notes } = agreements;
+            let bae_identify::Agreements {
                 disc_id,
                 barcode,
                 catalog,
@@ -228,10 +228,8 @@ fn automation_agreements(
 
 /// Every release `view` offers or sets aside, as the library check reads it.
 #[cfg(desktop)]
-pub(crate) fn library_checks(
-    view: &bae_core::identify::IdentifyStateView,
-) -> Vec<bae_db::LibraryCheck> {
-    use bae_core::identify::IdentifyStateView;
+pub(crate) fn library_checks(view: &bae_identify::IdentifyStateView) -> Vec<bae_db::LibraryCheck> {
+    use bae_identify::IdentifyStateView;
     let groups = match view {
         IdentifyStateView::Triangulating { groups, .. }
         | IdentifyStateView::Found { groups, .. }
@@ -249,14 +247,14 @@ pub(crate) fn library_checks(
         .collect()
 }
 
-/// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum, with
+/// Mirror [`bae_identify::IdentifyStateView`] into the JSON enum, with
 /// `library_statuses`, the live library check of every release it names.
 #[cfg(desktop)]
 pub(crate) fn automation_identify_state(
-    view: bae_core::identify::IdentifyStateView,
+    view: bae_identify::IdentifyStateView,
     library_statuses: Vec<bae_db::LibraryStatus>,
 ) -> AutomationIdentifyState {
-    use bae_core::identify::IdentifyStateView;
+    use bae_identify::IdentifyStateView;
     match view {
         IdentifyStateView::Idle => AutomationIdentifyState::Idle,
         IdentifyStateView::Triangulating { run, groups, agreements, narrowed_out_count } => {

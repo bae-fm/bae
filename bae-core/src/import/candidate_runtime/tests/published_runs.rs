@@ -4,7 +4,7 @@
 async fn stored_runs(
     runtime: &CandidateRuntime,
     key: &crate::import::CandidateKey,
-) -> std::collections::BTreeMap<crate::import::IdentifyRunId, crate::identify::PublishedRun> {
+) -> std::collections::BTreeMap<crate::import::IdentifyRunId, bae_identify::PublishedRun> {
     runtime.tables.load_candidate_runtime(key).await.expect("a test reads the runs table").runs
 }
 
@@ -62,7 +62,7 @@ async fn a_release_run_that_ends_goes_alone() {
     runtime.publish_release_run(release, run(1), &manual_only(), None).await.unwrap();
     runtime.publish_release_run(release, run(2), &triangulating(), None).await.unwrap();
     runtime
-        .publish_release_run(release, run(1), &crate::identify::IdentifyState::Idle, None)
+        .publish_release_run(release, run(1), &bae_identify::IdentifyState::Idle, None)
         .await
         .unwrap();
     assert_eq!(
@@ -74,24 +74,24 @@ async fn a_release_run_that_ends_goes_alone() {
 /// A run partway through: its disc ID and ISRCs still being read, the
 /// artwork still being scanned, and its one barcode answered by one catalog
 /// with a release while the other is still looking.
-fn barcode_half_answered() -> crate::identify::IdentifyState {
-    use crate::identify::{LookupState, ProviderLookup, ValueLookup};
+fn barcode_half_answered() -> bae_identify::IdentifyState {
+    use bae_identify::{LookupState, ProviderLookup, ValueLookup};
     
     let mut context = signals_context(9);
     context.providers = vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs];
-    context.artwork = crate::identify::signals::ArtworkScan::Reading {
+    context.artwork = bae_identify::signals::ArtworkScan::Reading {
         current: Some("back.jpg".to_string()),
         position: 1,
         total: 2,
     };
-    context.barcode.codes = vec![crate::identify::signals::SourcedValue::in_file(
+    context.barcode.codes = vec![bae_identify::signals::SourcedValue::in_file(
         "0123456789012".to_string(),
         "back.jpg".to_string(),
     )];
     context.barcode.had_source = true;
-    crate::identify::IdentifyState::Triangulating {
-        discid: crate::identify::DiscidProgress::Computing,
-        barcode: crate::identify::BarcodeProgress::Lookups {
+    bae_identify::IdentifyState::Triangulating {
+        discid: bae_identify::DiscidProgress::Computing,
+        barcode: bae_identify::BarcodeProgress::Lookups {
             codes: vec![ValueLookup {
                 value: "0123456789012".to_string(),
                 providers: vec![
@@ -109,47 +109,47 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
                 ],
             }],
         },
-        catalog: crate::identify::CatalogProgress::Skipped,
-        isrc: crate::identify::IsrcProgress::Reading,
-        search: crate::identify::SearchProgress::Pending,
+        catalog: bae_identify::CatalogProgress::Skipped,
+        isrc: bae_identify::IsrcProgress::Reading,
+        search: bae_identify::SearchProgress::Pending,
         context,
     }
 }
 
 /// A run whose clues named nothing, its title search waiting to go out.
-fn search_waiting() -> crate::identify::IdentifyState {
+fn search_waiting() -> bae_identify::IdentifyState {
     let mut context = signals_context(9);
     context.providers = vec![bae_catalogs::catalog::LookupCatalog::MusicBrainz];
-    context.search.query = crate::identify::TitleSearch::of("Kind of Blue", "Miles Davis");
-    crate::identify::IdentifyState::Triangulating {
-        discid: crate::identify::DiscidProgress::Skipped,
-        barcode: crate::identify::BarcodeProgress::Skipped,
-        catalog: crate::identify::CatalogProgress::Skipped,
-        isrc: crate::identify::IsrcProgress::Skipped,
-        search: crate::identify::SearchProgress::Pending,
+    context.search.query = bae_identify::TitleSearch::of("Kind of Blue", "Miles Davis");
+    bae_identify::IdentifyState::Triangulating {
+        discid: bae_identify::DiscidProgress::Skipped,
+        barcode: bae_identify::BarcodeProgress::Skipped,
+        catalog: bae_identify::CatalogProgress::Skipped,
+        isrc: bae_identify::IsrcProgress::Skipped,
+        search: bae_identify::SearchProgress::Pending,
         context,
     }
 }
 
 /// What extraction read partway through: its artwork still being scanned,
 /// with one barcode and one line of text so far.
-fn scanning_signals() -> crate::identify::signals::Signals {
-    crate::identify::signals::Signals {
+fn scanning_signals() -> bae_identify::signals::Signals {
+    bae_identify::signals::Signals {
         origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
-        disc_id: crate::identify::signals::DiscIdSignal::Absent,
-        barcode: crate::identify::signals::BarcodeSignal::Scanning {
-            codes: vec![crate::identify::signals::SourcedValue::in_file(
+        disc_id: bae_identify::signals::DiscIdSignal::Absent,
+        barcode: bae_identify::signals::BarcodeSignal::Scanning {
+            codes: vec![bae_identify::signals::SourcedValue::in_file(
                 "0123456789012".to_string(),
                 "back.jpg".to_string(),
             )],
         },
-        text: crate::identify::signals::TextSignal::Scanning {
+        text: bae_identify::signals::TextSignal::Scanning {
             catalogs: vec!["CK 40579".to_string()],
             free_text: Vec::new(),
         },
-        text_pool: vec![crate::identify::signals::TextLine {
+        text_pool: vec![bae_identify::signals::TextLine {
             text: "Kind of Blue CK 40579".to_string(),
-            origin: crate::identify::signals::TextOrigin::Artwork,
+            origin: bae_identify::signals::TextOrigin::Artwork,
         }],
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -167,11 +167,11 @@ async fn a_run_in_flight_reads_back_as_it_published() {
     let signals = scanning_signals();
     let state = barcode_half_answered();
     runtime.publish_release_run(release, run(1), &state, Some(&signals)).await.unwrap();
-    let expected = crate::identify::PublishedRun {
-        outcome: crate::identify::RunOutcome::of(&state).unwrap(),
+    let expected = bae_identify::PublishedRun {
+        outcome: bae_identify::RunOutcome::of(&state).unwrap(),
         signals: Some(signals.clone()),
     };
-    let crate::identify::RunOutcome::Running { findings, .. } = &expected.outcome else {
+    let bae_identify::RunOutcome::Running { findings, .. } = &expected.outcome else {
         panic!("a run partway through is running");
     };
     assert_eq!(findings.matches.len(), 1, "the half-answered barcode found one release");
@@ -187,8 +187,8 @@ async fn a_run_in_flight_reads_back_as_it_published() {
         stored_runs(&runtime, release).await,
         std::collections::BTreeMap::from([(
             run(1),
-            crate::identify::PublishedRun {
-                outcome: crate::identify::RunOutcome::of(&search_waiting()).unwrap(),
+            bae_identify::PublishedRun {
+                outcome: bae_identify::RunOutcome::of(&search_waiting()).unwrap(),
                 signals: Some(signals.clone()),
             }
         )])
@@ -268,7 +268,7 @@ async fn a_run_s_rows_go_with_it() {
         );
     }
     runtime
-        .publish_release_run(release, run(1), &crate::identify::IdentifyState::Idle, None)
+        .publish_release_run(release, run(1), &bae_identify::IdentifyState::Idle, None)
         .await
         .unwrap();
     for table in owned {

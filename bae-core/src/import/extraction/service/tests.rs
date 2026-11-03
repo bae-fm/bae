@@ -1,8 +1,8 @@
 use super::*;
-use crate::identify::signals::{ArtworkScan, TextOrigin};
 use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::import::ScanEvent;
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_identify::signals::{ArtworkScan, TextOrigin};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -41,7 +41,7 @@ impl AppServices {
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_select_candidate_release => select_candidate_release(candidate_key: crate::import::CandidateKey, link: crate::identify::PressingLink, steps: crate::import::CatalogApplySteps) -> Result<u64, crate::import::ImportError>);
+    delegate_async!(import, import_select_candidate_release => select_candidate_release(candidate_key: crate::import::CandidateKey, link: bae_identify::PressingLink, steps: crate::import::CatalogApplySteps) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_select_candidate_file_tags => select_candidate_file_tags(candidate_key: crate::import::CandidateKey) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: crate::import::CandidateKey) -> Result<u64, crate::import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: std::path::PathBuf) -> Result<(), crate::import::ImportError>);
@@ -97,7 +97,7 @@ impl AppServices {
     pub async fn edit_release_lookup_choices(
         &self,
         release_id: String,
-        edit: crate::identify::LookupChoiceEdit,
+        edit: bae_identify::LookupChoiceEdit,
     ) -> Result<(), crate::library::LibraryError> {
         let choices = {
             let mut held = self.release_lookup_choices();
@@ -124,7 +124,7 @@ impl AppServices {
         &self,
     ) -> std::sync::MutexGuard<
         '_,
-        std::collections::HashMap<crate::import::CandidateKey, crate::identify::LookupChoices>,
+        std::collections::HashMap<crate::import::CandidateKey, bae_identify::LookupChoices>,
     > {
         self.inner.release_lookup_choices.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
@@ -132,7 +132,7 @@ impl AppServices {
     async fn start_release_identification(
         &self,
         release_id: String,
-        choices: crate::identify::LookupChoices,
+        choices: bae_identify::LookupChoices,
     ) -> Result<(), crate::library::LibraryError> {
         let candidate_key = crate::import::CandidateKey::reidentify(&release_id);
         let run = self.inner.import.new_identification_run();
@@ -142,7 +142,7 @@ impl AppServices {
         let title_search = choices
             .search_words
             .as_ref()
-            .and_then(|words| crate::identify::TitleSearch::of(&words.album, &words.artist));
+            .and_then(|words| bae_identify::TitleSearch::of(&words.album, &words.artist));
         if !self
             .inner
             .import

@@ -3,11 +3,11 @@
 //! as the scan and identification write their rows.
 
 use super::*;
-use crate::identify::TerminalVerdict;
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
     ScannedAudio, ScannedFile,
 };
+use bae_identify::TerminalVerdict;
 
 /// A watched folder of a [`LibraryFixture`] and what its last read found.
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -133,10 +133,10 @@ impl LibraryManager {
                 self.store_fixture_verdict(
                     candidate,
                     TerminalVerdict::Failed {
-                        failures: vec![crate::identify::IdentifyFailure::DiscId(
+                        failures: vec![bae_identify::IdentifyFailure::DiscId(
                             bae_catalogs::LookupFailure::Network,
                         )],
-                        findings: crate::identify::Findings::default(),
+                        findings: bae_identify::Findings::default(),
                         track_count,
                         ledger: None,
                     },
@@ -192,9 +192,10 @@ impl LibraryManager {
                 preparations
                     .replace_link(
                         &content_hash,
-                        Some(&crate::import::ReleaseLink::Pressing(
-                            crate::identify::PressingLink { record, partners: Vec::new() },
-                        )),
+                        Some(&crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
+                            record,
+                            partners: Vec::new(),
+                        })),
                         &[],
                     )
                     .await?;
@@ -233,11 +234,11 @@ impl LibraryManager {
                 file_edit_revision: candidate.file_edit_revision,
                 candidate_key: candidate.key(),
                 verdict,
-                signals: crate::identify::signals::Signals {
+                signals: bae_identify::signals::Signals {
                     origin: bae_catalogs::AudioOrigin::default(),
-                    disc_id: crate::identify::signals::DiscIdSignal::Absent,
-                    barcode: crate::identify::signals::BarcodeSignal::Absent,
-                    text: crate::identify::signals::TextSignal::Settled {
+                    disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                    barcode: bae_identify::signals::BarcodeSignal::Absent,
+                    text: bae_identify::signals::TextSignal::Settled {
                         catalogs: Vec::new(),
                         free_text: Vec::new(),
                     },

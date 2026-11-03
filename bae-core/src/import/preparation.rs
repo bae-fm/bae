@@ -8,10 +8,10 @@
 //! what a writer names those revisions with, and it owns every refusal for a
 //! candidate that moved between the read and the write.
 
-use crate::identify::signals::Signals;
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::tables::DbCandidateIdentifyResult;
 use crate::import::{CandidateMetadataDraft, CoverSelection, MetadataProvenance};
+use bae_identify::signals::Signals;
 
 /// One candidate as a caller last read it: which candidate it is, and the two
 /// revisions it stood at.

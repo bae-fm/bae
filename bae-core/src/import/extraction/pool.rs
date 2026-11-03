@@ -6,7 +6,7 @@ use super::candidate_text::{
     self, apply_free_text_cutoff, catalog_numbers, cluster_lines_incremental,
     rank_clusters_in_place, strip_path_component, Cluster, Source, SourcedLine,
 };
-use crate::identify::signals::TextLine;
+use bae_identify::signals::TextLine;
 use std::collections::HashSet;
 
 /// `bracket_catalogs` go straight to the catalog output, skipping the catalog

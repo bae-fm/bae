@@ -73,12 +73,12 @@ async fn pure_reads_use_the_read_connection() {
             candidate_key: bae_core::import::CandidateKey::folder(
                 &std::path::Path::new(root).join("Album")
             ),
-            verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
-            signals: bae_core::identify::signals::Signals {
+            verdict: bae_identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
+            signals: bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin::default(),
-                disc_id: bae_core::identify::signals::DiscIdSignal::Absent,
-                barcode: bae_core::identify::signals::BarcodeSignal::Absent,
-                text: bae_core::identify::signals::TextSignal::Settled {
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
@@ -87,7 +87,7 @@ async fn pure_reads_use_the_read_connection() {
                 track_titles: Vec::new(),
             },
             pick: Some(bae_core::import::tables::VerdictPick {
-                link: bae_core::identify::PressingLink {
+                link: bae_identify::PressingLink {
                     record: bae_catalogs::records::LookupRef::new(
                         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                         "unwritten-release",

@@ -3831,6 +3831,7 @@ bindings export none of their symbols.
 | Crate | Holds |
 |---|---|
 | bae-core | the library, import, identification, files, playback, outputs, sync integration, settings |
+| bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local path, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
 | bae-db | the library's store: the database over coven and the entry points every read and write runs through, the schema (its one migration, the synced tables and the SQL functions it declares), the library's records and the row writers that keep them, list windows, and the people, collections and history a library holds |

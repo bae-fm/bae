@@ -50,10 +50,10 @@ impl SourceDurations {
 /// scan stored for each file.
 pub fn audio_facts(
     files: &CategorizedFiles,
-) -> Result<crate::identify::signals::AudioFacts, ImportError> {
+) -> Result<bae_identify::signals::AudioFacts, ImportError> {
     let durations = source_durations(files)?;
     let track_lengths_ms = crate::import::audio_layout::audio_durations(files, &durations)?;
-    Ok(crate::identify::signals::AudioFacts::of(
+    Ok(bae_identify::signals::AudioFacts::of(
         files.track_count(),
         track_lengths_ms,
         files.audio().filter_map(|file| file.source_audio.as_ref()).map(|audio| &audio.format),

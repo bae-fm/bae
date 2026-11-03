@@ -13,7 +13,7 @@ async fn standing(
 }
 
 fn linked_to(release_id: &str) -> crate::import::ReleaseLink {
-    crate::import::ReleaseLink::Pressing(crate::identify::PressingLink {
+    crate::import::ReleaseLink::Pressing(bae_identify::PressingLink {
         record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,
             release_id.to_string(),

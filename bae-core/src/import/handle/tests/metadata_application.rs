@@ -119,7 +119,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     release_id.to_string(),
@@ -171,7 +171,7 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     release_id.to_string(),

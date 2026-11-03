@@ -154,7 +154,7 @@ async fn picked_discogs_release() -> DiscogsPick {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::identify::PressingLink {
+            bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
                     bae_catalogs::catalog::LookupCatalog::Discogs,
                     source_release_id,

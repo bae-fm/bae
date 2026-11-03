@@ -2,7 +2,7 @@
 
 /// A found answer over `pressings` (each release's row) whose lead lists two
 /// tracks, for a folder of two.
-fn found_over(pressings: Vec<u32>) -> crate::identify::IdentifyState {
+fn found_over(pressings: Vec<u32>) -> bae_identify::IdentifyState {
     let matches = (0..pressings.len())
         .map(|index| bae_catalogs::search::MetadataResult {
             source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 2 }),
@@ -13,8 +13,8 @@ fn found_over(pressings: Vec<u32>) -> crate::identify::IdentifyState {
             )
         })
         .collect();
-    crate::identify::IdentifyState::Found {
-        findings: crate::identify::Findings { matches, pressings, ..Default::default() },
+    bae_identify::IdentifyState::Found {
+        findings: bae_identify::Findings { matches, pressings, ..Default::default() },
         track_count: 2,
         ledger: None,
         context: signals_context(2),

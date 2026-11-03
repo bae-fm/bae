@@ -1,0 +1,716 @@
+use super::*;
+use bae_catalogs::catalog::Catalog;
+
+// Most of these are about how the sets intersect, with a candidate that states
+// nothing, so the order is the one the signals gave.
+
+/// What combine hands back: the findings.
+type Outcome = Findings;
+
+fn combine(discid: Results, barcode: Results, catalog: Results) -> Outcome {
+    combine_results(
+        LookupAnswers { disc_id: vec![discid], barcode, catalog, ..LookupAnswers::default() },
+        &CandidateText::default(),
+        FolderAudio::UNPROVEN,
+    )
+}
+
+fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
+    MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, group_id)
+}
+
+fn pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
+    mk_result(release_id, group_id)
+}
+
+fn pair_src(source: LookupCatalog, release_id: &str, group_id: Option<&str>) -> MetadataResult {
+    let mut result = mk_result(release_id, group_id);
+    result.source = source;
+    result
+}
+
+fn ids(matches: &[MetadataResult]) -> Vec<&str> {
+    matches.iter().map(|m| m.release_id.as_str()).collect()
+}
+
+fn narrowed(findings: Outcome) -> NarrowedOut {
+    assert!(!findings.is_empty(), "expected findings, got none");
+    findings.narrowed_out
+}
+
+fn found(findings: Outcome) -> (Vec<MetadataResult>, Vec<u32>) {
+    assert!(!findings.is_empty(), "expected findings, got none");
+    (findings.matches, findings.pressings)
+}
+
+#[test]
+fn nothing_checked_or_nothing_found_yields_not_found_anywhere() {
+    let findings = combine(vec![], vec![], vec![]);
+    assert_eq!(findings, Findings::default());
+}
+
+/// One checked signal answers on its own: there is nothing to agree with.
+#[test]
+fn one_set_alone_is_the_answer() {
+    for (name, discid, barcode, catalog) in [
+        ("disc id alone", vec![pair("rel-a", Some("group-1"))], vec![], vec![]),
+        (
+            "barcode alone",
+            vec![],
+            vec![pair("rel-a", Some("group-1")), pair("rel-b", None)],
+            vec![],
+        ),
+        ("catalog alone", vec![], vec![], vec![pair("rel-a", Some("group-1"))]),
+    ] {
+        let expected = discid.len().max(barcode.len()).max(catalog.len());
+        let (matches, _) = found(combine(discid, barcode, catalog));
+        assert_eq!(matches.len(), expected, "{name}");
+    }
+}
+
+/// Several pressings of one release group all stand: which one is on disk
+/// is the user's call.
+#[test]
+fn every_pressing_the_signals_agree_on_stays() {
+    let both = vec![pair("rel-a", Some("group-1")), pair("rel-b", Some("group-2"))];
+    let (matches, _) = found(combine(both.clone(), both, vec![]));
+    assert_eq!(matches.len(), 2);
+}
+
+/// A barcode is a fact about the row: a record printing the code the
+/// folder's files carry names the pressing, whichever search returned it.
+#[test]
+fn the_record_printing_the_folder_s_barcode_leads_the_disc_id_s_others() {
+    let mut printed = pair("rel-b", Some("group-1"));
+    printed.barcodes = vec![FOLDER_BARCODE.to_string()];
+    let discid = vec![pair("rel-a", Some("group-1")), printed.clone()];
+    let (matches, _) = found(combine_results(
+        LookupAnswers { disc_id: vec![discid], barcode: vec![printed], ..LookupAnswers::default() },
+        &folder_carrying(&[], FOLDER_BARCODE),
+        FolderAudio::UNPROVEN,
+    ));
+    assert_eq!(ids(&matches), vec!["rel-b"]);
+}
+
+/// Which searches returned a row adds nothing: two searches returning one
+/// record rank it no higher than one search returning another.
+#[test]
+fn how_many_searches_returned_a_row_adds_no_weight() {
+    let barcode = vec![pair("rel-a", None), pair("rel-b", None)];
+    let catalog = vec![pair("rel-b", None)];
+    let (matches, _) = found(combine(vec![], barcode, catalog));
+    assert_eq!(ids(&matches), vec!["rel-a", "rel-b"]);
+}
+
+/// The facts a record states outrank the disc ID: a Discogs record printing
+/// the folder's catalog number and barcode leads a MusicBrainz record only
+/// the disc ID returned, since every pressing cut from one master shares a
+/// table of contents.
+#[test]
+fn a_discogs_row_stating_the_pressing_beats_one_backed_only_by_the_disc_id() {
+    let mut discogs = pair_src(LookupCatalog::Discogs, "dg-1", None);
+    discogs.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("AB 12345-2"))];
+    discogs.barcodes = vec![FOLDER_BARCODE.to_string()];
+    let (matches, _) = found(combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![pair("mb-1", None)]],
+            catalog: vec![discogs],
+            ..LookupAnswers::default()
+        },
+        &folder_carrying(&["Album AB 12345-2"], FOLDER_BARCODE),
+        FolderAudio::UNPROVEN,
+    ));
+    assert_eq!(ids(&matches), vec!["dg-1"]);
+}
+
+/// A code the folder's files carry.
+const FOLDER_BARCODE: &str = "0 12345 67890 5";
+
+/// A folder whose text is `lines` and whose files carry `barcode`.
+fn folder_carrying(lines: &[&str], barcode: &str) -> CandidateText {
+    let pool: Vec<crate::signals::TextLine> = lines
+        .iter()
+        .map(|text| crate::signals::TextLine {
+            text: (*text).to_string(),
+            origin: crate::signals::TextOrigin::FolderName,
+        })
+        .collect();
+    CandidateText::of(&pool, &[], &[crate::signals::SourcedValue::new(barcode.to_string())])
+}
+
+/// Signals that share no result each keep their answer, each row naming the
+/// signal that produced it.
+#[test]
+fn lookups_that_named_different_releases_each_keep_their_answer() {
+    let discid = vec![pair("rel-a", Some("group-1"))];
+    let barcode = vec![pair("rel-b", Some("group-2"))];
+    let mut numbered = pair("rel-c", Some("group-3"));
+    numbered.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("L3-100"))];
+    let catalog = vec![numbered];
+    let outcome = combine_results(
+        LookupAnswers { disc_id: vec![discid], barcode, catalog, ..LookupAnswers::default() },
+        &folder(&["Album [L3-100]"]),
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    // The folder states the chosen number, so its release is offered; the disc
+    // ID's and the barcode's answers have nothing behind them and are set aside.
+    assert_eq!(ids(&matches), vec!["rel-c"]);
+    let left_out = narrowed(outcome);
+    assert_eq!(ids(&left_out.matches), vec!["rel-a", "rel-b"]);
+}
+
+/// The union names each release once even when two signals both saw it.
+#[test]
+fn the_union_names_each_release_once() {
+    let discid = vec![pair("rel-a", None)];
+    let barcode = vec![pair("rel-a", None)];
+    let catalog = vec![pair("rel-b", None)];
+    let outcome = combine(discid, barcode, catalog);
+    let (matches, _) = found(outcome.clone());
+    // The disc ID returned rel-a, and nothing stands behind rel-b.
+    assert_eq!(ids(&matches), vec!["rel-a"]);
+    assert_eq!(ids(&narrowed(outcome).matches), vec!["rel-b"]);
+}
+
+/// A checked signal that found nothing takes no part.
+#[test]
+fn a_signal_that_found_nothing_does_not_empty_the_set() {
+    let barcode = vec![pair("rel-a", None)];
+    let (matches, _) = found(combine(vec![], barcode, vec![]));
+    assert_eq!(ids(&matches), vec!["rel-a"]);
+}
+
+/// Releases are told apart by source as well as id, so the same id on two
+/// providers is two releases and never intersects by accident.
+#[test]
+fn the_same_id_on_two_providers_is_two_releases() {
+    let discid = vec![pair_src(LookupCatalog::MusicBrainz, "rel-a", None)];
+    let barcode = vec![pair_src(LookupCatalog::Discogs, "rel-a", None)];
+    let outcome = combine(discid, barcode, vec![]);
+    let (matches, _) = found(outcome.clone());
+    // Two releases, never folded into one by their shared id.
+    assert_eq!(matches.len() + narrowed(outcome).matches.len(), 2);
+}
+
+/// What the ranking set aside comes back beside the matches, in signal
+/// order, each once, saying which signal named it.
+#[test]
+fn the_ranking_hands_back_what_it_set_aside() {
+    let mut shared = pair("rel-shared", None);
+    shared.barcodes = vec![FOLDER_BARCODE.to_string()];
+    let discid = vec![pair("rel-a", None), shared.clone(), pair("rel-b", None)];
+    let barcode = vec![shared, pair("rel-c", None)];
+    let outcome = combine_results(
+        LookupAnswers { disc_id: vec![discid], barcode, ..LookupAnswers::default() },
+        &folder_carrying(&[], FOLDER_BARCODE),
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-shared"]);
+
+    let narrowed = narrowed(outcome);
+    assert_eq!(ids(&narrowed.matches), vec!["rel-a", "rel-b", "rel-c"]);
+}
+
+/// A release two searches returned that the ranking set aside is one entry.
+#[test]
+fn a_set_aside_release_two_searches_returned_is_named_once() {
+    let mut numbered = pair("rel-shared", None);
+    numbered.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("L3-100"))];
+    let discid = vec![pair("rel-a", None), numbered.clone()];
+    let barcode = vec![pair("rel-a", None), numbered];
+    let outcome = combine_results(
+        LookupAnswers { disc_id: vec![discid], barcode, ..LookupAnswers::default() },
+        &folder(&["Album [L3-100]"]),
+        FolderAudio::UNPROVEN,
+    );
+    let narrowed = narrowed(outcome);
+    assert_eq!(ids(&narrowed.matches), vec!["rel-a"]);
+}
+
+/// One signal answering alone narrows nothing.
+#[test]
+fn a_lone_signal_narrows_nothing() {
+    let alone = combine(vec![pair("rel-a", None), pair("rel-b", None)], vec![], vec![]);
+    assert!(narrowed(alone).is_empty());
+}
+
+/// A result with no group id still stands, as its own card.
+#[test]
+fn a_result_with_no_group_id_stays_in_the_set() {
+    let results = vec![pair("rel-a", Some("group-x")), pair("rel-b", None)];
+    let (matches, _) = found(combine(results, vec![], vec![]));
+    assert_eq!(matches.len(), 2);
+}
+
+// MARK: - The candidate's own text judges what survived
+
+fn folder(lines: &[&str]) -> CandidateText {
+    let pool: Vec<crate::signals::TextLine> = lines
+        .iter()
+        .map(|text| crate::signals::TextLine {
+            text: (*text).to_string(),
+            origin: crate::signals::TextOrigin::FolderName,
+        })
+        .collect();
+    CandidateText::of(&pool, &[], &[])
+}
+
+/// A pressing of Album One whose catalog number, label and country the
+/// folder states.
+fn pressing_of_album_one(release_id: &str, year: i32) -> MetadataResult {
+    MetadataResult {
+        title: "Album One".to_string(),
+        artist: Some("Artist One".to_string()),
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("L1-16033"))],
+        area: Some(bae_types::pressing::area("US")),
+        status: None,
+        packaging: None,
+        discogs_details: Vec::new(),
+        year: Some(year),
+        source_group_id: Some("rg-album-one".to_string()),
+        ..mk_result(release_id, Some("rg-album-one"))
+    }
+}
+
+/// Somebody else's record, which a misread barcode came back naming.
+fn unrelated_record() -> MetadataResult {
+    MetadataResult {
+        title: "Album Three".to_string(),
+        artist: Some("Artist Three".to_string()),
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label Three"), Some("L3-44633"))],
+        area: Some(bae_types::pressing::area("FR")),
+        status: None,
+        packaging: None,
+        discogs_details: Vec::new(),
+        year: Some(1998),
+        source_group_id: Some("rg-album-three".to_string()),
+        ..mk_result("rel-album-three", Some("rg-album-three"))
+    }
+}
+
+/// The pressing the folder's text describes leads the disc ID's others.
+#[test]
+fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
+    let text = folder(&["Artist One - Album One [L1-16033]", "Label One 1976 US"]);
+    let discid = vec![
+        pressing_of_album_one("rel-1994", 1994),
+        pressing_of_album_one("rel-2003", 2003),
+        pressing_of_album_one("rel-1976", 1976),
+    ];
+    let outcome = combine_results(
+        LookupAnswers { disc_id: vec![discid], ..LookupAnswers::default() },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome);
+    assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
+}
+
+/// A barcode naming a record the folder never mentions is set aside.
+#[test]
+fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
+    let text = folder(&["Artist One - Album One [L1-16033]"]);
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![pressing_of_album_one("rel-1976", 1976)]],
+            barcode: vec![unrelated_record()],
+            ..LookupAnswers::default()
+        },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-1976"]);
+    let left_out = narrowed(outcome).matches;
+    assert_eq!(ids(&left_out), vec!["rel-album-three"]);
+}
+
+/// Two pressings both identifiers name, told apart only by catalog number:
+/// the one the folder states is the answer and the other is set aside.
+#[test]
+fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
+    let text = folder(&["1972 - Album One (Label One, L1-16033, Germany)"]);
+    let stated = pressing_of_album_one("rel-stated", 1989);
+    let mut other = pressing_of_album_one("rel-other", 1990);
+    other.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("L1-99999"))];
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![stated.clone(), other.clone()]],
+            barcode: vec![stated, other],
+            ..LookupAnswers::default()
+        },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-stated"]);
+    assert_eq!(ids(&narrowed(outcome).matches), vec!["rel-other"]);
+}
+
+/// Two pressings the folder states neither number of stay side by side.
+#[test]
+fn two_pressings_the_folder_names_no_number_of_both_stay() {
+    let text = folder(&["1972 - Album One (Label One, Germany)"]);
+    let first = pressing_of_album_one("rel-first", 1989);
+    let mut second = pressing_of_album_one("rel-second", 1990);
+    second.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("L1-99999"))];
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![first.clone(), second.clone()]],
+            barcode: vec![first, second],
+            ..LookupAnswers::default()
+        },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-first", "rel-second"]);
+    assert!(narrowed(outcome).is_empty());
+}
+
+/// Pressings differing only by year all stay, the stated year first: a year
+/// names an album, not a pressing.
+#[test]
+fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
+    let text = folder(&["Artist One - Album One [L1-16033]", "Label One 1976 US"]);
+    let discid = vec![
+        pressing_of_album_one("rel-1994", 1994),
+        pressing_of_album_one("rel-2003", 2003),
+        pressing_of_album_one("rel-1976", 1976),
+    ];
+    let outcome = combine_results(
+        LookupAnswers { disc_id: vec![discid], ..LookupAnswers::default() },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-1976", "rel-1994", "rel-2003"]);
+    assert!(narrowed(outcome).is_empty());
+}
+
+/// A disc ID's pressing stays however the folder spells its label: the disc
+/// ID comes from the audio.
+#[test]
+fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
+    let text = folder(&["Artist One - Album One (Label One)"]);
+    let matched = pressing_of_album_one("rel-matched", 1976);
+    let mut reissue = pressing_of_album_one("rel-reissue", 1994);
+    reissue.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Four"), None)];
+    let outcome = combine_results(
+        LookupAnswers { disc_id: vec![vec![matched, reissue]], ..LookupAnswers::default() },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-matched", "rel-reissue"]);
+    assert!(narrowed(outcome).is_empty());
+}
+
+/// Folding never empties the list: a barcode answering alone is offered.
+#[test]
+fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
+    let text = folder(&["CD1"]);
+    let (matches, _) = found(combine_results(
+        LookupAnswers { barcode: vec![unrelated_record()], ..LookupAnswers::default() },
+        &text,
+        FolderAudio::UNPROVEN,
+    ));
+    assert_eq!(ids(&matches), vec!["rel-album-three"]);
+}
+
+/// A candidate with no text sets nothing aside for it.
+#[test]
+fn a_candidate_with_no_text_narrows_nothing_on_it() {
+    let outcome = combine_results(
+        LookupAnswers {
+            barcode: vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()],
+            ..LookupAnswers::default()
+        },
+        &CandidateText::default(),
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(matches.len(), 2);
+    assert!(narrowed(outcome).is_empty());
+}
+
+/// What the ranking set aside and what the folder says nothing about are
+/// one list.
+#[test]
+fn the_ranking_s_leftovers_and_the_folder_s_are_one_list() {
+    let text = folder_carrying(&["Artist One - Album One [L1-16033]"], FOLDER_BARCODE);
+    let mut printed = pressing_of_album_one("rel-1976", 1976);
+    printed.barcodes = vec![FOLDER_BARCODE.to_string()];
+    let discid = vec![printed.clone(), pressing_of_album_one("rel-1994", 1994)];
+    let barcode = vec![printed, unrelated_record()];
+    let outcome = combine_results(
+        LookupAnswers { disc_id: vec![discid], barcode, ..LookupAnswers::default() },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-1976"]);
+    let left_out = narrowed(outcome).matches;
+    let mut left_out = ids(&left_out);
+    left_out.sort_unstable();
+    assert_eq!(left_out, vec!["rel-1994", "rel-album-three"]);
+}
+
+// MARK: - The pressing is what is offered or set aside
+
+/// The rows a surface draws from a list of matches, with their badges, read
+/// off the rows the run recorded and the releases its disc IDs' lookups
+/// returned.
+fn rows(
+    matches: &[MetadataResult],
+    by_disc_id: &HashSet<bae_catalogs::records::LookupRef>,
+    pressings: &[u32],
+    text: &CandidateText,
+) -> Vec<(Pressing, crate::agreements::Agreements)> {
+    let facts = FolderFacts::of(text, matches);
+    let judged = crate::agreements::judged_results(matches.to_vec(), by_disc_id, text, &facts);
+    let judgements = Judgements::of(&judged, None);
+    crate::release_group::group_formed_rows(judged, pressings, Vec::new(), &[], None)
+        .into_iter()
+        .flat_map(crate::release_group::ReleaseGroup::into_pressings)
+        .map(|pressing| {
+            let agreements = pressing.agreements(&judgements);
+            (pressing, agreements)
+        })
+        .collect()
+}
+
+fn badges(agreements: &crate::agreements::Agreements) -> Vec<&'static str> {
+    [
+        ("Disc ID", agreements.disc_id),
+        ("Barcode", agreements.barcode),
+        ("Catalog", agreements.catalog),
+        ("Label", agreements.label),
+        ("Year", agreements.year),
+        ("Country", agreements.country),
+    ]
+    .into_iter()
+    .filter_map(|(name, agreed)| agreed.then_some(name))
+    .collect()
+}
+
+/// MusicBrainz's record of the Japanese pressing the disc ID names.
+fn album_two_musicbrainz() -> MetadataResult {
+    MetadataResult {
+        title: "Album Two".to_string(),
+        artist: Some("Artist Two".to_string()),
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label Two"), Some("L2-2031"))],
+        area: Some(bae_types::pressing::area("JP")),
+        status: None,
+        packaging: None,
+        discogs_details: Vec::new(),
+        barcodes: vec!["4988014720311".to_string()],
+        media: bae_types::pressing::StatedMedia::Undescribed,
+        links: Vec::new(),
+        year: Some(1988),
+        source_group_id: Some("rg-album-two".to_string()),
+        ..mk_result("mb-album-two", Some("rg-album-two"))
+    }
+}
+
+/// One of the Discogs records of that catalog number the barcode returned.
+fn album_two_discogs(release_id: &str, year: Option<i32>) -> MetadataResult {
+    MetadataResult {
+        source: LookupCatalog::Discogs,
+        title: "Album Two".to_string(),
+        artist: Some("Artist Two".to_string()),
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label Two"), Some("L2-2031"))],
+        area: bae_types::pressing::ReleaseArea::discogs("Japan"),
+        status: None,
+        packaging: None,
+        discogs_details: Vec::new(),
+        barcodes: vec!["4988014720311".to_string()],
+        media: bae_types::pressing::StatedMedia::Undescribed,
+        links: Vec::new(),
+        year,
+        source_group_id: Some("master-album-two".to_string()),
+        ..mk_result(release_id, Some("master-album-two"))
+    }
+}
+
+/// The Discogs record of the pressing the disc ID names is offered on its
+/// row; the other Discogs records of the barcode are set aside, one row each.
+#[test]
+fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
+    let text = folder_carrying(&["1979 - Album Two (Label Two, L2-2031, Japan)"], "4988014720311");
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![album_two_musicbrainz()]],
+            barcode: vec![
+                album_two_musicbrainz(),
+                album_two_discogs("dg-1991", Some(1991)),
+                album_two_discogs("dg-1988", Some(1988)),
+                album_two_discogs("dg-undated-a", None),
+                album_two_discogs("dg-undated-b", None),
+            ],
+            ..LookupAnswers::default()
+        },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let disc_id_returned = HashSet::from([bae_catalogs::records::LookupRef::new(
+        LookupCatalog::MusicBrainz,
+        "mb-album-two",
+    )]);
+    let (matches, pressings) = found(outcome.clone());
+    let offered = rows(&matches, &disc_id_returned, &pressings, &text);
+    assert_eq!(offered.len(), 1, "one row, not two: {offered:?}");
+    assert_eq!(
+        ids(&offered[0].0.releases),
+        vec!["mb-album-two", "dg-1988"],
+        "the Discogs record of the same pressing rides with it"
+    );
+    assert_eq!(badges(&offered[0].1), vec!["Disc ID", "Barcode", "Catalog", "Label", "Country"]);
+    assert_eq!(
+        offered[0].0.pick(),
+        crate::PressingLink {
+            record: bae_catalogs::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
+                "mb-album-two".to_string()
+            ),
+            partners: vec![bae_catalogs::records::LookupRef::new(
+                LookupCatalog::Discogs,
+                "dg-1988"
+            )],
+        },
+        "so picking the row claims both sources"
+    );
+
+    let narrowed = narrowed(outcome);
+    assert_eq!(ids(&narrowed.matches), vec!["dg-1991", "dg-undated-a", "dg-undated-b"]);
+    let set_aside = rows(&narrowed.matches, &disc_id_returned, &narrowed.pressings, &text);
+    assert_eq!(
+        set_aside.len(),
+        3,
+        "the rows the run built, read back: {:?}",
+        set_aside.iter().map(|(pressing, _)| ids(&pressing.releases)).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        crate::release_group::form_rows(&narrowed.matches),
+        vec![0, 1, 2],
+        "three records of one catalog stay three rows"
+    );
+    for (pressing, agreements) in &set_aside {
+        assert_eq!(
+            badges(agreements),
+            vec!["Barcode", "Catalog", "Label", "Country"],
+            "{:?}",
+            ids(&pressing.releases)
+        );
+    }
+}
+
+/// Two catalogs' records of one pressing can list different tracklists. The
+/// record whose tracklist fits the folder is the one the row's draft is read
+/// from, however much more of the folder's text the other agrees with — so
+/// the row the ranking offers as fitting is the row the verdict picks.
+#[test]
+fn the_record_whose_tracklist_fits_the_folder_leads_its_pressing() {
+    let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
+    let listing = |mut result: MetadataResult, count: u32| {
+        result.source_tracks = Some(bae_catalogs::search::SourceTracks::Listed { count });
+        result
+    };
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![listing(album_two_musicbrainz(), 12)]],
+            barcode: vec![
+                listing(album_two_musicbrainz(), 12),
+                listing(album_two_discogs("dg-1988", Some(1988)), 10),
+            ],
+            ..LookupAnswers::default()
+        },
+        &text,
+        FolderAudio { track_count: 10, ..FolderAudio::UNPROVEN },
+    );
+    let findings = outcome;
+    assert_eq!(ids(&findings.matches), vec!["dg-1988", "mb-album-two"]);
+    let verdict = crate::TerminalVerdict::Found { findings, track_count: 10, ledger: None };
+    assert_eq!(crate::VerdictSummary::of(&verdict, false).judgement(), (true, None));
+}
+
+/// A row is offered whole or set aside whole.
+#[test]
+fn a_pressing_never_splits_across_the_two_lists() {
+    let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![album_two_musicbrainz()]],
+            barcode: vec![
+                album_two_musicbrainz(),
+                album_two_discogs("dg-1988", Some(1988)),
+                album_two_discogs("dg-1991", Some(1991)),
+            ],
+            ..LookupAnswers::default()
+        },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (_, pressings) = found(outcome.clone());
+    assert_eq!(crate::release_group::row_count(&pressings), 1);
+    assert_eq!(crate::release_group::row_count(&narrowed(outcome).pressings), 1);
+}
+
+/// A lone pressing the folder describes is one row, even beside a barcode
+/// naming somebody else.
+#[test]
+fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
+    let text = folder(&["Artist One - Album One [L1-16033]"]);
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![pressing_of_album_one("rel-1976", 1976)]],
+            barcode: vec![unrelated_record()],
+            ..LookupAnswers::default()
+        },
+        &text,
+        FolderAudio::UNPROVEN,
+    );
+    let (_, pressings) = found(outcome);
+    assert_eq!(crate::release_group::row_count(&pressings), 1);
+}
+
+/// The title search, asked only when the identifiers found nothing, is
+/// offered whole.
+#[test]
+fn a_search_that_answered_alone_is_offered_whole() {
+    let outcome = combine_results(
+        LookupAnswers {
+            search: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-y"))],
+            ..LookupAnswers::default()
+        },
+        &CandidateText::default(),
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, _) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["rel-a", "rel-b"]);
+    assert!(narrowed(outcome).is_empty(), "one set alone narrows nothing");
+}
+
+/// A release an offered row's pressing lookup returned sits on that row when
+/// its page names it.
+#[test]
+fn a_pressing_lookup_s_release_sits_on_the_row_it_was_asked_for() {
+    let mut named = pair("mb-1", Some("group-1"));
+    named.links = vec![bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "dg-linked")];
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![vec![named]],
+            barcode: vec![pair_src(LookupCatalog::Discogs, "dg-barcode", Some("master-1"))],
+            pressing: vec![pair_src(LookupCatalog::Discogs, "dg-linked", Some("master-1"))],
+            ..LookupAnswers::default()
+        },
+        &CandidateText::default(),
+        FolderAudio::UNPROVEN,
+    );
+    let (matches, pressings) = found(outcome.clone());
+    assert_eq!(ids(&matches), vec!["mb-1", "dg-linked"]);
+    assert_eq!(pressings, vec![0, 0], "the linked release shares the row");
+    assert_eq!(ids(&narrowed(outcome).matches), vec!["dg-barcode"]);
+}

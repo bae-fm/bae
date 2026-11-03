@@ -21,6 +21,8 @@ crate-type = ["lib", "staticlib", "cdylib"]
 async-trait = { workspace = true }
 bae-desktop = { workspace = true, optional = true }
 bae-cast = { workspace = true, optional = true }
+# The identify views and verdicts the desktop import screens mirror.
+bae-identify = { workspace = true, optional = true }
 bae-core = { workspace = true }
 bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.
@@ -93,7 +95,7 @@ cloudkit = []
 # host-reported discovery seam. Off by default; every shipping platform turns it
 # on, and desktop implies it.
 cast = ["dep:bae-cast"]
-desktop = ["cast", "dep:bae-desktop"]
+desktop = ["cast", "dep:bae-desktop", "dep:bae-identify"]
 # An in-memory keychain a debug app can start its host with, so UI tests never
 # touch the login keychain. Debug macOS builds turn it on.
 test-keyring = ["bae-core/test-utils"]

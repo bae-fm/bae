@@ -3,12 +3,12 @@
 //! built into a temp folder, run through `ExtractionService` with a stub
 //! analyzer, and checked for which catalog numbers and free text survive.
 
-use bae_core::identify::signals::TextSignal;
 use bae_core::import::extraction::service::{
     ExtractionService, ExtractionServiceHandle, ExtractionSource,
 };
 use bae_core::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_core::import::ImportEventBus;
+use bae_identify::signals::TextSignal;
 use bae_test_support as support;
 use serde::Deserialize;
 use std::collections::HashMap;

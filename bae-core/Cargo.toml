@@ -19,6 +19,9 @@ bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }
 bae-db = { workspace = true }
 bae-diagnostics = { workspace = true }
+# The identify reducer, its view and its verdicts, which only the desktop
+# import pipeline drives; the crate is empty on mobile.
+bae-identify = { workspace = true }
 bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
 bae-types = { workspace = true }
@@ -114,6 +117,8 @@ bae-app-dir = { workspace = true, features = ["test-utils"] }
 bae-db = { workspace = true, features = ["test-utils"] }
 # A new library's preferences, built without a library.
 bae-preferences = { workspace = true, features = ["test-utils"] }
+# What the import tests read back of an identify run.
+bae-identify = { workspace = true, features = ["test-utils"] }
 # What a decode's windows read, for the playback tests.
 bae-track-audio = { workspace = true, features = ["test-utils"] }
 # The bug reporter and telemetry transport that record what they are handed.

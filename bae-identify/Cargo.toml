@@ -1,0 +1,42 @@
+[package]
+name = "bae-identify"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_identify"
+path = "src/lib.rs"
+
+[dependencies]
+# What the catalogs say about a release: the searches, lookups and documents
+# the reducer asks for and ranks.
+bae-catalogs = { workspace = true }
+# Pressings, barcodes and how two written names match.
+bae-types = { workspace = true }
+# A stored verdict and a medium conflict are kept as JSON.
+serde = { workspace = true, features = ["derive"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# The catalog releases and documents the tests rank.
+bae-catalogs = { workspace = true, features = ["test-utils"] }
+bae-types = { workspace = true, features = ["test-utils"] }
+# The warnings a test reads back.
+bae-util = { workspace = true, features = ["test-utils"] }
+serde_json = { workspace = true }
+
+[features]
+default = []
+# What a test of a crate above reads back of a run: the rows a group forms,
+# its pressings, a text signal's free text and a verdict's judgement.
+# Dev/test-only: a production build never enables it.
+test-utils = []
+
+[lints]
+workspace = true

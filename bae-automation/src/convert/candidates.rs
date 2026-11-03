@@ -29,7 +29,7 @@ pub(crate) async fn automation_candidate_from_folder(
         }
         Some(bae_core::import::IdentificationInFlight::Queued) | None => (
             folder.resumed_identify_state.toolbar(),
-            bae_core::identify::IdentifyStateView::from(folder.resumed_identify_state.clone()),
+            bae_identify::IdentifyStateView::from(folder.resumed_identify_state.clone()),
         ),
     };
     let toolbar = toolbar.into_iter().map(AutomationToolbarSignal::from_core).collect();

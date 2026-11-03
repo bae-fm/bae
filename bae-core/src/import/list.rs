@@ -26,12 +26,12 @@ use super::triage::{
 use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::watched_folder::WatchedFolder;
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
-use crate::identify::signals::Signals;
-use crate::identify::{IdentifyState, VerdictSummary};
 use crate::import::CandidateSession;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_db::LibraryStatus;
 use bae_db::{LibraryPageWindow, LibraryPageWindows};
+use bae_identify::signals::Signals;
+use bae_identify::{IdentifyState, VerdictSummary};
 
 mod path_order;
 mod pending_filter;
@@ -389,7 +389,7 @@ pub struct DraftProjection {
     /// release offered, stored with the draft when it was applied.
     pub remote_covers: Vec<RemoteCover>,
     /// What this candidate's identification asks about, as the person left it.
-    pub lookup_choices: crate::identify::LookupChoices,
+    pub lookup_choices: bae_identify::LookupChoices,
     /// The last import of this candidate that failed.
     pub failure: Option<ImportFailure>,
     /// Where the pane was when the person last left this candidate. `None`
@@ -564,8 +564,8 @@ pub enum CandidatePanePlacement {
     Pending {
         /// The check against the folder the candidate's found release did
         /// not pass, stated beside its Import: the release's
-        /// [`crate::identify::VerdictSummary::folder_check`].
-        folder_check: Option<crate::identify::FolderCheck>,
+        /// [`bae_identify::VerdictSummary::folder_check`].
+        folder_check: Option<bae_identify::FolderCheck>,
         /// Every catalog the linked release is described in, in the order
         /// surfaces list catalogs. Empty for a candidate linked to no release.
         records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -691,7 +691,7 @@ pub struct CandidateDraftPane {
     /// What this candidate's identification asks about: the signals its runs
     /// leave out and the catalog numbers they look up. A control that changes
     /// one sends the whole value back, computed from this.
-    pub lookup_choices: crate::identify::LookupChoices,
+    pub lookup_choices: bae_identify::LookupChoices,
     pub failure: Option<ImportFailure>,
     /// Where the pane was when the person last left this candidate, or where
     /// it opens for one nobody has touched.

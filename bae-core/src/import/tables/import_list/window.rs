@@ -20,7 +20,6 @@ use super::super::release_groupings::{block_of, load_candidate_on};
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
-use crate::identify::PressingLink;
 use crate::import::folder_scanner::{FileVersion, ScanItem};
 use crate::import::list::{ImportListItem, ListedRelease};
 use crate::import::tables::source_releases::load_release_records_on;
@@ -33,6 +32,7 @@ use bae_db::client::files::cover_version_sql;
 use bae_db::client::queued_uploads::release_upload_on;
 use bae_db::client::read::get_release_records_on;
 use bae_db::RelativeFolder;
+use bae_identify::PressingLink;
 use std::path::{Path, PathBuf};
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,

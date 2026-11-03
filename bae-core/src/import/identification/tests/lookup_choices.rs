@@ -28,7 +28,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
         .import
         .edit_candidate_lookup_choices(
             &crate::import::CandidateKey::folder(&dir),
-            crate::identify::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
+            bae_identify::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
         )
         .await
         .unwrap();

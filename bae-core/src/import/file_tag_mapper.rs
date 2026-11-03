@@ -20,13 +20,13 @@
 use super::file_tag_snapshot::{extract_file_tag_snapshot, LoftyFileTagReader};
 use super::file_tag_snapshot::{non_empty, years_in_date, FileTagFact, FileTagSnapshot, FileTags};
 use crate::cue_flac::CueSheet;
-use crate::identify::row_facts::StatedYears;
 use crate::import::folder_scanner::CategorizedFiles;
 #[cfg(test)]
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::ImportError;
 use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::release_values::{ReleaseValues, TrackCredits, TrackValues};
+use bae_identify::row_facts::StatedYears;
 use bae_types::pressing::Pressing;
 #[cfg(test)]
 use bae_util::content_type::ContentType;

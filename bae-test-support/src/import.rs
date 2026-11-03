@@ -123,7 +123,7 @@ pub enum DraftSource {
     FileTags,
     /// A picked release, which the candidate is linked to and whose draft it
     /// reads.
-    Pick(bae_core::identify::PressingLink),
+    Pick(bae_identify::PressingLink),
 }
 
 impl DraftSource {
@@ -147,7 +147,7 @@ impl DraftSource {
 /// [`bae_catalogs::fake_catalogs::FakeCatalogs::seed_discogs_test_release`]
 /// fixture is imported under.
 pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
-    DraftSource::Pick(bae_core::identify::PressingLink {
+    DraftSource::Pick(bae_identify::PressingLink {
         record: bae_catalogs::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::Discogs,
             release_id.into(),

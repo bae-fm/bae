@@ -16,12 +16,12 @@ use super::ledger_rows::{
 };
 use super::match_rows::{ordinal_column, store_match, Listing, MatchOwner, StoredMatches, Written};
 use super::*;
-use crate::identify::{
+use bae_catalogs::search::MetadataResult;
+use bae_catalogs::InternalFailure;
+use bae_identify::{
     Findings, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict, NamedNote, RunOutcome,
     TerminalVerdict,
 };
-use bae_catalogs::search::MetadataResult;
-use bae_catalogs::InternalFailure;
 
 /// Whose verdict-shaped rows these are: a candidate's verdict, under its
 /// files' content hash, or how a run in flight stands, under the run.
