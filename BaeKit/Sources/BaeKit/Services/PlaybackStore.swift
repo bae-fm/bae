@@ -19,9 +19,9 @@ public class PlaybackStore {
     public private(set) var nowPlaying: NowPlaying = .stopped
     private var dismissedSidePausePromptId: String?
 
-    public var volume: Float = 1.0
-    public var isMuted: Bool = false
-    public var repeatMode: BridgeRepeatMode = .off
+    /// The volume, mute and repeat mode; `nil` until core's first playback
+    /// value says them.
+    public var settings: PlaybackSettings?
     /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [BridgeQueueEntry] = []
     /// Counts the queue values applied, so a view keyed on it hears the manual

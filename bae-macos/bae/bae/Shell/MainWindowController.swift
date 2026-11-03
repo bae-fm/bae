@@ -94,7 +94,8 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
         case #selector(fullWidthLibrary(_:)):
             target?.configStore.config.libraryFullWidth == true
         case #selector(chooseRepeatMode(_:)):
-            target?.playbackStore.repeatMode == repeatModeChoice(item).mode
+            target?.playbackStore.settings?.repeatMode
+                == repeatModeChoice(item).mode
         case #selector(pauseBetweenSides(_:)):
             target?.configStore.config.pauseBetweenSides == true
         default:
@@ -111,6 +112,9 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
             return showsLibrary
         case #selector(goToNowPlaying(_:)):
             return nowPlayingNavigation(target).isEnabled
+        case #selector(mute(_:)), #selector(cycleRepeatMode(_:)):
+            // Both go from the current value, unknown until core says it.
+            return target.playbackStore.settings != nil
         case #selector(shuffleLibrary(_:)):
             // No total while the library's albums are not counted yet.
             guard let albumTotal = target.libraryBrowseSession.albumTotal else {
@@ -244,15 +248,28 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
     @objc
     func mute(_: Any?) {
         let target = requireTarget()
-        target.playback.setMuted(!target.playbackStore.isMuted)
+        target.playback.setMuted(!requireSettings(target).isMuted)
     }
 
     @objc
     func cycleRepeatMode(_: Any?) {
         let target = requireTarget()
         target.playback.setRepeatMode(
-            bridgeNextRepeatMode(mode: target.playbackStore.repeatMode)
+            bridgeNextRepeatMode(mode: requireSettings(target).repeatMode)
         )
+    }
+
+    /// How playback is set, which the items that go from it are enabled only
+    /// once core has said.
+    private func requireSettings(_ target: MainAppMenuTarget)
+        -> PlaybackSettings
+    {
+        guard let settings = target.playbackStore.settings else {
+            preconditionFailure(
+                "A playback setting command ran before core said them"
+            )
+        }
+        return settings
     }
 
     @objc

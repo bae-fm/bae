@@ -42,9 +42,7 @@ struct NowPlayingBarContainer: View {
                 forTrack: np.loadingTrackId
             ),
             showRemainingTime: configStore.config.showRemainingTime,
-            volume: playbackStore.volume,
-            isMuted: playbackStore.isMuted,
-            repeatMode: playbackStore.repeatMode,
+            settings: playbackStore.settings,
             // nil while no playing context — the bar disables shuffle then.
             shuffled: playbackStore.queueContext?.shuffled,
             showQueue: uiStore.showQueue,
@@ -66,14 +64,10 @@ struct NowPlayingBarContainer: View {
                 }
             },
             onVolumeChange: { playback.setVolume($0) },
-            onToggleMute: { playback.setMuted(!playbackStore.isMuted) },
+            onSetMuted: { playback.setMuted($0) },
             onSetShuffle: { queue.setShuffle($0) },
             onSetQueuePresented: { uiStore.setQueuePresented($0) },
-            onCycleRepeat: {
-                playback.setRepeatMode(
-                    bridgeNextRepeatMode(mode: playbackStore.repeatMode)
-                )
-            },
+            onSetRepeatMode: { playback.setRepeatMode($0) },
             onDropToQueue: onDropToQueue,
             onNavigateToAlbum: {
                 let action = NowPlayingNavigationAction(

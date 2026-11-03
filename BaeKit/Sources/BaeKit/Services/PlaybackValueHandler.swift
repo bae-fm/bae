@@ -15,9 +15,7 @@ final class PlaybackValueHandler {
     }
 
     func apply(_ values: BridgePlaybackValues) {
-        playbackStore.volume = values.volume
-        playbackStore.isMuted = values.isMuted
-        playbackStore.repeatMode = values.repeatMode
+        playbackStore.settings = PlaybackSettings(values)
         castStore.applyStatus(values.remote)
         applyPlaybackState(values.state)
     }

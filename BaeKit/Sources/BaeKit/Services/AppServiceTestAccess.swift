@@ -13,9 +13,7 @@
             AppServiceTestState(
                 nowPlaying: playbackStore.nowPlaying,
                 manualQueueEntryIds: playbackStore.manualQueue.map(\.entryId),
-                volume: playbackStore.volume,
-                isMuted: playbackStore.isMuted,
-                repeatMode: playbackStore.repeatMode
+                settings: playbackStore.settings
             )
         }
 

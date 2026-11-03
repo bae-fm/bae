@@ -67,12 +67,28 @@ struct LibraryMenuCommandsTests {
         #expect(controller.validateMenuItem(pause))
         #expect(pause.state == .off)
 
-        target.playbackStore.repeatMode = .track
+        // Before core says how playback is set, no repeat mode is checked
+        // and mute and the repeat step, which go from the current value, are
+        // off.
         let repeatModes = MenuLookup.items(menu, "chooseRepeatMode:")
         for item in repeatModes {
             #expect(controller.validateMenuItem(item))
         }
+        #expect(repeatModes.map(\.state) == [.off, .off, .off])
+        #expect(try !valid("mute:"))
+        #expect(try !valid("cycleRepeatMode:"))
+
+        target.playbackStore.settings = PlaybackSettings(
+            volume: 1,
+            isMuted: false,
+            repeatMode: .track
+        )
+        for item in repeatModes {
+            #expect(controller.validateMenuItem(item))
+        }
         #expect(repeatModes.map(\.state) == [.off, .off, .on])
+        #expect(try valid("mute:"))
+        #expect(try valid("cycleRepeatMode:"))
 
         target.uiStore.setLibraryBrowserMode(.artists)
         let modes = MenuLookup.items(menu, "chooseLibraryBrowserMode:")

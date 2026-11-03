@@ -66,9 +66,7 @@ public struct AppServiceComponents {
     public struct AppServiceTestState {
         public let nowPlaying: NowPlaying
         public let manualQueueEntryIds: [String]
-        public let volume: Float
-        public let isMuted: Bool
-        public let repeatMode: BridgeRepeatMode
+        public let settings: PlaybackSettings?
     }
 #endif
 

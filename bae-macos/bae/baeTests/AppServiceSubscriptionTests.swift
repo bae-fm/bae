@@ -29,7 +29,9 @@ struct PlaybackFailureDisplayTests {
         var louder = playbackValues(state: .stopped, failure: failed)
         louder.volume = 0.5
         handle.deliverPlayback(louder)
-        try await Wait.until { appService.stateForTesting.volume == 0.5 }
+        try await Wait.until {
+            appService.stateForTesting.settings?.volume == 0.5
+        }
         #expect(!appService.hasDisplayedErrorForTesting)
 
         handle.deliverPlayback(

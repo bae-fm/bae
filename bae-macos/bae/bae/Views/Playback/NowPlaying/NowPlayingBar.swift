@@ -19,9 +19,9 @@ struct NowPlayingBar: View {
     let storageWait: LatestSource<Bool>?
     /// The user's elapsed-vs-remaining choice, from the config.
     let showRemainingTime: Bool
-    let volume: Float
-    let isMuted: Bool
-    let repeatMode: BridgeRepeatMode
+    /// The volume, mute and repeat mode; `nil` until core says them, when
+    /// their controls keep their place and show nothing.
+    let settings: PlaybackSettings?
     /// The playing context's shuffle state; `nil` with no context, which
     /// disables the shuffle button.
     let shuffled: Bool?
@@ -32,10 +32,12 @@ struct NowPlayingBar: View {
     let onSeek: (Double) -> Void
     let onToggleRemainingTime: () -> Void
     let onVolumeChange: (Float) -> Void
-    let onToggleMute: () -> Void
+    /// Mute or unmute: the value the mute button sets.
+    let onSetMuted: (Bool) -> Void
     let onSetShuffle: (Bool) -> Void
     let onSetQueuePresented: (Bool) -> Void
-    let onCycleRepeat: () -> Void
+    /// The repeat mode the repeat button steps to.
+    let onSetRepeatMode: (BridgeRepeatMode) -> Void
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
     let queueAddPublisher: AnyPublisher<Int, Never>
@@ -128,7 +130,12 @@ struct NowPlayingBar: View {
                     action: onNext
                 )
 
-                repeatButton
+                if let settings {
+                    repeatButton(settings.repeatMode)
+                }
+                else {
+                    controlSpace
+                }
             }
 
             progressBar
@@ -150,15 +157,25 @@ struct NowPlayingBar: View {
         .accessibilityLabel(active ? "Turn off shuffle" : "Shuffle")
     }
 
-    private var repeatButton: some View {
+    private func repeatButton(_ repeatMode: BridgeRepeatMode) -> some View {
         let active = repeatMode != .off
         let glyph = repeatMode == .track ? "repeat.1" : "repeat"
-        return Button(action: onCycleRepeat) {
+        let help = Self.repeatHelp(repeatMode)
+        return Button {
+            onSetRepeatMode(bridgeNextRepeatMode(mode: repeatMode))
+        } label: {
             toggleLabel(glyph, active: active)
         }
         .buttonStyle(IconHoverButtonStyle())
-        .help(repeatHelp)
-        .accessibilityLabel(repeatHelp)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+
+    /// The room one icon control takes, holding a control's place while
+    /// there is nothing to show in it.
+    fileprivate var controlSpace: some View {
+        Color.clear
+            .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
     }
 
     /// The slot shuffle and repeat share: an accent glyph on an accent fill
@@ -230,7 +247,9 @@ struct NowPlayingBar: View {
         .accessibilityLabel("Playback position")
     }
 
-    private var repeatHelp: LocalizedStringKey {
+    private static func repeatHelp(
+        _ repeatMode: BridgeRepeatMode
+    ) -> LocalizedStringKey {
         switch repeatMode {
         case .off:
             "Repeat: off"
@@ -251,11 +270,18 @@ extension NowPlayingBar {
 
             queueButton
 
-            muteButton
+            if let settings {
+                muteButton(settings)
 
-            SlimSlider(value: volume, onChange: onVolumeChange)
-                .frame(width: 96)
-                .accessibilityLabel("Volume")
+                SlimSlider(value: settings.volume, onChange: onVolumeChange)
+                    .frame(width: volumeWidth)
+                    .accessibilityLabel("Volume")
+            }
+            else {
+                controlSpace
+
+                Color.clear.frame(width: volumeWidth, height: 1)
+            }
         }
     }
 
@@ -317,9 +343,14 @@ extension NowPlayingBar {
         }
     }
 
-    fileprivate var muteButton: some View {
-        Button(action: onToggleMute) {
-            Image(systemName: muteIconName)
+    fileprivate var volumeWidth: CGFloat { 96 }
+
+    fileprivate func muteButton(_ settings: PlaybackSettings) -> some View {
+        let isMuted = settings.isMuted
+        return Button {
+            onSetMuted(!isMuted)
+        } label: {
+            Image(systemName: Self.muteIconName(settings))
                 .themeIcon(.large)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
@@ -331,11 +362,13 @@ extension NowPlayingBar {
 
     /// The speaker glyph for the volume: silenced when muted or at zero, one
     /// wave up to 0.55, two above it.
-    fileprivate var muteIconName: String {
-        if isMuted || volume == 0 {
+    fileprivate static func muteIconName(_ settings: PlaybackSettings) -> String
+    {
+        if settings.isMuted || settings.volume == 0 {
             return "speaker.slash.fill"
         }
-        return volume <= 0.55 ? "speaker.wave.1.fill" : "speaker.wave.2.fill"
+        return settings.volume <= 0.55
+            ? "speaker.wave.1.fill" : "speaker.wave.2.fill"
     }
 }
 
@@ -390,9 +423,11 @@ extension NowPlayingBar {
                     )
                     .source(for: "preview-track"),
                 showRemainingTime: false,
-                volume: volume,
-                isMuted: isMuted,
-                repeatMode: repeatMode,
+                settings: PlaybackSettings(
+                    volume: volume,
+                    isMuted: isMuted,
+                    repeatMode: repeatMode
+                ),
                 shuffled: shuffled,
                 showQueue: showQueue,
                 onPlayPause: {},
@@ -401,10 +436,10 @@ extension NowPlayingBar {
                 onSeek: { _ in },
                 onToggleRemainingTime: {},
                 onVolumeChange: { volume = $0 },
-                onToggleMute: { isMuted.toggle() },
+                onSetMuted: { isMuted = $0 },
                 onSetShuffle: { _ in },
                 onSetQueuePresented: { showQueue = $0 },
-                onCycleRepeat: {},
+                onSetRepeatMode: { _ in },
                 onDropToQueue: { _ in },
                 onNavigateToAlbum: {},
                 queueAddPublisher: Empty().eraseToAnyPublisher(),
