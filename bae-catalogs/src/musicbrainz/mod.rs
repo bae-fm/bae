@@ -761,4 +761,5 @@ impl MusicBrainz {
 #[cfg(test)]
 mod rate_tests;
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;
