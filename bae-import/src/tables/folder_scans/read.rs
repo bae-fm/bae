@@ -16,6 +16,7 @@ use crate::folder_scanner::{
     InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
     SkippedFile, SkippedTags,
 };
+use crate::tables::FinishRead;
 use crate::CandidateKey;
 use bae_db::RelativeFolder;
 use bae_types::audio_format::AudioFormat;
@@ -23,8 +24,6 @@ use bae_util::content_type::ContentType;
 use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
 
 mod track_sheets;
-
-type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 
 /// Which rows a read takes in: what the scans wrote, or those and the
 /// releases groupings built from them too.

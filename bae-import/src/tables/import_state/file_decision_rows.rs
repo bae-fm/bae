@@ -3,10 +3,10 @@
 //! decision at all); read back by the next scan, and settled onto every
 //! scanned release reading the same files.
 
-use super::rows::FinishRead;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
+use crate::tables::FinishRead;
 
 pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(

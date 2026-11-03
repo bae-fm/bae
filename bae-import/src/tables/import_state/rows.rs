@@ -13,6 +13,7 @@ use super::pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 use super::release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 use super::verdict_rows::{identification_of, read_verdict_row, verdict_columns, VerdictRow};
 use super::*;
+use crate::tables::FinishRead;
 use bae_db::client::query::CandidateRows;
 
 /// One candidate's own columns and the rows joined one-to-one onto it, as
@@ -207,10 +208,6 @@ impl StoredCandidate {
         })
     }
 }
-
-/// What a read fetched, still to be assembled — boxed so a read on either
-/// connection hands back one type.
-pub(super) type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 
 #[cfg(test)]
 #[path = "rows_tests.rs"]

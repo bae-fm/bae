@@ -49,6 +49,10 @@ use rusqlite::{named_params, params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::str::FromStr;
 
+/// What a read fetched, still to be assembled — boxed so a read on either
+/// connection hands back one type.
+type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
+
 /// `keys` as a JSON array of their bytes in hex, for a query that matches a
 /// key column with `unhex(value)` over `json_each`.
 fn key_hex_list<'a>(keys: impl Iterator<Item = &'a crate::CandidateKey>) -> String {
