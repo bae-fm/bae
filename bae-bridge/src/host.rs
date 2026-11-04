@@ -135,6 +135,17 @@ impl BridgeHost {
             .await
     }
 
+    /// Remove the open library `services` runs, which this host opened, on
+    /// the caller's task. A store whose close fails after this device left
+    /// it is discarded from this host's installation.
+    pub(crate) async fn remove_open_library(
+        &self,
+        services: &bae_app::AppServices,
+        steps: &crate::screens::ClosingSteps,
+    ) -> Result<(), bae_library::LibraryRemovalError> {
+        services.remove_library(&self.coven, &|step| steps.core(step)).await
+    }
+
     fn builder(&self) -> coven::CovenBuilder {
         let builder =
             self.coven.builder().oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());

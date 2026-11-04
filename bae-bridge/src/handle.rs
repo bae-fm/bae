@@ -32,8 +32,9 @@ pub struct AppHandle {
     runtime: crate::operation_runtime::OperationRuntime,
     /// Where a bug in the handle's work with no caller to fail is reported.
     diagnostics: bae_diagnostics::Diagnostics,
-    /// Retains the runtime that prepared coven and its session custody.
-    _host: Option<std::sync::Arc<crate::BridgeHost>>,
+    /// The host that opened the library: it retains the runtime that
+    /// prepared coven and its session custody, and removes the library.
+    host: std::sync::Arc<crate::BridgeHost>,
     session: Session,
 }
 
@@ -258,13 +259,14 @@ fn end(
 pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
 
 impl AppHandle {
-    /// Start the handle over an open library. `diagnostics` is where a panic
-    /// in the handle's operations, its deliveries to the host, and casting's
-    /// background work is reported.
+    /// Start the handle over a library `host` opened. `diagnostics` is where
+    /// a panic in the handle's operations, its deliveries to the host, and
+    /// casting's background work is reported.
     pub(crate) fn start(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
         diagnostics: bae_diagnostics::Diagnostics,
+        host: std::sync::Arc<crate::BridgeHost>,
     ) -> Result<Self, bae_app::BootstrapError> {
         #[cfg(feature = "desktop")]
         let desktop = {
@@ -314,19 +316,8 @@ impl AppHandle {
             ),
             diagnostics,
             session: Session(std::sync::Mutex::new(SessionState::Open(runtime))),
-            _host: None,
+            host,
         })
-    }
-
-    pub(crate) fn start_for_host(
-        services: AppServices,
-        runtime: tokio::runtime::Runtime,
-        diagnostics: bae_diagnostics::Diagnostics,
-        host: std::sync::Arc<crate::BridgeHost>,
-    ) -> Result<Self, bae_app::BootstrapError> {
-        let mut app = Self::start(services, runtime, diagnostics)?;
-        app._host = Some(host);
-        Ok(app)
     }
 
     async fn run_exported<T, Build, Fut>(
@@ -355,7 +346,7 @@ impl AppHandle {
         let services = self.services.clone();
         #[cfg(feature = "desktop")]
         let desktop = self.desktop.clone();
-        let host = self._host.clone();
+        let host = self.host.clone();
         async move {
             #[cfg(feature = "desktop")]
             steps.stop_servers(&desktop).await;
@@ -378,11 +369,7 @@ impl Drop for AppHandle {
             move |error: &dyn std::fmt::Display| {
                 services.report_bug("close the library its handle released", error)
             },
-            |thread| {
-                if let Some(host) = &self._host {
-                    host.library_closing(self.services.store_id(), thread);
-                }
-            },
+            |thread| self.host.library_closing(self.services.store_id(), thread),
         );
     }
 }

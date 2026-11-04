@@ -23,7 +23,13 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             .expect("the test library's services start")
     });
     let app = Arc::new(
-        AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
+        AppHandle::start(
+            services,
+            runtime,
+            bae_diagnostics::Diagnostics::noop(),
+            crate::handle::tests::test_host(root.path()),
+        )
+        .unwrap(),
     );
     app.runtime.block_on(async {
         let share = app.clone().generate_restore_code().await.unwrap();

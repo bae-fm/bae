@@ -553,7 +553,7 @@ fn start_handle(
 ) -> Result<AppHandle, bae_app::BootstrapError>
        + Send
        + 'static {
-    move |services, runtime| AppHandle::start_for_host(services, runtime, diagnostics, host)
+    move |services, runtime| AppHandle::start(services, runtime, diagnostics, host)
 }
 
 #[cfg(test)]

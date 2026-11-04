@@ -20,14 +20,11 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
             .await
             .expect("the test library's services start")
     });
+    let host = crate::handle::tests::test_host(root.path());
     let app = Arc::new(
-        AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
+        AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop(), host.clone())
+            .unwrap(),
     );
-    let host = crate::BridgeHost::with_test_keyring(
-        crate::BridgeDiagnostics::noop(),
-        crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
-    )
-    .unwrap();
     let libraries = bae_app_dir::AppDir::under_home(root.path()).unwrap().libraries();
     std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();
     let caller = tokio::runtime::Runtime::new().unwrap();

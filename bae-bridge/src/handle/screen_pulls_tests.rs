@@ -49,7 +49,13 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
             .expect("the test library's services start")
     });
     let handle = std::sync::Arc::new(
-        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
+        super::AppHandle::start(
+            services,
+            runtime,
+            bae_diagnostics::Diagnostics::noop(),
+            crate::handle::tests::test_host(root.path()),
+        )
+        .unwrap(),
     );
 
     let queue = handle.subscribe_queue();
@@ -120,7 +126,13 @@ fn the_sync_status_follows_storage_being_set_up() {
             .expect("the test library's services start")
     });
     let handle = std::sync::Arc::new(
-        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
+        super::AppHandle::start(
+            services,
+            runtime,
+            bae_diagnostics::Diagnostics::noop(),
+            crate::handle::tests::test_host(root.path()),
+        )
+        .unwrap(),
     );
 
     let status = handle.subscribe_sync_status();

@@ -113,6 +113,7 @@ impl Home {
         let diagnostics = Diagnostics::noop();
         let removal = super::remove_recorded(
             &self.app_dir,
+            &self.installation,
             &diagnostics,
             id,
             async {
@@ -147,7 +148,9 @@ async fn removing_an_inactive_library_preserves_the_active_pointer() {
     let removed = home.library("Removed").await;
     home.point_at(active.store_id());
     let id = removed.store_id();
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &removed).await.unwrap();
+    remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &removed)
+        .await
+        .unwrap();
     assert_eq!(home.stores().await, 1);
     assert!(!home.directory(id).exists());
     assert_eq!(home.pointer(), Some(active.store_id().to_string()));
@@ -161,37 +164,76 @@ async fn removing_the_active_library_clears_its_pointer() {
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
+    remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+        .await
+        .unwrap();
     assert_eq!(home.stores().await, 0);
     assert!(!home.directory(id).exists());
     assert_eq!(home.pointer(), None);
     assert_eq!(home.unfinished().await, None);
 }
 
-/// Closing the store fails once this device has left the library: the
-/// removal fails saying so, with the library's files still on this device,
-/// its pointer kept and no removal recorded.
+/// Closing the store fails once this device has left the library: coven
+/// discarding the store finishes the deletion, and the removal goes on to
+/// delete bae's files, the pointer and the record.
 #[tokio::test]
-async fn a_close_failing_after_leaving_keeps_the_files_and_says_so() {
+async fn a_close_failing_after_leaving_is_finished_by_discarding_the_store() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    home.point_at(id);
+    super::remove_recorded(
+        &home.app_dir,
+        &home.installation,
+        &Diagnostics::noop(),
+        id,
+        async {
+            handle.close().await.unwrap();
+            Err(coven::StoreDeletionError::Closing(coven::SyncError::NoStorage))
+        },
+        &|_| (),
+    )
+    .await
+    .unwrap();
+    assert_eq!(home.stores().await, 0);
+    assert!(!home.directory(id).exists());
+    assert_eq!(home.pointer(), None);
+    assert!(!home.record(id).exists());
+}
+
+/// Closing the store fails once this device has left the library, and
+/// discarding it is refused while its store is still open: the removal fails
+/// saying so, with the library's files still on this device, its pointer
+/// kept and no removal recorded.
+#[tokio::test]
+async fn a_close_failing_after_leaving_whose_discard_fails_keeps_the_files_and_says_so() {
     let home = Home::new();
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
     let error = super::remove_recorded(
         &home.app_dir,
+        &home.installation,
         &Diagnostics::noop(),
         id,
         async { Err(coven::StoreDeletionError::Closing(coven::SyncError::NoStorage)) },
         &|_| (),
     )
     .await
-    .expect_err("the close failed");
-    assert!(matches!(error, LibraryRemovalError::Closing(_)), "{error}");
+    .expect_err("the store is still open");
+    assert!(
+        matches!(
+            error,
+            LibraryRemovalError::Closing { discard: coven::StoreDeletionError::Lock(_), .. }
+        ),
+        "{error}"
+    );
     assert!(error.to_string().contains("files are still on this device"), "{error}");
     assert_eq!(home.stores().await, 1);
     assert!(home.directory(id).join("cache").exists());
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(!home.record(id).exists());
+    handle.close().await.unwrap();
 }
 
 /// A removal coven refuses changes nothing of bae's; the same request
@@ -204,9 +246,10 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     let id = handle.store_id();
     home.point_at(id);
     home.storage.set_online(false);
-    let error = remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .expect_err("leaving needs reachable storage");
+    let error =
+        remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+            .await
+            .expect_err("leaving needs reachable storage");
     assert!(matches!(error, LibraryRemovalError::Store(_)), "{error}");
     assert_eq!(
         error.category(),
@@ -218,7 +261,9 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
     home.storage.set_online(true);
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
+    remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+        .await
+        .unwrap();
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
     assert_eq!(home.unfinished().await, None);
@@ -234,7 +279,9 @@ async fn removing_a_library_keeps_its_saved_restore_code_to_offer_again() {
     home.connect(&handle).await;
     let id = handle.store_id();
     assert_eq!(home.offered_codes().await, Vec::new());
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
+    remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+        .await
+        .unwrap();
     assert_eq!(home.offered_codes().await, vec![(id, "Library".to_string())]);
 }
 
@@ -249,8 +296,12 @@ async fn a_forgotten_restore_code_is_no_longer_offered() {
     let forgotten = home.library("Forgotten").await;
     home.connect(&forgotten).await;
     let (kept_id, forgotten_id) = (kept.store_id(), forgotten.store_id());
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &kept).await.unwrap();
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &forgotten).await.unwrap();
+    remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &kept)
+        .await
+        .unwrap();
+    remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &forgotten)
+        .await
+        .unwrap();
     let mut offered = home.offered_codes().await;
     offered.sort_by(|a, b| a.1.cmp(&b.1));
     assert_eq!(
@@ -272,7 +323,9 @@ async fn a_removal_that_cannot_be_recorded_removes_nothing() {
     home.point_at(id);
     std::fs::write(home.app_dir.removal_records(), b"").unwrap();
     let error =
-        remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap_err();
+        remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+            .await
+            .unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Record(_)), "{error}");
     assert_eq!(handle.store_name().await.unwrap(), "Library");
     assert_eq!(home.pointer(), Some(id.to_string()));
@@ -304,7 +357,9 @@ async fn a_removal_stopped_before_the_delete_reports_the_library_still_here() {
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(home.directory(id).exists());
 
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
+    remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+        .await
+        .unwrap();
     assert_eq!(home.stores().await, 0);
     assert!(!home.directory(id).exists());
 }
@@ -353,7 +408,9 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     let id = handle.store_id();
     std::fs::create_dir(home.app_dir.active_library_pointer()).unwrap();
     let error =
-        remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap_err();
+        remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+            .await
+            .unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
     assert!(error.to_string().contains("store was removed"), "{error}");
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Internal);
@@ -387,7 +444,9 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
     home.point_at(id);
     set_writable(&home.app_dir.libraries(), false);
     let error =
-        remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap_err();
+        remove_local_library(&home.app_dir, &home.installation, &Diagnostics::noop(), &handle)
+            .await
+            .unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
     assert!(error.to_string().contains(&home.directory(id).display().to_string()), "{error}");
     assert_eq!(home.stores().await, 0);
@@ -449,6 +508,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
         async move {
             super::remove_recorded(
                 &home.app_dir,
+                &home.installation,
                 &Diagnostics::noop(),
                 id,
                 async {

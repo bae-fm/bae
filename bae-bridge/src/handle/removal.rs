@@ -46,7 +46,7 @@ impl BridgeLibraryRemoval {
             Err(error @ E::Unfinished(_)) => Ok(Self::Unfinished {
                 removal: BridgeUnfinishedRemoval::new(error.category(), &error, true),
             }),
-            Err(error @ (E::Stop(_) | E::Record(_) | E::Store(_) | E::Closing(_))) => {
+            Err(error @ (E::Stop(_) | E::Record(_) | E::Store(_) | E::Closing { .. })) => {
                 Err(BridgeError::categorized(error.category(), &error))
             }
         }
@@ -92,7 +92,7 @@ impl AppHandle {
             .run_to_completion(self.clone(), "remove library", move || async move {
                 #[cfg(feature = "desktop")]
                 steps.stop_servers(&self.desktop).await;
-                let removal = self.services.remove_library(&|step| steps.core(step)).await;
+                let removal = self.host.remove_open_library(&self.services, &steps).await;
                 if matches!(removal, Ok(()) | Err(bae_library::LibraryRemovalError::Unfinished(_)))
                 {
                     self.session.removed();

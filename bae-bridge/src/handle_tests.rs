@@ -116,7 +116,7 @@ fn queue_entry_precomputes_duration_clock() {
 /// A handle over a fresh, empty library, built the way the app builds one.
 pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let (runtime, library, root) = fresh_test_library(test_name);
-    (start_test_handle(runtime, library), root)
+    (start_test_handle(runtime, library, &root), root)
 }
 
 /// A fresh library opened in a directory named for `test_name`, on the
@@ -148,10 +148,22 @@ pub(super) fn fresh_test_library(
     (runtime, library, root)
 }
 
-/// Start a handle over `library` on `runtime`, as the app starts one.
+/// A host over the bae directory under `home`, which a test starts a handle
+/// for.
+pub(crate) fn test_host(home: &std::path::Path) -> Arc<crate::BridgeHost> {
+    crate::BridgeHost::with_test_keyring(
+        crate::BridgeDiagnostics::noop(),
+        crate::BridgeAppDir::new(home.to_str().unwrap().into()).unwrap(),
+    )
+    .unwrap()
+}
+
+/// Start a handle over `library` on `runtime`, for a host over the bae
+/// directory under `home`, as the app starts one.
 pub(super) fn start_test_handle(
     runtime: tokio::runtime::Runtime,
     library: bae_library::test_libraries::TestLibrary,
+    home: &std::path::Path,
 ) -> Arc<super::AppHandle> {
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
@@ -159,8 +171,13 @@ pub(super) fn start_test_handle(
             .expect("the test library's services start")
     });
     Arc::new(
-        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
-            .expect("the bridge handle starts"),
+        super::AppHandle::start(
+            services,
+            runtime,
+            bae_diagnostics::Diagnostics::noop(),
+            test_host(home),
+        )
+        .expect("the bridge handle starts"),
     )
 }
 
@@ -693,8 +710,13 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
             .await
             .expect("the test library's services start")
     });
-    let app = super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
-        .expect("the bridge handle starts");
+    let app = super::AppHandle::start(
+        services,
+        runtime,
+        bae_diagnostics::Diagnostics::noop(),
+        test_host(directory.path()),
+    )
+    .expect("the bridge handle starts");
 
     drop(app);
 

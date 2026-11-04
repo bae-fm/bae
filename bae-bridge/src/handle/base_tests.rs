@@ -10,7 +10,7 @@ fn bridge_handle_holding(
 ) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let (runtime, library, root) = crate::handle::tests::fresh_test_library(test_name);
     runtime.block_on(library.write_fixture(fixture)).expect("write the library fixture");
-    (crate::handle::tests::start_test_handle(runtime, library), root)
+    (crate::handle::tests::start_test_handle(runtime, library, &root), root)
 }
 
 /// Deleting an album through the handle takes it out of the grid and leaves
@@ -99,14 +99,20 @@ fn setting_up_s3_storage_writes_its_steps() {
             .await
             .expect("the test library's services start")
     });
-    let app = Arc::new(
-        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
-    );
     let host = crate::BridgeHost::with_test_keyring(
         crate::BridgeDiagnostics::noop(),
         crate::BridgeAppDir::new(root.path().join("host").to_str().unwrap().into()).unwrap(),
     )
     .unwrap();
+    let app = Arc::new(
+        super::AppHandle::start(
+            services,
+            runtime,
+            bae_diagnostics::Diagnostics::noop(),
+            crate::handle::tests::test_host(root.path()),
+        )
+        .unwrap(),
+    );
     let setup = crate::BridgeLibrarySetup::new(host);
 
     app.runtime

@@ -26,12 +26,17 @@ pub enum LibraryRemovalError {
     /// coven didn't delete the store; bae's files for it are untouched.
     #[error(transparent)]
     Store(coven::StoreDeletionError),
-    /// This device left the library, but closing its store failed: coven
-    /// deleted nothing, and the library's files are still on this device.
+    /// This device left the library, but closing its store failed and
+    /// discarding the closed store then failed too: the library's files are
+    /// still on this device.
     #[error(
-        "this device left the library, but closing its store failed, so its files are still on this device: {0}"
+        "this device left the library, but closing its store failed ({closing}) and discarding it failed, so its files are still on this device: {discard}"
     )]
-    Closing(#[source] coven::SyncError),
+    Closing {
+        closing: coven::SyncError,
+        #[source]
+        discard: coven::StoreDeletionError,
+    },
     /// coven deleted the store, but deleting bae's files for it or its record
     /// failed. The record keeps it an [`UnfinishedRemoval`] until
     /// [`finish_removals`] completes it.
@@ -39,20 +44,12 @@ pub enum LibraryRemovalError {
     Unfinished(#[source] LibraryError),
 }
 
-impl From<coven::StoreDeletionError> for LibraryRemovalError {
-    fn from(error: coven::StoreDeletionError) -> Self {
-        match error {
-            coven::StoreDeletionError::Closing(error) => Self::Closing(error),
-            error => Self::Store(error),
-        }
-    }
-}
-
 impl LibraryRemovalError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Store(error) => bae_diagnostics::deletion_category(error),
-            Self::Closing(error) => bae_diagnostics::sync_category(error),
+            Self::Store(error) | Self::Closing { discard: error, .. } => {
+                bae_diagnostics::deletion_category(error)
+            }
             Self::Stop(source) | Self::Record(source) | Self::Unfinished(source) => {
                 source.category()
             }
@@ -162,11 +159,13 @@ pub async fn finish_removals(
 /// playback and import services first.
 pub async fn remove_local_library(
     app_dir: &AppDir,
+    coven: &coven::Coven,
     diagnostics: &Diagnostics,
     handle: &coven::CovenHandle,
 ) -> Result<(), LibraryRemovalError> {
     remove_recorded(
         app_dir,
+        coven,
         diagnostics,
         handle.store_id(),
         handle.delete_store(coven::IfUnsent::Discard),
@@ -193,6 +192,7 @@ pub async fn remove_unopenable_library(
 ) -> Result<(), LibraryRemovalError> {
     remove_recorded(
         app_dir,
+        coven,
         diagnostics,
         store_id,
         coven.discard_store(&coven.store_dir(&store_id)),
@@ -226,9 +226,12 @@ pub async fn unsent_before_removal(
 
 /// Record the removal of `store_id`, run `delete_store`, then delete bae's
 /// files and the record, telling `steps` as leaving and deleting start. A
-/// refused delete clears the record again.
+/// delete that fails closing the store after this device left it is finished
+/// by `coven` discarding the closed store. A refused delete clears the record
+/// again.
 pub(crate) async fn remove_recorded(
     app_dir: &AppDir,
+    coven: &coven::Coven,
     diagnostics: &Diagnostics,
     store_id: coven::StoreId,
     delete_store: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
@@ -238,11 +241,21 @@ pub(crate) async fn remove_recorded(
         RemovalLock::acquire(app_dir, diagnostics).await.map_err(LibraryRemovalError::Record)?;
     write_record(app_dir, diagnostics, store_id).await.map_err(LibraryRemovalError::Record)?;
     steps(super::ClosingStep::LeavingLibrary);
-    if let Err(error) = delete_store.await {
+    let deleted = match delete_store.await {
+        Err(coven::StoreDeletionError::Closing(closing)) => {
+            warn!(%store_id, %closing, "closing the store failed after this device left it; discarding the closed store");
+            coven
+                .discard_store(&coven.store_dir(&store_id))
+                .await
+                .map_err(|discard| LibraryRemovalError::Closing { closing, discard })
+        }
+        deleted => deleted.map_err(LibraryRemovalError::Store),
+    };
+    if let Err(error) = deleted {
         if let Err(record) = delete_record(app_dir, diagnostics, store_id).await {
             warn!(%store_id, %record, "the removal record outlives coven's refusal; finding unfinished removals reports it");
         }
-        return Err(error.into());
+        return Err(error);
     }
     steps(super::ClosingStep::DeletingFiles);
     delete_library_files(app_dir, diagnostics, store_id)

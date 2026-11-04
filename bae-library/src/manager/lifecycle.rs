@@ -27,10 +27,13 @@ impl LibraryManager {
     /// The caller stops its playback and import services before removal.
     /// This ends the manager's workers before leaving, and discards what this
     /// device hasn't uploaded. An offline refusal preserves the store; retry
-    /// removal on this manager, or reopen it to resume normal use. `steps`
-    /// hears each step as it starts.
+    /// removal on this manager, or reopen it to resume normal use. `coven`,
+    /// the installation the library was opened from, finishes a deletion
+    /// whose close failed after leaving. `steps` hears each step as it
+    /// starts.
     pub async fn remove_library(
         &self,
+        coven: &coven::Coven,
         steps: &(dyn Fn(crate::ClosingStep) + Send + Sync),
     ) -> Result<(), crate::LibraryRemovalError> {
         let id = self.database.store_id();
@@ -38,6 +41,7 @@ impl LibraryManager {
         self.tasks.close().await;
         crate::local_lifecycle::remove_recorded(
             &self.app_dir,
+            coven,
             &self.diagnostics,
             id,
             self.database.delete_store(),
