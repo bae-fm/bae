@@ -554,6 +554,51 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     manager.close().await.unwrap();
 }
 
+/// An upload a server error refused waits on coven's backoff, which a
+/// stopped clock never ends, and offers Retry now; retrying ends the wait,
+/// and the file uploads.
+#[tokio::test]
+async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
+    let (manager, temp_dir, _clock) = library_on_a_stopped_clock().await;
+    manager.database.set_uploads_paused(true).await.unwrap();
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("refused"),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    manager
+        .storage
+        .set_faults(coven::Faults {
+            refuse_file_uploads: 1,
+            failure: coven::StorageFailure::Network,
+            response: Some(500),
+            ..coven::Faults::none()
+        })
+        .await;
+    manager.database.set_uploads_paused(false).await.unwrap();
+
+    let refused = status_until(&manager, |value| {
+        value.pending.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("500")))
+    })
+    .await;
+    assert!(refused.retry_offered(), "{:?} {:?}", refused.retry_effect, refused.pending);
+    let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+        manager.retry_now().await.unwrap().await
+    })
+    .await
+    .expect("the retry's pass ends");
+    assert!(matches!(answer, bae_db::SyncRetryOutcome::Synced), "{answer:?}");
+    inspector_rows_until(&manager, &release.id, |rows| {
+        rows.files.iter().all(|file| file.file.stored)
+    })
+    .await;
+    let settled = status_until(&manager, |value| value.pending.is_empty()).await;
+    assert!(!settled.retry_offered(), "nothing is left to retry: {:?}", settled.pending);
+    manager.close().await.unwrap();
+}
+
 /// Whether uploads are paused reads from coven's pause, with nothing queued
 /// too, and follows each change.
 #[tokio::test]
