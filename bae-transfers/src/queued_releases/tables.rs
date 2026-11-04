@@ -16,9 +16,9 @@ use bae_db::client::list_windows::{
     list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
     WindowsRead,
 };
+use bae_db::client::read::column_conversion_error;
 use bae_db::{DbError, LibraryBrowseWindow, LibraryPageWindows};
 use coven::{CovenWrite, SqlReadContext};
-use rusqlite::types::Type;
 #[cfg(desktop)]
 use rusqlite::types::Value;
 use rusqlite::{params, OptionalExtension, Row};
@@ -86,15 +86,14 @@ impl QueuedPayload for OutputRequest {
         let kind = match (kind.as_str(), preset) {
             ("export", None) => OutputKind::Export,
             ("save", Some(preset)) => OutputKind::Save {
-                preset: serde_json::from_str(&preset).map_err(|error| {
-                    rusqlite::Error::FromSqlConversionFailure(at + 2, Type::Text, Box::new(error))
-                })?,
+                preset: serde_json::from_str(&preset)
+                    .map_err(|error| column_conversion_error(row, at + 2, error))?,
             },
             (kind, preset) => {
-                return Err(rusqlite::Error::FromSqlConversionFailure(
+                return Err(column_conversion_error(
+                    row,
                     at + 1,
-                    Type::Text,
-                    format!("output kind {kind:?} with preset {preset:?}").into(),
+                    format!("output kind {kind:?} with preset {preset:?}"),
                 ))
             }
         };
@@ -130,10 +129,10 @@ fn phase_from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<ReleaseQueueStat
         ("queued", None) => Ok(ReleaseQueueState::Queued),
         ("active", None) => Ok(ReleaseQueueState::Active { progress: () }),
         ("failed", Some(error)) => Ok(ReleaseQueueState::Failed { error }),
-        (state, error) => Err(rusqlite::Error::FromSqlConversionFailure(
+        (state, error) => Err(column_conversion_error(
+            row,
             at,
-            Type::Text,
-            format!("queue state {state:?} with error {error:?}").into(),
+            format!("queue state {state:?} with error {error:?}"),
         )),
     }
 }

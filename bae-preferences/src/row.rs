@@ -11,7 +11,7 @@ use super::{
 use bae_db::client::query::{QueryOne, QueryRows};
 use bae_db::{Database, DbError};
 use coven::{CovenError, CovenWrite};
-use rusqlite::params;
+use rusqlite::{params, Row};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 
@@ -52,7 +52,7 @@ fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Prefere
         let flag = |column: &str| row.get::<_, bool>(column);
         let concurrency = |column: &str| {
             let value: u32 = row.get(column)?;
-            NonZeroU32::new(value).ok_or_else(|| invalid(column, value))
+            NonZeroU32::new(value).ok_or_else(|| invalid(row, column, value))
         };
         Ok(Preferences {
             discogs: row
@@ -61,14 +61,14 @@ fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Prefere
                     "unvalidated" => Ok(DiscogsValidation::Unvalidated),
                     "valid" => Ok(DiscogsValidation::Valid),
                     "rejected" => Ok(DiscogsValidation::Rejected),
-                    _ => Err(invalid("discogs_key", state)),
+                    _ => Err(invalid(row, "discogs_key", state)),
                 })
                 .transpose()?,
             replay_gain_mode: match row.get::<_, String>("replay_gain_mode")?.as_str() {
                 "off" => ReplayGainMode::Off,
                 "track" => ReplayGainMode::Track,
                 "album" => ReplayGainMode::Album,
-                other => return Err(invalid("replay_gain_mode", other)),
+                other => return Err(invalid(row, "replay_gain_mode", other)),
             },
             save_presets,
             default_track_save_preset: row.get("default_track_save_preset")?,
@@ -81,7 +81,7 @@ fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Prefere
                 Some(30) => SidePauseCountdown::Seconds30,
                 Some(45) => SidePauseCountdown::Seconds45,
                 Some(60) => SidePauseCountdown::Seconds60,
-                Some(other) => return Err(invalid("side_pause_countdown_seconds", other)),
+                Some(other) => return Err(invalid(row, "side_pause_countdown_seconds", other)),
             },
             max_concurrent_uploads: concurrency("max_concurrent_uploads")?,
             max_concurrent_downloads: concurrency("max_concurrent_downloads")?,
@@ -103,7 +103,7 @@ fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Prefere
             cast_transcode_format: match row.get::<_, String>("cast_transcode_format")?.as_str() {
                 "mp3" => CastTranscodeFormat::Mp3,
                 "wav" => CastTranscodeFormat::Wav,
-                other => return Err(invalid("cast_transcode_format", other)),
+                other => return Err(invalid(row, "cast_transcode_format", other)),
             },
             mcp: McpConfig { enabled: flag("mcp_enabled")?, port: row.get("mcp_port")? },
             subsonic: SubsonicConfig {
@@ -124,7 +124,7 @@ fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
             let token: String = row.get("token")?;
             Ok((
                 row.get::<_, String>("preset_id")?,
-                filename_token(&token).ok_or_else(|| invalid("token", token))?,
+                filename_token(&token).ok_or_else(|| invalid(row, "token", token))?,
             ))
         },
     )?;
@@ -140,7 +140,7 @@ fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
                 16 => Ok(SaveBitDepth::Bits16),
                 24 => Ok(SaveBitDepth::Bits24),
                 32 => Ok(SaveBitDepth::Bits32),
-                other => Err(invalid("bit_depth", other)),
+                other => Err(invalid(row, "bit_depth", other)),
             }
         };
         let bitrate_kbps = || row.get::<_, u32>("bitrate_kbps");
@@ -155,7 +155,7 @@ fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
                 "mp3" => SaveCodec::Mp3 { bitrate_kbps: bitrate_kbps()? },
                 "aac" => SaveCodec::Aac { bitrate_kbps: bitrate_kbps()? },
                 "opus_ogg" => SaveCodec::OpusOgg { bitrate_kbps: bitrate_kbps()? },
-                _ => return Err(invalid("codec", codec)),
+                _ => return Err(invalid(row, "codec", codec)),
             },
             pregap_placement: match pregap.as_str() {
                 "append_to_previous_except_htoa" => SavePregapPlacement::AppendToPreviousExceptHtoa,
@@ -164,7 +164,7 @@ fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
                 }
                 "exclude" => SavePregapPlacement::Exclude,
                 "single_file_with_cue" => SavePregapPlacement::SingleFileWithCue,
-                _ => return Err(invalid("pregap_placement", pregap)),
+                _ => return Err(invalid(row, "pregap_placement", pregap)),
             },
             applies_to_track: row.get("applies_to_track")?,
             applies_to_release: row.get("applies_to_release")?,
@@ -327,11 +327,11 @@ fn filename_token_column(token: SaveFilenameToken) -> &'static str {
 }
 
 /// A stored value the schema's checks should have refused.
-fn invalid(column: &str, value: impl std::fmt::Display) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(
-        0,
-        rusqlite::types::Type::Text,
-        format!("preferences hold {value} in {column}").into(),
+fn invalid(row: &Row<'_>, column: &str, value: impl std::fmt::Display) -> rusqlite::Error {
+    bae_db::client::read::column_conversion_error(
+        row,
+        column,
+        format!("preferences hold {value} in {column}"),
     )
 }
 

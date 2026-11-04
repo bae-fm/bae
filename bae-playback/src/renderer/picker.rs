@@ -42,10 +42,10 @@ fn kind_from_column(row: &Row<'_>, column: usize) -> rusqlite::Result<RendererKi
         "cast" => Ok(RendererKind::Cast),
         "dlna" => Ok(RendererKind::Dlna),
         "airplay" => Ok(RendererKind::AirPlay),
-        other => Err(rusqlite::Error::FromSqlConversionFailure(
+        other => Err(bae_db::client::read::column_conversion_error(
+            row,
             column,
-            rusqlite::types::Type::Text,
-            format!("cast device kind {other} names no renderer").into(),
+            format!("cast device kind {other} names no renderer"),
         )),
     }
 }

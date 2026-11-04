@@ -331,10 +331,10 @@ fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetai
             artist: row_to_artist_with_prefix(row, "artist_")?,
         }),
         other => {
-            return Err(rusqlite::Error::FromSqlConversionFailure(
-                0,
-                rusqlite::types::Type::Integer,
-                format!("composer_detail_row section {other} names no part of the page").into(),
+            return Err(column_conversion_error(
+                row,
+                "section",
+                format!("composer_detail_row section {other} names no part of the page"),
             ))
         }
     };

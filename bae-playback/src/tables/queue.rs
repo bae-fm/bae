@@ -129,9 +129,9 @@ impl PlaybackQueueTables {
     pub async fn repeat(&self) -> Result<RepeatMode, DbError> {
         self.db
             .read(|sql| {
-                let repeat: String =
-                    sql.query_row("SELECT repeat FROM playback_queue", [], |row| row.get(0))?;
-                Ok(repeat_from_column(&repeat)?)
+                Ok(sql.query_row("SELECT repeat FROM playback_queue", [], |row| {
+                    repeat_from_row(row, 0)
+                })?)
             })
             .await
     }
@@ -751,16 +751,18 @@ pub(crate) fn repeat_column(mode: RepeatMode) -> &'static str {
     }
 }
 
-pub(super) fn repeat_from_column(value: &str) -> rusqlite::Result<RepeatMode> {
-    match value {
+/// The repeat mode `row`'s column `column` stores.
+pub(super) fn repeat_from_row<I: rusqlite::RowIndex + Copy>(
+    row: &Row<'_>,
+    column: I,
+) -> rusqlite::Result<RepeatMode> {
+    match row.get::<_, String>(column)?.as_str() {
         "off" => Ok(RepeatMode::Off),
         "track" => Ok(RepeatMode::Track),
         "context" => Ok(RepeatMode::Context),
-        other => Err(rusqlite::Error::FromSqlConversionFailure(
-            0,
-            rusqlite::types::Type::Text,
-            format!("unknown repeat mode {other:?}").into(),
-        )),
+        other => {
+            Err(column_conversion_error(row, column, format!("unknown repeat mode {other:?}")))
+        }
     }
 }
 

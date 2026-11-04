@@ -62,11 +62,7 @@ pub async fn load_playback_state(
                         let current = match entry.zip(track_id) {
                             Some((entry, track_id)) => Some(crate::QueueEntry {
                                 id: entry.parse().map_err(|e: String| {
-                                    rusqlite::Error::FromSqlConversionFailure(
-                                        0,
-                                        rusqlite::types::Type::Text,
-                                        e.into(),
-                                    )
+                                    column_conversion_error(row, "current_entry", e)
                                 })?,
                                 track_id,
                             }),

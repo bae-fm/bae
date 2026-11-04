@@ -3,7 +3,7 @@
 //! the context lane's upcoming tracks with their length, and the last
 //! addition to Up Next.
 
-use super::queue::repeat_from_column;
+use super::queue::repeat_from_row;
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
 use crate::{ContextSource, QueueItem, QueueUpcomingWindow, RepeatMode};
@@ -109,7 +109,7 @@ struct QueueHead {
 }
 
 fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    type Head = (String, Option<String>, Option<String>, Option<bool>, Option<i64>, i64, i64);
+    type Head = (RepeatMode, Option<String>, Option<String>, Option<bool>, Option<i64>, i64, i64);
     let (repeat, source_kind, source_release_id, shuffled, cursor, manual_version, context_version): Head =
         sql.query_row(
             "SELECT repeat, source_kind, source_release_id, shuffled, cursor, \
@@ -118,7 +118,7 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
             [],
             |row| {
                 Ok((
-                    row.get(0)?,
+                    repeat_from_row(row, 0)?,
                     row.get(1)?,
                     row.get(2)?,
                     row.get(3)?,
@@ -140,7 +140,7 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
     };
     // The table's CHECKs keep both versions at zero or above.
     Ok(QueueHead {
-        repeat: repeat_from_column(&repeat)?,
+        repeat,
         context,
         manual_version: manual_version as u64,
         context_version: context_version as u64,

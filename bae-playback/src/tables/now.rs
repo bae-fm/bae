@@ -3,7 +3,7 @@
 //! playing track's display and the queue's repeat mode.
 
 use super::preview_target::{preview_target_from_row, preview_target_values};
-use super::queue::repeat_from_column;
+use super::queue::repeat_from_row;
 use super::track_display::track_display_on;
 use super::*;
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
@@ -311,12 +311,8 @@ impl<'a> FailureColumns<'a> {
 
 /// A column value the schema's CHECKs rule out: the row is one nothing here
 /// wrote.
-fn unknown(column: &str, value: &str) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(
-        0,
-        rusqlite::types::Type::Text,
-        format!("playback_now.{column} holds {value:?}").into(),
-    )
+fn unknown(row: &Row<'_>, column: &str, value: &str) -> rusqlite::Error {
+    column_conversion_error(row, column, format!("playback_now.{column} holds {value:?}"))
 }
 
 /// The row's track state, apart from the track's display.
@@ -349,23 +345,25 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
                         boundary: match kind.as_str() {
                             "side" => PlaybackPauseBoundary::Side,
                             "disc" => PlaybackPauseBoundary::Disc,
-                            other => return Err(unknown("side_boundary_kind", other)),
+                            other => return Err(unknown(row, "side_boundary_kind", other)),
                         },
                         side_label: row.get("side_label")?,
                         countdown: resumes_at
                             .map(|millis| {
                                 chrono::DateTime::from_timestamp_millis(millis)
                                     .map(|resumes_at| PlaybackSideCountdown { resumes_at })
-                                    .ok_or_else(|| unknown("side_resumes_at", &millis.to_string()))
+                                    .ok_or_else(|| {
+                                        unknown(row, "side_resumes_at", &millis.to_string())
+                                    })
                             })
                             .transpose()?,
                     })
                 }
-                other => return Err(unknown("pause_reason", other)),
+                other => return Err(unknown(row, "pause_reason", other)),
             };
             PlaybackState::Paused { track, reason }
         }
-        other => return Err(unknown("state", other)),
+        other => return Err(unknown(row, "state", other)),
     })
 }
 
@@ -379,7 +377,7 @@ fn remote_from_row(row: &Row<'_>) -> rusqlite::Result<RemotePlayback> {
     Ok(match remote.as_str() {
         "on" => RemotePlayback::On(device),
         "ended" => RemotePlayback::Ended { device, detail: row.get("remote_end_detail")? },
-        other => return Err(unknown("remote", other)),
+        other => return Err(unknown(row, "remote", other)),
     })
 }
 
@@ -388,12 +386,13 @@ fn preview_from_row(row: &Row<'_>) -> rusqlite::Result<PreviewState> {
     if preview == "idle" {
         return Ok(PreviewState::Idle);
     }
-    let target = preview_target_from_row(row)?.ok_or_else(|| unknown("preview_path", "NULL"))?;
+    let target =
+        preview_target_from_row(row)?.ok_or_else(|| unknown(row, "preview_path", "NULL"))?;
     let duration_ms: u64 = row.get("preview_duration_ms")?;
     Ok(match preview.as_str() {
         "playing" => PreviewState::Playing { target, duration_ms },
         "paused" => PreviewState::Paused { target, duration_ms },
-        other => return Err(unknown("preview", other)),
+        other => return Err(unknown(row, "preview", other)),
     })
 }
 
@@ -420,7 +419,7 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
                     name,
                     state: bae_db::membership::FormerDeviceState::Replaced,
                 },
-                other => return Err(unknown("failure_device_state", other)),
+                other => return Err(unknown(row, "failure_device_state", other)),
             })
         }
         "original_missing" => PlaybackErrorReason::OriginalMissing,
@@ -431,13 +430,13 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
                     "device_unavailable" => AudioOutputProblem::DeviceUnavailable,
                     "unsupported_format" => AudioOutputProblem::UnsupportedFormat,
                     "airplay_refused" => AudioOutputProblem::AirPlayRefused,
-                    other => return Err(unknown("failure_problem", other)),
+                    other => return Err(unknown(row, "failure_problem", other)),
                 },
             }
         }
         "internal" => diagnostic(PlaybackDiagnostic::Internal)?,
         "renderer" => diagnostic(PlaybackDiagnostic::Renderer)?,
-        other => return Err(unknown("failure", other)),
+        other => return Err(unknown(row, "failure", other)),
     };
     let number: i64 = row.get("failures")?;
     Ok(Some(PlaybackFailure { number: number as u64, reason }))
@@ -449,7 +448,6 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
 fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, DbError> {
     let (values, repeat_mode, failure) =
         sql.query_row("SELECT n.*, q.repeat FROM playback_now n, playback_queue q", [], |row| {
-            let repeat: String = row.get("repeat")?;
             Ok((
                 PlaybackValues {
                     state: state_from_row(row)?,
@@ -458,7 +456,7 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, 
                     remote: remote_from_row(row)?,
                     preview: preview_from_row(row)?,
                 },
-                repeat_from_column(&repeat)?,
+                repeat_from_row(row, "repeat")?,
                 failure_from_row(row)?,
             ))
         })?;

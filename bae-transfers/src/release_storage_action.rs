@@ -58,10 +58,10 @@ pub fn transfer_action_column(
         "pin" => Ok(Some(ReleaseStorageAction::Pin)),
         "unpin" => Ok(Some(ReleaseStorageAction::Unpin)),
         "detach_audio" => Ok(Some(ReleaseStorageAction::DetachAudio)),
-        other => Err(rusqlite::Error::FromSqlConversionFailure(
+        other => Err(bae_db::client::read::column_conversion_error(
+            row,
             column,
-            rusqlite::types::Type::Text,
-            format!("storage action {other} names no transition").into(),
+            format!("storage action {other} names no transition"),
         )),
     }
 }

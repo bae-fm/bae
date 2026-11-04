@@ -268,10 +268,10 @@ fn storage_place(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storage
         2 => Ok(crate::album_detail::StoragePlace::Local),
         3 => Ok(crate::album_detail::StoragePlace::Pinned),
         4 => Ok(crate::album_detail::StoragePlace::Cloud),
-        order => Err(rusqlite::Error::FromSqlConversionFailure(
+        order => Err(bae_db::client::read::column_conversion_error(
+            row,
             column,
-            rusqlite::types::Type::Integer,
-            format!("storage order {order} names no place").into(),
+            format!("storage order {order} names no place"),
         )),
     }
 }
