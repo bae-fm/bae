@@ -19,7 +19,7 @@ struct ImportSearchPane: View {
     let onSearch: (CandidateSearchState) -> Void
     /// Re-ask only the providers whose part of the search failed.
     let onRetrySearch: () -> Void
-    /// Open Settings on the Discogs page.
+    /// Open settings on the Discogs page.
     let onOpenSettings: () -> Void
     /// Leave an identifier (Disc ID, barcode, catalog number) out of the run,
     /// or ask about it again.

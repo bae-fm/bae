@@ -42,7 +42,7 @@ struct InvalidCandidateRow: View {
             }
             // An unreadable combined folder can only be separated from here.
             if invalid.separable {
-                Button("Keep as Separate Releases", action: onSeparate)
+                Button("Keep as separate releases", action: onSeparate)
             }
         }
     }

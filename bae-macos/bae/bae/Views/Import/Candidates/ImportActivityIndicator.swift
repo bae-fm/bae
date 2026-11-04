@@ -32,7 +32,7 @@ struct ImportActivityIndicator: View {
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
-                Button("Cancel All", role: .destructive) {
+                Button("Cancel all", role: .destructive) {
                     detailsShown = false
                     onCancelAll()
                 }

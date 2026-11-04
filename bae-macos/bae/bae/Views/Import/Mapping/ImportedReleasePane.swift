@@ -84,7 +84,7 @@ struct ImportedReleasePane: View {
         HStack(spacing: ThemeSpace.related) {
             Label("Imported", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Theme.success)
-            Button("View in Library") { onViewInLibrary(albumId) }
+            Button("View in library") { onViewInLibrary(albumId) }
                 .buttonStyle(.link)
         }
     }

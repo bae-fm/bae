@@ -161,7 +161,7 @@ struct CoverPickerTests {
         )
         #expect(
             CoverItem(coverChoice: file, label: "front.png").sourceLabel
-                == String(localized: "Release Files")
+                == String(localized: "Release files")
         )
     }
 }

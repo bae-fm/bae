@@ -23,7 +23,7 @@ struct TriageRowView: View {
     let menuOffers: () -> CandidateActionMenu
     let onPerform: (ImportCandidateActionOffer) -> Void
     /// Open the release this device imported from the row's files: what a
-    /// Done row's Show in Library does, as a double-click on the row in the
+    /// Done row's Show in library does, as a double-click on the row in the
     /// list's table does. `nil` off Done.
     let onShowInLibrary: (() -> Void)?
 
@@ -52,7 +52,7 @@ struct TriageRowView: View {
             .contentShape(Rectangle())
             .contextMenu {
                 if let onShowInLibrary {
-                    Button("Show in Library", action: onShowInLibrary)
+                    Button("Show in library", action: onShowInLibrary)
                     Divider()
                 }
                 CandidateActionMenuItems(

@@ -12,8 +12,8 @@ struct CandidateListMenuState {
     /// Roots on a network volume, which are checked on a schedule rather than
     /// reported the moment they change.
     let networkFolders: Set<Data>
-    /// Whether the queue has folder groups; without any, Expand All and
-    /// Collapse All are disabled.
+    /// Whether the queue has folder groups; without any, Expand all and
+    /// Collapse all are disabled.
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     /// The entry Found's rows are narrowed to.
@@ -123,8 +123,8 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
         items.append(.separator())
         items.append(.sectionHeader(title: String(localized: "Groups")))
         for (title, symbol, expanded) in [
-            (String(localized: "Expand All"), "chevron.down", true),
-            (String(localized: "Collapse All"), "chevron.right", false),
+            (String(localized: "Expand all"), "chevron.down", true),
+            (String(localized: "Collapse all"), "chevron.right", false),
         ] {
             let item = ActionMenuItem(title: title, symbol: symbol) {
                 [weak self] in
@@ -137,10 +137,10 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
     }
 
     private static let sortOrders: [(String, BridgeImportListOrder)] = [
-        (String(localized: "Newest First"), .newestFirst),
-        (String(localized: "Oldest First"), .oldestFirst),
-        (String(localized: "Folder Name (A–Z)"), .pathAscending),
-        (String(localized: "Folder Name (Z–A)"), .pathDescending),
+        (String(localized: "Newest first"), .newestFirst),
+        (String(localized: "Oldest first"), .oldestFirst),
+        (String(localized: "Folder name (A–Z)"), .pathAscending),
+        (String(localized: "Folder name (Z–A)"), .pathDescending),
     ]
 
     /// One entry of Found's filter, checked when it is the chosen one.
@@ -249,7 +249,7 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
         )
         submenu.addItem(.separator())
         submenu.addItem(
-            ActionMenuItem(title: String(localized: "Remove Folder")) {
+            ActionMenuItem(title: String(localized: "Remove folder")) {
                 [weak self] in
                 self?.actions.onRemoveFolder(folder.path)
             }

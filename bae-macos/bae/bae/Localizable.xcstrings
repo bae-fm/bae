@@ -7184,7 +7184,7 @@
         }
       }
     },
-    "Not Looked Up" : {
+    "Not looked up" : {
       "comment" : "Import candidate list menu, Filter section: show only the Found rows no catalog lookup has run for",
       "extractionState" : "manual",
       "localizations" : {
@@ -7227,7 +7227,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Not Looked Up"
+            "value" : "Not looked up"
           }
         },
         "es" : {
@@ -7706,7 +7706,7 @@
         }
       }
     },
-    "In Progress" : {
+    "In progress" : {
       "comment" : "Import candidate list menu, Filter section: show only the Found rows a lookup or an import is queued or running for",
       "extractionState" : "manual",
       "localizations" : {
@@ -7749,7 +7749,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In Progress"
+            "value" : "In progress"
           }
         },
         "es" : {
@@ -7880,7 +7880,7 @@
         }
       }
     },
-    "Needs You" : {
+    "Needs you" : {
       "comment" : "Import candidate list menu, Filter section: show only the Found rows waiting on the person — their lookup left the answer to them, or a catalog, bae or the import failed",
       "extractionState" : "manual",
       "localizations" : {
@@ -7923,7 +7923,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Needs You"
+            "value" : "Needs you"
           }
         },
         "es" : {
@@ -8054,7 +8054,7 @@
         }
       }
     },
-    "Sorting, Filtering and Watched Folders" : {
+    "Sorting, filtering and watched folders" : {
       "comment" : "Import candidate list: hover on the menu that sorts and filters the list and manages watched folders",
       "extractionState" : "manual",
       "localizations" : {
@@ -8097,7 +8097,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sorting, Filtering and Watched Folders"
+            "value" : "Sorting, filtering and watched folders"
           }
         },
         "es" : {
@@ -9098,7 +9098,7 @@
         }
       }
     },
-    "Cancel Import" : {
+    "Cancel import" : {
       "comment" : "Import: candidate row menu item, and the import pane's button in Import's place, that cancels its waiting or running import",
       "extractionState" : "manual",
       "localizations" : {
@@ -9141,7 +9141,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancel Import"
+            "value" : "Cancel import"
           }
         },
         "es" : {
@@ -9446,7 +9446,7 @@
         }
       }
     },
-    "Cancel All" : {
+    "Cancel all" : {
       "comment" : "Button that cancels every item still waiting or running in a queue of work",
       "extractionState" : "manual",
       "localizations" : {
@@ -9489,7 +9489,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancel All"
+            "value" : "Cancel all"
           }
         },
         "es" : {
@@ -9794,7 +9794,7 @@
         }
       }
     },
-    "Stop Identifying" : {
+    "Stop identifying" : {
       "comment" : "Import: candidate row menu item that takes the candidate off the identification queue",
       "extractionState" : "manual",
       "localizations" : {
@@ -9837,7 +9837,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stop Identifying"
+            "value" : "Stop identifying"
           }
         },
         "es" : {
@@ -11877,7 +11877,7 @@
         }
       }
     },
-    "Current Cover" : {
+    "Current cover" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -11906,7 +11906,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Current Cover"
+            "value" : "Current cover"
           }
         },
         "de" : {
@@ -12049,7 +12049,7 @@
         }
       }
     },
-    "View in Lightbox" : {
+    "View in lightbox" : {
       "comment" : "Open artwork for browsing without changing the release cover",
       "localizations" : {
         "ar" : {
@@ -12079,7 +12079,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "View in Lightbox"
+            "value" : "View in lightbox"
           }
         },
         "de" : {
@@ -12199,7 +12199,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Görsel Görüntüleyicide Aç"
+            "value" : "Görsel görüntüleyicide aç"
           }
         },
         "uk" : {
@@ -12913,7 +12913,7 @@
         }
       }
     },
-    "Collapse All" : {
+    "Collapse all" : {
       "comment" : "Candidate list menu: fold every folder group shut",
       "localizations" : {
         "ar" : {
@@ -12943,7 +12943,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Collapse All"
+            "value" : "Collapse all"
           }
         },
         "de" : {
@@ -13063,7 +13063,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tümünü Daralt"
+            "value" : "Tümünü daralt"
           }
         },
         "uk" : {
@@ -13086,7 +13086,7 @@
         }
       }
     },
-    "Expand All" : {
+    "Expand all" : {
       "comment" : "Candidate list menu: open every folder group",
       "localizations" : {
         "ar" : {
@@ -13116,7 +13116,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Expand All"
+            "value" : "Expand all"
           }
         },
         "de" : {
@@ -13236,7 +13236,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tümünü Genişlet"
+            "value" : "Tümünü genişlet"
           }
         },
         "uk" : {
@@ -29668,7 +29668,7 @@
         }
       }
     },
-    "Change Cover" : {
+    "Change cover" : {
       "comment" : "Cover sheet title",
       "localizations" : {
         "ar" : {
@@ -29698,7 +29698,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Change Cover"
+            "value" : "Change cover"
           }
         },
         "de" : {
@@ -29818,7 +29818,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kapağı Değiştir"
+            "value" : "Kapağı değiştir"
           }
         },
         "uk" : {
@@ -31398,7 +31398,7 @@
         }
       }
     },
-    "Combine as One Release" : {
+    "Combine as one release" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -31427,7 +31427,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Combine as One Release"
+            "value" : "Combine as one release"
           }
         },
         "de" : {
@@ -48865,6 +48865,179 @@
         }
       }
     },
+    "Import folder…" : {
+      "comment" : "File menu: add a folder to watch for import",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استيراد مجلد…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Внасяне на папка…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importovat složku…"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer mappe…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import folder…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner importieren …"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Εισαγωγή φακέλου…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar carpeta…"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tuo kansio…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer un dossier…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ייבא תיקייה…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uvezi mapu…"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mappa importálása…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importa cartella…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フォルダを取り込む…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "폴더 가져오기…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer mappe…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Map importeren…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importuj folder…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar pasta…"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar pasta…"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importă dosar…"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importovať priečinok…"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importera mapp…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klasörü içe aktar…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Імпортувати теку…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入文件夹…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯入資料夾…"
+          }
+        }
+      }
+    },
     "Import some music to get started" : {
       "comment" : "Library: empty-state description",
       "localizations" : {
@@ -50768,7 +50941,7 @@
         }
       }
     },
-    "Keep as Separate Releases" : {
+    "Keep as separate releases" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -50797,7 +50970,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep as Separate Releases"
+            "value" : "Keep as separate releases"
           }
         },
         "de" : {
@@ -59938,7 +60111,7 @@
         }
       }
     },
-    "Open Settings" : {
+    "Open settings" : {
       "comment" : "Find online: button on the Discogs-not-configured bar, opening Settings on the Discogs page",
       "localizations" : {
         "ar" : {
@@ -59968,7 +60141,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Settings"
+            "value" : "Open settings"
           }
         },
         "de" : {
@@ -60022,7 +60195,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri Impostazioni"
+            "value" : "Apri impostazioni"
           }
         },
         "ja" : {
@@ -60088,7 +60261,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ayarları Aç"
+            "value" : "Ayarları aç"
           }
         },
         "uk" : {
@@ -66919,7 +67092,7 @@
         }
       }
     },
-    "Release Files" : {
+    "Release files" : {
       "comment" : "Cover sheet: section header for images already in the release",
       "localizations" : {
         "ar" : {
@@ -66949,7 +67122,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Release Files"
+            "value" : "Release files"
           }
         },
         "de" : {
@@ -67069,7 +67242,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayın Dosyaları"
+            "value" : "Yayın dosyaları"
           }
         },
         "uk" : {
@@ -67438,7 +67611,7 @@
         }
       }
     },
-    "Remote Sources" : {
+    "Remote sources" : {
       "comment" : "Cover sheet: section header for remote cover candidates",
       "localizations" : {
         "ar" : {
@@ -67468,7 +67641,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remote Sources"
+            "value" : "Remote sources"
           }
         },
         "de" : {
@@ -67588,7 +67761,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uzak Kaynaklar"
+            "value" : "Uzak kaynaklar"
           }
         },
         "uk" : {
@@ -67957,7 +68130,7 @@
         }
       }
     },
-    "Remove Folder" : {
+    "Remove folder" : {
       "comment" : "Import: context-menu action to stop watching a folder",
       "localizations" : {
         "ar" : {
@@ -67987,7 +68160,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove Folder"
+            "value" : "Remove folder"
           }
         },
         "de" : {
@@ -68107,7 +68280,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klasörü Kaldır"
+            "value" : "Klasörü kaldır"
           }
         },
         "uk" : {
@@ -71415,7 +71588,7 @@
         }
       }
     },
-    "Retry Import" : {
+    "Retry import" : {
       "comment" : "Import confirm: button to retry a failed import",
       "localizations" : {
         "ar" : {
@@ -71445,7 +71618,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retry Import"
+            "value" : "Retry import"
           }
         },
         "de" : {
@@ -71565,7 +71738,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İçe Aktarmayı Yeniden Dene"
+            "value" : "İçe aktarmayı yeniden dene"
           }
         },
         "uk" : {
@@ -71738,7 +71911,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finder'da Göster"
+            "value" : "Finder'da göster"
           }
         },
         "uk" : {
@@ -75220,7 +75393,7 @@
         }
       }
     },
-    "Show in Library" : {
+    "Show in library" : {
       "comment" : "Import list: Done row menu item and double-click, opening the release this device imported from the folder",
       "localizations" : {
         "ar" : {
@@ -75250,7 +75423,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show in Library"
+            "value" : "Show in library"
           }
         },
         "de" : {
@@ -75370,7 +75543,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplıkta Göster"
+            "value" : "Kitaplıkta göster"
           }
         },
         "uk" : {
@@ -77122,7 +77295,7 @@
         }
       }
     },
-    "Restore to Pending" : {
+    "Restore to pending" : {
       "comment" : "Import candidate bulk action",
       "localizations" : {
         "ar" : {
@@ -77152,7 +77325,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restore to Pending"
+            "value" : "Restore to pending"
           }
         },
         "de" : {
@@ -77170,7 +77343,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar a Pendientes"
+            "value" : "Restaurar a pendientes"
           }
         },
         "fi" : {
@@ -77230,7 +77403,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terugzetten naar In behandeling"
+            "value" : "Terugzetten naar in behandeling"
           }
         },
         "pl" : {
@@ -77242,7 +77415,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar para Pendentes"
+            "value" : "Restaurar para pendentes"
           }
         },
         "pt-PT" : {
@@ -78157,7 +78330,7 @@
         }
       }
     },
-    "Newest First" : {
+    "Newest first" : {
       "comment" : "Import candidate list sort menu",
       "localizations" : {
         "ar" : {
@@ -78247,7 +78420,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Newest First"
+            "value" : "Newest first"
           }
         },
         "ko" : {
@@ -78330,7 +78503,7 @@
         }
       }
     },
-    "Oldest First" : {
+    "Oldest first" : {
       "comment" : "Import candidate list sort menu",
       "localizations" : {
         "ar" : {
@@ -78420,7 +78593,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oldest First"
+            "value" : "Oldest first"
           }
         },
         "ko" : {
@@ -78503,7 +78676,7 @@
         }
       }
     },
-    "Folder Name (A–Z)" : {
+    "Folder name (A–Z)" : {
       "comment" : "Import candidate list sort menu",
       "localizations" : {
         "ar" : {
@@ -78593,7 +78766,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folder Name (A–Z)"
+            "value" : "Folder name (A–Z)"
           }
         },
         "ko" : {
@@ -78676,7 +78849,7 @@
         }
       }
     },
-    "Folder Name (Z–A)" : {
+    "Folder name (Z–A)" : {
       "comment" : "Import candidate list sort menu",
       "localizations" : {
         "ar" : {
@@ -78766,7 +78939,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folder Name (Z–A)"
+            "value" : "Folder name (Z–A)"
           }
         },
         "ko" : {
@@ -87151,7 +87324,7 @@
         }
       }
     },
-    "Use This Cover" : {
+    "Use this cover" : {
       "comment" : "Cover picker: confirm the selected cover art",
       "localizations" : {
         "ar" : {
@@ -87181,7 +87354,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use This Cover"
+            "value" : "Use this cover"
           }
         },
         "de" : {
@@ -87301,7 +87474,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Kapağı Kullan"
+            "value" : "Bu kapağı kullan"
           }
         },
         "uk" : {
@@ -87843,7 +88016,7 @@
         }
       }
     },
-    "View in Library" : {
+    "View in library" : {
       "comment" : "Import confirm: button linking to the matching album already in the library",
       "localizations" : {
         "ar" : {
@@ -87873,7 +88046,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "View in Library"
+            "value" : "View in library"
           }
         },
         "de" : {
@@ -87993,7 +88166,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplıkta Görüntüle"
+            "value" : "Kitaplıkta görüntüle"
           }
         },
         "uk" : {
@@ -121603,7 +121776,7 @@
         }
       }
     },
-    "Add %@ Key…" : {
+    "Add %@ key…" : {
       "comment" : "Library and Import empty states: button opening Settings on the Import pane, where a metadata source's API key is entered; %@ is the source name",
       "localizations" : {
         "ar" : {
@@ -121633,7 +121806,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add %@ Key…"
+            "value" : "Add %@ key…"
           }
         },
         "de" : {
@@ -121753,7 +121926,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ Anahtarı Ekle…"
+            "value" : "%@ anahtarı ekle…"
           }
         },
         "uk" : {

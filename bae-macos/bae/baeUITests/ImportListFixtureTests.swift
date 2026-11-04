@@ -54,14 +54,14 @@ final class ImportListFixtureTests: XCTestCase {
         }
 
         // The list's menu, named by what it holds.
-        let menu = window.menuButtons["Sorting, Filtering and Watched Folders"]
+        let menu = window.menuButtons["Sorting, filtering and watched folders"]
         XCTAssertTrue(menu.waitForExistence(timeout: 10))
         menu.click()
         // Lookup Error, Error and Import Error wait on the person as Needs
         // You does, so its entry holds all four.
         for entry in [
-            "All (7)", "Needs You (4)", "In Progress (0)", "Identified (1)",
-            "Unmatched (1)", "Not Looked Up (1)",
+            "All (7)", "Needs you (4)", "In progress (0)", "Identified (1)",
+            "Unmatched (1)", "Not looked up (1)",
         ] {
             XCTAssertTrue(
                 app.menuItems[entry].waitForExistence(timeout: 10),
@@ -69,18 +69,18 @@ final class ImportListFixtureTests: XCTestCase {
             )
         }
         // An entry holding no row cannot be chosen.
-        XCTAssertFalse(app.menuItems["In Progress (0)"].isEnabled)
+        XCTAssertFalse(app.menuItems["In progress (0)"].isEnabled)
         app.typeKey(.escape, modifierFlags: [])
 
         // Each entry chosen narrows the list to exactly its candidates.
         let entries: [(String, Set<LibraryFixture.CandidateState>)] = [
             (
-                "Needs You (4)",
+                "Needs you (4)",
                 [.needsYou, .lookupError, .error, .importError]
             ),
             ("Identified (1)", [.identified]),
             ("Unmatched (1)", [.unmatched]),
-            ("Not Looked Up (1)", [.notLookedUp]),
+            ("Not looked up (1)", [.notLookedUp]),
             ("All (7)", Set(states.map(\.1))),
         ]
         for (entry, shown) in entries {

@@ -26,7 +26,7 @@ struct LightboxItem: LightboxImage {
         self.image = image
     }
 
-    var sourceLabel: String { String(localized: "Release Files") }
+    var sourceLabel: String { String(localized: "Release files") }
 }
 
 struct LightboxView<Item: LightboxImage>: View {

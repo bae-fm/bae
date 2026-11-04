@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Add Discogs Key..., beside the first-import actions of an empty library
 /// and an empty Import tab. It opens Settings on the Import pane, as the Find
-/// online Discogs bar's Open Settings does: the key is entered under the
+/// online Discogs bar's Open settings does: the key is entered under the
 /// Discogs source switch there, and its field takes focus while no key is
 /// stored.
 ///
@@ -21,7 +21,7 @@ struct AddDiscogsKeyButton: View {
     var body: some View {
         if !configStore.config.discogsUsable {
             Button(
-                "Add \(bridgeCatalogName(catalog: .discogs)) Key…"
+                "Add \(bridgeCatalogName(catalog: .discogs)) key…"
             ) {
                 Self.openKeySettings(
                     navigation: settingsNavigation,

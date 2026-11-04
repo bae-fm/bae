@@ -4,7 +4,7 @@ import SwiftUI
 /// The notice that Discogs is not among the sources Find online can ask,
 /// shown above both sections because it holds for each of them.
 struct FindOnlineDiscogsBar: View {
-    /// Open Settings on the Discogs page.
+    /// Open settings on the Discogs page.
     let onOpenSettings: () -> Void
     /// Put the bar away for the rest of this run of the app.
     let onDismiss: () -> Void
@@ -34,7 +34,7 @@ struct FindOnlineDiscogsBar: View {
                 }
             }
             Spacer(minLength: ThemeSpace.group)
-            Button("Open Settings", action: onOpenSettings)
+            Button("Open settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             Button(action: onDismiss) {

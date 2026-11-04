@@ -42,7 +42,7 @@ struct CoverItem: LightboxImage {
         switch selection {
         case .remoteCover(let remote):
             bridgeCatalogName(catalog: remote.source)
-        case .releaseImage: String(localized: "Release Files")
+        case .releaseImage: String(localized: "Release files")
         case .embeddedCover:
             localizedCoreString("ui.import.metadata.file_metadata")
         case nil: String(localized: "Library")
@@ -73,7 +73,7 @@ struct CoverItem: LightboxImage {
 
     init(releaseId: String, cover: BridgeImageRef) {
         content = .currentCover(releaseId: releaseId, image: cover)
-        label = String(localized: "Current Cover")
+        label = String(localized: "Current cover")
     }
 }
 

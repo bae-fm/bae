@@ -617,9 +617,9 @@ struct ImportCommitControlsTests {
     }
 
     /// The pane is shown only before an import runs or after one fails, so
-    /// its commit bar offers Import, or Retry Import after a failed attempt.
+    /// its commit bar offers Import, or Retry import after a failed attempt.
     @MainActor
-    @Test("the commit bar offers Import, and Retry Import after a failure")
+    @Test("the commit bar offers Import, and Retry import after a failure")
     func theCommitBarOffersImportOrRetry() {
         var candidate = Candidate(
             detail: MappingFixtures.detail(
@@ -639,7 +639,7 @@ struct ImportCommitControlsTests {
         )
         #expect(
             ImportConfirmationCardAction.title(candidate.importStatus)
-                == "Retry Import"
+                == "Retry import"
         )
     }
 }

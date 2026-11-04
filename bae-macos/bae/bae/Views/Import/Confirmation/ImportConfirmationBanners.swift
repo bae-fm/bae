@@ -62,11 +62,11 @@ struct ImportConfirmationBanners: View {
     private func viewInLibrary(_ albums: [BridgeLibraryAlbumMatch]) -> some View
     {
         if albums.count == 1, let album = albums.first {
-            Button("View in Library") { onViewInLibrary(album.albumId) }
+            Button("View in library") { onViewInLibrary(album.albumId) }
                 .controlSize(.small)
         }
         else if !albums.isEmpty {
-            Menu("View in Library") {
+            Menu("View in library") {
                 ForEach(albums, id: \.albumId) { album in
                     Button(album.albumTitle) { onViewInLibrary(album.albumId) }
                 }

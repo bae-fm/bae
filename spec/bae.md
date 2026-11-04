@@ -825,7 +825,7 @@ wait and how many are being sent in the list's own read, from the counts the
 Storage manager reads, so the row changes as each file starts and lands; the
 bar's bytes arrive apart, in the release's value of the upload transfer stream
 the Storage manager's chip reads. It names the one release imported from those
-files, which Show in Library and a double-click on the row open.
+files, which Show in library and a double-click on the row open.
 
 A folder this device didn't import is in Found like any other, whatever another
 device imported and whichever library releases came from the same files. Ben

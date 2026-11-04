@@ -16,10 +16,10 @@ extension BridgeCandidateAction {
             String(localized: "Retry failed identification")
         case .resetToFileMetadata: String(localized: "Reset to file metadata")
         case .clearMetadata: String(localized: "Clear metadata")
-        case .combine: String(localized: "Combine as One Release")
-        case .separate: String(localized: "Keep as Separate Releases")
+        case .combine: String(localized: "Combine as one release")
+        case .separate: String(localized: "Keep as separate releases")
         case .skip: String(localized: "Skip selected")
-        case .restore: String(localized: "Restore to Pending")
+        case .restore: String(localized: "Restore to pending")
         case .revealFolder: String(localized: "Reveal in Finder")
         }
     }
@@ -36,8 +36,8 @@ extension BridgeCandidateAction {
     var rowLabel: String {
         switch self {
         case .identify: String(localized: "Identify")
-        case .cancelIdentification: String(localized: "Stop Identifying")
-        case .cancelImport: String(localized: "Cancel Import")
+        case .cancelIdentification: String(localized: "Stop identifying")
+        case .cancelImport: String(localized: "Cancel import")
         case .skip: String(localized: "Skip")
         case .restore: String(localized: "Unskip")
         case .import, .retryIdentification, .resetToFileMetadata,

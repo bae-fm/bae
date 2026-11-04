@@ -15,7 +15,7 @@ forward! { async this => {
     }
 
     /// Read every release below the folder `key` names as one — a group
-    /// header's "Combine as One Release" — and answer with its key.
+    /// header's "Combine as one release" — and answer with its key.
     fn combine_folder(key: crate::types::BridgeFolderReleaseDecisionKey) -> Vec<u8> {
         Ok(this
             .services
@@ -26,7 +26,7 @@ forward! { async this => {
     }
 
     /// Read the release at `key` as the folders it is made of — a broken
-    /// combined row's "Keep as Separate Releases", which selects nothing.
+    /// combined row's "Keep as separate releases", which selects nothing.
     fn separate_candidate(key: Vec<u8>) -> () {
         this.services
             .import_separate_candidate(&key.into())

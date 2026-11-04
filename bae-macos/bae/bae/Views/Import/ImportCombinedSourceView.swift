@@ -21,7 +21,7 @@ struct ImportCombinedSourceView: View {
                 }
             }
             .fixedSize()
-            Button("Keep as Separate Releases", action: onSeparate)
+            Button("Keep as separate releases", action: onSeparate)
                 .disabled(!canSeparate)
         }
         .padding(ThemeSpace.edge)

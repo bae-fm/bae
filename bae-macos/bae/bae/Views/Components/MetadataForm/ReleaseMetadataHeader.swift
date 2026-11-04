@@ -794,7 +794,7 @@ struct ArtistSearchResultRow: View {
                     .buttonStyle(.plain)
                     .padding(.leading, ThemeSpace.group)
                 }
-                Button("View in Library") {
+                Button("View in library") {
                     onViewArtist(result.artist.artistId)
                 }
                 .buttonStyle(.link)

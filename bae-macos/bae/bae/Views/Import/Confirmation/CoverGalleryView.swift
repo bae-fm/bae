@@ -23,7 +23,7 @@ struct CoverGalleryView: View {
     private var gallery: some View {
         VStack(spacing: 0) {
             HStack(spacing: ThemeSpace.group) {
-                Text(initialLayout == .lightbox ? "Images" : "Change Cover")
+                Text(initialLayout == .lightbox ? "Images" : "Change cover")
                     .themeText(.title)
                 Spacer()
                 if let onRefresh, remoteItems.canRefresh {
@@ -58,14 +58,14 @@ struct CoverGalleryView: View {
                         .pickerStyle(.menu)
                         if let cover = browser.currentCover {
                             section(
-                                "Current Cover",
+                                "Current cover",
                                 icon: "photo",
                                 items: [cover]
                             )
                         }
                         if browser.showsRemoteSources {
                             section(
-                                "Remote Sources",
+                                "Remote sources",
                                 icon: "globe",
                                 items: browser.remoteItems
                             )
@@ -73,7 +73,7 @@ struct CoverGalleryView: View {
                         }
                         if browser.showsReleaseFiles {
                             section(
-                                "Release Files",
+                                "Release files",
                                 icon: "folder",
                                 items: browser.releaseItems
                             )
@@ -107,7 +107,7 @@ struct CoverGalleryView: View {
                 }
                 .opacity(isSaving ? 1 : 0)
                 .accessibilityHidden(!isSaving)
-                Button("Use This Cover") {
+                Button("Use this cover") {
                     if let cursor = browser.cursor { onSelect(cursor.current) }
                 }
                 .buttonStyle(PrimaryButtonStyle())
@@ -382,8 +382,8 @@ extension CoverGalleryView {
                     }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(Text("View in Lightbox"))
-                .help("View in Lightbox")
+                .accessibilityLabel(Text("View in lightbox"))
+                .help("View in lightbox")
                 .keyboardShortcut(.space, modifiers: [])
                 .focusable()
                 .focusEffectDisabled()

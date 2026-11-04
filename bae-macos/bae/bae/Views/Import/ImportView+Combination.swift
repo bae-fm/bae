@@ -18,7 +18,7 @@ extension ImportView {
     }
 
     /// Read the release at `key` as the folders it is made of: a broken
-    /// combined row's "Keep as Separate Releases".
+    /// combined row's "Keep as separate releases".
     func separateCandidate(_ key: Data) {
         candidateMutationTasks[.candidate(key)]?.cancel()
         candidateMutationTasks[.candidate(key)] = Task {
@@ -35,7 +35,7 @@ extension ImportView {
     }
 
     /// Read the selected release as the folders it is made of: the pane's
-    /// "Keep as Separate Releases". Core selects the releases it returns.
+    /// "Keep as separate releases". Core selects the releases it returns.
     func separateSelectedCandidate() {
         let taskKey = ImportTaskKey.separateSelection
         candidateMutationTasks[taskKey]?.cancel()
@@ -53,7 +53,7 @@ extension ImportView {
     }
 
     /// Read every release below the folder `key` names as one: a group
-    /// header's "Combine as One Release". The release it makes is selected and
+    /// header's "Combine as one release". The release it makes is selected and
     /// revealed.
     func combineFolder(_ key: BridgeFolderReleaseDecisionKey) {
         let taskKey = ImportTaskKey.combineFolder(key)

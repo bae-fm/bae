@@ -90,7 +90,7 @@ struct ReleaseMetadataEditorContent: View {
         }
         .buttonStyle(.plain)
         .disabled(onEditCover == nil)
-        .accessibilityLabel(Text("Change Cover"))
+        .accessibilityLabel(Text("Change cover"))
     }
 
     @ViewBuilder

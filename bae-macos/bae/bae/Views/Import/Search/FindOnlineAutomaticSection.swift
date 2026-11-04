@@ -11,7 +11,7 @@ import SwiftUI
 /// section headers.
 struct FindOnlineAutomaticSection: View {
     let state: ImportSearchState
-    /// Open Settings on the Discogs page — offered when no source is on.
+    /// Open settings on the Discogs page — offered when no source is on.
     let onOpenSettings: () -> Void
     /// Turn one identifier in the band over — the Disc ID, a barcode, a
     /// catalog number. Core re-derives the state the import projection
@@ -81,7 +81,7 @@ struct FindOnlineAutomaticSection: View {
                 else {
                     Text("No source to search")
                         .foregroundStyle(.secondary)
-                    Button("Open Settings", action: onOpenSettings)
+                    Button("Open settings", action: onOpenSettings)
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                 }

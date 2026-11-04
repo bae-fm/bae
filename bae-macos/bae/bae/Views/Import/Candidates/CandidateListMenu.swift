@@ -13,8 +13,8 @@ struct CandidateListMenu: View {
     let watchedFolders: [BridgeWatchedFolder]
     /// Roots with a refresh in flight; their Refresh entry is disabled.
     let refreshingFolders: Set<Data>
-    /// Whether the queue has folder groups; without any, Expand All and
-    /// Collapse All are disabled.
+    /// Whether the queue has folder groups; without any, Expand all and
+    /// Collapse all are disabled.
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     /// The entry Found's rows are narrowed to.
@@ -107,7 +107,7 @@ private struct CandidateListMenuTrigger: NSViewRepresentable {
             self.controller = controller
             super.init(frame: .zero)
             let label = String(
-                localized: "Sorting, Filtering and Watched Folders"
+                localized: "Sorting, filtering and watched folders"
             )
             toolTip = label
             setAccessibilityElement(true)

@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The commit bar's trailing action: `Import`, or `Retry Import` after a
+/// The commit bar's trailing action: `Import`, or `Retry import` after a
 /// failed attempt. The bar is shown only before an import runs or after one
 /// fails; a running or completed import has panes of its own.
 ///
@@ -17,10 +17,10 @@ struct ImportConfirmationCardAction: View {
             .buttonStyle(PrimaryButtonStyle())
     }
 
-    /// The action's words: Retry Import once an attempt failed, else Import.
+    /// The action's words: Retry import once an attempt failed, else Import.
     static func title(_ importStatus: BridgeCandidateImportStatus?) -> String {
         if case .error = importStatus {
-            return String(localized: "Retry Import")
+            return String(localized: "Retry import")
         }
         return String(localized: "Import")
     }

@@ -146,7 +146,7 @@ struct ImportListGroupHeader: View {
             // A header that only names a shared path component offers
             // nothing.
             if group.combinable {
-                Button("Combine as One Release", action: onCombine)
+                Button("Combine as one release", action: onCombine)
             }
         }
     }

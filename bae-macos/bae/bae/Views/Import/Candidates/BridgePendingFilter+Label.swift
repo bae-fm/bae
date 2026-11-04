@@ -5,11 +5,11 @@ extension BridgePendingFilter {
     var label: String {
         switch self {
         case .all: String(localized: "All")
-        case .needsYou: String(localized: "Needs You")
-        case .inProgress: String(localized: "In Progress")
+        case .needsYou: String(localized: "Needs you")
+        case .inProgress: String(localized: "In progress")
         case .identified: String(localized: "Identified")
         case .unmatched: String(localized: "Unmatched")
-        case .notLookedUp: String(localized: "Not Looked Up")
+        case .notLookedUp: String(localized: "Not looked up")
         }
     }
 
