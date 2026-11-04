@@ -62,6 +62,53 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
     assert!(found("dg-2").is_none(), "another label's number is not it");
 }
 
+/// An offered row whose page names no Discogs release is looked up on
+/// Discogs by every barcode it prints and every catalog number it prints
+/// under a label, each its own key: a row printing two of each asks four.
+#[test]
+fn a_row_with_no_link_is_looked_up_by_every_barcode_and_every_number() {
+    let state = disc_run_of_folder("Some Album", &[]);
+    let record =
+        MetadataResult { artist: Some("Artist Name".to_string()), ..mk_result("mb-1", Some("g")) };
+    let reading = crate::state::step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(DiscIdAnswer::for_test(vec![record])),
+        },
+    );
+    let (_, _, asked) = answer_rounds(
+        reading,
+        |release| ReleaseDocument {
+            barcodes: vec!["5012345678900".to_string(), "5012345678917".to_string()],
+            labels: vec![
+                bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("XY-100")),
+                bae_types::pressing::ReleaseLabel::of(Some("Label Two"), Some("AB-200")),
+            ],
+            album_links: match release.catalog {
+                LookupCatalog::MusicBrainz => AlbumLinks::Read(Vec::new()),
+                _ => AlbumLinks::NotAsked,
+            },
+            ..plain_document(&[])
+        },
+        |_, _| Vec::new(),
+    );
+    let number = |number: &str, label: &str| PressingKey::CatalogNumber {
+        number: number.to_string(),
+        label: label.to_string(),
+        artist: Some("Artist Name".to_string()),
+    };
+    assert_eq!(
+        asked.pressings,
+        vec![
+            (DG, PressingKey::Barcode { barcode: "5012345678900".to_string() }),
+            (DG, PressingKey::Barcode { barcode: "5012345678917".to_string() }),
+            (DG, number("XY-100", "Label One")),
+            (DG, number("AB-200", "Label Two")),
+        ]
+    );
+}
+
 /// A pressing lookup that fails leaves the run failed, naming the catalog.
 #[test]
 fn a_failed_pressing_lookup_fails_the_run() {

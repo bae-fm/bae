@@ -1033,8 +1033,9 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
    folder states, searched on MusicBrainz as it stands and on Discogs under
    the artist of each release the run offers, whichever release carries the
    number; an offered release's pressing on the catalog that has no record
-   of it, by the release its page names there, its barcode, or its catalog
-   number under its label, and on Discogs the artist it credits. A short
+   of it, by the release its page names there, or where it names none, by
+   every barcode it prints and every catalog number it prints under a label,
+   each asked on its own, and on Discogs under the artist it credits. A short
    number is printed by hundreds of unrelated releases, which Discogs serves
    a page at a time, and the artist leaves the ones that share it;
    MusicBrainz answers a number in one page, so naming the artist there

@@ -1,9 +1,11 @@
-//! The one key a run derives from its own rows: an offered row's pressing,
+//! The keys a run derives from its own rows: an offered row's pressing,
 //! looked up on each lookup catalog the row has no record of.
 //!
 //! A row is asked for by the release its page names on that catalog, where
-//! it names one; failing that, by its barcode; failing that, by its catalog
-//! number under its label, and on Discogs the artist its record credits.
+//! it names one: that page says which release it is. Otherwise by every
+//! barcode it prints and every catalog number it prints under a label, each
+//! a key of its own, a number on Discogs under the artist its record
+//! credits.
 //! Both ways round: a Discogs row is looked up on MusicBrainz as a
 //! MusicBrainz row is on Discogs, though only a MusicBrainz page names
 //! another catalog's release. What comes back is pooled with every other
@@ -88,7 +90,8 @@ impl PressingLookup {
 }
 
 /// What `row`'s pressing is asked for by on each of `providers`' lookup
-/// catalogs it has no record of, where it states anything to ask by.
+/// catalogs it has no record of: the release its page names there, else
+/// every barcode and every labelled catalog number it prints.
 pub(super) fn keys_of(
     row: &[MetadataResult],
     providers: &[LookupCatalog],
@@ -97,33 +100,34 @@ pub(super) fn keys_of(
         .into_iter()
         .filter(|catalog| providers.contains(catalog))
         .filter(|catalog| !row.iter().any(|record| record.source == *catalog))
-        .filter_map(|catalog| {
+        .flat_map(|catalog| {
             let link = row
                 .iter()
                 .flat_map(|record| &record.links)
                 .filter_map(MetadataRef::lookup)
-                .find(|release| release.catalog == catalog)
-                .map(|release| PressingKey::Link { release });
-            let barcode = || {
-                row.iter()
-                    .flat_map(|record| &record.barcodes)
-                    .next()
-                    .map(|barcode| PressingKey::Barcode { barcode: barcode.clone() })
-            };
-            let number = || {
-                row.iter().find_map(|record| {
-                    record.labels.iter().find_map(|label| {
-                        Some(PressingKey::CatalogNumber {
-                            number: label.catalog_number()?.to_string(),
-                            label: label.name()?.to_string(),
-                            artist: super::numbers::names_artist(catalog)
-                                .then(|| super::numbers::credited_artist(record))
-                                .flatten(),
+                .find(|release| release.catalog == catalog);
+            let keys: Vec<PressingKey> = match link {
+                Some(release) => vec![PressingKey::Link { release }],
+                None => {
+                    let barcodes = row
+                        .iter()
+                        .flat_map(|record| &record.barcodes)
+                        .map(|barcode| PressingKey::Barcode { barcode: barcode.clone() });
+                    let numbers = row.iter().flat_map(|record| {
+                        record.labels.iter().filter_map(move |label| {
+                            Some(PressingKey::CatalogNumber {
+                                number: label.catalog_number()?.to_string(),
+                                label: label.name()?.to_string(),
+                                artist: super::numbers::names_artist(catalog)
+                                    .then(|| super::numbers::credited_artist(record))
+                                    .flatten(),
+                            })
                         })
-                    })
-                })
+                    });
+                    barcodes.chain(numbers).collect()
+                }
             };
-            link.or_else(barcode).or_else(number).map(|key| (catalog, key))
+            keys.into_iter().map(move |key| (catalog, key))
         })
         .collect()
 }
