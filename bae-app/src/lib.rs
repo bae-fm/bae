@@ -153,8 +153,9 @@ fn classify_open_error(error: bae_db::DbError) -> BootstrapError {
 /// under `app_dir`.
 ///
 /// `position_update_interval_ms` controls how often playback emits a position
-/// tick, and `audio_focus` is how the platform shares the speaker, asked before
-/// every start of playback. Returns once the DB is open and playback (plus the desktop import
+/// tick, and `playback_output` is where playback plays: the system's output,
+/// shared as its `AudioFocus` says and asked before every start of playback,
+/// or a test's device. Returns once the DB is open and playback (plus the desktop import
 /// pipeline) is running. For an unlocked cloud library, sync attachment starts
 /// on the returned runtime and reports readiness or failure through sync status.
 ///
@@ -175,7 +176,7 @@ pub fn bootstrap<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: bae_playback::AudioFocus,
+    playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
@@ -193,7 +194,7 @@ where
         store.to_string(),
         position_update_interval_ms,
         restore_playback,
-        audio_focus,
+        playback_output,
         diagnostics,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
@@ -207,7 +208,7 @@ pub fn bootstrap_prepared<T, F>(
     handle: coven::CovenHandle,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: bae_playback::AudioFocus,
+    playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
     compose: F,
 ) -> Result<T, BootstrapError>
@@ -222,7 +223,7 @@ where
         id,
         position_update_interval_ms,
         restore_playback,
-        audio_focus,
+        playback_output,
         diagnostics,
         LibraryOpening::Open(handle),
         compose,
@@ -244,7 +245,7 @@ pub fn bootstrap_on_fixture<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: bae_playback::AudioFocus,
+    playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
 
     builder: coven::CovenBuilder,
@@ -262,7 +263,7 @@ where
         store.to_string(),
         position_update_interval_ms,
         restore_playback,
-        audio_focus,
+        playback_output,
         diagnostics,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
@@ -330,7 +331,7 @@ fn bootstrap_opening<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: bae_playback::AudioFocus,
+    playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
 
     builder: LibraryOpening,
@@ -355,7 +356,7 @@ where
                 library_id,
                 position_update_interval_ms,
                 restore_playback,
-                audio_focus,
+                playback_output,
                 diagnostics,
                 builder,
                 compose,
@@ -380,7 +381,7 @@ fn bootstrap_inner<T, F>(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    audio_focus: bae_playback::AudioFocus,
+    playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
 
     builder: LibraryOpening,
@@ -533,7 +534,7 @@ where
                     position_update_interval_ms,
                     restore_playback,
                     Arc::new(bae_playback::WallPlaybackClock::new(Arc::clone(&clock))),
-                    PlaybackOutput::System(audio_focus),
+                    playback_output,
                 ))
             })
             .map_err(|error| BootstrapError::Database(error.to_string()))?;
