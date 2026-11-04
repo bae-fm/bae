@@ -394,7 +394,7 @@ async fn file_work<T: Send + 'static>(
 
 /// Keep the path in the error: a bare "Permission denied" names no file.
 fn io_at(path: &std::path::Path, error: std::io::Error) -> LibraryError {
-    LibraryError::Io(std::io::Error::new(error.kind(), format!("{}: {error}", path.display())))
+    LibraryError::Io(bae_util::fs::io_error_at(path, error))
 }
 
 #[cfg(test)]

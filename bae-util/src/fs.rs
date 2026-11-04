@@ -22,3 +22,14 @@ pub fn sync_directory(directory: &std::path::Path) -> std::io::Result<()> {
         Ok(())
     }
 }
+
+/// `error` with the path it happened at in its text: a bare "Permission denied"
+/// or "Access is denied" names no file, and a user report of it is
+/// undiagnosable. The kind is kept.
+pub fn io_error_at(path: &std::path::Path, error: std::io::Error) -> std::io::Error {
+    std::io::Error::new(error.kind(), format!("{}: {error}", path.display()))
+}
+
+#[cfg(test)]
+#[path = "fs_tests.rs"]
+mod tests;

@@ -251,9 +251,7 @@ fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, AppDirEr
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         // Keep the path in the error: "Access is denied" without the file it
         // was denied on is undiagnosable from a user report.
-        Err(e) => {
-            Err(AppDirError::Io(std::io::Error::new(e.kind(), format!("{}: {e}", path.display()))))
-        }
+        Err(e) => Err(AppDirError::Io(bae_util::fs::io_error_at(path, e))),
     }
 }
 
