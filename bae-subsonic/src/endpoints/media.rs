@@ -17,6 +17,7 @@ use bae_audio::{StreamEncodeFormat, StreamingEncoder};
 use bae_db::LibraryImageType;
 use bae_db::{ResolvedTrackAudio, ResolvedTrackAudioSegment};
 use bae_diagnostics::Diagnostics;
+use bae_preferences::SaveFormat;
 use bae_util::task_failure::{blocking, caught_sync};
 use bytes::Bytes;
 use tokio::sync::mpsc;
@@ -292,9 +293,9 @@ fn transcode_format(
     match requested_format {
         Some("wav") => wav_stream_format(audio),
         Some("opus") | Some("ogg") => {
-            StreamEncodeFormat::OpusOgg { bitrate_kbps: bitrate.clamp(32, 512) }
+            StreamEncodeFormat::OpusOgg { bitrate_kbps: SaveFormat::clamp_aac_opus_kbps(bitrate) }
         }
-        _ => StreamEncodeFormat::Mp3 { bitrate_kbps: bitrate.clamp(32, 320) },
+        _ => StreamEncodeFormat::Mp3 { bitrate_kbps: SaveFormat::clamp_mp3_kbps(bitrate) },
     }
 }
 

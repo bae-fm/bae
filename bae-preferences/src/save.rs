@@ -86,10 +86,25 @@ impl SaveFormat {
     /// one, which has a bit depth instead.
     pub fn bitrates_kbps(self) -> Option<RangeInclusive<u32>> {
         match self {
-            Self::Mp3 => Some(32..=320),
-            Self::Aac | Self::OpusOgg => Some(32..=512),
+            Self::Mp3 => Some(Self::MP3_BITRATES_KBPS),
+            Self::Aac | Self::OpusOgg => Some(Self::AAC_OPUS_BITRATES_KBPS),
             Self::Flac | Self::Wav | Self::Aiff => None,
         }
+    }
+
+    /// The bitrates MP3 saves and streams at, in kbps.
+    pub const MP3_BITRATES_KBPS: RangeInclusive<u32> = 32..=320;
+    /// The bitrates AAC and Opus save and stream at, in kbps.
+    pub const AAC_OPUS_BITRATES_KBPS: RangeInclusive<u32> = 32..=512;
+
+    /// `kbps` brought into the MP3 range.
+    pub fn clamp_mp3_kbps(kbps: u32) -> u32 {
+        kbps.clamp(*Self::MP3_BITRATES_KBPS.start(), *Self::MP3_BITRATES_KBPS.end())
+    }
+
+    /// `kbps` brought into the AAC and Opus range.
+    pub fn clamp_aac_opus_kbps(kbps: u32) -> u32 {
+        kbps.clamp(*Self::AAC_OPUS_BITRATES_KBPS.start(), *Self::AAC_OPUS_BITRATES_KBPS.end())
     }
 
     /// The format's name, a proper noun shown as-is in every locale; a new
