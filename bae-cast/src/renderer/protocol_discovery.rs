@@ -6,9 +6,35 @@
 //! not at all in how a caller drives them. [`Browse`] is the part that differs;
 //! [`ProtocolDiscovery`] is the part that does not.
 
+use std::net::IpAddr;
+
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::RendererDevice;
 use bae_diagnostics::Diagnostics;
+
+/// The address to reach a service on: the first IPv4 one, else the first of
+/// any family. Receivers advertise IPv4, and the LAN control and media
+/// connections are IPv4.
+pub(crate) fn preferred_address(addresses: impl Iterator<Item = IpAddr>) -> Option<IpAddr> {
+    let mut chosen: Option<IpAddr> = None;
+    for addr in addresses {
+        if addr.is_ipv4() {
+            return Some(addr);
+        }
+        chosen.get_or_insert(addr);
+    }
+    chosen
+}
+
+/// The instance label of a service fullname (`"Living Room._airplay._tcp.local."`
+/// → `"Living Room"`): what precedes the first of `service_markers` the
+/// fullname holds, else the whole fullname.
+pub(crate) fn instance_label<'a>(fullname: &'a str, service_markers: &[&str]) -> &'a str {
+    service_markers
+        .iter()
+        .find_map(|marker| fullname.split_once(marker))
+        .map_or(fullname, |(instance, _)| instance)
+}
 
 /// One protocol's live browse: everything it holds while it is reading the
 /// network. Started against the list it publishes into, and stopped as a whole.

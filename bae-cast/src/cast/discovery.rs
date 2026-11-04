@@ -15,7 +15,9 @@ use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
 use crate::renderer::discovery::RendererServiceType;
-use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
+use crate::renderer::protocol_discovery::{
+    instance_label, preferred_address, Browse, ProtocolDiscovery,
+};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
@@ -170,24 +172,15 @@ pub(crate) fn map_device(
     let name =
         friendly_name.map(str::trim).filter(|n| !n.is_empty()).unwrap_or(instance).to_string();
 
-    let mut chosen: Option<IpAddr> = None;
-    for addr in addresses {
-        if addr.is_ipv4() {
-            chosen = Some(addr);
-            break;
-        }
-        chosen.get_or_insert(addr);
-    }
-
     Some(RendererDevice {
         id: id.to_string(),
         name,
-        connection: RendererConnection::Cast { addr: chosen?, port },
+        connection: RendererConnection::Cast { addr: preferred_address(addresses)?, port },
     })
 }
 
 /// The instance label of a service fullname (`"Living Room._googlecast._tcp.local."`
 /// → `"Living Room"`), which is what a host browser reports directly.
 pub(super) fn instance_name(fullname: &str) -> &str {
-    fullname.split_once("._googlecast").map(|(instance, _)| instance).unwrap_or(fullname)
+    instance_label(fullname, &["._googlecast"])
 }

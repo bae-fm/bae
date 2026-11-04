@@ -23,7 +23,7 @@ use tracing::{debug, warn};
 
 use super::capabilities::{AirPlayCapabilities, Dialect, UnreadableSetting};
 use crate::renderer::discovery::RendererServiceType;
-use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
+use crate::renderer::protocol_discovery::{self, preferred_address, Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
@@ -294,16 +294,7 @@ pub(crate) fn map_device(
     let name = raop_name_suffix(instance).unwrap_or(instance).trim().to_string();
     let name = if name.is_empty() { id.clone() } else { name };
 
-    let mut chosen: Option<IpAddr> = None;
-    for addr in addresses {
-        if addr.is_ipv4() {
-            chosen = Some(addr);
-            break;
-        }
-        chosen.get_or_insert(addr);
-    }
-
-    let addr = chosen?;
+    let addr = preferred_address(addresses)?;
     let capabilities = AirPlayCapabilities::from_txt(service_type, txt);
     if let Err(unreadable) = &capabilities {
         warn!(
@@ -317,11 +308,7 @@ pub(crate) fn map_device(
 /// The instance label of a service fullname (`"Living Room._airplay._tcp.local."`
 /// → `"Living Room"`).
 fn instance_label(fullname: &str) -> &str {
-    fullname
-        .split_once("._airplay")
-        .or_else(|| fullname.split_once("._raop"))
-        .map(|(instance, _)| instance)
-        .unwrap_or(fullname)
+    protocol_discovery::instance_label(fullname, &["._airplay", "._raop"])
 }
 
 /// The MAC prefix of a RAOP instance name `AABBCCDDEEFF@Friendly Name`, or `None`
