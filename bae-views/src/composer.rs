@@ -235,14 +235,21 @@ pub(crate) fn composer_listing_query(
     query
 }
 
-/// The release whose cover a work shows: the release of the first track,
-/// in track position, that performs it (a SQL expression over `w`).
+/// The release whose cover a work shows (a SQL expression over `w`): of the
+/// albums with a release performing it, the first by title, compared without
+/// case as the composer page compares titles, then by id; that album's
+/// primary release when it performs the work, otherwise its first release in
+/// album order that does. The primary release is first in album order, so
+/// both are the album's first performing release in that order.
 const WORK_REPRESENTATIVE_RELEASE: &str = "(
-                    SELECT tr.release_id
+                    SELECT r_cover.id
                     FROM track_works tw_cover
                     JOIN tracks tr ON tr.id = tw_cover.track_id
+                    JOIN releases r_cover ON r_cover.id = tr.release_id
+                    JOIN albums a_cover ON a_cover.id = r_cover.album_id
                     WHERE tw_cover.work_id = w.id
-                    ORDER BY tr.position, tr.release_id
+                    ORDER BY a_cover.title COLLATE NOCASE, a_cover.id,
+                             r_cover.album_order, r_cover.id
                     LIMIT 1
                 )";
 

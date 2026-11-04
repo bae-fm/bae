@@ -671,3 +671,87 @@ async fn work_summary_orders_composer_names_inside_the_aggregate() {
         Some("Composer Name First, Composer Name Second")
     );
 }
+
+/// A work performed on releases of two albums, for the cover tests: `Album
+/// Beta` performs it on its only release's first track; `album alpha`, first
+/// by title compared without case, holds a primary release that doesn't
+/// perform it, then two that do, the later of them on its first track.
+async fn work_across_albums_db() -> (Database, tempfile::TempDir) {
+    let (db, tmp) = temp_db().await;
+    exec_batch(
+        &db,
+        "
+        INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES
+            ('11111111-0000-4000-8000-000000000001', 'Album Beta', 2026, 0, '2026-01-01T00:00:00Z'),
+            ('11111111-0000-4000-8000-000000000002', 'album alpha', 2026, 0, '2026-01-01T00:00:00Z');
+
+        INSERT INTO releases (id, album_id, release_name, year, discogs_details, source_folder_name, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES
+            ('22222222-0000-4000-8000-000000000001', '11111111-0000-4000-8000-000000000001', NULL, 2026, '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0),
+            ('22222222-0000-4000-8000-000000000002', '11111111-0000-4000-8000-000000000002', NULL, 2026, '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 0),
+            ('22222222-0000-4000-8000-000000000004', '11111111-0000-4000-8000-000000000002', NULL, 2026, '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 1),
+            ('22222222-0000-4000-8000-000000000003', '11111111-0000-4000-8000-000000000002', NULL, 2026, '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 2);
+
+        INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES
+            ('33333333-0000-4000-8000-000000000001', '22222222-0000-4000-8000-000000000001', 1, 'cd', 1, '2026-01-01T00:00:00Z'),
+            ('33333333-0000-4000-8000-000000000002', '22222222-0000-4000-8000-000000000002', 1, 'cd', 1, '2026-01-01T00:00:00Z'),
+            ('33333333-0000-4000-8000-000000000004', '22222222-0000-4000-8000-000000000004', 1, 'cd', 1, '2026-01-01T00:00:00Z'),
+            ('33333333-0000-4000-8000-000000000003', '22222222-0000-4000-8000-000000000003', 1, 'cd', 1, '2026-01-01T00:00:00Z');
+
+        INSERT INTO tracks (id, release_id, title, side, track_number, position, duration_ms, created_at, medium_id) VALUES
+            ('44444444-0000-4000-8000-000000000001', '22222222-0000-4000-8000-000000000001', 'Beta Track', 1, 1, 0, 1000, '2026-01-01T00:00:00Z', '33333333-0000-4000-8000-000000000001'),
+            ('44444444-0000-4000-8000-000000000002', '22222222-0000-4000-8000-000000000002', 'Alpha Primary Track', 1, 1, 0, 1000, '2026-01-01T00:00:00Z', '33333333-0000-4000-8000-000000000002'),
+            ('44444444-0000-4000-8000-000000000004', '22222222-0000-4000-8000-000000000004', 'Alpha Second Track', 1, 5, 4, 1000, '2026-01-01T00:00:00Z', '33333333-0000-4000-8000-000000000004'),
+            ('44444444-0000-4000-8000-000000000003', '22222222-0000-4000-8000-000000000003', 'Alpha Third Track', 1, 1, 0, 1000, '2026-01-01T00:00:00Z', '33333333-0000-4000-8000-000000000003');
+
+        INSERT INTO works (id, title, disambiguation, work_type, musicbrainz_work_id, created_at) VALUES
+            ('55555555-0000-4000-8000-000000000001', 'Work Across Albums', NULL, 'work', 'mb-work-across-albums', '2026-01-01T00:00:00Z');
+
+        INSERT INTO track_works (id, track_id, work_id, position, source, created_at) VALUES
+            ('66666666-0000-4000-8000-000000000001', '44444444-0000-4000-8000-000000000001', '55555555-0000-4000-8000-000000000001', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
+            ('66666666-0000-4000-8000-000000000004', '44444444-0000-4000-8000-000000000004', '55555555-0000-4000-8000-000000000001', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
+            ('66666666-0000-4000-8000-000000000003', '44444444-0000-4000-8000-000000000003', '55555555-0000-4000-8000-000000000001', 0, 'musicbrainz', '2026-01-01T00:00:00Z');
+        ",
+    )
+    .await;
+    (db, tmp)
+}
+
+const WORK_ACROSS_ALBUMS: &str = "55555555-0000-4000-8000-000000000001";
+const RELEASE_ALPHA_PRIMARY: &str = "22222222-0000-4000-8000-000000000002";
+const RELEASE_ALPHA_SECOND: &str = "22222222-0000-4000-8000-000000000004";
+
+async fn representative_release(db: &Database) -> Option<String> {
+    crate::LibraryViews::new(db.clone())
+        .find_work_detail(WORK_ACROSS_ALBUMS)
+        .await
+        .unwrap()
+        .expect("the work is in the library")
+        .work
+        .representative_release_id
+}
+
+/// A work's cover comes from its first album by title, compared without case
+/// as the page compares titles, not from the track that performs it first:
+/// that album's primary release performs none of it, so the cover is its
+/// first release in album order that does.
+#[tokio::test]
+async fn a_works_cover_is_its_first_albums_first_release_performing_it() {
+    let (db, _tmp) = work_across_albums_db().await;
+    assert_eq!(representative_release(&db).await.as_deref(), Some(RELEASE_ALPHA_SECOND));
+}
+
+/// When the first album's primary release performs the work, its cover is the
+/// work's, though a later release performs the work on an earlier track.
+#[tokio::test]
+async fn a_works_cover_is_its_first_albums_primary_release_when_it_performs_it() {
+    let (db, _tmp) = work_across_albums_db().await;
+    exec_batch(
+        &db,
+        "INSERT INTO track_works (id, track_id, work_id, position, source, created_at) VALUES
+            ('66666666-0000-4000-8000-000000000002', '44444444-0000-4000-8000-000000000002', '55555555-0000-4000-8000-000000000001', 0, 'musicbrainz', '2026-01-01T00:00:00Z');
+         UPDATE tracks SET track_number = 4, position = 3
+            WHERE id = '44444444-0000-4000-8000-000000000002';",
+    )
+    .await;
+    assert_eq!(representative_release(&db).await.as_deref(), Some(RELEASE_ALPHA_PRIMARY));
+}

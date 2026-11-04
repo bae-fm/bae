@@ -451,7 +451,11 @@ in a group however many of its parts are credited. Groups sort by their
 heading work's title, its parts after it by title. Each credit is listed under
 its release: releases by album title, then the release's place among its
 album's; a release's credits by track, then their own order. Titles compare
-without case, as the album grid's do. The page is read a window at a time, as
+without case, as the album grid's do. A work shows the cover of its first
+album by title, compared the same way, among the albums with a release that
+performs it: that album's primary release's cover when the release performs
+the work, otherwise that of the album's first release, in its order, that
+does. The page is read a window at a time, as
 the lists are (§9.2), and opens the first work it lists. Rows from another
 device can arrive before what they name: a part whose parent work hasn't
 arrived heads its own group until it does, and a credit whose release or album
