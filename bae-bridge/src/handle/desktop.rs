@@ -310,7 +310,7 @@ forward! {
             this.services
                 .import_add_watched_folder(crate::path_bytes::path_from_app(path)?)
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::from)
         }
 
         /// Take every candidate off the identification queue.
@@ -335,14 +335,14 @@ forward! {
             this.services
                 .import_remove_watched_folder(crate::path_bytes::path_from_app(path)?)
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::from)
         }
 
         fn refresh_watched_folder(path: Vec<u8>) -> () {
             this.services
                 .import_refresh_watched_folder(crate::path_bytes::path_from_app(path)?)
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::from)
         }
 
         /// Audio choices for each FILE reference in the candidate's track sheet.
@@ -360,7 +360,7 @@ forward! {
                 .services
                 .import_sheet_binding_options(candidate_key.into(), sheet_file_id)
                 .await
-                .map_err(BridgeError::import)?
+                .map_err(BridgeError::from)?
                 .into_iter()
                 .map(crate::types::BridgeSheetReferenceOptions::from_core)
                 .collect())
@@ -664,7 +664,7 @@ forward! {
                 .services
                 .resolve_release_edit_credits(&edit.into_core())
                 .await
-                .map_err(BridgeError::import)?;
+                .map_err(BridgeError::from)?;
             Ok(resolved
                 .into_iter()
                 .map(crate::types::BridgeResolvedCredit::from_core)
@@ -678,7 +678,7 @@ forward! {
                 .services
                 .import_fetch_remote_covers(target.into_core())
                 .await
-                .map_err(BridgeError::import)?;
+                .map_err(BridgeError::from)?;
             Ok(crate::types::BridgeRemoteCoverGallery::from_core(covers))
         }
 
@@ -700,7 +700,7 @@ forward! {
                 .import_fetch_remote_image_bytes(image.into_core(), pixels)
                 .await
                 .map(|image| image.map(|image| image.bytes))
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::from)
         }
     }
 }

@@ -165,3 +165,24 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     assert_eq!(progress.latest(Vec::new()), None);
     handle.runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }
+
+/// A refusal of the import list's grouping calls crosses in the class core
+/// gave it, as every import failure does, not as a plain import failure.
+#[test]
+fn a_grouping_refusal_crosses_in_the_class_core_gave_it() {
+    let (handle, _root) = crate::handle::tests::fresh_bridge_handle("grouping-refusal-class");
+    let error = handle
+        .runtime
+        .block_on(handle.clone().candidate_source_folders(b"no-such-candidate".to_vec()))
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            crate::BridgeError::Diagnostic {
+                category: crate::types::BridgeErrorCategory::Internal,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+}

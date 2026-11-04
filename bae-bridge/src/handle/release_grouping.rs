@@ -8,7 +8,7 @@ forward! { async this => {
             .services
             .import_candidate_source_folders(&key.into())
             .await
-            .map_err(BridgeError::import)?
+            .map_err(BridgeError::from)?
             .iter()
             .map(|folder| coven::path_bytes(folder))
             .collect())
@@ -21,7 +21,7 @@ forward! { async this => {
             .services
             .import_combine_folder(key.into_core()?)
             .await
-            .map_err(BridgeError::import)?
+            .map_err(BridgeError::from)?
             .into_bytes())
     }
 
@@ -32,6 +32,6 @@ forward! { async this => {
             .import_separate_candidate(&key.into())
             .await
             .map(|_| ())
-            .map_err(BridgeError::import)
+            .map_err(BridgeError::from)
     }
 } }

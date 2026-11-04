@@ -271,10 +271,6 @@ impl BridgeError {
     pub(crate) fn internal(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Internal, detail)
     }
-    #[cfg(feature = "desktop")]
-    pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
-        Self::diagnostic(BridgeErrorCategory::Import, detail)
-    }
     /// Desktop-only with the output surface it reports on: iOS/Android compile
     /// out the output queue and the track saver entirely.
     #[cfg(desktop)]
