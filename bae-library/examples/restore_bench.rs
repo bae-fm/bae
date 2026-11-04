@@ -146,32 +146,11 @@ async fn restore_runs(
     Ok(())
 }
 
-/// Remove `device` from the library through `source`, once a pass of
-/// `source` has read the device's registration, and wait until the sync loop
-/// has published the removal.
+/// Remove `device` from the library through `source` and wait until the
+/// sync loop has published the removal. `source` may not have read the
+/// device's registration yet: coven journals the removal, and the pass that
+/// reads on decides it.
 async fn remove_device(source: &coven::CovenHandle, device: coven::DeviceId) -> Result<(), String> {
-    // coven refuses the removal as `TargetGone` until `source` has pulled the
-    // device's registration (bae's todo, "coven: removing a device right
-    // after its restore finished is refused as TargetGone"); this wait goes
-    // with that fix.
-    let mut members = source.subscribe_members();
-    source.sync_now();
-    loop {
-        match members.next().await {
-            Some(Ok(members))
-                if members.iter().any(|member| {
-                    member.devices.iter().any(|registered| registered.id == device)
-                }) =>
-            {
-                break
-            }
-            Some(Ok(_)) => {}
-            Some(Err(error)) => {
-                return Err(format!("reading the library's members failed: {error}"))
-            }
-            None => return Err("the library closed before it read the new device".into()),
-        }
-    }
     let (removal, _sign_out) = source
         .remove_device(device)
         .await
