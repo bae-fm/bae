@@ -452,7 +452,7 @@ pub(super) fn assert_kind_invariant(path: &Path, kind: FileKind) {
         }
         FileKind::Jpeg | FileKind::Png => {
             assert!(
-                file_validation::is_valid_image(path).unwrap_or(false),
+                image_header::is_valid_image(path).unwrap_or(false),
                 "fixture builder bug: image at {:?} fails validator",
                 path,
             );

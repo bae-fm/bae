@@ -45,8 +45,6 @@ pub(crate) mod file_tag_reader;
 #[cfg(desktop)]
 pub(crate) mod file_tag_snapshot;
 #[cfg(desktop)]
-mod file_validation;
-#[cfg(desktop)]
 pub mod folder_scan_status;
 #[cfg(desktop)]
 pub mod folder_scanner;

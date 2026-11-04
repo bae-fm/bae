@@ -1,4 +1,5 @@
-//! File header validation for detecting corrupt downloads.
+//! Whether an image file opens the way its format does: the check that tells
+//! a damaged image (a corrupt download) from one a release can show.
 //!
 //! Magic-byte and minimum-size checks. No deep parsing, no heuristics.
 
@@ -45,7 +46,7 @@ fn matches_any(path: &Path, alternatives: &[Magic]) -> io::Result<bool> {
 /// Whether an image file's magic bytes match its extension. An extension with
 /// no known magic is assumed valid — an unrecognized format is not evidence of
 /// corruption, so it must not block the import.
-pub(crate) fn is_valid_image(path: &Path) -> io::Result<bool> {
+pub(super) fn is_valid_image(path: &Path) -> io::Result<bool> {
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::ImageCheck, path);
     // Ahead of the dispatch: an empty file is corrupt whatever its extension,
@@ -68,5 +69,5 @@ fn extension(path: &Path) -> String {
 }
 
 #[cfg(test)]
-#[path = "file_validation_tests.rs"]
+#[path = "image_header_tests.rs"]
 mod tests;

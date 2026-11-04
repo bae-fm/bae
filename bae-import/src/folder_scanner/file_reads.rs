@@ -414,7 +414,7 @@ impl FileReads {
         }) {
             return Ok(decodes);
         }
-        let decodes = file_validation::is_valid_image(&version.path).map_err(|error| {
+        let decodes = image_header::is_valid_image(&version.path).map_err(|error| {
             FolderScanError::Other(format!(
                 "Failed to validate image file {:?}: {error}",
                 version.path
