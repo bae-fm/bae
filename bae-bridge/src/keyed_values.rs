@@ -19,6 +19,9 @@ use tokio::sync::Notify;
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeError, BridgeFastValue};
 
+/// The key of a stream that holds one value.
+const ONLY_KEY: &[u8] = b"";
+
 /// The latest value of each key, and what the host has not pulled yet.
 pub(crate) struct StreamValues {
     /// Each change to what the stream holds is one insert, remove or whole
@@ -221,6 +224,16 @@ impl StreamWriter {
         });
     }
 
+    /// A stream of one value holds `value` under its one key, `""`.
+    pub(crate) fn set_only(&self, value: BridgeFastValue) {
+        self.set(ONLY_KEY, value);
+    }
+
+    /// A stream of one value holds nothing.
+    pub(crate) fn remove_only(&self) {
+        self.remove(ONLY_KEY);
+    }
+
     /// The stream names every key in `all`, and none other.
     pub(crate) fn reset(&self, all: HashMap<Vec<u8>, BridgeFastValue>) {
         self.values.write(|values| {
@@ -246,6 +259,65 @@ impl StreamWriter {
 impl Drop for StreamWriter {
     fn drop(&mut self) {
         self.reset(HashMap::new());
+    }
+}
+
+/// The stream of one value a call reports how far it has got in: the one the
+/// host last handed out, pulled on the host's runtime. A call that starts
+/// after the host takes a new stream writes that one; one nobody reads writes
+/// nowhere.
+pub(crate) struct ProgressStream {
+    /// Where the stream's pulls run.
+    runtime: OperationRuntime,
+    /// The stream [`Self::feed`] last handed out.
+    values: Mutex<Option<Arc<StreamValues>>>,
+}
+
+impl ProgressStream {
+    pub(crate) fn new(runtime: OperationRuntime) -> Self {
+        Self { runtime, values: Mutex::new(None) }
+    }
+
+    /// A new stream, which calls from now on write. A cancelled stream holds
+    /// nothing from then on.
+    pub(crate) fn feed(&self) -> Arc<KeyedValueStream> {
+        let values = StreamValues::new();
+        *self.values.lock().unwrap() = Some(values.clone());
+        Arc::new(KeyedValueStream::new(values, CancellationToken::new(), self.runtime.clone()))
+    }
+
+    /// Where one call writes: the stream last handed out, or nowhere before
+    /// the host took one.
+    pub(crate) fn writer(&self) -> ProgressWriter {
+        ProgressWriter { writer: self.values.lock().unwrap().clone().map(StreamWriter::new) }
+    }
+}
+
+/// One call's writing of a [`ProgressStream`]. Dropping it, as the call
+/// ends, empties the stream.
+pub(crate) struct ProgressWriter {
+    writer: Option<StreamWriter>,
+}
+
+impl ProgressWriter {
+    /// Where nothing reads the call's progress.
+    pub(crate) fn unread() -> Self {
+        Self { writer: None }
+    }
+
+    /// The stream holds `value`.
+    pub(crate) fn set(&self, value: BridgeFastValue) {
+        if let Some(writer) = &self.writer {
+            writer.set_only(value);
+        }
+    }
+
+    /// The stream holds nothing.
+    #[cfg(feature = "desktop")]
+    pub(crate) fn clear(&self) {
+        if let Some(writer) = &self.writer {
+            writer.remove_only();
+        }
     }
 }
 

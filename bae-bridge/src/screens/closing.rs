@@ -3,9 +3,11 @@
 //! constructor is the host's, whose runtime outlives the library's and pulls
 //! the stream), starts reading its steps, then hands it to the call.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(test)]
+use std::sync::Mutex;
 
-use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
+use crate::keyed_values::{KeyedValueStream, ProgressStream, ProgressWriter};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeClosingStep, BridgeFastValue};
 
@@ -13,11 +15,9 @@ use crate::types::{BridgeClosingStep, BridgeFastValue};
 /// steps with [`Self::feed_closing_steps`], then hands it to the call.
 #[derive(uniffi::Object)]
 pub struct BridgeLibraryClosing {
-    /// Where the stream's pulls run: the host's runtime.
-    runtime: OperationRuntime,
     /// Where the close reports its steps: the stream
     /// [`Self::feed_closing_steps`] last handed out.
-    steps: Mutex<Option<Arc<StreamValues>>>,
+    steps: ProgressStream,
     /// Every step the close wrote, and `None` where its writing ended, so a
     /// test reads steps that come and go faster than it could look.
     #[cfg(test)]
@@ -27,8 +27,7 @@ pub struct BridgeLibraryClosing {
 /// A closing whose stream is pulled on `runtime`.
 pub(crate) fn library_closing(runtime: OperationRuntime) -> Arc<BridgeLibraryClosing> {
     Arc::new(BridgeLibraryClosing {
-        runtime,
-        steps: Mutex::new(None),
+        steps: ProgressStream::new(runtime),
         #[cfg(test)]
         written: Arc::default(),
     })
@@ -40,13 +39,7 @@ impl BridgeLibraryClosing {
     /// the close runs a step, and nothing once it ends. A cancelled stream
     /// holds nothing from then on.
     pub fn feed_closing_steps(&self) -> Arc<KeyedValueStream> {
-        let values = StreamValues::new();
-        *self.steps.lock().unwrap() = Some(values.clone());
-        Arc::new(KeyedValueStream::new(
-            values,
-            bae_library::CancellationToken::new(),
-            self.runtime.clone(),
-        ))
+        self.steps.feed()
     }
 }
 
@@ -55,7 +48,7 @@ impl BridgeLibraryClosing {
     /// empties the stream. A closing nobody reads writes nothing.
     pub(crate) fn writer(&self) -> ClosingSteps {
         ClosingSteps {
-            writer: self.steps.lock().unwrap().clone().map(StreamWriter::new),
+            writer: self.steps.writer(),
             #[cfg(test)]
             written: Some(self.written.clone()),
         }
@@ -70,7 +63,7 @@ impl BridgeLibraryClosing {
 
 /// A close's writing of its stream; a close no app follows writes nowhere.
 pub(crate) struct ClosingSteps {
-    writer: Option<StreamWriter>,
+    writer: ProgressWriter,
     #[cfg(test)]
     written: Option<Arc<Mutex<Vec<Option<BridgeClosingStep>>>>>,
 }
@@ -79,7 +72,7 @@ impl ClosingSteps {
     /// Where nothing reads a close's steps.
     pub(crate) fn unread() -> Self {
         Self {
-            writer: None,
+            writer: ProgressWriter::unread(),
             #[cfg(test)]
             written: None,
         }
@@ -109,9 +102,7 @@ impl ClosingSteps {
         if let Some(written) = &self.written {
             written.lock().unwrap().push(Some(step));
         }
-        if let Some(writer) = &self.writer {
-            writer.set(String::new(), BridgeFastValue::ClosingStep { step });
-        }
+        self.writer.set(BridgeFastValue::ClosingStep { step });
     }
 }
 

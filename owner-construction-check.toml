@@ -289,6 +289,9 @@ task_types = [
 ClosingSteps = "BridgeLibraryClosing"
 # Where one setup call writes its steps, the same way.
 SetupSteps = "BridgeLibrarySetup"
+# Where one call writes how far it has got: the send end of the progress
+# stream the app last took.
+ProgressWriter = "ProgressStream"
 # One release's progress, listed among every release's transfer of its kind
 # while that transfer runs; dropping it removes the release. And a watch on
 # every release's progress.

@@ -15,9 +15,6 @@ use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeError, BridgeFastValue};
 
-/// The key of a stream that holds one value.
-const ONLY_KEY: &[u8] = b"";
-
 /// What a feed does to write its stream: from the library's services, lent
 /// for the call, the watch it follows, and the writing that follows it.
 pub(crate) type Writes =
@@ -140,8 +137,8 @@ pub(crate) fn upload_total_transfer(
         async move {
             while let Some(transfer) = total.next().await {
                 match transfer.map(upload_total) {
-                    Ok(Some(total)) => writer.set(ONLY_KEY, total),
-                    Ok(None) => writer.remove(ONLY_KEY),
+                    Ok(Some(total)) => writer.set_only(total),
+                    Ok(None) => writer.remove_only(),
                     Err(error) => writer.fail(BridgeError::database_query(error)),
                 }
             }
@@ -279,13 +276,10 @@ pub(crate) fn preview_position(
             loop {
                 let preview = positions.positions().preview;
                 match preview {
-                    Some(position) => writer.set(
-                        ONLY_KEY,
-                        BridgeFastValue::PreviewPosition {
-                            position: crate::types::BridgePreviewPosition::from_core(position),
-                        },
-                    ),
-                    None => writer.remove(ONLY_KEY),
+                    Some(position) => writer.set_only(BridgeFastValue::PreviewPosition {
+                        position: crate::types::BridgePreviewPosition::from_core(position),
+                    }),
+                    None => writer.remove_only(),
                 }
                 if positions.changed().await.is_err() {
                     return;

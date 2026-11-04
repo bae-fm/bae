@@ -19,7 +19,7 @@ pub struct ImportListSubscription {
     runtime: crate::operation_runtime::OperationRuntime,
     /// Where the next bulk action reports how far it has got: the stream
     /// [`Self::selection_action_progress`] last handed out.
-    selection_progress: std::sync::Mutex<Option<std::sync::Arc<crate::keyed_values::StreamValues>>>,
+    selection_progress: crate::keyed_values::ProgressStream,
 }
 
 pub(crate) fn import_list(
@@ -30,8 +30,8 @@ pub(crate) fn import_list(
     std::sync::Arc::new(ImportListSubscription {
         inner,
         services,
+        selection_progress: crate::keyed_values::ProgressStream::new(runtime.clone()),
         runtime,
-        selection_progress: std::sync::Mutex::new(None),
     })
 }
 
@@ -45,13 +45,7 @@ impl ImportListSubscription {
     pub fn selection_action_progress(
         &self,
     ) -> std::sync::Arc<crate::keyed_values::KeyedValueStream> {
-        let values = crate::keyed_values::StreamValues::new();
-        *self.selection_progress.lock().unwrap() = Some(values.clone());
-        std::sync::Arc::new(crate::keyed_values::KeyedValueStream::new(
-            values,
-            bae_library::CancellationToken::new(),
-            self.runtime.clone(),
-        ))
+        self.selection_progress.feed()
     }
 }
 
@@ -251,29 +245,19 @@ impl ImportListSubscription {
         let runtime = self.runtime.clone();
         runtime
             .run("ImportListSubscription.run_selection_action", move || async move {
-                let progress = self
-                    .selection_progress
-                    .lock()
-                    .unwrap()
-                    .clone()
-                    .map(crate::keyed_values::StreamWriter::new);
+                let progress = self.selection_progress.writer();
                 let failures = self
                     .services
                     .run_import_selection_action(
                         &self.inner.selected().await.map_err(list_error)?,
                         action.into_core(),
                         |completed, total| {
-                            if let Some(progress) = &progress {
-                                progress.set(
-                                    String::new(),
-                                    crate::types::BridgeFastValue::SelectionActionProgress {
-                                        progress: crate::types::BridgeSelectionActionProgress {
-                                            completed,
-                                            total,
-                                        },
-                                    },
-                                );
-                            }
+                            progress.set(crate::types::BridgeFastValue::SelectionActionProgress {
+                                progress: crate::types::BridgeSelectionActionProgress {
+                                    completed,
+                                    total,
+                                },
+                            });
                         },
                     )
                     .await

@@ -4,9 +4,9 @@
 //! is the host's, whose runtime the stream is pulled on), starts reading its
 //! steps, then hands it to the apply.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
+use crate::keyed_values::{KeyedValueStream, ProgressStream};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{BridgeCatalogApplyStep, BridgeFastValue};
 
@@ -14,16 +14,14 @@ use crate::types::{BridgeCatalogApplyStep, BridgeFastValue};
 /// [`Self::feed_apply_steps`], then hands it to the apply.
 #[derive(uniffi::Object)]
 pub struct BridgeCatalogApply {
-    /// Where the stream's pulls run: the host's runtime.
-    runtime: OperationRuntime,
     /// Where the apply reports its steps: the stream
     /// [`Self::feed_apply_steps`] last handed out.
-    steps: Mutex<Option<Arc<StreamValues>>>,
+    steps: ProgressStream,
 }
 
 /// An apply whose stream is pulled on `runtime`.
 pub(crate) fn catalog_apply(runtime: OperationRuntime) -> Arc<BridgeCatalogApply> {
-    Arc::new(BridgeCatalogApply { runtime, steps: Mutex::new(None) })
+    Arc::new(BridgeCatalogApply { steps: ProgressStream::new(runtime) })
 }
 
 #[uniffi::export]
@@ -32,13 +30,7 @@ impl BridgeCatalogApply {
     /// the apply waits on a read, and nothing between reads or once it ends.
     /// A cancelled stream holds nothing from then on.
     pub fn feed_apply_steps(&self) -> Arc<KeyedValueStream> {
-        let values = StreamValues::new();
-        *self.steps.lock().unwrap() = Some(values.clone());
-        Arc::new(KeyedValueStream::new(
-            values,
-            bae_library::CancellationToken::new(),
-            self.runtime.clone(),
-        ))
+        self.steps.feed()
     }
 }
 
@@ -48,15 +40,14 @@ impl BridgeCatalogApply {
 pub(crate) fn catalog_apply_steps(
     apply: Option<&BridgeCatalogApply>,
 ) -> bae_import::CatalogApplySteps {
-    let Some(values) = apply.and_then(|apply| apply.steps.lock().unwrap().clone()) else {
+    let Some(apply) = apply else {
         return bae_import::CatalogApplySteps::unread();
     };
-    let writer = StreamWriter::new(values);
+    let writer = apply.steps.writer();
     bae_import::CatalogApplySteps::new(move |step| match step {
-        Some(step) => writer.set(
-            String::new(),
-            BridgeFastValue::CatalogApplyStep { step: BridgeCatalogApplyStep::from_core(step) },
-        ),
-        None => writer.remove(&[]),
+        Some(step) => writer.set(BridgeFastValue::CatalogApplyStep {
+            step: BridgeCatalogApplyStep::from_core(step),
+        }),
+        None => writer.clear(),
     })
 }

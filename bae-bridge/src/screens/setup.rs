@@ -4,37 +4,29 @@
 //! object (its constructor is the host's, whose runtime the stream is pulled
 //! on), starts reading its steps, then hands it to the call.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(test)]
+use std::sync::Mutex;
 
-use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
+use crate::keyed_values::{KeyedValueStream, ProgressStream, ProgressWriter};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{
     BridgeBootstrapStatus, BridgeFastValue, BridgeOpenProgress, BridgeSetupProgress,
     BridgeSetupStep,
 };
 
-/// A setup call's steps, or an open's, as the app reads them: the stream's
-/// one key, `""`, while the call runs a step, pulled on `runtime`. The call
-/// that is handed the stream's values writes them; cancelling the stream ends
-/// what it holds.
-fn setup_steps(values: Arc<StreamValues>, runtime: OperationRuntime) -> Arc<KeyedValueStream> {
-    Arc::new(KeyedValueStream::new(values, bae_library::CancellationToken::new(), runtime))
-}
-
 /// The app makes one for each call that opens a library, starts reading its
 /// steps with [`Self::feed_open_steps`], then hands it to that call.
 #[derive(uniffi::Object)]
 pub struct BridgeLibraryOpening {
-    /// Where the stream's pulls run: the host's runtime.
-    runtime: OperationRuntime,
     /// Where the open reports its steps: the stream
     /// [`Self::feed_open_steps`] last handed out.
-    steps: Mutex<Option<Arc<StreamValues>>>,
+    steps: ProgressStream,
 }
 
 /// An opening whose stream is pulled on `runtime`.
 pub(crate) fn library_opening(runtime: OperationRuntime) -> Arc<BridgeLibraryOpening> {
-    Arc::new(BridgeLibraryOpening { runtime, steps: Mutex::new(None) })
+    Arc::new(BridgeLibraryOpening { steps: ProgressStream::new(runtime) })
 }
 
 #[uniffi::export]
@@ -43,9 +35,7 @@ impl BridgeLibraryOpening {
     /// the open runs a step, and nothing once the open ends. A cancelled
     /// stream holds nothing from then on.
     pub fn feed_open_steps(&self) -> Arc<KeyedValueStream> {
-        let values = StreamValues::new();
-        *self.steps.lock().unwrap() = Some(values.clone());
-        setup_steps(values, self.runtime.clone())
+        self.steps.feed()
     }
 }
 
@@ -54,16 +44,11 @@ impl BridgeLibraryOpening {
     /// returns, as the open ends, empties the stream. An opening nobody reads
     /// writes nothing.
     pub(crate) fn report(&self) -> impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static {
-        let writer = self.steps.lock().unwrap().clone().map(StreamWriter::new);
+        let writer = self.steps.writer();
         move |progress| {
-            if let Some(writer) = &writer {
-                writer.set(
-                    String::new(),
-                    BridgeFastValue::OpenProgress {
-                        progress: BridgeOpenProgress::from_core(progress),
-                    },
-                );
-            }
+            writer.set(BridgeFastValue::OpenProgress {
+                progress: BridgeOpenProgress::from_core(progress),
+            });
         }
     }
 }
@@ -72,11 +57,9 @@ impl BridgeLibraryOpening {
 /// [`Self::feed_setup_steps`], then hands it to that call.
 #[derive(uniffi::Object)]
 pub struct BridgeLibrarySetup {
-    /// Where the stream's pulls run: the host's runtime.
-    runtime: OperationRuntime,
     /// Where the call reports its steps: the stream
     /// [`Self::feed_setup_steps`] last handed out.
-    steps: Mutex<Option<Arc<StreamValues>>>,
+    steps: ProgressStream,
     /// Every value a call wrote, and `None` where its writing ended, so a
     /// test reads steps that come and go faster than it could look.
     #[cfg(test)]
@@ -86,8 +69,7 @@ pub struct BridgeLibrarySetup {
 /// A setup whose stream is pulled on `runtime`.
 pub(crate) fn library_setup(runtime: OperationRuntime) -> Arc<BridgeLibrarySetup> {
     Arc::new(BridgeLibrarySetup {
-        runtime,
-        steps: Mutex::new(None),
+        steps: ProgressStream::new(runtime),
         #[cfg(test)]
         written: Arc::default(),
     })
@@ -99,9 +81,7 @@ impl BridgeLibrarySetup {
     /// the call runs, and nothing once it ends. A cancelled stream holds
     /// nothing from then on.
     pub fn feed_setup_steps(&self) -> Arc<KeyedValueStream> {
-        let values = StreamValues::new();
-        *self.steps.lock().unwrap() = Some(values.clone());
-        setup_steps(values, self.runtime.clone())
+        self.steps.feed()
     }
 }
 
@@ -110,7 +90,7 @@ impl BridgeLibrarySetup {
     /// empties the stream. A setup nobody reads writes nothing.
     pub(crate) fn writer(&self) -> SetupSteps {
         SetupSteps {
-            writer: self.steps.lock().unwrap().clone().map(StreamWriter::new),
+            writer: self.steps.writer(),
             #[cfg(test)]
             written: self.written.clone(),
         }
@@ -125,7 +105,7 @@ impl BridgeLibrarySetup {
 
 /// A setup call's writing of its stream.
 pub(crate) struct SetupSteps {
-    writer: Option<StreamWriter>,
+    writer: ProgressWriter,
     #[cfg(test)]
     written: Arc<Mutex<Vec<Option<BridgeFastValue>>>>,
 }
@@ -137,7 +117,7 @@ impl SetupSteps {
         match setup {
             Some(setup) => setup.writer(),
             None => Self {
-                writer: None,
+                writer: ProgressWriter::unread(),
                 #[cfg(test)]
                 written: Arc::default(),
             },
@@ -174,9 +154,7 @@ impl SetupSteps {
     fn set(&self, value: BridgeFastValue) {
         #[cfg(test)]
         self.written.lock().unwrap().push(Some(value.clone()));
-        if let Some(writer) = &self.writer {
-            writer.set(String::new(), value);
-        }
+        self.writer.set(value);
     }
 }
 
