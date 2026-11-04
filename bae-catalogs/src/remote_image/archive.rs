@@ -1,9 +1,11 @@
 //! Complete Cover Art Archive galleries, fetched only when a picker opens.
 
+use super::fetch::send_artwork_request;
 use super::{
-    push_unique_cover, send_artwork_request, Catalog, CoverStanding, DownscaledCopy, RemoteCover,
-    RemoteImageError, RemoteImageSet, ARCHIVE,
+    push_unique_cover, CoverStanding, DownscaledCopy, RemoteCover, RemoteImageError,
+    RemoteImageSet, ARCHIVE,
 };
+use crate::catalog::Catalog;
 use bae_util::http::Http;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -52,7 +54,7 @@ async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, Remot
     };
     let bytes =
         bae_util::http::read_body_capped(response, 4 * 1024 * 1024).await.map_err(|error| {
-            super::artwork_body_error(error, "Failed to read Cover Art Archive gallery")
+            super::fetch::artwork_body_error(error, "Failed to read Cover Art Archive gallery")
         })?;
     parse_gallery(&bytes)
 }
