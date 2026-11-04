@@ -64,7 +64,8 @@ The Xcode build runs `build-macos.sh` for the same configuration: Debug builds t
 A name is a Swift test type (`Type`, or `Type/test` for one test), not a file
 name: one file can hold several types. xcodebuild passes a filter that matches
 nothing, so the script reads the run's result bundle and fails when a name ran
-no tests.
+no tests. It generates the Xcode project from `project.yml` first, so a test
+file added since the last generation runs.
 
 ## Formatting
 

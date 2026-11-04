@@ -8,6 +8,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# The project lists the test files that existed when it was last generated, so
+# generate it from project.yml now: a test file added since would not be built
+# and would never run.
+(cd bae-macos/bae && xcodegen)
+
 # The scheme's pre-action rebuilds the bridge with these features; unset, it
 # would build its full-feature default anyway, so name it to match run.sh.
 export BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
