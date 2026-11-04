@@ -278,12 +278,26 @@ fn storage_place(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storage
 
 /// What a Storage Manager filter keeps of `release_listing listing`, as a
 /// condition.
-fn storage_filter(filter: StorageFilter) -> &'static str {
+fn storage_filter(filter: StorageFilter) -> String {
+    stored_value(filter)
+        .map_or_else(|| "1".to_string(), |stored| format!("listing.stored = {stored}"))
+}
+
+/// The value of `stored` a filter keeps (1 for remote, 0 for local), or
+/// `None` when it keeps both.
+fn stored_value(filter: StorageFilter) -> Option<u8> {
     match filter {
-        StorageFilter::All => "1",
-        StorageFilter::Remote => "listing.stored = 1",
-        StorageFilter::Local => "listing.stored = 0",
+        StorageFilter::All => None,
+        StorageFilter::Remote => Some(1),
+        StorageFilter::Local => Some(0),
     }
+}
+
+/// `SUM(column)` over `release_listing_totals`, of the rows `filter` keeps.
+fn listing_totals_sum_query(column: &str, filter: StorageFilter) -> String {
+    let kept =
+        stored_value(filter).map_or_else(String::new, |stored| format!(" WHERE stored = {stored}"));
+    format!("SELECT COALESCE(SUM({column}), 0) FROM release_listing_totals{kept}")
 }
 
 /// `release_listing listing` reached by album alone: a statement reading
@@ -586,19 +600,7 @@ pub(crate) fn storage_count_on(
 
 /// The statement [`storage_count_on`] reads.
 pub(crate) fn storage_count_query(filter: StorageFilter) -> String {
-    match filter {
-        StorageFilter::All => {
-            "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals".to_string()
-        }
-        StorageFilter::Remote => {
-            "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals WHERE stored = 1"
-                .to_string()
-        }
-        StorageFilter::Local => {
-            "SELECT COALESCE(SUM(release_count), 0) FROM release_listing_totals WHERE stored = 0"
-                .to_string()
-        }
-    }
+    listing_totals_sum_query("release_count", filter)
 }
 
 /// The total size of the files of the releases the Storage Manager list
@@ -614,19 +616,7 @@ pub(crate) fn storage_total_size_on(
 
 /// The statement [`storage_total_size_on`] reads.
 pub(crate) fn storage_total_size_query(filter: StorageFilter) -> String {
-    match filter {
-        StorageFilter::All => {
-            "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals".to_string()
-        }
-        StorageFilter::Remote => {
-            "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals WHERE stored = 1"
-                .to_string()
-        }
-        StorageFilter::Local => {
-            "SELECT COALESCE(SUM(total_size), 0) FROM release_listing_totals WHERE stored = 0"
-                .to_string()
-        }
-    }
+    listing_totals_sum_query("total_size", filter)
 }
 
 /// The rows of the `release_ids` the list under `filter` and `search`
