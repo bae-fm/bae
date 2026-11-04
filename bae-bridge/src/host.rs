@@ -365,9 +365,7 @@ impl BridgeHost {
         let builder = self.builder();
         let steps = setup.writer();
         let name = match name {
-            Some(name) => {
-                bae_library::library_name::LibraryName::parse(&name).map_err(BridgeError::config)?
-            }
+            Some(name) => bae_db::EnteredName::parse(&name).map_err(BridgeError::config)?,
             None => bae_library::library_name::generate_library_name(),
         };
         self.operations

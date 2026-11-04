@@ -10,7 +10,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     let installation = coven::TestCoven::new();
     let handle = create_library(
         installation.builder(app_dir.store_layout()),
-        crate::library_name::LibraryName::parse("Created Library").unwrap(),
+        bae_db::EnteredName::parse("Created Library").unwrap(),
     )
     .await
     .unwrap();
@@ -35,7 +35,7 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     let installation = coven::TestCoven::new();
     let handle = create_library(
         installation.builder(app_dir.store_layout()),
-        crate::library_name::LibraryName::parse("Cached Library").unwrap(),
+        bae_db::EnteredName::parse("Cached Library").unwrap(),
     )
     .await
     .unwrap();
@@ -58,7 +58,7 @@ async fn failed_creation_removes_the_partial_library() {
     installation.fail_next_keychain_operation();
     let error = create_library(
         installation.builder(app_dir.store_layout()),
-        crate::library_name::LibraryName::parse("Failed Library").unwrap(),
+        bae_db::EnteredName::parse("Failed Library").unwrap(),
     )
     .await
     .err()
@@ -75,7 +75,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let installation = coven::TestCoven::new();
     let handle = create_library(
         installation.builder(app_dir.store_layout()),
-        crate::library_name::LibraryName::parse("Local Library").unwrap(),
+        bae_db::EnteredName::parse("Local Library").unwrap(),
     )
     .await
     .unwrap();

@@ -37,7 +37,7 @@ async fn creating_a_library_costs() {
         let app_dir = bae_app_dir::AppDir::under_home(directory.path()).unwrap();
         let installation = coven::TestCoven::new();
         let builder = installation.builder(app_dir.store_layout());
-        let name = bae_library::library_name::LibraryName::parse("Bench").unwrap();
+        let name = bae_db::EnteredName::parse("Bench").unwrap();
         let started = Instant::now();
         let handle = bae_library::create_library(builder, name).await.unwrap();
         let created_in = started.elapsed();

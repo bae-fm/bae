@@ -141,8 +141,12 @@ impl Database {
     /// Give `artist_id` the other printed name `name`. A name that folds to
     /// the artist's own, or to one it already goes by, adds nothing: the
     /// artist already goes by it.
-    pub async fn add_artist_credit_name(&self, artist_id: &str, name: &str) -> Result<(), DbError> {
-        let (artist_id, name) = (artist_id.to_string(), name.trim().to_string());
+    pub async fn add_artist_credit_name(
+        &self,
+        artist_id: &str,
+        name: &crate::EnteredName,
+    ) -> Result<(), DbError> {
+        let (artist_id, name) = (artist_id.to_string(), name.as_str().to_string());
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
         self.call_sql(move |sql| {
             settle_credit_name(&sql, &artist_id, Some(&CreditName::of(&name)), &now)?;
@@ -160,10 +164,10 @@ impl Database {
         &self,
         artist_id: &str,
         key: &str,
-        name: &str,
+        name: &crate::EnteredName,
     ) -> Result<(), DbError> {
         let (artist_id, key, name) =
-            (artist_id.to_string(), key.to_string(), name.trim().to_string());
+            (artist_id.to_string(), key.to_string(), name.as_str().to_string());
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
         self.call_sql(move |sql| {
             let renamed = CreditName::of(&name);

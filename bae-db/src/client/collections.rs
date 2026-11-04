@@ -37,7 +37,7 @@ impl Database {
         name: &str,
         sharing: Sharing,
     ) -> Result<Playlist, CollectionError> {
-        let name = playlist_name(name)?;
+        let name = crate::EnteredName::parse(name)?.into_string();
         let person = self.own_profile().await?;
         let playlist = Playlist {
             id,
@@ -62,7 +62,7 @@ impl Database {
     }
 
     pub async fn rename_playlist(&self, id: uuid::Uuid, name: &str) -> Result<(), CollectionError> {
-        let name = playlist_name(name)?;
+        let name = crate::EnteredName::parse(name)?.into_string();
         self.change_playlist(id, move |sql| {
             sql.execute(
                 "UPDATE playlists SET name = ? WHERE id = ?",
@@ -168,15 +168,6 @@ impl Database {
             }
         })
         .await?
-    }
-}
-
-fn playlist_name(name: &str) -> Result<String, CollectionError> {
-    let name = name.trim();
-    if name.is_empty() {
-        Err(CollectionError::EmptyName)
-    } else {
-        Ok(name.to_owned())
     }
 }
 

@@ -39,10 +39,8 @@ impl LibraryManager {
         artist_id: &str,
         name: &str,
     ) -> Result<(), LibraryError> {
-        if name.trim().is_empty() {
-            return Err(LibraryError::Refused("a credit name cannot be blank".into()));
-        }
-        Ok(self.database.add_artist_credit_name(artist_id, name).await?)
+        let name = credit_name(name)?;
+        Ok(self.database.add_artist_credit_name(artist_id, &name).await?)
     }
 
     /// Rename one of an artist's other printed names; every credit printing
@@ -53,10 +51,8 @@ impl LibraryManager {
         key: &str,
         name: &str,
     ) -> Result<(), LibraryError> {
-        if name.trim().is_empty() {
-            return Err(LibraryError::Refused("a credit name cannot be blank".into()));
-        }
-        Ok(self.database.rename_artist_credit_name(artist_id, key, name).await?)
+        let name = credit_name(name)?;
+        Ok(self.database.rename_artist_credit_name(artist_id, key, &name).await?)
     }
 
     /// Remove one of an artist's other printed names; every credit printing
@@ -91,6 +87,12 @@ impl LibraryManager {
     ) -> Result<Vec<String>, LibraryError> {
         Ok(self.database.find_or_create_artists(artists).await?)
     }
+}
+
+/// A credit name a person entered, refused when blank.
+fn credit_name(name: &str) -> Result<bae_db::EnteredName, LibraryError> {
+    bae_db::EnteredName::parse(name)
+        .map_err(|bae_db::BlankName| LibraryError::Refused("a credit name cannot be blank".into()))
 }
 
 #[cfg(test)]

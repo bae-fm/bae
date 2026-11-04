@@ -98,6 +98,12 @@ impl From<coven::CovenError> for ProfileError {
     }
 }
 
+impl From<crate::BlankName> for ProfileError {
+    fn from(_: crate::BlankName) -> Self {
+        Self::EmptyName
+    }
+}
+
 impl ProfileError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;

@@ -4,14 +4,13 @@
 //! when no one but its owner can read or write it, and no error repeats its
 //! contents.
 
-use crate::library_name::{EmptyLibraryName, LibraryName};
 use crate::sync::S3ConfigData;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 /// A dev library's profile, read from its TOML file.
 pub struct DevResetProfile {
-    pub library_name: LibraryName,
+    pub library_name: bae_db::EnteredName,
     /// The storage setup the library connects to, with the profile coven
     /// picks from the endpoint, as the storage setup form's default does.
     pub s3: S3ConfigData,
@@ -136,9 +135,10 @@ impl DevResetProfile {
             });
         }
         // The refusal carries nothing beyond the field being empty.
-        let library_name = LibraryName::parse(&file.library_name).map_err(|EmptyLibraryName| {
-            DevResetProfileError::Empty { path: path.to_path_buf(), field: "library_name" }
-        })?;
+        let library_name =
+            bae_db::EnteredName::parse(&file.library_name).map_err(|bae_db::BlankName| {
+                DevResetProfileError::Empty { path: path.to_path_buf(), field: "library_name" }
+            })?;
         Ok(Self {
             library_name,
             s3: S3ConfigData {

@@ -10,6 +10,8 @@ pub mod admin_change;
 pub mod client;
 pub mod collections;
 pub mod credits;
+mod entered_name;
+pub use entered_name::{BlankName, EnteredName};
 mod error;
 pub use error::DbError;
 pub mod history;

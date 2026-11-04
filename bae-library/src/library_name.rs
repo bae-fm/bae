@@ -1,39 +1,5 @@
 use rand::prelude::IteratorRandom;
 
-/// A validated, non-blank library name. The one definition of "a library name is
-/// non-empty": [`parse`](Self::parse) trims and rejects a blank string, and every
-/// path that creates or renames a library takes this type rather than a bare
-/// `String`, so the rule cannot be stated three different ways (or skipped) at
-/// three different call sites.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LibraryName(String);
-
-/// A library name was empty (or all whitespace) after trimming.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-#[error("Library name cannot be empty")]
-pub struct EmptyLibraryName;
-
-impl LibraryName {
-    /// Trim `raw` and return the name, or [`EmptyLibraryName`] when nothing is
-    /// left. The single gate every surface routes a user-entered name through.
-    pub fn parse(raw: &str) -> Result<Self, EmptyLibraryName> {
-        let trimmed = raw.trim();
-        if trimmed.is_empty() {
-            Err(EmptyLibraryName)
-        } else {
-            Ok(Self(trimmed.to_string()))
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    pub fn into_string(self) -> String {
-        self.0
-    }
-}
-
 /// One word per beat, whitespace-separated: the list is read by splitting it.
 const VERBS: &str = concat!(
     "boppin groovin swingin rockin jigging vibin jammin funkin chillin ",
@@ -72,17 +38,13 @@ const MUSICIANS: &str = concat!(
 );
 
 /// Generate a fun default library name like "groovin-coltrane" or "boppin-beethoven".
-pub fn generate_library_name() -> LibraryName {
+pub fn generate_library_name() -> bae_db::EnteredName {
     let mut rng = rand::rng();
     let mut word = |list: &str| {
         list.split_whitespace().choose(&mut rng).expect("the word lists are not empty").to_string()
     };
     let verb = word(VERBS);
     let musician = word(MUSICIANS);
-    LibraryName::parse(&format!("{verb}-{musician}"))
+    bae_db::EnteredName::parse(&format!("{verb}-{musician}"))
         .expect("generated library names are always non-blank")
 }
-
-#[cfg(test)]
-#[path = "library_name_tests.rs"]
-mod tests;

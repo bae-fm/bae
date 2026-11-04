@@ -102,7 +102,9 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .unwrap();
     assert_eq!(added.total_count, 4);
 
-    db.add_artist_credit_name(FIRST, "Artist Alias").await.unwrap();
+    db.add_artist_credit_name(FIRST, &bae_db::EnteredName::parse("Artist Alias").unwrap())
+        .await
+        .unwrap();
     let named = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a found artist's new name wakes the search")
@@ -125,8 +127,12 @@ async fn artist_search_follows_writes_to_what_it_finds() {
 #[tokio::test]
 async fn a_found_artist_reads_its_image_and_names_in_its_row() {
     let (db, _tmp) = seeded().await;
-    db.add_artist_credit_name(FIRST, "Zed Alias").await.unwrap();
-    db.add_artist_credit_name(FIRST, "Alpha Alias").await.unwrap();
+    db.add_artist_credit_name(FIRST, &bae_db::EnteredName::parse("Zed Alias").unwrap())
+        .await
+        .unwrap();
+    db.add_artist_credit_name(FIRST, &bae_db::EnteredName::parse("Alpha Alias").unwrap())
+        .await
+        .unwrap();
     let image = write_artist_image(&db, FIRST, "artist image bytes").await;
 
     let found = LibraryViews::new(db.clone())

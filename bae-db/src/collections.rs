@@ -65,6 +65,12 @@ pub enum CollectionError {
     Database(#[from] crate::DbError),
 }
 
+impl From<crate::BlankName> for CollectionError {
+    fn from(_: crate::BlankName) -> Self {
+        Self::EmptyName
+    }
+}
+
 impl CollectionError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;

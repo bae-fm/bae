@@ -74,7 +74,7 @@ impl Database {
     /// or one this device stopped before, is acknowledged and replaced by
     /// this one; one still running refuses another with `CirclePending`.
     pub async fn create_profile(&self, name: &str) -> Result<(), ProfileError> {
-        let name = profile_name(name)?;
+        let name = crate::EnteredName::parse(name)?.into_string();
         let _creation = self.inner.profile_creation.lock().await;
         let member = self.current_member().await?.ok_or(ProfileError::NotRegistered)?;
         if let Some(profile) = self.profile(member).await? {
@@ -190,7 +190,7 @@ impl Database {
     }
 
     pub async fn rename_profile(&self, name: &str) -> Result<(), ProfileError> {
-        let name = profile_name(name)?;
+        let name = crate::EnteredName::parse(name)?.into_string();
         let person = self.own_profile().await?.id;
         self.call(move |sql| {
             update_profile(
@@ -312,15 +312,6 @@ fn profile_write_error(error: DbError) -> ProfileError {
             ProfileError::Sync(error.into())
         }
         error => error.into(),
-    }
-}
-
-fn profile_name(name: &str) -> Result<String, ProfileError> {
-    let name = name.trim();
-    if name.is_empty() {
-        Err(ProfileError::EmptyName)
-    } else {
-        Ok(name.to_string())
     }
 }
 

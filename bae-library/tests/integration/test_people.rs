@@ -200,12 +200,10 @@ impl Household {
             Some(sign_in) => sign_in.configure(builder),
             None => builder,
         };
-        let owner = bae_library::create_library(
-            builder,
-            bae_library::library_name::LibraryName::parse("Household").unwrap(),
-        )
-        .await
-        .unwrap();
+        let owner =
+            bae_library::create_library(builder, bae_db::EnteredName::parse("Household").unwrap())
+                .await
+                .unwrap();
         match storage.config().oauth_access() {
             Some(access) => {
                 owner.authenticate(access).await.unwrap();

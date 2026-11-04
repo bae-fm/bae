@@ -84,8 +84,8 @@ impl BridgeHost {
         self.app_dir.clear().map_err(BridgeError::internal)?;
 
         steps.uncounted(Step::CreatingLibrary);
-        let name = bae_library::library_name::LibraryName::parse(&profile.library_name)
-            .map_err(BridgeError::config)?;
+        let name =
+            bae_db::EnteredName::parse(&profile.library_name).map_err(BridgeError::config)?;
         tracing::info!(name = %profile.library_name, "dev reset: creating the library");
         let created = Arc::new(crate::OpenedLibrary::new(
             bae_library::create_library(self.builder(), name).await?,

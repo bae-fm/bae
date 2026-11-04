@@ -130,10 +130,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         let mut changes = manager.subscribe_admin_changes();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
 
-        manager
-            .rename_library(&crate::library_name::LibraryName::parse("Home").unwrap())
-            .await
-            .unwrap();
+        manager.rename_library(&bae_db::EnteredName::parse("Home").unwrap()).await.unwrap();
         let waiting =
             crate::followed::value_matching(&mut changes, |changes| !changes.is_empty()).await;
         let [AdminChange {

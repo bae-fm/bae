@@ -61,7 +61,7 @@ fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
 /// Create a store and retain its open handle, including its identity custody.
 pub async fn create_library(
     builder: coven::CovenBuilder,
-    name: crate::library_name::LibraryName,
+    name: bae_db::EnteredName,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
     Ok(configure_store(builder).create_store(name.as_str()).await?)
 }

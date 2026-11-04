@@ -413,7 +413,7 @@ impl AppServices {
     delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<bae_preferences::SavePreset>) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_async!(manager, rename_library => rename_library(name: &bae_library::library_name::LibraryName) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, rename_library => rename_library(name: &bae_db::EnteredName) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), bae_library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
