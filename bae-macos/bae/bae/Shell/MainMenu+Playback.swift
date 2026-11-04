@@ -40,11 +40,11 @@ extension MainMenu {
                 repeatItem(),
                 .separator(),
                 item(
-                    "Pause between sides and discs",
+                    "Pause Between Sides and Discs",
                     #selector(MainWindowController.pauseBetweenSides(_:))
                 ),
                 item(
-                    "Restore on launch",
+                    "Restore on Launch",
                     #selector(AppDelegate.restorePlaybackOnLaunch(_:))
                 ),
                 .separator(),
