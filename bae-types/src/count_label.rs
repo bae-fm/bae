@@ -10,3 +10,11 @@ pub struct CountLabel {
     pub key: String,
     pub count: u32,
 }
+
+impl CountLabel {
+    /// The label of `key` × `count`, or `None` when the count is zero: a zero
+    /// drops out of a summary.
+    pub fn nonzero(key: &str, count: u32) -> Option<Self> {
+        (count > 0).then(|| Self { key: key.to_string(), count })
+    }
+}

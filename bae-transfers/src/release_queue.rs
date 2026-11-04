@@ -90,10 +90,8 @@ pub fn transfer_summary<const N: usize>(
 ) -> Vec<TransferCount> {
     counts
         .into_iter()
-        .filter(|(_, count, _)| *count > 0)
-        .map(|(key, count, stage)| TransferCount {
-            label: CountLabel { key: key.to_string(), count },
-            stage,
+        .filter_map(|(key, count, stage)| {
+            CountLabel::nonzero(key, count).map(|label| TransferCount { label, stage })
         })
         .collect()
 }
@@ -110,8 +108,7 @@ impl ReleaseQueueProgress {
             ("core.queue.queued", self.queued),
         ]
         .into_iter()
-        .filter(|(_, count)| *count > 0)
-        .map(|(key, count)| CountLabel { key: key.to_string(), count })
+        .filter_map(|(key, count)| CountLabel::nonzero(key, count))
         .collect()
     }
 }
