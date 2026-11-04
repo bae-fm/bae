@@ -162,10 +162,9 @@ pub struct BridgePressing {
     /// offered the row, which then shows what its search result said.
     pub document_failure: Option<BridgeLookupFailure>,
     pub pick: crate::types::BridgePressingLink,
-    /// Where the pressing was released and what it is made of, as its
-    /// records together state it — the lead's facts, filled in where the lead
-    /// is silent from the other records — worded as
-    /// `bridge_pressing_summary` words them.
+    /// Where the pressing was released and what it is made of, as its lead
+    /// record states it: what a pick applies. Each record keeps its own facts,
+    /// in `releases`. Worded as `bridge_pressing_summary` words them.
     pub summary: Vec<crate::types::BridgeFactTerm>,
     /// What sets it apart beyond that, worded as `bridge_pressing_details`
     /// words it.
