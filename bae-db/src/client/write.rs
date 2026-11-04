@@ -1,5 +1,11 @@
 use super::*;
 
+/// The `album_order` that puts a release last among those of the album whose
+/// id `album_id` names (a SQL expression; a bound parameter or a column).
+pub(super) fn next_album_order_sql(album_id: &str) -> String {
+    format!("(SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = {album_id})")
+}
+
 pub(super) fn insert_artist_row(conn: &CovenWrite<'_>, artist: &DbArtist) -> Result<(), DbError> {
     conn.execute(
         r#"
@@ -130,16 +136,18 @@ pub fn insert_release_row(
     }
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     conn.execute(
-        r#"
+        &format!(
+            r#"
         INSERT INTO releases (
             id, album_id, release_name, year,
             country, region, status, packaging, discogs_details,
             source_folder_name,
             album_loudness_lufs, album_peak_linear,
             created_at, album_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-            (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, {next_album_order})
         "#,
+            next_album_order = next_album_order_sql("?")
+        ),
         params![
             release.id,
             release.album_id,

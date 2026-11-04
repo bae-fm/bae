@@ -221,9 +221,10 @@ pub(super) fn set_records_on(
     //    joining another album goes after that album's others.
     if target_album_id != current_album_id {
         tx.execute(
-            "UPDATE releases SET album_order = \
-                 (SELECT COALESCE(MAX(album_order) + 1, 0) FROM releases WHERE album_id = ?1) \
-             WHERE id = ?2",
+            &format!(
+                "UPDATE releases SET album_order = {} WHERE id = ?2",
+                next_album_order_sql("?1")
+            ),
             params![target_album_id, release_id],
         )?;
     }
