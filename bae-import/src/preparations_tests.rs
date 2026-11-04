@@ -140,8 +140,8 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
         )
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
 
@@ -202,8 +202,8 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
         })
         .await
         .unwrap());
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, CandidateEditField::AlbumTitle, "Person's title")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, CandidateEditField::AlbumTitle, "Person's title")
         .await
         .unwrap();
 
@@ -457,8 +457,8 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         )
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
+    PaneControls::of_pane_candidate(&db)
+        .choose_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
         .await
         .unwrap();
     let mapping = edited_row(
@@ -471,7 +471,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
                 .clone(),
         ),
     );
-    crate::CandidatePreparations::new(db.clone()).set_track_edit(&hash, &mapping).await.unwrap();
+    PaneControls::of_pane_candidate(&db).edit_track(&hash, &mapping).await.unwrap();
 
     let new_draft = metadata_draft("New album", "New Artist");
     let applied_revision = crate::CandidatePreparations::new(db.clone())
@@ -510,7 +510,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         source: Catalog::MusicBrainz,
         fetched: image(1),
     };
-    crate::CandidatePreparations::new(db.clone()).set_cover(&hash, &chosen).await.unwrap();
+    PaneControls::of_pane_candidate(&db).choose_cover(&hash, &chosen).await.unwrap();
     let mut blank = crate::pane::blank_candidate_draft(&pane_candidate()).release_edit();
     blank.tracks.truncate(1);
     let cleared_revision = crate::CandidatePreparations::new(db.clone())
@@ -551,8 +551,8 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         .unwrap()
         .and_then(crate::tables::CandidatePreparationRead::stored)
         .expect("the candidate is prepared");
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
 
@@ -607,12 +607,12 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         )
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
+    PaneControls::of_pane_candidate(&db)
+        .choose_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
         .await
         .unwrap();
     let preparation = tables

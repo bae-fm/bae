@@ -42,13 +42,14 @@ async fn every_draft_write_keeps_the_lists_draft_columns_current() {
         .unwrap();
     assert_eq!(columns(&db, &hash).await, (false, true));
 
-    preparations.set_field(&hash, CandidateEditField::AlbumYear, "not a year").await.unwrap();
+    let pane = PaneControls::of_pane_candidate(&db);
+    pane.type_field(&hash, CandidateEditField::AlbumYear, "not a year").await.unwrap();
     assert_eq!(
         columns(&db, &hash).await,
         (false, false),
         "a year that does not parse leaves the draft invalid"
     );
 
-    preparations.set_field(&hash, CandidateEditField::AlbumYear, "1987").await.unwrap();
+    pane.type_field(&hash, CandidateEditField::AlbumYear, "1987").await.unwrap();
     assert_eq!(columns(&db, &hash).await, (false, true));
 }

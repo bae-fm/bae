@@ -51,7 +51,7 @@ async fn a_cover_choice_round_trips_in_every_shape() {
         let tables = crate::tables::ImportTables::new(db.clone());
         let (_, hash) = stored_pane_candidate(&db).await;
 
-        crate::CandidatePreparations::new(db.clone()).set_cover(&hash, &cover).await.unwrap();
+        PaneControls::of_pane_candidate(&db).choose_cover(&hash, &cover).await.unwrap();
 
         assert_eq!(
             tables.load_import_candidate_pane_rows(&hash).await.unwrap().cover,
@@ -67,14 +67,14 @@ async fn a_new_cover_choice_leaves_none_of_the_old_copies() {
     let (db, _tmp) = empty_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
-    let preparations = crate::CandidatePreparations::new(db.clone());
+    let pane = PaneControls::of_pane_candidate(&db);
 
     for cover in [
         remote_with_copies("https://example.invalid/first"),
         PreparedCover::Local("cover.jpg".to_string()),
         remote_with_copies("https://example.invalid/second"),
     ] {
-        preparations.set_cover(&hash, &cover).await.unwrap();
+        pane.choose_cover(&hash, &cover).await.unwrap();
         assert_eq!(
             tables.load_import_candidate_pane_rows(&hash).await.unwrap().cover,
             Some(cover.selection())
@@ -102,10 +102,7 @@ async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
             },
         },
     ]);
-    crate::CandidatePreparations::new(db.clone())
-        .set_album_artists(&hash, &assignments)
-        .await
-        .unwrap();
+    PaneControls::of_pane_candidate(&db).set_album_artists(&hash, &assignments).await.unwrap();
 
     let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(stored.draft.album_artist_assignments, assignments);
@@ -116,10 +113,7 @@ async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
         artist_assignments: TrackArtistAssignments::Explicit(Vec::new()),
         file: Some(stored.draft.tracks[0].edit.file.clone()),
     };
-    crate::CandidatePreparations::new(db.clone())
-        .set_track_edit(&hash, &explicit_empty)
-        .await
-        .unwrap();
+    PaneControls::of_pane_candidate(&db).edit_track(&hash, &explicit_empty).await.unwrap();
     assert_eq!(
         tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft.tracks[0]
             .edit
@@ -133,7 +127,7 @@ async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
-    let error = crate::CandidatePreparations::new(db.clone())
+    let error = PaneControls::of_pane_candidate(&db)
         .set_album_artists(
             &hash,
             &[crate::Credited::plain(ArtistAssignment::picked(ExistingArtist {
@@ -176,7 +170,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
         "Edited title",
         Some(before.draft.tracks[0].edit.file.clone()),
     );
-    crate::CandidatePreparations::new(db.clone()).set_track_edit(&hash, &edit).await.unwrap();
+    PaneControls::of_pane_candidate(&db).edit_track(&hash, &edit).await.unwrap();
 
     let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(stored.draft.tracks.len(), 1);

@@ -147,6 +147,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         crate::folder_scanner::ReleaseFileScope::Direct,
     );
     let content_hash = candidate.files.content_hash();
+    let pane = crate::tables::import_state::tests::PaneControls::of(&db, &candidate);
     tables.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
     let generation = tables
         .begin_folder_scan(std::path::Path::new(&root), crate::VolumeKind::Local)
@@ -162,10 +163,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         .unwrap()
         .expect("the current scan accepts the candidate");
 
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&content_hash, crate::CandidateEditField::PressingYear, "2026")
-        .await
-        .unwrap();
+    pane.type_field(&content_hash, crate::CandidateEditField::PressingYear, "2026").await.unwrap();
     let release = DbRelease::new_test("album-never-written", "release-never-written");
     let error = tables
         .finalize_import_atomic(

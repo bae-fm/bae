@@ -101,8 +101,8 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     };
     let content_hash = candidate_files.files.content_hash();
     tables.save_folder_scan_item(root, generation, &candidate).await.unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&content_hash, crate::CandidateEditField::AlbumTitle, "Edited Album Title")
+    crate::tables::import_state::tests::PaneControls::of(&db, candidate_files)
+        .type_field(&content_hash, crate::CandidateEditField::AlbumTitle, "Edited Album Title")
         .await
         .unwrap();
     assert!(tables.load_import_candidate_state(&content_hash).await.unwrap().is_some());
@@ -171,6 +171,13 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
             .unwrap();
         tables.finish_folder_scan(root, generation, None).await.unwrap();
     }
+    // Edited while its folder is still a release of its own, as the pane
+    // edits one.
+    let edited = volume_b.files.content_hash();
+    crate::tables::import_state::tests::PaneControls::of(&db, &volume_b)
+        .type_field(&edited, crate::CandidateEditField::AlbumTitle, "Edited Album Title")
+        .await
+        .unwrap();
     tables
         .combine_releases(
             crate::CandidateKey::grouping("picked"),
@@ -191,11 +198,6 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
     )
     .await
     .unwrap();
-    let edited = volume_b.files.content_hash();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&edited, crate::CandidateEditField::AlbumTitle, "Edited Album Title")
-        .await
-        .unwrap();
     let mut decided = Vec::new();
     for table in FOLDER_TABLES {
         decided.push(rows_in(&db, table).await);

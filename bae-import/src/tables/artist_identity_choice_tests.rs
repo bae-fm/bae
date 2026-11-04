@@ -261,8 +261,8 @@ async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
         .choose_import_artist_identity(&hash, 0, Choice::DiscogsArtist, &coven::UuidIds)
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, crate::CandidateEditField::AlbumTitle, "Edited Album")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Edited Album")
         .await
         .unwrap();
     assert_eq!(

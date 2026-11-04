@@ -256,18 +256,12 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     save_verdict(&db, &candidate, "mb-verdict").await;
     let hash = candidate.files.content_hash();
 
-    crate::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
+    let pane = crate::tables::import_state::tests::PaneControls::of(&db, &candidate);
+    pane.choose_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, crate::CandidateEditField::AlbumTitle, "Edited Album")
-        .await
-        .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, crate::CandidateEditField::PressingYear, "1991")
-        .await
-        .unwrap();
+    pane.type_field(&hash, crate::CandidateEditField::AlbumTitle, "Edited Album").await.unwrap();
+    pane.type_field(&hash, crate::CandidateEditField::PressingYear, "1991").await.unwrap();
 
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
@@ -285,10 +279,12 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     );
 
     let content_hash = candidate.files.content_hash();
-    crate::CandidatePreparations::new(db.clone())
-        .set_cover(&content_hash, &crate::cover_art::PreparedCover::Local("folder.jpg".to_string()))
-        .await
-        .unwrap();
+    pane.choose_cover(
+        &content_hash,
+        &crate::cover_art::PreparedCover::Local("folder.jpg".to_string()),
+    )
+    .await
+    .unwrap();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables
         .save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
@@ -802,8 +798,8 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
         Some(folder_cover.selection())
     );
 
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, crate::CandidateEditField::AlbumTitle, "Typed album")
+    crate::tables::import_state::tests::PaneControls::of(&db, &candidate)
+        .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Typed album")
         .await
         .unwrap();
     let stored = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();

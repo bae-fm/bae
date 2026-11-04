@@ -34,8 +34,8 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
     let mut stale =
         tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     let expected = save_expectation(&candidate, &stale);
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, crate::CandidateEditField::AlbumTitle, "Newer album")
+    crate::tables::import_state::tests::PaneControls::new(&db, &root, &key)
+        .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Newer album")
         .await
         .unwrap();
     let before = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();

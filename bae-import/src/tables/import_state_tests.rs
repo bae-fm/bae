@@ -453,3 +453,107 @@ pub(crate) async fn lose_remote_cover_bytes(db: &Database, content_hash: &str) {
     )
     .await;
 }
+
+/// The import pane's controls over one candidate: its writers as the handle
+/// calls them, for the candidate the scan lists at `key` under `root`, each
+/// composed against the candidate as it stands when the control is used.
+pub(crate) struct PaneControls {
+    preparations: crate::CandidatePreparations,
+    tables: crate::tables::ImportTables,
+    root: PathBuf,
+    key: crate::CandidateKey,
+}
+
+impl PaneControls {
+    pub(crate) fn new(db: &Database, root: &Path, key: &crate::CandidateKey) -> Self {
+        Self {
+            preparations: crate::CandidatePreparations::new(db.clone()),
+            tables: crate::tables::ImportTables::new(db.clone()),
+            root: root.to_path_buf(),
+            key: key.clone(),
+        }
+    }
+
+    /// The controls over the scanned candidate `candidate`.
+    pub(crate) fn of(db: &Database, candidate: &crate::folder_scanner::FolderCandidate) -> Self {
+        Self::new(db, &candidate.watched_folder_path, &candidate.key())
+    }
+
+    /// The controls over [`stored_pane_candidate`]'s candidate.
+    pub(crate) fn of_pane_candidate(db: &Database) -> Self {
+        Self::new(db, &host_root("/music"), &pane_candidate_key())
+    }
+
+    /// The candidate `content_hash` as the pane reads it now.
+    async fn read(&self, content_hash: &str) -> crate::CandidateAsRead {
+        let state = self
+            .tables
+            .load_import_candidate_state(content_hash)
+            .await
+            .unwrap()
+            .expect("the pane is drawn over a stored candidate");
+        crate::CandidateAsRead {
+            content_hash: content_hash.to_string(),
+            file_edit_revision: state.file_edits.revision,
+            metadata_revision: state.metadata_revision,
+        }
+    }
+
+    /// Type `value` into the album field `field`.
+    pub(crate) async fn type_field(
+        &self,
+        content_hash: &str,
+        field: crate::CandidateEditField,
+        value: &str,
+    ) -> Result<u64, crate::ImportError> {
+        self.set_field(
+            content_hash,
+            crate::DraftFieldEdit::Text { field, value: value.to_string() },
+        )
+        .await
+    }
+
+    /// Type or choose one album field.
+    pub(crate) async fn set_field(
+        &self,
+        content_hash: &str,
+        edit: crate::DraftFieldEdit,
+    ) -> Result<u64, crate::ImportError> {
+        let read = self.read(content_hash).await;
+        self.preparations
+            .set_field_prepared(&self.root, &self.key, content_hash, read.file_edit_revision, edit)
+            .await
+    }
+
+    /// Choose `cover` as the candidate's cover.
+    pub(crate) async fn choose_cover(
+        &self,
+        content_hash: &str,
+        cover: &crate::cover_art::PreparedCover,
+    ) -> Result<u64, crate::ImportError> {
+        let read = self.read(content_hash).await;
+        self.preparations.set_prepared_cover(&self.root, &self.key, &read, cover).await
+    }
+
+    /// Set the album's artists to `assignments`.
+    pub(crate) async fn set_album_artists(
+        &self,
+        content_hash: &str,
+        assignments: &[crate::Credited],
+    ) -> Result<u64, crate::ImportError> {
+        let read = self.read(content_hash).await;
+        self.preparations
+            .set_album_artists_prepared(&self.root, &self.key, &read, assignments)
+            .await
+    }
+
+    /// Change one row of the mapping table to `row`.
+    pub(crate) async fn edit_track(
+        &self,
+        content_hash: &str,
+        row: &crate::RawTrackEdit,
+    ) -> Result<u64, crate::ImportError> {
+        let read = self.read(content_hash).await;
+        self.preparations.set_track_edit_prepared(&self.root, &self.key, &read, row).await
+    }
+}

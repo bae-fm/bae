@@ -17,15 +17,34 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
 
     for error in [
         crate::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
+            .set_prepared_cover(
+                &host_root("/music"),
+                &pane_candidate_key(),
+                &as_read(&hash, 0),
+                &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()),
+            )
             .await
             .expect_err("a cover with nothing picked"),
         crate::CandidatePreparations::new(db.clone())
-            .set_field(&hash, CandidateEditField::PressingYear, "1991")
+            .set_field_prepared(
+                &host_root("/music"),
+                &pane_candidate_key(),
+                &hash,
+                0,
+                crate::DraftFieldEdit::Text {
+                    field: CandidateEditField::PressingYear,
+                    value: "1991".to_string(),
+                },
+            )
             .await
             .expect_err("a field with nothing picked"),
         crate::CandidatePreparations::new(db.clone())
-            .set_track_edit(&hash, &edited_row("import-track-0", "Track Title", None))
+            .set_track_edit_prepared(
+                &host_root("/music"),
+                &pane_candidate_key(),
+                &as_read(&hash, 0),
+                &edited_row("import-track-0", "Track Title", None),
+            )
             .await
             .expect_err("a row with nothing picked"),
     ] {
@@ -132,16 +151,16 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
         .await
         .unwrap();
 
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, CandidateEditField::AlbumYear, "1987")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, CandidateEditField::AlbumYear, "1987")
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, CandidateEditField::PressingYear, "1991")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
-    crate::CandidatePreparations::new(db.clone())
-        .set_field(&hash, CandidateEditField::AlbumTitle, "Album Title")
+    PaneControls::of_pane_candidate(&db)
+        .type_field(&hash, CandidateEditField::AlbumTitle, "Album Title")
         .await
         .unwrap();
 
@@ -175,29 +194,29 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
         1
     );
     assert_eq!(
-        crate::CandidatePreparations::new(db.clone())
-            .set_field(&hash, CandidateEditField::PressingYear, "1991")
+        PaneControls::of_pane_candidate(&db)
+            .type_field(&hash, CandidateEditField::PressingYear, "1991")
             .await
             .unwrap(),
         2
     );
     assert_eq!(
-        crate::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
+        PaneControls::of_pane_candidate(&db)
+            .choose_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
             .await
             .unwrap(),
         3
     );
     assert_eq!(
-        crate::CandidatePreparations::new(db.clone())
+        PaneControls::of_pane_candidate(&db)
             .set_album_artists(&hash, &[crate::Credited::plain(credit_named("Different Artist"))],)
             .await
             .unwrap(),
         4
     );
     assert_eq!(
-        crate::CandidatePreparations::new(db.clone())
-            .set_track_edit(
+        PaneControls::of_pane_candidate(&db)
+            .edit_track(
                 &hash,
                 &edited_row(
                     "candidate-track-0",
@@ -226,10 +245,12 @@ async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
         "rel-1",
     );
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    let preparations = crate::CandidatePreparations::new(db.clone());
-    preparations.store_verdict(&row).await.unwrap();
+    crate::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
-    preparations.set_field(&hash, crate::CandidateEditField::AlbumTitle, "Album").await.unwrap();
+    PaneControls::new(&db, &host_root("/music"), &row.candidate_key)
+        .type_field(&hash, crate::CandidateEditField::AlbumTitle, "Album")
+        .await
+        .unwrap();
 
     let loaded = tables.load_import_candidate_states().await.unwrap();
     let stored = loaded.get(&hash).expect("the candidate reads back");

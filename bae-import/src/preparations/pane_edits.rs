@@ -10,22 +10,8 @@ use crate::tables::{
 use crate::{CandidateDraft, TrackArtistAssignments};
 
 impl CandidatePreparations {
-    /// Record the cover the user chose for this candidate, with the bytes
+    /// Record the cover the person chose for this candidate, with the bytes
     /// fetched for a remote one.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_cover(
-        &self,
-        content_hash: &str,
-        cover: &crate::cover_art::PreparedCover,
-    ) -> Result<u64, crate::ImportError> {
-        let cover = cover.clone();
-        self.edit_candidate(None, content_hash, None, None, move |prep| {
-            prep.metadata.cover = Some(cover);
-            Ok(())
-        })
-        .await
-    }
-
     pub async fn set_prepared_cover(
         &self,
         watched_folder_path: &std::path::Path,
@@ -34,43 +20,8 @@ impl CandidatePreparations {
         cover: &crate::cover_art::PreparedCover,
     ) -> Result<u64, crate::ImportError> {
         let cover = cover.clone();
-        self.edit_candidate(
-            Some(scanned_key(watched_folder_path, candidate_path)),
-            &read.content_hash,
-            Some(read.file_edit_revision),
-            Some(read.metadata_revision),
-            move |prep| {
-                prep.metadata.cover = Some(cover);
-                Ok(())
-            },
-        )
-        .await
-    }
-
-    /// Record one album-level field the user typed.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_field(
-        &self,
-        content_hash: &str,
-        field: crate::CandidateEditField,
-        value: &str,
-    ) -> Result<u64, crate::ImportError> {
-        self.set_field_edit(
-            content_hash,
-            crate::DraftFieldEdit::Text { field, value: value.to_string() },
-        )
-        .await
-    }
-
-    /// Record one album-level field the user typed or chose.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_field_edit(
-        &self,
-        content_hash: &str,
-        edit: crate::DraftFieldEdit,
-    ) -> Result<u64, crate::ImportError> {
-        self.edit_candidate(None, content_hash, None, None, move |prep| {
-            edit.apply(&mut prep.metadata.draft);
+        self.edit_read_candidate(watched_folder_path, candidate_path, read, move |prep| {
+            prep.metadata.cover = Some(cover);
             Ok(())
         })
         .await
@@ -90,9 +41,9 @@ impl CandidatePreparations {
         edit: crate::DraftFieldEdit,
     ) -> Result<u64, crate::ImportError> {
         self.edit_candidate(
-            Some(scanned_key(watched_folder_path, candidate_path)),
+            scanned_key(watched_folder_path, candidate_path),
             content_hash,
-            Some(expected_file_edit_revision),
+            expected_file_edit_revision,
             None,
             move |prep| {
                 edit.apply(&mut prep.metadata.draft);
@@ -103,27 +54,8 @@ impl CandidatePreparations {
     }
 
     /// Replace the candidate's ordered album-artist override. An empty list is
-    /// rejected because every savable album has an artist; deleting the whole
+    /// refused because every savable album has an artist; deleting the whole
     /// candidate edit resets the override to its metadata draft.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_album_artists(
-        &self,
-        content_hash: &str,
-        assignments: &[crate::Credited],
-    ) -> Result<u64, crate::ImportError> {
-        if assignments.is_empty() {
-            return Err(crate::ImportError::Refused(
-                "a candidate album artist override cannot be empty".into(),
-            ));
-        }
-        let assignments = assignments.to_vec();
-        self.edit_candidate(None, content_hash, None, None, move |prep| {
-            prep.metadata.draft.album_artist_assignments = assignments;
-            Ok(())
-        })
-        .await
-    }
-
     pub async fn set_album_artists_prepared(
         &self,
         watched_folder_path: &std::path::Path,
@@ -140,20 +72,6 @@ impl CandidatePreparations {
         self.edit_read_candidate(watched_folder_path, candidate_path, read, move |prep| {
             prep.metadata.draft.album_artist_assignments = assignments;
             Ok(())
-        })
-        .await
-    }
-
-    /// Record one mapping-table row the user changed.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_track_edit(
-        &self,
-        content_hash: &str,
-        row: &crate::RawTrackEdit,
-    ) -> Result<u64, crate::ImportError> {
-        let row = row.clone();
-        self.edit_candidate(None, content_hash, None, None, move |prep| {
-            apply_track_edit(&mut prep.metadata.draft, &row)
         })
         .await
     }
@@ -202,9 +120,9 @@ impl CandidatePreparations {
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), crate::ImportError>,
     ) -> Result<u64, crate::ImportError> {
         self.edit_candidate(
-            Some(scanned_key(watched_folder_path, candidate_path)),
+            scanned_key(watched_folder_path, candidate_path),
             &read.content_hash,
-            Some(read.file_edit_revision),
+            read.file_edit_revision,
             Some(read.metadata_revision),
             change,
         )
@@ -216,15 +134,15 @@ impl CandidatePreparations {
     ///
     /// `scanned` names where the scan must still list the candidate at the
     /// expected file revision; the revision expectations are checked against
-    /// the loaded value, and the save re-checks them in its transaction. An
-    /// expectation left `None` is the loaded value itself: a typed field is
-    /// independent of the draft it is typed over, so it pins the file shape
-    /// alone, and the test-only writers pin neither.
+    /// the loaded value, and the save re-checks them in its transaction. A
+    /// metadata expectation left `None` is the loaded value itself: a typed
+    /// field is independent of the draft it is typed over, so it pins the
+    /// file shape alone.
     async fn edit_candidate(
         &self,
-        scanned: Option<ScannedCandidateKey>,
+        scanned: ScannedCandidateKey,
         content_hash: &str,
-        expected_file_edit_revision: Option<u64>,
+        expected_file_edit_revision: u64,
         expected_metadata_revision: Option<u64>,
         change: impl FnOnce(&mut CandidatePreparation) -> Result<(), crate::ImportError>,
     ) -> Result<u64, crate::ImportError> {
@@ -233,10 +151,11 @@ impl CandidatePreparations {
                 "the metadata edit for {content_hash} has no candidate state row"
             ))
         })?;
-        if let Some(expected) = expected_file_edit_revision {
-            if prep.file_edits.revision != expected {
-                return Err(CandidateAsRead::files_moved(expected, CandidateWrite::PaneEdit));
-            }
+        if prep.file_edits.revision != expected_file_edit_revision {
+            return Err(CandidateAsRead::files_moved(
+                expected_file_edit_revision,
+                CandidateWrite::PaneEdit,
+            ));
         }
         if let Some(expected) = expected_metadata_revision {
             if prep.metadata_revision != expected {
@@ -246,7 +165,7 @@ impl CandidatePreparations {
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
-            scanned,
+            scanned: Some(scanned),
         };
         change(&mut prep)?;
         // An edit is the person working on the draft, whoever wrote it before:
