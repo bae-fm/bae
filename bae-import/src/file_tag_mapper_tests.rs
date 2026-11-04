@@ -3,6 +3,7 @@
 //! the tags leave out.
 
 use super::*;
+use crate::cue_flac::tests::{cue_sheet, titled_cue_track};
 use crate::cue_flac::CueSheet;
 use lofty::config::WriteOptions;
 use lofty::prelude::*;
@@ -38,7 +39,7 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                 role: FileRole::TrackSheet {
                     sheet: cue_sheet(
                         "Album",
-                        vec![cue_track(1, "Cue One"), cue_track(2, "Cue Two")],
+                        vec![titled_cue_track(1, "Cue One"), titled_cue_track(2, "Cue Two")],
                     ),
                     binding: SheetBinding::Resolved {
                         files: vec![SheetAudioFile {
@@ -208,7 +209,11 @@ pub(super) fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -
 fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
     let mut sheet = cue_sheet(
         "Album Title",
-        vec![cue_track(1, "Track One"), cue_track(2, "Track Two"), cue_track(3, "Track Three")],
+        vec![
+            titled_cue_track(1, "Track One"),
+            titled_cue_track(2, "Track Two"),
+            titled_cue_track(3, "Track Three"),
+        ],
     );
     sheet.date = Some("1970".to_string());
     for track in &mut sheet.tracks {
@@ -228,38 +233,14 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
     assert_eq!(parsed.album_credits[0].credit.name, "Artist Name");
 }
 
-pub(super) fn cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
-    use crate::cue_flac::{CueIndex, CueTrack, CueTrackMode};
-    CueTrack {
-        number,
-        mode: CueTrackMode::Audio,
-        title: Some(title.to_string()),
-        performer: None,
-        indexes: vec![CueIndex { number: 1, frames: 0, file_reference: "image.flac".to_string() }],
-        file_reference: "image.flac".to_string(),
-        start_cue_frames: 0,
-        generated_pregap_frames: None,
-        end_cue_frames: None,
-    }
-}
-
-pub(super) fn cue_sheet(title: &str, tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
-    CueSheet {
-        title: Some(title.to_string()),
-        performer: Some("Artist Name".to_string()),
-        catalog: None,
-        date: None,
-        ripper: None,
-        tracks,
-    }
-}
-
 /// Multi-disc CUE rip: one sheet per disc. Side is the disc the sheet is
 /// assigned; track numbers restart per sheet.
 #[test]
 fn cue_multi_sheet_assigns_side_per_disc() {
-    let disc1 = cue_sheet("Album Title", vec![cue_track(1, "D1 T1"), cue_track(2, "D1 T2")]);
-    let disc2 = cue_sheet("Album Title", vec![cue_track(1, "D2 T1"), cue_track(2, "D2 T2")]);
+    let disc1 =
+        cue_sheet("Album Title", vec![titled_cue_track(1, "D1 T1"), titled_cue_track(2, "D1 T2")]);
+    let disc2 =
+        cue_sheet("Album Title", vec![titled_cue_track(1, "D2 T1"), titled_cue_track(2, "D2 T2")]);
     let parsed = map_cue_folder(vec![disc1, disc2], Some("Folder"));
 
     assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
@@ -717,7 +698,8 @@ fn absent_numbers_take_their_place_on_their_own_disc() {
 
 #[test]
 fn cue_numbers_are_preserved_instead_of_recreated() {
-    let sheet = cue_sheet("Album", vec![cue_track(4, "Fourth"), cue_track(7, "Seventh")]);
+    let sheet =
+        cue_sheet("Album", vec![titled_cue_track(4, "Fourth"), titled_cue_track(7, "Seventh")]);
     let parsed = map_cue_folder(vec![sheet], None);
     assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["4", "7"]);
 }

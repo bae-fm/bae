@@ -2,8 +2,8 @@
 //! title, artists and years they agree on, else the first one's.
 
 use super::*;
+use crate::cue_flac::tests::{cue_sheet, titled_cue_track};
 use crate::file_tag_mapper::read_file_tags;
-use crate::file_tag_mapper::tests::cue_track;
 use crate::file_tag_mapper::tests::*;
 use bae_catalogs::release_values::{ReleaseValues, TrackCredits};
 use lofty::prelude::*;
@@ -248,9 +248,9 @@ fn a_folder_every_file_of_which_says_compilation_is_one() {
 /// the first sheet's; their `REM DATE` years by the year rule.
 #[test]
 fn cue_sheets_give_the_album_like_files() {
-    let mut disc1 = cue_sheet("Album Title (cd 1)", vec![cue_track(1, "One")]);
+    let mut disc1 = cue_sheet("Album Title (cd 1)", vec![titled_cue_track(1, "One")]);
     disc1.date = Some("1971 / 2005".to_string());
-    let mut disc2 = cue_sheet("Album Title (cd 2)", vec![cue_track(1, "Two")]);
+    let mut disc2 = cue_sheet("Album Title (cd 2)", vec![titled_cue_track(1, "Two")]);
     disc2.date = Some("1971 / 2005".to_string());
     let values = map_cue_folder(vec![disc1, disc2], Some("Folder Name"));
     assert_eq!(values.album_title, "Album Title");
@@ -258,8 +258,8 @@ fn cue_sheets_give_the_album_like_files() {
     assert_eq!(values.album_year, Some(1971));
     assert_eq!(values.pressing.year, Some(2005));
 
-    let disc1 = cue_sheet("Album Alpha", vec![cue_track(1, "One")]);
-    let mut disc2 = cue_sheet("Album Alpha", vec![cue_track(1, "Two")]);
+    let disc1 = cue_sheet("Album Alpha", vec![titled_cue_track(1, "One")]);
+    let mut disc2 = cue_sheet("Album Alpha", vec![titled_cue_track(1, "Two")]);
     disc2.performer = Some("Artist Other".to_string());
     let values = map_cue_folder(vec![disc1, disc2], None);
     assert_eq!(values.album_title, "Album Alpha");

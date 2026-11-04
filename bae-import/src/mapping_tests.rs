@@ -42,14 +42,13 @@ fn write_flac(path: &Path) {
 /// A sheet naming one container for the whole disc, its entries a fifth of
 /// a second apart so every entry but the last has a length of its own.
 fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
-    let mut text = String::from("PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n");
-    text.push_str(&format!("FILE \"{audio_file_name}\" WAVE\n"));
-    for index in 0..count {
-        text.push_str(&format!("  TRACK {:02} AUDIO\n", index + 1));
-        text.push_str(&format!("    TITLE \"Sheet Track {}\"\n", index + 1));
-        text.push_str(&format!("    INDEX 01 00:00:{:02}\n", index * 15));
-    }
-    text
+    crate::cue_flac::tests::cue_text(
+        Some(("Artist Name", "Album Title")),
+        &format!("\"{audio_file_name}\""),
+        (0..count).map(|index| {
+            (Some(format!("Sheet Track {}", index + 1)), format!("00:00:{:02}", index * 15))
+        }),
+    )
 }
 
 fn scan(root: &Path) -> CategorizedFiles {

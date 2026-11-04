@@ -755,13 +755,45 @@ pub(crate) fn audio_cue_track_at(
     }
 }
 
-pub(crate) fn cue_sheet_with(tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
+/// An audio track of `image.flac`, starting the file, titled `title`.
+pub(crate) fn titled_cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
+    crate::cue_flac::CueTrack {
+        title: Some(title.to_string()),
+        ..audio_cue_track(number, "image.flac")
+    }
+}
+
+/// A sheet titled `title`, by Artist Name, holding `tracks`.
+pub(crate) fn cue_sheet(title: &str, tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
     CueSheet {
-        title: Some("Album Title".to_string()),
+        title: Some(title.to_string()),
         performer: Some("Artist Name".to_string()),
         catalog: None,
         date: None,
         ripper: None,
         tracks,
     }
+}
+
+/// The text of a sheet: `header`'s performer and title when given, a `FILE`
+/// line naming `file` as written there (quoted or not), and one audio track
+/// for each `(title, start)` in order, `start` its `INDEX 01` time as
+/// `MM:SS:FF`.
+pub(crate) fn cue_text(
+    header: Option<(&str, &str)>,
+    file: &str,
+    tracks: impl IntoIterator<Item = (Option<String>, String)>,
+) -> String {
+    let mut text = header
+        .map(|(performer, title)| format!("PERFORMER \"{performer}\"\nTITLE \"{title}\"\n"))
+        .unwrap_or_default();
+    text.push_str(&format!("FILE {file} WAVE\n"));
+    for (index, (title, start)) in tracks.into_iter().enumerate() {
+        text.push_str(&format!("  TRACK {:02} AUDIO\n", index + 1));
+        if let Some(title) = title {
+            text.push_str(&format!("    TITLE \"{title}\"\n"));
+        }
+        text.push_str(&format!("    INDEX 01 {start}\n"));
+    }
+    text
 }

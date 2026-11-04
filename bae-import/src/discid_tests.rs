@@ -210,11 +210,14 @@ fn cue_duration_discid_ignores_non_audio_tracks() {
 /// rip lays its files end to end, so both describe the same TOC.
 #[test]
 fn multi_file_cue_lays_its_files_end_to_end() {
-    let image = cue_sheet_with(vec![
-        audio_cue_track_at(1, "Album.flac", 0),
-        audio_cue_track_at(2, "Album.flac", 3 * 60 * 75),
-        audio_cue_track_at(3, "Album.flac", 6 * 60 * 75),
-    ]);
+    let image = cue_sheet(
+        "Album Title",
+        vec![
+            audio_cue_track_at(1, "Album.flac", 0),
+            audio_cue_track_at(2, "Album.flac", 3 * 60 * 75),
+            audio_cue_track_at(3, "Album.flac", 6 * 60 * 75),
+        ],
+    );
     let image_id = calculate_mb_discid_from_cue(
         &image,
         &[SheetAudioDuration { file_reference: "Album.flac", duration_ms: 9 * 60 * 1000 }],
@@ -222,11 +225,14 @@ fn multi_file_cue_lays_its_files_end_to_end() {
     )
     .expect("the image computes");
 
-    let per_track = cue_sheet_with(vec![
-        audio_cue_track(1, "01.flac"),
-        audio_cue_track(2, "02.flac"),
-        audio_cue_track(3, "03.flac"),
-    ]);
+    let per_track = cue_sheet(
+        "Album Title",
+        vec![
+            audio_cue_track(1, "01.flac"),
+            audio_cue_track(2, "02.flac"),
+            audio_cue_track(3, "03.flac"),
+        ],
+    );
     let per_track_id = calculate_mb_discid_from_cue(
         &per_track,
         &["01.flac", "02.flac", "03.flac"].map(|file_reference| SheetAudioDuration {
@@ -244,10 +250,13 @@ fn multi_file_cue_lays_its_files_end_to_end() {
 /// file: the tracks after it, and the lead-out, sit that much later.
 #[test]
 fn generated_pregap_shifts_every_later_offset() {
-    let with_gap_on_disc = cue_sheet_with(vec![
-        audio_cue_track_at(1, "Album.flac", 0),
-        audio_cue_track_at(2, "Album.flac", 3 * 60 * 75 + 150),
-    ]);
+    let with_gap_on_disc = cue_sheet(
+        "Album Title",
+        vec![
+            audio_cue_track_at(1, "Album.flac", 0),
+            audio_cue_track_at(2, "Album.flac", 3 * 60 * 75 + 150),
+        ],
+    );
     let expected = calculate_mb_discid_from_cue(
         &with_gap_on_disc,
         &[SheetAudioDuration { file_reference: "Album.flac", duration_ms: 6 * 60 * 1000 + 2_000 }],
@@ -257,7 +266,7 @@ fn generated_pregap_shifts_every_later_offset() {
 
     let mut second = audio_cue_track(2, "02.flac");
     second.generated_pregap_frames = Some(150);
-    let gap_left_out = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), second]);
+    let gap_left_out = cue_sheet("Album Title", vec![audio_cue_track(1, "01.flac"), second]);
     let computed = calculate_mb_discid_from_cue(
         &gap_left_out,
         &["01.flac", "02.flac"].map(|file_reference| SheetAudioDuration {
@@ -285,13 +294,16 @@ fn audio_pregap_in_the_previous_file_is_already_laid() {
             file_reference: "01.flac".to_string(),
         },
     );
-    let gaps_appended = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), second]);
+    let gaps_appended = cue_sheet("Album Title", vec![audio_cue_track(1, "01.flac"), second]);
     let durations = ["01.flac", "02.flac"]
         .map(|file_reference| SheetAudioDuration { file_reference, duration_ms: 3 * 60 * 1000 });
     let computed = calculate_mb_discid_from_cue(&gaps_appended, &durations, "gaps appended")
         .expect("the gaps-appended rip computes");
 
-    let plain = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), audio_cue_track(2, "02.flac")]);
+    let plain = cue_sheet(
+        "Album Title",
+        vec![audio_cue_track(1, "01.flac"), audio_cue_track(2, "02.flac")],
+    );
     let expected =
         calculate_mb_discid_from_cue(&plain, &durations, "plain").expect("the plain rip computes");
     assert_eq!(computed, expected);
@@ -300,7 +312,10 @@ fn audio_pregap_in_the_previous_file_is_already_laid() {
 /// A sheet naming a file whose length nobody measured cannot be laid out.
 #[test]
 fn a_file_without_a_measured_length_is_an_error() {
-    let sheet = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), audio_cue_track(2, "02.flac")]);
+    let sheet = cue_sheet(
+        "Album Title",
+        vec![audio_cue_track(1, "01.flac"), audio_cue_track(2, "02.flac")],
+    );
     assert_invalid_data(calculate_mb_discid_from_cue(
         &sheet,
         &[SheetAudioDuration { file_reference: "01.flac", duration_ms: 3 * 60 * 1000 }],

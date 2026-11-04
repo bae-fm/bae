@@ -259,16 +259,16 @@ pub(super) fn make_cue_content_n_tracks(
     title: &str,
     n_tracks: usize,
 ) -> String {
-    let mut s =
-        format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE \"{audio_filename}\" WAVE\n");
-    for i in 1..=n_tracks {
-        let frame = i - 1;
-        s.push_str(&format!(
-            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 00:00:{:02}\n",
-            i, frame,
-        ));
-    }
-    s
+    crate::cue_flac::tests::cue_text(
+        Some(("Test Artist", title)),
+        &format!("\"{audio_filename}\""),
+        frame_apart_tracks(n_tracks),
+    )
+}
+
+/// `n_tracks` tracks titled by number, each a CUE frame after the last.
+fn frame_apart_tracks(n_tracks: usize) -> impl Iterator<Item = (Option<String>, String)> {
+    (1..=n_tracks).map(|i| (Some(format!("Track {i:02}")), format!("00:00:{:02}", i - 1)))
 }
 
 /// Like `make_cue_content_n_tracks` but emits an unquoted FILE directive
@@ -279,27 +279,21 @@ pub(super) fn make_cue_content_unquoted(
     title: &str,
     n_tracks: usize,
 ) -> String {
-    let mut s =
-        format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE {audio_filename} WAVE\n");
-    for i in 1..=n_tracks {
-        let frame = i - 1;
-        s.push_str(&format!(
-            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 00:00:{:02}\n",
-            i, frame,
-        ));
-    }
-    s
+    crate::cue_flac::tests::cue_text(
+        Some(("Test Artist", title)),
+        audio_filename,
+        frame_apart_tracks(n_tracks),
+    )
 }
 
 /// CUE sheet without PERFORMER / TITLE. The unified CUE parser is lenient
 /// enough to accept it — both fields land as `None`.
 pub(super) fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
-    let mut s = format!("FILE \"{audio_filename}\" WAVE\n");
-    for i in 1..=n_tracks {
-        let frame = i - 1;
-        s.push_str(&format!("  TRACK {:02} AUDIO\n    INDEX 01 00:00:{:02}\n", i, frame,));
-    }
-    s
+    crate::cue_flac::tests::cue_text(
+        None,
+        &format!("\"{audio_filename}\""),
+        frame_apart_tracks(n_tracks).map(|(_title, start)| (None, start)),
+    )
 }
 
 // --- Spec types ---
@@ -666,17 +660,13 @@ pub(super) fn run_scenario(entries: Vec<FixtureEntry>) -> ScenarioResult {
 
 /// Creates a minimal CUE file content that references the given FLAC filename
 pub(super) fn make_cue_content(flac_filename: &str, title: &str) -> String {
-    format!(
-        r#"PERFORMER "Test Artist"
-TITLE "{title}"
-FILE "{flac_filename}" WAVE
-  TRACK 01 AUDIO
-    TITLE "Track One"
-    INDEX 01 00:00:00
-  TRACK 02 AUDIO
-    TITLE "Track Two"
-    INDEX 01 00:01:00
-"#
+    crate::cue_flac::tests::cue_text(
+        Some(("Test Artist", title)),
+        &format!("\"{flac_filename}\""),
+        [
+            (Some("Track One".to_string()), "00:00:00".to_string()),
+            (Some("Track Two".to_string()), "00:01:00".to_string()),
+        ],
     )
 }
 
