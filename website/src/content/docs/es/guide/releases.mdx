@@ -7,33 +7,33 @@ La mayoría de las apps de música modelan "un álbum": un título, una portada,
 
 ## Los álbumes agrupan lanzamientos
 
-En la biblioteca, un álbum con varias ediciones es una entrada. La página del álbum muestra un selector de lanzamiento; cada lanzamiento conserva su propia lista de pistas, portada, año, sello, número de catálogo y créditos. Un lanzamiento es el **principal**: el que usan de forma predeterminada la cuadrícula de álbumes y la reproducción. Marca cualquier lanzamiento como principal desde el menú del álbum, y elige otro lanzamiento para escuchar en cualquier momento; bae recuerda tu elección por álbum.
+En la biblioteca, un álbum con varias ediciones es una entrada. La página del álbum muestra un selector de lanzamiento; cada lanzamiento conserva su propia lista de pistas, portada, año, sello, número de catálogo y créditos. Un lanzamiento es el **principal**: el que usan de forma predeterminada la cuadrícula de álbumes y la reproducción. Marca cualquier lanzamiento como principal con **Establecer como edición principal** en el menú del álbum, y elige otro lanzamiento para escuchar en cualquier momento; bae recuerda tu elección por álbum.
 
 ## Lo que sabe un lanzamiento
 
 Los lanzamientos identificados llevan el conocimiento de las bases de datos, no solo nombres de pistas:
 
 - Detalles de edición: sello, número de catálogo, código de barras, país, formato, año.
-- Creditos: interpretes, productores, ingenieros, por lanzamiento y por pista.
+- Créditos: intérpretes, productores, ingenieros, por lanzamiento y por pista.
 - Estructura clásica: compositores, obras y sus partes, vinculadas a sus grabaciones. La vista de compositores de la biblioteca se construye a partir de esto; consulta [Exploración y búsqueda](/es/guide/browsing).
 - Identidad: qué versión exacta MusicBrainz o Discogs es esta.
 
-Lo que dijo la fuente también se conserva, tal como bae lo leyó, para que el lanzamiento pueda restablecerse a ello más tarde sin volver a preguntar a las bases de datos; un dispositivo que nunca lo obtuvo pregunta una vez, al restablecer.
+Una vez aplicados, estos valores son del propio lanzamiento: bae no conserva ningún vínculo con la fuente, y las ediciones los cambian en su sitio.
 
-## Edicion
+## Edición
 
-Los metadatos son tuyos para corregirlos. ** Editar metadatos ** en cualquier lanzamiento abre el mismo formulario que utiliza la confirmación de importación: título del álbum y artista, pulsando detalles, y el título, artista y numeración de cada pista. ** Restablecer a la fuente ** aparece cuando el lanzamiento se llenó desde MusicBrainz, Discogs, o Etiquetas de archivo y regresa a esa fuente almacenada.
+Los metadatos son tuyos para corregirlos. **Editar…** en el menú del álbum abre el editor de lanzamientos, el mismo formulario que usa la importación: título y artista del álbum, detalles de la edición, y el título, artista y numeración de cada pista. **Guardar** escribe tus cambios; **Cancelar** los descarta.
 
 Las ediciones viven solo en la base de datos de bae. Las etiquetas incrustadas de tus archivos nunca se reescriben; los archivos permanecen byte por byte como se importaron.
 
-## Reidentificar
+## Identificar de nuevo
 
-Si un lanzamiento se importó como desconocido, se emparejó con la edición incorrecta, o la base de datos ha mejorado desde entonces, **Re-identify** ejecuta de nuevo el flujo de identificación sobre el lanzamiento existente: mismas señales, mismas herramientas de búsqueda. Después de confirmar la nueva coincidencia, bae pregunta si debe actualizar los metadatos desde la nueva fuente (sobrescribiendo tus ediciones) o conservar lo que tienes.
+Si un lanzamiento se importó como desconocido, se emparejó con la edición incorrecta, o la base de datos ha mejorado desde entonces, los controles **Identificar** del editor vuelven a identificar el lanzamiento existente: **Automático** lo identifica a partir de sus archivos, y **Buscar** abre la búsqueda escrita. Elegir una edición reemplaza al instante los valores del editor; **Guardar** los conserva, y **Cancelar** conserva lo que tenías.
 
 ## Portadas
 
-Cada lanzamiento tiene una portada de visualización. **Change cover** ofrece el arte de las bases de datos y los archivos de imagen que vinieron con el lanzamiento. bae conserva su propia copia de la portada elegida, dimensionada para mostrarse, así que el escaneo original de tu carpeta queda intacto. Toca una portada en cualquier lugar para abrir la galería completa de imágenes de un lanzamiento.
+Cada lanzamiento tiene una portada de visualización. **Cambiar portada** ofrece el arte de las bases de datos y los archivos de imagen que vinieron con el lanzamiento. bae conserva su propia copia de la portada elegida, dimensionada para mostrarse, así que el escaneo original de tu carpeta queda intacto. Toca una portada en cualquier lugar para abrir la galería completa de imágenes de un lanzamiento.
 
-## Eliminacion
+## Eliminación
 
 Eliminar un lanzamiento lo quita de la biblioteca y, para un lanzamiento en la nube, quita sus copias de tu hogar en la nube. Tus propios archivos nunca se eliminan: bae solo se olvida de ellos.

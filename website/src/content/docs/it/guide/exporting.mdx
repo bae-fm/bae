@@ -7,19 +7,19 @@ L'assenza di vincoli vale in entrambi i sensi: bae non cambia i tuoi file quando
 
 ## Due esportazioni
 
-- **Esportazione traccia**: fai clic destro su una traccia, **Salva con nome**, scegli un formato, fatto.
-- **Esportazione release**: dal menu dell'album o dal Gestore archiviazione, esporta un'intera release in una cartella. Viene eseguita in coda con avanzamento, pausa e nuovo tentativo.
+- **Esportazione traccia**: fai clic destro su una traccia, **Salva con nome…**, scegli un formato, fatto.
+- **Esportazione release**: **Esporta…** nel menu dell'album, oppure Gestione archiviazione, esporta un'intera release in una cartella. Viene eseguita in coda con avanzamento, pausa e nuovo tentativo.
 
 I file originali vengono esportati così come sono. Tutto il resto viene codificato in uscita.
 
 ## Preimpostazioni
 
-I formati di esportazione sono preimpostazioni che definisci una volta in Impostazioni: FLAC, MP3, Opus, WAV o AIFF, con i parametri del codec (profondità in bit per i formati senza perdita, bitrate per quelli con perdita) e un modello di nome file costruito da token come titolo, artista, album, anno e numero di traccia. Imposta una preimpostazione predefinita per le tracce e una per le release, e scegli se le esportazioni di release chiedono sempre una destinazione o usano sempre una cartella fissa.
+I formati di esportazione sono preimpostazioni che definisci una volta in Impostazioni, Formati: FLAC, MP3, Opus, WAV o AIFF, con i parametri del codec (profondità in bit per i formati senza perdita, bitrate per quelli con perdita) e un modello di nome file costruito da token come titolo, artista, album, anno e numero di traccia. Imposta una preimpostazione predefinita per le tracce e una per le release, e scegli se le esportazioni di release chiedono sempre una destinazione o usano sempre una cartella fissa.
 
 ## Pregap nelle esportazioni
 
-I rip di CD con pregap pongono una domanda reale in uscita: dove va l'audio nascosto? Ogni preimpostazione sceglie una regola:
+I rip di CD con pregap pongono una domanda reale in uscita: dove va l'audio nascosto? In ogni preimpostazione, **Pregap** sceglie una regola:
 
-- **Aggiungi alla traccia precedente**, la convenzione comune, con la scelta se l'audio nascosto prima della traccia uno viene mantenuto all'inizio della traccia uno o scartato.
-- **Escludi** del tutto i pregap: confini di traccia puliti, audio nascosto omesso.
-- **File singolo con CUE**: il disco come un file audio più un foglio CUE, preservando esattamente la disposizione originale.
+- **Aggiungi eccetto HTOA** e **Aggiungi includendo HTOA** aggiungono ogni pregap alla fine della traccia precedente, la convenzione comune; differiscono nel fatto che l'audio nascosto prima della traccia uno venga scartato o mantenuto all'inizio della traccia uno.
+- **Escludi** scarta del tutto i pregap: confini di traccia puliti, audio nascosto omesso.
+- **File singolo + CUE**: il disco come un file audio più un foglio CUE, preservando esattamente la disposizione originale.

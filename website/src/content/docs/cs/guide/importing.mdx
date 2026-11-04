@@ -1,21 +1,21 @@
 ---
 title: Import
-description: Vyberte, jak každá složka dodává svá metadata importu
+description: Vyberte, odkud každá složka bere metadata importu
 ---
 
-Složka poskytuje audio a další soubory pro import. Můžete si vybrat, zda jeho upravitelná metadata začínají online vydáním, vlastními tagy souborů nebo prázdným formulářem.
+Složka dodává pro import audio a další soubory. Vy volíte, zda jeho upravitelná metadata začnou online vydáním, vlastními metadaty složky, nebo prázdným formulářem.
 
 Import probíhá na desktopu (macOS, Windows). Vaše soubory se čtou, nikdy nemění: bae nic nepřesouvá, nepřejmenovává, nepřepisuje tagy ani znovu nekóduje. Kde soubory žijí po importu, popisuje [Úložiště a offline](/cs/guide/storage).
 
 ## Sledované složky
 
-Přepněte do sekce **Import** a přidejte složku: vyberte ji, přetáhněte ji do okna nebo stiskněte <kbd>⌘I</kbd>. bae ji od té chvíle sleduje. Nová hudba vložená do složky se sama objeví jako nový kandidát; nemusíte ručně spouštět nové skenování. Složky, které se ještě stahují, se ignorují, dokud nejsou hotové.
+Přepněte do sekce **Import** a přidejte složku: vyberte ji, přetáhněte ji do okna nebo stiskněte <kbd>⌘I</kbd>. bae ji od té chvíle sleduje. Nová hudba vložená do složky se sama objeví jako noví kandidáti; nemusíte ručně spouštět nové skenování. Složky, které se ještě stahují, se ignorují, dokud nejsou hotové.
 
 Sken rozpoznává vydání ve tvarech, jaké ripy skutečně mívají:
 
 | Rozložení | Jak vypadá |
 |--------|-------------------|
-| Soubor na stopu | `01 - Song.flac`, `02 - Song.flac`, ... |
+| Soubor na stopu | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + obraz | `album.cue` + `album.flac`, jeden soubor pro celý disk |
 | Více disků | podsložky `CD1/`, `CD2/`, uvnitř libovolný z těchto tvarů |
 | Kolekce | složka složek, každá jako vlastní vydání |
@@ -24,27 +24,41 @@ bae importuje formáty, které přehrává: FLAC, MP3, APE, ALAC a AAC v `.m4a`,
 
 ## Vyplnění konceptu metadat
 
-Každý kandidát vlastní jeden upravitelný koncept metadat, který může být vytvořen z prázdných dat, z online publikace nebo ze značek souborů. Zadání do prázdného konceptu je přímý vstup, nikoli samostatný zdroj metadat.
+Každý kandidát vlastní jeden upravitelný koncept metadat. Může začít prázdný, být vyplněn z online vydání, nebo z toho, co říkají vlastní soubory složky. Psaní do prázdného konceptu je přímé zadání, ne samostatný zdroj metadat.
 
-Otevřením ** Najít online…** nebo ** Značky souborů…** nahradíte horní kartu prohlížečem tohoto zdroje beze změny konceptu. Použítotevřením výsledku nahradíte koncept a vrátíte se na upravitelnou kartu. Pomocí nabídky karty můžete najít jinou verzi, použít značky souborů nebo vymazat metadata a vrátit se na prázdný koncept. Vymazání metadat zachová soubory kandidáta a uspořádání stopy.
+Ovládací prvky **Identifikovat** na kartě nabízejí dvě cesty na stránku Identifikovat, které se liší tím, co spustí. **Automaticky** ji otevře a pokaždé požádá o nové spuštění identifikace, ať kandidát obsahuje cokoli — identifikace, která už běží, se kvůli nové zahodí. **Hledat** otevře stejnou stránku na ručním hledání a nic nespustí. Ani jedna koncept nemění; použití výsledku koncept nahradí a vrátí vás na upravitelnou kartu. Nabídka karty obsahuje dva příkazy, které koncept přepíšou na místě: **Obnovit z metadat souborů**, který ho nahradí tím, co říkají vlastní soubory kandidáta, CUE sheety a název složky, a **Vymazat metadata**, který ho vyprázdní. Oba se nejdřív zeptají a ani jeden se nedotkne souborů kandidáta ani rozložení stop.
 
-### Najít online
+### Identifikovat
 
-Najít online je jediná cesta, která identifikuje vydání, vypočítá ID disku z protokolu ripů nebo listu CUE, rozpozná čárové kódy a text katalogu, dotazuje se MusicBrainz a Discogs a porovnává výsledky.
+Stránka Identifikovat najde vydání, kterým složka je. Čte ze složky podklady a každý z nich vyhledá:
 
-Automatická identifikace používá stejnou cestu. Nastavení **Výchozí zdroj metadat** vybírá pro nově nalezené kandidáty **Najít online**, **Značky souborů** nebo **Žádný**. Nastavení **Výchozí režim Najít online** vybírá **Automaticky** nebo **Hledat ručně**. Automatický režim po otevření Najít online spustí získávání podkladů, OCR, dotazy poskytovatelům a porovnávání; ruční hledání nic z toho nespustí. Značky souborů ani Žádný neotevírají Najít online.
+- **ID disku.** Otisk přesného rozložení stop CD, vypočítaný z logu ripu nebo z CUE sheetu. Když se shoduje, identifikuje přesnou edici CD.
+- **Čárový kód.** Přečtený ze skenů obalu ve složce pomocí rozpoznávání textu, nebo z CUE sheetu.
+- **Katalogová čísla a text.** Katalogová čísla nalezená na obrázcích a v názvech souborů a složek, použitá k zúžení výsledků.
 
-### Značky souborů
+Signály se vyhledávají v MusicBrainz a Discogs současně a výsledky se navzájem ověřují. Každý signál se zobrazí jako odznak nad výsledky: vidíte, co se našlo, odkud to pochází (najetím myší zobrazíte původ: TOC disku, CUE sheet, sken obalu, název složky), a jednotlivé signály můžete vypnout, pokud je některý zavádějící.
 
-Značky souborů čte vložené značky zvuku a metadata CUE, když je zdroj otevřen nebo nakonfigurován jako výchozí.Zkontrolujte náhled a poté vyberte ** Použít **, abyste nahradili koncept přesným snímkem. Import se nezdaří před zápisem do knihovny, pokud se po náhledu změní kandidátské nebo pozorované zvukové soubory.
+Tři výsledky:
 
-Editovatelná karta zobrazuje tichý Značky souborů čip poté, co je snímek aplikován.Draft vyplněný pouze psaním nemá žádný zdrojový čip.
+- **Nalezeno.** Podklady se shodují na jedné skupině vydání. Z jejího seznamu vyberete přesné lisování.
+- **Konflikt.** Dva signály ukazují na různá vydání, třeba ID disku a čárový kód se neshodují. bae ukáže obě strany a vy zvolíte, kterému věřit, nebo signál ignorujete.
+- **Nic nenalezeno.** Hledejte ručně: interpret a album, katalogové číslo nebo čárový kód, v kterékoli z databází. Text rozpoznaný z obrázků se nabízí jako automatické doplňování.
+
+Prohlížeč zdrojů ukazuje formulář hledání, průběh identifikace, signály a výsledky pohromadě. Výběr výsledku ponechá daný řádek otevřený s průběhem, zatímco bae stahuje celé vydání, a pak ho použije na koncept. Výsledná karta ukazuje štítek zdroje MusicBrainz nebo Discogs. **Automaticky** na kartě spustí identifikaci znovu od začátku; **Hledat** se vrátí k ručnímu hledání, kde zůstane to, co už bylo nalezeno.
+
+Automatická identifikace používá stejnou cestu. Když se kandidát přidá, jeho koncept se vytvoří z jeho souborů, CUE sheetů a názvu složky. Volba **Identifikovat automaticky** v Nastavení, Import spustí identifikaci pro každého kandidáta, který nemá výsledek pro soubory, jaké má právě teď; když je vypnuté, každé spuštění zahájíte sami. Předvyplněný koncept je výchozí bod, ne odpověď, takže spuštění nezastaví.
+
+### Metadata souborů
+
+Metadata souborů se čtou při předvyplnění, když se kandidát přidá, a znovu pokaždé, když zvolíte **Obnovit z metadat souborů**. V obou případech se koncept nahradí přesně tímto načtením — vloženými tagy zvuku, metadaty CUE a vlastním názvem složky — a karta se podle něj překreslí. Import selže ještě před zápisem do knihovny, pokud se kandidát nebo jeho zvukové soubory po načtení změnily.
+
+Upravitelná karta ukazuje nenápadný štítek Metadata souborů, dokud koncept obsahuje právě toto načtení. Koncept vyplněný jen psaním nemá žádný štítek zdroje.
 
 ## Potvrzení a import
 
 Panel potvrzení ukáže všechno, co import zapíše:
 
-- ** Obal.** Vybráno z grafiky databází, obrázků ve vaší složce nebo grafiky vložené do souborů.Přetáhněte obrázek z galerie kandidátů na čtverec obalu nebo jej později změňte.
+- **Obal.** Vybraný z obrázků z databází, obrázků ve vaší složce nebo obrázků vložených do souborů. Přetáhněte obrázek z galerie kandidáta na čtverec obalu, nebo ho změňte později.
 - **Metadata.** Album, interpret, rok, vydavatelství, katalogové číslo, země, čárový kód a každá stopa: vše je upravitelné přímo tady, než se cokoli uloží.
 - **Úložiště.** Pokud je připojený cloudový domov, zvolte **Cloud**, aby se vydání nahrálo do něj, a **Připnuto**, aby jeho soubory zůstaly i na tomto zařízení. Jinak je vydání místní: jeho údaje se synchronizují na vaše další zařízení a jeho audio zůstane na tomto. Viz [Úložiště a offline](/cs/guide/storage).
 
@@ -52,4 +66,4 @@ Import běží na pozadí: bae ověří, že každou stopu lze bez chyby dekódo
 
 ## Zdroje dat
 
-**MusicBrainz** nepotřebuje účet ani klíč. **Discogs** vyžaduje váš vlastní bezplatný API token; vložte ho v Settings a bae vám řekne, když přestane fungovat. Bez tokenu nejsou vyhledávání v Discogs a metadata pocházející z Discogs dostupná, všechno ostatní funguje. Obě služby mají omezení rychlosti; bae dávkuje požadavky tak, aby zůstala uvnitř limitů.
+**MusicBrainz** nepotřebuje účet ani klíč. **Discogs** vyžaduje váš vlastní bezplatný API token; vložte ho v Nastavení, Import a bae vám řekne, když přestane fungovat. Bez tokenu nejsou vyhledávání v Discogs a metadata pocházející z Discogs dostupná, všechno ostatní funguje. Obě služby mají omezení rychlosti; bae dávkuje požadavky tak, aby zůstala uvnitř limitů.

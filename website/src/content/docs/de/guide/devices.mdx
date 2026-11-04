@@ -7,14 +7,14 @@ Es gibt kein bae-Konto. Jede Person in einer Mediathek hat eigene Schlüssel, di
 
 Zwei verschiedene Türen für zwei verschiedene Situationen:
 
-- **Wiederherstellen**: Dein eigenes neues oder neu installiertes Gerät tritt mit deinem Wiederherstellungscode bei. Kein anderes Gerät muss es bestätigen: Der Code enthält deine Schlüssel und beweist damit bereits, dass das Gerät deins ist.
+- **Gerät hinzufügen**: Dein eigenes neues oder neu installiertes Gerät tritt mit deinem Wiederherstellungscode bei. Kein anderes Gerät muss es bestätigen: Der Code enthält deine Schlüssel und beweist damit bereits, dass das Gerät deins ist.
 - **Beitreten**: Eine andere Person tritt mit einer Einladung eines Admins bei, der ihre Anfrage bestätigt.
 
 ## Ein eigenes Gerät hinzufügen
 
-Wähle auf dem neuen Gerät **Aus der Cloud wiederherstellen** und gib ihm deinen Wiederherstellungscode auf einem von drei Wegen:
+Wähle auf einem neuen Mac **Gerät hinzufügen**, auf einem Android-Telefon **Code scannen** oder **Code eingeben**. Gib ihm deinen Wiederherstellungscode auf einem von drei Wegen:
 
-- **Scanne** den QR-Code, den eines deiner anderen Geräte unter **Wiederherstellungscode anzeigen …** in Einstellungen, Bibliothek zeigt.
+- **Scanne** den QR-Code, den eines deiner anderen Geräte unter **Gerät hinzufügen …** in Einstellungen, Bibliothek zeigt.
 - **Wähle** ihn auf Apple-Geräten aus dem iCloud-Schlüsselbund: bae listet die Wiederherstellungscodes auf, die deine anderen Geräte dort gespeichert haben.
 - **Füge** ihn ein oder tippe ihn ab.
 
@@ -24,9 +24,9 @@ Bis es die Mediathek geladen hat, zeigt das Gerät statt ihres Namens, wo sie ge
 
 ## Eine Person einladen
 
-Ein Admin öffnet Einstellungen, Bibliothek, **Person einladen …**, wählt eine Rolle und gibt die E-Mail-Adresse des Kontos der Person ein; bei S3 stattdessen einen Zugriffsschlüssel, der für sie erstellt wurde. bae gibt den Ordner der Mediathek für dieses Konto frei und zeigt eine Einladung als QR-Code.
+Ein Admin öffnet Einstellungen, Bibliothek, **Person einladen …**, gibt Namen, Rolle und die E-Mail-Adresse des Kontos der Person ein (bei S3 stattdessen einen Zugriffsschlüssel, der für sie erstellt wurde) und wählt **Persönlich** oder **Senden**. bae gibt den Ordner der Mediathek für dieses Konto frei und zeigt die Einladung als QR-Code.
 
-Auf ihrem Gerät wählt die Person **Bibliothek beitreten**, scannt die Einladung oder fügt sie ein, gibt ihren Namen ein und meldet sich bei ihrem eigenen Konto an. Die Anfrage erscheint auf dem Gerät des Admins unter **Wartet auf Beitritt**, und der Admin genehmigt oder lehnt sie ab. Nach der Genehmigung lädt das neue Gerät die Mediathek herunter, und jedes Gerät zeigt die neue Person mit Namen. Eine Einladung läuft innerhalb eines Tages ab, und nur das Gerät, das sie erstellt hat, kann ihre Anfrage genehmigen. Details unter [Identität und Mitgliedschaft](/de/reference/membership).
+Auf ihrem Gerät wählt die Person **Bibliothek beitreten** (auf einem Android-Telefon **Code scannen** oder **Code eingeben**), scannt die Einladung oder fügt sie ein und meldet sich bei ihrem eigenen Konto an. Eine persönlich übergebene Einladung lässt sie herein, sobald ihre Anfrage eintrifft. Bei einer gesendeten Einladung zeigt das Gerät des Admins die Anfrage mit einer Bestätigungsnummer, derselben, die das Gerät der Person zeigt; der Admin vergleicht beide und wählt **Genehmigen** oder **Ablehnen**. Nach der Genehmigung lädt das neue Gerät die Mediathek herunter, und jedes Gerät zeigt die neue Person mit Namen. Eine persönlich übergebene Einladung gilt eine Stunde, eine gesendete eine Stunde, einen Tag oder eine Woche, und nur das Gerät, das sie erstellt hat, kann ihre Anfrage genehmigen. Details unter [Identität und Mitgliedschaft](/de/reference/membership).
 
 ## Mitglieder und Rollen
 
@@ -40,7 +40,7 @@ Eine Person zu entfernen, was nur ein Admin kann, entfernt auch ihre Geräte und
 
 ## Wiederherstellungscodes
 
-Ein Wiederherstellungscode enthält deine Schlüssel für eine Mediathek und den Ort, an dem sie gespeichert ist, in einer Zeichenfolge. Er enthält kein Speicherpasswort, keine Anmeldung und keinen Namen der Mediathek. **Wiederherstellungscode anzeigen …** in Einstellungen, Bibliothek zeigt ihn an; bewahre ihn an einem sicheren Ort auf, etwa in einem Passwortmanager.
+Ein Wiederherstellungscode enthält deine Schlüssel für eine Mediathek und den Ort, an dem sie gespeichert ist, in einer Zeichenfolge. Er enthält kein Speicherpasswort, keine Anmeldung und keinen Namen der Mediathek. **Code zeigen** unter **Dein Wiederherstellungscode** in Einstellungen, Bibliothek zeigt ihn an; bewahre ihn an einem sicheren Ort auf, etwa in einem Passwortmanager.
 
 Auf Apple-Plattformen wird der Code außerdem automatisch im iCloud-Schlüsselbund abgelegt, sodass ein neuer Mac oder ein neues iPhone, das mit deinem Apple Account angemeldet ist, ihn aus einer Liste wählen kann.
 

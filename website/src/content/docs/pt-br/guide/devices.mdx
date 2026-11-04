@@ -7,15 +7,15 @@ Não existe conta bae. Cada pessoa de uma biblioteca tem suas próprias chaves, 
 
 Duas portas diferentes, para duas situações diferentes:
 
-- **Restaurar**: seu próprio dispositivo novo ou reinstalado entra com seu código de restauração. Nenhum outro dispositivo o aprova: o código contém suas chaves, então já prova que o dispositivo é seu.
+- **Adicionar dispositivo**: seu próprio dispositivo novo ou reinstalado entra com seu código de recuperação. Nenhum outro dispositivo o aprova: o código contém suas chaves, então já prova que o dispositivo é seu.
 - **Entrar**: outra pessoa entra com um convite de um administrador, que aprova o pedido dela.
 
 ## Adicionando seu próprio dispositivo
 
-No dispositivo novo, escolha **Restaurar da nuvem** e passe a ele seu código de restauração de uma de três maneiras:
+Em um Mac novo, escolha **Adicionar dispositivo**; em um telefone Android, **Ler um código** ou **Digitar um código**. Passe a ele seu código de recuperação de uma de três maneiras:
 
-- **Leia** o código QR que um dos seus outros dispositivos mostra em **Mostrar código de restauração...**, em Ajustes, Biblioteca.
-- **Escolha-o** nas Chaves do iCloud, em dispositivos Apple: bae lista os códigos de restauração que seus outros dispositivos salvaram lá.
+- **Leia** o código QR que um dos seus outros dispositivos mostra em **Adicionar dispositivo…**, em Configurações, Biblioteca.
+- **Escolha-o** nas Chaves do iCloud, em dispositivos Apple: bae lista os códigos de recuperação que seus outros dispositivos salvaram lá.
 - **Cole** ou digite o código.
 
 Entre no provedor de armazenamento quando solicitado. No S3, o dispositivo também precisa da sua chave de acesso: o código QR a leva ao lado do código, então basta ler, e um código digitado pede a chave. Depois, o dispositivo novo baixa a biblioteca e começa a sincronizar.
@@ -24,13 +24,13 @@ Até carregar a biblioteca, o dispositivo mostra onde ela está guardada em vez 
 
 ## Convidando uma pessoa
 
-Um administrador abre Ajustes, Biblioteca, **Convidar uma pessoa...**, escolhe uma função e informa o e-mail da conta da pessoa; no S3, em vez disso, uma chave de acesso criada para ela. bae compartilha a pasta da biblioteca com essa conta e mostra um convite como código QR.
+Um administrador abre Configurações, Biblioteca, **Convidar uma pessoa…**, informa o nome, a função e o e-mail da conta da pessoa (no S3, em vez disso, uma chave de acesso criada para ela) e escolhe **Pessoalmente** ou **Enviar**. bae compartilha a pasta da biblioteca com essa conta e mostra o convite como código QR.
 
-No dispositivo dela, a pessoa escolhe **Participar de uma biblioteca**, lê ou cola o convite, digita o nome e entra na própria conta. O pedido aparece no dispositivo do administrador em **Aguardando para entrar**, e o administrador o aprova ou recusa. Depois de aprovado, o dispositivo novo baixa a biblioteca, e todo dispositivo mostra a pessoa nova pelo nome. Um convite expira em até um dia, e só o dispositivo que o criou pode aprovar o pedido. Detalhes em [Identidade e adesão](/pt-br/reference/membership).
+No dispositivo dela, a pessoa escolhe **Entrar em uma biblioteca** (em um telefone Android, **Ler um código** ou **Digitar um código**), lê ou cola o convite e entra na própria conta. Um convite entregue pessoalmente a deixa entrar assim que o pedido dela chega. Para um convite enviado, o dispositivo do administrador mostra o pedido com um número de confirmação, o mesmo que o dispositivo da pessoa mostra, e o administrador compara os dois e escolhe **Aprovar** ou **Recusar**. Depois de aprovado, o dispositivo novo baixa a biblioteca, e todo dispositivo mostra a pessoa nova pelo nome. Um convite entregue pessoalmente vale por uma hora, um enviado por uma hora, um dia ou uma semana, e só o dispositivo que o criou pode aprovar o pedido. Detalhes em [Identidade e adesão](/pt-br/reference/membership).
 
 ## Membros e funções
 
-Ajustes, Biblioteca lista cada pessoa e seus dispositivos, e qual deles é este dispositivo. Quem conecta uma biblioteca à nuvem é o primeiro **administrador** dela; um administrador convida outras pessoas como **administradores** ou **membros** e pode mudar a função de uma pessoa. Todos leem e editam a biblioteca. Só administradores convidam e removem pessoas e renomeiam a biblioteca.
+Configurações, Biblioteca lista cada pessoa e seus dispositivos, e qual deles é este dispositivo. Quem conecta uma biblioteca à nuvem é o primeiro **administrador** dela; um administrador convida outras pessoas como **administradores** ou **membros** e pode mudar a função de uma pessoa. Todos leem e editam a biblioteca. Só administradores convidam e removem pessoas e renomeiam a biblioteca.
 
 ## Removendo um dispositivo
 
@@ -38,9 +38,9 @@ Cada pessoa pode remover os próprios dispositivos, e um administrador pode remo
 
 Remover uma pessoa, o que só um administrador pode fazer, também remove os dispositivos dela e o que ela mantinha privado. As avaliações, o histórico e as playlists dela compartilhados com a casa ficam, creditados a ela. As chaves da biblioteca são substituídas, então nada escrito depois fica legível para ela. O que ela já copiou fica com ela: nada pode desfazer o envio de dados.
 
-## Códigos de restauração
+## Códigos de recuperação
 
-Um código de restauração contém suas chaves para uma biblioteca e onde ela está guardada, em uma string. Ele não contém senha de armazenamento, login nem o nome da biblioteca. **Mostrar código de restauração...** em Ajustes, Biblioteca o exibe; guarde-o em um lugar seguro, como um gerenciador de senhas.
+Um código de recuperação contém suas chaves para uma biblioteca e onde ela está guardada, em uma string. Ele não contém senha de armazenamento, login nem o nome da biblioteca. **Mostrar código**, em **Seu código de recuperação** em Configurações, Biblioteca, o exibe; guarde-o em um lugar seguro, como um gerenciador de senhas.
 
 Em plataformas Apple, o código também é guardado automaticamente nas Chaves do iCloud, então um Mac ou iPhone novo conectado à sua Apple Account pode escolhê-lo em uma lista.
 

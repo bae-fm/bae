@@ -7,19 +7,19 @@ No quedar encerrado funciona en ambos sentidos: bae no cambia tus archivos al en
 
 ## Dos exportaciones
 
-- **Exportación de pista**: clic derecho en una pista, **Save As**, elige un formato, listo.
-- **Exportación de lanzamiento**: desde el menú del álbum o el Administrador de almacenamiento, exporta un lanzamiento completo a una carpeta. Se ejecuta en una cola con progreso, pausa y reintento.
+- **Exportación de pista**: clic derecho en una pista, **Guardar como…**, elige un formato, listo.
+- **Exportación de lanzamiento**: **Exportar…** en el menú del álbum, o el Gestor de almacenamiento, exporta un lanzamiento completo a una carpeta. Se ejecuta en una cola con progreso, pausa y reintento.
 
 Los archivos originales se exportan tal como están. Todo lo demás se codifica al salir.
 
 ## Preajustes
 
-Los formatos de exportacion son preajustes que defines una vez en Settings: FLAC, MP3, Opus, WAV o AIFF, con los parámetros del codec (profundidad de bits para los formatos sin pérdida, bitrate para los con pérdida) y una plantilla de nombre de archivo construida desde tokens como título, artista, álbum, año y número de pista. Define un preajuste predeterminado para pistas y otro para lanzamientos, y elige si las exportaciones de lanzamiento siempre piden destino o siempre usan una carpeta fija.
+Los formatos de exportación son preajustes que defines una vez en Ajustes, Formatos: FLAC, MP3, Opus, WAV o AIFF, con los parámetros del codec (profundidad de bits para los formatos sin pérdida, bitrate para los con pérdida) y una plantilla de nombre de archivo construida desde tokens como título, artista, álbum, año y número de pista. Define un preajuste predeterminado para pistas y otro para lanzamientos, y elige si las exportaciones de lanzamiento siempre piden destino o siempre usan una carpeta fija.
 
 ## Pregaps en exportaciones
 
-Las copias de CD con pregaps plantean una pregunta real al salir: adónde va el audio oculto? Cada preajuste elige una política:
+Las copias de CD con pregaps plantean una pregunta real al salir: ¿adónde va el audio oculto? El ajuste **Pregap** de cada preajuste elige una política:
 
-- **Adjuntar a la pista anterior**, la convención comun, con la elección de si el audio oculto antes de la pista uno se conserva al inicio de la pista uno o se omite.
-- **Excluir** los pregaps por completo: límites limpios de pista, audio oculto omitido.
-- **Archivo único con CUE**: el disco como un archivo de audio más una hoja CUE, preservando exactamente la disposición original.
+- **Añadir excepto HTOA** y **Añadir incluyendo HTOA** añaden cada pregap al final de la pista anterior, la convención común; se diferencian en si el audio oculto antes de la pista uno se omite o se conserva al inicio de la pista uno.
+- **Excluir** omite los pregaps por completo: límites limpios de pista, audio oculto omitido.
+- **Archivo único + CUE**: el disco como un archivo de audio más una hoja CUE, preservando exactamente la disposición original.

@@ -9,9 +9,9 @@ Tek kitaplık, her aygıt ve işin içindeki tek hesap zaten size ait olan hesap
 
 ## Bulut evi
 
-Bir kitaplığın bulut evi depolamanızdaki tek konumdur: Dropbox veya OneDrive'ınızda bir klasör, iCloud'unuz ya da S3 uyumlu herhangi bir bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, ...). Kitaplığın eşzamanladığı her şeyi tutar: kitaplığın değişiklikleri, görseller ve buluta taşıdığınız sürümlerin sesi.
+Bir kitaplığın bulut evi depolamanızdaki tek konumdur: Dropbox veya OneDrive'ınızda bir klasör, iCloud'unuz ya da S3 uyumlu herhangi bir bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, …). Kitaplığın eşzamanladığı her şeyi tutar: kitaplığın değişiklikleri, görseller ve buluta taşıdığınız sürümlerin sesi.
 
-Ayarlar, Kitaplık içinde **Eşzamanlamayı kur...** ile kurun:
+Ayarlar, Kitaplık içinde **Eşzamanlamayı kur…** ile kurun:
 
 1. Bir sağlayıcı seçin.
    - **Dropbox** ve **OneDrive** tarayıcınız üzerinden oturum açar, ardından kitaplığın hangi klasörde yaşadığını sorar. Dropbox'ta bu paylaşılan bir klasördür, böylece hanehalkınızı ona davet edebilirsiniz; henüz yoksa Dropbox'ta bir klasör paylaşın ve **Yeniden ara**'yı seçin. OneDrive'da herhangi bir klasördür ve orada yeni bir tane oluşturabilirsiniz. Oturumu coven tutar; bae token'larını asla görmez.
@@ -36,8 +36,8 @@ Aygıta özgü durum eşzamanlanmaz: çalma konumu, ses seviyesi, kuyruk ve ayg�
 
 ## Ne zaman eşzamanlanır
 
-Eşzamanlama kendi başına çalışır: değişikliklerden sonra, zamanlayıcıyla ve **Şimdi Eşzamanla** ile isteğe bağlı. Düzenlemeler olağan koşullarda saniyeler sonra diğer aygıtlara ulaşır. Aynı anda düzenleme yapan iki aygıt çakışmadıkları yerde birlikte kazanır: bae eşzamanlı düzenlemeleri alan alan birleştirir, ikisinin de değiştirdiği bir alanı sonraki düzenleme kazanır ve silinen bir sürüm aynı anda başka yerde düzenlenmiş olsa bile silinmiş kalır. Hiçbir zaman sizden çakışma çözmeniz istenmez.
+Eşzamanlama kendi başına çalışır: değişikliklerden sonra, zamanlayıcıyla ve Dosya menüsündeki **Şimdi Eşzamanla** ile isteğe bağlı. Düzenlemeler olağan koşullarda saniyeler sonra diğer aygıtlara ulaşır. Aynı anda düzenleme yapan iki aygıt çakışmadıkları yerde birlikte kazanır: bae eşzamanlı düzenlemeleri alan alan birleştirir, ikisinin de değiştirdiği bir alanı sonraki düzenleme kazanır ve silinen bir sürüm aynı anda başka yerde düzenlenmiş olsa bile silinmiş kalır. Hiçbir zaman sizden çakışma çözmeniz istenmez.
 
 ## Başarısız olduğunda
 
-Eşzamanlama hataları kitaplığı kesintiye uğratmaz; bae yeniden denerken yerel olarak göz atmayı, çalmayı ve içe aktarmayı sürdürürsünüz. Ayarlar, Kitaplık eşzamanlama için tek bir satır gösterir: **Eşitlendi** ya da kaç öğenin beklediği, örneğin **Bekleyen öğeler: 3**. Her öğeyi sade sözcüklerle, yapabileceğiniz işlemle birlikte görmek için açın: sağlayıcı yeniden oturum açmanızı istediğinde **Oturum Aç**, yüklenmeden önce taşınan bir dosyayı yerine koymak, **Yeniden Dene**, **Yeniden Bağlan**, **Yüklemeleri Sürdür** veya **Uygulamayı Güncelle**. Başka bir aygıtın çevrimiçi olmasını beklemek gibi sizin yardım edemeyeceğiniz bir bekleme hiçbir şey sunmaz. Bakılacak tek yer bu listedir; yüklemeler ayrıca [depolama yöneticisinde](/tr/guide/storage#depolama-yöneticisi) duraklatılabilir ve incelenebilir.
+Eşzamanlama hataları kitaplığı kesintiye uğratmaz; bae yeniden denerken yerel olarak göz atmayı, çalmayı ve içe aktarmayı sürdürürsünüz. Ayarlar, Kitaplık eşzamanlama için tek bir satır gösterir: **Eşitlendi** ya da kaç öğenin beklediği, örneğin **Bekleyen öğeler: 3**. Her öğeyi sade sözcüklerle, yapabileceğiniz işlemle birlikte görmek için açın: sağlayıcı yeniden oturum açmanızı istediğinde **Oturum aç**, yüklenmeden önce taşınan bir dosya için **Kaynak dosyayı geri yükle**, **Yeniden dene**, **Yeniden bağlan**, **Yüklemeleri sürdür** veya **Uygulamayı güncelle**. Başka bir aygıtın çevrimiçi olmasını beklemek gibi sizin yardım edemeyeceğiniz bir bekleme hiçbir şey sunmaz. Bakılacak tek yer bu listedir; yüklemeler ayrıca [Depolama yöneticisinde](/tr/guide/storage#depolama-yöneticisi) duraklatılabilir ve incelenebilir.

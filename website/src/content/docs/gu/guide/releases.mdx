@@ -7,7 +7,7 @@ description: Release-accurate library, અને તેને સાચું �
 
 ## Albums releases group કરે છે
 
-Library માં, અનેક pressings ધરાવતો album એક entry છે. Album page release picker બતાવે છે; દરેક release પોતાની track list, cover, year, label, catalog number, અને credits રાખે છે. એક release **primary** છે: album grid અને playback default જે વાપરે છે તે. Album menu માંથી કોઈ પણ release ને primary set કરો, અને સાંભળવા માટે ક્યારે પણ જુદો release પસંદ કરો; bae દરેક album માટે તમારી પસંદગી યાદ રાખે છે.
+Library માં, અનેક pressings ધરાવતો album એક entry છે. Album page release picker બતાવે છે; દરેક release પોતાની track list, cover, year, label, catalog number, અને credits રાખે છે. એક release **primary** છે: album grid અને playback default જે વાપરે છે તે. Album menu માંના **Set as primary release** થી કોઈ પણ release ને primary set કરો, અને સાંભળવા માટે ક્યારે પણ જુદો release પસંદ કરો; bae દરેક album માટે તમારી પસંદગી યાદ રાખે છે.
 
 ## Release શું જાણે છે
 
@@ -18,17 +18,17 @@ Identified releases databases નું જ્ઞાન ધરાવે છે, 
 - Classical structure: composers, works, અને તેમના parts, તેમની recordings સાથે linked. Library નું composer view આમાંથી બને છે; [Browsing અને search](/gu/guide/browsing) જુઓ.
 - ઓળખ: આ ચોક્કસ MusicBrainz અથવા Discogs રિલીઝ છે.
 
-Source એ જે કહ્યું હતું તે પણ bae એ વાંચ્યું તેમ રાખવામાં આવે છે, જેથી release ને databases ને ફરી પૂછ્યા વગર પછી તેના પર reset કરી શકાય; જે ઉપકરણે તેને ક્યારેય fetch નથી કર્યું તે reset વખતે એક વાર પૂછે છે.
+એક વાર લાગુ થયા પછી આ values release ની પોતાની છે: bae source સાથે કોઈ link રાખતું નથી, અને edits તેમને ત્યાં જ બદલે છે.
 
 ## Editing
 
-મેટાડેટા સુધારવા માટે તમારી છે. ** મેટાડેટામાં ફેરફાર કરો** કોઈપણ રિલીઝ પર આયાત ખાતરી વાપરે છે તે જ ફોર્મ ખોલે છે: આલ્બમ શીર્ષક અને કલાકાર, વિગતો દબાવીને, અને દરેક ટ્રેકનું શીર્ષક, કલાકાર, અને સંખ્યા. ** સ્રોત પર રીસેટ કરો** દેખાય છે જ્યારે રિલીઝ MusicBrainz, Discogs, અથવા ફાઇલ ટૅગ માંથી ભરેલું હતું અને તે સંગ્રહાયેલ સ્રોત પર પાછા આવે છે. સીધા દાખલ થયેલ રિલીઝ પાસે પુનઃસુયોજિત કરવા માટે કોઈ સ્રોત નથી, તેથી ક્રિયા અવગણવામાં આવે છે.
+Metadata સુધારવાનું તમારા હાથમાં છે. Album menu માંનું **Edit…** release editor ખોલે છે, import જે form વાપરે છે તે જ: album title અને artist, pressing details, અને દરેક track નું title, artist અને numbering. **Save** તમારા ફેરફારો write કરે છે; **Cancel** તેમને રદ કરે છે.
 
 Edits ફક્ત bae ના database માં રહે છે. તમારી files ના embedded tags ક્યારેય rewrite થતા નથી; files import થયા તેમ byte-for-byte રહે છે.
 
-## Re-identify
+## ફરી identify કરો
 
-જો release unknown તરીકે import થયો હોય, ખોટા pressing સાથે matched હોય, અથવા database ત્યારથી સુધર્યું હોય, તો **Re-identify** existing release પર identification flow ફરી ચલાવે છે: એ જ signals, એ જ search tools. New match commit થયા પછી, bae પૂછે છે કે new source માંથી metadata refresh કરવું (તમારા edits overwrite કરીને) કે જે છે તે રાખવું.
+જો release unknown તરીકે import થયો હોય, ખોટા pressing સાથે matched હોય, અથવા database ત્યારથી સુધર્યું હોય, તો editor ના **Identify** controls existing release પર identification ફરી ચલાવે છે: **Automatic** તેને તેની files પરથી identify કરે છે, અને **Search** typed search ખોલે છે. Pressing પસંદ કરવાથી editor ની values તરત બદલાય છે; **Save** તેમને રાખે છે, અને **Cancel** તમારી પાસે જે હતું તે રાખે છે.
 
 ## Covers
 

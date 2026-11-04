@@ -1,9 +1,9 @@
 ---
 title: Importazione
-description: Scegli il modo in cui ciascuna cartella fornisce i metadati di importazione
+description: Scegli da dove ogni cartella prende i metadati della sua importazione
 ---
 
-Una cartella fornisce l'audio e altri file per un'importazione. Scegli se i suoi metadati modificabili iniziano con una versione online, i tag propri dei file o un modulo vuoto.
+Una cartella fornisce l'audio e gli altri file di un'importazione. Scegli se i suoi metadati modificabili partono da una release online, dai metadati propri della cartella o da un modulo vuoto.
 
 L'importazione avviene su desktop (macOS, Windows). I tuoi file vengono letti, mai cambiati: bae non sposta, rinomina, ritagga o ricodifica nulla. Vedi [Archiviazione e offline](/it/guide/storage) per sapere dove vivono i file dopo l'importazione.
 
@@ -15,7 +15,7 @@ Una scansione riconosce le release nelle forme reali dei rip:
 
 | Layout | Aspetto |
 |--------|---------|
-| File per traccia | `01 - Canzone.flac`, `02 - Canzone.flac`, ... |
+| File per traccia | `01 - Canzone.flac`, `02 - Canzone.flac`, … |
 | CUE + immagine | `album.cue` + `album.flac`, un file per l'intero disco |
 | Multi-disc | sottocartelle `CD1/`, `CD2/`, con una delle due forme dentro |
 | Raccolte | una cartella di cartelle, ciascuna la propria release |
@@ -24,27 +24,41 @@ bae importa i formati che riproduce: FLAC, MP3, APE, ALAC e AAC in `.m4a`, WAV, 
 
 ## Compilare la bozza dei metadati
 
-Ogni candidato possiede una bozza di metadati modificabile, che può iniziare vuota, essere compilata da un rilascio online o essere compilata dai tag dei file. La digitazione nella bozza vuota è un'immissione diretta, non una sorgente di metadati separata.
+Ogni candidato possiede una bozza di metadati modificabile. Può partire vuota, essere compilata da una release online o essere compilata con ciò che dicono i file stessi della cartella. Digitare nella bozza vuota è un inserimento diretto, non una fonte di metadati a parte.
 
-Aprire ** Trova online…** o ** Tag dei file…** sostituisce la scheda in alto con il browser di quella sorgente senza modificare la bozza. Applicaeseguendo un risultato si sostituisce la bozza e si ritorna alla scheda modificabile. Utilizzare il menu della scheda per trovare un'altra release, applicare tag ai file o cancellare i metadati e tornare a una bozza vuota.
+I controlli **Identifica** della scheda offrono due vie verso la pagina Identifica, che si differenziano per ciò che avviano. **Automatico** la apre e chiede ogni volta una nuova identificazione, qualunque cosa il candidato contenga già: un'identificazione già in corso viene abbandonata per quella nuova. **Cerca** apre la stessa pagina sulla sua ricerca digitata e non avvia nulla. Nessuno dei due cambia la bozza; applicare un risultato sostituisce la bozza e torna alla scheda modificabile. Il menu della scheda contiene i due comandi che riscrivono la bozza sul posto: **Ripristina dai metadati dei file**, che la sostituisce con ciò che dicono i file, i fogli e il nome della cartella del candidato, e **Cancella metadati**, che la svuota. Ognuno chiede prima conferma, e nessuno dei due tocca i file del candidato o la disposizione delle sue tracce.
 
-### Trova online
+### Identifica
 
-Trova online è l'unico percorso che identifica un rilascio: calcola un Disc ID dal registro di rip o dal foglio CUE, riconosce i codici a barre e il testo del catalogo, interroga MusicBrainz e Discogs e fa corrispondere i risultati.
+La pagina Identifica scopre quale release è una cartella. Legge gli indizi nella cartella e cerca ciascuno di essi:
 
-L’identificazione automatica usa lo stesso percorso. **Fonte metadati predefinita** sceglie **Trova online**, **Tag dei file** o **Nessuna** per i candidati appena rilevati. **Modalità predefinita di Trova online** sceglie **Automatica** o **Cerca manualmente**. Automatica avvia l’estrazione degli indizi, l’OCR, le query ai fornitori e la corrispondenza quando si apre Trova online; Cerca manualmente non avvia nessuna di queste operazioni. Tag dei file e Nessuna non aprono Trova online.
+- **Disc ID.** Un'impronta della disposizione esatta delle tracce del CD, calcolata dal log di rip o dal foglio CUE. Quando corrisponde, identifica l'edizione precisa del CD.
+- **Codice a barre.** Letto dalle scansioni della copertina nella cartella tramite riconoscimento del testo, oppure dal foglio CUE.
+- **Numeri di catalogo e testo.** Numeri di catalogo trovati sulla grafica e nei nomi di file e cartelle, usati per restringere i risultati.
 
-### Tag dei file
+I segnali vengono cercati contemporaneamente su MusicBrainz e Discogs, e i risultati vengono confrontati tra loro. Ogni segnale compare come badge sopra i risultati: puoi vedere cosa è stato trovato, da dove viene (passa il puntatore per l'origine: TOC del disco, foglio CUE, scansione della copertina, nome della cartella) e disattivare singoli segnali se uno è fuorviante.
 
-Tag dei file legge i tag audio incorporati e i metadati CUE quando l'origine è aperta o configurata come predefinita. Rivedere l'anteprima, quindi selezionare ** Applica ** per sostituire la bozza con l'istantanea esatta.L'importazione non riesce prima della scrittura nella libreria se i file audio candidati o osservati cambiano dopo l'anteprima.
+Tre esiti:
 
-La scheda modificabile mostra un chip silenzioso Tag dei file dopo che l'istantanea è stata applicata.Una bozza riempita solo da digitazione non ha alcun chip sorgente.
+- **Trovato.** Gli indizi concordano su un solo gruppo di release. Scegli la stampa esatta dal suo elenco.
+- **Conflitto.** Due segnali indicano release diverse, per esempio il Disc ID e il codice a barre non concordano. bae mostra entrambe le parti e scegli di quale fidarti, oppure ignori un segnale.
+- **Niente trovato.** Cerca a mano: artista e album, numero di catalogo o codice a barre, in uno dei due database. Il testo riconosciuto dalla grafica viene proposto come completamento automatico.
+
+Il browser delle fonti mostra insieme il modulo di ricerca, l'avanzamento dell'identificazione, i segnali e i risultati. Selezionare un risultato tiene aperta quella riga con l'avanzamento mentre bae recupera la release completa, poi la applica alla bozza. La scheda risultante mostra un chip di fonte MusicBrainz o Discogs. **Automatico** sulla scheda ripete l'identificazione da zero; **Cerca** torna alla ricerca digitata, con ciò che era già stato trovato ancora lì.
+
+L'identificazione automatica usa questo stesso percorso. Quando viene aggiunto un candidato, la sua bozza viene creata dai suoi file, dai fogli e dal nome della cartella. L'impostazione **Identifica automaticamente** in Impostazioni, Importa avvia l'identificazione per ogni candidato che non ha un risultato per i file che ha in quel momento; quando è disattivata, avvii tu ogni identificazione. Una bozza precompilata è un punto di partenza, non una risposta, quindi non blocca un'identificazione.
+
+### Metadati dei file
+
+I metadati dei file vengono letti quando la precompilazione li legge all'aggiunta di un candidato, e di nuovo ogni volta che si sceglie **Ripristina dai metadati dei file**. In entrambi i casi la bozza viene sostituita da quella lettura esatta (tag audio incorporati, metadati CUE e il nome stesso della cartella) e la scheda viene ridisegnata su di essa. L'importazione non riesce prima di scrivere nella libreria se il candidato o i suoi file audio sono cambiati dopo la lettura.
+
+La scheda modificabile mostra un discreto chip Metadati dei file finché la bozza contiene quella lettura. Una bozza compilata solo digitando non ha alcun chip di fonte.
 
 ## Confermare e importare
 
 Il pannello di conferma mostra tutto ciò che l'importazione scriverà:
 
-- ** Copertina.** Scelta tra le immagini del database, le immagini nella cartella o le immagini incorporate nei file.Trascina un'immagine dalla galleria dei candidati sul quadrato della copertina, o cambiala in un secondo momento.
+- **Copertina.** Scelta tra la grafica dei database, le immagini nella cartella o la grafica incorporata nei file. Trascina un'immagine dalla galleria del candidato sul quadrato della copertina, oppure cambiala in seguito.
 - **Metadati.** Album, artista, anno, etichetta, numero di catalogo, paese, codice a barre e ogni traccia: tutto modificabile qui prima che venga salvato qualcosa.
 - **Archiviazione.** Se è collegata una home cloud, scegli **Cloud** per caricarvi la release, e **Fissato** per conservarne anche i file su questo dispositivo. Altrimenti la release è locale: i suoi dati si sincronizzano con gli altri tuoi dispositivi, e il suo audio resta su questo. Vedi [Archiviazione e offline](/it/guide/storage).
 
@@ -52,4 +66,4 @@ L'importazione viene eseguita in background: bae verifica che ogni traccia si de
 
 ## Fonti dati
 
-**MusicBrainz** non richiede account né chiave. **Discogs** richiede il tuo token API gratuito; incollalo in Impostazioni, e bae ti dice se smette di funzionare. Senza token, la ricerca Discogs e i metadati provenienti da Discogs non sono disponibili, e tutto il resto funziona. Entrambi i servizi hanno limiti di frequenza; bae dosa le richieste per restare entro i limiti.
+**MusicBrainz** non richiede account né chiave. **Discogs** richiede il tuo token API gratuito; incollalo in Impostazioni, Importa, e bae ti dice se smette di funzionare. Senza token, la ricerca Discogs e i metadati provenienti da Discogs non sono disponibili, e tutto il resto funziona. Entrambi i servizi hanno limiti di frequenza; bae dosa le richieste per restare entro i limiti.

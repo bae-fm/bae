@@ -1,50 +1,64 @@
 ---
 title: Importieren
-description: Wählen Sie aus, wie jeder Ordner seine Importmetadaten bereitstellt
+description: Wähle, woher jeder Ordner die Metadaten für seinen Import bezieht
 ---
 
-Ein Ordner stellt die Audio- und andere Dateien für einen Import bereit. Sie wählen, ob die bearbeitbaren Metadaten mit einer Online-Veröffentlichung, den eigenen Tags der Datei oder einem leeren Formular beginnen.
+Ein Ordner liefert das Audio und die übrigen Dateien für einen Import. Du wählst, ob seine bearbeitbaren Metadaten mit einem Online-Release, den eigenen Metadaten des Ordners oder einem leeren Formular beginnen.
 
 Importieren geschieht auf dem Desktop (macOS, Windows). Deine Dateien werden gelesen, nie verändert: bae verschiebt, benennt, taggt oder kodiert nichts neu. Siehe [Speicher und offline](/de/guide/storage), um zu erfahren, wo Dateien nach dem Import liegen.
 
 ## Überwachte Ordner
 
-Wechsle zum Bereich **Import** und füge einen Ordner hinzu: Wähle ihn aus, ziehe ihn in das Fenster oder drücke <kbd>⌘I</kbd>. bae überwacht den Ordner ab dann. Neue Musik, die darin abgelegt wird, erscheint von selbst als neuer Kandidat; du scannst nicht von Hand neu. Ordner, die noch heruntergeladen werden, werden ignoriert, bis sie fertig sind.
+Wechsle zum Bereich **Importieren** und füge einen Ordner hinzu: Wähle ihn aus, ziehe ihn in das Fenster oder drücke <kbd>⌘I</kbd>. bae überwacht den Ordner ab dann. Neue Musik, die darin abgelegt wird, erscheint von selbst als neue Kandidaten; du scannst nicht von Hand neu. Ordner, die noch heruntergeladen werden, werden ignoriert, bis sie fertig sind.
 
 Ein Scan erkennt Releases in den Formen, die Rips tatsächlich haben:
 
 | Layout | So sieht es aus |
 |--------|-----------------|
-| Datei pro Track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| Datei pro Track | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + Image | `album.cue` + `album.flac`, eine Datei für die ganze Disc |
 | Mehrere Discs | `CD1/`, `CD2/`-Unterordner, darin eine der beiden Formen |
 | Sammlungen | ein Ordner aus Ordnern, jeder ein eigenes Release |
 
 bae importiert die Formate, die es abspielt: FLAC, MP3, APE, ALAC und AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack und DSD (`.dsf`/`.dff`). Artwork und Dokumente (CUE-Sheets, Rip-Logs, Textdateien) im Ordner werden erkannt und mit dem Release behalten.
 
-## Füllen Sie den Metadaten-Entwurf aus
+## Den Metadatenentwurf füllen
 
-Jeder Kandidat besitzt einen editierbaren Metadaten-Entwurf, der leer beginnen kann, aus einer Online-Veröffentlichung gefüllt werden kann oder aus den Tags der Dateien gefüllt werden kann. Die Eingabe in den leeren Entwurf ist eine direkte Eingabe, keine separate Metadatenquelle.
+Jeder Kandidat besitzt einen bearbeitbaren Metadatenentwurf. Er kann leer beginnen, aus einem Online-Release gefüllt werden oder aus dem, was die eigenen Dateien des Ordners angeben. Das Tippen in den leeren Entwurf ist direkte Eingabe, keine eigene Metadatenquelle.
 
-Wenn Sie ** Online suchen…** oder ** Datei-Tags…** öffnen, wird die oberste Karte durch den Browser dieser Quelle ersetzt, ohne den Entwurf zu ändern. AnwendenWenn Sie ein Ergebnis erhalten, wird der Entwurf ersetzt und Sie kehren zur editierbaren Karte zurück. Verwenden Sie das Menü der Karte, um eine andere Veröffentlichung zu finden, Datei-Tags anzuwenden oder die Metadaten zu löschen und zu einem leeren Entwurf zurückzukehren.
+Die **Identifizieren**-Steuerelemente der Karte bieten zwei Wege auf die Seite „Identifizieren“, die sich darin unterscheiden, was sie starten. **Automatisch** öffnet sie und fordert jedes Mal einen frischen Identifizierungslauf an, egal was der Kandidat schon enthält – ein bereits laufender Lauf wird zugunsten des neuen verworfen. **Suchen** öffnet dieselbe Seite bei ihrer eingetippten Suche und startet nichts. Keiner von beiden ändert den Entwurf; das Anwenden eines Ergebnisses ersetzt den Entwurf und kehrt zur bearbeitbaren Karte zurück. Das Menü der Karte enthält die zwei Befehle, die den Entwurf an Ort und Stelle neu schreiben: **Auf Datei-Metadaten zurücksetzen**, das ihn durch das ersetzt, was die eigenen Dateien, Sheets und der Ordnername des Kandidaten angeben, und **Metadaten löschen**, das ihn leert. Beide fragen vorher nach, und keiner berührt die Dateien des Kandidaten oder seine Track-Aufteilung.
 
-### Online suchen
+### Identifizieren
 
-Online suchen ist der einzige Pfad, der eine Veröffentlichung identifiziert.Er berechnet einen Disc-ID aus dem Rip-Log oder dem CUE-Blatt, erkennt Barcodes und Katalogtext, fragt MusicBrainz und Discogs ab und stimmt die Ergebnisse ab.
+Die Seite „Identifizieren“ findet heraus, welches Release ein Ordner ist. Sie liest Hinweise aus dem Ordner und schlägt jeden einzeln nach:
 
-Die automatische Identifizierung verwendet denselben Pfad. **Standardquelle für Metadaten** legt für neu erkannte Kandidaten **Online suchen**, **Datei-Tags** oder **Keine** fest. **Standardmodus für Online suchen** wählt zwischen **Automatisch** und **Manuell suchen**. Automatisch startet beim Öffnen von Online suchen die Belegextraktion, OCR, Anbieterabfragen und den Abgleich; Manuell suchen startet nichts davon. Datei-Tags und Keine öffnen Online suchen nicht.
+- **Disc-ID.** Ein Fingerabdruck des exakten Track-Layouts der CD, berechnet aus dem Rip-Log oder dem CUE-Sheet. Wenn er passt, identifiziert er die genaue CD-Ausgabe.
+- **Barcode.** Per Texterkennung von Cover-Scans im Ordner abgelesen oder aus dem CUE-Sheet.
+- **Katalognummern und Text.** Katalognummern, die auf dem Artwork und in Datei- und Ordnernamen gefunden werden, um die Ergebnisse einzugrenzen.
 
-### Datei-Tags
+Die Signale werden gleichzeitig bei MusicBrainz und Discogs nachgeschlagen, und die Ergebnisse werden gegeneinander geprüft. Jedes Signal erscheint als Abzeichen über den Ergebnissen: Du siehst, was gefunden wurde, woher es stammt (fahre mit der Maus darüber für die Herkunft: Disc-TOC, CUE-Sheet, Cover-Scan, Ordnername), und kannst einzelne Signale ausschalten, wenn eines in die Irre führt.
 
-Datei-Tags liest eingebettete Audio-Tags und CUE-Metadaten, wenn die Quelle geöffnet oder als Standard konfiguriert ist.Überprüfen Sie die Vorschau, und wählen Sie dann ** Anwenden **, um den Entwurf durch den exakten Schnappschuss zu ersetzen.Der Import schlägt fehl, bevor in die Bibliothek geschrieben wird, wenn sich die Kandidaten- oder beobachteten Audiodateien nach der Vorschau ändern.
+Drei Ergebnisse:
 
-Die editierbare Karte zeigt einen leisen Datei-Tags-Chip, nachdem der Snapshot angewendet wurde, ein nur durch Tippen gefüllter Entwurf hat keinen Quellchip.
+- **Gefunden.** Die Hinweise stimmen in einer Release-Gruppe überein. Du wählst die genaue Pressung aus ihrer Liste.
+- **Konflikt.** Zwei Signale zeigen auf verschiedene Releases, etwa wenn Disc-ID und Barcode nicht übereinstimmen. bae zeigt beide Seiten, und du wählst, welcher du vertraust, oder ignorierst ein Signal.
+- **Nichts gefunden.** Suche von Hand: Künstler und Album, Katalognummer oder Barcode, in einer der beiden Datenbanken. Aus dem Artwork erkannter Text wird zur Autovervollständigung angeboten.
+
+Der Quellenbrowser zeigt Suchformular, Identifizierungsfortschritt, Signale und Ergebnisse zusammen. Die Auswahl eines Ergebnisses hält diese Zeile mit Fortschritt offen, während bae das vollständige Release abruft, und wendet es dann auf den Entwurf an. Die resultierende Karte zeigt einen Quell-Chip für MusicBrainz oder Discogs. **Automatisch** auf der Karte führt die Identifizierung von vorn aus; **Suchen** kehrt zur eingetippten Suche zurück, mit dem, was schon gefunden wurde.
+
+Die automatische Identifizierung nutzt genau diesen Weg. Wenn ein Kandidat hinzugefügt wird, wird sein Entwurf aus seinen Dateien, Sheets und seinem Ordnernamen erstellt. Die Einstellung **Automatisch identifizieren** unter Einstellungen, Importieren, startet die Identifizierung für jeden Kandidaten, der für seine aktuellen Dateien noch kein Ergebnis hat; ist sie aus, startest du jeden Lauf selbst. Ein vorausgefüllter Entwurf ist ein Ausgangspunkt, keine Antwort, und hält einen Lauf daher nicht auf.
+
+### Datei-Metadaten
+
+Datei-Metadaten werden gelesen, wenn das Vorausfüllen sie beim Hinzufügen eines Kandidaten liest, und erneut, sobald **Auf Datei-Metadaten zurücksetzen** gewählt wird. In beiden Fällen wird der Entwurf durch genau diese Lesung ersetzt – eingebettete Audio-Tags, CUE-Metadaten und der eigene Name des Ordners –, und die Karte wird danach neu gezeichnet. Der Import schlägt fehl, bevor er in die Mediathek schreibt, wenn sich der Kandidat oder seine Audiodateien nach der Lesung geändert haben.
+
+Die bearbeitbare Karte zeigt einen dezenten Datei-Metadaten-Chip, solange der Entwurf diese Lesung enthält. Ein nur durch Tippen gefüllter Entwurf hat keinen Quell-Chip.
 
 ## Bestätigen und importieren
 
 Der Bestätigungsbereich zeigt alles, was der Import schreiben wird:
 
-- ** Cover.** Ausgewählt aus den Grafiken der Datenbanken, Bildern in Ihrem Ordner oder Grafiken, die in die Dateien eingebettet sind.Ziehen Sie ein Bild aus der Kandidatengalerie auf das Cover-Quadrat, oder ändern Sie es später.
+- **Cover.** Ausgewählt aus dem Artwork der Datenbanken, Bildern in deinem Ordner oder in die Dateien eingebettetem Artwork. Ziehe ein Bild aus der Galerie des Kandidaten auf das Cover-Quadrat oder ändere es später.
 - **Metadaten.** Album, Künstler, Jahr, Label, Katalognummer, Land, Barcode und jeder Track: alles direkt hier bearbeitbar, bevor etwas gespeichert wird.
 - **Speicher.** Wenn ein Cloud-Zuhause verbunden ist, wähle **Cloud**, um das Release dorthin hochzuladen, und **Angeheftet**, um seine Dateien zusätzlich auf diesem Gerät zu behalten. Andernfalls ist das Release lokal: Seine Angaben werden auf deine anderen Geräte synchronisiert, und sein Audio bleibt auf diesem. Siehe [Speicher und offline](/de/guide/storage).
 
@@ -52,4 +66,4 @@ Der Import läuft im Hintergrund: bae prüft, dass jeder Track sauber dekodiert,
 
 ## Datenquellen
 
-**MusicBrainz** braucht kein Konto und keinen Schlüssel. **Discogs** erfordert dein eigenes kostenloses API-Token; füge es in den Einstellungen ein, und bae sagt dir, wenn es nicht mehr funktioniert. Ohne Token sind Discogs-Suche und Metadaten aus Discogs nicht verfügbar, und alles andere funktioniert. Beide Dienste haben Ratenlimits; bae taktet seine Anfragen, um innerhalb der Grenzen zu bleiben.
+**MusicBrainz** braucht kein Konto und keinen Schlüssel. **Discogs** erfordert dein eigenes kostenloses API-Token; füge es unter Einstellungen, Importieren ein, und bae sagt dir, wenn es nicht mehr funktioniert. Ohne Token sind Discogs-Suche und Metadaten aus Discogs nicht verfügbar, und alles andere funktioniert. Beide Dienste haben Ratenlimits; bae taktet seine Anfragen, um innerhalb der Grenzen zu bleiben.

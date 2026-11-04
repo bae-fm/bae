@@ -9,9 +9,9 @@ Jedna biblioteka, svaki uređaj, a jedini uključeni račun jest onaj koji već 
 
 ## Mjesto u oblaku
 
-Mjesto biblioteke u oblaku jedna je lokacija u vašoj pohrani: mapa u vašem Dropboxu ili OneDriveu, vaš iCloud ili bilo koji S3-kompatibilan spremnik (AWS, Backblaze B2, Cloudflare R2, Wasabi, ...). Sadrži sve što biblioteka sinkronizira: promjene biblioteke, grafiku i zvuk izdanja koja premjestite u oblak.
+Mjesto biblioteke u oblaku jedna je lokacija u vašoj pohrani: mapa u vašem Dropboxu ili OneDriveu, vaš iCloud ili bilo koji S3-kompatibilan spremnik (AWS, Backblaze B2, Cloudflare R2, Wasabi, …). Sadrži sve što biblioteka sinkronizira: promjene biblioteke, grafiku i zvuk izdanja koja premjestite u oblak.
 
-Postavite ga u Postavke, Fonoteka, pomoću **Postavi sinkronizaciju...**:
+Postavite ga u Postavke, Fonoteka, pomoću **Postavi sinkronizaciju…**:
 
 1. Odaberite pružatelja.
    - **Dropbox** i **OneDrive** prijavljuju se kroz vaš preglednik, a zatim pitaju u kojoj mapi biblioteka živi. Na Dropboxu je to dijeljena mapa, kako biste u nju mogli pozvati kućanstvo; ako je još nemate, podijelite jednu u Dropboxu i odaberite **Traži ponovno**. Na OneDriveu je to bilo koja mapa, a ondje možete napraviti i novu. Prijavu drži coven; bae nikad ne vidi njezine tokene.
@@ -36,8 +36,8 @@ Stanje po uređaju ne sinkronizira se: položaj reprodukcije, glasnoća, red če
 
 ## Kada se sinkronizira
 
-Sinkronizacija radi sama: nakon promjena, prema mjeraču vremena i na zahtjev s **Sinkroniziraj sada**. Izmjene stižu na druge uređaje nekoliko sekundi poslije u uobičajenim uvjetima. Dva uređaja koja uređuju u isto vrijeme oba pobjeđuju ondje gdje se ne sudaraju: bae spaja istodobne izmjene polje po polje, kasnija izmjena pobjeđuje polje koje su oba promijenila, a izbrisano izdanje ostaje izbrisano čak i ako je u istom trenutku uređeno drugdje. Nikad se od vas ne traži rješavanje sukoba.
+Sinkronizacija radi sama: nakon promjena, prema mjeraču vremena i na zahtjev s **Sinkroniziraj sada** u izborniku Datoteka. Izmjene stižu na druge uređaje nekoliko sekundi poslije u uobičajenim uvjetima. Dva uređaja koja uređuju u isto vrijeme oba pobjeđuju ondje gdje se ne sudaraju: bae spaja istodobne izmjene polje po polje, kasnija izmjena pobjeđuje polje koje su oba promijenila, a izbrisano izdanje ostaje izbrisano čak i ako je u istom trenutku uređeno drugdje. Nikad se od vas ne traži rješavanje sukoba.
 
 ## Kada ne uspije
 
-Neuspjesi sinkronizacije ne prekidaju biblioteku; i dalje lokalno pregledavate, reproducirate i uvozite dok bae ponovno pokušava. Postavke, Fonoteka prikazuju jedan redak za sinkronizaciju: **Sinkronizirano** ili koliko stavki čeka, primjerice **Stavke na čekanju: 3**. Otvorite ga da vidite svaku stavku jednostavnim riječima, s radnjom koju možete poduzeti: **Prijavi se** kada pružatelj traži ponovnu prijavu, vraćanje na mjesto datoteke koja je premještena prije prijenosa, **Pokušaj ponovno**, **Ponovno poveži**, **Nastavi prijenose** ili **Ažuriraj aplikaciju**. Čekanje u kojem ne možete pomoći, primjerice da se drugi uređaj vrati na mrežu, ne nudi ništa. Ovaj popis jedino je mjesto koje treba gledati; prijenosi se mogu i pauzirati i pregledati u [upravitelju pohrane](/hr/guide/storage#upravitelj-pohrane).
+Neuspjesi sinkronizacije ne prekidaju biblioteku; i dalje lokalno pregledavate, reproducirate i uvozite dok bae ponovno pokušava. Postavke, Fonoteka prikazuju jedan redak za sinkronizaciju: **Sinkronizirano** ili koliko stavki čeka, primjerice **Stavke na čekanju: 3**. Otvorite ga da vidite svaku stavku jednostavnim riječima, s radnjom koju možete poduzeti: **Prijavi se** kada pružatelj traži ponovnu prijavu, **Vrati izvornu datoteku** za datoteku koja je premještena prije prijenosa, **Pokušaj ponovno**, **Ponovno poveži**, **Nastavi prijenose** ili **Ažuriraj aplikaciju**. Čekanje u kojem ne možete pomoći, primjerice da se drugi uređaj vrati na mrežu, ne nudi ništa. Ovaj popis jedino je mjesto koje treba gledati; prijenosi se mogu i pauzirati i pregledati u [Upravitelju pohrane](/hr/guide/storage#upravitelj-pohrane).

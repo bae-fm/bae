@@ -7,7 +7,7 @@ Většina hudebních aplikací modeluje „album“: jeden název, jeden obal, j
 
 ## Alba seskupují vydání
 
-V knihovně je album s několika lisováními jedna položka. Stránka alba zobrazuje výběr vydání; každé vydání drží vlastní seznam stop, obal, rok, vydavatelství, katalogové číslo a kredity. Jedno vydání je **primární**: to, které mřížka alb a přehrávání používají ve výchozím nastavení. Nastavte libovolné vydání jako primární z nabídky alba a kdykoli vyberte jiné vydání k poslechu; bae si volbu pamatuje pro každé album.
+V knihovně je album s několika lisováními jedna položka. Stránka alba zobrazuje výběr vydání; každé vydání drží vlastní seznam stop, obal, rok, vydavatelství, katalogové číslo a kredity. Jedno vydání je **primární**: to, které mřížka alb a přehrávání používají ve výchozím nastavení. Libovolné vydání nastavíte jako primární volbou **Nastavit jako primární vydání** v nabídce alba a kdykoli můžete vybrat jiné vydání k poslechu; bae si volbu pamatuje pro každé album.
 
 ## Co vydání ví
 
@@ -18,21 +18,21 @@ Identifikovaná vydání nesou znalosti databází, ne jen názvy stop:
 - Klasická struktura: skladatelé, díla a jejich části, propojené s jejich nahrávkami. Z toho se staví zobrazení skladatelů v knihovně; viz [Procházení a hledání](/cs/guide/browsing).
 - Identita: která přesná verze MusicBrainz nebo Discogs to je.
 
-Ukládá se i to, co uvedl zdroj, tak jak to bae přečetl, aby šlo vydání později vrátit do tohoto stavu bez dalšího dotazu do databází; zařízení, které ho nikdy nestáhlo, se při vrácení zeptá jednou.
+Po použití patří tyto hodnoty samotnému vydání: bae neuchovává žádné propojení zpět na zdroj a úpravy je mění na místě.
 
 ## Úpravy
 
-Metadata můžete opravit sami. ** Úprava metadat ** u libovolného vydání otevře stejný formulář, který používá potvrzení importu: název alba a umělec, stisknutím podrobností a název každé skladby, umělec a číslování. ** Obnovit dle zdroje ** se objeví, pokud bylo vydání vyplněno z MusicBrainz, Discogs nebo Značky souborů a vrátí se k tomuto uloženému zdroji.
+Metadata můžete opravit sami. **Upravit…** v nabídce alba otevře editor vydání, stejný formulář, jaký používá import: název alba a interpret, detaily lisování a u každé stopy název, interpret a číslování. **Uložit** zapíše vaše změny; **Zrušit** je zahodí.
 
 Úpravy žijí jen v databázi bae. Vložené tagy vašich souborů se nikdy nepřepisují; soubory zůstávají bajt po bajtu tak, jak byly importovány.
 
-## Znovu identifikovat
+## Identifikovat znovu
 
-Pokud bylo vydání importováno jako neznámé, spárováno se špatným lisováním nebo se databáze od té doby zlepšila, **Re-identify** spustí identifikační postup znovu na existujícím vydání: stejné signály, stejné vyhledávací nástroje. Po uložení nové shody se bae zeptá, zda obnovit metadata z nového zdroje (a přepsat vaše úpravy), nebo ponechat to, co máte.
+Pokud bylo vydání importováno jako neznámé, spárováno se špatným lisováním nebo se databáze od té doby zlepšila, ovládací prvky **Identifikovat** v editoru spustí identifikaci existujícího vydání znovu: **Automaticky** ho identifikuje z jeho souborů a **Hledat** otevře ruční hledání. Výběr lisování okamžitě nahradí hodnoty v editoru; **Uložit** je ponechá a **Zrušit** zachová to, co jste měli.
 
 ## Obaly
 
-Každé vydání má jeden zobrazovaný obal. **Change cover** nabídne obrázky z databází a obrazové soubory, které přišly s vydáním. bae si drží vlastní kopii zvoleného obalu ve velikosti pro zobrazení, takže původní sken ve složce zůstane beze změn. Klepnutím na obal kdekoli otevřete celou galerii obrázků vydání.
+Každé vydání má jeden zobrazovaný obal. **Změnit obal** nabídne obrázky z databází a obrazové soubory, které přišly s vydáním. bae si drží vlastní kopii zvoleného obalu ve velikosti pro zobrazení, takže původní sken ve složce zůstane beze změn. Klepnutím na obal kdekoli otevřete celou galerii obrázků vydání.
 
 ## Mazání
 

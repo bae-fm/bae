@@ -1,21 +1,21 @@
 ---
 title: Importação
-description: Escolha como cada pasta fornece seus metadados de importação
+description: Escolha de onde cada pasta tira os metadados da sua importação
 ---
 
-Uma pasta fornece o áudio e outros arquivos para uma importação. Você escolhe se seus metadados editáveis ​​começam com um lançamento online, com as próprias tags dos arquivos ou com um formulário em branco.
+Uma pasta fornece o áudio e os outros arquivos de uma importação. Você escolhe se os metadados editáveis dela começam com um lançamento online, com os próprios metadados da pasta ou com um formulário em branco.
 
 A importação acontece no desktop (macOS, Windows). Seus arquivos são lidos, nunca alterados: bae não move, renomeia, muda tags nem recodifica nada. Veja [Armazenamento e offline](/pt-br/guide/storage) para saber onde os arquivos vivem depois da importação.
 
 ## Pastas monitoradas
 
-Mude para a seção **Import** e adicione uma pasta: escolha-a, arraste-a para a janela ou pressione <kbd>⌘I</kbd>. bae monitora a pasta a partir daí. Música nova colocada nela aparece como novos candidatos por conta própria; você não reescaneia manualmente. Pastas que ainda estão baixando são ignoradas até terminarem.
+Mude para a seção **Importar** e adicione uma pasta: escolha-a, arraste-a para a janela ou pressione <kbd>⌘I</kbd>. bae monitora a pasta a partir daí. Música nova colocada nela aparece como novos candidatos por conta própria; você não reescaneia manualmente. Pastas que ainda estão baixando são ignoradas até terminarem.
 
 Um escaneamento reconhece lançamentos nos formatos que rips realmente assumem:
 
 | Layout | Como aparece |
 |--------|--------------|
-| Arquivo por faixa | `01 - Song.flac`, `02 - Song.flac`, ... |
+| Arquivo por faixa | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + imagem | `album.cue` + `album.flac`, um arquivo para o disco inteiro |
 | Vários discos | subpastas `CD1/`, `CD2/`, com qualquer formato dentro |
 | Coleções | uma pasta de pastas, cada uma seu próprio lançamento |
@@ -24,27 +24,41 @@ bae importa os formatos que reproduz: FLAC, MP3, APE, ALAC e AAC em `.m4a`, WAV,
 
 ## Preencher o rascunho de metadados
 
-Cada candidato possui um rascunho de metadados editável, que pode começar em branco, ser preenchido a partir de um lançamento online ou ser preenchido a partir das tags dos arquivos. Digitar no rascunho em branco é uma entrada direta, não uma fonte de metadados separada.
+Cada candidato tem um rascunho de metadados editável. Ele pode começar em branco, ser preenchido a partir de um lançamento online ou ser preenchido com o que dizem os próprios arquivos da pasta. Digitar no rascunho em branco é entrada direta, não uma fonte de metadados à parte.
 
-Ao abrir ** Buscar online…** ou ** Tags dos arquivos…**, o cartão superior é substituído pelo navegador dessa fonte sem alterar o rascunho. Aplicaro resultado substitui o rascunho e retorna ao cartão editável. Use o menu do cartão para encontrar outro lançamento, aplicar tags de arquivo ou limpar os metadados e retornar a um rascunho em branco.
+Os controles **Identificar** do cartão oferecem dois caminhos para a página Identificar, que diferem no que iniciam. **Automático** abre a página e pede uma identificação nova toda vez, não importa o que o candidato já tenha; uma identificação já em andamento é descartada em favor da nova. **Buscar** abre a mesma página na busca digitada e não inicia nada. Nenhum dos dois altera o rascunho; aplicar um resultado substitui o rascunho e volta ao cartão editável. O menu do cartão tem os dois comandos que reescrevem o rascunho onde ele está: **Redefinir para os metadados dos arquivos**, que o substitui pelo que dizem os próprios arquivos, folhas e nome da pasta do candidato, e **Limpar metadados**, que o esvazia. Cada um pergunta antes, e nenhum mexe nos arquivos do candidato nem na disposição das faixas.
 
-### Buscar online
+### Identificar
 
-Buscar online é o único caminho que identifica um lançamento.Ele calcula um ID do disco a partir do registro de cópias ou da folha CUE, reconhece códigos de barras e texto de catálogo, consulta MusicBrainz e Discogs e combina os resultados.
+A página Identificar descobre qual lançamento uma pasta é. Ela lê evidências da pasta e procura cada uma:
 
-A identificação automática usa esse mesmo caminho. **Fonte de metadados padrão** escolhe **Buscar online**, **Tags dos arquivos** ou **Nenhuma** para candidatos recém-descobertos. **Modo padrão de Buscar online** escolhe **Automático** ou **Buscar manualmente**. Automático inicia a extração de evidências, OCR, consultas aos provedores e correspondência quando Buscar online é aberto; Buscar manualmente não inicia nenhuma dessas tarefas. Tags dos arquivos e Nenhuma não abrem Buscar online.
+- **ID do disco.** Uma impressão digital da disposição exata das faixas do CD, calculada a partir do log de rip ou da folha CUE. Quando corresponde, identifica a edição exata do CD.
+- **Código de barras.** Lido dos scans de capa da pasta por reconhecimento de texto, ou da folha CUE.
+- **Números de catálogo e texto.** Números de catálogo encontrados na arte e nos nomes de arquivos e pastas, usados para estreitar os resultados.
 
-### Tags dos arquivos
+Os sinais são procurados no MusicBrainz e no Discogs ao mesmo tempo, e os resultados são conferidos entre si. Cada sinal aparece como um selo acima dos resultados: você vê o que foi encontrado, de onde veio (passe o cursor para ver a origem: TOC do disco, folha CUE, scan de capa, nome da pasta) e pode desligar sinais individuais se algum estiver enganando.
 
-O Tags dos arquivos lê as tags de áudio incorporadas e os metadados do CUE quando a fonte é aberta ou configurada como padrão.Revise a visualização e selecione ** Aplicar ** para substituir o rascunho pelo instantâneo exato. A importação falha antes de gravar na biblioteca se os arquivos de áudio candidatos ou observados forem alterados após a visualização.
+Três resultados:
 
-O cartão editável mostra um chip silencioso Tags dos arquivos depois que o snapshot é aplicado.Um rascunho preenchido apenas por digitação não tem chip de origem.
+- **Encontrado.** As evidências concordam em um grupo de lançamentos. Você escolhe a prensagem exata na lista dele.
+- **Conflito.** Dois sinais apontam para lançamentos diferentes, por exemplo quando o ID do disco e o código de barras discordam. bae mostra os dois lados e você escolhe em qual confiar, ou ignora um sinal.
+- **Nada encontrado.** Busque manualmente: artista e álbum, número de catálogo ou código de barras, em qualquer um dos dois bancos de dados. O texto reconhecido na arte é oferecido como preenchimento automático.
+
+O navegador de fontes mostra juntos o formulário de busca, o progresso da identificação, os sinais e os resultados. Selecionar um resultado mantém essa linha aberta com o progresso enquanto bae busca o lançamento completo, e então o aplica ao rascunho. O cartão resultante mostra um chip de fonte do MusicBrainz ou do Discogs. **Automático** no cartão refaz a identificação do zero; **Buscar** volta para a busca digitada, com o que já foi encontrado ainda lá.
+
+A identificação automática usa esse mesmo caminho. Quando um candidato é adicionado, o rascunho dele é criado a partir dos seus arquivos, folhas e nome da pasta. O ajuste **Identificar automaticamente** em Configurações, Importar, inicia a identificação para cada candidato que não tem resultado para os arquivos que tem agora; com ele desligado, você inicia cada identificação. Um rascunho pré-preenchido é um ponto de partida, não uma resposta, então não impede uma identificação.
+
+### Metadados dos arquivos
+
+Os metadados dos arquivos são lidos quando o pré-preenchimento os lê, ao adicionar um candidato, e de novo sempre que **Redefinir para os metadados dos arquivos** é escolhido. Nos dois casos o rascunho é substituído por essa leitura exata (tags de áudio incorporadas, metadados CUE e o próprio nome da pasta) e o cartão é redesenhado com ela. A importação falha antes de gravar na biblioteca se o candidato ou seus arquivos de áudio mudaram depois da leitura.
+
+O cartão editável mostra um discreto chip Metadados dos arquivos enquanto o rascunho contém essa leitura. Um rascunho preenchido só por digitação não tem chip de fonte.
 
 ## Confirmar e importar
 
 O painel de confirmação mostra tudo que a importação vai escrever:
 
-- ** Capa.** Escolha entre a arte dos bancos de dados, imagens em sua pasta ou arte incorporada nos arquivos.Arraste uma imagem da galeria de candidatos para o quadrado da capa, ou altere-a mais tarde.
+- **Capa.** Escolhida entre a arte dos bancos de dados, imagens da sua pasta ou arte incorporada nos arquivos. Arraste uma imagem da galeria do candidato para o quadrado da capa, ou altere-a depois.
 - **Metadados.** Álbum, artista, ano, selo, número de catálogo, país, código de barras e cada faixa: tudo editável aqui antes de qualquer coisa ser salva.
 - **Armazenamento.** Se um local na nuvem estiver conectado, escolha **Nuvem** para enviar o lançamento para ele, e **Fixado** para também manter os arquivos dele neste dispositivo. Caso contrário, o lançamento é local: os dados dele sincronizam com seus outros dispositivos, e o áudio fica neste. Veja [Armazenamento e offline](/pt-br/guide/storage).
 
@@ -52,4 +66,4 @@ A importação roda em segundo plano: bae verifica se cada faixa decodifica até
 
 ## Fontes de dados
 
-**MusicBrainz** não precisa de conta nem chave. **Discogs** exige seu próprio token gratuito de API; cole-o em Ajustes, e bae avisa se ele parar de funcionar. Sem token, busca no Discogs e metadados vindos do Discogs ficam indisponíveis, e todo o resto funciona. Ambos os serviços têm limite de taxa; bae espaça suas solicitações para ficar dentro dos limites.
+**MusicBrainz** não precisa de conta nem chave. **Discogs** exige seu próprio token gratuito de API; cole-o em Configurações, Importar, e bae avisa se ele parar de funcionar. Sem token, busca no Discogs e metadados vindos do Discogs ficam indisponíveis, e todo o resto funciona. Ambos os serviços têm limite de taxa; bae espaça suas solicitações para ficar dentro dos limites.

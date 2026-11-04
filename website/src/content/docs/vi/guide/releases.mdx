@@ -7,7 +7,7 @@ Hầu hết ứng dụng nhạc mô hình hóa "một album": một tựa đề,
 
 ## Album nhóm các bản phát hành
 
-Trong thư viện, một album có nhiều lần phát hành là một mục. Trang album hiển thị bộ chọn bản phát hành; mỗi bản phát hành giữ danh sách track, bìa, năm, hãng đĩa, số catalog và ghi công riêng. Một bản phát hành là **chính**: bản mà lưới album và phát lại dùng mặc định. Đặt bất kỳ bản phát hành nào làm chính từ menu album, và chọn bản phát hành khác để nghe bất cứ lúc nào; bae nhớ lựa chọn của bạn theo từng album.
+Trong thư viện, một album có nhiều lần phát hành là một mục. Trang album hiển thị bộ chọn bản phát hành; mỗi bản phát hành giữ danh sách track, bìa, năm, hãng đĩa, số catalog và ghi công riêng. Một bản phát hành là **chính**: bản mà lưới album và phát lại dùng mặc định. Đặt bất kỳ bản phát hành nào làm chính bằng **Set as primary release** trong menu album, và chọn bản phát hành khác để nghe bất cứ lúc nào; bae nhớ lựa chọn của bạn theo từng album.
 
 ## Một bản phát hành biết gì
 
@@ -18,17 +18,17 @@ Bản phát hành đã nhận diện mang tri thức của cơ sở dữ liệu,
 - Cấu trúc nhạc cổ điển: nhà soạn nhạc, tác phẩm và các phần của chúng, liên kết tới các bản thu của chúng. Chế độ xem nhà soạn nhạc của thư viện được dựng từ đây; xem [Duyệt và tìm kiếm](/vi/guide/browsing).
 - Danh tính: chính xác phiên bản MusicBrainz hay Discogs này là gì.
 
-Những gì nguồn cho biết cũng được giữ lại, đúng như bae đã đọc, để bản phát hành có thể được đặt lại về đó sau này mà không hỏi lại cơ sở dữ liệu; thiết bị chưa từng tải nó về sẽ hỏi một lần khi đặt lại.
+Sau khi áp dụng, các giá trị này là của riêng bản phát hành: bae không giữ liên kết nào về nguồn, và chỉnh sửa thay đổi chúng tại chỗ.
 
 ## Sửa
 
-Siêu dữ liệu là của bạn để sửa. ** Sửa siêu dữ liệu ** trên bất kỳ bản phát hành nào sẽ mở cùng một biểu mẫu mà xác nhận nhập khẩu sử dụng: tiêu đề album và nghệ sĩ, nhấn vào chi tiết, và tiêu đề, nghệ sĩ, và số của mỗi bài hát. ** Đặt lại về nguồn ** xuất hiện khi bản phát hành đã được nhập từ MusicBrainz, Discogs, hoặc Thẻ của tệp và quay lại nguồn lưu trữ đó. Một bản phát hành được nhập trực tiếp không có nguồn để đặt lại, vì vậy hành động này bị bỏ qua.
+Siêu dữ liệu là của bạn để sửa. **Edit…** trong menu album mở trình chỉnh sửa bản phát hành, cùng biểu mẫu mà lượt nhập dùng: tựa đề album và nghệ sĩ, chi tiết lần phát hành, và tựa đề, nghệ sĩ, số thứ tự của mọi track. **Save** ghi các thay đổi của bạn; **Cancel** bỏ chúng.
 
 Các chỉnh sửa chỉ nằm trong cơ sở dữ liệu của bae. Tag nhúng trong tệp của bạn không bao giờ bị ghi lại; tệp giữ nguyên từng byte như khi nhập.
 
 ## Nhận diện lại
 
-Nếu một bản phát hành đã được nhập như chưa biết, khớp nhầm lần phát hành, hoặc cơ sở dữ liệu đã được cải thiện, **Re-identify** chạy lại luồng nhận diện trên bản phát hành hiện có: cùng tín hiệu, cùng công cụ tìm kiếm. Sau khi kết quả khớp mới được ghi, bae hỏi liệu có làm mới siêu dữ liệu từ nguồn mới (ghi đè chỉnh sửa của bạn) hay giữ thứ bạn đang có.
+Nếu một bản phát hành đã được nhập như chưa biết, khớp nhầm lần phát hành, hoặc cơ sở dữ liệu đã được cải thiện, các điều khiển **Identify** của trình chỉnh sửa chạy lại nhận diện trên bản phát hành hiện có: **Automatic** nhận diện nó từ các tệp của nó, còn **Search** mở phần tìm kiếm gõ tay. Chọn một lần phát hành sẽ thay ngay các giá trị trong trình chỉnh sửa; **Save** giữ chúng, còn **Cancel** giữ những gì bạn đã có.
 
 ## Bìa
 

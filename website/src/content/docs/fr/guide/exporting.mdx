@@ -7,19 +7,19 @@ L’absence d’enfermement vaut dans les deux sens : bae ne change pas vos fich
 
 ## Deux exportations
 
-- **Exportation de piste** : clic droit sur une piste, **Save As**, choisissez un format, terminé.
-- **Exportation de sortie** : depuis le menu de l’album ou le Storage Manager, exporte toute une sortie vers un dossier. S’exécute dans une file avec progression, pause et nouvel essai.
+- **Exportation de piste** : clic droit sur une piste, **Enregistrer sous…**, choisissez un format, terminé.
+- **Exportation de sortie** : **Exporter…** dans le menu de l’album, ou le Gestionnaire de stockage, exporte toute une sortie vers un dossier. S’exécute dans une file avec progression, pause et nouvel essai.
 
 Les fichiers originaux sont exportés tels quels. Tout le reste est encodé en sortie.
 
 ## Préréglages
 
-Les formats d’exportation sont des préréglages que vous définissez une fois dans Réglages : FLAC, MP3, Opus, WAV ou AIFF, avec les paramètres du codec (profondeur de bits pour les formats sans perte, débit pour les formats avec perte) et un modèle de nom de fichier construit depuis des jetons comme titre, artiste, album, année et numéro de piste. Définissez un préréglage par défaut pour les pistes et un pour les sorties, puis choisissez si les exportations de sortie demandent toujours une destination ou utilisent toujours un dossier fixe.
+Les formats d’exportation sont des préréglages que vous définissez une fois dans Réglages, Formats : FLAC, MP3, Opus, WAV ou AIFF, avec les paramètres du codec (profondeur de bits pour les formats sans perte, débit pour les formats avec perte) et un modèle de nom de fichier construit depuis des jetons comme titre, artiste, album, année et numéro de piste. Définissez un préréglage par défaut pour les pistes et un pour les sorties, puis choisissez si les exportations de sortie demandent toujours une destination ou utilisent toujours un dossier fixe.
 
 ## Pregaps dans les exportations
 
-Les rips de CD avec pregaps posent une vraie question à la sortie : où va l’audio caché ? Chaque préréglage choisit une politique :
+Les rips de CD avec pregaps posent une vraie question à la sortie : où va l’audio caché ? Le réglage **Pregap** de chaque préréglage choisit une politique :
 
-- **Ajouter à la piste précédente**, la convention courante, avec le choix de garder au début de la piste un l’audio caché avant celle-ci ou de le supprimer.
-- **Exclure** entièrement les pregaps : limites de pistes nettes, audio caché omis.
-- **Fichier unique avec CUE** : le disque comme un seul fichier audio plus une fiche CUE, en préservant exactement la disposition d’origine.
+- **Ajouter sauf HTOA** et **Ajouter avec HTOA** ajoutent chaque pregap à la fin de la piste précédente, la convention courante ; ils diffèrent selon que l’audio caché avant la piste un est supprimé ou conservé au début de la piste un.
+- **Exclure** supprime entièrement les pregaps : limites de pistes nettes, audio caché omis.
+- **Fichier unique + CUE** : le disque comme un seul fichier audio plus une fiche CUE, en préservant exactement la disposition d’origine.

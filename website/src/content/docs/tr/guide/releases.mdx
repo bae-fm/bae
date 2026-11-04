@@ -7,7 +7,7 @@ description: Sürüme uygun bir kitaplık ve onu doğru tutma yolu
 
 ## Albümler sürümleri gruplar
 
-Kitaplıkta, birkaç baskısı olan bir albüm tek girdidir. Albüm sayfası bir sürüm seçici gösterir; her sürüm kendi parça listesini, kapağını, yılını, plak şirketini, katalog numarasını ve kredilerini tutar. Bir sürüm **primary**'dir: albüm ızgarasının ve çalmanın varsayılan kullandığı sürüm. Albüm menüsünden herhangi bir sürümü primary yapın ve dinlemek için istediğiniz zaman başka bir sürüm seçin; bae seçiminizi albüm başına hatırlar.
+Kitaplıkta, birkaç baskısı olan bir albüm tek girdidir. Albüm sayfası bir sürüm seçici gösterir; her sürüm kendi parça listesini, kapağını, yılını, plak şirketini, katalog numarasını ve kredilerini tutar. Bir sürüm **birincil** sürümdür: albüm ızgarasının ve çalmanın varsayılan kullandığı sürüm. Albüm menüsündeki **Birincil yayın olarak ayarla** ile herhangi bir sürümü birincil yapın ve dinlemek için istediğiniz zaman başka bir sürüm seçin; bae seçiminizi albüm başına hatırlar.
 
 ## Bir sürüm ne bilir
 
@@ -18,21 +18,21 @@ Tanımlanmış sürümler, yalnızca parça adlarını değil veritabanlarının
 - Klasik yapı: besteciler, eserler ve bölümleri; bunların kayıtlarına bağlı olarak. Kitaplığın besteci görünümü bundan kurulur; [Göz atma ve arama](/tr/guide/browsing) bölümüne bakın.
 - Kimlik: Bu tam olarak hangi MusicBrainz veya Discogs sürümüdür.
 
-Kaynağın söyledikleri de bae'nin okuduğu şekliyle tutulur, böylece sürüm daha sonra veritabanlarına yeniden sormadan buna sıfırlanabilir; onu hiç getirmemiş bir cihaz sıfırlarken bir kez sorar.
+Uygulandıktan sonra bu değerler sürümün kendisine aittir: bae kaynağa geri bağlantı tutmaz ve düzenlemeler onları yerinde değiştirir.
 
 ## Düzenleme
 
-Meta verilerinizi düzeltmeniz sizindir. ** Her yayında meta verilerinizi düzenleyiniz **, ithalatı doğrulamanın kullandığı aynı formu açar: albüm başlığı ve sanatçı, detaylar, ve her parçanın başlığı, sanatçı ve numaralandırma. ** Kaynağa Sıfırla **, yayın MusicBrainz, Discogs veya Dosya etiketleri'dan doldurulduğunda görüntülenir ve depolanan kaynağa geri döner. Doğrudan girilmiş bir yayının geri yüklenecek bir kaynağı yoktur, bu yüzden eylem göz ardı edilir.
+Üst veriyi düzeltmek size kalmış. Albüm menüsündeki **Düzenle…** sürüm düzenleyicisini açar; içe aktarmanın kullandığı formun aynısıdır: albüm başlığı ve sanatçısı, baskı ayrıntıları ve her parçanın başlığı, sanatçısı ve numarası. **Kaydet** değişikliklerinizi yazar; **İptal** onları atar.
 
 Düzenlemeler yalnızca bae'in veritabanında yaşar. Dosyalarınızın gömülü etiketleri asla yeniden yazılmaz; dosyalar içe aktarıldıkları baytlarla kalır.
 
 ## Yeniden tanımlama
 
-Bir sürüm bilinmeyen olarak içe aktarıldıysa, yanlış baskıyla eşleştirildiyse veya veritabanı daha sonra iyileştiyse **Re-identify** mevcut sürüm üzerinde tanımlama akışını yeniden çalıştırır: aynı sinyaller, aynı arama araçları. Yeni eşleşme kaydedildikten sonra bae üst veriyi yeni kaynaktan yenilemeyi mi (düzenlemelerinizin üzerine yazar) yoksa elinizdekini korumayı mı istediğinizi sorar.
+Bir sürüm bilinmeyen olarak içe aktarıldıysa, yanlış baskıyla eşleştirildiyse veya veritabanı daha sonra iyileştiyse, düzenleyicinin **Tanımla** denetimleri mevcut sürüm üzerinde tanımlamayı yeniden çalıştırır: **Otomatik** onu dosyalarından tanımlar, **Ara** ise elle aramayı açar. Bir baskı seçmek düzenleyicideki değerleri hemen değiştirir; **Kaydet** onları tutar, **İptal** ise elinizdekini korur.
 
 ## Kapaklar
 
-Her sürümün bir görüntüleme kapağı vardır. **Change cover**, veritabanlarının görsellerini ve sürümle gelen görüntü dosyalarını sunar. bae seçilen kapağın görüntüleme için boyutlandırılmış kendi kopyasını tutar, böylece klasörünüzdeki özgün tarama dokunulmadan kalır. Bir sürümün görsellerinin tam galerisini açmak için herhangi bir yerde kapağa dokunun.
+Her sürümün bir görüntüleme kapağı vardır. **Kapağı değiştir**, veritabanlarının görsellerini ve sürümle gelen görüntü dosyalarını sunar. bae seçilen kapağın görüntüleme için boyutlandırılmış kendi kopyasını tutar, böylece klasörünüzdeki özgün tarama dokunulmadan kalır. Bir sürümün görsellerinin tam galerisini açmak için herhangi bir yerde kapağa dokunun.
 
 ## Silme
 

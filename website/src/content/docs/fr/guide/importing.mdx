@@ -1,21 +1,21 @@
 ---
 title: Importation
-description: Choisissez comment chaque dossier fournit ses métadonnées d'importation
+description: Choisir comment chaque dossier fournit les métadonnées de son importation
 ---
 
-Un dossier fournit les fichiers audio et autres pour une importation. Vous choisissez si ses métadonnées modifiables commencent par une version en ligne, les propres balises des fichiers ou un formulaire vierge.
+Un dossier fournit l’audio et les autres fichiers d’une importation. Vous choisissez si ses métadonnées modifiables partent d’une sortie en ligne, des propres métadonnées du dossier ou d’un formulaire vierge.
 
 L’importation se fait sur ordinateur (macOS, Windows). Vos fichiers sont lus, jamais modifiés : bae ne déplace, ne renomme, ne retague et ne réencode rien. Consultez [Stockage et hors ligne](/fr/guide/storage) pour savoir où les fichiers vivent après l’importation.
 
 ## Dossiers surveillés
 
-Passez à la section **Import** et ajoutez un dossier : choisissez-le, faites-le glisser sur la fenêtre ou appuyez sur <kbd>⌘I</kbd>. bae surveille ensuite ce dossier. La nouvelle musique que vous y déposez apparaît d’elle-même comme nouveaux candidats ; vous ne relancez pas l’analyse à la main. Les dossiers encore en téléchargement sont ignorés jusqu’à la fin du téléchargement.
+Passez à la section **Importer** et ajoutez un dossier : choisissez-le, faites-le glisser sur la fenêtre ou appuyez sur <kbd>⌘I</kbd>. bae surveille ensuite ce dossier. La nouvelle musique que vous y déposez apparaît d’elle-même comme nouveaux candidats ; vous ne relancez pas l’analyse à la main. Les dossiers encore en téléchargement sont ignorés jusqu’à la fin du téléchargement.
 
 Une analyse reconnaît les sorties dans les formes que prennent réellement les rips :
 
 | Disposition | Aspect |
 |--------|-------------------|
-| Fichier par piste | `01 - Song.flac`, `02 - Song.flac`, ... |
+| Fichier par piste | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + image | `album.cue` + `album.flac`, un fichier pour tout le disque |
 | Multi-disque | Sous-dossiers `CD1/`, `CD2/`, avec l’une ou l’autre forme à l’intérieur |
 | Collections | un dossier de dossiers, chacun étant sa propre sortie |
@@ -24,32 +24,46 @@ bae importe les formats qu’il lit : FLAC, MP3, APE, ALAC et AAC dans `.m4a`, W
 
 ## Remplir le brouillon de métadonnées
 
-Chaque candidat possède une ébauche de métadonnées modifiable, qui peut être vide, remplie à partir d’une publication en ligne ou à partir des balises des fichiers. La saisie dans l’ébauche vide est une entrée directe, et non une source de métadonnées distincte.
+Chaque candidat possède un brouillon de métadonnées modifiable. Il peut partir vide, être rempli depuis une sortie en ligne, ou être rempli à partir de ce que disent les propres fichiers du dossier. Saisir dans le brouillon vide est une entrée directe, et non une source de métadonnées distincte.
 
-L’ouverture de ** Rechercher en ligne…** ou ** Tags des fichiers…** remplace la carte du haut par le navigateur de cette source sans modifier le brouillon. Appliquerétant un résultat remplace le brouillon et retourne à la carte modifiable. Utilisez le menu de la carte pour trouver une autre version, appliquer des balises de fichier, ou effacer les métadonnées et revenir à un brouillon vide.
+Les commandes **Identifier** de la carte offrent deux façons d’ouvrir la page Identifier, qui diffèrent par ce qu’elles lancent. **Automatique** l’ouvre et demande à chaque fois une nouvelle identification, quoi que le candidat contienne déjà ; une identification déjà en cours est abandonnée au profit de la nouvelle. **Rechercher** ouvre la même page sur sa recherche saisie et ne lance rien. Aucune des deux ne modifie le brouillon ; appliquer un résultat remplace le brouillon et revient à la carte modifiable. Le menu de la carte contient les deux commandes qui réécrivent le brouillon sur place : **Réinitialiser aux métadonnées des fichiers**, qui le remplace par ce que disent les propres fichiers, fiches et nom de dossier du candidat, et **Effacer les métadonnées**, qui le vide. Chacune demande d’abord confirmation, et aucune ne touche aux fichiers du candidat ni à la disposition de ses pistes.
 
-### Rechercher en ligne
+### Identifier
 
-Rechercher en ligne est le seul chemin d'accès qui identifie une version.Il calcule un ID de disque à partir du journal d'extraction ou de la feuille CUE, reconnaît les codes-barres et le texte du catalogue, interroge MusicBrainz et Discogs, et fait correspondre les résultats.
+La page Identifier trouve la sortie que constitue un dossier. Elle lit les indices présents dans le dossier et recherche chacun d’eux :
 
-L’identification automatique emprunte le même parcours. **Source de métadonnées par défaut** choisit **Rechercher en ligne**, **Tags des fichiers** ou **Aucune** pour les nouveaux candidats. **Mode Rechercher en ligne par défaut** choisit **Automatique** ou **Rechercher manuellement**. Automatique lance l’extraction des indices, l’OCR, les requêtes aux fournisseurs et la mise en correspondance dès l’ouverture de Rechercher en ligne ; Rechercher manuellement ne lance aucune de ces opérations. Tags des fichiers et Aucune n’ouvrent pas Rechercher en ligne.
+- **ID de disque.** Une empreinte de la disposition exacte des pistes du CD, calculée depuis le journal de rip ou la fiche CUE. Quand elle correspond, elle identifie l’édition précise du CD.
+- **Code-barres.** Lu sur les scans de pochette du dossier par reconnaissance de texte, ou dans la fiche CUE.
+- **Numéros de catalogue et texte.** Les numéros de catalogue trouvés sur les illustrations et dans les noms de fichiers et de dossiers, utilisés pour affiner les résultats.
 
-### Tags des fichiers
+Les signaux sont recherchés en même temps dans MusicBrainz et Discogs, et les résultats sont recoupés. Chaque signal apparaît sous forme de badge au-dessus des résultats : vous voyez ce qui a été trouvé, d’où cela vient (survolez pour l’origine : TOC du disque, fiche CUE, scan de pochette, nom de dossier), et pouvez désactiver un signal s’il induit en erreur.
 
-Tags des fichiers lit les balises audio intégrées et les métadonnées CUE lorsque la source est ouverte ou configurée par défaut.Regardez l’aperçu, puis sélectionnez ** Appliquer ** pour remplacer le brouillon par cet instantané exact. L’importation échoue avant d’écrire dans la bibliothèque si les fichiers audio candidats ou observés changent après l’aperçu.
+Trois issues :
 
-La carte modifiable montre une puce Tags des fichiers silencieuse après que l'instantané ait été appliqué.Un brouillon rempli uniquement par saisie n'a pas de puce source.
+- **Trouvé.** Les indices concordent sur un seul groupe de sorties. Vous choisissez le pressage exact dans sa liste.
+- **Conflit.** Deux signaux pointent vers des sorties différentes, par exemple l’ID de disque et le code-barres ne concordent pas. bae montre les deux côtés et vous choisissez auquel vous fier, ou ignorez un signal.
+- **Rien trouvé.** Cherchez à la main : artiste et album, numéro de catalogue ou code-barres, dans l’une ou l’autre base de données. Le texte reconnu sur les illustrations est proposé en autocomplétion.
+
+Le navigateur de sources montre ensemble le formulaire de recherche, la progression de l’identification, les signaux et les résultats. Sélectionner un résultat garde cette ligne ouverte avec une progression pendant que bae récupère la sortie complète, puis l’applique au brouillon. La carte obtenue affiche une puce de source MusicBrainz ou Discogs. **Automatique** sur la carte relance l’identification depuis zéro ; **Rechercher** revient à la recherche saisie, avec ce qui a déjà été trouvé toujours là.
+
+L’identification automatique emprunte ce même chemin. Quand un candidat est ajouté, son brouillon est créé à partir de ses fichiers, de ses fiches et du nom de son dossier. Le réglage **Identifier automatiquement** de Réglages, Importer lance l’identification pour chaque candidat qui n’a pas de résultat pour les fichiers qu’il contient à ce moment-là ; quand il est désactivé, vous lancez chaque identification vous-même. Un brouillon prérempli est un point de départ, pas une réponse : il n’empêche donc pas une identification.
+
+### Métadonnées des fichiers
+
+Les métadonnées des fichiers sont lues par le préremplissage quand un candidat est ajouté, puis à chaque fois que **Réinitialiser aux métadonnées des fichiers** est choisi. Dans les deux cas, le brouillon est remplacé par cette lecture exacte (balises audio intégrées, métadonnées CUE et propre nom du dossier) et la carte se redessine à partir d’elle. L’importation échoue avant d’écrire dans la bibliothèque si le candidat ou ses fichiers audio ont changé après la lecture.
+
+La carte modifiable affiche une discrète puce Métadonnées des fichiers tant que le brouillon contient cette lecture. Un brouillon rempli uniquement par saisie n’a pas de puce de source.
 
 ## Confirmer et importer
 
 Le volet de confirmation montre tout ce que l’importation écrira :
 
-- ** Couverture.** Choisie parmi les illustrations des bases de données, les images de votre dossier ou les illustrations intégrées dans les fichiers. Faites glisser une image de la galerie de candidats sur le carré de la couverture, ou modifiez-la ultérieurement.
-- **Métadonnées.** Album, artiste, année, label, numéro de catalogue, pays, code-barres et chaque piste : tout est modifiable ici avant l’enregistrement.
+- **Pochette.** Choisie parmi les illustrations des bases de données, les images de votre dossier ou les illustrations intégrées aux fichiers. Faites glisser une image de la galerie du candidat sur le carré de la pochette, ou changez-la plus tard.
+- **Métadonnées.** Album, artiste, année, label, numéro de catalogue, pays, code-barres et chaque piste : tout est modifiable ici même avant que quoi que ce soit soit enregistré.
 - **Stockage.** Si un emplacement cloud est connecté, choisissez **Cloud** pour y envoyer la sortie, et **Épinglé** pour garder aussi ses fichiers sur cet appareil. Sinon, la sortie est locale : ses informations se synchronisent avec vos autres appareils, et son audio reste sur celui-ci. Consultez [Stockage et hors ligne](/fr/guide/storage).
 
 L’importation s’exécute en arrière-plan : bae vérifie que chaque piste se décode correctement, mesure le niveau sonore de l’album et de chaque piste, enregistre la sortie et, pour les importations vers le cloud, lance l’envoi. La liste des candidats passe au dossier suivant, et la sortie est lisible immédiatement.
 
 ## Sources de données
 
-**MusicBrainz** n’a besoin ni de compte ni de clé. **Discogs** nécessite votre propre jeton d’API gratuit ; collez-le dans Réglages, et bae vous indique s’il cesse de fonctionner. Sans jeton, la recherche Discogs et les métadonnées provenant de Discogs sont indisponibles, et tout le reste fonctionne. Les deux services limitent leur débit ; bae espace ses requêtes pour rester dans les limites.
+**MusicBrainz** n’a besoin ni de compte ni de clé. **Discogs** nécessite votre propre jeton d’API gratuit ; collez-le dans Réglages, Importer, et bae vous indique s’il cesse de fonctionner. Sans jeton, la recherche Discogs et les métadonnées provenant de Discogs sont indisponibles, et tout le reste fonctionne. Les deux services limitent leur débit ; bae espace ses requêtes pour rester dans les limites.

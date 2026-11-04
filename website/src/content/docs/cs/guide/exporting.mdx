@@ -7,19 +7,19 @@ description: Získejte hudbu ven ve tvaru, který potřebujete
 
 ## Dva exporty
 
-- **Export stopy**: klikněte pravým tlačítkem na stopu, **Save As**, vyberte formát, hotovo.
-- **Export vydání**: z nabídky alba nebo ze správce úložiště exportuje celé vydání do složky. Běží ve frontě s průběhem, pozastavením a opakováním.
+- **Export stopy**: klikněte pravým tlačítkem na stopu, **Uložit jako…**, vyberte formát, hotovo.
+- **Export vydání**: **Export…** v nabídce alba nebo Správce úložiště exportuje celé vydání do složky. Běží ve frontě s průběhem, pozastavením a opakováním.
 
 Původní soubory se exportují tak, jak jsou. Všechno ostatní se při výstupu kóduje.
 
 ## Předvolby
 
-Exportní formáty jsou předvolby, které jednou definujete v Settings: FLAC, MP3, Opus, WAV nebo AIFF, s parametry kodeku (bitová hloubka pro bezeztrátové formáty, datový tok pro ztrátové) a šablonou názvu souboru postavenou z tokenů jako title, artist, album, year a track number. Nastavte výchozí předvolbu pro stopy a jednu pro vydání a zvolte, zda se exporty vydání vždy ptají na cíl, nebo vždy používají pevnou složku.
+Exportní formáty jsou předvolby, které jednou definujete v Nastavení, Formáty: FLAC, MP3, Opus, WAV nebo AIFF, s parametry kodeku (bitová hloubka pro bezeztrátové formáty, datový tok pro ztrátové) a šablonou názvu souboru postavenou z tokenů jako title, artist, album, year a track number. Nastavte výchozí předvolbu pro stopy a jednu pro vydání a zvolte, zda se exporty vydání vždy ptají na cíl, nebo vždy používají pevnou složku.
 
 ## Pregapy v exportech
 
-Ripy CD s pregapy při exportu kladou skutečnou otázku: kam patří skrytý zvuk? Každá předvolba vybírá pravidlo:
+Ripy CD s pregapy při exportu kladou skutečnou otázku: kam patří skrytý zvuk? **Pregap** každé předvolby vybírá pravidlo:
 
-- **Připojit k předchozí stopě**, běžná konvence, s volbou, zda se zvuk skrytý před první stopou ponechá na začátku první stopy, nebo zahodí.
-- **Vyloučit** pregapy celé: čisté hranice stop, skrytý zvuk vynechán.
-- **Jeden soubor s CUE**: disk jako jeden zvukový soubor plus CUE sheet, s přesným zachováním původního rozložení.
+- **Připojit kromě HTOA** a **Připojit včetně HTOA** přidají každý pregap na konec předchozí stopy, což je běžná konvence; liší se v tom, zda se zvuk skrytý před první stopou zahodí, nebo ponechá na začátku první stopy.
+- **Vyloučit** pregapy úplně zahodí: čisté hranice stop, skrytý zvuk vynechán.
+- **Jeden soubor + CUE**: disk jako jeden zvukový soubor plus CUE sheet, s přesným zachováním původního rozložení.

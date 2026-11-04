@@ -7,15 +7,15 @@ Non esiste un account bae. Ogni persona di una libreria ha le proprie chiavi, ch
 
 Due porte diverse, per due situazioni diverse:
 
-- **Ripristino**: il tuo nuovo dispositivo, o un dispositivo reinstallato, entra con il tuo codice di ripristino. Nessun altro dispositivo lo approva: il codice contiene le tue chiavi, quindi dimostra già che il dispositivo è tuo.
+- **Aggiunta di un dispositivo**: il tuo nuovo dispositivo, o un dispositivo reinstallato, entra con il tuo codice di recupero. Nessun altro dispositivo lo approva: il codice contiene le tue chiavi, quindi dimostra già che il dispositivo è tuo.
 - **Unione**: un'altra persona entra con un invito di un amministratore, che approva la sua richiesta.
 
 ## Aggiungere un tuo dispositivo
 
-Sul nuovo dispositivo, scegli **Ripristina dal cloud** e dagli il tuo codice di ripristino in uno di tre modi:
+Su un nuovo Mac, scegli **Aggiungi dispositivo**; su un telefono Android, **Scansiona un codice** o **Inserisci un codice**. Dagli il tuo codice di recupero in uno di tre modi:
 
-- **Scansiona** il codice QR che uno dei tuoi altri dispositivi mostra in **Mostra codice di ripristino...**, in Impostazioni, Libreria.
-- **Sceglilo** dal portachiavi iCloud, sui dispositivi Apple: bae elenca i codici di ripristino che i tuoi altri dispositivi vi hanno salvato.
+- **Scansiona** il codice QR che uno dei tuoi altri dispositivi mostra in **Aggiungi dispositivo…**, in Impostazioni, Libreria.
+- **Sceglilo** dal portachiavi iCloud, sui dispositivi Apple: bae elenca i codici di recupero che i tuoi altri dispositivi vi hanno salvato.
 - **Incollalo** o digitalo.
 
 Accedi al provider di archiviazione quando richiesto. Su S3 il dispositivo ha bisogno anche della tua chiave di accesso: il codice QR la porta accanto al codice, quindi basta la scansione, mentre un codice digitato chiede la chiave. Poi il nuovo dispositivo scarica la libreria e inizia a sincronizzare.
@@ -24,9 +24,9 @@ Finché non ha caricato la libreria, il dispositivo mostra dove è conservata in
 
 ## Invitare una persona
 
-Un amministratore apre Impostazioni, Libreria, **Invita una persona...**, sceglie un ruolo e inserisce l'e-mail dell'account della persona; su S3, invece, una chiave di accesso creata per lei. bae condivide la cartella della libreria con quell'account e mostra un invito come codice QR.
+Un amministratore apre Impostazioni, Libreria, **Invita una persona…**, inserisce il nome della persona, il ruolo e l'e-mail del suo account (su S3, invece, una chiave di accesso creata per lei) e sceglie **Di persona** o **Invia**. bae condivide la cartella della libreria con quell'account e mostra l'invito come codice QR.
 
-Sul suo dispositivo, la persona sceglie **Unisciti a una libreria**, scansiona o incolla l'invito, digita il suo nome e accede al proprio account. La richiesta compare sul dispositivo dell'amministratore in **In attesa di unirsi**, e l'amministratore la approva o la rifiuta. Una volta approvata, il nuovo dispositivo scarica la libreria e ogni dispositivo mostra la nuova persona per nome. Un invito scade entro un giorno, e solo il dispositivo che l'ha creato può approvarne la richiesta. Dettagli in [Identità e appartenenza](/it/reference/membership).
+Sul suo dispositivo, la persona sceglie **Unisciti a una libreria** (su un telefono Android, **Scansiona un codice** o **Inserisci un codice**), scansiona o incolla l'invito e accede al proprio account. Un invito dato di persona la fa entrare appena arriva la sua richiesta. Per un invito inviato, il dispositivo dell'amministratore mostra la richiesta con un numero di conferma, lo stesso che mostra il dispositivo della persona; l'amministratore li confronta e sceglie **Approva** o **Rifiuta**. Una volta approvata, il nuovo dispositivo scarica la libreria e ogni dispositivo mostra la nuova persona per nome. Un invito dato di persona dura un'ora, uno inviato un'ora, un giorno o una settimana, e solo il dispositivo che l'ha creato può approvarne la richiesta. Dettagli in [Identità e appartenenza](/it/reference/membership).
 
 ## Membri e ruoli
 
@@ -38,9 +38,9 @@ Ogni persona può rimuovere i propri dispositivi, e un amministratore può rimuo
 
 Rimuovere una persona, cosa che solo un amministratore può fare, rimuove anche i suoi dispositivi e ciò che teneva privato. Le sue valutazioni, la sua cronologia e le sue playlist condivise con la famiglia restano, attribuite a lei. Le chiavi della libreria vengono sostituite, quindi niente di ciò che viene scritto dopo è leggibile per lei. Ciò che ha già copiato lo conserva: niente può annullare l'invio dei dati.
 
-## Codici di ripristino
+## Codici di recupero
 
-Un codice di ripristino contiene le tue chiavi per una libreria e il luogo in cui è conservata, in una stringa. Non contiene password di archiviazione, accessi né il nome della libreria. **Mostra codice di ripristino...** in Impostazioni, Libreria lo visualizza; conservalo in un posto sicuro, come un gestore di password.
+Un codice di recupero contiene le tue chiavi per una libreria e il luogo in cui è conservata, in una stringa. Non contiene password di archiviazione, accessi né il nome della libreria. **Mostra codice**, sotto **Il tuo codice di recupero** in Impostazioni, Libreria, lo visualizza; conservalo in un posto sicuro, come un gestore di password.
 
 Sulle piattaforme Apple il codice è conservato automaticamente anche nel portachiavi iCloud, così un nuovo Mac o iPhone collegato al tuo Apple Account può sceglierlo da un elenco.
 

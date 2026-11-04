@@ -7,7 +7,7 @@ Most music apps model "an album": one title, one cover, one track list. Real col
 
 ## Albums group releases
 
-In the library, an album with several pressings is one entry. The album page shows a release picker; each release keeps its own track list, cover, year, label, catalog number, and credits. One release is the **primary**: the one the album grid and playback default to. Set any release as primary from the album menu, and pick a different release for listening at any time; bae remembers your choice per album.
+In the library, an album with several pressings is one entry. The album page shows a release picker; each release keeps its own track list, cover, year, label, catalog number, and credits. One release is the **primary**: the one the album grid and playback default to. Set any release as primary with **Set as primary release** in the album menu, and pick a different release for listening at any time; bae remembers your choice per album.
 
 ## What a release knows
 
@@ -18,17 +18,17 @@ Identified releases carry the databases' knowledge, not just track names:
 - Classical structure: composers, works, and their parts, linked to the recordings of them. The library's composer view is built from this; see [Browsing and search](/guide/browsing).
 - Identity: which exact MusicBrainz or Discogs release this is.
 
-What the source said is kept too, as bae read it, so the release can be reset to it later without asking the databases again; a device that never fetched it asks once, when you reset.
+Once applied, these values are the release's own: bae keeps no link back to the source, and edits change them in place.
 
 ## Editing
 
-Metadata is yours to correct. **Edit metadata** on any release opens the same form the import confirmation uses: album title and artist, pressing details, and every track's title, artist, and numbering. **Reset to source** appears when the release was populated from MusicBrainz, Discogs, or file metadata and returns to that stored source. A release entered directly has no source to reset to, so the action is omitted.
+Metadata is yours to correct. **Edit…** in the album menu opens the release editor, the same form the import uses: album title and artist, pressing details, and every track's title, artist, and numbering. **Save** writes your changes; **Cancel** discards them.
 
 Edits live in bae's database only. Your files' embedded tags are never rewritten; the files stay byte-for-byte as imported.
 
-## Re-identify
+## Identify again
 
-If a release was imported as unknown, matched to the wrong pressing, or the database has since improved, **Re-identify** runs the identification flow again on the existing release: same signals, same search tools. After the new match commits, bae asks whether to refresh the metadata from the new source (overwriting your edits) or keep what you have.
+If a release was imported as unknown, matched to the wrong pressing, or the database has since improved, the editor's **Identify** controls run identification again on the existing release: **Automatic** identifies it from its files, and **Search** opens the typed search. Picking a pressing replaces the editor's values at once; **Save** keeps them, and **Cancel** keeps what you had.
 
 ## Covers
 

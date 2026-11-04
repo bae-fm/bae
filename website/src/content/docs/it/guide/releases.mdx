@@ -7,7 +7,7 @@ La maggior parte delle app musicali modella "un album": un titolo, una copertina
 
 ## Gli album raggruppano release
 
-Nella libreria, un album con più stampe è una voce. La pagina dell'album mostra un selettore di release; ogni release mantiene la propria lista tracce, copertina, anno, etichetta, numero di catalogo e crediti. Una release è la **principale**: quella usata per impostazione predefinita nella griglia album e nella riproduzione. Imposta qualunque release come principale dal menu dell'album, e scegli una release diversa per l'ascolto in qualunque momento; bae ricorda la tua scelta per album.
+Nella libreria, un album con più stampe è una voce. La pagina dell'album mostra un selettore di release; ogni release mantiene la propria lista tracce, copertina, anno, etichetta, numero di catalogo e crediti. Una release è la **principale**: quella usata per impostazione predefinita nella griglia album e nella riproduzione. Imposta qualunque release come principale con **Imposta come pubblicazione principale** nel menu dell'album, e scegli una release diversa per l'ascolto in qualunque momento; bae ricorda la tua scelta per album.
 
 ## Cosa sa una release
 
@@ -18,17 +18,17 @@ Le release identificate portano la conoscenza dei database, non solo i nomi dell
 - Struttura classica: compositori, opere e le loro parti, collegate alle loro registrazioni. La vista compositori della libreria è costruita da questo; vedi [Esplorazione e ricerca](/it/guide/browsing).
 - Identità: quale esatta versione MusicBrainz o Discogs è questa.
 
-Anche ciò che ha detto la fonte viene conservato, così come bae lo ha letto, così la release può essere ripristinata a quello più tardi senza chiedere di nuovo ai database; un dispositivo che non l’ha mai recuperata lo chiede una volta, al ripristino.
+Una volta applicati, questi valori appartengono alla release: bae non conserva alcun collegamento alla fonte, e le modifiche li cambiano sul posto.
 
 ## Modifica
 
-** Modifica metadati ** su qualsiasi rilascio apre lo stesso modulo utilizzato per la conferma dell'importazione: titolo dell'album e artista, premendo i dettagli, e il titolo, l'artista e la numerazione di ogni brano. ** Ripristina alla sorgente ** appare quando il rilascio è stato popolato da MusicBrainz, Discogs, o Tag dei file e ritorna a quella sorgente memorizzata.
+I metadati sono tuoi da correggere. **Modifica…** nel menu dell'album apre l'editor della release, lo stesso modulo usato dall'importazione: titolo e artista dell'album, dettagli della stampa, e titolo, artista e numerazione di ogni traccia. **Salva** scrive le tue modifiche; **Annulla** le scarta.
 
 Le modifiche vivono solo nel database di bae. I tag incorporati nei tuoi file non vengono mai riscritti; i file restano byte per byte come importati.
 
-## Re-identificare
+## Identificare di nuovo
 
-Se una release è stata importata come sconosciuta, abbinata alla stampa sbagliata o il database è migliorato da allora, **Re-identifica** esegue di nuovo il flusso di identificazione sulla release esistente: stessi segnali, stessi strumenti di ricerca. Dopo il salvataggio della nuova corrispondenza, bae chiede se aggiornare i metadati dalla nuova fonte (sovrascrivendo le tue modifiche) o mantenere ciò che hai.
+Se una release è stata importata come sconosciuta, abbinata alla stampa sbagliata o il database è migliorato da allora, i controlli **Identifica** dell'editor eseguono di nuovo l'identificazione sulla release esistente: **Automatico** la identifica dai suoi file, e **Cerca** apre la ricerca digitata. Scegliere una stampa sostituisce subito i valori dell'editor; **Salva** li mantiene, e **Annulla** mantiene ciò che avevi.
 
 ## Copertine
 

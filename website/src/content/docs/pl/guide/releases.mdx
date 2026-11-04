@@ -7,7 +7,7 @@ Większość aplikacji muzycznych modeluje „album”: jeden tytuł, jedną ok�
 
 ## Albumy grupują wydania
 
-W bibliotece album z kilkoma tłoczeniami jest jednym wpisem. Strona albumu pokazuje wybór wydania; każde wydanie zachowuje własną listę utworów, okładkę, rok, wytwórnię, numer katalogowy i przypisania. Jedno wydanie jest **primary**: tego domyślnie używa siatka albumów i odtwarzanie. Ustaw dowolne wydanie jako primary z menu albumu i w każdej chwili wybierz inne wydanie do słuchania; bae pamięta wybór dla każdego albumu.
+W bibliotece album z kilkoma tłoczeniami jest jednym wpisem. Strona albumu pokazuje wybór wydania; każde wydanie zachowuje własną listę utworów, okładkę, rok, wytwórnię, numer katalogowy i przypisania. Jedno wydanie jest **główne**: tego domyślnie używa siatka albumów i odtwarzanie. Ustaw dowolne wydanie jako główne poleceniem **Ustaw jako wydanie główne** w menu albumu i w każdej chwili wybierz inne wydanie do słuchania; bae pamięta wybór dla każdego albumu.
 
 ## Co wie wydanie
 
@@ -18,21 +18,21 @@ Zidentyfikowane wydania niosą wiedzę z baz danych, nie tylko nazwy utworów:
 - Struktura klasyczna: kompozytorzy, dzieła i ich części, połączone z nagraniami tych dzieł. Z tego powstaje widok kompozytorów w bibliotece; zobacz [Przeglądanie i wyszukiwanie](/pl/guide/browsing).
 - Tożsamość: która dokładnie wersja MusicBrainz lub Discogs to jest.
 
-To, co podało źródło, też jest zachowywane tak, jak bae to odczytał, więc wydanie można później do tego przywrócić bez ponownego pytania baz; urządzenie, które nigdy go nie pobrało, pyta raz, przy przywracaniu.
+Po zastosowaniu te wartości należą do samego wydania: bae nie trzyma żadnego powiązania ze źródłem, a edycje zmieniają je na miejscu.
 
 ## Edycja
 
-*Edycja metadanych* w dowolnym wydaniu otwiera ten sam formularz, który jest używany do potwierdzenia importu: tytuł albumu i wykonawca, naciśnięcie szczegółów oraz tytuł, wykonawca i numeracja każdego utworu. *Przywróć ze źródła ** pojawia się, gdy wydanie zostało wypełnione z MusicBrainz, Discogs lub Tagi plików i powraca do tego zapisanego źródła. Bezpośrednio wprowadzone wydanie nie ma źródła, do którego można zresetować, więc akcja jest pomijana.
+Metadane możesz poprawiać. **Edytuj…** w menu albumu otwiera edytor wydania, ten sam formularz, którego używa import: tytuł i wykonawca albumu, szczegóły tłoczenia oraz tytuł, wykonawca i numeracja każdego utworu. **Zapisz** zapisuje Twoje zmiany; **Anuluj** je odrzuca.
 
 Edycje żyją tylko w bazie danych bae. Osadzone tagi Twoich plików nigdy nie są przepisywane; pliki zostają bajt w bajt takie, jak przy imporcie.
 
 ## Ponowna identyfikacja
 
-Jeśli wydanie zostało zaimportowane jako nieznane, dopasowane do złego tłoczenia albo baza danych od tego czasu się poprawiła, **Re-identify** uruchamia przepływ identyfikacji ponownie na istniejącym wydaniu: te same sygnały, te same narzędzia wyszukiwania. Po zapisaniu nowego dopasowania bae pyta, czy odświeżyć metadane z nowego źródła (nadpisując Twoje edycje), czy zachować to, co masz.
+Jeśli wydanie zostało zaimportowane jako nieznane, dopasowane do złego tłoczenia albo baza danych od tego czasu się poprawiła, przyciski **Identyfikuj** w edytorze ponownie uruchamiają identyfikację istniejącego wydania: **Automatycznie** identyfikuje je na podstawie jego plików, a **Szukaj** otwiera wpisywane wyszukiwanie. Wybranie tłoczenia od razu zastępuje wartości w edytorze; **Zapisz** je zachowuje, a **Anuluj** zostawia to, co było.
 
 ## Okładki
 
-Każde wydanie ma jedną okładkę wyświetlaną. **Change cover** oferuje grafiki z baz danych i pliki obrazów, które przyszły z wydaniem. bae trzyma własną kopię wybranej okładki, w rozmiarze do wyświetlania, więc oryginalny skan w folderze zostaje nietknięty. Stuknij okładkę gdziekolwiek, aby otworzyć pełną galerię obrazów wydania.
+Każde wydanie ma jedną okładkę wyświetlaną. **Zmień okładkę** oferuje grafiki z baz danych i pliki obrazów, które przyszły z wydaniem. bae trzyma własną kopię wybranej okładki, w rozmiarze do wyświetlania, więc oryginalny skan w folderze zostaje nietknięty. Stuknij okładkę gdziekolwiek, aby otworzyć pełną galerię obrazów wydania.
 
 ## Usuwanie
 

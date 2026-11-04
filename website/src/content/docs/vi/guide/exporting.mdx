@@ -7,19 +7,19 @@ Không khóa người dùng đi theo cả hai chiều: bae không đổi tệp c
 
 ## Hai kiểu xuất
 
-- **Xuất track**: bấm phải vào một track, **Save As**, chọn định dạng, xong.
-- **Xuất bản phát hành**: từ menu album hoặc trình quản lý lưu trữ, xuất toàn bộ một bản phát hành ra một thư mục. Chạy trên hàng đợi có tiến độ, tạm dừng và thử lại.
+- **Xuất track**: bấm phải vào một track, **Save as…**, chọn định dạng, xong.
+- **Xuất bản phát hành**: **Export…** trong menu album, hoặc Storage manager, xuất toàn bộ một bản phát hành ra một thư mục. Chạy trên hàng đợi có tiến độ, tạm dừng và thử lại.
 
 Tệp gốc được xuất nguyên trạng. Mọi thứ khác được mã hóa lại trên đường ra.
 
 ## Thiết lập sẵn
 
-Định dạng xuất là các preset bạn định nghĩa một lần trong Settings: FLAC, MP3, Opus, WAV hoặc AIFF, với tham số của codec (độ sâu bit cho định dạng lossless, bitrate cho định dạng lossy) và mẫu tên tệp dựng từ token như tựa đề, nghệ sĩ, album, năm và số track. Đặt preset mặc định cho track và một preset cho bản phát hành, rồi chọn việc xuất bản phát hành luôn hỏi đích đến hay luôn dùng một thư mục cố định.
+Định dạng xuất là các preset bạn định nghĩa một lần trong Settings, Formats: FLAC, MP3, Opus, WAV hoặc AIFF, với tham số của codec (độ sâu bit cho định dạng lossless, bitrate cho định dạng lossy) và mẫu tên tệp dựng từ token như tựa đề, nghệ sĩ, album, năm và số track. Đặt preset mặc định cho track và một preset cho bản phát hành, rồi chọn việc xuất bản phát hành luôn hỏi đích đến hay luôn dùng một thư mục cố định.
 
 ## Pregap trong bản xuất
 
-Bản rip CD có pregap đặt ra một câu hỏi thực khi xuất: âm thanh ẩn đi đâu? Mỗi preset chọn một chính sách:
+Bản rip CD có pregap đặt ra một câu hỏi thực khi xuất: âm thanh ẩn đi đâu? **Pregap** của mỗi preset chọn một chính sách:
 
-- **Gắn vào track trước**, quy ước thường dùng, kèm lựa chọn giữ âm thanh ẩn trước track một ở đầu track một hay bỏ nó.
-- **Loại trừ** toàn bộ pregap: ranh giới track gọn, âm thanh ẩn bị bỏ.
-- **Một tệp với CUE**: đĩa là một tệp âm thanh cộng một CUE sheet, giữ đúng bố cục gốc.
+- **Append except HTOA** và **Append including HTOA** gắn mỗi pregap vào cuối track trước, quy ước thường dùng; chúng khác nhau ở chỗ âm thanh ẩn trước track một bị bỏ hay được giữ ở đầu track một.
+- **Exclude** bỏ toàn bộ pregap: ranh giới track gọn, âm thanh ẩn bị bỏ.
+- **Single file + CUE**: đĩa là một tệp âm thanh cộng một CUE sheet, giữ đúng bố cục gốc.

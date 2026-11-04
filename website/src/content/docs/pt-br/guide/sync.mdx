@@ -9,9 +9,9 @@ Uma biblioteca, todos os dispositivos, e a única conta envolvida é uma que voc
 
 ## O local na nuvem
 
-O local na nuvem de uma biblioteca é uma localização no seu armazenamento: uma pasta no seu Dropbox ou OneDrive, seu iCloud, ou qualquer bucket compatível com S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, ...). Ele guarda tudo que a biblioteca sincroniza: as mudanças da biblioteca, a arte e o áudio dos lançamentos que você move para a nuvem.
+O local na nuvem de uma biblioteca é uma localização no seu armazenamento: uma pasta no seu Dropbox ou OneDrive, seu iCloud, ou qualquer bucket compatível com S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, …). Ele guarda tudo que a biblioteca sincroniza: as mudanças da biblioteca, a arte e o áudio dos lançamentos que você move para a nuvem.
 
-Configure em Ajustes, Biblioteca, com **Configurar sincronização...**:
+Configure em Configurações, Biblioteca, com **Configurar sincronização…**:
 
 1. Escolha um provedor.
    - **Dropbox** e **OneDrive** entram pelo seu navegador e depois perguntam em qual pasta a biblioteca vive. No Dropbox é uma pasta compartilhada, para que você possa convidar sua casa; se ainda não tiver nenhuma, compartilhe uma no Dropbox e escolha **Procurar novamente**. No OneDrive é qualquer pasta, e você pode criar uma nova ali. O login fica com coven; bae nunca vê os tokens.
@@ -36,8 +36,8 @@ Estado por dispositivo não sincroniza: posição de reprodução, volume, fila 
 
 ## Quando sincroniza
 
-A sincronização roda por conta própria: depois de mudanças, em um temporizador e sob demanda com **Sincronizar agora**. Edições chegam a outros dispositivos segundos depois em condições normais. Dois dispositivos editando ao mesmo tempo ganham onde não colidem: bae mescla edições concorrentes campo por campo, a edição posterior vence um campo que os dois mudaram, e um lançamento excluído permanece excluído mesmo se foi editado em outro lugar no mesmo momento. Nada pede que você resolva um conflito.
+A sincronização roda por conta própria: depois de mudanças, em um temporizador e sob demanda com **Sincronizar agora** no menu Arquivo. Edições chegam a outros dispositivos segundos depois em condições normais. Dois dispositivos editando ao mesmo tempo ganham onde não colidem: bae mescla edições concorrentes campo por campo, a edição posterior vence um campo que os dois mudaram, e um lançamento excluído permanece excluído mesmo se foi editado em outro lugar no mesmo momento. Nada pede que você resolva um conflito.
 
 ## Quando falha
 
-Falhas de sincronização não interrompem a biblioteca; você continua navegando, reproduzindo e importando localmente enquanto bae tenta novamente. Ajustes, Biblioteca mostra uma única linha para a sincronização: **Sincronizado**, ou quantos itens estão aguardando, como **Itens em espera: 3**. Abra-a para ver cada item em palavras simples, com a ação que você pode tomar: **Entrar** quando o provedor quer que você entre de novo, devolver ao lugar um arquivo que foi movido antes do upload, **Tentar novamente**, **Reconectar**, **Retomar envios** ou **Atualizar aplicativo**. Uma espera em que você não pode ajudar, como outro dispositivo voltar a ficar online, não oferece nada. Esta lista é o único lugar para olhar; uploads também podem ser pausados e inspecionados no [Gerenciador de armazenamento](/pt-br/guide/storage#o-gerenciador-de-armazenamento).
+Falhas de sincronização não interrompem a biblioteca; você continua navegando, reproduzindo e importando localmente enquanto bae tenta novamente. Configurações, Biblioteca mostra uma única linha para a sincronização: **Sincronizado**, ou quantos itens estão aguardando, como **Itens em espera: 3**. Abra-a para ver cada item em palavras simples, com a ação que você pode tomar: **Entrar** quando o provedor quer que você entre de novo, **Restaurar arquivo de origem** para um arquivo que foi movido antes do upload, **Tentar novamente**, **Reconectar**, **Retomar envios** ou **Atualizar aplicativo**. Uma espera em que você não pode ajudar, como outro dispositivo voltar a ficar online, não oferece nada. Esta lista é o único lugar para olhar; uploads também podem ser pausados e inspecionados no [Gerenciador de armazenamento](/pt-br/guide/storage#o-gerenciador-de-armazenamento).

@@ -1,50 +1,64 @@
 ---
 title: Import
-description: Wybierz sposób, w jaki każdy folder dostarcza metadane importu
+description: Wybierz, skąd każdy folder bierze metadane swojego importu
 ---
 
-Folder zawiera pliki audio i inne do zaimportowania. Ty decydujesz, czy edytowalne metadane rozpoczynają się od wersji online, własnych tagów plików, czy też od pustego formularza.
+Folder dostarcza audio i pozostałe pliki do importu. Ty decydujesz, czy jego edytowalne metadane zaczynają się od wydania online, od własnych metadanych folderu, czy od pustego formularza.
 
 Import odbywa się na komputerze (macOS, Windows). Twoje pliki są czytane, nigdy zmieniane: bae niczego nie przenosi, nie zmienia nazw, nie przepisuje tagów ani nie koduje ponownie. Zobacz [Przechowywanie i offline](/pl/guide/storage), aby dowiedzieć się, gdzie pliki mieszkają po imporcie.
 
 ## Obserwowane foldery
 
-Przełącz się do sekcji **Import** i dodaj folder: wybierz go, przeciągnij na okno albo naciśnij <kbd>⌘I</kbd>. Od tego momentu bae obserwuje folder. Nowa muzyka wrzucona do niego pojawia się sama jako nowy kandydat; nie skanujesz ponownie ręcznie. Foldery, które nadal się pobierają, są ignorowane do zakończenia pobierania.
+Przełącz się do sekcji **Importuj** i dodaj folder: wybierz go, przeciągnij na okno albo naciśnij <kbd>⌘I</kbd>. Od tego momentu bae obserwuje folder. Nowa muzyka wrzucona do niego pojawia się sama jako nowi kandydaci; nie skanujesz ponownie ręcznie. Foldery, które nadal się pobierają, są ignorowane do zakończenia pobierania.
 
 Skan rozpoznaje wydania w kształtach, jakie ripy rzeczywiście przyjmują:
 
 | Układ | Jak wygląda |
 |--------|-------------------|
-| Plik na utwór | `01 - Utwór.flac`, `02 - Utwór.flac`, ... |
+| Plik na utwór | `01 - Utwór.flac`, `02 - Utwór.flac`, … |
 | CUE + obraz | `album.cue` + `album.flac`, jeden plik dla całej płyty |
 | Wiele płyt | podfoldery `CD1/`, `CD2/`, wewnątrz dowolny z tych kształtów |
 | Kolekcje | folder folderów, każdy jako własne wydanie |
 
 bae importuje formaty, które odtwarza: FLAC, MP3, APE, ALAC i AAC w `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack oraz DSD (`.dsf`/`.dff`). Grafiki i dokumenty (arkusze CUE, logi ripu, pliki tekstowe) w folderze są rozpoznawane i trzymane z wydaniem.
 
-## Wypełnij szkic metadanych
+## Wypełnianie szkicu metadanych
 
-Każdy kandydat posiada jeden edytowalny szkic metadanych, który może być pusty, wypełniony z publikacji online lub z tagów plików. Wpisywanie do pustego szkicu jest bezpośrednim wpisem, a nie oddzielnym źródłem metadanych.
+Każdy kandydat ma jeden edytowalny szkic metadanych. Może zacząć się pusty, zostać wypełniony z wydania online albo tym, co mówią własne pliki folderu. Wpisywanie w pusty szkic to bezpośrednie wprowadzanie, a nie osobne źródło metadanych.
 
-Otwieranie ** Znajdź online…** lub ** Tagi plików…** zamienia górną kartę na przeglądarkę tego źródła bez zmiany szkicu. Zastosuji wynik zastępuje szkic i powraca do edytowanej karty. Użyj menu karty, aby znaleźć inną wersję, zastosować tagi plików lub wyczyścić metadane i powrócić do pustego szkicu. Wyczyszczenie metadanych zachowuje pliki kandydata i układ ścieżki.
+Przyciski **Identyfikuj** na karcie dają dwie drogi do strony Identyfikuj, różniące się tym, co uruchamiają. **Automatycznie** otwiera ją i za każdym razem zleca nową identyfikację, niezależnie od tego, co kandydat już zawiera; trwająca identyfikacja zostaje porzucona na rzecz nowej. **Szukaj** otwiera tę samą stronę na wpisywanym wyszukiwaniu i niczego nie uruchamia. Żadna z nich nie zmienia szkicu; zastosowanie wyniku zastępuje szkic i wraca do edytowalnej karty. Menu karty zawiera dwa polecenia, które przepisują szkic na miejscu: **Przywróć z metadanych plików**, które zastępuje go tym, co mówią własne pliki, arkusze i nazwa folderu kandydata, oraz **Wyczyść metadane**, które go opróżnia. Każde najpierw pyta o potwierdzenie i żadne nie dotyka plików kandydata ani układu jego utworów.
 
-### Znajdź online
+### Identyfikuj
 
-Znajdź online jest jedyną ścieżką, która identyfikuje wydanie. Oblicza DiscID z dziennika rip lub arkusza CUE, rozpoznaje kody kreskowe i tekst katalogu, zapytania MusicBrainz i Discogs i dopasowuje wyniki.
+Strona Identyfikuj ustala, jakim wydaniem jest folder. Odczytuje wskazówki z folderu i sprawdza każdą z nich:
 
-Automatyczna identyfikacja korzysta z tej samej ścieżki. **Domyślne źródło metadanych** wybiera dla nowych kandydatów **Znajdź online**, **Tagi plików** albo **Brak**. **Domyślny tryb Znajdź online** wybiera **Automatycznie** albo **Wyszukaj ręcznie**. Tryb automatyczny uruchamia przy otwarciu Znajdź online pozyskiwanie dowodów, OCR, zapytania do dostawców i dopasowywanie; Wyszukaj ręcznie nie uruchamia żadnej z tych operacji. Tagi plików i Brak nie otwierają Znajdź online.
+- **Disc ID.** Odcisk dokładnego układu utworów płyty CD, obliczony z logu ripu albo arkusza CUE. Gdy pasuje, identyfikuje dokładną edycję płyty.
+- **Kod kreskowy.** Odczytany ze skanów okładki w folderze za pomocą rozpoznawania tekstu albo z arkusza CUE.
+- **Numery katalogowe i tekst.** Numery katalogowe znalezione na grafikach oraz w nazwach plików i folderów, używane do zawężania wyników.
 
-### Tagi plików
+Sygnały są sprawdzane w MusicBrainz i Discogs jednocześnie, a wyniki są ze sobą porównywane. Każdy sygnał pojawia się jako plakietka nad wynikami: widzisz, co znaleziono, skąd pochodzi (najedź kursorem, aby zobaczyć źródło: TOC płyty, arkusz CUE, skan okładki, nazwa folderu), i możesz wyłączyć pojedyncze sygnały, jeśli któryś wprowadza w błąd.
 
-Tagi plików odczytuje osadzone znaczniki audio i metadane CUE, gdy źródło jest otwarte lub skonfigurowane jako domyślne. Przejrzyj podgląd, a następnie wybierz ** Zastosuj **, aby zastąpić wersję roboczą dokładną migawką. Importowanie nie powiedzie się przed zapisaniem do biblioteki, jeśli kandydujące lub obserwowane pliki audio zmienią się po podglądzie.
+Trzy wyniki:
 
-Edytowalna karta pokazuje cichy układ Tagi plików po zastosowaniu migawki. Szkic wypełniony tylko przez wpisanie nie ma układu źródłowego. Tagi plików
+- **Znaleziono.** Wskazówki zgadzają się co do jednej grupy wydań. Wybierasz dokładne tłoczenie z jej listy.
+- **Konflikt.** Dwa sygnały wskazują różne wydania, na przykład Disc ID i kod kreskowy się nie zgadzają. bae pokazuje obie strony, a Ty wybierasz, której zaufać, albo ignorujesz sygnał.
+- **Nic nie znaleziono.** Szukaj ręcznie: wykonawca i album, numer katalogowy albo kod kreskowy, w dowolnej z dwóch baz. Tekst rozpoznany z grafik jest podpowiadany jako autouzupełnianie.
+
+Przeglądarka źródeł pokazuje razem formularz wyszukiwania, postęp identyfikacji, sygnały i wyniki. Wybranie wyniku zostawia ten wiersz otwarty z postępem, gdy bae pobiera pełne wydanie, a potem stosuje je do szkicu. Powstała karta pokazuje znacznik źródła MusicBrainz albo Discogs. **Automatycznie** na karcie uruchamia identyfikację od zera; **Szukaj** wraca do wpisywanego wyszukiwania z tym, co już znaleziono.
+
+Automatyczna identyfikacja korzysta z tej samej drogi. Gdy kandydat zostaje dodany, jego szkic powstaje z jego plików, arkuszy i nazwy folderu. Ustawienie **Identyfikuj automatycznie** w Ustawienia, Importuj uruchamia identyfikację dla każdego kandydata, który nie ma wyniku dla plików, jakie ma w tej chwili; gdy jest wyłączone, każdą identyfikację uruchamiasz sam. Wstępnie wypełniony szkic to punkt wyjścia, a nie odpowiedź, więc nie blokuje identyfikacji.
+
+### Metadane plików
+
+Metadane plików są odczytywane, gdy wstępne wypełnianie czyta je przy dodaniu kandydata, i ponownie za każdym razem, gdy wybrane zostanie **Przywróć z metadanych plików**. W obu przypadkach szkic zostaje zastąpiony dokładnie tym odczytem (osadzone tagi audio, metadane CUE i własna nazwa folderu), a karta jest na jego podstawie rysowana od nowa. Import kończy się błędem przed zapisem do biblioteki, jeśli kandydat albo jego pliki audio zmieniły się po odczycie.
+
+Edytowalna karta pokazuje dyskretny znacznik Metadane plików, dopóki szkic zawiera ten odczyt. Szkic wypełniony tylko przez wpisywanie nie ma znacznika źródła.
 
 ## Potwierdzenie i import
 
 Panel potwierdzenia pokazuje wszystko, co import zapisze:
 
-- ** Okładka.** Wybrana z grafiki baz danych, obrazów w folderze lub grafiki osadzonej w plikach. Przeciągnij obraz z galerii kandydatów na kwadrat okładki lub zmień go później.
+- **Okładka.** Wybrana z grafik baz danych, obrazów w folderze albo grafik osadzonych w plikach. Przeciągnij obraz z galerii kandydata na kwadrat okładki albo zmień ją później.
 - **Metadane.** Album, wykonawca, rok, wytwórnia, numer katalogowy, kraj, kod kreskowy i każdy utwór: wszystko edytowalne tutaj, zanim cokolwiek zostanie zapisane.
 - **Przechowywanie.** Jeśli podłączono dom w chmurze, wybierz **Chmura**, aby wysłać tam wydanie, i **Przypięto**, aby dodatkowo trzymać jego pliki na tym urządzeniu. W przeciwnym razie wydanie jest lokalne: jego dane synchronizują się z Twoimi innymi urządzeniami, a audio zostaje na tym. Zobacz [Przechowywanie i offline](/pl/guide/storage).
 
@@ -52,4 +66,4 @@ Import działa w tle: bae sprawdza, że każdy utwór dekoduje się do końca, m
 
 ## Źródła danych
 
-**MusicBrainz** nie wymaga konta ani klucza. **Discogs** wymaga Twojego własnego darmowego tokenu API; wklej go w Settings, a bae powie Ci, jeśli przestanie działać. Bez tokenu wyszukiwanie Discogs i metadane pochodzące z Discogs są niedostępne, a wszystko inne działa. Obie usługi mają limity żądań; bae rozkłada żądania tak, aby mieścić się w limitach.
+**MusicBrainz** nie wymaga konta ani klucza. **Discogs** wymaga Twojego własnego darmowego tokenu API; wklej go w Ustawienia, Importuj, a bae powie Ci, jeśli przestanie działać. Bez tokenu wyszukiwanie Discogs i metadane pochodzące z Discogs są niedostępne, a wszystko inne działa. Obie usługi mają limity żądań; bae rozkłada żądania tak, aby mieścić się w limitach.

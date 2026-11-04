@@ -3,7 +3,7 @@ title: Nhập
 description: Chọn cách mỗi thư mục cung cấp siêu dữ liệu nhập của nó
 ---
 
-Một thư mục cung cấp âm thanh và các tệp khác để nhập. Bạn chọn xem siêu dữ liệu có thể chỉnh sửa của nó bắt đầu bằng bản phát hành trực tuyến, thẻ riêng của tệp hay biểu mẫu trống.
+Một thư mục cung cấp âm thanh và các tệp khác cho một lượt nhập. Bạn chọn xem siêu dữ liệu có thể chỉnh sửa của nó bắt đầu từ một bản phát hành trực tuyến, từ siêu dữ liệu riêng của thư mục, hay từ một biểu mẫu trống.
 
 Nhập diễn ra trên desktop (macOS, Windows). Tệp của bạn được đọc, không bao giờ bị thay đổi: bae không di chuyển, đổi tên, gắn lại tag hay mã hóa lại bất cứ thứ gì. Xem [Lưu trữ và ngoại tuyến](/vi/guide/storage) để biết tệp nằm ở đâu sau khi nhập.
 
@@ -15,36 +15,50 @@ Một lượt quét nhận ra bản phát hành theo các hình dạng mà bản
 
 | Bố cục | Trông như thế nào |
 |--------|-------------------|
-| Một tệp mỗi track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| Một tệp mỗi track | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + ảnh đĩa | `album.cue` + `album.flac`, một tệp cho cả đĩa |
 | Nhiều đĩa | thư mục con `CD1/`, `CD2/`, bên trong là một trong hai hình dạng |
 | Bộ sưu tập | một thư mục chứa nhiều thư mục, mỗi thư mục là một bản phát hành riêng |
 
 bae nhập các định dạng nó phát: FLAC, MP3, APE, ALAC và AAC trong `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack và DSD (`.dsf`/`.dff`). Artwork và tài liệu (CUE sheet, log rip, tệp văn bản) trong thư mục được nhận ra và giữ cùng bản phát hành.
 
-## Điền siêu dữ liệu
+## Điền bản thảo siêu dữ liệu
 
-Mỗi ứng cử viên sở hữu một bản thảo siêu dữ liệu có thể chỉnh sửa. Nó có thể bắt đầu trống, được điền từ một bản phát hành trực tuyến, hoặc được điền từ các thẻ của tập tin. Viết vào bản thảo trống là nhập trực tiếp, không phải là một nguồn siêu dữ liệu riêng biệt.
+Mỗi ứng viên sở hữu một bản thảo siêu dữ liệu có thể chỉnh sửa. Nó có thể bắt đầu trống, được điền từ một bản phát hành trực tuyến, hoặc được điền từ những gì chính các tệp của thư mục cho biết. Gõ vào bản thảo trống là nhập trực tiếp, không phải một nguồn siêu dữ liệu riêng.
 
-Mở ** Tìm trên mạng…** hoặc ** Thẻ của tệp…** sẽ thay thế thẻ trên cùng bằng trình duyệt của nguồn mà không thay đổi bản thảo. Áp dụng sẽ thay thế bản thảo và quay trở lại thẻ có thể chỉnh sửa. Dùng thực đơn thẻ để tìm một bản phát hành khác, áp dụng thẻ tập tin, hoặc xóa siêu dữ liệu và quay trở lại bản thảo trống. Xoá siêu dữ liệu sẽ giữ các tập tin ứng cử viên và bố cục bài hát.
+Các điều khiển **Identify** của thẻ đưa ra hai cách vào trang Identify, khác nhau ở việc chúng khởi động gì. **Automatic** mở trang và yêu cầu một lượt nhận diện mới mỗi lần, bất kể ứng viên đang có gì — lượt đang chạy sẽ bị bỏ để nhường cho lượt mới. **Search** mở cùng trang đó ở phần tìm kiếm gõ tay và không khởi động gì. Cả hai đều không thay đổi bản thảo; áp dụng một kết quả sẽ thay bản thảo và quay lại thẻ có thể chỉnh sửa. Menu của thẻ chứa hai lệnh ghi lại bản thảo ngay tại chỗ: **Reset to file metadata**, thay nó bằng những gì chính các tệp, sheet và tên thư mục của ứng viên cho biết, và **Clear metadata**, làm trống nó. Mỗi lệnh đều hỏi trước, và không lệnh nào chạm vào tệp hay bố cục track của ứng viên.
 
-### Tìm trên mạng
+### Trang Identify
 
-Tìm trên mạng là con đường duy nhất xác định một bản phát hành. Nó tính toán một Disc ID từ bản ghi rip hoặc trang CUE, nhận dạng mã vạch và văn bản danh mục, truy vấn MusicBrainz và Discogs, và kết hợp kết quả.
+Trang Identify tìm ra một thư mục là bản phát hành nào. Nó đọc bằng chứng từ thư mục và tra cứu từng mẩu:
 
-Nhận dạng tự động dùng cùng đường dẫn này. **Nguồn siêu dữ liệu mặc định** chọn **Tìm trên mạng**, **Thẻ của tệp** hoặc **Không có** cho ứng viên mới phát hiện. **Chế độ Tìm trên mạng mặc định** chọn **Tự động** hoặc **Tìm kiếm thủ công**. Tự động bắt đầu trích xuất bằng chứng, OCR, truy vấn nhà cung cấp và đối chiếu khi Tìm trên mạng mở; Tìm kiếm thủ công không bắt đầu công việc nào trong số đó. Thẻ của tệp và Không có không mở Tìm trên mạng.
+- **Disc ID.** Dấu vân tay của bố cục track chính xác trên CD, tính từ log rip hoặc CUE sheet. Khi khớp, nó xác định đúng ấn bản CD.
+- **Mã vạch.** Đọc từ ảnh quét bìa trong thư mục bằng nhận dạng văn bản, hoặc từ CUE sheet.
+- **Số catalog và văn bản.** Số catalog tìm thấy trên artwork và trong tên tệp, tên thư mục, dùng để thu hẹp kết quả.
 
-### Thẻ của tệp
+Các tín hiệu được tra cứu trên MusicBrainz và Discogs cùng lúc, và kết quả được đối chiếu chéo. Mỗi tín hiệu hiện thành một huy hiệu phía trên kết quả: bạn thấy được những gì đã tìm thấy, nó đến từ đâu (rê chuột để xem nguồn gốc: TOC của đĩa, CUE sheet, ảnh quét bìa, tên thư mục), và có thể tắt từng tín hiệu nếu một tín hiệu gây nhầm lẫn.
 
-Thẻ của tệp đọc thẻ âm thanh gắn vào và siêu dữ liệu CUE khi nguồn được mở hoặc cấu hình như mặc định. Xem thử xem trước, sau đó chọn ** Áp dụng ** để thay thế bản thảo với chính xác bức ảnh chụp đó. Nhập nhập thất bại trước khi ghi vào thư viện nếu các tập tin âm thanh ứng cử hoặc quan sát thay đổi sau khi xem trước.
+Ba kết quả:
 
-Thẻ có thể chỉnh sửa hiển thị một con chíp Thẻ của tệp im lặng sau khi áp dụng bức ảnh chụp. Một bản thảo chỉ được điền bằng cách gõ không có con chíp nguồn.
+- **Tìm thấy.** Bằng chứng thống nhất về một nhóm bản phát hành. Bạn chọn đúng lần phát hành từ danh sách của nhóm.
+- **Xung đột.** Hai tín hiệu chỉ tới các bản phát hành khác nhau, chẳng hạn Disc ID và mã vạch không khớp. bae hiển thị cả hai phía và bạn chọn tin bên nào, hoặc bỏ qua một tín hiệu.
+- **Không tìm thấy.** Tìm kiếm bằng tay: nghệ sĩ và album, số catalog, hoặc mã vạch, trên một trong hai cơ sở dữ liệu. Văn bản nhận dạng từ artwork được đưa ra làm gợi ý tự hoàn thành.
+
+Trình duyệt nguồn hiển thị biểu mẫu tìm kiếm, tiến độ nhận diện, các tín hiệu và kết quả cùng nhau. Chọn một kết quả sẽ giữ hàng đó mở kèm tiến độ trong khi bae tải toàn bộ bản phát hành, rồi áp dụng nó vào bản thảo. Thẻ kết quả hiển thị chip nguồn MusicBrainz hoặc Discogs. **Automatic** trên thẻ chạy lại nhận diện từ đầu; **Search** quay về phần tìm kiếm gõ tay, với những gì đã tìm thấy vẫn còn đó.
+
+Nhận diện tự động dùng cùng con đường này. Khi một ứng viên được thêm, bản thảo của nó được tạo từ các tệp, sheet và tên thư mục của nó. Cài đặt **Identify automatically** trong Settings, Import chạy nhận diện cho mọi ứng viên chưa có kết quả cho đúng các tệp nó đang có; khi tắt cài đặt này, bạn tự khởi động từng lượt. Bản thảo điền sẵn là điểm xuất phát, không phải câu trả lời, nên nó không ngăn một lượt chạy.
+
+### Siêu dữ liệu của tệp
+
+Siêu dữ liệu của tệp được đọc khi bước điền sẵn đọc nó lúc ứng viên được thêm, và đọc lại mỗi khi chọn **Reset to file metadata**. Dù theo cách nào, bản thảo cũng được thay bằng đúng lần đọc đó — tag âm thanh nhúng, siêu dữ liệu CUE và chính tên thư mục — và thẻ được vẽ lại theo đó. Lượt nhập thất bại trước khi ghi vào thư viện nếu ứng viên hoặc các tệp âm thanh của nó thay đổi sau lần đọc.
+
+Thẻ có thể chỉnh sửa hiển thị một chip File metadata kín đáo khi lần đọc đó là thứ bản thảo đang giữ. Bản thảo chỉ được điền bằng cách gõ thì không có chip nguồn.
 
 ## Xác nhận và nhập
 
 Khung xác nhận hiển thị mọi thứ lượt nhập sẽ ghi:
 
-- ** Mặt bìa. ** Được chọn từ hình ảnh của cơ sở dữ liệu, hình ảnh trong thư mục của bạn, hoặc hình ảnh được nhúng trong các tập tin. Kéo một hình ảnh từ phòng tranh ứng cử lên mặt bìa hình vuông, hoặc thay đổi nó sau này.
+- **Bìa.** Được chọn từ artwork của cơ sở dữ liệu, ảnh trong thư mục của bạn, hoặc artwork nhúng trong tệp. Kéo một ảnh từ bộ sưu tập ảnh của ứng viên thả lên ô bìa, hoặc đổi nó sau.
 - **Siêu dữ liệu.** Album, nghệ sĩ, năm, hãng đĩa, số catalog, quốc gia, mã vạch và mọi track: tất cả đều sửa được ngay tại đây trước khi bất cứ thứ gì được lưu.
 - **Lưu trữ.** Nếu đã kết nối nhà trên đám mây, chọn **Cloud** để tải bản phát hành lên đó, và **Pinned** để giữ thêm các tệp của nó trên thiết bị này. Nếu không, bản phát hành là cục bộ: thông tin của nó đồng bộ tới các thiết bị khác của bạn, còn âm thanh ở lại thiết bị này. Xem [Lưu trữ và ngoại tuyến](/vi/guide/storage).
 
@@ -52,4 +66,4 @@ Nhập chạy trong nền: bae xác minh mọi track giải mã được đầy 
 
 ## Nguồn dữ liệu
 
-**MusicBrainz** không cần tài khoản và không cần khóa. **Discogs** cần token API miễn phí của riêng bạn; dán nó trong Settings, và bae báo cho bạn nếu nó ngừng hoạt động. Không có token, tìm kiếm Discogs và siêu dữ liệu lấy từ Discogs không khả dụng, còn mọi thứ khác vẫn hoạt động. Cả hai dịch vụ đều giới hạn tốc độ; bae điều tiết yêu cầu để nằm trong giới hạn.
+**MusicBrainz** không cần tài khoản và không cần khóa. **Discogs** cần token API miễn phí của riêng bạn; dán nó trong Settings, Import, và bae báo cho bạn nếu nó ngừng hoạt động. Không có token, tìm kiếm Discogs và siêu dữ liệu lấy từ Discogs không khả dụng, còn mọi thứ khác vẫn hoạt động. Cả hai dịch vụ đều giới hạn tốc độ; bae điều tiết yêu cầu để nằm trong giới hạn.

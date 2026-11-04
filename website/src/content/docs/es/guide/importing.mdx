@@ -1,22 +1,22 @@
 ---
 title: Importación
-description: Elija cómo cada carpeta proporciona sus metadatos de importación
+description: Elige cómo cada carpeta aporta los metadatos de su importación
 ---
 
-Una carpeta proporciona el audio y otros archivos para una importación. Tú eliges si sus metadatos editables comienzan con una publicación en línea, las etiquetas propias de los archivos o un formulario en blanco.
+Una carpeta aporta el audio y los demás archivos de una importación. Tú eliges si sus metadatos editables empiezan con un lanzamiento en línea, con los metadatos propios de la carpeta o con un formulario en blanco.
 
 La importación ocurre en escritorio (macOS, Windows). Tus archivos se leen, nunca se cambian: bae no mueve, renombra, cambia etiquetas ni recodifica nada. Consulta [Almacenamiento y sin conexión](/es/guide/storage) para saber dónde viven los archivos después de importarlos.
 
 ## Carpetas vigiladas
 
-Cambia a la sección **Import** y agrega una carpeta: elige una, arrástrala a la ventana o pulsa <kbd>⌘I</kbd>. bae vigila la carpeta desde entonces. La música nueva que pongas ahí aparece por sí sola como nuevos candidatos; no vuelves a analizar a mano. Las carpetas que todavía se están descargando se ignoran hasta que terminan.
+Cambia a la sección **Importar** y agrega una carpeta: elígela, arrástrala a la ventana o pulsa <kbd>⌘I</kbd>. bae vigila la carpeta desde entonces. La música nueva que pongas ahí aparece por sí sola como nuevos candidatos; no vuelves a analizar a mano. Las carpetas que todavía se están descargando se ignoran hasta que terminan.
 
 Un análisis reconoce lanzamientos con las formas que toman las copias reales:
 
 | Disposición | Cómo se ve |
 |--------|-------------------|
-| Archivo por pista | `01 - Song.flac`, `02 - Song.flac`, ... |
-| CUE + imagen | `álbum.cue` + `álbum.flac`, un archivo para todo el disco |
+| Archivo por pista | `01 - Song.flac`, `02 - Song.flac`, … |
+| CUE + imagen | `album.cue` + `album.flac`, un archivo para todo el disco |
 | Varios discos | subcarpetas `CD1/`, `CD2/`, con cualquiera de las dos formas dentro |
 | Colecciones | una carpeta de carpetas, cada una su propio lanzamiento |
 
@@ -24,32 +24,46 @@ bae importa los formatos que reproduce: FLAC, MP3, APE, ALAC y AAC en `.m4a`, WA
 
 ## Rellenar el borrador de metadatos
 
-Cada candidato posee un borrador de metadatos editable, que puede empezar en blanco, ser rellenado desde una publicación en línea o ser rellenado desde las etiquetas de los archivos. Escribir en el borrador en blanco es una entrada directa, no una fuente de metadatos separada.
+Cada candidato tiene un borrador de metadatos editable. Puede empezar en blanco, rellenarse desde un lanzamiento en línea o rellenarse con lo que dicen los propios archivos de la carpeta. Escribir en el borrador en blanco es una entrada directa, no una fuente de metadatos aparte.
 
-Al abrir ** Buscar en línea…** o ** Etiquetas de archivo…** se reemplaza la tarjeta superior con el navegador de esa fuente sin cambiar el borrador. Aplicarun resultado reemplaza el borrador y regresa a la tarjeta editable. Utilice el menú de la tarjeta para buscar otra versión, aplicar etiquetas de archivo o borrar los metadatos y volver a un borrador en blanco.
+Los controles **Identificar** de la tarjeta ofrecen dos caminos hacia la página Identificar, que se diferencian en lo que inician. **Automático** la abre y pide una identificación nueva cada vez, tenga lo que tenga ya el candidato: una identificación en curso se descarta por la nueva. **Buscar** abre la misma página en su búsqueda escrita y no inicia nada. Ninguno de los dos cambia el borrador; aplicar un resultado reemplaza el borrador y vuelve a la tarjeta editable. El menú de la tarjeta tiene los dos comandos que reescriben el borrador donde está: **Restablecer a los metadatos de los archivos**, que lo reemplaza con lo que dicen los propios archivos, hojas y nombre de carpeta del candidato, y **Borrar metadatos**, que lo vacía. Cada uno pregunta antes, y ninguno toca los archivos del candidato ni la disposición de sus pistas.
 
-### Buscar en línea
+### Identificar
 
-Buscar en línea es la única ruta que identifica una versión, calcula un ID de disco desde el registro de copias o la hoja CUE, reconoce los códigos de barras y el texto del catálogo, consulta MusicBrainz y Discogs y hace coincidir los resultados.
+La página Identificar averigua qué lanzamiento es una carpeta. Lee indicios de la carpeta y busca cada uno:
 
-La identificación automática utiliza esta misma ruta. **Fuente de metadatos predeterminada** elige **Buscar en línea**, **Etiquetas de archivo** o **Ninguna** para los candidatos recién descubiertos. **Modo predeterminado de Buscar en línea** elige **Automático** o **Buscar manualmente**. Automático inicia la extracción de indicios, el OCR, las consultas a proveedores y la comparación al abrir Buscar en línea; Buscar manualmente no inicia ninguna de esas tareas. Etiquetas de archivo y Ninguna no abren Buscar en línea.
+- **ID de disco.** Una huella de la disposición exacta de pistas del CD, calculada a partir del registro de copia o de la hoja CUE. Cuando coincide, identifica la edición exacta del CD.
+- **Código de barras.** Leído de los escaneos de portada de la carpeta mediante reconocimiento de texto, o de la hoja CUE.
+- **Números de catálogo y texto.** Números de catálogo encontrados en las imágenes y en los nombres de archivos y carpetas, que se usan para acotar los resultados.
 
-### Etiquetas de archivo
+Las señales se buscan en MusicBrainz y Discogs a la vez, y los resultados se contrastan entre sí. Cada señal aparece como una insignia sobre los resultados: puedes ver qué se encontró, de dónde salió (pasa el puntero para ver el origen: TOC del disco, hoja CUE, escaneo de portada, nombre de carpeta) y desactivar señales concretas si alguna confunde.
 
-Etiquetas de archivo lee las etiquetas de audio incrustadas y los metadatos CUE cuando el origen se abre o se configura como predeterminado. Revise la vista previa y, a continuación, seleccione ** Aplicar ** para reemplazar el borrador con esa instantánea exacta. La importación falla antes de escribir en la biblioteca si los archivos de audio candidatos u observados cambian después de la vista previa.
+Tres resultados:
 
-La tarjeta editable muestra un chip silencioso Etiquetas de archivo después de que se aplique la instantánea.Un borrador llenado solo por escritura no tiene chip fuente.
+- **Encontrado.** Los indicios coinciden en un grupo de lanzamientos. Eliges la edición exacta de su lista.
+- **Conflicto.** Dos señales apuntan a lanzamientos distintos, por ejemplo el ID de disco y el código de barras no coinciden. bae muestra ambos lados y tú eliges en cuál confiar, o ignoras una señal.
+- **No se encontró nada.** Busca a mano: artista y álbum, número de catálogo o código de barras, en cualquiera de las dos bases de datos. El texto reconocido en las imágenes se ofrece como autocompletado.
+
+El navegador de fuentes muestra juntos el formulario de búsqueda, el progreso de la identificación, las señales y los resultados. Al seleccionar un resultado, esa fila queda abierta con su progreso mientras bae obtiene el lanzamiento completo, y luego lo aplica al borrador. La tarjeta resultante muestra una etiqueta de fuente de MusicBrainz o Discogs. **Automático** en la tarjeta vuelve a identificarlo desde cero; **Buscar** vuelve a la búsqueda escrita con lo que ya se había encontrado todavía ahí.
+
+La identificación automática usa este mismo camino. Cuando se agrega un candidato, su borrador se crea a partir de sus archivos, hojas y nombre de carpeta. El ajuste **Identificar automáticamente** de Ajustes, Importar inicia la identificación para cada candidato que no tiene resultado para los archivos que tiene en ese momento; si está desactivado, inicias cada identificación tú mismo. Un borrador prerrellenado es un punto de partida, no una respuesta, así que no impide una identificación.
+
+### Metadatos de los archivos
+
+Los metadatos de los archivos se leen cuando el prerrellenado los lee al agregarse un candidato, y otra vez cada vez que se elige **Restablecer a los metadatos de los archivos**. En ambos casos el borrador se reemplaza con esa lectura exacta (etiquetas de audio incrustadas, metadatos CUE y el propio nombre de la carpeta) y la tarjeta se vuelve a dibujar con ella. La importación falla antes de escribir en la biblioteca si el candidato o sus archivos de audio cambiaron después de la lectura.
+
+La tarjeta editable muestra una discreta etiqueta Metadatos de los archivos mientras el borrador contiene esa lectura. Un borrador rellenado solo escribiendo no tiene etiqueta de fuente.
 
 ## Confirmar e importar
 
 El panel de confirmación muestra todo lo que escribirá la importación:
 
-- ** Cover.** Elige entre las ilustraciones de las bases de datos, imágenes de tu carpeta o ilustraciones incrustadas en los archivos.Arrastra una imagen de la galería de candidatos al cuadrado de la portada, o cámbiala más tarde.
+- **Portada.** Elegida entre las imágenes de las bases de datos, las imágenes de tu carpeta o las imágenes incrustadas en los archivos. Arrastra una imagen de la galería del candidato al cuadrado de la portada, o cámbiala más tarde.
 - **Metadatos.** Álbum, artista, año, sello, número de catálogo, país, código de barras y cada pista: todo editable aquí mismo antes de guardar nada.
 - **Almacenamiento.** Si hay un hogar en la nube conectado, elige **Nube** para subir el lanzamiento a él, y **Fijada** para conservar además sus archivos en este dispositivo. Si no, el lanzamiento es local: sus datos se sincronizan con tus otros dispositivos, y su audio se queda en este. Consulta [Almacenamiento y sin conexión](/es/guide/storage).
 
-La importación se ejecuta en segundo plano: bae verifica que cada pista se decodifique completa, mide sonoridad para el álbum y cada pista, guarda el lanzamiento y, para importaciones a la nube, empieza la subida. La lista de candidatos pasa a la siguiente carpeta, y el lanzamiento se puede reproducir de inmediato.
+La importación se ejecuta en segundo plano: bae verifica que cada pista se decodifique sin errores, mide la sonoridad del álbum y de cada pista, guarda el lanzamiento y, para importaciones a la nube, empieza la subida. La lista de candidatos pasa a la siguiente carpeta, y el lanzamiento se puede reproducir de inmediato.
 
 ## Fuentes de datos
 
-**MusicBrainz** no necesita cuenta ni clave. **Discogs** requiere tu propio token de API gratuito; pégalo en Settings, y bae te avisa si deja de funcionar. Sin token, la búsqueda en Discogs y los metadatos provenientes de Discogs no están disponibles, y todo lo demás funciona. Ambos servicios limitan la frecuencia; bae espacia sus solicitudes para mantenerse dentro de los límites.
+**MusicBrainz** no necesita cuenta ni clave. **Discogs** requiere tu propio token de API gratuito; pégalo en Ajustes, Importar, y bae te avisa si deja de funcionar. Sin token, la búsqueda en Discogs y los metadatos provenientes de Discogs no están disponibles, y todo lo demás funciona. Ambos servicios limitan la frecuencia; bae espacia sus solicitudes para mantenerse dentro de los límites.

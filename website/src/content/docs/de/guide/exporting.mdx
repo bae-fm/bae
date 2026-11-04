@@ -7,19 +7,19 @@ Kein Einsperren gilt in beide Richtungen: bae verändert deine Dateien beim Hine
 
 ## Zwei Exporte
 
-- **Track-Export**: Rechtsklick auf einen Track, **Speichern unter**, Format wählen, fertig.
-- **Release-Export**: Aus dem Albummenü oder dem Speichermanager, exportiert ein ganzes Release in einen Ordner. Läuft in einer Warteschlange mit Fortschritt, Pause und erneutem Versuch.
+- **Track-Export**: Rechtsklick auf einen Track, **Speichern unter …**, Format wählen, fertig.
+- **Release-Export**: **Exportieren…** im Albummenü oder die Speicherverwaltung exportiert ein ganzes Release in einen Ordner. Läuft in einer Warteschlange mit Fortschritt, Pause und erneutem Versuch.
 
 Originaldateien werden so exportiert, wie sie sind. Alles andere wird beim Export kodiert.
 
 ## Vorgaben
 
-Exportformate sind Vorgaben, die du einmal in den Einstellungen definierst: FLAC, MP3, Opus, WAV oder AIFF, mit den Parametern des Codecs (Bittiefe bei verlustfreien Formaten, Bitrate bei verlustbehafteten) und einer Dateinamenvorlage aus Platzhaltern wie Titel, Künstler, Album, Jahr und Tracknummer. Lege eine Standardvorgabe für Tracks und eine für Releases fest und wähle, ob Release-Exporte immer nach einem Ziel fragen oder immer einen festen Ordner verwenden.
+Exportformate sind Vorgaben, die du einmal unter Einstellungen, Formate definierst: FLAC, MP3, Opus, WAV oder AIFF, mit den Parametern des Codecs (Bittiefe bei verlustfreien Formaten, Bitrate bei verlustbehafteten) und einer Dateinamenvorlage aus Platzhaltern wie Titel, Künstler, Album, Jahr und Tracknummer. Lege eine Standardvorgabe für Tracks und eine für Releases fest und wähle, ob Release-Exporte immer nach einem Ziel fragen oder immer einen festen Ordner verwenden.
 
 ## Pregaps in Exporten
 
-CD-Rips mit Pregaps stellen beim Export eine echte Frage: Wohin kommt das versteckte Audio? Jede Vorgabe wählt eine Regel:
+CD-Rips mit Pregaps stellen beim Export eine echte Frage: Wohin kommt das versteckte Audio? In jeder Vorgabe wählt **Pregap** eine Regel:
 
-- **An den vorherigen Track anhängen**, die übliche Konvention, mit der Wahl, ob das vor Track eins versteckte Audio am Anfang von Track eins behalten oder verworfen wird.
-- **Pregaps ausschließen**: saubere Trackgrenzen, verstecktes Audio ausgelassen.
-- **Einzeldatei mit CUE**: die Disc als eine Audiodatei plus CUE-Sheet, mit exakt erhaltenem ursprünglichem Layout.
+- **Anhängen außer HTOA** und **Anhängen einschließlich HTOA** hängen jeden Pregap an das Ende des vorherigen Tracks, die übliche Konvention; sie unterscheiden sich darin, ob das vor Track eins versteckte Audio verworfen oder am Anfang von Track eins behalten wird.
+- **Ausschließen** lässt Pregaps ganz weg: saubere Trackgrenzen, verstecktes Audio ausgelassen.
+- **Einzeldatei + CUE**: die Disc als eine Audiodatei plus CUE-Sheet, mit exakt erhaltenem ursprünglichem Layout.

@@ -7,7 +7,7 @@ A maioria dos apps de música modela "um álbum": um título, uma capa, uma list
 
 ## Álbuns agrupam lançamentos
 
-Na biblioteca, um álbum com várias prensagens é uma entrada. A página do álbum mostra um seletor de lançamento; cada lançamento mantém sua própria lista de faixas, capa, ano, selo, número de catálogo e créditos. Um lançamento é o **primário**: aquele que a grade de álbuns e a reprodução usam por padrão. Defina qualquer lançamento como primário pelo menu do álbum, e escolha um lançamento diferente para ouvir a qualquer momento; bae lembra sua escolha por álbum.
+Na biblioteca, um álbum com várias prensagens é uma entrada. A página do álbum mostra um seletor de lançamento; cada lançamento mantém sua própria lista de faixas, capa, ano, selo, número de catálogo e créditos. Um lançamento é o **primário**: aquele que a grade de álbuns e a reprodução usam por padrão. Defina qualquer lançamento como primário com **Definir como lançamento principal** no menu do álbum, e escolha um lançamento diferente para ouvir a qualquer momento; bae lembra sua escolha por álbum.
 
 ## O que um lançamento sabe
 
@@ -18,21 +18,21 @@ Lançamentos identificados carregam o conhecimento dos bancos de dados, não só
 - Estrutura clássica: compositores, obras e suas partes, vinculadas às gravações delas. A visualização de compositores da biblioteca é construída a partir disso; veja [Navegação e busca](/pt-br/guide/browsing).
 - Identidade: qual é exatamente a versão MusicBrainz ou Discogs.
 
-O que a fonte disse também é mantido, do jeito que o bae leu, para que o lançamento possa ser redefinido para isso depois sem consultar os bancos de dados novamente; um dispositivo que nunca o buscou pergunta uma vez, ao redefinir.
+Depois de aplicados, esses valores passam a ser do próprio lançamento: bae não guarda nenhum vínculo com a fonte, e edições os alteram ali mesmo.
 
 ## Edição
 
-Os metadados são seus para corrigir. ** Editar metadados ** em qualquer lançamento abre o mesmo formulário que a confirmação de importação usa: título do álbum e artista, pressionando detalhes e título, artista e numeração de cada faixa. ** Redefinir para a fonte ** aparece quando o lançamento foi preenchido a partir de MusicBrainz, Discogs ou Tags dos arquivos e retorna a essa fonte armazenada. Um lançamento inserido diretamente não tem fonte para redefinir, então a ação é omitida.
+Os metadados são seus para corrigir. **Editar…** no menu do álbum abre o editor de lançamento, o mesmo formulário que a importação usa: título e artista do álbum, detalhes da prensagem, e título, artista e numeração de cada faixa. **Salvar** grava suas alterações; **Cancelar** as descarta.
 
 Edições vivem só no banco de dados de bae. As tags embutidas dos seus arquivos nunca são reescritas; os arquivos permanecem byte por byte como importados.
 
-## Reidentificar
+## Identificar novamente
 
-Se um lançamento foi importado como desconhecido, associado à prensagem errada ou o banco de dados melhorou desde então, **Re-identify** executa o fluxo de identificação novamente no lançamento existente: mesmos sinais, mesmas ferramentas de busca. Depois que a nova correspondência é gravada, bae pergunta se deve atualizar os metadados a partir da nova fonte (sobrescrevendo suas edições) ou manter o que você tem.
+Se um lançamento foi importado como desconhecido, associado à prensagem errada ou o banco de dados melhorou desde então, os controles **Identificar** do editor executam a identificação novamente no lançamento existente: **Automático** o identifica a partir dos arquivos dele, e **Buscar** abre a busca digitada. Escolher uma prensagem substitui na hora os valores do editor; **Salvar** os mantém, e **Cancelar** mantém o que você tinha.
 
 ## Capas
 
-Todo lançamento tem uma capa de exibição. **Change cover** oferece a arte dos bancos de dados e os arquivos de imagem que vieram com o lançamento. bae mantém sua própria cópia da capa escolhida, dimensionada para exibição, então o scan original na sua pasta fica intocado. Toque em uma capa em qualquer lugar para abrir a galeria completa das imagens de um lançamento.
+Todo lançamento tem uma capa de exibição. **Alterar capa** oferece a arte dos bancos de dados e os arquivos de imagem que vieram com o lançamento. bae mantém sua própria cópia da capa escolhida, dimensionada para exibição, então o scan original na sua pasta fica intocado. Toque em uma capa em qualquer lugar para abrir a galeria completa das imagens de um lançamento.
 
 ## Exclusão
 

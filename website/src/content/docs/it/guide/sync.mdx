@@ -9,9 +9,9 @@ Una libreria, ogni dispositivo, e l'unico account coinvolto è uno che possiedi 
 
 ## La home cloud
 
-La home cloud di una libreria è una posizione nel tuo spazio: una cartella nel tuo Dropbox o OneDrive, il tuo iCloud, o qualunque bucket compatibile con S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, ...). Contiene tutto ciò che la libreria sincronizza: le modifiche alla libreria, la grafica e l'audio delle release che sposti nel cloud.
+La home cloud di una libreria è una posizione nel tuo spazio: una cartella nel tuo Dropbox o OneDrive, il tuo iCloud, o qualunque bucket compatibile con S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, …). Contiene tutto ciò che la libreria sincronizza: le modifiche alla libreria, la grafica e l'audio delle release che sposti nel cloud.
 
-Configurala in Impostazioni, Libreria, con **Configura sincronizzazione...**:
+Configurala in Impostazioni, Libreria, con **Configura sincronizzazione…**:
 
 1. Scegli un provider.
    - **Dropbox** e **OneDrive** accedono tramite il browser, poi chiedono in quale cartella vive la libreria. Su Dropbox è una cartella condivisa, così puoi invitare la tua famiglia; se non ne hai ancora una, condividine una in Dropbox e scegli **Cerca di nuovo**. Su OneDrive è una cartella qualsiasi, e puoi crearne una nuova. L'accesso lo conserva coven; bae non vede mai i suoi token.
@@ -36,8 +36,8 @@ Lo stato per dispositivo non si sincronizza: posizione di riproduzione, volume, 
 
 ## Quando sincronizza
 
-La sincronizzazione procede da sola: dopo le modifiche, su timer e su richiesta con **Sincronizza ora**. Le modifiche arrivano sugli altri dispositivi pochi secondi dopo in condizioni normali. Due dispositivi che modificano nello stesso momento vincono entrambi dove non si scontrano: bae fonde le modifiche concorrenti campo per campo, la modifica più tarda vince un campo cambiato da entrambi, e una release eliminata resta eliminata anche se è stata modificata altrove nello stesso momento. Niente ti chiede mai di risolvere un conflitto.
+La sincronizzazione procede da sola: dopo le modifiche, su timer e su richiesta con **Sincronizza ora** nel menu File. Le modifiche arrivano sugli altri dispositivi pochi secondi dopo in condizioni normali. Due dispositivi che modificano nello stesso momento vincono entrambi dove non si scontrano: bae fonde le modifiche concorrenti campo per campo, la modifica più tarda vince un campo cambiato da entrambi, e una release eliminata resta eliminata anche se è stata modificata altrove nello stesso momento. Niente ti chiede mai di risolvere un conflitto.
 
 ## Quando fallisce
 
-I fallimenti di sincronizzazione non interrompono la libreria; continui a esplorare, riprodurre e importare localmente mentre bae ritenta. Impostazioni, Libreria mostra una sola riga per la sincronizzazione: **Sincronizzato**, oppure quanti elementi sono in attesa, come **Elementi in attesa: 3**. Aprila per vedere ogni elemento in parole semplici, con l'azione che puoi compiere: **Accedi** quando il provider vuole che tu acceda di nuovo, rimettere al suo posto un file spostato prima del caricamento, **Riprova**, **Riconnetti**, **Riprendi caricamenti** o **Aggiorna app**. Un'attesa su cui non puoi intervenire, come quella che un altro dispositivo torni online, non offre nulla. Questo elenco è l'unico posto da guardare; i caricamenti si possono anche mettere in pausa e ispezionare nel [Gestore archiviazione](/it/guide/storage#il-gestore-archiviazione).
+I fallimenti di sincronizzazione non interrompono la libreria; continui a esplorare, riprodurre e importare localmente mentre bae ritenta. Impostazioni, Libreria mostra una sola riga per la sincronizzazione: **Sincronizzato**, oppure quanti elementi sono in attesa, come **Elementi in attesa: 3**. Aprila per vedere ogni elemento in parole semplici, con l'azione che puoi compiere: **Accedi** quando il provider vuole che tu acceda di nuovo, **Ripristina file sorgente** per un file spostato prima del caricamento, **Riprova**, **Riconnetti**, **Riprendi caricamenti** o **Aggiorna app**. Un'attesa su cui non puoi intervenire, come quella che un altro dispositivo torni online, non offre nulla. Questo elenco è l'unico posto da guardare; i caricamenti si possono anche mettere in pausa e ispezionare in [Gestione archiviazione](/it/guide/storage#gestione-archiviazione).

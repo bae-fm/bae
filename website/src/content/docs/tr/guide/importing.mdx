@@ -1,55 +1,69 @@
 ---
 title: İçe aktarma
-description: Her klasörün içe aktarma meta verilerini nasıl sağlayacağını seçin
+description: Her klasörün içe aktarma meta verisini nereden alacağını seçin
 ---
 
-Bir klasör, içe aktarma için ses ve diğer dosyaları sağlar. Düzenlenebilir meta verilerinin çevrimiçi bir sürümle mi, dosyaların kendi etiketleriyle mi yoksa boş bir formla mı başlayacağını siz seçersiniz.
+Bir klasör, içe aktarma için sesi ve diğer dosyaları sağlar. Düzenlenebilir meta verisinin çevrimiçi bir sürümle mi, klasörün kendi meta verisiyle mi yoksa boş bir formla mı başlayacağını siz seçersiniz.
 
 İçe aktarma masaüstünde gerçekleşir (macOS, Windows). Dosyalarınız okunur, asla değiştirilmez: bae hiçbir şeyi taşımaz, yeniden adlandırmaz, yeniden etiketlemez veya yeniden kodlamaz. İçe aktarmadan sonra dosyaların nerede yaşadığı için [Depolama ve çevrimdışı](/tr/guide/storage) bölümüne bakın.
 
 ## İzlenen klasörler
 
-**Import** bölümüne geçin ve bir klasör ekleyin: seçin, pencereye sürükleyin veya <kbd>⌘I</kbd> tuşlarına basın. bae bundan sonra klasörü izler. İçine bırakılan yeni müzik kendiliğinden yeni adaylar olarak görünür; elle yeniden tarama yapmazsınız. Hâlâ indirilen klasörler bitene kadar yok sayılır.
+**İçe aktar** bölümüne geçin ve bir klasör ekleyin: seçin, pencereye sürükleyin veya <kbd>⌘I</kbd> tuşlarına basın. bae bundan sonra klasörü izler. İçine bırakılan yeni müzik kendiliğinden yeni adaylar olarak görünür; elle yeniden tarama yapmazsınız. Hâlâ indirilen klasörler bitene kadar yok sayılır.
 
 Tarama, rip'lerin gerçekte aldığı biçimlerde sürümleri tanır:
 
 | Yerleşim | Nasıl görünür |
 |--------|-------------------|
-| Parça başına dosya | `01 - Parça.flac`, `02 - Parça.flac`, ... |
+| Parça başına dosya | `01 - Parça.flac`, `02 - Parça.flac`, … |
 | CUE + imaj | `album.cue` + `album.flac`, bütün disk için tek dosya |
 | Çoklu disk | `CD1/`, `CD2/` alt klasörleri, içinde iki biçimden biri |
 | Koleksiyonlar | klasörlerden oluşan klasör, her biri kendi sürümü |
 
 bae çaldığı biçimleri içe aktarır: FLAC, MP3, APE, `.m4a` içinde ALAC ve AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack ve DSD (`.dsf`/`.dff`). Klasördeki görseller ve belgeler (CUE sayfaları, rip günlükleri, metin dosyaları) tanınır ve sürümle birlikte tutulur.
 
-## Meta veri taslağını doldur
+## Meta veri taslağını doldurma
 
-Her aday bir düzenlenebilir meta veri taslağına sahiptir. Boş olarak başlayabilir, çevrimiçi bir yayından doldurulabilir veya dosyaların etiketlerinden doldurulabilir. Boş taslağa yazmak ayrı bir meta veri kaynağı değil, doğrudan giriştir.
+Her adayın düzenlenebilir tek bir meta veri taslağı vardır. Taslak boş başlayabilir, çevrimiçi bir sürümden ya da klasörün kendi dosyalarının söylediklerinden doldurulabilir. Boş taslağa yazmak ayrı bir meta veri kaynağı değil, doğrudan giriştir.
 
-** Çevrimiçi bul…** ya da ** Dosya etiketleri…**'ı açmak, üstteki kartı kaynağın tarayıcısıyla değiştirir ve taslağı değiştirmez. Uygula bir sonuç elde ederse, taslağı değiştirir ve düzenleyici kartına geri döner. Kartın menüsünü kullanarak başka bir yayını bul, dosya etiketlerini uygula veya meta verileri temizle ve boş bir taslağa geri dön. Meta verileri temizlemek, aday dosyaları ve parça düzenini korur.
+Kartın **Tanımla** denetimleri Tanımla sayfasına iki yol sunar; bunlar neyi başlattıklarıyla ayrılır. **Otomatik** sayfayı açar ve aday ne içerirse içersin her seferinde yeni bir tanımlama çalıştırması ister — zaten süren bir çalıştırma yenisi için bırakılır. **Ara** aynı sayfayı elle aramada açar ve hiçbir şey başlatmaz. İkisi de taslağı değiştirmez; bir sonucu uygulamak taslağı değiştirir ve düzenlenebilir karta geri döner. Kartın menüsü taslağı yerinde yeniden yazan iki komutu içerir: taslağı adayın kendi dosyalarının, CUE sayfalarının ve klasör adının söyledikleriyle değiştiren **Dosya meta verilerine sıfırla** ve taslağı boşaltan **Meta verileri temizle**. İkisi de önce sorar ve hiçbiri adayın dosyalarına veya parça düzenine dokunmaz.
 
-### Çevrimiçi bul
+### Tanımla
 
-Çevrimiçi bul bir yayını tanımlayan tek yoldur. Rip log'dan veya CUE sayfasından bir Disc ID hesaplar, barkodları ve katalog metnini tanır, MusicBrainz ve Discogs sorgular ve sonuçları eşleştirir.
+Tanımla sayfası bir klasörün hangi sürüm olduğunu bulur. Klasördeki kanıtları okur ve her birini arar:
 
-Otomatik tanımlama aynı yolu kullanır. **Varsayılan meta veri kaynağı**, yeni bulunan adaylar için **Çevrimiçi bul**, **Dosya etiketleri** veya **Yok** seçer. **Varsayılan Çevrimiçi bul modu**, **Otomatik** veya **Elle ara** seçer. Otomatik mod, Çevrimiçi bul açıldığında kanıt çıkarma, OCR, sağlayıcı sorguları ve eşleştirmeyi başlatır; Elle ara bunların hiçbirini başlatmaz. Dosya etiketleri ve Yok, Çevrimiçi bul’u açmaz.
+- **Disc ID.** CD'nin tam parça düzeninin, rip günlüğünden veya CUE sayfasından hesaplanan parmak izi. Eşleştiğinde tam CD baskısını tanımlar.
+- **Barkod.** Klasördeki kapak taramalarından metin tanımayla veya CUE sayfasından okunur.
+- **Katalog numaraları ve metin.** Görsellerde ve dosya ve klasör adlarında bulunan katalog numaraları; sonuçları daraltmak için kullanılır.
 
-### Dosya etiketleri
+Sinyaller MusicBrainz ve Discogs'ta aynı anda aranır ve sonuçlar birbirine karşı denetlenir. Her sinyal sonuçların üstünde bir rozet olarak görünür: neyin bulunduğunu, nereden geldiğini görebilir (kökeni için üzerine gelin: disk TOC'si, CUE sayfası, kapak taraması, klasör adı) ve yanıltıcı olan bir sinyali tek tek kapatabilirsiniz.
 
-Dosya etiketleri kaynağı açtığınızda veya varsayılan olarak ayarladıktan sonra entegre ses etiketlerini ve CUE meta verisini okur. Önizlemeyi inceleyin, sonra taslağı tam olarak o fotoğrafla değiştirmek için ** Uygula ** seçin. Önizlemeden sonra aday veya gözlemlenen ses dosyaları değişirse, kütüphaneye yazmadan önce ithal etme başarısız olur.
+Üç sonuç:
 
-Düzenlenebilir kart, bu fotoğraf uygulandıktan sonra sessiz bir Dosya etiketleri çipi gösterir. Sadece yazmayla doldurulan bir taslakta kaynak çipi yoktur.
+- **Bulundu.** Kanıtlar tek bir sürüm grubunda uzlaşır. Tam baskıyı onun listesinden seçersiniz.
+- **Çakışma.** İki sinyal farklı sürümleri gösterir, örneğin disc ID ile barkod uyuşmaz. bae iki tarafı da gösterir; hangisine güveneceğinizi seçer ya da bir sinyali yok sayarsınız.
+- **Hiçbir şey bulunamadı.** Elle arayın: sanatçı ve albüm, katalog numarası veya barkod, iki veritabanından birinde. Görsellerden tanınan metin otomatik tamamlama olarak sunulur.
+
+Kaynak tarayıcısı arama formunu, tanımlama ilerlemesini, sinyalleri ve sonuçları birlikte gösterir. Bir sonucu seçmek, bae tam sürümü getirirken o satırı ilerlemeyle açık tutar, ardından sürümü taslağa uygular. Ortaya çıkan kart bir MusicBrainz veya Discogs kaynak etiketi gösterir. Karttaki **Otomatik** tanımlamayı baştan yeniden çalıştırır; **Ara** elle aramaya, daha önce bulunanlar yerinde dururken geri döner.
+
+Otomatik tanımlama aynı yolu kullanır. Bir aday eklendiğinde taslağı dosyalarından, CUE sayfalarından ve klasör adından oluşturulur. Ayarlar, İçe aktar içindeki **Otomatik tanımla** ayarı, şu anki dosyaları için sonucu olmayan her aday için tanımlama çalıştırır; kapalıyken her çalıştırmayı kendiniz başlatırsınız. Önceden doldurulmuş bir taslak bir yanıt değil, bir başlangıç noktasıdır; bu yüzden bir çalıştırmayı durdurmaz.
+
+### Dosya meta verisi
+
+Dosya meta verisi, bir aday eklenirken ön doldurma onu okuduğunda ve **Dosya meta verilerine sıfırla** her seçildiğinde yeniden okunur. Her iki durumda da taslak tam olarak bu okumayla — gömülü ses etiketleri, CUE meta verisi ve klasörün kendi adı — değiştirilir ve kart buna göre yeniden çizilir. Aday veya ses dosyaları okumadan sonra değiştiyse içe aktarma, kitaplığa yazmadan önce başarısız olur.
+
+Düzenlenebilir kart, taslak bu okumayı içerdiği sürece sade bir Dosya meta verisi etiketi gösterir. Yalnızca yazarak doldurulan bir taslağın kaynak etiketi yoktur.
 
 ## Onaylama ve içe aktarma
 
 Onay bölmesi içe aktarmanın yazacağı her şeyi gösterir:
 
-- ** Kapak.** Veritabanı resimlerinden, dizinizdeki resimlerden ya da dosyalarda yer alan resimlerden seçilir. Aday galeriden bir resmi kapak karesine çekin, ya da daha sonra değiştirin.
-- **Metadata.** Albüm, sanatçı, yıl, plak şirketi, katalog numarası, ülke, barcode ve her parça: herhangi bir şey kaydedilmeden önce burada düzenlenebilir.
-- **Storage.** Bulut evi bağlıysa sürümü oraya yüklemek için **Bulut**'u, dosyalarını bu aygıtta da tutmak için **Sabitlendi**'yi seçin. Aksi halde sürüm yereldir: bilgileri diğer aygıtlarınıza eşzamanlanır, sesi bu aygıtta kalır. [Depolama ve çevrimdışı](/tr/guide/storage) bölümüne bakın.
+- **Kapak.** Veritabanlarının görsellerinden, klasörünüzdeki resimlerden veya dosyalara gömülü görsellerden seçilir. Aday galerisinden bir resmi kapak karesine sürükleyin ya da daha sonra değiştirin.
+- **Meta veri.** Albüm, sanatçı, yıl, plak şirketi, katalog numarası, ülke, barkod ve her parça: herhangi bir şey kaydedilmeden önce burada düzenlenebilir.
+- **Depolama.** Bulut evi bağlıysa sürümü oraya yüklemek için **Bulut**'u, dosyalarını bu aygıtta da tutmak için **Sabitlendi**'yi seçin. Aksi halde sürüm yereldir: bilgileri diğer aygıtlarınıza eşzamanlanır, sesi bu aygıtta kalır. [Depolama ve çevrimdışı](/tr/guide/storage) bölümüne bakın.
 
 İçe aktarma arka planda çalışır: bae her parçanın sorunsuz çözüldüğünü doğrular, albüm ve her parça için ses düzeyi ölçer, sürümü kaydeder ve bulut içe aktarmalarında yüklemeyi başlatır. Aday listesi sonraki klasöre geçer ve sürüm hemen çalınabilir.
 
 ## Veri kaynakları
 
-**MusicBrainz** hesap ve anahtar istemez. **Discogs** sizin ücretsiz API token'ınızı gerektirir; Settings içine yapıştırın, çalışmayı bırakırsa bae bunu söyler. Token olmadan Discogs araması ve Discogs kaynaklı üst veri kullanılamaz; diğer her şey çalışır. İki hizmette de hız sınırı vardır; bae isteklerini sınırların içinde kalacak biçimde aralıklı gönderir.
+**MusicBrainz** hesap ve anahtar istemez. **Discogs** sizin ücretsiz API token'ınızı gerektirir; Ayarlar, İçe aktar bölümüne yapıştırın, çalışmayı bırakırsa bae bunu söyler. Token olmadan Discogs araması ve Discogs kaynaklı meta veri kullanılamaz; diğer her şey çalışır. İki hizmette de hız sınırı vardır; bae isteklerini sınırların içinde kalacak biçimde aralıklı gönderir.

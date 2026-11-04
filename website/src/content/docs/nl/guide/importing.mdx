@@ -1,50 +1,64 @@
 ---
 title: Importeren
-description: Kies hoe elke map de importmetagegevens levert
+description: Kies waar elke map de metadata voor zijn import vandaan haalt
 ---
 
-Een map levert de audio- en andere bestanden voor import. U kiest of de bewerkbare metagegevens beginnen met een online release, de eigen tags van de bestanden of een leeg formulier.
+Een map levert de audio en de andere bestanden voor een import. Jij kiest of de bewerkbare metadata begint met een online release, met de eigen metadata van de map of met een leeg formulier.
 
 Importeren gebeurt op desktop (macOS, Windows). Je bestanden worden gelezen, nooit gewijzigd: bae verplaatst, hernoemt, hertagt of hercodeert niets. Zie [Opslag en offline](/nl/guide/storage) voor waar bestanden na import staan.
 
 ## Bewaakte mappen
 
-Schakel naar de sectie **Import** en voeg een map toe: kies hem, sleep hem naar het venster, of druk op <kbd>⌘I</kbd>. bae bewaakt de map vanaf dat moment. Nieuwe muziek die erin wordt gezet verschijnt vanzelf als nieuwe kandidaat; je scant niet opnieuw met de hand. Mappen die nog downloaden worden genegeerd totdat ze klaar zijn.
+Schakel naar de sectie **Importeren** en voeg een map toe: kies hem, sleep hem naar het venster, of druk op <kbd>⌘I</kbd>. bae bewaakt de map vanaf dat moment. Nieuwe muziek die erin wordt gezet verschijnt vanzelf als nieuwe kandidaten; je scant niet opnieuw met de hand. Mappen die nog downloaden worden genegeerd totdat ze klaar zijn.
 
 Een scan herkent releases in de vormen die rips echt hebben:
 
 | Indeling | Hoe het eruitziet |
 |--------|-------------------|
-| Bestand per track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| Bestand per track | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + image | `album.cue` + `album.flac`, een bestand voor de hele disc |
 | Meerdere discs | submappen `CD1/`, `CD2/`, met beide vormen erin mogelijk |
 | Verzamelingen | een map met mappen, elk zijn eigen release |
 
 bae importeert de formaten die het afspeelt: FLAC, MP3, APE, ALAC en AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack en DSD (`.dsf`/`.dff`). Artwork en documenten (CUE-sheets, riplogs, tekstbestanden) in de map worden herkend en bij de release bewaard.
 
-## Vul het concept van de metagegevens in
+## Het metadataconcept vullen
 
-Elke kandidaat heeft één bewerkbare metadata-concept, dat leeg kan beginnen, kan worden ingevuld vanuit een online release of kan worden ingevuld vanuit de tags van de bestanden. Het typen in het lege concept is een directe invoer, geen aparte metadatabron.
+Elke kandidaat heeft één bewerkbaar metadataconcept. Het kan leeg beginnen, gevuld worden vanuit een online release, of gevuld worden met wat de eigen bestanden van de map zeggen. Typen in het lege concept is directe invoer, geen aparte metadatabron.
 
-Als u ** Online zoeken…** of ** Bestandstags…** opent, wordt de bovenste kaart vervangen door de browser van die bron zonder de conceptversie te wijzigen. Toepasseneen resultaat opent, wordt de conceptversie vervangen en keert u terug naar de bewerkbare kaart. Gebruik het menu van de kaart om een andere release te zoeken, bestandstags toe te passen of de metagegevens te wissen en terug te keren naar een lege conceptversie.
+De **Identificeren**-knoppen van de kaart bieden twee wegen naar de pagina Identificeren, die verschillen in wat ze starten. **Automatisch** opent hem en vraagt elke keer om een nieuwe identificatie, wat de kandidaat ook al heeft; een identificatie die al loopt wordt voor de nieuwe losgelaten. **Zoeken** opent dezelfde pagina bij de getypte zoekopdracht en start niets. Geen van beide wijzigt het concept; een resultaat toepassen vervangt het concept en keert terug naar de bewerkbare kaart. Het menu van de kaart bevat de twee opdrachten die het concept ter plekke herschrijven: **Terugzetten naar bestandsmetagegevens**, dat het vervangt door wat de eigen bestanden, sheets en mapnaam van de kandidaat zeggen, en **Metagegevens wissen**, dat het leegmaakt. Beide vragen eerst om bevestiging, en geen van beide raakt de bestanden van de kandidaat of de indeling van de tracks aan.
 
-### Online zoeken
+### Identificeren
 
-Online zoeken is het enige pad dat een release identificeert.Het berekent een Disc ID van het rip log of CUE blad, herkent barcodes en catalogus tekst, zoekt MusicBrainz en Discogs, en vergelijkt de resultaten.
+De pagina Identificeren zoekt uit welke release een map is. Hij leest aanwijzingen uit de map en zoekt elk ervan op:
 
-Automatische identificatie gebruikt hetzelfde pad. **Standaardbron voor metagegevens** kiest **Online zoeken**, **Bestandstags** of **Geen** voor nieuw gevonden kandidaten. **Standaardmodus voor Online zoeken** kiest **Automatisch** of **Handmatig zoeken**. Automatisch start bewijsextractie, OCR, providerquery’s en het vergelijken zodra Online zoeken opent; Handmatig zoeken start niets daarvan. Bestandstags en Geen openen Online zoeken niet.
+- **Disc-ID.** Een vingerafdruk van de exacte trackindeling van de cd, berekend uit de riplog of de CUE-sheet. Als die overeenkomt, identificeert hij de precieze cd-editie.
+- **Barcode.** Met tekstherkenning van hoesscans in de map gelezen, of uit de CUE-sheet.
+- **Catalogusnummers en tekst.** Catalogusnummers die op artwork en in bestands- en mapnamen staan, gebruikt om de resultaten te verfijnen.
 
-### Bestandstags
+De signalen worden tegelijk opgezocht in MusicBrainz en Discogs, en de resultaten worden met elkaar vergeleken. Elk signaal verschijnt als badge boven de resultaten: je ziet wat er gevonden is, waar het vandaan komt (beweeg erover voor de herkomst: disc-TOC, CUE-sheet, hoesscan, mapnaam), en je kunt losse signalen uitzetten als er een misleidt.
 
-Bestandstags leest ingesloten audiolabels en CUE-metagegevens wanneer de bron wordt geopend of als standaard wordt geconfigureerd.Bekijk de voorvertoning en selecteer vervolgens ** Toepassen ** om het concept te vervangen door die exacte momentopname.Importeren mislukt voordat u naar de bibliotheek schrijft als de kandidaat- of waargenomen audiobestanden na de voorvertoning worden gewijzigd.
+Drie uitkomsten:
 
-De bewerkbare kaart toont een stille Bestandstags chip nadat die snapshot is toegepast, een draft die alleen door te typen is ingevuld heeft geen bronchip.
+- **Gevonden.** De aanwijzingen komen overeen op één releasegroep. Je kiest de exacte persing uit de lijst.
+- **Conflict.** Twee signalen wijzen naar verschillende releases, bijvoorbeeld als disc-ID en barcode het oneens zijn. bae toont beide kanten en jij kiest welke je vertrouwt, of je negeert een signaal.
+- **Niets gevonden.** Zoek met de hand: artiest en album, catalogusnummer of barcode, in een van beide databases. Tekst die in het artwork is herkend wordt aangeboden als automatisch aanvullen.
+
+De bronbrowser toont het zoekformulier, de voortgang van de identificatie, de signalen en de resultaten samen. Een resultaat selecteren houdt die rij open met voortgang terwijl bae de volledige release ophaalt, en past hem dan toe op het concept. De kaart die zo ontstaat toont een bronchip van MusicBrainz of Discogs. **Automatisch** op de kaart identificeert opnieuw vanaf nul; **Zoeken** gaat terug naar de getypte zoekopdracht, met wat al gevonden was er nog steeds.
+
+Automatische identificatie gebruikt ditzelfde pad. Als een kandidaat wordt toegevoegd, wordt zijn concept gemaakt uit zijn bestanden, sheets en mapnaam. De instelling **Automatisch identificeren** in Instellingen, Importeren start identificatie voor elke kandidaat die nog geen resultaat heeft voor de bestanden die hij nu heeft; staat die uit, dan start je elke identificatie zelf. Een vooraf ingevuld concept is een beginpunt, geen antwoord, dus het houdt een identificatie niet tegen.
+
+### Bestandsmetadata
+
+Bestandsmetadata wordt gelezen wanneer het vooraf invullen hem leest bij het toevoegen van een kandidaat, en opnieuw telkens wanneer **Terugzetten naar bestandsmetagegevens** wordt gekozen. In beide gevallen wordt het concept vervangen door precies die lezing (ingesloten audiotags, CUE-metadata en de eigen naam van de map) en wordt de kaart daarop opnieuw getekend. Importeren mislukt voordat er naar de bibliotheek wordt geschreven als de kandidaat of zijn audiobestanden na de lezing zijn gewijzigd.
+
+De bewerkbare kaart toont een rustige bronchip Bestandsmetadata zolang het concept die lezing bevat. Een concept dat alleen door typen is gevuld heeft geen bronchip.
 
 ## Bevestigen en importeren
 
 Het bevestigingspaneel toont alles wat de import zal schrijven:
 
-- ** Omslag.** Gekozen uit de afbeeldingen in de databases, afbeeldingen in uw map of afbeeldingen die zijn ingesloten in de bestanden.Sleep een afbeelding uit de galerij met kandidaten naar het omslagvak, of wijzig deze later.
+- **Hoes.** Gekozen uit het artwork van de databases, afbeeldingen in je map of artwork dat in de bestanden is ingesloten. Sleep een afbeelding uit de galerij van de kandidaat naar het hoesvak, of wijzig hem later.
 - **Metadata.** Album, artiest, jaar, label, catalogusnummer, land, barcode, en elke track: allemaal hier bewerkbaar voordat iets wordt opgeslagen.
 - **Opslag.** Als een cloud-home is gekoppeld, kies je **Cloud** om de release daarheen te uploaden, en **Vastgezet** om zijn bestanden ook op dit apparaat te houden. Anders is de release lokaal: zijn gegevens synchroniseren naar je andere apparaten, en zijn audio blijft op dit apparaat. Zie [Opslag en offline](/nl/guide/storage).
 
@@ -52,4 +66,4 @@ Importeren draait op de achtergrond: bae controleert dat elke track correct deco
 
 ## Databronnen
 
-**MusicBrainz** heeft geen account en geen sleutel nodig. **Discogs** vereist je eigen gratis API-token; plak die in Settings, en bae vertelt je als hij niet meer werkt. Zonder token zijn zoeken in Discogs en metadata uit Discogs niet beschikbaar, en al het andere werkt. Beide diensten hebben rate limits; bae doseert zijn verzoeken om binnen de limieten te blijven.
+**MusicBrainz** heeft geen account en geen sleutel nodig. **Discogs** vereist je eigen gratis API-token; plak die in Instellingen, Importeren, en bae vertelt je als hij niet meer werkt. Zonder token zijn zoeken in Discogs en metadata uit Discogs niet beschikbaar, en al het andere werkt. Beide diensten hebben rate limits; bae doseert zijn verzoeken om binnen de limieten te blijven.

@@ -1,9 +1,9 @@
 ---
 title: Importing
-description: દરેક ફોલ્ડર તેના આયાત મેટાડેટાને કેવી રીતે સપ્લાય કરે છે તે પસંદ કરો
+description: દરેક folder તેનું import metadata કેવી રીતે આપે તે પસંદ કરો
 ---
 
-ફોલ્ડર આયાત માટે ઑડિયો અને અન્ય ફાઇલો સપ્લાય કરે છે. તમે પસંદ કરો છો કે તેનો સંપાદનયોગ્ય મેટાડેટા ઓનલાઈન રિલીઝ, ફાઈલોના પોતાના ટૅગ્સ અથવા ખાલી ફોર્મથી શરૂ થાય છે.
+Folder import માટે audio અને બીજી files આપે છે. તેનું editable metadata online release થી, folder ના પોતાના metadata થી, કે ખાલી form થી શરૂ થાય તે તમે પસંદ કરો છો.
 
 Importing desktop (macOS, Windows) પર થાય છે. તમારી files read થાય છે, ક્યારેય બદલાતી નથી: bae કશું move, rename, retag અથવા re-encode કરતું નથી. Import પછી files ક્યાં રહે છે તે માટે [Storage અને offline](/gu/guide/storage) જુઓ.
 
@@ -15,36 +15,50 @@ Scan releases ને rips ખરેખર જે shapes લે છે તેમ�
 
 | Layout | તે કેવું દેખાય છે |
 |--------|-------------------|
-| File per track | `01 - Song.flac`, `02 - Song.flac`, ... |
+| File per track | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + image | `album.cue` + `album.flac`, આખા disc માટે એક file |
 | Multi-disc | `CD1/`, `CD2/` subfolders, અંદર કોઈ પણ shape |
 | Collections | folders નો folder, દરેક પોતાનો release |
 
 bae જે formats વગાડે છે તે import કરે છે: FLAC, MP3, APE, ALAC અને `.m4a` માં AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, અને DSD (`.dsf`/`.dff`). Folder માં artwork અને documents (CUE sheets, rip logs, text files) ઓળખાય છે અને release સાથે રાખવામાં આવે છે.
 
-## મેટાડેટા ડ્રાફ્ટ ભરો
+## Metadata draft ભરો
 
-દરેક ઉમેદવાર એક ફેરફાર કરી શકાય તેવી મેટાડેટા ડ્રાફ્ટનો માલિક છે. તે ખાલી શરૂ થઈ શકે છે, ઓનલાઇન રિલીઝમાંથી ભરેલું હોઈ શકે છે, અથવા ફાઈલોના ટેગોમાંથી ભરેલું હોઈ શકે છે. ખાલી ડ્રાફ્ટમાં લખવું એ સીધો પ્રવેશ છે, અલગ મેટાડેટા સ્ત્રોત નથી.
+દરેક candidate પાસે એક editable metadata draft હોય છે. તે ખાલી શરૂ થઈ શકે, online release થી ભરાઈ શકે, અથવા folder ની પોતાની files જે કહે તેનાથી ભરાઈ શકે. ખાલી draft માં type કરવું સીધી entry છે, અલગ metadata source નથી.
 
-** ઓનલાઇન શોધો…** અથવા ** ફાઇલ ટૅગ...** ખોલીને ડ્રાફ્ટને બદલ્યા વગર સ્ત્રોતના બ્રાઉઝર સાથે ઉપરનું કાર્ડ બદલે છે. લાગુ કરો પરિણામ ડ્રાફ્ટને બદલે છે અને ફેરફાર કરી શકાય તેવા કાર્ડ પર પાછા આવે છે. બીજા રિલીઝને શોધવા માટે કાર્ડનું મેનુ વાપરો, ફાઇલ ટેગો લાગુ કરો, અથવા મેટાડેટા સાફ કરો અને ખાલી ડ્રાફ્ટ પર પાછા જાઓ. મેટાડેટા સાફ કરવું ઉમેદવારની ફાઇલો અને ટ્રેક લેઆઉટને રાખે છે.
+Card ના **Identify** controls Identify page માં જવાની બે રીતો આપે છે, જે શું શરૂ કરે છે તેમાં જુદી પડે છે. **Automatic** તેને ખોલે છે અને દર વખતે નવો identification run માંગે છે, candidate પાસે પહેલેથી જે પણ હોય — ચાલુ run નવા માટે છોડી દેવાય છે. **Search** એ જ page તેના typed search પર ખોલે છે અને કશું શરૂ કરતું નથી. બેમાંથી કોઈ draft બદલતું નથી; result લાગુ કરવાથી draft બદલાય છે અને editable card પર પાછા જવાય છે. Card ના menu માં બે commands છે જે draft ને જ્યાં છે ત્યાં ફરી લખે છે: **Reset to file metadata**, જે તેને candidate ની પોતાની files, sheets અને folder name જે કહે તેનાથી બદલે છે, અને **Clear metadata**, જે તેને ખાલી કરે છે. દરેક પહેલાં પૂછે છે, અને કોઈ candidate ની files કે track layout ને સ્પર્શતું નથી.
 
-### ઓનલાઇન શોધો
+### Identify
 
-ઓનલાઇન શોધો એ એકમાત્ર પાથ છે કે જે રિલીઝને ઓળખે છે. તે રિપ લોગ અથવા CUE શીટમાંથી ડિસ્ક ID ની ગણતરી કરે છે, બારકોડ અને કેટેલોગ લખાણને ઓળખે છે, પ્રશ્નો MusicBrainz અને Discogs, અને પરિણામોને બંધબેસે છે.
+Identify page શોધે છે કે folder કયો release છે. તે folder માંથી પુરાવા વાંચે છે અને દરેક ટુકડો lookup કરે છે:
 
-આપોઆપ ઓળખ આ જ માર્ગ વાપરે છે. **ડિફૉલ્ટ મેટાડેટા સ્રોત** નવા મળેલા ઉમેદવારો માટે **ઓનલાઇન શોધો**, **ફાઇલ ટૅગ**, અથવા **કોઈ નહીં** પસંદ કરે છે. **ઓનલાઇન શોધોનો ડિફૉલ્ટ મોડ** **આપોઆપ** અથવા **જાતે શોધો** પસંદ કરે છે. ઓનલાઇન શોધો ખૂલતાં આપોઆપ મોડ સાક્ષી કાઢવાનું, OCR, પ્રદાતા પ્રશ્નો અને મેળાપ શરૂ કરે છે; જાતે શોધો આમાંથી કંઈ શરૂ કરતું નથી. ફાઇલ ટૅગ અને કોઈ નહીં ઓનલાઇન શોધો ખોલતાં નથી.
+- **Disc ID.** CD ના ચોક્કસ track layout નો fingerprint, rip log અથવા CUE sheet માંથી ગણેલો. તે match થાય ત્યારે ચોક્કસ CD edition ઓળખે છે.
+- **Barcode.** Folder ના cover scans માંથી text recognition વડે વાંચેલો, અથવા CUE sheet માંથી.
+- **Catalog numbers અને text.** Artwork પર અને file તથા folder names માં મળેલા catalog numbers, results ને સાંકડા કરવા વપરાય છે.
 
-### ફાઇલ ટૅગ
+Signals ને MusicBrainz અને Discogs સામે એક સાથે lookup કરાય છે, અને results ને એકબીજા સામે ચકાસાય છે. દરેક signal results ઉપર badge તરીકે દેખાય છે: શું મળ્યું, તે ક્યાંથી આવ્યું (origin માટે hover કરો: disc TOC, CUE sheet, cover scan, folder name) તે તમે જોઈ શકો છો, અને કોઈ signal ગેરમાર્ગે દોરતું હોય તો તેને અલગથી બંધ કરી શકો છો.
 
-ફાઇલ ટૅગ જડિત ઓડિયો ટેગો અને CUE મેટાડેટા વાંચે છે જ્યારે સ્ત્રોત મૂળભૂત તરીકે ખૂલે છે અથવા રૂપરેખાંકિત થાય છે. પૂર્વદર્શન ચકાસો, પછી એ ચોક્કસ સ્નેપશોટ સાથે ડ્રાફ્ટને બદલવા માટે ** લાગુ કરો** પસંદ કરો. લાઇબ્રેરીમાં લખતા પહેલા આયાત નિષ્ફળ જાય છે જો ઉમેદવાર અથવા અવલોકન થયેલ ઓડિયો ફાઇલો પૂર્વદર્શન પછી બદલાય છે.
+ત્રણ પરિણામો:
 
-ફેરફાર કરી શકાય તેવું કાર્ડ શાંત ફાઇલ ટૅગ ચિપ બતાવે છે કે સ્નેપશોટ લાગુ પાડેલ છે. ફક્ત ટાઇપ કરીને ભરેલ ડ્રાફ્ટ પાસે કોઈ સ્રોત ચિપ નથી.
+- **મળ્યું.** પુરાવા એક release group પર સંમત છે. તેની યાદીમાંથી તમે ચોક્કસ pressing પસંદ કરો છો.
+- **ટકરાવ.** બે signals જુદા releases તરફ દોરે છે, જેમ કે disc ID અને barcode સંમત ન થાય. bae બંને બાજુ બતાવે છે અને તમે કોના પર વિશ્વાસ કરવો તે પસંદ કરો છો, અથવા કોઈ signal ને ignore કરો છો.
+- **કશું મળ્યું નહીં.** હાથથી search કરો: artist અને album, catalog number, અથવા barcode, કોઈ પણ database સામે. Artwork માંથી ઓળખાયેલું text autocomplete તરીકે આપવામાં આવે છે.
+
+Source browser search form, identification progress, signals અને results સાથે બતાવે છે. Result પસંદ કરવાથી bae આખો release લાવે ત્યાં સુધી તે row progress સાથે ખુલ્લી રહે છે, પછી તેને draft પર લાગુ કરે છે. પરિણામી card MusicBrainz અથવા Discogs source chip બતાવે છે. Card પરનું **Automatic** તેને શરૂઆતથી ફરી ચલાવે છે; **Search** પહેલેથી મળેલું રાખીને typed search પર પાછું જાય છે.
+
+આપોઆપ identification આ જ માર્ગ વાપરે છે. Candidate ઉમેરાય ત્યારે તેનો draft તેની files, sheets અને folder name પરથી બને છે. Settings, Import માંનું setting **Identify automatically** દરેક એવા candidate માટે identification ચલાવે છે જેની પાસે તેની હાલની files માટે કોઈ result નથી; તે બંધ હોય તો દરેક run તમે જાતે શરૂ કરો છો. પહેલેથી ભરેલો draft શરૂઆત છે, જવાબ નહીં, તેથી તે run ને અટકાવતો નથી.
+
+### File metadata
+
+File metadata ત્યારે વંચાય છે જ્યારે candidate ઉમેરાતાં pre-fill તેને વાંચે, અને ફરી જ્યારે પણ **Reset to file metadata** પસંદ થાય. બંને રીતે draft તે ચોક્કસ reading થી બદલાય છે — embedded audio tags, CUE metadata, અને folder નું પોતાનું નામ — અને card તેના પર ફરી દોરાય છે. Reading પછી candidate અથવા તેની audio files બદલાય તો library માં write કરતાં પહેલાં import નિષ્ફળ જાય છે.
+
+Draft માં તે reading હોય ત્યાં સુધી editable card શાંત File metadata chip બતાવે છે. ફક્ત type કરીને ભરેલા draft પાસે કોઈ source chip નથી.
 
 ## Confirm અને import
 
 Confirmation pane બતાવે છે કે import શું write કરશે:
 
-- ** કવર.** ડેટાબેઝની કળામાંથી પસંદ થયેલ, તમારા ફોલ્ડરમાં ચિત્રો, અથવા ફાઇલોમાં જડિત કળા. ઉમેદવાર ગેલેરીમાંથી કવર ચોરસ પર ચિત્ર ખેંચો, અથવા તેને પછીથી બદલો.
+- **Cover.** Databases ના art, તમારા folder ની images, અથવા files માં embedded art માંથી પસંદ કરેલું. Candidate gallery માંથી image ને cover square પર drag કરો, અથવા પછી બદલો.
 - **Metadata.** Album, artist, year, label, catalog number, country, barcode, અને દરેક track: કશું save થાય તે પહેલાં અહીં બધું editable છે.
 - **Storage.** Cloud home જોડાયેલું હોય તો release ને ત્યાં upload કરવા **Cloud** પસંદ કરો, અને તેની files આ ઉપકરણ પર પણ રાખવા **Pinned**. નહીં તો release સ્થાનિક છે: તેની માહિતી તમારાં બીજાં ઉપકરણો પર sync થાય છે, અને તેનું audio આ ઉપકરણ પર જ રહે છે. [Storage અને offline](/gu/guide/storage) જુઓ.
 
@@ -52,4 +66,4 @@ Import પૃષ્ઠભૂમિમાં ચાલે છે: bae ચકા�
 
 ## Data sources
 
-**MusicBrainz** માટે account કે key જોઈએ નહીં. **Discogs** માટે તમારો પોતાનો free API token જોઈએ; Settings માં paste કરો, અને તે કામ કરવાનું બંધ કરે તો bae તમને કહે છે. Token વગર, Discogs search અને Discogs-sourced metadata ઉપલબ્ધ નથી, અને બાકી બધું કામ કરે છે. બંને services rate-limited છે; bae limits અંદર રહેવા requests pace કરે છે.
+**MusicBrainz** માટે account કે key જોઈએ નહીં. **Discogs** માટે તમારો પોતાનો free API token જોઈએ; Settings, Import માં paste કરો, અને તે કામ કરવાનું બંધ કરે તો bae તમને કહે છે. Token વગર, Discogs search અને Discogs-sourced metadata ઉપલબ્ધ નથી, અને બાકી બધું કામ કરે છે. બંને services rate-limited છે; bae limits અંદર રહેવા requests pace કરે છે.

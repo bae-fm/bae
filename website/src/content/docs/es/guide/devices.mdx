@@ -7,15 +7,15 @@ No hay cuenta de bae. Cada persona de una biblioteca tiene sus propias claves, q
 
 Dos puertas distintas, para dos situaciones distintas:
 
-- **Restaurar**: tu propio dispositivo nuevo o reinstalado se une con tu código de restauración. Ningún otro dispositivo lo aprueba: el código contiene tus claves, así que ya demuestra que el dispositivo es tuyo.
+- **Añadir dispositivo**: tu propio dispositivo nuevo o reinstalado se une con tu código de recuperación. Ningún otro dispositivo lo aprueba: el código contiene tus claves, así que ya demuestra que el dispositivo es tuyo.
 - **Unirse**: otra persona se une con una invitación de un administrador, que aprueba su solicitud.
 
 ## Agregar tu propio dispositivo
 
-En el dispositivo nuevo, elige **Restaurar desde la nube** y dale tu código de restauración de una de tres maneras:
+En un Mac nuevo, elige **Añadir dispositivo**; en un teléfono Android, **Escanear un código** o **Introducir un código**. Dale tu código de recuperación de una de tres maneras:
 
-- **Escanea** el código QR que muestra uno de tus otros dispositivos en **Mostrar código de restauración...**, en Configuración, Biblioteca.
-- **Elígelo** del llavero de iCloud, en dispositivos Apple: bae lista los códigos de restauración que tus otros dispositivos guardaron ahí.
+- **Escanea** el código QR que muestra uno de tus otros dispositivos en **Añadir dispositivo…**, en Ajustes, Biblioteca.
+- **Elígelo** del llavero de iCloud, en dispositivos Apple: bae lista los códigos de recuperación que tus otros dispositivos guardaron ahí.
 - **Pégalo** o escríbelo.
 
 Inicia sesión en el proveedor de almacenamiento cuando se te pida. En S3 el dispositivo también necesita tu clave de acceso: el código QR la lleva junto al código, así que basta con escanearlo, y un código escrito pide la clave. Después, el dispositivo nuevo descarga la biblioteca y empieza a sincronizar.
@@ -24,13 +24,13 @@ Hasta que carga la biblioteca, el dispositivo muestra dónde está guardada en l
 
 ## Invitar a una persona
 
-Un administrador abre Configuración, Biblioteca, **Invitar a una persona...**, elige un rol e introduce el correo de la cuenta de la persona; en S3, en su lugar, una clave de acceso creada para ella. bae comparte la carpeta de la biblioteca con esa cuenta y muestra una invitación como código QR.
+Un administrador abre Ajustes, Biblioteca, **Invitar a una persona…**, introduce el nombre, el rol y el correo de la cuenta de la persona (en S3, en su lugar, una clave de acceso creada para ella) y elige **En persona** o **Enviar**. bae comparte la carpeta de la biblioteca con esa cuenta y muestra la invitación como código QR.
 
-En su dispositivo, la persona elige **Unirse a una biblioteca**, escanea o pega la invitación, escribe su nombre e inicia sesión en su propia cuenta. La solicitud aparece en el dispositivo del administrador en **Esperando para unirse**, y el administrador la aprueba o la rechaza. Una vez aprobada, el dispositivo nuevo descarga la biblioteca, y cada dispositivo muestra a la persona nueva por su nombre. Una invitación caduca en un día, y solo el dispositivo que la creó puede aprobar su solicitud. Detalles en [Identidad y membresía](/es/reference/membership).
+En su dispositivo, la persona elige **Unirse a una biblioteca** (en un teléfono Android, **Escanear un código** o **Introducir un código**), escanea o pega la invitación e inicia sesión en su propia cuenta. Una invitación dada en persona la deja entrar en cuanto llega su solicitud. Con una invitación enviada, el dispositivo del administrador muestra la solicitud con un número de confirmación, el mismo que muestra el dispositivo de la persona, y el administrador los compara y elige **Aprobar** o **Rechazar**. Una vez aprobada, el dispositivo nuevo descarga la biblioteca, y cada dispositivo muestra a la persona nueva por su nombre. Una invitación dada en persona dura una hora, una enviada una hora, un día o una semana, y solo el dispositivo que la creó puede aprobar su solicitud. Detalles en [Identidad y membresía](/es/reference/membership).
 
 ## Miembros y roles
 
-Configuración, Biblioteca lista a cada persona y sus dispositivos, y cuál es este dispositivo. Quien conecta una biblioteca a la nube es su primer **administrador**; un administrador invita a otros como **administradores** o **miembros** y puede cambiar el rol de una persona. Todos leen y editan la biblioteca. Solo los administradores invitan y eliminan personas y renombran la biblioteca.
+Ajustes, Biblioteca lista a cada persona y sus dispositivos, y cuál es este dispositivo. Quien conecta una biblioteca a la nube es su primer **administrador**; un administrador invita a otros como **administradores** o **miembros** y puede cambiar el rol de una persona. Todos leen y editan la biblioteca. Solo los administradores invitan y eliminan personas y renombran la biblioteca.
 
 ## Eliminar un dispositivo
 
@@ -38,9 +38,9 @@ Cada persona puede eliminar sus propios dispositivos, y un administrador puede e
 
 Eliminar a una persona, algo que solo puede hacer un administrador, también elimina sus dispositivos y lo que mantenía privado. Sus valoraciones, su historial y sus listas compartidas con el hogar se quedan, atribuidos a ella. Las claves de la biblioteca se reemplazan, así que nada de lo que se escriba después le resulta legible. Lo que ya copió lo conserva: no se pueden retirar datos enviados.
 
-## Códigos de restauración
+## Códigos de recuperación
 
-Un código de restauración contiene tus claves para una biblioteca y dónde está guardada, en una sola cadena. No contiene ninguna contraseña de almacenamiento ni inicio de sesión, ni el nombre de la biblioteca. **Mostrar código de restauración...** en Configuración, Biblioteca lo muestra; guárdalo en un lugar seguro, como un gestor de contraseñas.
+Un código de recuperación contiene tus claves para una biblioteca y dónde está guardada, en una sola cadena. No contiene ninguna contraseña de almacenamiento ni inicio de sesión, ni el nombre de la biblioteca. **Mostrar código**, en **Tu código de recuperación** de Ajustes, Biblioteca, lo muestra; guárdalo en un lugar seguro, como un gestor de contraseñas.
 
 En plataformas Apple el código también se guarda automáticamente en el llavero de iCloud, así que un Mac o iPhone nuevo con sesión iniciada en tu Apple Account puede elegirlo de una lista.
 

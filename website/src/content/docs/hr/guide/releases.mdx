@@ -7,7 +7,7 @@ Većina glazbenih aplikacija modelira "album": jedan naslov, jedan omot, jedan p
 
 ## Albumi grupiraju izdanja
 
-U biblioteci je album s nekoliko tiskanja jedan unos. Stranica albuma prikazuje birač izdanja; svako izdanje drži vlastiti popis pjesama, omot, godinu, izdavača, kataloški broj i zasluge. Jedno izdanje je **primarno**: ono koje mreža albuma i reprodukcija zadano koriste. Postavite bilo koje izdanje kao primarno iz izbornika albuma i u bilo kojem trenutku odaberite drugo izdanje za slušanje; bae pamti vaš odabir po albumu.
+U biblioteci je album s nekoliko tiskanja jedan unos. Stranica albuma prikazuje birač izdanja; svako izdanje drži vlastiti popis pjesama, omot, godinu, izdavača, kataloški broj i zasluge. Jedno izdanje je **primarno**: ono koje mreža albuma i reprodukcija zadano koriste. Postavite bilo koje izdanje kao primarno pomoću **Postavi kao primarno izdanje** u izborniku albuma i u bilo kojem trenutku odaberite drugo izdanje za slušanje; bae pamti vaš odabir po albumu.
 
 ## Što izdanje zna
 
@@ -18,21 +18,21 @@ Identificirana izdanja nose znanje baza podataka, ne samo nazive pjesama:
 - Klasična struktura: skladatelji, djela i njihovi dijelovi, povezani s njihovim snimkama. Iz toga se gradi prikaz skladatelja u biblioteci; pogledajte [Pregledavanje i pretraživanje](/hr/guide/browsing).
 - Identitet: koje je točno izdanje MusicBrainz ili Discogs.
 
-Čuva se i ono što je izvor naveo, onako kako ga je bae pročitao, pa se izdanje poslije može vratiti na to bez ponovnog traženja baza podataka; uređaj koji ga nikad nije dohvatio pita jednom, pri vraćanju.
+Nakon primjene te vrijednosti pripadaju samom izdanju: bae ne čuva nikakvu vezu natrag na izvor, a izmjene ih mijenjaju na mjestu.
 
 ## Uređivanje
 
-Metapodaci su vaši za ispravljanje. ** Uredi metapodatke ** na bilo kojem izdanju otvara isti obrazac koji koristi potvrda uvoza: naslov albuma i izvođač, pritiskom na detalje i naslov svake pjesme, izvođač i numeriranje. ** Vrati na izvor ** pojavljuje se kada je izdanje popunjeno iz MusicBrainz, Discogs ili Oznake datoteka i vraća se na taj pohranjeni izvor.
+Metapodaci su vaši za ispravljanje. **Uredi…** u izborniku albuma otvara uređivač izdanja, isti obrazac koji koristi uvoz: naslov albuma i izvođača, pojedinosti tiskanja te naslov, izvođača i numeriranje svake pjesme. **Spremi** zapisuje vaše izmjene; **Odustani** ih odbacuje.
 
 Izmjene žive samo u bazi podataka bae. Ugrađene oznake vaših datoteka nikad se ne prepisuju; datoteke ostaju bajt po bajt kao pri uvozu.
 
 ## Ponovna identifikacija
 
-Ako je izdanje uvezeno kao nepoznato, podudarano s pogrešnim tiskanjem ili se baza podataka otad poboljšala, **Re-identify** ponovno pokreće tijek identifikacije na postojećem izdanju: isti signali, isti alati pretraživanja. Nakon što se novo podudaranje zapiše, bae pita želite li osvježiti metapodatke iz novog izvora (prepisujući vaše izmjene) ili zadržati ono što imate.
+Ako je izdanje uvezeno kao nepoznato, podudarano s pogrešnim tiskanjem ili se baza podataka otad poboljšala, kontrole **Identificiraj** u uređivaču ponovno pokreću identifikaciju na postojećem izdanju: **Automatski** ga identificira iz njegovih datoteka, a **Pretraži** otvara ručno pretraživanje. Odabir tiskanja odmah zamjenjuje vrijednosti u uređivaču; **Spremi** ih zadržava, a **Odustani** zadržava ono što ste imali.
 
 ## Omoti
 
-Svako izdanje ima jedan prikazni omot. **Change cover** nudi grafiku iz baza podataka i slikovne datoteke koje su došle s izdanjem. bae čuva vlastitu kopiju odabranog omota, veličine za prikaz, pa izvorni sken u vašoj mapi ostaje netaknut. Dodirnite omot bilo gdje za otvaranje cijele galerije slika izdanja.
+Svako izdanje ima jedan prikazni omot. **Promijeni omot** nudi grafiku iz baza podataka i slikovne datoteke koje su došle s izdanjem. bae čuva vlastitu kopiju odabranog omota, veličine za prikaz, pa izvorni sken u vašoj mapi ostaje netaknut. Dodirnite omot bilo gdje za otvaranje cijele galerije slika izdanja.
 
 ## Brisanje
 

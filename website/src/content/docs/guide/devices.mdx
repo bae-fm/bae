@@ -7,15 +7,15 @@ There is no bae account. Each person in a library has their own keys, which all 
 
 Two different doors, for two different situations:
 
-- **Restoring**: your own new or reinstalled device joins with your restore code. No other device approves it: the code holds your keys, so it already proves the device is yours.
+- **Adding a device**: your own new or reinstalled device joins with your recovery code. No other device approves it: the code holds your keys, so it already proves the device is yours.
 - **Joining**: another person joins with an invite from an admin, who approves their request.
 
 ## Adding your own device
 
-On the new device, choose **Restore from cloud** and give it your restore code in one of three ways:
+On a new Mac, choose **Add device**; on an Android phone, **Scan a code** or **Enter a code**. Give it your recovery code in one of three ways:
 
-- **Scan** the QR code that one of your other devices shows under **Show restore code...** in Settings, Library.
-- **Pick** it from iCloud Keychain, on Apple devices: bae lists the restore codes your other devices saved there.
+- **Scan** the QR code that one of your other devices shows under **Add device…** in Settings, Library.
+- **Pick** it from iCloud Keychain, on Apple devices: bae lists the recovery codes your other devices saved there.
 - **Paste** or type it.
 
 Sign in to the storage provider when asked. On S3 the device also needs your access key: the QR code carries it beside the code, so scanning is enough, and a typed code asks for the key. The new device then downloads the library and starts syncing.
@@ -24,9 +24,9 @@ Until it has loaded the library, the device shows where the library is stored ra
 
 ## Inviting a person
 
-An admin opens Settings, Library, **Invite a Person...**, picks a role, and enters the person's account email; on S3, an access key made for them instead. bae shares the library's folder with that account and shows an invite as a QR code.
+An admin opens Settings, Library, **Invite a person…**, enters the person's name, role, and account email (on S3, an access key made for them instead), and picks **In person** or **Send**. bae shares the library's folder with that account and shows the invite as a QR code.
 
-On their device, the person chooses **Join a library**, scans or pastes the invite, types their name, and signs in to their own account. The request appears on the admin's device under **Waiting to join**, and the admin approves or declines it. Once approved, the new device downloads the library, and every device shows the new person by name. An invite expires within a day, and only the device that made it can approve its request. Details in [Identity and membership](/reference/membership).
+On their device, the person chooses **Join library** (on an Android phone, **Scan a code** or **Enter a code**), scans or pastes the invite, and signs in to their own account. An invite given in person lets them in as soon as their request arrives. For a sent invite, the admin's device shows the request with a confirmation number, the same one the person's device shows, and the admin compares them and chooses **Approve** or **Decline**. Once approved, the new device downloads the library, and every device shows the new person by name. An invite given in person lasts an hour, a sent one an hour, a day, or a week, and only the device that made it can approve its request. Details in [Identity and membership](/reference/membership).
 
 ## Members and roles
 
@@ -38,9 +38,9 @@ Each person can remove their own devices, and an admin can remove anyone's, so a
 
 Removing a person, which only an admin can do, also removes their devices and what they kept private. Their ratings, history, and playlists shared with the household stay, credited to them. The library's keys are replaced, so nothing written afterward is readable to them. What they already copied they keep: nothing can unsend data.
 
-## Restore codes
+## Recovery codes
 
-A restore code holds your keys for one library and where it is stored, in one string. It holds no storage password or sign-in, and no library name. **Show restore code...** in Settings, Library displays it; store it somewhere safe, like a password manager.
+A recovery code holds your keys for one library and where it is stored, in one string. It holds no storage password or sign-in, and no library name. **Show code** under **Your recovery code** in Settings, Library displays it; store it somewhere safe, like a password manager.
 
 On Apple platforms the code is also kept in iCloud Keychain automatically, so a new Mac or iPhone signed in to your Apple Account can pick it from a list.
 

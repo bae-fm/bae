@@ -1,50 +1,64 @@
 ---
 title: Uvoz
-description: Odaberite kako svaka mapa isporučuje svoje metapodatke za uvoz
+description: Odaberite odakle svaka mapa dobiva metapodatke za uvoz
 ---
 
-Mapa sadrži audio i druge datoteke za uvoz. Vi birate hoće li metapodaci koje je moguće uređivati ​​započeti mrežnim izdanjem, vlastitim oznakama datoteke ili praznim obrascem.
+Mapa daje zvuk i druge datoteke za uvoz. Vi birate počinju li njegovi metapodaci koje možete uređivati od izdanja s interneta, od vlastitih metapodataka mape ili od praznog obrasca.
 
 Uvoz se događa na desktopu (macOS, Windows). Vaše se datoteke čitaju, nikad ne mijenjaju: bae ništa ne premješta, ne preimenuje, ne mijenja oznake i ne rekodira. Pogledajte [Pohrana i izvanmrežno](/hr/guide/storage) za to gdje datoteke žive nakon uvoza.
 
 ## Nadzirane mape
 
-Prebacite se na odjeljak **Import** i dodajte mapu: odaberite je, povucite je na prozor ili pritisnite <kbd>⌘I</kbd>. bae od tada nadzire mapu. Nova glazba spuštena u nju sama se pojavljuje kao novi kandidat; ne skenirate ponovno ručno. Mape koje se još preuzimaju zanemaruju se dok ne završe.
+Prebacite se na odjeljak **Uvoz** i dodajte mapu: odaberite je, povucite je na prozor ili pritisnite <kbd>⌘I</kbd>. bae od tada nadzire mapu. Nova glazba spuštena u nju sama se pojavljuje kao novi kandidati; ne skenirate ponovno ručno. Mape koje se još preuzimaju zanemaruju se dok ne završe.
 
 Skeniranje prepoznaje izdanja u oblicima koje ripovi stvarno imaju:
 
 | Raspored | Kako izgleda |
 |--------|-------------------|
-| Datoteka po pjesmi | `01 - Song.flac`, `02 - Song.flac`, ... |
+| Datoteka po pjesmi | `01 - Song.flac`, `02 - Song.flac`, … |
 | CUE + slika | `album.cue` + `album.flac`, jedna datoteka za cijeli disk |
 | Više diskova | podmape `CD1/`, `CD2/`, bilo koji oblik unutra |
 | Zbirke | mapa mapa, svaka svoje izdanje |
 
 bae uvozi formate koje reproducira: FLAC, MP3, APE, ALAC i AAC u `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack i DSD (`.dsf`/`.dff`). Grafika i dokumenti (CUE listovi, zapisnici ripanja, tekstne datoteke) u mapi prepoznaju se i čuvaju s izdanjem.
 
-## Ispunite skicu metapodataka
+## Ispunite nacrt metapodataka
 
-Svaki kandidat posjeduje jedan nacrt metapodataka koji se može uređivati, a koji može biti prazan, popunjen iz internetskog izdanja ili ispunjen iz oznaka datoteka. Upisivanje u prazan nacrt je izravni unos, a ne zasebni izvor metapodataka.
+Svaki kandidat ima jedan nacrt metapodataka koji možete uređivati. Može početi prazan, biti ispunjen iz izdanja s interneta ili iz onoga što kažu vlastite datoteke mape. Upisivanje u prazan nacrt izravan je unos, a ne zaseban izvor metapodataka.
 
-Otvaranjem ** Pronađi na internetu…** ili ** Oznake datoteka…** zamjenjuje se gornja kartica s preglednikom tog izvora bez mijenjanja skice. Primijeniotvaranje rezultata zamjenjuje skicu i vraća se na karticu za uređivanje. Koristite izbornik kartice da biste pronašli drugo izdanje, primijenili oznake datoteka ili izbrisali metapodatke i vratili se na praznu skicu.
+Kontrole **Identificiraj** na kartici nude dva puta do stranice Identificiraj, koji se razlikuju po tome što pokreću. **Automatski** je otvara i svaki put traži novo pokretanje identifikacije, bez obzira na to što kandidat već sadrži — identifikacija koja je već u tijeku odbacuje se zbog nove. **Pretraži** otvara istu stranicu na ručnom pretraživanju i ne pokreće ništa. Nijedan ne mijenja nacrt; primjena rezultata zamjenjuje nacrt i vraća vas na karticu za uređivanje. Izbornik kartice sadrži dvije naredbe koje prepisuju nacrt na mjestu: **Vrati na metapodatke datoteka**, koja ga zamjenjuje onim što kažu vlastite datoteke kandidata, CUE listovi i naziv mape, i **Izbriši metapodatke**, koja ga prazni. Obje najprije pitaju i nijedna ne dira datoteke kandidata ni raspored pjesama.
 
-### Pronađi na internetu
+### Identificiraj
 
-Pronađi na internetu je jedini put koji identificira izdanje.Izračunava ID diska iz dnevnika kopiranja ili lista CUE, prepoznaje crtične kodove i tekst kataloga, upita MusicBrainz i Discogs i podudara rezultate.
+Stranica Identificiraj pronalazi izdanje koje mapa sadrži. Čita dokaze iz mape i traži svaki od njih:
 
-Automatsko prepoznavanje koristi isti put. **Zadani izvor metapodataka** odabire **Pronađi na internetu**, **Oznake datoteka** ili **Nijedan** za novootkrivene kandidate. **Zadani način za Pronađi na internetu** odabire **Automatski** ili **Traži ručno**. Automatski način pri otvaranju Pronađi na internetu pokreće izdvajanje dokaza, OCR, upite davateljima i podudaranje; Traži ručno ne pokreće ništa od toga. Oznake datoteka i Nijedan ne otvaraju Pronađi na internetu.
+- **ID diska.** Otisak točnog rasporeda pjesama CD-a, izračunat iz zapisnika ripanja ili CUE lista. Kad se podudara, identificira točno CD izdanje.
+- **Barkod.** Očitan sa skenova omota u mapi prepoznavanjem teksta ili iz CUE lista.
+- **Kataloški brojevi i tekst.** Kataloški brojevi pronađeni na grafici te u nazivima datoteka i mapa, koriste se za sužavanje rezultata.
 
-### Oznake datoteka
+Signali se traže u MusicBrainzu i Discogsu istodobno, a rezultati se međusobno provjeravaju. Svaki se signal pojavljuje kao značka iznad rezultata: vidite što je pronađeno, odakle dolazi (zadržite pokazivač za podrijetlo: TOC diska, CUE list, sken omota, naziv mape) i možete isključiti pojedine signale ako neki zavarava.
 
-Oznake datoteka čita ugrađene audio oznake i CUE metapodatke kada je izvor otvoren ili konfiguriran kao zadani.Pregledajte pretpregled, a zatim odaberite ** Primijeni ** da biste zamijenili nacrt s točnom snimkom.Uvoz ne uspijeva prije zapisivanja u biblioteku ako se kandidatske ili promatrane audio datoteke promijene nakon pretpregleda.
+Tri ishoda:
 
-Na kartici koja se može uređivati prikazan je tihi Oznake datoteka čip nakon što je ta snimka primijenjena, dok skica ispunjena samo tipkanjem nema izvorni čip.
+- **Pronađeno.** Dokazi se slažu oko jedne grupe izdanja. Točno tiskanje birate s njezina popisa.
+- **Sukob.** Dva signala upućuju na različita izdanja, recimo ID diska i barkod se ne slažu. bae prikazuje obje strane, a vi birate kojoj vjerovati ili zanemarujete signal.
+- **Ništa nije pronađeno.** Pretražite ručno: izvođač i album, kataloški broj ili barkod, u bilo kojoj bazi podataka. Tekst prepoznat s grafike nudi se kao samodovršavanje.
+
+Preglednik izvora prikazuje obrazac pretraživanja, napredak identifikacije, signale i rezultate zajedno. Odabir rezultata drži taj redak otvorenim s napretkom dok bae dohvaća cijelo izdanje, a zatim ga primjenjuje na nacrt. Dobivena kartica prikazuje oznaku izvora MusicBrainz ili Discogs. **Automatski** na kartici ponovno je pokreće od početka; **Pretraži** se vraća na ručno pretraživanje, gdje je ono što je već pronađeno i dalje prisutno.
+
+Automatska identifikacija koristi isti put. Kad se kandidat doda, njegov se nacrt stvara iz njegovih datoteka, CUE listova i naziva mape. Postavka **Automatski identificiraj** u Postavke, Uvoz pokreće identifikaciju za svakog kandidata koji nema rezultat za datoteke koje upravo sada ima; kad je isključena, svako pokretanje započinjete sami. Unaprijed ispunjen nacrt polazište je, a ne odgovor, pa ne zaustavlja pokretanje.
+
+### Metapodaci datoteka
+
+Metapodaci datoteka čitaju se kad ih predispunjavanje pročita pri dodavanju kandidata i ponovno kad god odaberete **Vrati na metapodatke datoteka**. U oba slučaja nacrt se zamjenjuje upravo tim čitanjem — ugrađenim audio oznakama, CUE metapodacima i vlastitim nazivom mape — a kartica se prema njemu ponovno iscrtava. Uvoz ne uspijeva prije zapisivanja u biblioteku ako su se kandidat ili njegove audio datoteke promijenili nakon čitanja.
+
+Kartica za uređivanje prikazuje diskretnu oznaku Metapodaci datoteka dok nacrt sadrži to čitanje. Nacrt ispunjen samo tipkanjem nema oznaku izvora.
 
 ## Potvrda i uvoz
 
 Okno potvrde prikazuje sve što će uvoz zapisati:
 
-- ** Naslovnica.** Odabire se iz grafike baze podataka, slika u mapi ili grafike ugrađene u datoteke.Povucite sliku iz galerije kandidata na kvadrat na naslovnici, ili je promijenite kasnije.
+- **Omot.** Odabire se iz grafike baza podataka, slika u vašoj mapi ili grafike ugrađene u datoteke. Povucite sliku iz galerije kandidata na kvadrat omota ili ga promijenite poslije.
 - **Metapodaci.** Album, izvođač, godina, izdavač, kataloški broj, zemlja, barkod i svaka pjesma: sve se može urediti ovdje prije nego što se išta spremi.
 - **Pohrana.** Ako je povezano mjesto u oblaku, odaberite **Oblak** da se izdanje prenese onamo i **Prikvačeno** da njegove datoteke ostanu i na ovom uređaju. Inače je izdanje lokalno: njegovi podaci sinkroniziraju se s vašim drugim uređajima, a zvuk ostaje na ovome. Pogledajte [Pohrana i izvanmrežno](/hr/guide/storage).
 
@@ -52,4 +66,4 @@ Uvoz radi u pozadini: bae provjerava da se svaka pjesma dekodira do kraja, mjeri
 
 ## Izvori podataka
 
-**MusicBrainz** ne treba račun ni ključ. **Discogs** zahtijeva vaš besplatni API token; zalijepite ga u Settings, a bae vam kaže ako prestane raditi. Bez tokena nisu dostupni Discogs pretraživanje i metapodaci iz Discogsa, a sve ostalo radi. Obje usluge imaju ograničenja učestalosti; bae raspoređuje zahtjeve kako bi ostao unutar ograničenja.
+**MusicBrainz** ne treba račun ni ključ. **Discogs** zahtijeva vaš besplatni API token; zalijepite ga u Postavke, Uvoz, a bae vam kaže ako prestane raditi. Bez tokena nisu dostupni Discogs pretraživanje i metapodaci iz Discogsa, a sve ostalo radi. Obje usluge imaju ograničenja učestalosti; bae raspoređuje zahtjeve kako bi ostao unutar ograničenja.

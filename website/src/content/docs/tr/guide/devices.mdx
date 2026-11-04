@@ -7,15 +7,15 @@ bae hesabı yoktur. Bir kitaplıktaki her kişinin, tüm aygıtlarının paylaş
 
 İki ayrı durum için iki ayrı kapı vardır:
 
-- **Geri yükleme**: size ait yeni veya yeniden kurulmuş bir aygıt geri yükleme kodunuzla katılır. Başka hiçbir aygıt onu onaylamaz: kod anahtarlarınızı içerir, yani aygıtın sizin olduğunu zaten kanıtlar.
+- **Cihaz ekleme**: size ait yeni veya yeniden kurulmuş bir aygıt kurtarma kodunuzla katılır. Başka hiçbir aygıt onu onaylamaz: kod anahtarlarınızı içerir, yani aygıtın sizin olduğunu zaten kanıtlar.
 - **Katılma**: başka bir kişi, isteğini onaylayan bir yöneticinin davetiyle katılır.
 
 ## Kendi aygıtınızı ekleme
 
-Yeni aygıtta **Buluttan geri yükle**'yi seçin ve geri yükleme kodunuzu üç yoldan biriyle verin:
+Yeni bir Mac'te **Cihaz ekle**'yi, Android telefonda **Kod tara** veya **Kod gir**'i seçin. Kurtarma kodunuzu üç yoldan biriyle verin:
 
-- Diğer aygıtlarınızdan birinin Ayarlar, Kitaplık içinde **Geri yükleme kodunu göster...** altında gösterdiği QR kodu **tarayın**.
-- Apple aygıtlarında iCloud Anahtar Zinciri'nden **seçin**: bae diğer aygıtlarınızın oraya kaydettiği geri yükleme kodlarını listeler.
+- Diğer aygıtlarınızdan birinin Ayarlar, Kitaplık içinde **Cihaz ekle…** altında gösterdiği QR kodu **tarayın**.
+- Apple aygıtlarında iCloud Anahtar Zinciri'nden **seçin**: bae diğer aygıtlarınızın oraya kaydettiği kurtarma kodlarını listeler.
 - **Yapıştırın** veya yazın.
 
 İstendiğinde depolama sağlayıcısında oturum açın. S3'te aygıtın erişim anahtarınıza da ihtiyacı vardır: QR kod onu kodun yanında taşır, bu yüzden taramak yeterlidir; yazılan kod ise anahtarı ister. Ardından yeni aygıt kitaplığı indirir ve eşzamanlamaya başlar.
@@ -24,9 +24,9 @@ Kitaplığı yükleyene kadar aygıt, kitaplığın adı yerine nerede saklandı
 
 ## Bir kişiyi davet etme
 
-Bir yönetici Ayarlar, Kitaplık, **Bir kişiyi davet et...**'i açar, bir rol seçer ve kişinin hesap e-postasını girer; S3'te bunun yerine o kişi için oluşturulmuş bir erişim anahtarı. bae kitaplığın klasörünü o hesapla paylaşır ve bir daveti QR kod olarak gösterir.
+Bir yönetici Ayarlar, Kitaplık, **Bir kişiyi davet et…**'i açar, kişinin adını, rolünü ve hesap e-postasını girer (S3'te bunun yerine o kişi için oluşturulmuş bir erişim anahtarı) ve **Yüz yüze** ya da **Gönder**'i seçer. bae kitaplığın klasörünü o hesapla paylaşır ve daveti QR kod olarak gösterir.
 
-Kişi kendi aygıtında **Bir kitaplığa katıl**'ı seçer, daveti tarar veya yapıştırır, adını yazar ve kendi hesabında oturum açar. İstek yöneticinin aygıtında **Katılmayı bekleyenler** altında görünür ve yönetici onaylar ya da reddeder. Onaylandığında yeni aygıt kitaplığı indirir ve her aygıt yeni kişiyi adıyla gösterir. Davet bir gün içinde sona erer ve isteğini yalnızca daveti oluşturan aygıt onaylayabilir. Ayrıntılar [Kimlik ve üyelik](/tr/reference/membership)'te.
+Kişi kendi aygıtında **Kitaplığa katıl**'ı seçer (Android telefonda **Kod tara** veya **Kod gir**), daveti tarar veya yapıştırır ve kendi hesabında oturum açar. Yüz yüze verilen bir davet, isteği ulaşır ulaşmaz kişiyi içeri alır. Gönderilen bir davette yöneticinin aygıtı isteği bir onay numarasıyla gösterir; bu, kişinin aygıtının gösterdiği numarayla aynıdır. Yönetici ikisini karşılaştırır ve **Onayla** ya da **Reddet**'i seçer. Onaylandığında yeni aygıt kitaplığı indirir ve her aygıt yeni kişiyi adıyla gösterir. Yüz yüze verilen bir davet bir saat, gönderilen bir davet bir saat, bir gün veya bir hafta geçerlidir ve isteğini yalnızca daveti oluşturan aygıt onaylayabilir. Ayrıntılar [Kimlik ve üyelik](/tr/reference/membership)'te.
 
 ## Üyeler ve roller
 
@@ -38,9 +38,9 @@ Herkes kendi aygıtlarını kaldırabilir ve bir yönetici herkesinkini kaldıra
 
 Bir kişiyi kaldırmak, ki bunu yalnızca yönetici yapabilir, onun aygıtlarını ve özel tuttuklarını da kaldırır. Hanehalkıyla paylaştığı puanlar, geçmiş ve çalma listeleri ona atfedilmiş olarak kalır. Kitaplığın anahtarları değiştirilir, bu yüzden sonradan yazılan hiçbir şey onun için okunabilir değildir. Daha önce kopyaladığını elinde tutar: veriyi geri göndermek mümkün değildir.
 
-## Geri yükleme kodları
+## Kurtarma kodları
 
-Geri yükleme kodu, bir kitaplık için anahtarlarınızı ve kitaplığın nerede saklandığını tek bir dizgede tutar. Depolama parolası, oturum veya kitaplık adı içermez. Ayarlar, Kitaplık içindeki **Geri yükleme kodunu göster...** onu gösterir; parola yöneticisi gibi güvenli bir yerde saklayın.
+Kurtarma kodu, bir kitaplık için anahtarlarınızı ve kitaplığın nerede saklandığını tek bir dizgede tutar. Depolama parolası, oturum veya kitaplık adı içermez. Ayarlar, Kitaplık içinde **Kurtarma kodunuz** altındaki **Kodu göster** onu gösterir; parola yöneticisi gibi güvenli bir yerde saklayın.
 
 Apple platformlarında kod otomatik olarak iCloud Anahtar Zinciri'nde de tutulur, böylece Apple Hesabınızla oturum açmış yeni bir Mac veya iPhone onu bir listeden seçebilir.
 

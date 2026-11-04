@@ -9,7 +9,7 @@ Jedna knihovna, každé zařízení a jediný zapojený účet je ten, který u�
 
 ## Cloudový domov
 
-Cloudový domov knihovny je jedno místo ve vašem úložišti: složka ve vašem Dropboxu nebo OneDrivu, váš iCloud nebo libovolný bucket kompatibilní se S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, ...). Drží všechno, co knihovna synchronizuje: změny knihovny, obrázky a audio vydání, která přesunete do cloudu.
+Cloudový domov knihovny je jedno místo ve vašem úložišti: složka ve vašem Dropboxu nebo OneDrivu, váš iCloud nebo libovolný bucket kompatibilní se S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, …). Drží všechno, co knihovna synchronizuje: změny knihovny, obrázky a audio vydání, která přesunete do cloudu.
 
 Nastavíte ho v Nastavení, Knihovna, volbou **Nastavit synchronizaci…**:
 
@@ -36,8 +36,8 @@ Stav na zařízení se nesynchronizuje: pozice přehrávání, hlasitost, fronta
 
 ## Kdy se synchronizuje
 
-Synchronizace běží sama: po změnách, podle časovače a na vyžádání přes **Synchronizovat nyní**. Úpravy dorazí na ostatní zařízení za běžných podmínek o několik sekund později. Když dvě zařízení upravují zároveň, obě změny vyhrají tam, kde do sebe nenarážejí: bae slučuje souběžné úpravy pole po poli, pozdější úprava vyhraje pole, které změnila obě, a smazané vydání zůstane smazané, i když bylo ve stejnou chvíli upraveno jinde. Nikdy vás nic nežádá o řešení konfliktu.
+Synchronizace běží sama: po změnách, podle časovače a na vyžádání přes **Synchronizovat nyní** v nabídce Soubor. Úpravy dorazí na ostatní zařízení za běžných podmínek o několik sekund později. Když dvě zařízení upravují zároveň, obě změny vyhrají tam, kde do sebe nenarážejí: bae slučuje souběžné úpravy pole po poli, pozdější úprava vyhraje pole, které změnila obě, a smazané vydání zůstane smazané, i když bylo ve stejnou chvíli upraveno jinde. Nikdy vás nic nežádá o řešení konfliktu.
 
 ## Když selže
 
-Selhání synchronizace knihovnu nepřeruší; dál místně procházíte, přehráváte a importujete, zatímco bae opakuje pokusy. Nastavení, Knihovna ukazuje pro synchronizaci jeden řádek: **Synchronizováno**, nebo kolik položek čeká, například **Čekající položky: 3**. Otevřete ho a uvidíte každou položku srozumitelnými slovy s akcí, kterou můžete provést: **Přihlásit se**, když poskytovatel chce nové přihlášení, vrácení souboru, který se před nahráním přesunul, na své místo, **Zkusit znovu**, **Znovu připojit**, **Pokračovat v nahrávání** nebo **Aktualizovat aplikaci**. Čekání, se kterým nemůžete pomoct, například na to, až se jiné zařízení připojí, nenabízí nic. Tento seznam je jediné místo, kam se dívat; nahrávání lze také pozastavit a prohlédnout ve [správci úložiště](/cs/guide/storage#správce-úložiště).
+Selhání synchronizace knihovnu nepřeruší; dál místně procházíte, přehráváte a importujete, zatímco bae opakuje pokusy. Nastavení, Knihovna ukazuje pro synchronizaci jeden řádek: **Synchronizováno**, nebo kolik položek čeká, například **Čekající položky: 3**. Otevřete ho a uvidíte každou položku srozumitelnými slovy s akcí, kterou můžete provést: **Přihlásit se**, když poskytovatel chce nové přihlášení, **Obnovit zdrojový soubor** u souboru, který se před nahráním přesunul, **Zkusit znovu**, **Znovu připojit**, **Pokračovat v nahrávání** nebo **Aktualizovat aplikaci**. Čekání, se kterým nemůžete pomoct, například na to, až se jiné zařízení připojí, nenabízí nic. Tento seznam je jediné místo, kam se dívat; nahrávání lze také pozastavit a prohlédnout ve [Správci úložiště](/cs/guide/storage#správce-úložiště).
