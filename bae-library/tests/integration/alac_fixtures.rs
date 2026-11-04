@@ -10,7 +10,7 @@ use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::cue_flac::parse_cue_sheet;
 use bae_import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,
-    FolderReleaseDecisions, ScanItem, StoredCandidateEdits,
+    FolderReleaseDecisions, ScanItem, StoredCandidateEdits, WalkItem,
 };
 use bae_import::rip_reading::read_rip_artifacts;
 use bae_util::content_type::ContentType;
@@ -171,11 +171,12 @@ fn scanner_recognizes_cue_alac_pair() {
         &StoredCandidateEdits::none(),
         &FolderReleaseDecisions::default(),
         |item| match item {
-            ScanItem::Valid(c) => candidates.push(c),
-            ScanItem::Invalid(c) => {
+            WalkItem::Entry(ScanItem::Valid(c)) => candidates.push(c),
+            WalkItem::Entry(ScanItem::Invalid(c)) => {
                 panic!("ALAC fixture must scan as a valid release, got invalid: {}", c.reason())
             }
-            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {}
+            WalkItem::Entry(ScanItem::Discovered(_) | ScanItem::Sidecar(_))
+            | WalkItem::Reading { .. } => {}
         },
     )
     .expect("scan folder");

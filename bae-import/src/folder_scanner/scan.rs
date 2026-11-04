@@ -302,7 +302,7 @@ pub(super) fn scan_directory<R, F, D>(
 ) -> Result<ScannedDirectory, FolderScanError>
 where
     R: DirectoryReader + ?Sized,
-    F: FnMut(ScanItem),
+    F: FnMut(WalkItem),
     D: FnMut(PathBuf),
 {
     let Walk { scan, decisions, new_grouping_key, .. } = walk;
@@ -343,7 +343,7 @@ where
         None if !listing_dirs.is_empty() => {
             if let Some(decision) = scanned_decision(walk, direct_audio, &listing_dirs)? {
                 let grouping = new_grouping_key();
-                on_item(ScanItem::Decided {
+                on_item(WalkItem::Reading {
                     key: FolderReleaseDecisionKey {
                         watched_folder_path: root.to_path_buf(),
                         relative_folder: relative_folder.clone(),
@@ -469,7 +469,7 @@ where
             &[],
         )? {
             if let ProjectedScanNode::Candidate(candidate) = &node {
-                on_item(ScanItem::Discovered(candidate.clone()));
+                on_item(WalkItem::Entry(ScanItem::Discovered(candidate.clone())));
             }
             nodes.push(node);
             holds_its_own_node = true;
@@ -567,12 +567,16 @@ fn sidecar_of(scan: &ScanRoot<'_>, loose: LooseFolder) -> Result<FolderSidecar, 
 
 pub(super) fn emit_projected_nodes<F>(nodes: Vec<ProjectedScanNode>, on_item: &mut F)
 where
-    F: FnMut(ScanItem),
+    F: FnMut(WalkItem),
 {
     for node in nodes {
         match node {
-            ProjectedScanNode::Candidate(candidate) => on_item(ScanItem::Valid(candidate)),
-            ProjectedScanNode::Invalid(candidate) => on_item(ScanItem::Invalid(candidate)),
+            ProjectedScanNode::Candidate(candidate) => {
+                on_item(WalkItem::Entry(ScanItem::Valid(candidate)))
+            }
+            ProjectedScanNode::Invalid(candidate) => {
+                on_item(WalkItem::Entry(ScanItem::Invalid(candidate)))
+            }
         }
     }
 }
@@ -595,7 +599,7 @@ fn scan_top_level_folder<R, F, D>(
 ) -> Result<ScannedDirectory, FolderScanError>
 where
     R: DirectoryReader + ?Sized,
-    F: FnMut(ScanItem),
+    F: FnMut(WalkItem),
     D: FnMut(PathBuf),
 {
     let mut scanned = scan_directory(walk, folder, true, on_directory, on_item)?;
@@ -605,7 +609,7 @@ where
     // Every folder above one of these has been read and none took its files,
     // so they are the folder's to say.
     for loose in std::mem::take(&mut scanned.loose) {
-        on_item(ScanItem::Sidecar(sidecar_of(&walk.scan, loose)?));
+        on_item(WalkItem::Entry(ScanItem::Sidecar(sidecar_of(&walk.scan, loose)?)));
     }
     Ok(scanned)
 }
@@ -629,7 +633,7 @@ pub(crate) fn scan_top_level_folder_with_reader<R, F, D>(
 ) -> Result<(), FolderScanError>
 where
     R: DirectoryReader + ?Sized,
-    F: FnMut(ScanItem),
+    F: FnMut(WalkItem),
     D: FnMut(PathBuf),
 {
     cancellation.check()?;
@@ -664,7 +668,7 @@ pub fn scan_for_candidates_with_decisions<F>(
     on_item: F,
 ) -> Result<(), FolderScanError>
 where
-    F: FnMut(ScanItem),
+    F: FnMut(WalkItem),
 {
     scan_for_candidates_with_reader_cancellable_and_directories(
         &OsDirectoryReader,

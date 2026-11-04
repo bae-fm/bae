@@ -81,11 +81,6 @@ async fn folder_date(
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
         ScanItem::Invalid(candidate) => candidate.path.clone(),
         ScanItem::Sidecar(_) => return Ok(None),
-        ScanItem::Decided { .. } => {
-            return Err(crate::ImportError::Internal {
-                detail: "a folder reading is stored as a decision, not as a scan entry".into(),
-            })
-        }
     };
     bae_util::task_failure::blocking("read a folder's date", move || {
         crate::folder_scanner::FolderDate::read(&path)
@@ -182,11 +177,6 @@ async fn announce_item(
         // A folder's sidecar files are no row of the list; what their
         // write displaced and rebuilt is announced on its own.
         ScanItem::Sidecar(_) => {}
-        ScanItem::Decided { .. } => {
-            return Err(crate::ImportError::Internal {
-                detail: "a folder reading is stored as a decision, not as a scan entry".into(),
-            })
-        }
     }
     Ok(())
 }
@@ -249,8 +239,8 @@ pub(crate) async fn scan_item_seed(
     let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
         return Ok(ScanItemSeed::Tags(None));
     };
-    if let (ScanItem::Discovered(_), Some(coverage)) = (item, item.coverage()) {
-        if tables.settled_entry_reads(&candidate.watched_folder_path, &coverage).await? {
+    if let ScanItem::Discovered(_) = item {
+        if tables.settled_entry_reads(&candidate.watched_folder_path, &item.coverage()).await? {
             return Ok(ScanItemSeed::AlreadySettled);
         }
     }

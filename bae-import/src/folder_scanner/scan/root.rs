@@ -18,7 +18,7 @@ enum Said {
     /// It reached this directory.
     Directory(PathBuf),
     /// It yielded this.
-    Item(ScanItem),
+    Item(WalkItem),
     /// It read through the folder at `index` under the root: the files the
     /// root's own release takes from it, or why it could not be read.
     Read { index: usize, lent: Result<Vec<FileEntry>, FolderScanError> },
@@ -37,7 +37,7 @@ pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, 
 ) -> Result<(), FolderScanError>
 where
     R: DirectoryReader + ?Sized,
-    F: FnMut(ScanItem),
+    F: FnMut(WalkItem),
     D: FnMut(PathBuf),
 {
     cancellation.check()?;
@@ -108,7 +108,7 @@ fn read_folders_at_once<R, F, D>(
 ) -> Result<Vec<Vec<FileEntry>>, FolderScanError>
 where
     R: DirectoryReader + ?Sized,
-    F: FnMut(ScanItem),
+    F: FnMut(WalkItem),
     D: FnMut(PathBuf),
 {
     let Walk { scan, reader, decisions, new_grouping_key, .. } = walk;

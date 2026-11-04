@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// Everything a pass over `root` said, in the order it said it.
 struct SaidByPass {
     directories: Vec<PathBuf>,
-    items: Vec<ScanItem>,
+    items: Vec<WalkItem>,
 }
 
 /// One grouping key for every grouping a pass proposes, so two passes over
@@ -73,14 +73,14 @@ fn top_level_folder_of(root: &Path, path: &Path) -> String {
 }
 
 /// The folder directly under `root` that `item` is read from.
-fn top_level_folder_of_item(root: &Path, item: &ScanItem) -> String {
+fn top_level_folder_of_item(root: &Path, item: &WalkItem) -> String {
     match item {
-        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+        WalkItem::Entry(ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) => {
             top_level_folder_of(root, &candidate.path)
         }
-        ScanItem::Invalid(candidate) => top_level_folder_of(root, &candidate.path),
-        ScanItem::Sidecar(sidecar) => top_level_folder_of(root, &sidecar.folder),
-        ScanItem::Decided { key, .. } => key
+        WalkItem::Entry(ScanItem::Invalid(candidate)) => top_level_folder_of(root, &candidate.path),
+        WalkItem::Entry(ScanItem::Sidecar(sidecar)) => top_level_folder_of(root, &sidecar.folder),
+        WalkItem::Reading { key, .. } => key
             .relative_folder
             .text()
             .split('/')
@@ -204,7 +204,7 @@ fn a_pass_reads_folders_at_once_and_says_what_each_says_on_its_own() {
             .cloned()
             .collect();
         assert_eq!(directories, alone.directories, "the directories of {folder}");
-        let items: Vec<ScanItem> = said
+        let items: Vec<WalkItem> = said
             .items
             .iter()
             .filter(|item| top_level_folder_of_item(&root, item) == *folder)
@@ -216,10 +216,10 @@ fn a_pass_reads_folders_at_once_and_says_what_each_says_on_its_own() {
     // The root's own release comes last, and takes the files of the folders
     // that hold no audio, the one read last among them.
     assert_eq!(said.directories.first(), Some(&root));
-    let root_items: Vec<&ScanItem> =
+    let root_items: Vec<&WalkItem> =
         said.items.iter().filter(|item| top_level_folder_of_item(&root, item).is_empty()).collect();
     assert_eq!(root_items.len(), 1);
-    let Some(ScanItem::Valid(root_release)) = said.items.last() else {
+    let Some(WalkItem::Entry(ScanItem::Valid(root_release))) = said.items.last() else {
         panic!("the root's own release is said last: {:?}", said.items.last());
     };
     assert_eq!(root_release.path, root);
@@ -382,7 +382,10 @@ fn cancelling_a_pass_stops_every_folder_it_is_reading() {
     assert!(matches!(result, Err(FolderScanError::Cancelled)), "{result:?}");
     // The cancelled folder's walk reads none of its files into a release.
     assert!(
-        !said.items.iter().any(|item| matches!(item, ScanItem::Valid(_) | ScanItem::Invalid(_))),
+        !said
+            .items
+            .iter()
+            .any(|item| matches!(item, WalkItem::Entry(ScanItem::Valid(_) | ScanItem::Invalid(_)))),
         "{:?}",
         said.items
     );
@@ -514,7 +517,7 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
     for folder in
         std::iter::once(String::new()).chain((1..=12).map(|folder| format!("Folder {folder:02}")))
     {
-        let items = |said: &SaidByPass| -> Vec<ScanItem> {
+        let items = |said: &SaidByPass| -> Vec<WalkItem> {
             said.items
                 .iter()
                 .filter(|item| top_level_folder_of_item(&root, item) == folder)
@@ -523,7 +526,7 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
         };
         assert_eq!(items(&dated), items(&by_name), "the items of {folder:?}");
     }
-    let Some(ScanItem::Valid(root_release)) = dated.items.last() else {
+    let Some(WalkItem::Entry(ScanItem::Valid(root_release))) = dated.items.last() else {
         panic!("the root's own release is said last: {:?}", dated.items.last());
     };
     assert_eq!(

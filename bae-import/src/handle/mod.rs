@@ -433,11 +433,7 @@ impl ImportServiceHandle {
             Some(crate::folder_scanner::ScanItem::Invalid(candidate)) => {
                 return Ok(Some(ImportCandidateSnapshot::Invalid(candidate)))
             }
-            Some(
-                crate::folder_scanner::ScanItem::Decided { .. }
-                | crate::folder_scanner::ScanItem::Sidecar(_),
-            )
-            | None => None,
+            Some(crate::folder_scanner::ScanItem::Sidecar(_)) | None => None,
         };
         let runtime = self.runtime.snapshot(key).await?;
         if let Some((candidate, actionable)) = candidate {

@@ -183,7 +183,7 @@ impl ImportServiceHandle {
                             ScanEvent::CandidateDiscovered { candidate }
                         }
                         ScanItem::Invalid(candidate) => ScanEvent::InvalidCandidate(candidate),
-                        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => continue,
+                        ScanItem::Sidecar(_) => continue,
                     };
                     self.event_tx.send(ImportEvent::Scan(event));
                 }
@@ -216,9 +216,7 @@ impl ImportServiceHandle {
                     candidate,
                 },
                 ScanItem::Invalid(candidate) => ScanEvent::InvalidCandidate(candidate),
-                ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
-                    continue
-                }
+                ScanItem::Discovered(_) | ScanItem::Sidecar(_) => continue,
             };
             self.event_tx.send(ImportEvent::Scan(event));
         }

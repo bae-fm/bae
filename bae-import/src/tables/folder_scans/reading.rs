@@ -121,11 +121,7 @@ impl ImportTables {
             }
         }
         for item in &items {
-            let coverage = item.item.coverage().ok_or_else(|| {
-                DbError::Message(
-                    "a folder reading is stored as a decision, not as a scan entry".to_string(),
-                )
-            })?;
+            let coverage = item.item.coverage();
             if !coverage.folder.starts_with(&folder_path) {
                 return Err(DbError::Message(format!(
                     "folder scan entry at {} is outside {}",

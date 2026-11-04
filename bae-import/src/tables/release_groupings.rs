@@ -71,7 +71,7 @@ pub(super) fn load_candidate_on(
     let (candidate, settled) = match stored.item {
         ScanItem::Valid(candidate) => (candidate, true),
         ScanItem::Discovered(candidate) => (candidate, false),
-        ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => return Ok(None),
+        ScanItem::Invalid(_) | ScanItem::Sidecar(_) => return Ok(None),
     };
     let taken_in = sql.query_row(
         "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?)",
@@ -197,7 +197,7 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
                         &GroupingBlock::SourceChanged { folder: candidate.name },
                     );
                 }
-                ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
+                ScanItem::Sidecar(_) => {
                     return blocked(
                         sql,
                         key,

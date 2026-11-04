@@ -24,7 +24,7 @@ pub(crate) fn release_keys_in_path_order<'a>(
                 candidate.relative_folder.text(),
                 candidate.key(),
             )),
-            ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
+            ScanItem::Sidecar(_) => None,
         })
         .collect();
     releases.sort_by(|left, right| {

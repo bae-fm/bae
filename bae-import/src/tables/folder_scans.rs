@@ -145,7 +145,7 @@ fn item_was_read_for(
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
             snapshot.was_read_from(candidate.files.audio())
         }
-        ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
+        ScanItem::Invalid(_) | ScanItem::Sidecar(_) => false,
     }
 }
 
@@ -411,10 +411,12 @@ fn superseded_keys(
     let (ScanItem::Valid(_) | ScanItem::Invalid(_)) = item else {
         return Ok(Vec::new());
     };
-    let Some(coverage) = item.coverage() else {
-        return Err(DbError::Message(format!("{entry_key} is a release that reads no files")));
-    };
-    read::entries_reading(sql, watched_folder_path, &coverage, read::Readers::Besides(entry_key))
+    read::entries_reading(
+        sql,
+        watched_folder_path,
+        &item.coverage(),
+        read::Readers::Besides(entry_key),
+    )
 }
 
 /// One scan item as a pass hands it to the store.
@@ -531,7 +533,7 @@ pub(super) fn write_entry(
     let folder = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.as_path(),
         ScanItem::Invalid(candidate) => candidate.path.as_path(),
-        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
+        ScanItem::Sidecar(_) => {
             return Err(DbError::Message(format!(
                 "{entry_key} is not a release, so it is not stored as a scan entry"
             )))
@@ -564,7 +566,8 @@ pub(super) fn write_entry(
     // write before it in the same folder reading replaced that entry: every
     // tentative candidate a walk reports is followed by the settled reading
     // of its files, and nothing seeded it to be stored.
-    if let (ScanItem::Discovered(_), Some(coverage)) = (item, item.coverage()) {
+    if let ScanItem::Discovered(_) = item {
+        let coverage = item.coverage();
         let settled =
             read::entries_reading(sql, watched_folder_path, &coverage, read::Readers::Settled)?;
         if !settled.is_empty() || matches!(seed, ScanItemSeed::AlreadySettled) {
@@ -618,7 +621,7 @@ pub(super) fn write_entry(
         ScanItem::Valid(candidate) | ScanItem::Discovered(candidate) => {
             Some(crate::CandidateFiles::of(candidate))
         }
-        ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
+        ScanItem::Invalid(_) | ScanItem::Sidecar(_) => None,
     };
     super::import_state::end_file_work_unless_of_on(sql, &entry_key, held.as_ref())?;
     if let Some(snapshot) = carried {
@@ -679,7 +682,7 @@ pub(super) fn validate_scan_item_ownership(
             candidate.grouping.is_some()
         }
         ScanItem::Invalid(candidate) => candidate.grouping.is_some(),
-        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
+        ScanItem::Sidecar(_) => false,
     };
     let (item_root, item_path) = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
@@ -688,10 +691,6 @@ pub(super) fn validate_scan_item_ownership(
         ScanItem::Invalid(candidate) => {
             (candidate.watched_folder_path.as_path(), candidate.path.clone())
         }
-        ScanItem::Decided { key, .. } => (
-            key.watched_folder_path.as_path(),
-            bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder),
-        ),
         ScanItem::Sidecar(sidecar) => {
             (sidecar.watched_folder_path.as_path(), sidecar.folder.clone())
         }
@@ -704,22 +703,13 @@ pub(super) fn validate_scan_item_ownership(
             coven::path_text(watched_folder_path)
         )));
     }
-    match item {
-        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) if !grouped => {
-            if !candidate.file_root.starts_with(root)
-                || candidate.files.parts.iter().any(|part| !part.folder.starts_with(root))
-            {
-                return Err(DbError::Message(format!(
-                    "folder scan entry {entry_key} reads files outside its watched folder"
-                )));
-            }
-        }
-        ScanItem::Discovered(_)
-        | ScanItem::Valid(_)
-        | ScanItem::Invalid(_)
-        | ScanItem::Sidecar(_) => {}
-        ScanItem::Decided { key, .. } => {
-            validate_decision_key_ownership(watched_folder_path, key)?;
+    if let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate), false) = (item, grouped) {
+        if !candidate.file_root.starts_with(root)
+            || candidate.files.parts.iter().any(|part| !part.folder.starts_with(root))
+        {
+            return Err(DbError::Message(format!(
+                "folder scan entry {entry_key} reads files outside its watched folder"
+            )));
         }
     }
     Ok(())

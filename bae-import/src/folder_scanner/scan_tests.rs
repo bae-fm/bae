@@ -42,7 +42,7 @@ struct SuspendedScan {
     gate: crate::tests::gate::Gate,
     /// Announces that the walk reached the blocked directory.
     entered: std::sync::mpsc::Receiver<()>,
-    items: std::sync::mpsc::Receiver<ScanItem>,
+    items: std::sync::mpsc::Receiver<WalkItem>,
     thread: std::thread::JoinHandle<Result<(), FolderScanError>>,
 }
 
@@ -61,7 +61,7 @@ impl SuspendedScan {
     /// what it says up to that item. What the walk yields reaches the caller
     /// on the thread that started the scan, so it can arrive after the walk
     /// is held.
-    fn says_while_held(&self, wanted: impl Fn(&ScanItem) -> bool) -> bool {
+    fn says_while_held(&self, wanted: impl Fn(&WalkItem) -> bool) -> bool {
         while let Ok(item) = self.items.recv_timeout(std::time::Duration::from_secs(2)) {
             if wanted(&item) {
                 return true;
@@ -146,7 +146,7 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
         scan.items.recv_timeout(std::time::Duration::from_secs(2)).expect("first release emits");
     // The folder's own reading comes first — it is what says the releases
     // below it are separate.
-    if matches!(first_item, ScanItem::Decided { .. }) {
+    if matches!(first_item, WalkItem::Reading { .. }) {
         first_item = scan
             .items
             .recv_timeout(std::time::Duration::from_secs(2))
@@ -154,14 +154,14 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
     }
     assert!(matches!(
         first_item,
-        ScanItem::Discovered(candidate) if candidate.path == first
+        WalkItem::Entry(ScanItem::Discovered(candidate)) if candidate.path == first
     ));
     scan.entered
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("later directory is suspended");
     assert!(
         scan.says_while_held(
-            |item| matches!(item, ScanItem::Valid(candidate) if candidate.path == first)
+            |item| matches!(item, WalkItem::Entry(ScanItem::Valid(candidate)) if candidate.path == first)
         ),
         "the immediate listing proves the file-free group cannot own shared release files"
     );
@@ -192,14 +192,14 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
     // the scan says so, and the ones it has reached are ready to identify.
     assert!(scan.says_while_held(|item| matches!(
         item,
-        ScanItem::Decided {
+        WalkItem::Reading {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
         } if key.relative_folder == bae_db::RelativeFolder::test("Group")
     )));
     assert!(
-        scan.says_while_held(|item| matches!(item, ScanItem::Valid(_))),
+        scan.says_while_held(|item| matches!(item, WalkItem::Entry(ScanItem::Valid(_)))),
         "a wrapper the scan has read does not hold its descendants back"
     );
 
@@ -228,7 +228,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
         .expect("final sibling is suspended");
     assert!(scan.says_while_held(|item| matches!(
         item,
-        ScanItem::Decided {
+        WalkItem::Reading {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
@@ -286,7 +286,7 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
         )]),
     );
     assert!(separate.iter().any(
-        |item| matches!(item, ScanItem::Valid(candidate) if candidate.relative_folder.text() == "Solo Artist/1973 - Box/CD1")
+        |item| matches!(item, WalkItem::Entry(ScanItem::Valid(candidate)) if candidate.relative_folder.text() == "Solo Artist/1973 - Box/CD1")
     ));
 }
 
@@ -369,7 +369,7 @@ fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
         .iter()
         .any(|item| matches!(
             item,
-            ScanItem::Decided {
+            WalkItem::Reading {
                 key,
                 decision: FolderReleaseDecision::KeepAsSeparateReleases,
                 ..
@@ -421,10 +421,7 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
             FolderReleaseDecisionAuthor::User,
         )]),
         |item| {
-            if !matches!(
-                item,
-                ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_)
-            ) {
+            if !matches!(item, WalkItem::Entry(ScanItem::Discovered(_) | ScanItem::Sidecar(_))) {
                 items.push(item);
             }
         },
@@ -434,7 +431,7 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
     let invalid: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Invalid(candidate) => Some(candidate),
+            WalkItem::Entry(ScanItem::Invalid(candidate)) => Some(candidate),
             _ => None,
         })
         .collect();
@@ -464,7 +461,7 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(items.iter().any(|item| matches!(
         item,
-        ScanItem::Decided {
+        WalkItem::Reading {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
@@ -473,7 +470,7 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
@@ -494,20 +491,20 @@ fn a_folder_that_yields_one_release_decides_nothing() {
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(
-        !items.iter().any(|item| matches!(item, ScanItem::Decided { .. })),
+        !items.iter().any(|item| matches!(item, WalkItem::Reading { .. })),
         "one release is nothing to decide about: {items:?}"
     );
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
     assert_eq!(releases, vec!["Artist - Album"]);
     assert!(items.iter().any(|item| matches!(
         item,
-        ScanItem::Valid(candidate)
+        WalkItem::Entry(ScanItem::Valid(candidate))
             if candidate.grouping.is_none()
     )));
 }
@@ -547,7 +544,7 @@ fn two_walks_of_one_tree_produce_the_same_items() {
         scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default())
             .into_iter()
             .filter_map(|item| match item {
-                ScanItem::Decided { key, decision, grouping } => Some((
+                WalkItem::Reading { key, decision, grouping } => Some((
                     key.relative_folder,
                     FolderReading {
                         decision,

@@ -65,7 +65,7 @@ pub(super) async fn change_folder_reading(
             candidate.path.starts_with(&decided)
         }
         ScanItem::Invalid(candidate) => candidate.path.starts_with(&decided),
-        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
+        ScanItem::Sidecar(_) => false,
     })))
 }
 
@@ -195,18 +195,21 @@ async fn read_folder_again(
     let mut scanned_decisions = Vec::new();
     let mut items = Vec::with_capacity(walked.items.len());
     for item in walked.items {
-        let path = match &item {
-            ScanItem::Decided { key, decision, grouping } => {
+        let item = match item {
+            crate::folder_scanner::WalkItem::Entry(item) => item,
+            crate::folder_scanner::WalkItem::Reading { key, decision, grouping } => {
                 scanned_decisions.push((
-                    key.clone(),
+                    key,
                     crate::folder_scanner::FolderReading {
-                        decision: *decision,
+                        decision,
                         author: FolderReleaseDecisionAuthor::Heuristic,
-                        grouping: grouping.clone(),
+                        grouping,
                     },
                 ));
                 continue;
             }
+        };
+        let path = match &item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
             ScanItem::Invalid(candidate) => candidate.path.clone(),
             // A folder's sidecar files are no release: no date, no tags.
@@ -329,7 +332,7 @@ async fn read_folder_again(
 /// had — `None` when one could not be read, which leaves the next cheap check
 /// nothing to conclude from.
 struct TopLevelReading {
-    items: Vec<ScanItem>,
+    items: Vec<crate::folder_scanner::WalkItem>,
     directory_mtimes: Option<Vec<(PathBuf, i64)>>,
 }
 

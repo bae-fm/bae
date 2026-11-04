@@ -46,7 +46,7 @@ pub(super) async fn announce_scan_failure(
 
 pub(super) async fn cancel_and_join_folder_walk(
     cancellation: &crate::folder_scanner::ScanCancellation,
-    item_rx: &mut mpsc::Receiver<ScanItem>,
+    item_rx: &mut mpsc::Receiver<crate::folder_scanner::WalkItem>,
     walk: FolderWalk,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<(), crate::ImportError> {
@@ -284,9 +284,14 @@ async fn walk_and_reconcile(
             // scan reads the folder the same way even if the naming rule
             // changes under it. A reading is stored as a decision, not as a
             // scan entry, after the items the walk yielded before it.
-            let ScanItem::Decided { key, decision, grouping } = item else {
-                items.push(item);
-                continue;
+            let (key, decision, grouping) = match item {
+                crate::folder_scanner::WalkItem::Entry(item) => {
+                    items.push(item);
+                    continue;
+                }
+                crate::folder_scanner::WalkItem::Reading { key, decision, grouping } => {
+                    (key, decision, grouping)
+                }
             };
             if !store_scan_items(
                 root,

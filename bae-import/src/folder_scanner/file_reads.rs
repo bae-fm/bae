@@ -164,13 +164,6 @@ impl FileReads {
                     }
                     SidecarFiles::Downloading => {}
                 },
-                ScanItem::Decided { key, .. } => {
-                    return Err(FolderScanError::Other(format!(
-                        "{} is a folder reading, which is stored as a decision, not as a scan \
-                         entry",
-                        key.relative_folder.text()
-                    )))
-                }
             }
         }
         for (version, file_tags) in stored_tags {

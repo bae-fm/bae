@@ -61,11 +61,11 @@ pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     for item in walked {
         match item {
-            ScanItem::Decided { key, decision, grouping } => tables
+            WalkItem::Reading { key, decision, grouping } => tables
                 .record_scanned_folder_release_decision(&key, decision, &grouping)
                 .await
                 .unwrap(),
-            item => {
+            WalkItem::Entry(item) => {
                 tables
                     .save_folder_scan_item(&root, generation, &item)
                     .await
@@ -87,7 +87,7 @@ pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions
         match item {
             ScanItem::Invalid(_) => invalid.push(item),
             ScanItem::Discovered(_) | ScanItem::Valid(_) => valid.push(item),
-            ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
+            ScanItem::Sidecar(_) => {
                 unreachable!("the scan tables load only releases: {item:?}")
             }
         }
@@ -146,7 +146,7 @@ pub(super) fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
         .filter_map(|item| match item {
             ScanItem::Valid(c) => Some(c),
             ScanItem::Invalid(_) => None,
-            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
+            ScanItem::Discovered(_) | ScanItem::Sidecar(_) => None,
         })
         .collect()
 }
@@ -154,10 +154,10 @@ pub(super) fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
 pub(super) fn scan_for_candidates_with_decisions_collect(
     root: PathBuf,
     decisions: FolderReleaseDecisions,
-) -> Vec<ScanItem> {
+) -> Vec<WalkItem> {
     let mut items = Vec::new();
     scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
-        if !matches!(item, ScanItem::Discovered(_)) {
+        if !matches!(item, WalkItem::Entry(ScanItem::Discovered(_))) {
             items.push(item);
         }
     })
@@ -745,7 +745,7 @@ pub(super) fn undated(folders: &[PathBuf]) -> Vec<FolderTimes> {
 
 /// Scan `root` through a test `DirectoryReader`, with no stored edits, no
 /// stored decisions, and nothing to cancel.
-pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
+pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(WalkItem)>(
     reader: &R,
     root: PathBuf,
     on_item: F,

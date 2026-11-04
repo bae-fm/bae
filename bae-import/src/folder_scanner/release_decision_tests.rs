@@ -145,11 +145,11 @@ fn write_albums(root: &Path, folders: &[&str]) {
 }
 
 /// The readings a scan of `root` decides for itself, by folder.
-fn decided(items: &[ScanItem]) -> Vec<(String, FolderReleaseDecision)> {
+fn decided(items: &[WalkItem]) -> Vec<(String, FolderReleaseDecision)> {
     items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Decided { key, decision, .. } => {
+            WalkItem::Reading { key, decision, .. } => {
                 Some((key.relative_folder.text(), *decision))
             }
             _ => None,
@@ -157,11 +157,11 @@ fn decided(items: &[ScanItem]) -> Vec<(String, FolderReleaseDecision)> {
         .collect()
 }
 
-fn valid_paths(items: &[ScanItem]) -> Vec<String> {
+fn valid_paths(items: &[WalkItem]) -> Vec<String> {
     let mut paths: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();
@@ -205,7 +205,7 @@ fn numbered_folders_of_albums_are_separate_releases() {
         ]
     );
     assert!(items.iter().all(|item| match item {
-        ScanItem::Valid(candidate) => candidate.grouping.is_none(),
+        WalkItem::Entry(ScanItem::Valid(candidate)) => candidate.grouping.is_none(),
         _ => true,
     }));
 }
@@ -228,7 +228,7 @@ fn twelve_numbered_discs_are_one_release() {
     let release = items
         .iter()
         .find_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate),
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate),
             _ => None,
         })
         .expect("the set is one release");
@@ -253,7 +253,7 @@ fn discs_whose_tracks_sit_one_folder_down_are_one_release() {
     let release = items
         .iter()
         .find_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate),
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate),
             _ => None,
         })
         .expect("the set is one release");
@@ -389,7 +389,7 @@ fn a_set_s_discs_play_in_the_order_they_number_themselves() {
         let release = items
             .iter()
             .find_map(|item| match item {
-                ScanItem::Valid(candidate) => Some(candidate),
+                WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate),
                 _ => None,
             })
             .expect("the set is one release");
@@ -440,7 +440,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default());
     assert!(read_by_the_scan.iter().any(|item| matches!(
         item,
-        ScanItem::Decided {
+        WalkItem::Reading {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
@@ -450,11 +450,8 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
     let combined = read_by_the_scan
         .iter()
         .find_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_)
-            | ScanItem::Invalid(_)
-            | ScanItem::Decided { .. }
-            | ScanItem::Sidecar(_) => None,
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate),
+            _ => None,
         })
         .expect("combined wrapper is actionable");
     assert_eq!(combined.path, wrapper);
@@ -476,10 +473,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         .iter()
         .filter_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_)
-            | ScanItem::Invalid(_)
-            | ScanItem::Decided { .. }
-            | ScanItem::Sidecar(_) => None,
+            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Sidecar(_) => None,
         })
         .collect();
     assert_eq!(separate.len(), 2);
@@ -509,7 +503,7 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
 
     assert!(items.iter().any(|item| matches!(
         item,
-        ScanItem::Decided {
+        WalkItem::Reading {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
@@ -518,7 +512,7 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate),
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate),
             _ => None,
         })
         .collect();
@@ -543,7 +537,7 @@ fn a_part_with_no_number_makes_it_several_releases() {
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(items.iter().any(|item| matches!(
         item,
-        ScanItem::Decided {
+        WalkItem::Reading {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
@@ -552,7 +546,7 @@ fn a_part_with_no_number_makes_it_several_releases() {
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
+            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate.relative_folder.text()),
             _ => None,
         })
         .collect();

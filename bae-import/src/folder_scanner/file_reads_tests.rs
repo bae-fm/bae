@@ -100,7 +100,7 @@ fn scan_reading(root: &Path, reads: &FileReads) -> Vec<FolderCandidate> {
         &ScanCancellation::new(),
         |_| {},
         |item| {
-            if let ScanItem::Valid(candidate) = item {
+            if let WalkItem::Entry(ScanItem::Valid(candidate)) = item {
                 releases.insert(candidate.key(), candidate);
             }
         },

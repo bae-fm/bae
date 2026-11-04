@@ -212,8 +212,27 @@ impl InvalidCandidate {
     }
 }
 
-/// One item the scan callback yields per leaf folder: a valid release
-/// candidate, or an invalid one (looked like a release but failed validation).
+/// What a walk of a watched folder yields, in the order it read them: the
+/// entries the store keeps for its folders, and the readings it decided for
+/// folders nothing was stored for.
+#[derive(Debug, Clone, PartialEq)]
+pub enum WalkItem {
+    Entry(ScanItem),
+    /// The scan read a folder its own way, because nothing was stored for it:
+    /// the grouping it proposes at that folder, under the key the scan gave
+    /// it. It is stored as the folder's decision, not as a scan entry, before
+    /// any entry the walk yields after it, so the candidates that name it name
+    /// a stored grouping.
+    Reading {
+        key: FolderReleaseDecisionKey,
+        decision: FolderReleaseDecision,
+        grouping: CandidateKey,
+    },
+}
+
+/// One entry the store keeps for a folder the scan read: a release candidate,
+/// one that looked like a release but failed validation, or the files no
+/// release there owns.
 ///
 /// Comparable, because that is how a pass tells what it changed from what it
 /// merely found again: a walk of an untouched folder produces items equal to
@@ -227,15 +246,6 @@ pub enum ScanItem {
     Discovered(FolderCandidate),
     Valid(FolderCandidate),
     Invalid(InvalidCandidate),
-    /// The scan read a folder its own way, because nothing was stored for it:
-    /// the grouping it proposes at that folder, under the key the scan gave
-    /// it. The caller stores it before any candidate it produced, so the
-    /// candidates that name it name a stored grouping.
-    Decided {
-        key: FolderReleaseDecisionKey,
-        decision: FolderReleaseDecision,
-        grouping: CandidateKey,
-    },
     /// The files under a folder that none of the releases read there owns.
     Sidecar(FolderSidecar),
 }
@@ -280,14 +290,13 @@ pub enum SidecarFiles {
 /// desktop-only.
 #[cfg(desktop)]
 impl ScanItem {
-    /// The durable scan entry this item is, or `None` for an item that is not
-    /// one — the folder reading the scan decided, which is stored as a decision
-    /// rather than as a scan entry.
+    /// The key this entry is stored under, or `None` for a folder's sidecar
+    /// files, which are stored with the folder rather than as a release.
     pub(crate) fn persisted_key(&self) -> Option<CandidateKey> {
         match self {
             Self::Discovered(candidate) | Self::Valid(candidate) => Some(candidate.key()),
             Self::Invalid(candidate) => Some(candidate.key()),
-            Self::Decided { .. } | Self::Sidecar(_) => None,
+            Self::Sidecar(_) => None,
         }
     }
 
@@ -295,36 +304,34 @@ impl ScanItem {
     /// everything below its folder: a grouping, or a release lent the files
     /// of a wrapper folder around it. A release that reads only its own
     /// folder covers that folder and nothing below it that holds audio.
-    pub(crate) fn coverage(&self) -> Option<Coverage> {
+    pub(crate) fn coverage(&self) -> Coverage {
         match self {
-            Self::Discovered(candidate) | Self::Valid(candidate) => Some(Coverage {
+            Self::Discovered(candidate) | Self::Valid(candidate) => Coverage {
                 folder: candidate.file_root.clone(),
                 whole_subtree: candidate.scope == ReleaseFileScope::Recursive,
-            }),
-            Self::Invalid(candidate) => Some(Coverage {
+            },
+            Self::Invalid(candidate) => Coverage {
                 folder: candidate.path.clone(),
                 whole_subtree: candidate.grouping.is_some(),
-            }),
+            },
             // The folder whose files it holds: what a reading of one folder
             // checks it stays inside. Which release holds a file is settled
             // file by file, not by coverage (see the store's sidecar writes).
             Self::Sidecar(sidecar) => {
-                Some(Coverage { folder: sidecar.folder.clone(), whole_subtree: false })
+                Coverage { folder: sidecar.folder.clone(), whole_subtree: false }
             }
-            Self::Decided { .. } => None,
         }
     }
 
     /// The folder below the watched root the list shows this entry as, or
-    /// `None` for a folder reading, which the list shows on the entries it
-    /// settles.
+    /// `None` for a folder's sidecar files, which are no row of the list.
     pub(crate) fn relative_folder(&self) -> Option<&RelativeFolder> {
         match self {
             Self::Discovered(candidate) | Self::Valid(candidate) => {
                 Some(&candidate.relative_folder)
             }
             Self::Invalid(candidate) => Some(&candidate.relative_folder),
-            Self::Decided { .. } | Self::Sidecar(_) => None,
+            Self::Sidecar(_) => None,
         }
     }
 }
