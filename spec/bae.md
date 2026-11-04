@@ -4170,7 +4170,8 @@ each device and hands playback the channel or sink.
 ### 11.3 Checks
 
 A pre-commit hook formats and lints the changed crates and the crates that
-depend on them, their tests included. CI runs, on macOS, iOS, Android, Linux
+depend on them, their tests included, bae-bridge with every feature the
+macOS app builds it with. CI runs, on macOS, iOS, Android, Linux
 and Windows: formatting, the file-size limit, visibility and ownership
 boundaries, test, bench and example code kept off the person's keychain and
 home, every Rust file in a crate compiled, the crates' dependency order, clippy for each feature set,

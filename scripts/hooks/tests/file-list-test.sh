@@ -75,8 +75,8 @@ fi
 # through any chain, and the tests of the crates that test with one of those;
 # not the crates above a crate that only tests with one, nor its dependencies.
 plan_workspace=$(mktemp -d)
-mkdir -p "$plan_workspace"/{base,bae-library,tester,above-tester,unrelated}/src
-printf '[workspace]\nmembers = ["base", "bae-library", "tester", "above-tester", "unrelated"]\nresolver = "2"\n' \
+mkdir -p "$plan_workspace"/{base,bae-bridge,bae-library,tester,above-tester,unrelated}/src
+printf '[workspace]\nmembers = ["base", "bae-bridge", "bae-library", "tester", "above-tester", "unrelated"]\nresolver = "2"\n' \
     > "$plan_workspace/Cargo.toml"
 plan_crate() {
     local name="$1" dependencies="$2" rest="${3:-}"
@@ -85,6 +85,7 @@ plan_crate() {
     : > "$plan_workspace/$name/src/lib.rs"
 }
 plan_crate base "" $'[features]\ntest-utils = []'
+plan_crate bae-bridge $'[dependencies]\nbae-library = { path = "../bae-library" }' $'[features]\ndesktop = []\ncloudkit = []'
 plan_crate bae-library $'[dependencies]\nbase = { path = "../base" }'
 plan_crate tester $'[dev-dependencies]\nbae-library = { path = "../bae-library" }'
 plan_crate above-tester $'[dependencies]\ntester = { path = "../tester" }'
@@ -95,7 +96,7 @@ if ! plan=$(cd "$plan_workspace" && crate_check_plan base); then
     exit 1
 fi
 rm -rf "$plan_workspace"
-expected_plan=$'crate bae-library\nmobile bae-library\ncrate base\nfeature base/test-utils\nmobile base\ncrate tester'
+expected_plan=$'crate bae-bridge\nfeature bae-bridge/cloudkit\nfeature bae-bridge/desktop\ncrate bae-library\nmobile bae-library\ncrate base\nfeature base/test-utils\nmobile base\ncrate tester'
 if [ "$plan" != "$expected_plan" ]; then
     echo "the crates a change to base reaches were planned incorrectly:"
     echo "$plan"

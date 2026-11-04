@@ -60,6 +60,10 @@ for package in metadata["packages"]:
 #   so the crates above it are not covered through it.
 # - "feature <crate>/<feature>" for each test feature a covered crate declares
 #   (`test-utils`, `test-instrumentation`).
+# - "feature bae-bridge/<feature>" for every feature bae-bridge declares, the
+#   set the macOS Debug app builds it with (bae-bridge/build-macos.sh), so the
+#   hook builds its desktop code. Other crates' app features reach them through
+#   bae-bridge's in the same clippy run (one feature resolution).
 # - "mobile <crate>" for each covered crate the mobile apps build: bae-library
 #   and the workspace crates it depends on.
 crate_check_plan() {
@@ -106,6 +110,10 @@ for member in sorted(covered, key=lambda member: packages[member]["name"]):
     for feature in ("test-utils", "test-instrumentation"):
         if feature in packages[member]["features"]:
             print("feature", f"{name}/{feature}")
+    if name == "bae-bridge":
+        for feature in sorted(packages[member]["features"]):
+            if feature != "default":
+                print("feature", f"{name}/{feature}")
     if member in mobile:
         print("mobile", name)
 PLAN
