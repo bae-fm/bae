@@ -11,8 +11,20 @@ pub enum DbError {
     Coven(coven::CovenError),
     #[error(transparent)]
     Creation(#[from] coven::StoreCreationError),
+    /// A stored value no writer here produces: the row is damaged, or one
+    /// nothing here wrote.
+    #[error("{what} holds {stored}, which nothing here writes")]
+    Unreadable { what: String, stored: String },
     #[error("{0}")]
     Message(String),
+}
+
+impl DbError {
+    /// `stored`, read from `what` (a table's column, a stored list), is a
+    /// value no writer here produces.
+    pub fn unreadable(what: impl Into<String>, stored: impl std::fmt::Debug) -> Self {
+        Self::Unreadable { what: what.into(), stored: format!("{stored:?}") }
+    }
 }
 
 impl From<coven::CovenError> for DbError {

@@ -161,7 +161,7 @@ fn access_name(access: OAuthAccess) -> &'static str {
 /// A stored value that names no class: the table's CHECKs keep this from
 /// happening, so it is a damaged row.
 fn unnamed(column: &str, value: &str) -> DbError {
-    DbError::Message(format!("sync_start_failure.{column} names no class: {value:?}"))
+    DbError::unreadable(format!("sync_start_failure.{column}"), value)
 }
 
 /// The row's columns as read, before they are named back into a category.
