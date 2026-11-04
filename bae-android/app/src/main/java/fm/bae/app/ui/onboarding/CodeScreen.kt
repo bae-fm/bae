@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
@@ -64,13 +65,14 @@ internal fun rememberScanRequest(
     onOpen: () -> Unit,
 ): () -> Unit {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
                 onOpen()
             } else {
                 logger.info("camera permission denied; the code can still be typed")
-                onDenied(context.getString(R.string.onboarding_camera_permission_required))
+                onDenied(resources.getString(R.string.onboarding_camera_permission_required))
             }
         }
     return {

@@ -28,7 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -60,7 +60,7 @@ internal fun AppearanceSection() {
     val store = LocalAppearanceStore.current
     val preferences by store.preferences.collectAsState()
     val scope = rememberScreenScope()
-    val context = LocalContext.current
+    val resources = LocalResources.current
     var error by remember { mutableStateOf<DisplayError?>(null) }
     val save: (suspend () -> Unit) -> Unit = { change ->
         scope.launch {
@@ -69,7 +69,7 @@ internal fun AppearanceSection() {
                 error = null
             } catch (failure: IOException) {
                 logger.error("saving appearance failed", failure)
-                error = DisplayError(context.getString(R.string.appearance_save_failed), failure.toString())
+                error = DisplayError(resources.getString(R.string.appearance_save_failed), failure.toString())
             }
         }
     }

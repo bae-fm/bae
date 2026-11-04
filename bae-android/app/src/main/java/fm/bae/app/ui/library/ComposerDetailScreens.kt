@@ -63,7 +63,6 @@ internal fun ComposerDetailScreen(
         .collectAsState()
     val detail = query.value
     val rows = session.browserPages.composerRows
-    val appContext = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(artistId, session) {
         session.libraryQueries.composer.activate(artistId)
         rows.activate(artistId)
@@ -74,8 +73,8 @@ internal fun ComposerDetailScreen(
     }
     val loadError =
         when {
-            query.error != null -> appContext.getString(R.string.composer_detail_load_failed)
-            query.delivered && detail == null -> appContext.getString(R.string.composer_detail_not_found)
+            query.error != null -> stringResource(R.string.composer_detail_load_failed)
+            query.delivered && detail == null -> stringResource(R.string.composer_detail_not_found)
             else -> null
         }
     Column(modifier = Modifier.fillMaxSize()) {
@@ -223,7 +222,6 @@ internal fun WorkDetailScreen(
     val query by session.libraryQueries.work.state
         .collectAsState()
     val detail = query.value
-    val appContext = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(workId, session) {
         session.libraryQueries.work.activate(workId)
         onDispose {
@@ -232,8 +230,8 @@ internal fun WorkDetailScreen(
     }
     val loadError =
         when {
-            query.error != null -> appContext.getString(R.string.work_detail_load_failed)
-            query.delivered && detail == null -> appContext.getString(R.string.work_detail_not_found)
+            query.error != null -> stringResource(R.string.work_detail_load_failed)
+            query.delivered && detail == null -> stringResource(R.string.work_detail_not_found)
             else -> null
         }
     Column(modifier = Modifier.fillMaxSize()) {

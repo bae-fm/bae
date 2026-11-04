@@ -64,7 +64,6 @@ fun SearchResultsScreen(
 ) {
     val state by session.libraryQueries.search.state
         .collectAsState()
-    val appContext = LocalContext.current
 
     LaunchedEffect(query, session) {
         session.libraryQueries.search.activate(query)
@@ -76,7 +75,8 @@ fun SearchResultsScreen(
     }
 
     val current = state.value
-    val currentError = state.error?.let { appContext.getString(R.string.search_failed) }
+    val searchFailed = stringResource(R.string.search_failed)
+    val currentError = state.error?.let { searchFailed }
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             currentError != null && current == null -> {

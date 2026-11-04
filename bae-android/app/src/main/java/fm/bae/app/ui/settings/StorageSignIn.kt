@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.OAuthProviders
@@ -40,6 +41,7 @@ internal fun StorageSignIn(
     oauthProviders: OAuthProviders?,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberScreenScope()
     var error by remember(session) { mutableStateOf<DisplayError?>(null) }
     var askingForKey by remember(session) { mutableStateOf(false) }
@@ -68,7 +70,7 @@ internal fun StorageSignIn(
             is BridgeStorageLocation.Dropbox, is BridgeStorageLocation.OneDrive -> {
                 {
                     if (oauthProviders == null) {
-                        error = DisplayError(context.getString(R.string.oauth_unconfigured))
+                        error = DisplayError(resources.getString(R.string.oauth_unconfigured))
                     } else {
                         signIn("sign in to storage again") { deviceName, setup ->
                             oauthProviders.signInAgain(session.appHandle, deviceName, setup)

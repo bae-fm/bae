@@ -44,7 +44,6 @@ internal fun ArtistDetailScreen(
     val query by session.libraryQueries.artist.state
         .collectAsState()
     val detail = query.value
-    val appContext = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(artistId, session) {
         session.libraryQueries.artist.activate(artistId)
         onDispose {
@@ -53,8 +52,8 @@ internal fun ArtistDetailScreen(
     }
     val loadError =
         when {
-            query.error != null -> appContext.getString(R.string.artist_detail_load_failed)
-            query.delivered && detail == null -> appContext.getString(R.string.artist_detail_not_found)
+            query.error != null -> stringResource(R.string.artist_detail_load_failed)
+            query.delivered && detail == null -> stringResource(R.string.artist_detail_not_found)
             else -> null
         }
     Column(modifier = Modifier.fillMaxSize()) {
