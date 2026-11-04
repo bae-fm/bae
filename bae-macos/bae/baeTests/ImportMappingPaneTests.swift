@@ -92,7 +92,7 @@ private final class Recorder {
             importStore: store,
             endEditing: {},
             previewAudio: previewAudio,
-            openDocument: { _, _ in },
+            openDocument: { _, _, _ in },
             openImages: { _, _ in },
             onError: { _ in },
         )

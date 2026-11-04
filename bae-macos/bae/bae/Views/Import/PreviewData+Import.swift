@@ -262,7 +262,6 @@
                 fileId: name,
                 name: name,
                 size: size,
-                localPath: path,
                 previewTarget: role == .audio
                     ? BridgePreviewTarget(
                         path: path,

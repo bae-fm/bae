@@ -122,7 +122,6 @@ impl BridgeMappingFile {
             file_id,
             name,
             size,
-            path,
             preview_target,
             duration_ms,
             audio_format,
@@ -130,7 +129,6 @@ impl BridgeMappingFile {
         } = file;
         BridgeMappingFile {
             role: BridgeMappingRole::from_core(role),
-            local_path: coven::path_bytes(&path),
             preview_target: preview_target.map(BridgePreviewTarget::from_core),
             file_id,
             name,
@@ -201,7 +199,6 @@ impl BridgeSheetGroup {
             sheet_id,
             name,
             size,
-            path,
             bound,
             reference_options,
             assignment,
@@ -211,7 +208,6 @@ impl BridgeSheetGroup {
             sheet_id,
             name,
             size,
-            local_path: coven::path_bytes(&path),
             bound: BridgeSheetBound::from_core(bound),
             reference_options: reference_options
                 .into_iter()

@@ -99,6 +99,12 @@ pub enum ImportError {
     #[error("{detail}")]
     UnusableFile { detail: String },
 
+    /// A document of the folder the person opened to read could not be read:
+    /// it left the folder, or the disk refused it.
+    #[cfg(desktop)]
+    #[error("{file} could not be read: {error}")]
+    DocumentRead { file: String, error: std::io::Error },
+
     /// The downloaded or selected cover cannot be parsed, decoded, or resized.
     #[error("cover art failed: {detail}")]
     CoverArt { detail: String },
@@ -426,6 +432,7 @@ impl ImportError {
             | Self::UnreadableAudio(_)
             | Self::FileTags { .. }
             | Self::UnusableFile { .. }
+            | Self::DocumentRead { .. }
             | Self::LocalCover { .. }
             | Self::DecodeVerification { .. }
             | Self::SourceRead { .. }

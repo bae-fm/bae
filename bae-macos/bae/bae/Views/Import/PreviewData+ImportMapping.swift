@@ -30,7 +30,6 @@
                 fileId: "Track \(index).flac",
                 name: "Track \(index).flac",
                 size: UInt64(35_000_000 + index * 2_000_000),
-                localPath: fakePath("Track \(index).flac"),
                 previewTarget: BridgePreviewTarget(
                     path: fakePath("Track \(index).flac"),
                     name: "Track \(index).flac",
@@ -51,7 +50,6 @@
                 fileId: file.file.name,
                 name: file.file.name,
                 size: file.file.size,
-                localPath: fakePath(file.file.name),
                 previewTarget: role == .audio
                     ? BridgePreviewTarget(
                         path: fakePath(file.file.name),
@@ -182,9 +180,6 @@
                                         fileId: moreTracksAudio.file.name,
                                         name: moreTracksAudio.file.fileName,
                                         size: moreTracksAudio.file.size,
-                                        localPath: fakePath(
-                                            moreTracksAudio.file.name
-                                        ),
                                         previewTarget: BridgePreviewTarget(
                                             path: fakePath(
                                                 moreTracksAudio.file.name
@@ -247,7 +242,6 @@
             sheetId: boundTrackSheet.file.name,
             name: boundTrackSheet.file.fileName,
             size: boundTrackSheet.file.size,
-            localPath: fakePath(boundTrackSheet.file.name),
             bound: .describes(
                 container: BridgeMappingContainer(
                     fileId: mappedAudioContainer.file.name,

@@ -3837,12 +3837,14 @@ to compile in the bridge until it is carried across.
 A path on the device crosses as coven's bytes for it (`coven::path_bytes`;
 `Data` in Swift, `ByteArray` in Kotlin, `byte[]` in C#), never as text, so a
 name that isn't valid Unicode still opens: a path core gives the app to open
-or send back (a file to audition or read, an image to draw), and a folder or
+or send back (a file to audition, an image to draw), and a folder or
 file the person picks (an export or save target, the folder a release's files
 move into). The app makes a file URL from the bytes, and the bytes from a
 URL's file-system representation. Text that shows a path or a file's name,
 such as the name a preview shows for the file it plays, comes from core,
-escaped (§3.1).
+escaped (§3.1). A candidate's document the person opens to read (a log, a
+text file, a track sheet) is named by the candidate's key and the file's id,
+and core reads it and decodes it from the encoding it was written in.
 
 What the import queue is keyed by crosses as bytes the same way, so a folder
 whose name isn't valid Unicode is named apart from every other: a candidate's

@@ -11,7 +11,7 @@ struct ImportedReleasePane: View {
     let editCommands: ReleaseEditCommands
     let onViewInLibrary: (String) -> Void
     let onOpenImages: ([BridgeMappingImage], String) -> Void
-    let onOpenDocument: (String, Data) -> Void
+    let onOpenDocument: (String, String) -> Void
     let onPlayTrack: (String) -> Void
 
     /// The height the loading and failed states hold.
@@ -121,7 +121,7 @@ struct ImportedReleasePane: View {
         case .file(let file):
             if file.role == .document {
                 Button {
-                    onOpenDocument(file.name, file.localPath)
+                    onOpenDocument(file.name, file.fileId)
                 } label: {
                     completedFileLine(name: file.name, size: file.sizeText)
                 }
@@ -132,7 +132,7 @@ struct ImportedReleasePane: View {
             }
         case .sheet(let sheet):
             Button {
-                onOpenDocument(sheet.name, sheet.localPath)
+                onOpenDocument(sheet.name, sheet.sheetId)
             } label: {
                 HStack(spacing: ThemeSpace.group) {
                     Text(sheet.name)
@@ -192,7 +192,7 @@ struct ImportingCandidatePane: View {
     let step: BridgeImportStep
     let coverContent: ImageContent?
     let onOpenImages: ([BridgeMappingImage], String) -> Void
-    let onOpenDocument: (String, Data) -> Void
+    let onOpenDocument: (String, String) -> Void
     let onPreview: (BridgePreviewTarget) -> Void
     let onStopPreview: () -> Void
     let previewingTarget: BridgePreviewTarget?
@@ -267,7 +267,7 @@ struct ImportingCandidatePane: View {
 private struct ReadOnlyCandidateMappingTable: View {
     let table: BridgeMappingTable
     let previewingTarget: BridgePreviewTarget?
-    let onOpenDocument: (String, Data) -> Void
+    let onOpenDocument: (String, String) -> Void
     let onPreview: (BridgePreviewTarget) -> Void
     let onStopPreview: () -> Void
 
@@ -430,7 +430,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                     HStack {
                         if file.role == .document {
                             Button(file.name) {
-                                onOpenDocument(file.name, file.localPath)
+                                onOpenDocument(file.name, file.fileId)
                             }
                             .buttonStyle(.plain)
                         }
@@ -442,7 +442,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                     }
                 case .sheet(let sheet):
                     Button(sheet.name) {
-                        onOpenDocument(sheet.name, sheet.localPath)
+                        onOpenDocument(sheet.name, sheet.sheetId)
                     }
                     .buttonStyle(.plain)
                 }

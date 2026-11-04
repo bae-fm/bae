@@ -143,7 +143,7 @@ struct ImportSheetCaptionRow: View {
     /// The sheet's name opens it in the viewer.
     private var nameButton: some View {
         Button {
-            actions.openDocument(sheet.name, sheet.localPath)
+            actions.openDocument(sheet.name, sheet.sheetId)
         } label: {
             Text(sheet.name)
                 .themeText(.mono)

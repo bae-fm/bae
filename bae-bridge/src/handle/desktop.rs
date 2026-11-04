@@ -427,6 +427,16 @@ forward! {
                 .await?)
         }
 
+        /// The text of a candidate's document (a log, a text file, a track
+        /// sheet) named by its file id, decoded from the encoding it was
+        /// written in.
+        fn read_candidate_document(candidate_key: Vec<u8>, file_id: String) -> String {
+            Ok(this
+                .services
+                .import_read_candidate_document(&candidate_key.into(), &file_id)
+                .await?)
+        }
+
         /// Pick the library album a candidate joins, over the one its records
         /// name, or (`None`) leave it to its records.
         fn set_candidate_album(candidate_key: Vec<u8>, album_id: Option<String>) -> () {

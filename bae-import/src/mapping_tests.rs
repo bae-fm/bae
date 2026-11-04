@@ -269,7 +269,6 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     };
     assert_eq!(sheet.sheet_id, "CDImage.cue");
     assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
-    assert_eq!(sheet.path, tmp.path().join("CDImage.cue"));
     assert_eq!(
         sheet.reference_options,
         vec![SheetReferenceOptions {
@@ -529,7 +528,6 @@ fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
         panic!("expected a sheet row among {:?}", table.files);
     };
     assert_eq!(sheet.bound, SheetBound::Unresolved { requested: vec!["CDImage.wav".to_string()] },);
-    assert_eq!(sheet.path, tmp.path().join("CDImage.cue"));
 }
 
 /// The projection keeps the two meanings of a sheet separate: one that carves

@@ -12,7 +12,9 @@ extension ImportView {
             importStore: importStore,
             endEditing: commitAndEndEditing,
             previewAudio: previewAudio,
-            openDocument: { name, path in openDocument(name: name, at: path) },
+            openDocument: { key, name, fileId in
+                openDocument(name: name, fileId: fileId, of: key)
+            },
             openImages: { images, path in
                 openGallery(images: images, at: path)
             },
@@ -46,19 +48,21 @@ extension ImportView {
         )
     }
 
-    private func openDocument(name: String, at path: Data) {
-        do {
-            let text = try readTextFile(path: path)
-            uiStore.presentDocument(name: name, text: text)
-        }
-        catch {
-            // No line means a cancellation, which raises no alert.
-            if let failure = DisplayError(error)?
-                .rewording({
-                    String(localized: "Could not read \(name): \($0)")
-                })
-            {
-                uiStore.showError(failure)
+    private func openDocument(name: String, fileId: String, of key: Data) {
+        Task {
+            do {
+                let text = try await importer.readCandidateDocument(key, fileId)
+                uiStore.presentDocument(name: name, text: text)
+            }
+            catch {
+                // No line means a cancellation, which raises no alert.
+                if let failure = DisplayError(error)?
+                    .rewording({
+                        String(localized: "Could not read \(name): \($0)")
+                    })
+                {
+                    uiStore.showError(failure)
+                }
             }
         }
     }

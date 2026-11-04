@@ -26,8 +26,6 @@ mod setup;
 #[cfg(feature = "desktop")]
 mod signals;
 mod types;
-#[cfg(feature = "desktop")]
-mod utils;
 
 pub use app_dir::*;
 #[cfg(any(test, not(desktop)))]
@@ -42,5 +40,3 @@ pub use oauth::*;
 pub use screens::*;
 pub use setup::*;
 pub use types::*;
-#[cfg(feature = "desktop")]
-pub use utils::*;

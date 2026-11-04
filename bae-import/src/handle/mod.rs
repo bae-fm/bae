@@ -14,6 +14,7 @@ mod combinations;
 mod commit;
 mod covers;
 mod discogs_key;
+mod documents;
 mod draft_source;
 mod edits;
 mod events;

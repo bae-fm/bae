@@ -11,9 +11,9 @@ struct ImportMappingServices {
     /// End the main pane's active field edit before replacing its draft.
     let endEditing: @MainActor () async -> Void
     let previewAudio: PreviewAudio
-    /// Show a document (a log, a text file, a track sheet) in the viewer: its
-    /// name, then its path on disk as the bridge carries it.
-    let openDocument: (String, Data) -> Void
+    /// Show a candidate's document (a log, a text file, a track sheet) in the
+    /// viewer: the candidate's key, the file's name, then its file id.
+    let openDocument: (Data, String, String) -> Void
     /// Show the folder's images in the lightbox: the gallery's images, then
     /// the file id of the one that was clicked.
     let openImages: ([BridgeMappingImage], String) -> Void
@@ -126,7 +126,9 @@ extension ImportMappingFlow {
         ImportMappingActions(
             bindSheet: bindingAction(key: key, services: services),
             setSheetDisc: discAction(key: key, services: services),
-            openDocument: services.openDocument,
+            openDocument: { name, fileId in
+                services.openDocument(key, name, fileId)
+            },
             openImages: services.openImages,
             preview: { target in
                 do {

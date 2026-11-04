@@ -338,9 +338,6 @@ pub struct BridgeMappingFile {
     /// The file's own name, without its directory prefix.
     pub name: String,
     pub size: u64,
-    /// Absolute path as coven's bytes (`coven::path_bytes`) — what opening
-    /// this row's document reaches.
-    pub local_path: Vec<u8>,
     /// The whole-file target when this file currently supplies audio.
     pub preview_target: Option<BridgePreviewTarget>,
     /// Playing time in milliseconds from the scan's stored facts. `None` for
@@ -424,9 +421,6 @@ pub struct BridgeSheetGroup {
     pub sheet_id: String,
     pub name: String,
     pub size: u64,
-    /// Absolute path as coven's bytes (`coven::path_bytes`) — what opening
-    /// the sheet to read it reaches.
-    pub local_path: Vec<u8>,
     pub bound: BridgeSheetBound,
     /// Current FILE associations and permitted choices, in sheet reference order.
     pub reference_options: Vec<BridgeSheetReferenceOptions>,

@@ -14,7 +14,6 @@ use crate::probe::SourceDurations;
 use crate::types::{AudioFile, CandidateDraft, CandidateTrack, RawTrackEdit};
 use crate::ImportError;
 use std::collections::{BTreeSet, HashMap};
-use std::path::PathBuf;
 
 /// The mapping table: every source unit the folder offers, alongside the track
 /// committing makes of it.
@@ -148,7 +147,6 @@ pub struct MappingFile {
     /// directory shows up only as the prefix its files carry.
     pub name: String,
     pub size: u64,
-    pub path: PathBuf,
     /// The whole-file audition target when this file currently supplies audio.
     pub preview_target: Option<bae_track_audio::PreviewTarget>,
     /// Playing time from the scan's stored facts. `None` for non-audio files.
@@ -184,8 +182,6 @@ pub struct SheetGroup {
     pub sheet_id: String,
     pub name: String,
     pub size: u64,
-    /// Absolute path — what opening the sheet to read it reaches.
-    pub path: PathBuf,
     pub bound: SheetBound,
     /// Current FILE associations and choices, independent of track inclusion.
     pub reference_options: Vec<SheetReferenceOptions>,
@@ -279,7 +275,6 @@ fn folder_files_besides(
                     sheet_id: entry.file.relative_path.clone(),
                     name: entry.file.relative_path.clone(),
                     size: entry.file.size,
-                    path: entry.file.path.clone(),
                     bound: bound_of(
                         files,
                         TrackSheetFile { file: &entry.file, sheet, binding, disc: *disc },
@@ -341,7 +336,6 @@ pub(crate) fn mapping_table(
                         sheet_id: sheet.file.relative_path.clone(),
                         name: sheet.file.relative_path.clone(),
                         size: sheet.file.size,
-                        path: sheet.file.path.clone(),
                         bound: bound_sheet(sheet),
                         reference_options: files.sheet_binding_options(&sheet.file.relative_path),
                         assignment: sheet.disc,
@@ -607,8 +601,7 @@ impl InvalidCandidateDetail {
                     name: scanned.relative_path.clone(),
                     size: scanned.size,
                     preview_target: (role == MappingRole::Audio)
-                        .then(|| bae_track_audio::PreviewTarget::whole_file(scanned.path.clone())),
-                    path: scanned.path,
+                        .then(|| bae_track_audio::PreviewTarget::whole_file(scanned.path)),
                     duration_ms: None,
                     audio_format: None,
                     role,
@@ -693,7 +686,6 @@ fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u6
         file_id: entry.file.relative_path.clone(),
         name: entry.file.relative_path.clone(),
         size: entry.file.size,
-        path: entry.file.path.clone(),
         preview_target,
         duration_ms,
         audio_format: entry.file.source_audio.as_ref().map(|audio| audio.format.clone()),

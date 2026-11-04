@@ -96,7 +96,7 @@ struct ImportMappingSourceCell: View {
 
     private func openAction(_ file: BridgeMappingFile) -> (() -> Void)? {
         guard file.role == .document else { return nil }
-        return { actions.openDocument(file.name, file.localPath) }
+        return { actions.openDocument(file.name, file.fileId) }
     }
 
     /// One track sheet entry's title and play button; its number is in the

@@ -67,7 +67,7 @@ private final class MetadataSourceRecorder {
             importStore: store,
             endEditing: { [self] in events.append("end editing") },
             previewAudio: PreviewAudio.stub(),
-            openDocument: { _, _ in },
+            openDocument: { _, _, _ in },
             openImages: { _, _ in },
             onError: { [self] in errors.append($0) }
         )

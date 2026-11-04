@@ -45,7 +45,6 @@ extension MappingFixtures {
             fileId: "\(index).flac",
             name: "\(index).flac",
             size: UInt64(30_000_000 + index * 1_000_000),
-            localPath: Data("/tmp/walkthrough/\(index).flac".utf8),
             previewTarget: BridgePreviewTarget(
                 path: Data("/tmp/walkthrough/\(index).flac".utf8),
                 name: "\(index).flac",
@@ -136,7 +135,6 @@ extension MappingFixtures {
         fileId: containerId,
         name: containerId,
         size: 380_000_000,
-        localPath: containerPath,
         previewTarget: BridgePreviewTarget(
             path: containerPath,
             name: "Album Title.flac",
@@ -163,7 +161,6 @@ extension MappingFixtures {
             sheetId: sheetId,
             name: sheetId,
             size: 2_048,
-            localPath: Data("/tmp/walkthrough/\(sheetId)".utf8),
             bound: container.map { .describes(container: $0) }
                 ?? .unresolved(requested: [containerId]),
             referenceOptions: [

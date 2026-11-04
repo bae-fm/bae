@@ -363,7 +363,6 @@ extension ImportMappingTracksLayoutTests {
                     fileId: "track.flac",
                     name: "track.flac",
                     size: 24_000_000,
-                    localPath: audioPath,
                     previewTarget: previewTarget,
                     durationMs: 180_000,
                     audioFormat: MappingFixtures.audioFormat,
@@ -392,7 +391,6 @@ extension ImportMappingTracksLayoutTests {
             name:
                 "A long descriptor filename that must remain inside Source.cue",
             size: 2_048,
-            localPath: Data("/tmp/source/descriptor.cue".utf8),
             bound: associated
                 ? .describes(
                     container: BridgeMappingContainer(

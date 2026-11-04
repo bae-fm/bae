@@ -578,6 +578,18 @@ impl ImportTables {
         self.database.read(move |sql| skipped_on(&sql, &candidate)).await
     }
 
+    /// The release stored at `key`, whatever its standing: a candidate being
+    /// imported or already imported still shows its folder's files.
+    pub(crate) async fn load_folder_candidate(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<Option<FolderCandidate>, DbError> {
+        let key = key.clone();
+        self.database
+            .read(move |sql| Ok(load_candidate_on(&sql, &key)?.map(|stored| stored.candidate)))
+            .await
+    }
+
     /// The release stored at `key`, when it may be worked on — or why a
     /// grouping's release cannot be.
     pub(crate) async fn load_release_candidate(
