@@ -57,7 +57,7 @@ fn synthetic_flac_bytes(duration_ms: u64) -> Vec<u8> {
 
 /// A sheet naming one container for the whole disc, with `count` playable
 /// tracks three minutes apart.
-fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
+pub(crate) fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
     crate::cue_flac::tests::cue_text(
         Some(("Artist Name", "Album Title")),
         &format!("\"{audio_file_name}\""),
@@ -66,11 +66,11 @@ fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
     )
 }
 
-fn write_flac(path: &Path) {
+pub(crate) fn write_flac(path: &Path) {
     fs::write(path, synthetic_flac_bytes(1_000)).expect("write flac");
 }
 
-fn write_sheet_audio(path: &Path, track_count: usize) {
+pub(crate) fn write_sheet_audio(path: &Path, track_count: usize) {
     let duration_ms = u64::try_from(track_count)
         .expect("fixture track count fits u64")
         .checked_mul(180_000)
@@ -78,7 +78,7 @@ fn write_sheet_audio(path: &Path, track_count: usize) {
     fs::write(path, synthetic_flac_bytes(duration_ms)).expect("write sheet audio");
 }
 
-fn scan(root: &Path) -> CategorizedFiles {
+pub(crate) fn scan(root: &Path) -> CategorizedFiles {
     collect_release_candidate_files_with_scope(
         root,
         crate::ReleaseFileScope::Recursive,
@@ -93,7 +93,7 @@ fn file_ids(units: &[AudioFile]) -> Vec<&str> {
 
 /// A blank row over every unit, in the units' order — what the draft commits
 /// when nobody named anything.
-fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_db::TrackRow, AudioFile)> {
+pub(crate) fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_db::TrackRow, AudioFile)> {
     let now = chrono::Utc::now();
     units
         .into_iter()
@@ -263,67 +263,6 @@ fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
     );
 }
 
-/// A slot nobody named commits under its file's own name. An empty title is
-/// a track that cannot be found again, and the file name is what the slot
-/// table showed on that row.
-#[test]
-fn an_unnamed_slot_is_titled_after_its_file() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("hidden track.flac"));
-    let files = scan(tmp.path());
-
-    let track_files = resolve_track_files(
-        vec![(
-            bae_db::TrackRow {
-                id: "track-0".to_string(),
-                release_id: "release-1".to_string(),
-                title: "   ".to_string(),
-                medium_id: bae_db::identity::release_medium_id("release-1", 1),
-                side: std::num::NonZeroU8::MIN,
-                track_number: std::num::NonZeroU32::MIN,
-                created_at: chrono::Utc::now(),
-            },
-            AudioFile::Standalone { file_id: "hidden track.flac".to_string() },
-        )],
-        &files,
-    )
-    .expect("binding succeeds");
-
-    assert_eq!(track_files[0].db_track.title, "hidden track");
-}
-
-/// Every slice of a disc image binds to the container, carries its own
-/// index into the sheet, and shares one parsed analysis.
-#[test]
-fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_sheet_audio(&tmp.path().join("CDImage.flac"), 4);
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 4))
-        .expect("write cue");
-    let files = scan(tmp.path());
-    let rows = rows_for(audio_units(&files));
-
-    let track_files = resolve_track_files(rows, &files).expect("binding succeeds");
-    assert_eq!(track_files.len(), 4);
-
-    let mut analyses = Vec::new();
-    for (position, track_file) in track_files.iter().enumerate() {
-        assert!(track_file.db_track.duration_ms > 0, "every slice gets a duration",);
-        match &track_file.audio {
-            TrackAudio::CueBacked { cue_index, cue_pair } => {
-                assert_eq!(*cue_index, position);
-                assert_eq!(cue_pair.audio_files[0].path.file_name().unwrap(), "CDImage.flac");
-                analyses.push(Arc::as_ptr(cue_pair));
-            }
-            other => panic!("expected a CueBacked track file, got {other:?}"),
-        }
-    }
-    assert!(
-        analyses.windows(2).all(|pair| pair[0] == pair[1]),
-        "one sheet is parsed and probed once for all its slices",
-    );
-}
-
 /// A slice's length comes from the sheet's own timing, and the last slice —
 /// which has no next-track boundary in the sheet — from the container's
 /// total minus its start. The same reading the commit writes.
@@ -375,34 +314,4 @@ fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
             offer: SheetBindingOffer::RefusedTiming,
         }] if file_id == "CDImage.flac"
     ));
-}
-
-/// Audio a binding names that is no longer in the folder is the one thing
-/// that still refuses: there are no samples to write.
-#[test]
-fn audio_that_left_the_folder_refuses() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
-    let files = scan(tmp.path());
-
-    let err = resolve_track_files(
-        vec![(
-            bae_db::TrackRow {
-                id: "track-0".to_string(),
-                release_id: "release-1".to_string(),
-                title: "Track Title".to_string(),
-                medium_id: bae_db::identity::release_medium_id("release-1", 1),
-                side: std::num::NonZeroU8::MIN,
-                track_number: std::num::NonZeroU32::MIN,
-                created_at: chrono::Utc::now(),
-            },
-            AudioFile::Standalone { file_id: "02.flac".to_string() },
-        )],
-        &files,
-    )
-    .expect_err("audio that is gone cannot be bound");
-    assert!(
-        matches!(&err, ImportError::UnusableFile { detail } if detail.contains("02.flac")),
-        "got: {err}",
-    );
 }

@@ -8,7 +8,6 @@ use crate::types::{ImportCommand, ImportDestination, ImportProgress};
 use bae_diagnostics::TelemetryEvent;
 
 use {
-    crate::audio_layout::resolve_track_files,
     crate::types::{ImportPhase, PrepareStep, TrackFile},
     bae_db::WorkGraphRows,
     bae_db::{
@@ -31,9 +30,11 @@ mod format_prep;
 mod importing;
 mod progress;
 mod reconcile;
+mod track_files;
 mod worker;
 
 use content_type::resolve_file_content_type;
+use track_files::resolve_track_files;
 
 /// Which import run a progress event is about: the run the pane is watching and
 /// the candidate row it redraws.
