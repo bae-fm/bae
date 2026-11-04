@@ -204,6 +204,39 @@ pub(super) struct StreamSockets {
     pub(super) control: UdpSocket,
 }
 
+impl StreamSockets {
+    /// Bind both sockets on any local port.
+    pub(super) fn bind() -> std::io::Result<Self> {
+        Ok(Self {
+            timing: UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?,
+            control: UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?,
+        })
+    }
+
+    /// The local port the receiver sends timing requests to.
+    pub(super) fn timing_port(&self) -> std::io::Result<u16> {
+        Ok(self.timing.local_addr()?.port())
+    }
+
+    /// The local port sync packets leave from.
+    pub(super) fn control_port(&self) -> std::io::Result<u16> {
+        Ok(self.control.local_addr()?.port())
+    }
+}
+
+/// The audio latency in frames a session paces by when its receiver doesn't
+/// report one: the ~2 s buffer AirPort Express expects.
+pub(super) const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
+
+/// The error for a control connection a panic left partway through a request:
+/// it can't be read in step with its replies again, so it takes no more
+/// requests.
+pub(super) fn poisoned_connection<T>(poisoned: std::sync::PoisonError<T>) -> std::io::Error {
+    std::io::Error::other(format!(
+        "a panic left the control connection partway through a request: {poisoned}"
+    ))
+}
+
 /// The live push-audio stream shared by both dialects: the UDP audio flow, the
 /// timing responder, and — for RAOP — the periodic sync packets. Dropping it
 /// stops every thread. Created by a session after RECORD.

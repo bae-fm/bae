@@ -2,7 +2,7 @@ use super::*;
 use crate::airplay::crypto::apple_public_key;
 use bae_playback::airplay_output::AirPlayStreamControl;
 use std::io::{BufRead, BufReader, Write};
-use std::net::TcpListener;
+use std::net::{TcpListener, UdpSocket};
 
 #[test]
 fn volume_maps_to_raop_db_range() {

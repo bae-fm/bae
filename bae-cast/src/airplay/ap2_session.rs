@@ -13,7 +13,7 @@
 //! decrypts with the pair-verify key and checks the order and contents.
 
 use std::io::{BufReader, Read, Write};
-use std::net::{IpAddr, TcpStream, UdpSocket};
+use std::net::{IpAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -27,12 +27,9 @@ use super::pairing::{PairingError, TransientPairing};
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
-    MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio, StreamEndpoints,
-    StreamSockets,
+    poisoned_connection, MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio,
+    StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES,
 };
-
-/// The AirPlay 2 audio latency in frames when a receiver doesn't report one.
-const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 
@@ -419,11 +416,7 @@ impl Ap2SessionControl {
     /// The encrypted control connection. One a panic left mid-request can't
     /// be read in step with its replies again, so it takes no more requests.
     fn connection(&self) -> Result<std::sync::MutexGuard<'_, Ap2Control>, Ap2Error> {
-        self.control.lock().map_err(|poisoned| {
-            Ap2Error::Io(std::io::Error::other(format!(
-                "a panic left the control connection partway through a request: {poisoned}"
-            )))
-        })
+        self.control.lock().map_err(|poisoned| Ap2Error::Io(poisoned_connection(poisoned)))
     }
 }
 
@@ -455,10 +448,9 @@ impl Ap2Session {
         let shared = run_pair_verify(&mut conn)?;
 
         // Bind the timing/control sockets before SETUP so their ports are announced.
-        let timing_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
-        let control_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
-        let local_timing_port = timing_socket.local_addr()?.port();
-        let local_control_port = control_socket.local_addr()?.port();
+        let sockets = StreamSockets::bind()?;
+        let local_timing_port = sockets.timing_port()?;
+        let local_control_port = sockets.control_port()?;
 
         let shk = audio_key(&shared);
         let session_uuid = uuid::Uuid::new_v4().to_string();
@@ -511,7 +503,7 @@ impl Ap2Session {
                 channels: PCM_CHANNELS,
                 initial_timestamp: 0,
             },
-            StreamSockets { timing: timing_socket, control: control_socket },
+            sockets,
             clock,
             false, // AirPlay 2 anchors with SETRATEANCHORTIME, not RAOP sync packets
             stream_control.clone(),

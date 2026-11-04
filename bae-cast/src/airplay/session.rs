@@ -10,7 +10,7 @@
 //! The handshake is factored out of the socket plumbing so it is driven, in
 //! order, against a scripted fake receiver with no UDP and no real device.
 
-use std::net::{IpAddr, UdpSocket};
+use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -21,13 +21,9 @@ use super::crypto::RaopCipher;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
-    MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio, StreamEndpoints,
-    StreamSockets, FRAMES_PER_PACKET,
+    poisoned_connection, MonotonicClock, PayloadCrypto, RaopStream, RaopStreamControl, RtpAudio,
+    StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES, FRAMES_PER_PACKET,
 };
-
-/// The RAOP audio latency in frames when a receiver doesn't report one — the
-/// ~2 s buffer AirPort Express expects.
-const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
 
 /// A failure setting up or running a RAOP session.
 #[derive(Debug, thiserror::Error)]
@@ -212,13 +208,7 @@ impl RaopControl {
     }
 
     fn rtsp_request(&self, method: Method, step: &'static str) -> Result<(), RaopError> {
-        // A connection a panic left mid-request can't be read in step with
-        // its replies again, so it takes no more requests.
-        let mut rtsp = self.rtsp.lock().map_err(|poisoned| {
-            std::io::Error::other(format!(
-                "a panic left the control connection partway through a request: {poisoned}"
-            ))
-        })?;
+        let mut rtsp = self.rtsp.lock().map_err(poisoned_connection)?;
         let response = rtsp.request(&RtspRequest::new(method, &self.uri))?;
         expect_success(step, &response)
     }
@@ -249,10 +239,9 @@ impl RaopSession {
         // Bind the timing and control sockets before SETUP so their ports can be
         // announced: the receiver sends timing requests to the former, and sync
         // packets leave from the latter.
-        let timing_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
-        let control_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
-        let local_timing_port = timing_socket.local_addr()?.port();
-        let local_control_port = control_socket.local_addr()?.port();
+        let sockets = StreamSockets::bind()?;
+        let local_timing_port = sockets.timing_port()?;
+        let local_control_port = sockets.control_port()?;
 
         let session_id = NtpTime::now().fraction;
         let ssrc = NtpTime::now().seconds;
@@ -290,7 +279,7 @@ impl RaopSession {
                 channels: PCM_CHANNELS,
                 initial_timestamp,
             },
-            StreamSockets { timing: timing_socket, control: control_socket },
+            sockets,
             clock,
             true, // RAOP sends periodic sync packets
             stream_control.clone(),
