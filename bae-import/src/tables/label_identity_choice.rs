@@ -2,10 +2,26 @@
 //! merge the "same label" answer makes. The label's statement stays as the
 //! catalogs gave it; only this candidate's writes use the answer.
 
+use self::LabelIdentityConflictChoice as Choice;
 use super::*;
-use crate::LabelIdentityConflictChoice as Choice;
 use bae_db::client::label_resolution::{AnsweredLabel, LabelAnswer, LabelRow};
 use bae_types::pressing::ReleaseLabel;
+
+/// The person's answer to an import's conflicting label identities. Nothing
+/// selects an answer automatically. The first four answers decide this
+/// label; changing the match opens the candidate's existing release picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LabelIdentityConflictChoice {
+    /// Merge into the Discogs library label, keeping both catalog ids.
+    SameLabel,
+    /// Name the Discogs library label without attaching the incoming MusicBrainz id.
+    DiscogsLabel,
+    /// Name the MusicBrainz library label without attaching the Discogs id.
+    MusicBrainzLabel,
+    /// Create a label carrying neither catalog id when importing.
+    Neither,
+    ChangeMatch,
+}
 
 impl ImportTables {
     /// Record the person's answer to the candidate's label conflict, and

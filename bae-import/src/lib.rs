@@ -237,7 +237,6 @@ pub use cover_art::CoverSelection;
 #[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource};
 pub use error::ImportError;
-pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityConflictChoice};
 #[cfg(desktop)]
 pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
@@ -270,7 +269,7 @@ pub use identification::IdentificationHandle;
 #[cfg(desktop)]
 pub use identify_service::{IdentifyRunId, IdentifyServiceHandle};
 #[cfg(desktop)]
-pub use import_failure::{ImportFailure, ImportFailureReason};
+pub use import_failure::{IdentityConflict, ImportFailure, ImportFailureReason};
 #[cfg(desktop)]
 pub use list::{
     ImportCandidateListLocation, ImportCounts, ImportListId, ImportListItem, ImportListNarrowing,
@@ -300,6 +299,8 @@ pub use session::{
     CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
     PaneOutcome, SearchForm, SearchTab,
 };
+#[cfg(desktop)]
+pub use tables::{ArtistIdentityConflictChoice, LabelIdentityConflictChoice};
 #[cfg(desktop)]
 pub use triage::{
     BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,

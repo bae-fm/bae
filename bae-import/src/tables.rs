@@ -18,6 +18,7 @@ mod skipped_candidates;
 mod source_releases;
 mod watched_folders;
 
+pub use artist_identity_choice::ArtistIdentityConflictChoice;
 pub(crate) use folder_scans::DbCandidateFileTagSnapshot;
 pub use folder_scans::{FinishedScan, ScanItemWrite};
 pub(crate) use folder_scans::{
@@ -33,6 +34,7 @@ pub use import_state::{
     DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState, ImportCommitError,
     NewImportCandidateVerdict, VerdictPick,
 };
+pub use label_identity_choice::LabelIdentityConflictChoice;
 pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;
 pub use watched_folders::WatchedFoldersRemoved;

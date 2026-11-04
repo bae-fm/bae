@@ -6,48 +6,6 @@
 //! chain. `do_import`, the terminal consumer, is the only place that turns this
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
-use bae_db::{ArtistIdentityConflict, LabelIdentityConflict};
-
-/// The person's answer to an import's conflicting artist identities. Nothing
-/// selects an answer automatically. The first four answers decide this credit;
-/// changing the match opens the candidate's existing release picker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ArtistIdentityConflictChoice {
-    /// Merge into the Discogs library artist, retaining both provider ids.
-    SameArtist,
-    /// Credit the Discogs library artist without attaching the incoming MusicBrainz id.
-    DiscogsArtist,
-    /// Credit the MusicBrainz library artist without attaching the Discogs id.
-    MusicBrainzArtist,
-    /// Create an independent artist without either provider id when importing.
-    Neither,
-    ChangeMatch,
-}
-
-/// The person's answer to an import's conflicting label identities. Nothing
-/// selects an answer automatically. The first four answers decide this
-/// label; changing the match opens the candidate's existing release picker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LabelIdentityConflictChoice {
-    /// Merge into the Discogs library label, keeping both catalog ids.
-    SameLabel,
-    /// Name the Discogs library label without attaching the incoming MusicBrainz id.
-    DiscogsLabel,
-    /// Name the MusicBrainz library label without attaching the Discogs id.
-    MusicBrainzLabel,
-    /// Create a label carrying neither catalog id when importing.
-    Neither,
-    ChangeMatch,
-}
-
-/// The conflict a failed import stopped on: which library artist or label
-/// one of its statements names is the person's to say.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IdentityConflict {
-    Artist(ArtistIdentityConflict),
-    Label(LabelIdentityConflict),
-}
-
 /// Why an import failed. One class per distinguishable failure the pipeline
 /// actually produces.
 #[derive(Debug, thiserror::Error)]
@@ -179,13 +137,13 @@ pub enum ImportError {
     /// conflict a person resolves on the import page.
     #[cfg(desktop)]
     #[error("Import error: {0}")]
-    ArtistIdentityConflict(Box<ArtistIdentityConflict>),
+    ArtistIdentityConflict(Box<bae_db::ArtistIdentityConflict>),
 
     /// Two library labels each hold one of a label's catalog ids: the
     /// conflict a person resolves on the import page.
     #[cfg(desktop)]
     #[error("Import error: {0}")]
-    LabelIdentityConflict(Box<LabelIdentityConflict>),
+    LabelIdentityConflict(Box<bae_db::LabelIdentityConflict>),
 
     /// The release's credits cannot be linked to the library as it stands:
     /// their ids contradict the artist or label they match, or a picked

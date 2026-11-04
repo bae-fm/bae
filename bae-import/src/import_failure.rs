@@ -12,7 +12,15 @@ use chrono::{DateTime, Utc};
 pub struct ImportFailure {
     pub reason: ImportFailureReason,
     pub failed_at: DateTime<Utc>,
-    pub identity_conflict: Option<crate::IdentityConflict>,
+    pub identity_conflict: Option<IdentityConflict>,
+}
+
+/// The conflict a failed import stopped on: which library artist or label
+/// one of its statements names is the person's to say.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdentityConflict {
+    Artist(bae_db::ArtistIdentityConflict),
+    Label(bae_db::LabelIdentityConflict),
 }
 
 /// The diagnostic detail of an import failure. Surfaces pair it with their

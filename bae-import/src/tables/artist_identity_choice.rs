@@ -1,9 +1,25 @@
 //! Per-import answers to conflicting catalog identities. The source credit
 //! stays intact; only this candidate's writes and previews use the answer.
 
+use self::ArtistIdentityConflictChoice as Choice;
 use super::*;
-use crate::ArtistIdentityConflictChoice as Choice;
 use bae_db::client::artist_resolution::{resolve_credit_on, resolve_credits_with, ResolvedArtists};
+
+/// The person's answer to an import's conflicting artist identities. Nothing
+/// selects an answer automatically. The first four answers decide this credit;
+/// changing the match opens the candidate's existing release picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArtistIdentityConflictChoice {
+    /// Merge into the Discogs library artist, retaining both provider ids.
+    SameArtist,
+    /// Credit the Discogs library artist without attaching the incoming MusicBrainz id.
+    DiscogsArtist,
+    /// Credit the MusicBrainz library artist without attaching the Discogs id.
+    MusicBrainzArtist,
+    /// Create an independent artist without either provider id when importing.
+    Neither,
+    ChangeMatch,
+}
 
 impl ImportTables {
     pub async fn choose_import_artist_identity(
