@@ -152,7 +152,12 @@ async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::B
         .unwrap()
         .rows
         .into_iter()
-        .filter(|row| row.release.pinned)
+        .filter(|row| {
+            matches!(
+                row.release.storage_state,
+                bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
+            )
+        })
         .map(|row| row.release.id)
         .collect()
 }
@@ -494,7 +499,15 @@ async fn album_detail_releases_carry_their_own_pin_state() {
     let pinned: std::collections::HashMap<_, _> = detail
         .releases
         .iter()
-        .map(|release| (release.summary.id.clone(), release.summary.pinned))
+        .map(|release| {
+            (
+                release.summary.id.clone(),
+                matches!(
+                    release.summary.storage_state,
+                    bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
+                ),
+            )
+        })
         .collect();
 
     assert_eq!(pinned.len(), pressings.len());
@@ -723,7 +736,14 @@ async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     wait_for_kept_release(&manager, &release.id).await;
     assert!(
-        views(&manager).find_release_detail(&release.id).await.unwrap().unwrap().summary.pinned
+        views(&manager)
+            .find_release_detail(&release.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .summary
+            .storage_state
+            == bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
     );
 }
 
@@ -756,7 +776,8 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
             .unwrap()
             .expect("the library holds the release")
             .summary
-            .pinned
+            .storage_state
+            == bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
     };
     assert!(!summary_pinned().await, "the release's summary");
     assert!(

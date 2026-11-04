@@ -97,18 +97,15 @@ struct StorageStatusBand: View {
     private var storageStatus: some View {
         HStack(spacing: ThemeSpace.inline) {
             switch release.summary.storageState {
-            case .local:
+            case .onOneDevice:
                 Image(systemName: "folder")
                 Text("Local")
-            case .remote:
-                if release.summary.pinned {
-                    Image(systemName: "pin.fill")
-                    Text("Pinned")
-                }
-                else {
-                    Image(systemName: "cloud")
-                    Text("In storage")
-                }
+            case .inStorage(pinned: true):
+                Image(systemName: "pin.fill")
+                Text("Pinned")
+            case .inStorage(pinned: false):
+                Image(systemName: "cloud")
+                Text("In storage")
             }
         }
         .themeText(.body)
@@ -137,14 +134,12 @@ struct StorageStatusBand: View {
     @MainActor
     private func previewStorageBand(
         storageState: BridgeReleaseStorageState,
-        pinned: Bool,
         storageActions: [BridgeReleaseStorageAction],
         playability: BridgeReleasePlayability
     ) -> some View {
         StorageStatusBand(
             release: PreviewData.storageRelease(
                 storageState: storageState,
-                pinned: pinned,
                 storageActions: storageActions,
                 playability: playability
             ),
@@ -161,8 +156,7 @@ struct StorageStatusBand: View {
     // Local: the only offered transition is uploading to the cloud.
     #Preview("Storage Band — Local") {
         previewStorageBand(
-            storageState: .local,
-            pinned: false,
+            storageState: .onOneDevice,
             storageActions: [.upload],
             playability: .playable
         )
@@ -173,8 +167,7 @@ struct StorageStatusBand: View {
     // band names the device.
     #Preview("Storage Band — On Another Device") {
         previewStorageBand(
-            storageState: .local,
-            pinned: false,
+            storageState: .onOneDevice,
             storageActions: [],
             playability: .onOtherDevice(device: .active(name: "Ana's Mac"))
         )
@@ -184,8 +177,7 @@ struct StorageStatusBand: View {
     // On a device that was removed from the library.
     #Preview("Storage Band — On a Removed Device") {
         previewStorageBand(
-            storageState: .local,
-            pinned: false,
+            storageState: .onOneDevice,
             storageActions: [],
             playability: .onOtherDevice(
                 device: .former(name: "Ana's Mac", state: .removed)
@@ -197,8 +189,7 @@ struct StorageStatusBand: View {
     // In the cloud, not pinned: can pin or pull back local.
     #Preview("Storage Band — Cloud") {
         previewStorageBand(
-            storageState: .remote,
-            pinned: false,
+            storageState: .inStorage(pinned: false),
             storageActions: [.pin, .detachAudio],
             playability: .playable
         )
@@ -208,8 +199,7 @@ struct StorageStatusBand: View {
     // In the cloud and pinned: can unpin or pull back local.
     #Preview("Storage Band — Pinned") {
         previewStorageBand(
-            storageState: .remote,
-            pinned: true,
+            storageState: .inStorage(pinned: true),
             storageActions: [.unpin, .detachAudio],
             playability: .playable
         )

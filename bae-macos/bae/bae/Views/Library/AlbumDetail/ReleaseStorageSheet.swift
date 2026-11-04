@@ -221,8 +221,7 @@ struct ReleaseStorageSheet: View {
 #if DEBUG
     #Preview("Release Storage Sheet") {
         let release = PreviewData.storageBridgeRelease(
-            storageState: .remote,
-            pinned: false,
+            storageState: .inStorage(pinned: false),
             storageActions: [.pin, .detachAudio],
             playability: .playable
         )

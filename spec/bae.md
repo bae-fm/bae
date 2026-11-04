@@ -1857,6 +1857,11 @@ the same way, in the transaction that changes the queue, and where the release
 sorts by storage is worked out from these in the same write, so the storage
 sort reads an index like every other.
 
+At rest, a release's album storage band says where its files are, the one
+state core gives it: on one device, or in storage, pinned here or not. Only a
+file in storage is pinned, so no release reads as both on one device and
+pinned.
+
 A release with files waiting to upload shows, in its row and in its album's
 storage band, how many wait and how many are being sent (its Done row in the
 import list shows the phase that makes, §3.2), and while any is

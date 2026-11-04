@@ -129,8 +129,8 @@ async fn create_remote_cloud_only_release(
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
     assert_eq!(
         crate::release_storage(db, &release_id).await,
-        (ReleaseStorageState::Remote, false),
-        "release is Remote (cloud-only) once the transition is accepted"
+        ReleaseStorageState::InStorage { pinned: false },
+        "release is in storage once the transition is accepted"
     );
     (release_id, captured)
 }
@@ -182,7 +182,12 @@ async fn test_multiple_releases_independent_completion() {
         tokio::time::timeout(std::time::Duration::from_secs(10), async {
             loop {
                 let value = release.next().await.expect("the release detail resolves");
-                if value.value.is_some_and(|detail| detail.summary.pinned) {
+                if value.value.is_some_and(|detail| {
+                    matches!(
+                        detail.summary.storage_state,
+                        bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
+                    )
+                }) {
                     break;
                 }
             }
@@ -193,11 +198,11 @@ async fn test_multiple_releases_independent_completion() {
 
     assert_eq!(
         crate::release_storage(mgr.database(), &release_a).await,
-        (ReleaseStorageState::Remote, true)
+        ReleaseStorageState::InStorage { pinned: true }
     );
     assert_eq!(
         crate::release_storage(mgr.database(), &release_b).await,
-        (ReleaseStorageState::Remote, true)
+        ReleaseStorageState::InStorage { pinned: true }
     );
 }
 
@@ -237,7 +242,7 @@ async fn test_manage_refused_without_cloud_storage() {
         db.queued_upload_count_for_test().await.unwrap() == 0,
         "no upload may be enqueued when the pipeline can't drain it"
     );
-    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Local, false));
+    assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,7 +266,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
     mgr.upload_release(&release_id, false).await.unwrap();
 
     // Queued uploads leave every row without a stored file.
-    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Local, false));
+    assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
 
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, files.len());
@@ -269,7 +274,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
     // Each completed upload names its file, and the pin state is unchanged.
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
-        (ReleaseStorageState::Remote, false)
+        ReleaseStorageState::InStorage { pinned: false }
     );
 }
 
@@ -295,7 +300,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, 0, "no upload should succeed");
 
-    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Local, false));
+    assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
     assert_ne!(mgr.count_pending_uploads_for_release(&release_id).await.unwrap(), 0);
 }
 
@@ -337,7 +342,7 @@ async fn truncated_source_fails_its_move_without_sending() {
     for (name, _) in files {
         assert!(source_dir.join(name).exists());
     }
-    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Local, false));
+    assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
 }
 
 // ---------------------------------------------------------------------------
@@ -365,7 +370,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new()).await.unwrap();
 
     // Release is Local, and each file's original path names its new copy.
-    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Local, false));
+    assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
     for (file_id, name, _) in &files {
         let path = mgr.file_local_path(file_id).await.unwrap().unwrap();
         assert_eq!(path, new_path.join(name), "device-local path names the new copy");
@@ -401,7 +406,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
-        (ReleaseStorageState::Remote, false)
+        ReleaseStorageState::InStorage { pinned: false }
     );
     assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is left");
 }
@@ -440,7 +445,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
     );
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
-        (ReleaseStorageState::Remote, false)
+        ReleaseStorageState::InStorage { pinned: false }
     );
     assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is made");
 }

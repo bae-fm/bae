@@ -145,8 +145,7 @@ fn release_storage_state_and_actions_serialize_snake_case() {
             medium: bae_types::pressing::Medium::Digital,
             count: 1,
         }],
-        storage_state: ReleaseStorageState::Remote,
-        pinned: true,
+        storage_state: ReleaseStorageState::InStorage { pinned: true },
         storage_actions: vec![
             ReleaseStorageAction::Unpin,
             ReleaseStorageAction::DetachAudio,
@@ -162,7 +161,7 @@ fn release_storage_state_and_actions_serialize_snake_case() {
     });
     let json = serde_json::to_value(summary).unwrap();
 
-    assert_eq!(json["storage_state"], "remote");
+    assert_eq!(json["storage_state"], serde_json::json!({"place": "in_storage", "pinned": true}));
     assert_eq!(
         json["storage_actions"],
         serde_json::json!(["unpin", "detach_audio", "upload", "pin"]),
@@ -177,8 +176,7 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
         id: "rel-2".to_string(),
         album_id: "alb-1".to_string(),
         media: Vec::new(),
-        storage_state: ReleaseStorageState::Local,
-        pinned: false,
+        storage_state: ReleaseStorageState::OnOneDevice,
         storage_actions: Vec::new(),
         transfer_action: None,
         upload: None,
@@ -189,7 +187,7 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
     });
     let json = serde_json::to_value(summary).unwrap();
 
-    assert_eq!(json["storage_state"], "local");
+    assert_eq!(json["storage_state"], serde_json::json!({"place": "on_one_device"}));
     assert_eq!(json["transfer_action"], serde_json::Value::Null);
 }
 

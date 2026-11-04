@@ -94,7 +94,7 @@ async fn create_remote_release(
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
         crate::release_storage(db, &release_id).await,
-        (ReleaseStorageState::Remote, false),
+        ReleaseStorageState::InStorage { pinned: false },
         "Remote (cloud-only) after the drain"
     );
     release_id
@@ -331,7 +331,10 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
         Some(22),
         "the pin reports every byte before it completes"
     );
-    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Remote, true));
+    assert_eq!(
+        crate::release_storage(&db, &release_id).await,
+        ReleaseStorageState::InStorage { pinned: true }
+    );
 }
 
 /// The release and album detail views show a release pinned once its files
@@ -365,14 +368,18 @@ async fn the_detail_views_follow_a_releases_pin() {
             tokio::time::timeout(std::time::Duration::from_secs(10), async {
                 loop {
                     let value = release.next().await.expect("the release detail resolves");
-                    if value.value.is_some_and(|detail| detail.summary.pinned == pinned) {
+                    if value.value.is_some_and(|detail| {
+                        detail.summary.storage_state == ReleaseStorageState::InStorage { pinned }
+                    }) {
                         break;
                     }
                 }
                 loop {
                     let value = album.next().await.expect("the album detail resolves");
-                    if value.value.is_some_and(|detail| detail.releases[0].summary.pinned == pinned)
-                    {
+                    if value.value.is_some_and(|detail| {
+                        detail.releases[0].summary.storage_state
+                            == ReleaseStorageState::InStorage { pinned }
+                    }) {
                         break;
                     }
                 }
@@ -417,12 +424,15 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
         .finish()
         .await
         .expect("pin task completes");
-    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Remote, true));
+    assert_eq!(
+        crate::release_storage(&db, &release_id).await,
+        ReleaseStorageState::InStorage { pinned: true }
+    );
 
     mgr.unpin_release(&release_id).await.unwrap();
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
-        (ReleaseStorageState::Remote, false)
+        ReleaseStorageState::InStorage { pinned: false }
     );
 }
 
@@ -478,16 +488,17 @@ async fn transition_completions_deliver_storage_values() {
             selected: Default::default(),
         },
     );
-    expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
+    expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 
     mgr.upload_release(&release_id, false).await.unwrap();
     mgr.drain_uploads_expecting_work().await.unwrap();
-    expect_storage_state(&values, &release_id, ReleaseStorageState::Remote).await;
+    expect_storage_state(&values, &release_id, ReleaseStorageState::InStorage { pinned: false })
+        .await;
 
     let dest = tmp.path().join("brought-back");
     std::fs::create_dir(&dest).unwrap();
     mgr.detach_release_audio_into(&release_id, &dest, &CancellationToken::new()).await.unwrap();
-    expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
+    expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 }
 
 /// The Storage Manager's inspector shows, and its actions act on, a release

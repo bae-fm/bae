@@ -213,14 +213,16 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
             .settle("the release in the cloud", |_, database| {
                 let release_id = release.id.clone();
                 async move {
-                    bae_views::LibraryViews::new(database.clone())
-                        .find_release_detail(&release_id)
-                        .await
-                        .unwrap()
-                        .expect("the release exists")
-                        .summary
-                        .storage_state
-                        == bae_views::album_detail::ReleaseStorageState::Remote
+                    matches!(
+                        bae_views::LibraryViews::new(database.clone())
+                            .find_release_detail(&release_id)
+                            .await
+                            .unwrap()
+                            .expect("the release exists")
+                            .summary
+                            .storage_state,
+                        bae_views::album_detail::ReleaseStorageState::InStorage { .. }
+                    )
                 }
             })
             .await;

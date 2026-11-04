@@ -45,8 +45,11 @@ async fn download_queue_skips_already_pinned() {
     let release_id =
         uploaded_release(&manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
     let summary = views(&manager).find_release_detail(&release_id).await.unwrap().unwrap().summary;
-    assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::Remote);
-    assert!(summary.pinned, "the offline-cached file makes it read as pinned");
+    assert_eq!(
+        summary.storage_state,
+        bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true },
+        "the offline-cached file makes it read as pinned"
+    );
 
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
@@ -100,7 +103,7 @@ async fn download_queue_skips_local_release() {
     )
     .await;
     let summary = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap().summary;
-    assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::Local);
+    assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::OnOneDevice);
 
     manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
     assert!(
@@ -359,7 +362,8 @@ async fn a_failed_pins_retry_pins_the_release_again() {
             .unwrap()
             .expect("the library holds the release")
             .summary
-            .pinned
+            .storage_state
+            == bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
     );
 }
 

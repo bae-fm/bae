@@ -117,7 +117,6 @@ impl BridgeRelease {
             media: _,
             media_terms,
             storage_state,
-            pinned,
             storage_actions,
             transfer_action,
             upload,
@@ -143,7 +142,6 @@ impl BridgeRelease {
             pressing_details: crate::types::bridge_pressing_details(facts.clone()),
             facts,
             storage_state,
-            pinned,
             storage_actions,
             transfer_action,
             upload,
@@ -252,7 +250,6 @@ impl BridgeReleaseSummary {
             album_id,
             media,
             storage_state,
-            pinned,
             storage_actions,
             transfer_action,
             upload,
@@ -269,7 +266,6 @@ impl BridgeReleaseSummary {
             media_terms: crate::types::bridge_media_terms(media.clone()),
             media,
             storage_state: crate::types::BridgeReleaseStorageState::from_core(storage_state),
-            pinned,
             storage_actions: storage_actions
                 .into_iter()
                 .map(crate::types::BridgeReleaseStorageAction::from_core)

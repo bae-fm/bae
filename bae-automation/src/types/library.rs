@@ -29,11 +29,8 @@ pub struct AutomationReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub media: Vec<bae_types::pressing::MediaCount>,
-    /// Where the audio lives. Orthogonal to `pinned`.
+    /// Where its files are, and whether this device keeps them offline.
     pub storage_state: AutomationReleaseStorageState,
-    /// Whether a Remote release is kept offline on this device — the orthogonal
-    /// cache property, never folded into `storage_state`.
-    pub pinned: bool,
     /// The transitions available right now, derived by the core.
     pub storage_actions: Vec<AutomationReleaseStorageAction>,
     /// The transition currently in flight, if any — so a client can tell a release
@@ -60,17 +57,17 @@ pub struct AutomationReleaseUpload {
 
 /// A release's storage state. Mirrors `bae_views::album_detail::ReleaseStorageState`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", tag = "place")]
 pub enum AutomationReleaseStorageState {
-    Local,
-    Remote,
+    OnOneDevice,
+    InStorage { pinned: bool },
 }
 
 impl From<ReleaseStorageState> for AutomationReleaseStorageState {
     fn from(state: ReleaseStorageState) -> Self {
         match state {
-            ReleaseStorageState::Local => Self::Local,
-            ReleaseStorageState::Remote => Self::Remote,
+            ReleaseStorageState::OnOneDevice => Self::OnOneDevice,
+            ReleaseStorageState::InStorage { pinned } => Self::InStorage { pinned },
         }
     }
 }

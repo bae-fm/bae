@@ -437,7 +437,7 @@ async fn storage_page_local_filter_matches_local_path() {
     assert_eq!(local.rows[0].release.id, local_release.id);
     assert_eq!(
         local.rows[0].release.storage_state,
-        bae_views::album_detail::ReleaseStorageState::Local
+        bae_views::album_detail::ReleaseStorageState::OnOneDevice
     );
 
     let remote = storage_page(&manager, bae_views::StorageFilter::Remote, 0, 10).await;
@@ -445,7 +445,7 @@ async fn storage_page_local_filter_matches_local_path() {
     assert_eq!(remote.rows[0].release.id, remote_id);
     assert_ne!(
         remote.rows[0].release.storage_state,
-        bae_views::album_detail::ReleaseStorageState::Local
+        bae_views::album_detail::ReleaseStorageState::OnOneDevice
     );
 }
 

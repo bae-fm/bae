@@ -60,8 +60,7 @@ struct StorageReleaseCell: View {
                 StorageReleaseCell(
                     release: PreviewData.storageRelease(
                         albumId: PreviewData.storageAlbum.id,
-                        storageState: .remote,
-                        pinned: true
+                        storageState: .inStorage(pinned: true)
                     ),
                     album: PreviewData.storageAlbum,
                     status: .pinned,

@@ -85,23 +85,21 @@ private struct StorageMakingLocalChip: View {
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-local",
-                    storageState: .local
+                    storageState: .onOneDevice
                 ),
                 status: .local
             )
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-cloud",
-                    storageState: .remote,
-                    pinned: false
+                    storageState: .inStorage(pinned: false)
                 ),
                 status: .cloud
             )
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-pinned",
-                    storageState: .remote,
-                    pinned: true
+                    storageState: .inStorage(pinned: true)
                 ),
                 status: .pinned
             )
@@ -109,7 +107,7 @@ private struct StorageMakingLocalChip: View {
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "rel-row-5",
-                    storageState: .remote,
+                    storageState: .inStorage(pinned: false),
                     transfer: .pin
                 ),
                 status: .pinning
@@ -118,7 +116,7 @@ private struct StorageMakingLocalChip: View {
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: "r-detach",
-                    storageState: .remote,
+                    storageState: .inStorage(pinned: false),
                     transfer: .detachAudio
                 ),
                 status: .transferring(action: .detachAudio)
@@ -127,7 +125,7 @@ private struct StorageMakingLocalChip: View {
             StorageStateLabel(
                 release: PreviewData.storageRelease(
                     id: PreviewData.uploadingRelease.releaseId,
-                    storageState: .local,
+                    storageState: .onOneDevice,
                     upload: PreviewData.uploadingRelease.upload
                 ),
                 status: .uploading

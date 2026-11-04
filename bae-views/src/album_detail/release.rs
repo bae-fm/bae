@@ -32,17 +32,11 @@ pub struct ReleaseSummary {
     /// What the release is made of, each carrier with its count; empty if
     /// unknown.
     pub media: Vec<bae_types::pressing::MediaCount>,
-    /// Whether every release file has been attached for upload. Orthogonal to
-    /// `pinned`.
+    /// Where its files are, and whether this device keeps them offline.
     pub storage_state: ReleaseStorageState,
-    /// Whether coven keeps this release's files offline on this device. Meaningful
-    /// only when `storage_state` is `Remote` — always `false` for a Local release,
-    /// which is already a local file. Kept SEPARATE from `storage_state` so the two
-    /// are never confused.
-    pub pinned: bool,
     /// The transitions available right now, derived by the core from
     /// `storage_state`, whether this device holds the originals an upload reads,
-    /// `pinned`, and whether a cloud home exists; empty without one, and while
+    /// and whether a cloud home exists; empty without one, and while
     /// the release is `transitioning`. The UI renders these and never
     /// re-derives availability.
     pub storage_actions: Vec<ReleaseStorageAction>,
@@ -66,7 +60,7 @@ impl ReleaseSummary {
     /// The one place `storage_actions` is derived: [`ReleaseDetail::from_raw`]
     /// projects its fat aggregate down to a slim row and routes through here too.
     pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx) -> ReleaseSummary {
-        let storage_state = storage_state(raw.remote);
+        let storage_state = storage_state(raw.remote, raw.pinned);
         let upload = raw.upload.map(ReleaseUpload::from_raw);
         let transitioning = upload.is_some() || raw.transfer_action.is_some();
         ReleaseSummary {
@@ -74,14 +68,12 @@ impl ReleaseSummary {
             album_id: raw.album_id,
             media: raw.media,
             storage_state,
-            pinned: raw.pinned,
             storage_actions: if transitioning {
                 Vec::new()
             } else {
                 available_storage_actions(
                     storage_state,
                     &release_playability(&raw.unstored_audio),
-                    raw.pinned,
                     ctx.has_cloud_home,
                 )
             },
@@ -236,7 +228,8 @@ impl ReleaseDetail {
         }
         // An image file likewise has no stable bae path: the lightbox fetches its
         // bytes by file id through `read_gallery_bytes`, and coven reads them from
-        // wherever they are — the user's own file when Local, the cache when Remote.
+        // wherever they are — the user's own file on the one device holding it,
+        // the cache once it is in storage.
         for f in &image_files {
             gallery.push(GalleryItem {
                 id: f.id.clone(),
@@ -271,7 +264,7 @@ impl ReleaseDetail {
         );
 
         let download_status = release_download_status(
-            summary.pinned,
+            summary.storage_state,
             &summary.storage_actions,
             transfers.download.as_ref(),
         );

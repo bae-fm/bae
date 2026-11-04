@@ -240,14 +240,12 @@
         @MainActor
         static func storageRelease(
             storageState: BridgeReleaseStorageState,
-            pinned: Bool,
             storageActions: [BridgeReleaseStorageAction],
             playability: BridgeReleasePlayability
         ) -> ReleaseDetail {
             ReleaseDetail(
                 bridge: storageBridgeRelease(
                     storageState: storageState,
-                    pinned: pinned,
                     storageActions: storageActions,
                     playability: playability
                 )
@@ -257,7 +255,6 @@
         /// The release `storageRelease` shows, as the release's read gives it.
         static func storageBridgeRelease(
             storageState: BridgeReleaseStorageState,
-            pinned: Bool,
             storageActions: [BridgeReleaseStorageAction],
             playability: BridgeReleasePlayability
         ) -> BridgeRelease {
@@ -285,7 +282,6 @@
                 mediaTerms: bridgeMediaTerms(media: facts.media),
                 pressingDetails: bridgePressingDetails(facts: facts),
                 storageState: storageState,
-                pinned: pinned,
                 storageActions: storageActions,
                 transferAction: nil,
                 upload: nil,

@@ -771,7 +771,8 @@ async fn upload_pins_as_the_stored_choice_says() {
                 .unwrap()
                 .expect("the library holds the release")
                 .summary
-                .pinned
+                .storage_state
+                == bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
         }
     };
     assert!(pinned(kept.id.clone()).await);

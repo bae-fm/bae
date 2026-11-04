@@ -68,7 +68,11 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         .unwrap()
         .unwrap()
         .summary;
-    assert!(storage.pinned, "the import keeps the selected offline pin");
+    assert_eq!(
+        storage.storage_state,
+        bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true },
+        "the import keeps the selected offline pin"
+    );
 
     f.library.set_import_to_cloud(false).await.unwrap();
     assert!(

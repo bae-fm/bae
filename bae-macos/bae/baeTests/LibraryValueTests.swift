@@ -31,8 +31,7 @@ func makeBridgeRelease(
     albumId: String = "album-1",
     displayName: String = "Release One",
     media: [BridgeMediaCount] = PreviewData.media(.cd),
-    storageState: BridgeReleaseStorageState = .remote,
-    pinned: Bool = false,
+    storageState: BridgeReleaseStorageState = .inStorage(pinned: false),
     storageActions: [BridgeReleaseStorageAction] = [],
     transferAction: BridgeReleaseStorageAction? = nil,
     totalDuration: BridgeDurationUnits? = .hoursAndMinutes(
@@ -55,7 +54,6 @@ func makeBridgeRelease(
         mediaTerms: bridgeMediaTerms(media: facts.media),
         pressingDetails: bridgePressingDetails(facts: facts),
         storageState: storageState,
-        pinned: pinned,
         storageActions: storageActions,
         transferAction: transferAction,
         upload: nil,
@@ -80,8 +78,7 @@ private func makeBridgeReleaseSummary(
     id: String = "release-1",
     albumId: String = "album-1",
     media: [BridgeMediaCount] = PreviewData.media(.digital),
-    storageState: BridgeReleaseStorageState = .remote,
-    pinned: Bool = false,
+    storageState: BridgeReleaseStorageState = .inStorage(pinned: false),
     storageActions: [BridgeReleaseStorageAction] = [],
     fileCount: Int64 = 0,
     totalSize: Int64 = 0,
@@ -93,7 +90,6 @@ private func makeBridgeReleaseSummary(
         media: media,
         mediaTerms: bridgeMediaTerms(media: media),
         storageState: storageState,
-        pinned: pinned,
         storageActions: storageActions,
         transferAction: nil,
         upload: nil,
@@ -255,7 +251,7 @@ struct ReleaseSummaryTests {
     func fromListRow() {
         let summary = ReleaseSummary(
             from: makeBridgeReleaseSummary(
-                pinned: true,
+                storageState: .inStorage(pinned: true),
                 totalSize: 200,
                 cover: BridgeImageRef(
                     id: "release-1",
@@ -265,7 +261,7 @@ struct ReleaseSummaryTests {
             )
         )
 
-        #expect(summary.pinned)
+        #expect(summary.storageState == .inStorage(pinned: true))
         #expect(summary.totalSize == 200)
         #expect(
             summary.cover
@@ -283,8 +279,7 @@ struct ReleaseSummaryTests {
         let summary = ReleaseSummary(
             from: makeBridgeRelease(
                 media: PreviewData.media(.vinyl, 2),
-                storageState: .remote,
-                pinned: true,
+                storageState: .inStorage(pinned: true),
                 fileCount: 12,
                 totalSize: 5_000_000,
                 cover: BridgeImageRef(
@@ -298,8 +293,7 @@ struct ReleaseSummaryTests {
         #expect(summary.id == "release-1")
         #expect(summary.albumId == "album-1")
         #expect(summary.media == PreviewData.media(.vinyl, 2))
-        #expect(summary.storageState == .remote)
-        #expect(summary.pinned)
+        #expect(summary.storageState == .inStorage(pinned: true))
         #expect(summary.fileCount == 12)
         #expect(summary.totalSize == 5_000_000)
         #expect(

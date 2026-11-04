@@ -295,7 +295,12 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
             .iter()
             .flat_map(|window| &window.rows)
             .find(|row| row.release.id == release.id)
-            .map(|row| row.release.pinned)
+            .map(|row| {
+                matches!(
+                    row.release.storage_state,
+                    bae_views::album_detail::ReleaseStorageState::InStorage { pinned: true }
+                )
+            })
     };
     let first = values.next().await.unwrap();
     assert_eq!(pinned(&first), Some(false));

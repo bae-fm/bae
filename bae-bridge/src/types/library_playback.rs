@@ -264,19 +264,18 @@ pub struct BridgeAlbumAppearance {
     pub credited_with: Option<String>,
 }
 
-/// Local audio uses this device's paths; Remote audio is attached to its synced
-/// rows and queued for upload. Pinning is independent of that attachment and
-/// is carried on `BridgeReleaseSummary` and `BridgeRelease`.
+/// Where a release's files are: on the one device holding its originals, or
+/// in storage, with whether this device keeps them offline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseStorageState {
-    Local,
-    Remote,
+    OnOneDevice,
+    InStorage { pinned: bool },
 }
 
 mirror_enum! {
     BridgeReleaseStorageState = bae_views::album_detail::ReleaseStorageState,
     from_core: pub fn,
-    variants: { Local, Remote },
+    variants: { OnOneDevice, InStorage { pinned } },
 }
 
 /// A storage transition available from the release "Storage…" sheet.
@@ -331,13 +330,8 @@ pub struct BridgeReleaseSummary {
     /// The same media worded, as [`crate::types::bridge_media_terms`] words
     /// them, so a surface draws them with no call into the bridge.
     pub media_terms: Vec<crate::types::BridgeFactTerm>,
-    /// The release's storage state — Local (local) or Remote (cloud).
+    /// Where its files are, and whether this device keeps them offline.
     pub storage_state: BridgeReleaseStorageState,
-    /// Whether coven keeps this release's files pinned (kept offline) on this
-    /// device — the ORTHOGONAL coven-cache property. Meaningful only when
-    /// `storage_state` is `Remote`. Kept separate from `storage_state` so the UI
-    /// never conflates "in the cloud" with "kept offline".
-    pub pinned: bool,
     /// Storage transitions available right now, gated by the core on the
     /// cloud home, and empty while the release is `transitioning`. The Storage
     /// Manager row context menu renders these.
@@ -392,11 +386,8 @@ pub struct BridgeRelease {
     /// The facts' details line, as [`crate::types::bridge_pressing_details`]
     /// words it. Carried for the same reason.
     pub pressing_details: Vec<crate::types::BridgeFactTerm>,
-    /// The release's storage state — Local (local) or Remote (cloud).
+    /// Where its files are, and whether this device keeps them offline.
     pub storage_state: BridgeReleaseStorageState,
-    /// Whether coven keeps this release's files pinned (kept offline) on this
-    /// device — the ORTHOGONAL coven-cache property, separate from `storage_state`.
-    pub pinned: bool,
     /// Storage transitions available right now, gated by the core on the
     /// cloud home, and empty while the release is `transitioning`.
     pub storage_actions: Vec<BridgeReleaseStorageAction>,

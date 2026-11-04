@@ -34,8 +34,7 @@ extension ShotScene {
             size: CGSize(width: 640, height: 600)
         ) {
             let release = PreviewData.storageBridgeRelease(
-                storageState: .remote,
-                pinned: true,
+                storageState: .inStorage(pinned: true),
                 storageActions: [.unpin, .detachAudio],
                 playability: .playable
             )

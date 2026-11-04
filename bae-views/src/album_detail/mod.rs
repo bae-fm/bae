@@ -88,32 +88,34 @@ impl ReleaseName {
     }
 }
 
-/// Whether every file of the release is in storage, so other devices can play
-/// it.
-///
-/// This is ORTHOGONAL to pinned-ness. Whether coven keeps a remote release's files
-/// pinned or evictable is a separate per-device cache property, carried alongside
-/// as a `pinned: bool` and NEVER folded in here: mixing them would conflate "where
-/// the bytes live" with "is a copy kept offline."
+/// Where a release's files are: on the one device that holds its originals,
+/// or in storage, where every device reads them, with whether this device
+/// keeps its own copy of every file (pinned).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageState {
     /// A file storage doesn't hold yet: the release plays from its originals
     /// on the device that holds them, uploading or not.
-    Local,
+    OnOneDevice,
     /// Every file is in storage, read through coven's cache or storage.
-    Remote,
+    InStorage {
+        /// Whether this device keeps every file of it offline.
+        pinned: bool,
+    },
 }
 
-/// Pure: the no-cloud-home overlay belongs to [`available_storage_actions`].
-pub fn storage_state(remote: bool) -> ReleaseStorageState {
-    if remote {
-        ReleaseStorageState::Remote
+/// The state a release's listing gives: whether storage holds every file,
+/// and whether this device pins every file. Only a file in storage is
+/// pinned, so a release storage lacks a file of is never pinned whole.
+pub fn storage_state(stored: bool, pinned: bool) -> ReleaseStorageState {
+    if stored {
+        ReleaseStorageState::InStorage { pinned }
     } else {
-        ReleaseStorageState::Local
+        ReleaseStorageState::OnOneDevice
     }
 }
 
-/// Remote requires a cloud home, so without one there are no transitions at all.
+/// Storage requires a cloud home, so without one there are no transitions at
+/// all.
 ///
 /// `Upload` uploads from this device's originals, so it is offered only
 /// where the library records this device holding them: not for a release
@@ -128,7 +130,6 @@ pub fn storage_state(remote: bool) -> ReleaseStorageState {
 pub fn available_storage_actions(
     state: ReleaseStorageState,
     playability: &ReleasePlayability,
-    pinned: bool,
     has_cloud_home: bool,
 ) -> Vec<ReleaseStorageAction> {
     use ReleaseStorageAction::*;
@@ -136,12 +137,12 @@ pub fn available_storage_actions(
         return Vec::new();
     }
     match state {
-        ReleaseStorageState::Local if *playability == ReleasePlayability::Playable => {
+        ReleaseStorageState::OnOneDevice if *playability == ReleasePlayability::Playable => {
             vec![Upload]
         }
-        ReleaseStorageState::Local => Vec::new(),
-        ReleaseStorageState::Remote if pinned => vec![Unpin, DetachAudio],
-        ReleaseStorageState::Remote => vec![Pin, DetachAudio],
+        ReleaseStorageState::OnOneDevice => Vec::new(),
+        ReleaseStorageState::InStorage { pinned: true } => vec![Unpin, DetachAudio],
+        ReleaseStorageState::InStorage { pinned: false } => vec![Pin, DetachAudio],
     }
 }
 
@@ -151,8 +152,8 @@ pub fn available_storage_actions(
 ///
 /// Lives here, next to [`available_storage_actions`], because two of the rules it
 /// encodes are properties of *that* gate rather than of any one app's control:
-/// `Unpin` appears exactly when `pinned`, and `Pin` exactly when a remote release
-/// is unpinned and there is a cloud home to pin from.
+/// `Unpin` appears exactly when the release is pinned, and `Pin` exactly when a
+/// release in storage is not and there is a cloud home to pin from.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReleaseDownloadStatus {
     /// Kept offline, and no download in flight.
@@ -183,7 +184,7 @@ pub enum ReleaseDownloadStatus {
 /// `pinned` already says it. `DetachAudio` / `Upload` are desktop transitions
 /// this control has nothing to do with.
 pub fn release_download_status(
-    pinned: bool,
+    state: ReleaseStorageState,
     storage_actions: &[ReleaseStorageAction],
     download: Option<&bae_transfers::DownloadPhase>,
 ) -> Option<ReleaseDownloadStatus> {
@@ -195,7 +196,9 @@ pub fn release_download_status(
         Some(DownloadPhase::Failed { error }) => {
             Some(ReleaseDownloadStatus::Failed { error: error.clone() })
         }
-        None if pinned => Some(ReleaseDownloadStatus::Downloaded),
+        None if state == (ReleaseStorageState::InStorage { pinned: true }) => {
+            Some(ReleaseDownloadStatus::Downloaded)
+        }
         None if storage_actions.contains(&ReleaseStorageAction::Pin) => {
             Some(ReleaseDownloadStatus::Available)
         }

@@ -32,12 +32,8 @@ public struct ReleaseSummary: Identifiable, Sendable {
     public let media: [BridgeMediaCount]
     /// The same media as core words them: "2×CD", "Vinyl".
     public let mediaTerms: [BridgeFactTerm]
+    /// Where its files are, and whether this device keeps them offline.
     public let storageState: BridgeReleaseStorageState
-    /// Whether coven keeps this release's files pinned locally on this device
-    /// — the orthogonal coven-cache property, meaningful only when
-    /// `storageState` is `.remote`. Kept separate from `storageState` so the UI
-    /// never conflates "in the cloud" with "pinned locally".
-    public let pinned: Bool
     /// Storage transitions the user can take right now, pre-computed by core
     /// from the release's state and cloud-home presence. The album-detail
     /// "Storage…" sheet and the Storage Manager row context menu render these;
@@ -78,7 +74,6 @@ public struct ReleaseSummary: Identifiable, Sendable {
         media = bridge.media
         mediaTerms = bridge.mediaTerms
         storageState = bridge.storageState
-        pinned = bridge.pinned
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize
@@ -96,7 +91,6 @@ public struct ReleaseSummary: Identifiable, Sendable {
         media = bridge.facts.media
         mediaTerms = bridge.mediaTerms
         storageState = bridge.storageState
-        pinned = bridge.pinned
         storageActions = bridge.storageActions
         fileCount = bridge.fileCount
         totalSize = bridge.totalSize

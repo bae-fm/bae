@@ -617,7 +617,6 @@ mirror_struct! {
         album_id,
         media,
         storage_state: (into),
-        pinned,
         storage_actions: (each AutomationReleaseStorageAction),
         transfer_action: (opt AutomationReleaseStorageAction),
         upload: (opt AutomationReleaseUpload),

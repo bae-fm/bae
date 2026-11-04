@@ -17,16 +17,16 @@ mod test_startup_sync;
 mod test_storage_state_machine;
 mod test_transfer;
 
-/// This release's storage state and whether it is pinned on this device.
+/// Where this release's files are, and whether this device pins them.
 pub(crate) async fn release_storage(
     database: &bae_db::Database,
     release_id: &str,
-) -> (bae_views::album_detail::ReleaseStorageState, bool) {
+) -> bae_views::album_detail::ReleaseStorageState {
     let summary = bae_views::LibraryViews::new(database.clone())
         .find_release_detail(release_id)
         .await
         .unwrap()
         .unwrap()
         .summary;
-    (summary.storage_state, summary.pinned)
+    summary.storage_state
 }

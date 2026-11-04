@@ -18,8 +18,7 @@ struct ReleaseStorageSheetTests {
         var resting = try #require(
             album.releases.first { $0.id == album.album.primaryReleaseId }
         )
-        resting.storageState = .local
-        resting.pinned = false
+        resting.storageState = .onOneDevice
         resting.storageActions = [.upload]
         resting.upload = nil
         resting.transitioning = false
