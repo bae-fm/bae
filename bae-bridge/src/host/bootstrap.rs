@@ -38,34 +38,24 @@ impl BridgeJoinControl {
     }
 }
 impl BridgeHost {
-    /// The libraries whose restore codes are saved for this person, by
-    /// store, on the caller's task.
-    #[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
-    pub(super) async fn saved_restore_codes_now(&self) -> Result<Vec<coven::StoreId>, BridgeError> {
-        Ok(bae_library::saved_restore_codes(&self.coven)
+    /// The restore codes saved for this person, on the caller's task.
+    pub(super) async fn saved_restore_codes_now(
+        &self,
+    ) -> Result<Vec<coven::SavedRestoreEntry>, BridgeError> {
+        bae_library::saved_restore_codes(&self.coven)
             .await
-            .map_err(|error| BridgeError::categorized(error.category(), error))?
-            .iter()
-            .map(coven::SavedRestoreEntry::store_id)
-            .collect())
+            .map_err(|error| BridgeError::categorized(error.category(), error))
     }
 
     /// Delete `store`'s saved restore code, on the caller's task.
-    #[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
     pub(super) async fn forget_saved_restore_code_now(
         &self,
         store: coven::StoreId,
     ) -> Result<(), BridgeError> {
-        self.coven.forget_saved_restore_code(store).await.map_err(forget_failed)
+        self.coven.forget_saved_restore_code(store).await.map_err(|error| {
+            BridgeError::categorized(bae_diagnostics::bootstrap_category(&error), error)
+        })
     }
-}
-
-/// Why deleting a saved restore code failed, as the app shows it.
-fn forget_failed(error: coven::BootstrapError) -> BridgeError {
-    BridgeError::diagnostic(
-        BridgeErrorCategory::from_core(bae_diagnostics::bootstrap_category(&error)),
-        error,
-    )
 }
 
 struct CancelBootstrapOnDrop(Arc<BootstrapCancellation>);
@@ -83,12 +73,12 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.saved_restore_codes", move || async move {
-                bae_library::saved_restore_codes(&self.coven)
-                    .await
-                    .map(|codes| {
-                        codes.into_iter().map(BridgeSavedRestoreEntry::from_core).collect()
-                    })
-                    .map_err(|error| BridgeError::categorized(error.category(), error))
+                Ok(self
+                    .saved_restore_codes_now()
+                    .await?
+                    .into_iter()
+                    .map(BridgeSavedRestoreEntry::from_core)
+                    .collect())
             })
             .await
     }
@@ -104,7 +94,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.forget_saved_restore_code", move || async move {
-                self.coven.forget_saved_restore_code(store).await.map_err(forget_failed)
+                self.forget_saved_restore_code_now(store).await
             })
             .await
     }

@@ -69,7 +69,8 @@ impl BridgeHost {
         let codes: Vec<_> = self
             .saved_restore_codes_now()
             .await?
-            .into_iter()
+            .iter()
+            .map(coven::SavedRestoreEntry::store_id)
             .filter(|store| removed.contains(store))
             .collect();
         let total = codes.len() as u64;
