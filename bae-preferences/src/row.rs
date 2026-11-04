@@ -1,6 +1,7 @@
 //! This device's `preferences` row and its save presets: read by what each
-//! setting decides, followed by the settings screens' live query, and edited
-//! one write at a time by the setters.
+//! setting decides, followed by the settings screens' live query, edited one
+//! write at a time by the setters, and carried into the copy a restore over
+//! this device's copy puts in its place.
 
 use super::{
     CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportStoragePreferences,
@@ -8,10 +9,9 @@ use super::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
     SidePauseCountdown, SubsonicConfig,
 };
-use bae_db::client::query::{QueryOne, QueryRows};
 use bae_db::{Database, DbError};
-use coven::{CovenError, CovenWrite};
-use rusqlite::{params, Row};
+use coven::{BulkSqlContext, CovenError, CovenWrite, SqlRead};
+use rusqlite::{params, Params, Row};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 
@@ -46,7 +46,15 @@ pub async fn edit_preferences(
         .await?
 }
 
-fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Preferences> {
+/// Write `carried`, the preferences of the copy a restore replaces, over the
+/// new copy's own, in the restore's step on that copy: what the restore puts
+/// in place keeps this device's settings.
+pub fn carry_preferences(sql: &BulkSqlContext<'_>, carried: &Preferences) -> rusqlite::Result<()> {
+    let stored = preferences_on(sql)?;
+    write_preferences_on(sql, &stored, carried)
+}
+
+fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
     let save_presets = save_presets_on(sql)?;
     sql.query_row("SELECT * FROM preferences", [], |row| {
         let flag = |column: &str| row.get::<_, bool>(column);
@@ -116,7 +124,7 @@ fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Prefere
     })
 }
 
-fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
+fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
     let tokens = sql.query(
         "SELECT preset_id, token FROM save_preset_filename_token ORDER BY preset_id, position",
         [],
@@ -177,7 +185,7 @@ fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
 /// Write what `edited` changed of `stored`: the row's columns, and the
 /// presets whole when any of them changed.
 fn write_preferences_on(
-    sql: &CovenWrite<'_>,
+    sql: &impl Execute,
     stored: &Preferences,
     edited: &Preferences,
 ) -> rusqlite::Result<()> {
@@ -299,6 +307,24 @@ fn write_preferences_on(
         ],
     )?;
     Ok(())
+}
+
+/// A statement in either of coven's writes the preferences are written in:
+/// an ordinary write, and a bulk write on a new copy before it swaps in.
+trait Execute {
+    fn execute<P: Params>(&self, sql: &str, params: P) -> rusqlite::Result<usize>;
+}
+
+impl Execute for CovenWrite<'_> {
+    fn execute<P: Params>(&self, sql: &str, params: P) -> rusqlite::Result<usize> {
+        CovenWrite::execute(self, sql, params)
+    }
+}
+
+impl Execute for BulkSqlContext<'_> {
+    fn execute<P: Params>(&self, sql: &str, params: P) -> rusqlite::Result<usize> {
+        BulkSqlContext::execute(self, sql, params)
+    }
 }
 
 fn filename_token(column: &str) -> Option<SaveFilenameToken> {

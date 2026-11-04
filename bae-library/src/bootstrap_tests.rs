@@ -211,7 +211,6 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
     let (_sender, cancel) = watch::channel(false);
     let store = replaced.store;
     let restore = |code: String| {
-        let builder = builder();
         let cancel = cancel.clone();
         async move {
             restore_replacing_device(
@@ -276,7 +275,7 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     let (_sender, cancel) = watch::channel(false);
 
     let restored = restore_replacing_device(
-        builder(),
+        builder,
         replaced.store,
         &replaced.current_code,
         Some(owner_key()),
@@ -348,7 +347,6 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     let (_sender, cancel) = watch::channel(false);
     let store = replaced.store;
     let restore = || {
-        let builder = builder();
         let cancel = cancel.clone();
         let code = replaced.current_code.clone();
         async move {
@@ -429,7 +427,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     stop_at_swap(
         &installation,
         restore_replacing_device(
-            builder(),
+            builder,
             store,
             &replaced.current_code,
             Some(owner_key()),
@@ -513,21 +511,62 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
     phone.close().await.unwrap();
 }
 
-/// Restoring over this device's copy reads the library's history under the
-/// transfer limits a library starts at: the copy it replaces kept its
-/// preferences in its own store, and the copy put in its place starts at a
-/// new library's.
+/// Change this device's settings in its closed copy of `store`: more
+/// uploads at once, album loudness and a renamed save preset, none of them
+/// a new library's.
+async fn change_settings(builder: coven::CovenBuilder, store: coven::StoreId) {
+    let handle = configure_store(builder).open(store, |_| ()).await.unwrap();
+    let database = bae_db::Database::from_handle(
+        handle.clone(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidIds),
+    );
+    bae_preferences::edit_preferences(&database, |preferences| {
+        preferences.max_concurrent_uploads = std::num::NonZeroU32::new(5).unwrap();
+        preferences.replay_gain_mode = bae_preferences::ReplayGainMode::Album;
+        preferences.save_presets[0].name = "Archive".into();
+        Ok(())
+    })
+    .await
+    .unwrap();
+    handle.close().await.unwrap();
+}
+
+/// The settings `handle`'s copy holds.
+async fn settings(handle: &coven::CovenHandle) -> bae_preferences::Preferences {
+    let database = bae_db::Database::from_handle(
+        handle.clone(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidIds),
+    );
+    bae_preferences::preferences(&database).await.unwrap()
+}
+
+/// Restoring over this device's copy keeps this device's settings: the copy
+/// put in its place holds the replaced copy's preferences and save presets.
+/// It reads the library's history under the transfer limits a library starts
+/// at, since the settings go into the new copy only once it has loaded.
 #[tokio::test]
-async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences() {
+async fn a_restore_over_this_devices_copy_keeps_its_settings() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
+    let builder =
+        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    change_settings(builder(), replaced.store).await;
+    let before = {
+        let handle = configure_store(builder()).open(replaced.store, |_| ()).await.unwrap();
+        let before = settings(&handle).await;
+        handle.close().await.unwrap();
+        before
+    };
+    assert_ne!(before, bae_preferences::Preferences::default());
     let (_sender, cancel) = watch::channel(false);
 
     let restored = restore_replacing_device(
-        installation.builder().storage_connector(std::sync::Arc::new(storage.for_device())),
+        builder,
         replaced.store,
         &replaced.current_code,
         Some(owner_key()),
@@ -538,17 +577,29 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
     )
     .await
     .unwrap();
+    assert_ne!(restored.device_id(), replaced.device);
     assert_eq!(restored.transfer_limits(), bae_app_dir::default_transfer_limits());
-    let database = bae_db::Database::from_handle(
-        restored.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-    );
-    assert_eq!(
-        bae_preferences::preferences(&database).await.unwrap(),
-        bae_preferences::Preferences::default()
-    );
+    assert_eq!(settings(&restored).await, before);
     restored.close().await.unwrap();
+}
+
+/// Resetting this device's copy starts it at a new library's settings: a
+/// reset is the clean slate, and a bad setting may be part of what it
+/// clears.
+#[tokio::test]
+async fn a_reset_starts_at_a_new_librarys_settings() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let (store, _, _) = connected_library(&installation, &storage, "Household").await;
+    let builder =
+        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    change_settings(builder(), store).await;
+
+    let reset = reset_device(builder(), store, "Replacement", |_| {}).await.unwrap();
+    assert_eq!(settings(&reset).await, bae_preferences::Preferences::default());
+    reset.close().await.unwrap();
 }
 
 /// Resetting a connected library loads it from storage again, and tells its

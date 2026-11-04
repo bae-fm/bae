@@ -176,7 +176,7 @@ impl BridgeHost {
                 move || async move {
                     self.closed(store).await?;
                     match bae_library::restore_replacing_device(
-                        self.builder(),
+                        || self.builder(),
                         store,
                         &code,
                         credentials.map(BridgeS3Credentials::into_core),

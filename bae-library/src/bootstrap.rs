@@ -15,6 +15,10 @@ pub enum RestoreFromCodeError {
     Cancelled,
     #[error("restore failed: {0}")]
     Restore(#[source] Box<coven::BootstrapError>),
+    /// This device's copy couldn't be read for the settings a restore over
+    /// it keeps, so nothing was restored.
+    #[error("this device's copy couldn't be read for its settings: {0}")]
+    SettingsUnread(#[source] Box<crate::LibraryError>),
 }
 
 impl RestoreFromCodeError {
@@ -25,6 +29,7 @@ impl RestoreFromCodeError {
             Self::Profile(error) => error.category(),
             Self::Cancelled => bae_diagnostics::UiErrorCategory::Internal,
             Self::Restore(error) => bae_diagnostics::bootstrap_category(error),
+            Self::SettingsUnread(error) => error.category(),
         }
     }
 }
@@ -290,12 +295,16 @@ pub async fn reset_device(
 /// same code retries it, or finishes one that stopped after the swap; for a
 /// reset that stopped there, coven refuses it and changes nothing. The caller
 /// closed the library and warned that edits on this device that haven't
-/// synced are discarded. When this device's custody already holds the code's
-/// keys, the call just opens the library, and that open's steps go to
-/// `on_open_progress`, as any open's do; every other status goes to
-/// `on_status`.
+/// synced are discarded. The copy put in place keeps this device's settings
+/// (the `preferences` row and its save presets), read from this device's
+/// copy first and written into the new one before it takes the old one's
+/// place. When this device's custody already holds the code's keys, the call
+/// just opens the library, and that open's steps go to `on_open_progress`, as
+/// any open's do; every other status goes to `on_status`. `builder` makes
+/// each of the two builders the call uses: one opening this device's copy to
+/// read its settings, one restoring.
 pub async fn restore_replacing_device(
-    mut builder: coven::CovenBuilder,
+    builder: impl Fn() -> coven::CovenBuilder,
     store: coven::StoreId,
     code: &str,
     s3_credentials: Option<coven::S3Credentials>,
@@ -323,15 +332,50 @@ pub async fn restore_replacing_device(
             }))
         }
     };
+    let carried = settings_of_this_copy(builder(), store).await?;
+    let mut builder = builder();
     auth::authenticate(&mut builder, access, cancel).await?;
     let status = |status| match status {
         coven::BootstrapStatus::Opening(progress) => on_open_progress(progress),
         status => on_status(status),
     };
+    let prepare = move |sql: coven::BulkSqlContext<'_>| match &carried {
+        Some(carried) => Ok(bae_preferences::carry_preferences(&sql, carried)?),
+        None => Ok(()),
+    };
     loading_builder(builder)
-        .restore_device(store, code, s3_credentials, device_name, |_| Ok(()), status, cancel)
+        .restore_device(store, code, s3_credentials, device_name, prepare, status, cancel)
         .await
         .map_err(restore_error)
+}
+
+/// This device's settings in its copy of `store`, which a restore over the
+/// copy carries into the one it puts in place. None when a restore already
+/// put its copy in place and stopped there: that copy got them in the call
+/// that made it, and finishing writes nothing more.
+async fn settings_of_this_copy(
+    builder: coven::CovenBuilder,
+    store: coven::StoreId,
+) -> Result<Option<bae_preferences::Preferences>, RestoreFromCodeError> {
+    let unread = |error: crate::LibraryError| RestoreFromCodeError::SettingsUnread(Box::new(error));
+    let handle = match configure_store(builder).open(store, |_| ()).await {
+        Ok(handle) => handle,
+        Err(coven::CovenError::Lock(coven::StoreLockError::ReplacementUnfinished {
+            by: coven::ReplacedBy::Restore,
+            ..
+        })) => return Ok(None),
+        Err(error) => return Err(unread(bae_db::DbError::from(error).into())),
+    };
+    let database = bae_db::Database::from_handle(
+        handle.clone(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidIds),
+    );
+    let settings = bae_preferences::preferences(&database).await;
+    let closed = handle.close().await;
+    let settings = settings.map_err(|error| unread(error.into()))?;
+    closed.map_err(|error| unread(error.into()))?;
+    Ok(Some(settings))
 }
 
 fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {
