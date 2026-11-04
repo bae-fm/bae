@@ -172,19 +172,7 @@ impl FolderFacts {
     /// somewhere else. A region the row states and the folder does not name
     /// says nothing: which countries a region spans is not known here.
     pub(crate) fn country(&self, records: &[MetadataResult]) -> Fact {
-        let Some(folder) = self.area else {
-            return Fact::StatesNothing;
-        };
-        let areas: Vec<ReleaseArea> = records.iter().filter_map(|record| record.area).collect();
-        if areas.contains(&folder) {
-            Fact::Agrees
-        } else if matches!(folder, ReleaseArea::Country(_))
-            && areas.iter().any(|area| matches!(area, ReleaseArea::Country(_)))
-        {
-            Fact::Disagrees
-        } else {
-            Fact::StatesNothing
-        }
+        released_in(records, self.area)
     }
 }
 
@@ -229,13 +217,20 @@ pub fn folder_pressing_year(text: &CandidateText, records: &[MetadataResult]) ->
 /// as their ISRCs say: the same area agrees, another country disagrees, and a
 /// region, or no area, states nothing.
 pub(crate) fn registration(records: &[MetadataResult], registered: Option<ReleaseArea>) -> Fact {
-    let Some(registered) = registered else {
+    released_in(records, registered)
+}
+
+/// Whether `records` put the release in `claimed`: the same area agrees,
+/// another country than the one claimed disagrees, and a region, or no area
+/// on either side, states nothing.
+fn released_in(records: &[MetadataResult], claimed: Option<ReleaseArea>) -> Fact {
+    let Some(claimed) = claimed else {
         return Fact::StatesNothing;
     };
     let areas: Vec<ReleaseArea> = records.iter().filter_map(|record| record.area).collect();
-    if areas.contains(&registered) {
+    if areas.contains(&claimed) {
         Fact::Agrees
-    } else if matches!(registered, ReleaseArea::Country(_))
+    } else if matches!(claimed, ReleaseArea::Country(_))
         && areas.iter().any(|area| matches!(area, ReleaseArea::Country(_)))
     {
         Fact::Disagrees
