@@ -100,6 +100,92 @@ async fn watched_folder_tool_reads_current_store_rows() {
     }
 }
 
+/// The folders `watched_folders_list` names, as `(key, path)`.
+async fn listed_watched_folders(automation: &Automation) -> Vec<(String, String)> {
+    let response = automation
+        .call_tool(AutomationTool::WatchedFoldersList, serde_json::json!({}))
+        .await
+        .expect("the list reads");
+    response["watched_folders"]
+        .as_array()
+        .expect("the list holds the folders")
+        .iter()
+        .map(|folder| {
+            (
+                folder["key"].as_str().unwrap().to_string(),
+                folder["path"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+/// A watched folder is listed with the hex of its path's bytes as its key,
+/// and `watched_folder_remove` takes that key.
+#[tokio::test]
+async fn a_watched_folder_is_removed_by_the_key_its_listing_gives() {
+    let fixture = automation_over().await;
+    let root = fixture.root();
+    fixture.tables.add_watched_import_folder(&root).await.unwrap();
+
+    let listed = listed_watched_folders(&fixture.automation).await;
+    let [(key, path)] = listed.as_slice() else {
+        panic!("the list names the folder: {listed:?}");
+    };
+    assert_eq!(*key, hex::encode(coven::path_bytes(&root)));
+    assert_eq!(*path, coven::path_text(&root));
+
+    let response = fixture
+        .automation
+        .call_tool(AutomationTool::WatchedFolderRemove, serde_json::json!({ "key": key }))
+        .await
+        .expect("the key names the folder");
+    assert_eq!(response["watched_folders"], serde_json::json!([]));
+    assert!(listed_watched_folders(&fixture.automation).await.is_empty());
+}
+
+/// A key that isn't the hex of a path's bytes is refused before anything is
+/// removed.
+#[tokio::test]
+async fn a_watched_folder_key_that_is_not_hex_is_refused() {
+    let fixture = automation_over().await;
+    let root = fixture.root();
+    fixture.tables.add_watched_import_folder(&root).await.unwrap();
+
+    let error = fixture
+        .automation
+        .call_tool(AutomationTool::WatchedFolderRemove, serde_json::json!({ "key": "not hex" }))
+        .await
+        .expect_err("the key names no path");
+    assert_eq!(error.kind(), "validation", "{}", error.message());
+    assert_eq!(listed_watched_folders(&fixture.automation).await.len(), 1);
+}
+
+/// A folder whose name isn't UTF-8 is listed under its escaped name, which
+/// names no folder, and removed by its key, which does.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_watched_folder_whose_name_is_not_utf8_is_removed_by_its_key() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let fixture = automation_over().await;
+    let root = fixture.tmp.path().join(std::ffi::OsStr::from_bytes(b"Caf\xE9"));
+    fixture.tables.add_watched_import_folder(&root).await.unwrap();
+
+    let listed = listed_watched_folders(&fixture.automation).await;
+    let [(key, path)] = listed.as_slice() else {
+        panic!("the list names the folder: {listed:?}");
+    };
+    assert!(path.ends_with(r"/Caf\xE9"), "{path}");
+    assert_eq!(*key, hex::encode(root.as_os_str().as_bytes()));
+
+    fixture
+        .automation
+        .call_tool(AutomationTool::WatchedFolderRemove, serde_json::json!({ "key": key }))
+        .await
+        .expect("the key names the folder");
+    assert!(listed_watched_folders(&fixture.automation).await.is_empty());
+}
+
 fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
     FolderCandidate {
         path: root.join(name),

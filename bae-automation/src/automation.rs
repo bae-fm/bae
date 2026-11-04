@@ -27,6 +27,7 @@ impl Automation {
             .await?
             .into_iter()
             .map(|folder| AutomationWatchedFolder {
+                key: watched_folder_key(&folder.path),
                 path: coven::path_text(&folder.path),
                 name: folder.name,
             })
@@ -41,11 +42,12 @@ impl Automation {
         self.watched_folders().await
     }
 
+    /// Stop watching the folder the list's `key` names.
     pub async fn remove_watched_folder(
         &self,
-        path: String,
+        key: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services.import_remove_watched_folder(PathBuf::from(path)).await?;
+        self.services.import_remove_watched_folder(watched_folder_named(&key)?).await?;
         self.watched_folders().await
     }
 
@@ -510,8 +512,8 @@ impl Automation {
                 to_list_value("watched_folders", self.add_watched_folder(input.path).await?)
             }
             AutomationTool::WatchedFolderRemove => {
-                let input: PathInput = from_value(args)?;
-                to_list_value("watched_folders", self.remove_watched_folder(input.path).await?)
+                let input: WatchedFolderKeyInput = from_value(args)?;
+                to_list_value("watched_folders", self.remove_watched_folder(input.key).await?)
             }
             AutomationTool::WatchedFoldersScan => {
                 let wait: ScanWait = from_value(args)?;

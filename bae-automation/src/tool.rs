@@ -53,8 +53,8 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::WatchedFolderRemove,
             name: "watched_folder_remove",
-            description: "Remove a watched import folder",
-            schema: Some(schema_object::<PathInput>),
+            description: "Remove a watched import folder, named by its key from the list",
+            schema: Some(schema_object::<WatchedFolderKeyInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::WatchedFoldersScan,

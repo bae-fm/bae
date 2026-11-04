@@ -4548,7 +4548,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | Tool | Does |
 |---|---|
 | `config_get` | read the library's automation settings |
-| `watched_folders_list`, `watched_folder_add`, `watched_folder_remove`, `watched_folders_scan` | manage and scan watched folders |
+| `watched_folders_list`, `watched_folder_add`, `watched_folder_remove`, `watched_folders_scan` | manage and scan watched folders; the list gives each folder's path as text and a key, the hex of its path's bytes, which `watched_folder_remove` takes, so a folder whose name isn't UTF-8 is removed as surely as any other; `watched_folder_add` takes a path as text |
 | `import_candidates_list`, `import_candidate_get` | read the import list and a candidate |
 | `import_candidate_skip_set` | skip or restore a candidate |
 | `import_search` | search MusicBrainz or Discogs; its input names no other catalog |

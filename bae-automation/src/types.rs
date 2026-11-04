@@ -34,6 +34,10 @@ impl From<McpConfig> for AutomationMcpConfig {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationWatchedFolder {
+    /// The hex of the folder's path bytes (`coven::path_bytes`): what
+    /// `watched_folder_remove` takes back, which names a folder whose name
+    /// isn't UTF-8 as no text can.
+    pub key: String,
     /// The folder's path, shown as text.
     pub path: String,
     pub name: String,
@@ -599,6 +603,12 @@ pub struct EmptyResponse {}
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PathInput {
     pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct WatchedFolderKeyInput {
+    /// A watched folder's `key`, as the watched folder list gives it.
+    pub key: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

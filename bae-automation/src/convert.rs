@@ -23,6 +23,25 @@ pub(crate) fn candidate_key_named(name: &str) -> Result<CandidateKey, Automation
     })
 }
 
+/// A watched folder's key: the hex of its path's bytes, which names a folder
+/// whose name isn't UTF-8 as its shown text cannot.
+pub(crate) fn watched_folder_key(path: &Path) -> String {
+    hex::encode(coven::path_bytes(path))
+}
+
+pub(crate) fn watched_folder_named(key: &str) -> Result<PathBuf, AutomationError> {
+    let bytes = hex::decode(key).map_err(|error| {
+        AutomationError::validation(format!(
+            "watched folder key '{key}' is not the hex of a path's bytes: {error}"
+        ))
+    })?;
+    coven::path_from_bytes(bytes).map_err(|error| {
+        AutomationError::validation(format!(
+            "watched folder key '{key}' names no path on this device: {error}"
+        ))
+    })
+}
+
 pub(super) fn expect_no_args(args: Value, tool_name: &str) -> Result<(), AutomationError> {
     match args {
         Value::Null => Ok(()),
