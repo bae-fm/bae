@@ -172,6 +172,24 @@ struct ShotScene {
                 AnyView(PreviewScenes.importDoneRowsUploading())
             },
             ShotScene(
+                id: "import-done-rows-settled",
+                size: CGSize(
+                    width: 360,
+                    height: PreviewScenes.triageRowsHeight(rowCount: 2)
+                )
+            ) {
+                AnyView(PreviewScenes.importDoneRowsSettled())
+            },
+            ShotScene(
+                id: "import-failed-row",
+                size: CGSize(
+                    width: 360,
+                    height: PreviewScenes.triageRowsHeight(rowCount: 1)
+                )
+            ) {
+                AnyView(PreviewScenes.importFailedRow())
+            },
+            ShotScene(
                 id: "import-mapping-cue-wide",
                 size: CGSize(width: 1212, height: 900)
             ) {

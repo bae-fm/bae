@@ -184,12 +184,38 @@
         /// release's files wait to upload, and one whose release has a file
         /// being sent, its bar read from the release's upload stream.
         static func importDoneRowsUploading() -> some View {
-            let importStore = ImportStore()
-            let rows = [
+            triageRows([
                 PreviewData.triageRowDoneFromTags,
                 PreviewData.triageRowDoneUploadQueued,
                 PreviewData.triageRowDoneUploading,
-            ]
+            ])
+        }
+
+        /// Done rows at rest at the import list's row height: one whose
+        /// release was read from the catalog and one read from tags.
+        static func importDoneRowsSettled() -> some View {
+            triageRows([
+                PreviewData.triageRowDoneImported,
+                PreviewData.triageRowDoneFromTags,
+            ])
+        }
+
+        /// A failed row at the import list's row height, with why it failed.
+        static func importFailedRow() -> some View {
+            triageRows([PreviewData.triageRowFailed])
+        }
+
+        /// The height a scene of `rowCount` rows from `triageRows` needs: the
+        /// rows and the padding above and below them.
+        static func triageRowsHeight(rowCount: Int) -> CGFloat {
+            CGFloat(rowCount) * ImportCandidateTableLayout.rowHeight + 2
+                * triageRowsPadding
+        }
+
+        private static let triageRowsPadding: CGFloat = 16
+
+        private static func triageRows(_ rows: [BridgeTriageRow]) -> some View {
+            let importStore = ImportStore()
             return VStack(alignment: .leading, spacing: 0) {
                 ForEach(rows, id: \.candidateKey) { row in
                     TriageRowView(
@@ -201,7 +227,7 @@
                     .frame(height: ImportCandidateTableLayout.rowHeight)
                 }
             }
-            .padding()
+            .padding(triageRowsPadding)
             .frame(width: 360)
             .environment(PreviewData.doneRowOutboxStore())
             .environment(PreviewData.artImageStore())

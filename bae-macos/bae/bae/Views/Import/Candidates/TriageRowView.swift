@@ -389,6 +389,14 @@ extension TriageRowView {
         PreviewScenes.importDoneRowsUploading()
     }
 
+    #Preview("Done rows, settled") {
+        PreviewScenes.importDoneRowsSettled()
+    }
+
+    #Preview("Failed row") {
+        PreviewScenes.importFailedRow()
+    }
+
     #Preview("Where the draft was read from") {
         let importStore = ImportStore()
         let rows = [
