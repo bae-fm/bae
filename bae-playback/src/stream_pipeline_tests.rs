@@ -14,18 +14,6 @@ fn one_segment_decode(buffer: SharedSparseBuffer) -> StreamDecodeParams {
     )
 }
 
-fn test_fmt() -> TrackFmt {
-    TrackFmt {
-        track_id: "unit".to_string(),
-        timeline: crate::TrackTimeline::new(
-            Some(std::time::Duration::from_secs(1)),
-            std::time::Duration::ZERO,
-        ),
-        starts_at: crate::StreamPosition::START,
-        replay_gain_linear: 1.0,
-    }
-}
-
 /// A stream-build failure cancels the just-spawned decoder and returns `Err`
 /// rather than leaking a half-built pipeline. This exercises the real shared
 /// unit both players run through.
@@ -47,7 +35,7 @@ async fn start_stream_pipeline_failure_returns_err_and_cancels_decoder() {
             "unit decode",
             DecodeFailureReport::LogOnly,
         ),
-        test_fmt(),
+        TrackFmt::for_test("unit"),
         50,
         |pipeline, _audio_events| pipeline,
     )
@@ -82,7 +70,7 @@ async fn start_stream_pipeline_success_builds_pipeline() {
             "unit decode",
             DecodeFailureReport::LogOnly,
         ),
-        test_fmt(),
+        TrackFmt::for_test("unit"),
         50,
         |pipeline, _audio_events| pipeline,
     )

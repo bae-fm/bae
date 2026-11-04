@@ -350,15 +350,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
     );
 
     audio_tx.push_required(AudioEvent::Completion((
-        Arc::new(TrackFmt {
-            track_id: "preview.wav".to_string(),
-            timeline: crate::TrackTimeline::new(
-                Some(std::time::Duration::from_secs(1)),
-                std::time::Duration::ZERO,
-            ),
-            starts_at: crate::StreamPosition::START,
-            replay_gain_linear: 1.0,
-        }),
+        Arc::new(TrackFmt::for_test("preview.wav")),
         0,
         0,
     )));

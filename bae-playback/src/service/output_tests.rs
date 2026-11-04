@@ -24,7 +24,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     service
         .attach_track(
             ts1,
-            test_track_fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
+            TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
             44_100,
             2,
             StagedNextOnReplace::Discard,
@@ -39,7 +39,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     service
         .attach_track(
             ts2,
-            test_track_fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
+            TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
             44_100,
             2,
             StagedNextOnReplace::Discard,
@@ -60,7 +60,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     // Format change: drop the old stream and build a fresh one.
     let (_s3, ts3, _r3) = create_track_stream_pair(96_000, 2);
     service
-        .attach_track(ts3, test_track_fmt("t3"), 96_000, 2, StagedNextOnReplace::Discard)
+        .attach_track(ts3, TrackFmt::for_test("t3"), 96_000, 2, StagedNextOnReplace::Discard)
         .await
         .expect("a format-change attach rebuilds the stream");
     assert_eq!(builds.load(Ordering::Relaxed), 2, "a format change rebuilds the device stream");
@@ -91,7 +91,7 @@ async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
     service
         .attach_track(
             ts1,
-            test_track_fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
+            TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
             44_100,
             2,
             StagedNextOnReplace::Discard,
@@ -155,7 +155,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     );
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, test_track_fmt("t"))));
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, TrackFmt::for_test("t"))));
     let (_tx, rx) = audio_event_channel();
     let mut out = test_output(source, rx);
     out.stream = Box::new(InvalidatedTestStream::new("device disconnected"));
@@ -228,7 +228,7 @@ async fn stop_cancels_the_output_source_so_a_ring_parked_decoder_exits() {
     let (sink, track_stream, _ready) = create_track_stream_pair(44_100, 2);
     let (exited, handle) = spawn_ring_filling_decoder(sink);
     let source =
-        Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, test_track_fmt("t"))));
+        Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, TrackFmt::for_test("t"))));
     let (_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(source, audio_rx));
     let buffer = create_sparse_buffer(1_024);
@@ -254,7 +254,7 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
     let (sink, track_stream, _ready) = create_track_stream_pair(44_100, 2);
     let (exited, handle) = spawn_ring_filling_decoder(sink);
     let source =
-        Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, test_track_fmt("t"))));
+        Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, TrackFmt::for_test("t"))));
     let (_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(source, audio_rx));
 
@@ -264,7 +264,7 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
     service
         .attach_track(
             new_stream,
-            test_track_fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
+            TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
             96_000,
             2,
             StagedNextOnReplace::Discard,
@@ -280,7 +280,7 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
 }
 
 fn queued_completion(track_id: &str) -> AudioEvent {
-    AudioEvent::Completion((Arc::new(test_track_fmt(track_id)), 0, 44_100))
+    AudioEvent::Completion((Arc::new(TrackFmt::for_test(track_id)), 0, 44_100))
 }
 
 /// A same-format switch swaps the source in place but keeps the one persistent
@@ -295,7 +295,8 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
 
     let (_sink_a, stream_a, _r_a) = create_track_stream_pair(44_100, 2);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream_a, test_track_fmt("A"))));
+    let source =
+        Arc::new(Mutex::new(source::PlaybackSource::new(stream_a, TrackFmt::for_test("A"))));
     // A Completion for A is already in the receiver, not yet drained.
     let (mut tx, rx) = audio_event_channel();
     tx.push_required(queued_completion("A"));
@@ -306,7 +307,7 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
     // A same-format switch to B swaps the source in place.
     let (_sink_b, stream_b, _r_b) = create_track_stream_pair(44_100, 2);
     service
-        .attach_track(stream_b, test_track_fmt("B"), 44_100, 2, StagedNextOnReplace::Discard)
+        .attach_track(stream_b, TrackFmt::for_test("B"), 44_100, 2, StagedNextOnReplace::Discard)
         .await
         .expect("a same-format attach replaces in place");
 
@@ -330,7 +331,7 @@ async fn an_invalidated_stream_rebuild_carries_a_queued_completion_forward() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, test_track_fmt("t"))));
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, TrackFmt::for_test("t"))));
     let (mut tx, rx) = audio_event_channel();
     tx.push_required(queued_completion("t"));
     let out = test_output(source, rx);

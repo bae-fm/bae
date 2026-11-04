@@ -40,9 +40,9 @@ async fn retiring_preloaded_next_removes_staged_source() {
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
     let gapless = Arc::new(Mutex::new(source::PlaybackSource::new(
         current_source,
-        test_track_fmt("current-track"),
+        TrackFmt::for_test("current-track"),
     )));
-    gapless.lock().unwrap().stage_next(next_source, test_track_fmt(NEXT_TRACK));
+    gapless.lock().unwrap().stage_next(next_source, TrackFmt::for_test(NEXT_TRACK));
 
     let buffer = create_sparse_buffer(1_024);
     service.preloaded_next = Some(test_preloaded_next(

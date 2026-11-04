@@ -613,7 +613,7 @@ async fn airplay_position_is_offset_by_receiver_latency() {
     let _airplay = install_airplay(&mut service, std::time::Duration::from_millis(250));
 
     // A tick at 5 s of decoded position: the audible position is 5 − 0.25 s.
-    let mut fmt = test_track_fmt("t");
+    let mut fmt = TrackFmt::for_test("t");
     fmt.timeline =
         TrackTimeline::new(Some(std::time::Duration::from_secs(60)), std::time::Duration::ZERO);
     service.handle_position_event(Arc::new(fmt), StreamPosition::from_millis(5_000)).await;
@@ -683,7 +683,7 @@ async fn airplay_seek_flushes_and_reanchors() {
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
     let (_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(
-        Arc::new(Mutex::new(source::PlaybackSource::new(source, test_track_fmt(TRACK_T)))),
+        Arc::new(Mutex::new(source::PlaybackSource::new(source, TrackFmt::for_test(TRACK_T)))),
         audio_rx,
     ));
     let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));

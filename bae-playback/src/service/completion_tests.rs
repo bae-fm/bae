@@ -22,7 +22,7 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
 
     service
         .handle_completion_event(
-            Arc::new(test_track_fmt("08c80007-b56a-4fc9-8df6-af2967fa09b9")),
+            Arc::new(TrackFmt::for_test("08c80007-b56a-4fc9-8df6-af2967fa09b9")),
             2,
             44_100,
         )

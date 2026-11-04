@@ -1,19 +1,9 @@
 use super::*;
 use crate::audio_output::audio_event_channel;
 use bae_audio::track_stream::create_track_stream_pair;
-use std::time::Duration;
-
-fn fmt(track_id: &str) -> TrackFmt {
-    TrackFmt {
-        track_id: track_id.to_string(),
-        timeline: TrackTimeline::new(Some(Duration::from_secs(1)), std::time::Duration::ZERO),
-        starts_at: StreamPosition::START,
-        replay_gain_linear: 1.0,
-    }
-}
 
 fn fmt_gain(track_id: &str, replay_gain_linear: f32) -> TrackFmt {
-    TrackFmt { replay_gain_linear, ..fmt(track_id) }
+    TrackFmt { replay_gain_linear, ..TrackFmt::for_test(track_id) }
 }
 
 /// A staged next track plays immediately after the current one: a single
@@ -34,8 +24,9 @@ fn advances_into_staged_next_track() {
     sink2.mark_finished();
 
     let (mut audio_tx, mut audio_rx) = audio_event_channel();
-    let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
-    source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
+    let mut source =
+        PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+    source.stage_next(src2, TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
     assert!(source.has_next());
     assert!(!source.is_finished());
     assert_eq!(source.position_event().0.track_id, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
@@ -75,7 +66,8 @@ fn finishes_without_a_staged_next() {
     sink.mark_finished();
 
     let (mut audio_tx, mut audio_rx) = audio_event_channel();
-    let mut source = PlaybackSource::new(src, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+    let mut source =
+        PlaybackSource::new(src, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
 
     let mut out = [0.0f32; 8];
     assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
@@ -97,8 +89,9 @@ fn cancel_staged_next_unstages_the_successor() {
     sink2.mark_finished();
 
     let (mut audio_tx, mut audio_rx) = audio_event_channel();
-    let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
-    source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
+    let mut source =
+        PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+    source.stage_next(src2, TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
     source.cancel_staged_next();
     assert!(sink2.is_cancelled());
     assert!(!source.has_next());
@@ -117,8 +110,8 @@ fn promote_staged_next_swaps_without_returning_the_stream() {
     next_sink.mark_finished();
 
     let (mut audio_tx, _audio_rx) = audio_event_channel();
-    let mut source = PlaybackSource::new(current, fmt("current"));
-    source.stage_next(next, fmt("next"));
+    let mut source = PlaybackSource::new(current, TrackFmt::for_test("current"));
+    source.stage_next(next, TrackFmt::for_test("next"));
 
     assert!(source.promote_staged_next());
     assert!(current_sink.is_cancelled());
@@ -170,8 +163,9 @@ fn cancel_cancels_current_and_staged_next() {
     let (sink1, src1, _r1) = create_track_stream_pair(44100, 1);
     let (sink2, src2, _r2) = create_track_stream_pair(44100, 1);
 
-    let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
-    source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
+    let mut source =
+        PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+    source.stage_next(src2, TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
 
     assert!(!sink1.is_cancelled());
     assert!(!sink2.is_cancelled());
@@ -197,10 +191,11 @@ fn replace_swaps_current_and_cancels_outgoing_and_staged() {
     sink2.mark_finished();
 
     let (mut audio_tx, _audio_rx) = audio_event_channel();
-    let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
-    source.stage_next(staged_src, fmt("staged"));
+    let mut source =
+        PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+    source.stage_next(staged_src, TrackFmt::for_test("staged"));
 
-    source.replace(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
+    source.replace(src2, TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
 
     // The outgoing and staged decoders are cancelled; the replacement is not.
     assert!(sink1.is_cancelled(), "the outgoing track is cancelled");
@@ -227,7 +222,8 @@ fn take_completion_event_fires_once_per_track_across_replace() {
     sink1.mark_finished();
 
     let (mut audio_tx, _audio_rx) = audio_event_channel();
-    let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+    let mut source =
+        PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
 
     // Drain track 1.
     let mut out = [0.0f32; 8];
@@ -244,7 +240,7 @@ fn take_completion_event_fires_once_per_track_across_replace() {
     let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
     assert_eq!(sink2.push_samples(&[2.0]), 1);
     sink2.mark_finished();
-    source.replace(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
+    source.replace(src2, TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
 
     let mut out = [0.0f32; 8];
     assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);

@@ -8,18 +8,6 @@ use std::sync::{Arc, Mutex};
 
 const SAMPLES: usize = 4_096;
 
-fn track_fmt() -> TrackFmt {
-    TrackFmt {
-        track_id: "t".to_string(),
-        timeline: crate::TrackTimeline::new(
-            Some(std::time::Duration::from_secs(1)),
-            std::time::Duration::ZERO,
-        ),
-        starts_at: crate::StreamPosition::START,
-        replay_gain_linear: 1.0,
-    }
-}
-
 /// Stereo samples that each differ, so a sample lost or played twice shows.
 fn ramp() -> Vec<f32> {
     (0..SAMPLES).map(|i| i as f32 / SAMPLES as f32).collect()
@@ -29,7 +17,7 @@ fn ramp() -> Vec<f32> {
 fn playing_drain() -> (AudioOutputControls, AudioDrain, AudioEventReceiver) {
     let (mut sink, stream, _ready) = create_track_stream_pair(44_100, 2);
     sink.push_samples(&ramp());
-    let source = Arc::new(Mutex::new(PlaybackSource::new(stream, track_fmt())));
+    let source = Arc::new(Mutex::new(PlaybackSource::new(stream, TrackFmt::for_test("t"))));
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     let (tx, rx) = audio_event_channel();

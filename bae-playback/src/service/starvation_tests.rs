@@ -9,7 +9,7 @@ fn starved_event(
     producer_finished: bool,
 ) -> AudioEvent {
     AudioEvent::Starved {
-        fmt: Arc::new(test_track_fmt(track_id)),
+        fmt: Arc::new(TrackFmt::for_test(track_id)),
         starved_ms,
         position: StreamPosition::START,
         producer_finished,
@@ -21,7 +21,7 @@ fn starved_event(
 
 fn starvation_ended_event(track_id: &str) -> AudioEvent {
     AudioEvent::StarvationEnded {
-        fmt: Arc::new(test_track_fmt(track_id)),
+        fmt: Arc::new(TrackFmt::for_test(track_id)),
         starved_ms: 0,
         position: StreamPosition::START,
         samples_decoded: 0,

@@ -41,6 +41,23 @@ pub struct TrackFmt {
     pub replay_gain_linear: f32,
 }
 
+#[cfg(test)]
+impl TrackFmt {
+    /// A one-second track named `track_id`, played from its first sample at
+    /// unity gain: the fmt a test needs when it cares about none of its parts.
+    pub(crate) fn for_test(track_id: &str) -> Self {
+        Self {
+            track_id: track_id.to_string(),
+            timeline: TrackTimeline::new(
+                Some(std::time::Duration::from_secs(1)),
+                std::time::Duration::ZERO,
+            ),
+            starts_at: StreamPosition::START,
+            replay_gain_linear: 1.0,
+        }
+    }
+}
+
 /// Payload of the boundary signal. Carries the finishing track's identity +
 /// decode stats so the service's boundary handler can emit `DecodeStats`
 /// without reading shared state, plus the incoming track's identity for state

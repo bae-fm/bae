@@ -13,14 +13,16 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
     let incoming_buffer = create_sparse_buffer(1_024);
     let (mut audio_tx, audio_rx) = audio_event_channel();
     audio_tx.push_required(AudioEvent::TrackCrossing(TrackCrossing {
-        finished_fmt: Arc::new(test_track_fmt(FINISHED_TRACK)),
+        finished_fmt: Arc::new(TrackFmt::for_test(FINISHED_TRACK)),
         decode_error_count: 0,
         samples_decoded: 44_100,
-        incoming_fmt: Arc::new(test_track_fmt(INCOMING_TRACK)),
+        incoming_fmt: Arc::new(TrackFmt::for_test(INCOMING_TRACK)),
     }));
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
-    let source =
-        Arc::new(Mutex::new(source::PlaybackSource::new(source, test_track_fmt(FINISHED_TRACK))));
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
+        source,
+        TrackFmt::for_test(FINISHED_TRACK),
+    )));
     // The crossing event lives in the persistent output's audio-events receiver;
     // the source and receiver survive the track transition.
     service.output = Some(test_output(source, audio_rx));

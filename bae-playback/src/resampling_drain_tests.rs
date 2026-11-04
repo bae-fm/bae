@@ -4,25 +4,13 @@ use crate::source::{PlaybackSource, TrackFmt};
 use bae_audio::track_stream::create_track_stream_pair_with_capacity;
 use std::sync::{Arc, Mutex};
 
-fn track_fmt() -> TrackFmt {
-    TrackFmt {
-        track_id: "t".to_string(),
-        timeline: crate::TrackTimeline::new(
-            Some(std::time::Duration::from_secs(1)),
-            std::time::Duration::ZERO,
-        ),
-        starts_at: crate::StreamPosition::START,
-        replay_gain_linear: 1.0,
-    }
-}
-
 /// A playing drain over a finished source holding `samples` at `rate`
 /// stereo.
 fn drain_over(rate: u32, samples: &[f32]) -> (AudioDrain, AudioOutputControls) {
     let (mut sink, stream, _ready) = create_track_stream_pair_with_capacity(rate, 2, samples.len());
     sink.push_samples(samples);
     sink.mark_finished();
-    let source = Arc::new(Mutex::new(PlaybackSource::new(stream, track_fmt())));
+    let source = Arc::new(Mutex::new(PlaybackSource::new(stream, TrackFmt::for_test("t"))));
     let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     let (tx, _rx) = audio_event_channel();

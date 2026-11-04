@@ -383,18 +383,6 @@ pub(super) fn test_preloaded_next(
     }
 }
 
-pub(super) fn test_track_fmt(track_id: &str) -> TrackFmt {
-    TrackFmt {
-        track_id: track_id.to_string(),
-        timeline: crate::TrackTimeline::new(
-            Some(std::time::Duration::from_secs(1)),
-            std::time::Duration::ZERO,
-        ),
-        starts_at: crate::StreamPosition::START,
-        replay_gain_linear: 1.0,
-    }
-}
-
 /// Run `decode` to its end, as playback's decoder thread does, and return the
 /// samples it played.
 pub(super) fn play_decode(

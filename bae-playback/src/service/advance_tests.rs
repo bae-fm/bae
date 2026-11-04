@@ -22,10 +22,10 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
 
     service
         .handle_track_crossed(TrackCrossing {
-            finished_fmt: Arc::new(test_track_fmt(FINISHED_TRACK)),
+            finished_fmt: Arc::new(TrackFmt::for_test(FINISHED_TRACK)),
             decode_error_count: 0,
             samples_decoded: 44_100,
-            incoming_fmt: Arc::new(test_track_fmt(INCOMING_TRACK)),
+            incoming_fmt: Arc::new(TrackFmt::for_test(INCOMING_TRACK)),
         })
         .await;
 
@@ -53,10 +53,10 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
 
     service
         .handle_track_crossed(TrackCrossing {
-            finished_fmt: Arc::new(test_track_fmt(FINISHED_TRACK)),
+            finished_fmt: Arc::new(TrackFmt::for_test(FINISHED_TRACK)),
             decode_error_count: 0,
             samples_decoded: 44_100,
-            incoming_fmt: Arc::new(test_track_fmt(INCOMING_TRACK)),
+            incoming_fmt: Arc::new(TrackFmt::for_test(INCOMING_TRACK)),
         })
         .await;
 
