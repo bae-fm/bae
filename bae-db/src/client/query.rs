@@ -277,12 +277,12 @@ fn credits_json_sql(table: &str, owner_column: &str, owner_expr: &str, prefix: &
              'join', {prefix}_credit.join_phrase) ORDER BY {prefix}_credit.position) \
           FROM {table} {prefix}_credit \
           JOIN artists {prefix}_artist ON {prefix}_artist.id = {shown} \
-          LEFT JOIN artist_credits {prefix}_name \
-              ON {prefix}_name.artist_id = {prefix}_credit.artist_id \
-             AND {prefix}_name.name_key = {prefix}_credit.credit_key \
+          {credit_name} \
           WHERE {prefix}_credit.{owner_column} = {owner_expr} \
           HAVING COUNT(*) > 0)",
         shown = shown_artist_id(&format!("{prefix}_credit.artist_id")),
+        credit_name =
+            super::read::credit_name_join(&format!("{prefix}_credit"), &format!("{prefix}_name")),
     )
 }
 

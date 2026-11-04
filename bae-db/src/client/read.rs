@@ -31,14 +31,13 @@ pub fn get_artists_for_album_on(
             r#"
             SELECT {columns} FROM album_artists credit
             JOIN artists artist ON artist.id = {shown}
-            LEFT JOIN artist_credits credit_name
-                ON credit_name.artist_id = credit.artist_id
-               AND credit_name.name_key = credit.credit_key
+            {credit_name}
             WHERE credit.album_id = ?1
             ORDER BY credit.position
             "#,
             columns = LIBRARY_CREDIT_COLUMNS,
             shown = shown_artist_id("credit.artist_id"),
+            credit_name = credit_name_join("credit", "credit_name"),
         ),
         params![album_id],
         row_to_library_credit,
@@ -60,12 +59,44 @@ pub const LIBRARY_CREDIT_COLUMNS: &str = "artist.id AS artist_id, \
 pub fn row_to_library_credit(row: &Row) -> rusqlite::Result<LibraryCredit> {
     Ok(LibraryCredit {
         artist: row_to_artist_with_prefix(row, "artist_")?,
-        credit: match row.get::<_, Option<String>>("credit_key")? {
-            Some(key) => Some(crate::credits::CreditName { key, name: row.get("credit_name")? }),
-            None => None,
-        },
+        credit: credit_name_column(row, "credit_key", "credit_name")?,
         join: row.get("credit_join")?,
     })
+}
+
+/// The join of a credit row `credit` (an `album_artists` or `track_artists`
+/// row) to the other printed name it names, if any, as `name`.
+pub(super) fn credit_name_join(credit: &str, name: &str) -> String {
+    format!(
+        "LEFT JOIN artist_credits {name} \
+             ON {name}.artist_id = {credit}.artist_id AND {name}.name_key = {credit}.credit_key"
+    )
+}
+
+/// The other printed name a [`credit_name_join`] found, from its key and
+/// its name: both, or neither when the credit prints its artist's own name.
+/// One without the other is a join no query makes, and `Err` says which.
+fn joined_credit_name(
+    key: Option<String>,
+    name: Option<String>,
+) -> Result<Option<crate::credits::CreditName>, String> {
+    match (key, name) {
+        (Some(key), Some(name)) => Ok(Some(crate::credits::CreditName { key, name })),
+        (None, None) => Ok(None),
+        (Some(key), None) => Err(format!("credit name {key:?} has no name")),
+        (None, Some(name)) => Err(format!("credit name {name:?} has no key")),
+    }
+}
+
+/// [`joined_credit_name`] of a row's `key` and `name` columns, read in a row
+/// closure.
+pub(super) fn credit_name_column(
+    row: &Row,
+    key: &str,
+    name: &str,
+) -> rusqlite::Result<Option<crate::credits::CreditName>> {
+    joined_credit_name(row.get(key)?, row.get(name)?)
+        .map_err(|error| column_conversion_error(row, key, error))
 }
 
 /// One credit as [`super::query::album_credits_json_sql`] spells it.
@@ -98,6 +129,8 @@ pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbErro
                     ))
                 })?
                 .with_timezone(&Utc);
+            let credit_name = joined_credit_name(credit.credit_key, credit.credit_name)
+                .map_err(|error| DbError::Message(format!("artist {} {error}", credit.id)))?;
             Ok(LibraryCredit {
                 artist: DbArtist {
                     id: credit.id,
@@ -107,10 +140,7 @@ pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbErro
                     musicbrainz_artist_id: credit.musicbrainz_artist_id,
                     created_at,
                 },
-                credit: match (credit.credit_key, credit.credit_name) {
-                    (Some(key), Some(name)) => Some(crate::credits::CreditName { key, name }),
-                    _ => None,
-                },
+                credit: credit_name,
                 join: credit.join,
             })
         })

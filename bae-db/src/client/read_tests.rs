@@ -223,3 +223,29 @@ fn an_unusable_audio_format_value_is_an_error_naming_the_track() {
         .unwrap();
     }
 }
+
+/// A credit's other printed name is its key and its name together: a list
+/// holding one without the other is unreadable, as a row holding it is.
+#[test]
+fn a_credit_name_key_without_its_name_is_unreadable() {
+    let credit = |key: &str, name: &str| {
+        format!(
+            r#"[{{"id":"6c441836-aef7-4239-8a84-5336c4cce52c","name":"Artist Name",
+                "sort_name":null,"discogs_artist_id":null,"musicbrainz_artist_id":null,
+                "created_at":"2026-01-01T00:00:00Z","credit_key":{key},"credit_name":{name},
+                "join":null}}]"#
+        )
+    };
+    let named = crate::client::read::credits_from_json(&credit(r#""alias""#, r#""Alias""#))
+        .expect("a credit name with its key reads");
+    assert_eq!(
+        named[0].credit,
+        Some(crate::credits::CreditName { key: "alias".into(), name: "Alias".into() })
+    );
+    assert_eq!(
+        crate::client::read::credits_from_json(&credit("null", "null")).unwrap()[0].credit,
+        None
+    );
+    assert!(crate::client::read::credits_from_json(&credit(r#""alias""#, "null")).is_err());
+    assert!(crate::client::read::credits_from_json(&credit("null", r#""Alias""#)).is_err());
+}
