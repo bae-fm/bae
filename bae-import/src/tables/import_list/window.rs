@@ -15,7 +15,7 @@ use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
 use crate::candidate_detail::ListedRelease;
-use crate::folder_scanner::{FileVersion, ScanItem};
+use crate::folder_scanner::ScanItem;
 use crate::list::ImportListItem;
 use crate::tables::folder_scans;
 use crate::tables::import_state::{
@@ -532,7 +532,12 @@ fn row_cover_source(
             Ok(crate::CoverImageSource::Remote { image: image.clone() })
         }
         CoverSelection::Local(file_id) => Ok(crate::CoverImageSource::Local {
-            file: scanned_file_version(sql, watched_folder_path, candidate_path, file_id)?,
+            file: folder_scans::scanned_file_version(
+                sql,
+                watched_folder_path,
+                candidate_path,
+                file_id,
+            )?,
         }),
         CoverSelection::Embedded(source_file_id) => {
             let (source, data) = folder_scans::stored_embedded_cover(
@@ -544,32 +549,6 @@ fn row_cover_source(
             Ok(crate::CoverImageSource::Embedded { source, data })
         }
     }
-}
-
-/// The version of one of the candidate's files that its scan read.
-fn scanned_file_version(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    file_id: &str,
-) -> Result<FileVersion, DbError> {
-    let (path, size, modified_at_ns) = sql
-        .query_row(
-            "SELECT absolute_path, size, modified_at_ns FROM scan_candidate_file \
-             WHERE watched_folder_path = ? AND candidate_path = ? \
-               AND relative_path = ?",
-            params![coven::path_bytes(watched_folder_path), candidate_path, file_id],
-            |row| Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?)),
-        )
-        .optional()?
-        .ok_or_else(|| {
-            DbError::Message(format!("candidate {candidate_path} names missing file {file_id}"))
-        })?;
-    Ok(FileVersion {
-        path: path_column::decode(path)?,
-        size: to_u64(size, "a scanned file's size")?,
-        modified_at_ns,
-    })
 }
 
 /// The records of every stored release a linked pressing claims, the

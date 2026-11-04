@@ -288,6 +288,32 @@ pub(crate) fn require_current_candidate(
 
 /// The files of the entry joined as `candidate`, as a JSON array in their
 /// order: each with its sheet and the audio that sheet describes.
+/// The version of one of the candidate's files that its scan read.
+pub(crate) fn scanned_file_version(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
+    file_id: &str,
+) -> Result<FileVersion, DbError> {
+    let (path, size, modified_at_ns) = sql
+        .query_row(
+            "SELECT absolute_path, size, modified_at_ns FROM scan_candidate_file \
+             WHERE watched_folder_path = ? AND candidate_path = ? \
+               AND relative_path = ?",
+            params![coven::path_bytes(watched_folder_path), candidate_path, file_id],
+            |row| Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?)),
+        )
+        .optional()?
+        .ok_or_else(|| {
+            DbError::Message(format!("candidate {candidate_path} names missing file {file_id}"))
+        })?;
+    Ok(FileVersion {
+        path: path_column::decode(path)?,
+        size: to_u64(size, "a scanned file's size")?,
+        modified_at_ns,
+    })
+}
+
 fn files_json_sql() -> String {
     format!(
         "(SELECT json_group_array(json_object( \
