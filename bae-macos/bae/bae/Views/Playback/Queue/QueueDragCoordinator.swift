@@ -37,6 +37,15 @@ private struct ActiveQueueDrag {
     var location: CGPoint
 }
 
+/// A committed reorder kept on screen until the lane's read shows it: the
+/// move, which commit it was, and the lane's version core answered the
+/// reorder with, once it has.
+private struct HeldReorder {
+    let move: QueueRowMove
+    let commit: Int
+    var landsAt: UInt64?
+}
+
 /// The released row while it glides from where the cursor let go of it into
 /// the slot it lands in. The floating copy keeps drawing it for that stretch
 /// (the in-place row stays hidden), so the release reads as the row settling
@@ -114,9 +123,14 @@ final class QueueDragCoordinator {
     private var settling: SettlingQueueRow?
     private var geometry: [QueueLaneID: QueueLaneGeometry] = [:]
     /// A committed reorder, held per lane so the rows stay put between the
-    /// gesture ending and core's snapshot echoing the same order back (the
-    /// lane's next change clears it — visually a no-op).
-    private var held: [QueueLaneID: QueueRowMove] = [:]
+    /// gesture ending and the lane's read showing the move: until core
+    /// answers the reorder with the version it made and the read reaches it
+    /// (visually a no-op), or core answers that it moved nothing.
+    private var held: [QueueLaneID: HeldReorder] = [:]
+    /// Each lane's version as its read last showed it.
+    private var shownVersion: [QueueLaneID: UInt64] = [:]
+    /// How many reorders have been held, which names each commit.
+    private var commits = 0
     /// The manual lane's row count, mirrored here by `QueueView` so the context
     /// section's gesture — which can't see the manual section's props — has it
     /// for cross-lane gap math.
@@ -240,8 +254,8 @@ final class QueueDragCoordinator {
             }
             return QueueRowMove(from: active.startSlot, to: gap, count: count)
         }
-        if let move = held[lane], move.count == count {
-            return move
+        if let hold = held[lane], hold.move.count == count {
+            return hold.move
         }
         return nil
     }
@@ -326,15 +340,47 @@ final class QueueDragCoordinator {
         return .reorder(entryId: active.item.id, move: move, lane: active.lane)
     }
 
-    /// Keep a committed reorder on screen until core echoes it back. The
-    /// settling row lands in the slot the move places it at.
-    func hold(_ move: QueueRowMove, lane: QueueLaneID) {
-        held[lane] = move
+    /// Keep a committed reorder on screen until the lane's read shows it,
+    /// and answer which commit it is, for core's answer to name. The settling
+    /// row lands in the slot the move places it at.
+    @discardableResult
+    func hold(_ move: QueueRowMove, lane: QueueLaneID) -> Int {
+        commits += 1
+        held[lane] = HeldReorder(move: move, commit: commits, landsAt: nil)
         if let settling, settling.lane == lane {
             self.settling?.landingSlot = move.displaySlot(
                 of: settling.startSlot
             )
         }
+        return commits
+    }
+
+    /// Core moved the row of `commit`, making the lane's `version`: the hold
+    /// ends once the lane's read reaches it, at once when it already has. An
+    /// answer for a commit a later one replaced leaves that one held.
+    func reorderAnswered(
+        _ lane: QueueLaneID,
+        commit: Int,
+        version: UInt64
+    ) {
+        guard held[lane]?.commit == commit else {
+            return
+        }
+        if let shown = shownVersion[lane], shown >= version {
+            held[lane] = nil
+        }
+        else {
+            held[lane]?.landsAt = version
+        }
+    }
+
+    /// Core moved nothing for `commit`: the lane shows its read again at
+    /// once, so a move that failed never stays on screen.
+    func reorderFailed(_ lane: QueueLaneID, commit: Int) {
+        guard held[lane]?.commit == commit else {
+            return
+        }
+        held[lane] = nil
     }
 
     /// The release animation finished: the settled row's in-place view is
@@ -343,10 +389,14 @@ final class QueueDragCoordinator {
         settling = nil
     }
 
-    /// Core's change to this lane landed: the canonical order
-    /// now equals whatever was held, so dropping the hold is visually a no-op.
-    func clearHold(_ lane: QueueLaneID) {
-        held[lane] = nil
+    /// The lane's read reached `version`. A hold whose reorder made it ends:
+    /// the canonical order now equals what was held, so dropping it is
+    /// visually a no-op.
+    func laneRead(_ lane: QueueLaneID, version: UInt64) {
+        shownVersion[lane] = version
+        if let landsAt = held[lane]?.landsAt, version >= landsAt {
+            held[lane] = nil
+        }
     }
 
     enum Outcome {

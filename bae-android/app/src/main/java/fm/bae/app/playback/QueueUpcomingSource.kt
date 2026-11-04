@@ -63,13 +63,13 @@ class QueueUpcomingSource(
 /**
  * The context tail's windows, read through one live query: a [pin]ned window, which stays read
  * while a context plays, and the windows the queue scrolls to. Its windows move in place; neither
- * opens another query. [onValue] hears each value it reads, and whether it answered a change to
- * the queue; a failed pull ends the read and is held in [failure] until [retry] opens it again.
+ * opens another query. [onValue] hears each value it reads, with the context lane's version it
+ * carries; a failed pull ends the read and is held in [failure] until [retry] opens it again.
  */
 internal class QueueUpcomingWindows(
     private val source: QueueUpcomingSource,
     private val scope: CoroutineScope,
-    private val onValue: (queueChanged: Boolean) -> Unit,
+    private val onValue: (contextVersion: ULong) -> Unit,
 ) {
     private val mutableFailure = MutableStateFlow<BridgeException?>(null)
 
@@ -175,7 +175,7 @@ internal class QueueUpcomingWindows(
                 scope,
                 onValue = { value ->
                     latest = value
-                    onValue(value.queueChanged)
+                    onValue(value.contextVersion)
                 },
                 onError = { error ->
                     logger.error("upcoming queue read failed", error)

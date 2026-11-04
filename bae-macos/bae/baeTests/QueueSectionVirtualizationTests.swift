@@ -25,18 +25,19 @@ struct QueueSectionVirtualizationTests {
                     count: 5_000,
                     itemAt: { _ in nil },
                     holdsEntry: { _ in false },
-                    loadEpoch: 1,
+                    loadVersion: 1,
                     loadRange: { offset, limit in
                         await recorder.record(offset: offset, limit: limit)
                     },
                     acceptsExternalDrops: false,
                     laneId: .context,
                     coordinator: QueueDragCoordinator(),
-                    laneChanges: 1,
+                    laneVersion: 1,
                     onClear: {},
                     onSkipTo: { _ in },
                     onRemove: { _ in },
-                    onReorder: { _, _ in },
+                    onReorder: { _, _ in 1 },
+                    onReorderFailed: { _ in },
                     onInsertTracks: { _, _ in },
                     onSetShuffle: nil,
                 )

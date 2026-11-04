@@ -143,6 +143,9 @@ pub enum BridgeErrorCategory {
     /// A release edit session's save found the release changed since the
     /// session opened on it, and wrote nothing.
     ReleaseChangedSinceOpened,
+    /// A queue reorder named an entry, or an entry to go before, that the
+    /// queue no longer holds there, and moved nothing.
+    QueueChanged,
     Export,
     Save,
     /// Storage failed — in setup, in sync, reading a file — with coven's
@@ -336,6 +339,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::ReleaseChangedSinceOpened => {
             "core.release_edit.error.changed_since_opened"
         }
+        BridgeErrorCategory::QueueChanged => "core.queue.error.changed",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::Storage { failure } => {

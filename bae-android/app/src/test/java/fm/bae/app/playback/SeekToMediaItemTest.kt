@@ -109,7 +109,7 @@ class SeekToMediaItemTest {
                 durationMs = 180_000uL,
             ),
         )
-        player.onQueueValue(manual = manual, context = context, hasNext = true, hasPrevious = false)
+        player.onQueueValue(manual = manual, context = context, hasNext = true, hasPrevious = false, manualVersion = 1u)
         shadowOf(Looper.getMainLooper()).idle()
     }
 

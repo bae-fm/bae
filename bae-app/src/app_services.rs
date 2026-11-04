@@ -566,8 +566,20 @@ impl AppServices {
     delegate_sync!(playback, playback_add_release_next => add_release_next(release_id: String) -> ());
     delegate_sync!(playback, playback_insert_in_queue => insert_in_queue(track_ids: Vec<String>, index: usize) -> ());
     delegate_sync!(playback, playback_remove_entry => remove_entry(entry_id: bae_playback::QueueEntryId) -> ());
-    delegate_sync!(playback, playback_reorder_entry => reorder_entry(entry_id: bae_playback::QueueEntryId, before: Option<bae_playback::QueueEntryId>) -> ());
     delegate_sync!(playback, playback_clear_up_next => clear_up_next() -> ());
+
+    /// Move a queue entry, sent at this call, in order with the playback
+    /// commands sent before and after it; the future answers the lane's
+    /// version the move made, or why nothing moved.
+    pub fn playback_reorder_entry(
+        &self,
+        entry_id: bae_playback::QueueEntryId,
+        before: Option<bae_playback::QueueEntryId>,
+    ) -> impl std::future::Future<Output = Result<u64, bae_playback::ReorderError>> + Send + 'static
+    {
+        self.inner.playback.reorder_entry(entry_id, before)
+    }
+
     delegate_sync!(playback, playback_clear_playing_from => clear_playing_from() -> ());
     delegate_sync!(playback, playback_skip_to_entry => skip_to_entry(entry_id: bae_playback::QueueEntryId) -> ());
     delegate_async!(playback, playback_save_state => save_state() -> ());

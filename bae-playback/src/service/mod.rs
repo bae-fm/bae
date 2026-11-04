@@ -93,6 +93,7 @@ use api::PlayReply;
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseReason, PlaybackState,
+    ReorderError,
 };
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use file_buffers::{prepare_track_for_playback, FileBuffers};

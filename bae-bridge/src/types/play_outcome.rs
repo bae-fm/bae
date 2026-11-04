@@ -50,6 +50,23 @@ pub fn bridge_play_outcome_key(outcome: &BridgePlayOutcome) -> Option<String> {
     }
 }
 
+/// A reorder that moved nothing: the queue changed under the screen that asked,
+/// a database failure, or the playback service had stopped, which is a bug of
+/// whoever still sent it a reorder.
+impl From<bae_playback::ReorderError> for super::BridgeError {
+    fn from(error: bae_playback::ReorderError) -> Self {
+        match error {
+            changed @ bae_playback::ReorderError::QueueChanged => {
+                Self::diagnostic(super::BridgeErrorCategory::QueueChanged, changed)
+            }
+            bae_playback::ReorderError::Queue(error) => error.into(),
+            stopped @ bae_playback::ReorderError::Stopped(_) => {
+                Self::diagnostic(super::BridgeErrorCategory::Internal, stopped)
+            }
+        }
+    }
+}
+
 /// A play with no outcome to tell: the queue couldn't be filled, a database
 /// failure, or the playback service had stopped, which is a bug of whoever
 /// still sent it a play.

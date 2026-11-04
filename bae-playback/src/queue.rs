@@ -130,13 +130,14 @@ impl PlaybackQueue {
     }
 
     /// Move the entry to sit just before `before`, or to the end of its lane;
-    /// both in one lane. `false` when either names no entry of that lane, so
-    /// the caller can count the anomaly; the mismatch is logged here.
+    /// both in one lane. Answers the lane's version the move made, or `None`
+    /// when either names no entry of that lane, so the caller can count the
+    /// anomaly; the mismatch is logged here.
     pub async fn reorder(
         &mut self,
         id: QueueEntryId,
         before: Option<QueueEntryId>,
-    ) -> Result<bool, DbError> {
+    ) -> Result<Option<u64>, DbError> {
         self.tables.reorder(id, before).await
     }
 

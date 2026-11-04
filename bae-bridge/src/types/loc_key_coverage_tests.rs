@@ -243,6 +243,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::MetadataTrackCount { folder_tracks: 12, release_tracks: 10 },
         BridgeErrorCategory::TiedMediums { mediums: vec![2, 4] },
         BridgeErrorCategory::ReleaseChangedSinceOpened,
+        BridgeErrorCategory::QueueChanged,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
         BridgeErrorCategory::FilesAlreadyImported,

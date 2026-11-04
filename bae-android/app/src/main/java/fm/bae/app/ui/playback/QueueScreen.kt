@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,6 +40,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -115,6 +117,7 @@ internal fun rememberReorderableQueue(
         .collectAsState()
     val order = remember { QueueOrder() }
     val failures = rememberQueueFailures()
+    val scope = rememberCoroutineScope()
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
             // A reorder stays within one lane; section headers match no row key.
@@ -124,24 +127,35 @@ internal fun rememberReorderableQueue(
             val manualTo = order.manual.indexOfFirst { it.entryId == toKey }
             val contextFrom = order.context.indexOf(fromKey)
             val contextTo = order.context.indexOf(toKey)
+
+            // Each move is held over its lane until core's read shows it; one core refused or that
+            // failed shows its error and the lane's read at once.
+            fun send(
+                lane: OrderLane,
+                entryId: String,
+                beforeEntryId: String?,
+            ) {
+                order.moveSent(lane)
+                scope.launch {
+                    val version =
+                        failures.answer("reorderEntry $entryId before $beforeEntryId") {
+                            session.appHandle.reorderEntry(entryId, beforeEntryId)
+                        }
+                    if (version != null) order.moveAnswered(lane, version) else order.moveFailed(lane)
+                }
+            }
             when {
                 manualFrom >= 0 && manualTo >= 0 -> {
                     val moved = order.manual.removeAt(manualFrom)
                     order.manual.add(manualTo, moved)
                     // A null `before` means the lane's end.
-                    val beforeEntryId = order.manual.getOrNull(manualTo + 1)?.entryId
-                    failures.run("reorderEntry ${moved.entryId} before $beforeEntryId") {
-                        session.appHandle.reorderEntry(moved.entryId, beforeEntryId)
-                    }
+                    send(OrderLane.MANUAL, moved.entryId, order.manual.getOrNull(manualTo + 1)?.entryId)
                 }
 
                 contextFrom != null && contextTo != null -> {
                     order.context.move(contextFrom, contextTo)
                     // A null `before` means the lane's end.
-                    val beforeEntryId = order.context.itemAt(contextTo + 1)?.entryId
-                    failures.run("reorderEntry $fromKey before $beforeEntryId") {
-                        session.appHandle.reorderEntry(fromKey, beforeEntryId)
-                    }
+                    send(OrderLane.CONTEXT, fromKey, order.context.itemAt(contextTo + 1)?.entryId)
                 }
 
                 else -> {
@@ -155,7 +169,7 @@ internal fun rememberReorderableQueue(
         if (reorderState.isAnyItemDragging) {
             order.dragging()
         } else {
-            order.apply(queue.manual, queue.context, queue.manualChanges, queue.contextChanges)
+            order.apply(queue.manual, queue.context, queue.manualVersion, queue.contextVersion)
         }
     }
     return ReorderableQueue(order, reorderState, failures, readFailure)
@@ -239,7 +253,7 @@ private fun LazyListScope.contextLane(
         QueueLane(
             size = order.context.size,
             itemAt = order.context::itemAt,
-            changes = order.contextChanges ?: 0uL,
+            changes = order.contextVersion ?: 0uL,
             loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
         ),
         queue.reorderState,
@@ -253,7 +267,7 @@ private fun LazyListScope.contextLane(
 private class QueueLane(
     val size: Int,
     val itemAt: (Int) -> BridgeQueueEntry?,
-    /** Core's change count of the lane, which restarts a row's load. */
+    /** Core's version of the lane, which restarts a row's load. */
     val changes: ULong,
     val loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
 )

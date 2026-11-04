@@ -52,8 +52,9 @@ struct QueuePanel: View {
             onSkipTo: { queue.skipToEntry($0) },
             onRemove: { queue.removeEntry($0) },
             onReorder: { entryId, beforeEntryId in
-                queue.reorderEntry(entryId, beforeEntryId)
+                try await queue.reorderEntry(entryId, beforeEntryId)
             },
+            onReorderFailed: { uiStore.showError($0) },
             onInsertTracks: onInsertTracks,
             onSetShuffle: { queue.setShuffle($0) },
         )

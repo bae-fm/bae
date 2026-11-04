@@ -117,14 +117,14 @@ class NowPlayingProjectionTest {
     @Test
     fun positionKeepsThePlaylistAndAQueueChangeReplacesIt() {
         val player = player()
-        player.onQueueValue(manual = listOf(entry("up1")), context = null, hasNext = true, hasPrevious = false)
+        player.onQueueValue(manual = listOf(entry("up1")), context = null, hasNext = true, hasPrevious = false, manualVersion = 1u)
         player.applyPlaybackState(playingState(trackId = "cur", durationMs = 185_000uL))
         val playing = player.currentTimeline
 
         player.applyTimeline(timeline(line(trackId = "cur", positionMs = 1_000uL)))
         assertSame(playing, player.currentTimeline)
 
-        player.onQueueValue(manual = listOf(entry("up2")), context = null, hasNext = true, hasPrevious = false)
+        player.onQueueValue(manual = listOf(entry("up2")), context = null, hasNext = true, hasPrevious = false, manualVersion = 1u)
         assertNotSame(playing, player.currentTimeline)
         assertEquals(
             "up2",

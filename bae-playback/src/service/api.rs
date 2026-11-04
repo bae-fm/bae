@@ -46,6 +46,22 @@ pub enum PlayError {
 /// Where a play command's answer goes.
 pub(crate) type PlayReply = oneshot::Sender<Result<PlayOutcome, PlayError>>;
 
+/// Why a reorder moved nothing.
+#[derive(Debug, thiserror::Error)]
+pub enum ReorderError {
+    /// The entry, or the one it goes before, is no longer queued, or the two
+    /// are in different lanes: the queue changed under the screen that asked.
+    #[error("the queue changed before the move, so nothing moved")]
+    QueueChanged,
+    #[error("couldn't reorder the queue: {0}")]
+    Queue(#[source] bae_db::DbError),
+    #[error("the playback service stopped before it answered the reorder")]
+    Stopped(#[source] oneshot::error::RecvError),
+}
+
+/// Where a reorder's answer goes: the lane's version the move made.
+pub(crate) type ReorderReply = oneshot::Sender<Result<u64, ReorderError>>;
+
 #[derive(Debug)]
 pub(crate) enum PlaybackCommand {
     Play(String),
@@ -122,6 +138,7 @@ pub(crate) enum PlaybackCommand {
     ReorderQueue {
         entry_id: QueueEntryId,
         before: Option<QueueEntryId>,
+        reply: ReorderReply,
     },
     /// Empty the manual lane, leaving the context lane playing.
     ClearUpNext,
@@ -468,8 +485,21 @@ impl PlaybackHandle {
     pub fn remove_entry(&self, entry_id: QueueEntryId) {
         self.dispatch(PlaybackCommand::RemoveFromQueue(entry_id));
     }
-    pub fn reorder_entry(&self, entry_id: QueueEntryId, before: Option<QueueEntryId>) {
-        self.dispatch(PlaybackCommand::ReorderQueue { entry_id, before });
+    /// Move `entry_id` to just before `before`, or to the end of its lane
+    /// when it's `None`, and answer the lane's version the move made: a
+    /// screen holding the moved row shows the tables' order again once the
+    /// lane's read reaches it.
+    ///
+    /// The command is sent at the call, in order with the commands sent
+    /// before and after it; the answer is the future's.
+    pub fn reorder_entry(
+        &self,
+        entry_id: QueueEntryId,
+        before: Option<QueueEntryId>,
+    ) -> impl std::future::Future<Output = Result<u64, ReorderError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.dispatch(PlaybackCommand::ReorderQueue { entry_id, before, reply });
+        async move { answer.await.map_err(ReorderError::Stopped)? }
     }
     pub fn clear_up_next(&self) {
         self.dispatch(PlaybackCommand::ClearUpNext);

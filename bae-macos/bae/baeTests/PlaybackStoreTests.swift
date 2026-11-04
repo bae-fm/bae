@@ -93,13 +93,13 @@ private final class UpcomingFeed: @unchecked Sendable {
     /// `offset` when given.
     func deliver(
         total: UInt64,
-        queueChanged: Bool,
+        contextVersion: UInt64,
         offset: UInt64? = nil,
         entryId: String = ""
     ) {
         let snapshot = BridgeQueueUpcomingSnapshot(
             upcomingTotal: total,
-            queueChanged: queueChanged,
+            contextVersion: contextVersion,
             windows: offset.map { offset in
                 [
                     BridgeQueueUpcomingWindow(
@@ -126,7 +126,10 @@ private final class UpcomingFeed: @unchecked Sendable {
     }
 }
 
-private func contextSnapshot(manual: [String] = []) -> BridgeQueueSnapshot {
+private func contextSnapshot(
+    manual: [String] = [],
+    manualVersion: UInt64 = 1
+) -> BridgeQueueSnapshot {
     BridgeQueueSnapshot(
         manual: manual.map(queueEntry),
         context: BridgePlaybackContext(
@@ -135,7 +138,8 @@ private func contextSnapshot(manual: [String] = []) -> BridgeQueueSnapshot {
             shuffled: false
         ),
         hasNext: true,
-        hasPrevious: false
+        hasPrevious: false,
+        manualVersion: manualVersion
     )
 }
 
@@ -150,7 +154,7 @@ private func storeReading(
     let store = PlaybackStore()
     store.applyQueueSnapshot(contextSnapshot())
     store.showUpcoming(queue: queue)
-    feed.deliver(total: total, queueChanged: false)
+    feed.deliver(total: total, contextVersion: 1)
     try await Wait.until { store.upcomingTotal == Int(total) }
     return store
 }
@@ -191,28 +195,27 @@ struct PlaybackStoreUpcomingWindowTests {
 
     @MainActor
     @Test(
-        "the lane's length and rows come from one read, and only a change to the queue counts as one"
+        "the lane's length and rows come from one read, and the lane's version is core's"
     )
     func lengthAndRowsComeTogether() async throws {
         let feed = UpcomingFeed()
         let queue = Queue(subscribeUpcoming: { feed.query() })
         let store = try await storeReading(total: 500, feed: feed, queue: queue)
-        let changes = store.contextEpoch
         await store.loadUpcomingRange(offset: 100, limit: 60, queue: queue)
 
         feed.deliver(
             total: 500,
-            queueChanged: false,
+            contextVersion: 4,
             offset: 100,
             entryId: "first"
         )
         try await Wait.until { store.upcomingItem(at: 100) != nil }
         #expect(store.upcomingItem(at: 100)?.entryId == "first")
-        #expect(store.contextEpoch == changes, "a scroll is not a change")
+        #expect(store.contextVersion == 4)
 
         feed.deliver(
             total: 300,
-            queueChanged: true,
+            contextVersion: 5,
             offset: 100,
             entryId: "second"
         )
@@ -220,7 +223,7 @@ struct PlaybackStoreUpcomingWindowTests {
             store.upcomingItem(at: 100)?.entryId == "second"
         }
         #expect(store.upcomingTotal == 300)
-        #expect(store.contextEpoch == changes + 1)
+        #expect(store.contextVersion == 5)
         #expect(feed.openedCount == 1)
     }
 
@@ -236,7 +239,8 @@ struct PlaybackStoreUpcomingWindowTests {
                 manual: [],
                 context: nil,
                 hasNext: false,
-                hasPrevious: false
+                hasPrevious: false,
+                manualVersion: 2
             )
         )
 
@@ -248,13 +252,20 @@ struct PlaybackStoreUpcomingWindowTests {
     }
 
     @MainActor
-    @Test("every queue value counts as a change to the manual lane")
-    func queueValuesCountManualChanges() {
+    @Test("Up Next's version is the one core's queue value carries")
+    func manualVersionIsCores() {
         let store = PlaybackStore()
-        store.applyQueueSnapshot(contextSnapshot(manual: ["a"]))
-        let changes = store.manualEpoch
-        store.applyQueueSnapshot(contextSnapshot(manual: ["a"]))
-        #expect(store.manualEpoch == changes + 1)
+        store.applyQueueSnapshot(
+            contextSnapshot(manual: ["a"], manualVersion: 7)
+        )
+        #expect(store.manualVersion == 7)
+        store.applyQueueSnapshot(
+            contextSnapshot(manual: ["a"], manualVersion: 7)
+        )
+        #expect(
+            store.manualVersion == 7,
+            "a value at the same version changes nothing"
+        )
         #expect(store.manualQueue.map(\.entryId) == ["a"])
     }
 }

@@ -25,8 +25,12 @@ struct QueueView: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     /// Move the entry `entryId` to sit before `beforeEntryId`; `nil` moves it
-    /// to the end of its lane.
-    let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
+    /// to the end of its lane. Answers the lane's version the move made.
+    let onReorder:
+        @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
+            -> UInt64
+    /// Shows why a reorder moved nothing.
+    let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
     /// Sets the playing context's shuffle, from the context section's header.
     let onSetShuffle: (Bool) -> Void
@@ -88,16 +92,17 @@ struct QueueView: View {
                             holdsEntry: { id in
                                 manual.contains { $0.id == id }
                             },
-                            loadEpoch: 0,
+                            loadVersion: 0,
                             loadRange: nil,
                             acceptsExternalDrops: true,
                             laneId: .manual,
                             coordinator: dragCoordinator,
-                            laneChanges: playbackStore.manualEpoch,
+                            laneVersion: playbackStore.manualVersion,
                             onClear: onClearUpNext,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
                             onReorder: onReorder,
+                            onReorderFailed: onReorderFailed,
                             onInsertTracks: onInsertTracks,
                             onSetShuffle: nil,
                         )
@@ -114,7 +119,7 @@ struct QueueView: View {
                                 holdsEntry: {
                                     playbackStore.upcomingHolds(entryId: $0)
                                 },
-                                loadEpoch: playbackStore.contextEpoch,
+                                loadVersion: playbackStore.contextVersion,
                                 loadRange: { offset, limit in
                                     await playbackStore.loadUpcomingRange(
                                         offset: offset,
@@ -125,11 +130,12 @@ struct QueueView: View {
                                 acceptsExternalDrops: false,
                                 laneId: .context,
                                 coordinator: dragCoordinator,
-                                laneChanges: playbackStore.contextEpoch,
+                                laneVersion: playbackStore.contextVersion,
                                 onClear: onClearPlayingFrom,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
                                 onReorder: onReorder,
+                                onReorderFailed: onReorderFailed,
                                 onInsertTracks: onInsertTracks,
                                 onSetShuffle: onSetShuffle,
                             )
@@ -338,7 +344,8 @@ struct QueueView: View {
                 onClearPlayingFrom: {},
                 onSkipTo: { _ in },
                 onRemove: { _ in },
-                onReorder: { _, _ in },
+                onReorder: { _, _ in 1 },
+                onReorderFailed: { _ in },
                 onInsertTracks: { _, _ in },
                 onSetShuffle: { _ in }
             )

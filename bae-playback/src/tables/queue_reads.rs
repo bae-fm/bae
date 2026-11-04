@@ -48,6 +48,12 @@ pub async fn queue_upcoming(database: &Database) -> Result<Vec<QueueItem>, DbErr
     Ok(read.windows.into_iter().flat_map(|window| window.items).collect())
 }
 
+/// The context lane's version, as the upcoming windows' reads carry it.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn queue_context_version(database: &Database) -> Result<u64, DbError> {
+    database.read(|sql| Ok(queue_head_on(&sql)?.context_version)).await
+}
+
 /// Follow the windows `initial` names of the context lane's tracks after the
 /// playing one. The windows change by pointing the same query at new ones
 /// through its request handle.
@@ -98,15 +104,30 @@ fn queue_items_on(
 struct QueueHead {
     repeat: RepeatMode,
     context: Option<(ContextSource, bool, i64)>,
+    manual_version: u64,
+    context_version: u64,
 }
 
 fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    type Head = (String, Option<String>, Option<String>, Option<bool>, Option<i64>);
-    let (repeat, source_kind, source_release_id, shuffled, cursor): Head = sql.query_row(
-        "SELECT repeat, source_kind, source_release_id, shuffled, cursor FROM playback_queue",
-        [],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
-    )?;
+    type Head = (String, Option<String>, Option<String>, Option<bool>, Option<i64>, i64, i64);
+    let (repeat, source_kind, source_release_id, shuffled, cursor, manual_version, context_version): Head =
+        sql.query_row(
+            "SELECT repeat, source_kind, source_release_id, shuffled, cursor, \
+                    manual_version, context_version \
+             FROM playback_queue",
+            [],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                    row.get(6)?,
+                ))
+            },
+        )?;
     let context = match (source_kind, shuffled, cursor) {
         (Some(source_kind), Some(shuffled), Some(cursor)) => Some((
             ContextSource::from_columns(&source_kind, source_release_id)
@@ -117,7 +138,13 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
         // The table's CHECK keeps the three NULL together.
         _ => None,
     };
-    Ok(QueueHead { repeat: repeat_from_column(&repeat)?, context })
+    // The table's CHECKs keep both versions at zero or above.
+    Ok(QueueHead {
+        repeat: repeat_from_column(&repeat)?,
+        context,
+        manual_version: manual_version as u64,
+        context_version: context_version as u64,
+    })
 }
 
 fn queue_addition_on(sql: &SqlReadContext<'_>) -> Result<Option<crate::QueueAddition>, DbError> {
@@ -167,7 +194,13 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
         }
     };
     let has_next = !manual.is_empty() || has_upcoming || head.repeat != RepeatMode::Off;
-    Ok(crate::ResolvedQueueSnapshot { manual, context, has_next, has_previous })
+    Ok(crate::ResolvedQueueSnapshot {
+        manual,
+        context,
+        has_next,
+        has_previous,
+        manual_version: head.manual_version,
+    })
 }
 
 fn queue_upcoming_on(
@@ -195,6 +228,7 @@ fn queue_upcoming_on(
         })
         .collect::<Result<_, DbError>>()?;
     Ok(QueueUpcomingRead {
+        context_version: head.context_version,
         upcoming_total: match head.context {
             None => 0,
             Some((_, _, cursor)) => upcoming_total_on(sql, cursor)?,
@@ -213,10 +247,14 @@ fn upcoming_total_on(sql: &SqlReadContext<'_>, cursor: i64) -> Result<u64, DbErr
     Ok(total as u64)
 }
 
-/// One read of the context lane's upcoming windows: the tail's length then,
-/// and each window's entries.
+/// One read of the context lane's upcoming windows: the lane's version, the
+/// tail's length then, and each window's entries.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueUpcomingRead {
+    /// How many writes have changed the context lane's tracks after its
+    /// playing one, as the queue row counts them: the same windows read at
+    /// another version may hold other rows.
+    pub context_version: u64,
     pub upcoming_total: u64,
     pub windows: Vec<QueueUpcomingWindow>,
 }

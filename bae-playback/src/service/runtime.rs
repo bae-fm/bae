@@ -242,7 +242,7 @@ impl PlaybackService {
 
     /// A queue table write or read failed: the queue is as it was before the
     /// command, and the command does nothing more.
-    pub(super) fn queue_failed(&self, doing: &str, error: bae_db::DbError) {
+    pub(super) fn queue_failed(&self, doing: &str, error: &bae_db::DbError) {
         error!("couldn't {doing}: {error}");
         self.telemetry_playback_failed(PlaybackOperation::QueueChange);
     }
@@ -359,7 +359,7 @@ impl PlaybackService {
         let action = match self.playback_queue.previous_action(track_time).await {
             Ok(action) => action,
             Err(e) => {
-                self.queue_failed("step the queue back", e);
+                self.queue_failed("step the queue back", &e);
                 return;
             }
         };

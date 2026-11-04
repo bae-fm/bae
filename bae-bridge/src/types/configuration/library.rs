@@ -306,6 +306,10 @@ pub struct BridgeQueueSnapshot {
     pub context: Option<BridgePlaybackContext>,
     pub has_next: bool,
     pub has_previous: bool,
+    /// How many writes have changed Up Next: a screen holding an Up Next row
+    /// it moved shows this value's order once it reaches the version the
+    /// move answered with.
+    pub manual_version: u64,
 }
 
 /// The last time tracks went into Up Next: which addition since playback

@@ -24,9 +24,9 @@ public class PlaybackStore {
     public var settings: PlaybackSettings?
     /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [BridgeQueueEntry] = []
-    /// Counts the queue values applied, so a view keyed on it hears the manual
-    /// lane change even when its rows look the same.
-    public private(set) var manualEpoch: UInt64 = 0
+    /// Up Next's version as core's queue value carries it: how many writes
+    /// have changed the lane, which a held reorder waits for.
+    public private(set) var manualVersion: UInt64 = 0
     /// What's playing from, or `nil`. Its tracks are read through the upcoming
     /// read: `upcomingTotal` and `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
@@ -36,10 +36,11 @@ public class PlaybackStore {
     /// The tail entries the upcoming read last delivered, keyed by their index
     /// in the tail. Indices it did not read are absent.
     public private(set) var upcomingRows: [Int: BridgeQueueEntry] = [:]
-    /// Counts the upcoming values that answered a change to the queue rather
-    /// than only a scroll, so the context lane's rows and held order follow
-    /// core's.
-    public private(set) var contextEpoch: UInt64 = 0
+    /// The context lane's version as core's upcoming read carries it: how
+    /// many writes have changed its tracks after the playing one. A change
+    /// restarts the lane's row loads, and a held reorder waits for it; a
+    /// scroll leaves it.
+    public private(set) var contextVersion: UInt64 = 0
     /// The live read of the upcoming tail, opened by `showUpcoming` and kept
     /// while a context plays.
     @ObservationIgnored
@@ -196,7 +197,7 @@ extension PlaybackStore {
     @MainActor
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
         manualQueue = snapshot.manual
-        manualEpoch &+= 1
+        manualVersion = snapshot.manualVersion
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
         if queueContext == nil {
             closeUpcomingQuery()
@@ -340,9 +341,7 @@ extension PlaybackStore {
         }
         upcomingTotal = Int(snapshot.upcomingTotal)
         upcomingRows = rows
-        if snapshot.queueChanged {
-            contextEpoch &+= 1
-        }
+        contextVersion = snapshot.contextVersion
     }
 
     private func distance(from range: Range<Int>, to index: Int) -> Int {

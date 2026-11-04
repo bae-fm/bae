@@ -31,9 +31,12 @@ public final class Queue: Sendable, Observable {
     public let clearUpNext: @Sendable () -> Void
     /// Drop the context lane. The playing track keeps playing.
     public let clearPlayingFrom: @Sendable () -> Void
-    /// Move `entryId` to sit before `beforeEntryId`; `nil` moves it to the end.
+    /// Move `entryId` to sit before `beforeEntryId`; `nil` moves it to the end
+    /// of its lane. Answers the lane's version the move made, or throws when
+    /// core moved nothing.
     public let reorderEntry:
-        @Sendable (_ entryId: String, _ beforeEntryId: String?) -> Void
+        @Sendable (_ entryId: String, _ beforeEntryId: String?) async throws
+            -> UInt64
     public let skipToEntry: @Sendable (_ entryId: String) -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
@@ -51,8 +54,11 @@ public final class Queue: Sendable, Observable {
         removeEntry: @escaping @Sendable (String) -> Void = { _ in },
         clearUpNext: @escaping @Sendable () -> Void = {},
         clearPlayingFrom: @escaping @Sendable () -> Void = {},
-        reorderEntry: @escaping @Sendable (String, String?) -> Void = { _, _ in
-        },
+        reorderEntry:
+            @escaping @Sendable (String, String?) async throws -> UInt64 = {
+                _,
+                _ in 0
+            },
         skipToEntry: @escaping @Sendable (String) -> Void = { _ in },
         setShuffle: @escaping @Sendable (Bool) -> Void = { _ in },
         subscribeUpcoming: @escaping @Sendable () -> QueueUpcomingQuery = {
@@ -80,7 +86,7 @@ public final class Queue: Sendable, Observable {
             clearUpNext: { handle.clearUpNext() },
             clearPlayingFrom: { handle.clearPlayingFrom() },
             reorderEntry: {
-                handle.reorderEntry(entryId: $0, beforeEntryId: $1)
+                try await handle.reorderEntry(entryId: $0, beforeEntryId: $1)
             },
             skipToEntry: { handle.skipToEntry(entryId: $0) },
             setShuffle: { handle.setShuffle(on: $0) },

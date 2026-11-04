@@ -16,7 +16,7 @@ internal class UpcomingFeed {
     private companion object {
         /** Wakes a waiting read so it can fail; never applied. */
         val PLACEHOLDER =
-            BridgeQueueUpcomingSnapshot(upcomingTotal = 0uL, queueChanged = false, windows = emptyList())
+            BridgeQueueUpcomingSnapshot(upcomingTotal = 0uL, contextVersion = 0uL, windows = emptyList())
     }
 
     var opened = 0
@@ -60,14 +60,14 @@ internal class UpcomingFeed {
     /** Answer with a tail of [total] entries, of which [read] holds the ones read, from [offset]. */
     fun deliver(
         total: Int,
-        queueChanged: Boolean = false,
+        contextVersion: ULong = 1u,
         offset: Int = 0,
         read: List<BridgeQueueEntry> = emptyList(),
     ) {
         values.trySend(
             BridgeQueueUpcomingSnapshot(
                 upcomingTotal = total.toULong(),
-                queueChanged = queueChanged,
+                contextVersion = contextVersion,
                 windows =
                     listOf(
                         BridgeQueueUpcomingWindow(

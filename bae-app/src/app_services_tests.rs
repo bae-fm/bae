@@ -167,7 +167,7 @@ async fn queue_upcoming_moves_its_windows_in_place() {
     let subscription = services.subscribe_queue_upcoming();
 
     subscription.set(windows(&[(0, 2)])).unwrap();
-    upcoming_until(&subscription, |value| value.windows.len() == 1).await;
+    let first = upcoming_until(&subscription, |value| value.windows.len() == 1).await;
 
     subscription.set(windows(&[(4, 2)])).unwrap();
     let moved = upcoming_until(&subscription, |value| {
@@ -175,7 +175,7 @@ async fn queue_upcoming_moves_its_windows_in_place() {
     })
     .await;
     assert_eq!(moved.windows.len(), 1, "the earlier window is no longer read");
-    assert!(!moved.queue_changed, "only the windows moved");
+    assert_eq!(moved.context_version, first.context_version, "only the windows moved");
     assert_eq!(moved.upcoming_total, 11);
     assert_eq!(window_track_ids(&moved), vec![vec![track_ids[5].as_str(), track_ids[6].as_str()]]);
 }
@@ -195,7 +195,7 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     services.playback_skip_to_entry(skip_to);
     let moved =
         upcoming_until(&subscription, |value| value.upcoming_total < first.upcoming_total).await;
-    assert!(moved.queue_changed, "the queue changed under the windows");
+    assert!(moved.context_version > first.context_version, "the queue changed under the windows");
     assert_eq!(moved.upcoming_total, 8, "track_ids[3] plays; track_ids[4..] follow");
     assert_eq!(
         moved.windows[0].items.iter().map(|item| item.track_id.as_str()).collect::<Vec<_>>(),

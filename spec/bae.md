@@ -3069,6 +3069,18 @@ it played everything named:
 | Nothing to play | what was named holds no tracks; the queue is as it was |
 | Start track gone | the track to start from is no longer on the release or in the library, or the list has none at its index; the queue is as it was |
 
+A reorder answers too. The queue keeps a version for each part, counting the
+writes that change it: Up Next's for every entry put in, taken out or moved;
+what's playing from's for every change to its tracks after the current one,
+or to which one is current. A reorder that moved its entry answers with its
+part's version after the move; one whose entry, or the entry it goes before,
+is no longer in that part moves nothing and answers that the queue changed,
+which the app shows ("The queue changed before the move, so nothing moved.").
+The queue screens read each part with its version: a row dragged to a new
+place stays there until the part's read reaches the version the move
+answered, so it never jumps back while the move is on its way, and a move
+that failed or moved nothing puts the part back to its read at once.
+
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
 one loaded to play next is let go. This holds whichever device deleted it:
@@ -4194,7 +4206,7 @@ All sync (§5), except `local_history`, `profile_request` and
 
 | Table | Holds |
 |---|---|
-| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether it's shuffled, which of its rows is playing, and the number the next entry of either part gets, never given twice (§7.1) |
+| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether it's shuffled, which of its rows is playing, the number the next entry of either part gets, never given twice, and each part's version, the count of writes that changed it, which the screens holding a moved row wait for (§7.1) |
 | `playback_manual` | Up Next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |

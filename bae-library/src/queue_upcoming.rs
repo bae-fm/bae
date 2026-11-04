@@ -12,9 +12,12 @@ pub struct QueueUpcomingSnapshot {
     /// The length of the not-yet-played tail at the same read, so the windows
     /// and the length the UI lays them out in always agree.
     pub upcoming_total: u64,
-    /// Whether the queue changed since the read before: `false` when only the
-    /// windows moved, as when the UI scrolls.
-    pub queue_changed: bool,
+    /// How many writes have changed the context lane's tracks after its
+    /// playing one: a value at the version before it only moved its windows,
+    /// as when the UI scrolls, and a screen holding a context row it moved
+    /// shows the tables' order again once this reaches the version its move
+    /// made.
+    pub context_version: u64,
     pub windows: Vec<QueueUpcomingWindow>,
 }
 
@@ -25,8 +28,7 @@ pub type LiveQueueUpcoming = super::LiveRead<LibraryPageWindows, QueueUpcomingSn
 
 /// The context's upcoming tail, read in the windows the subscription is
 /// asked for — none until the first [`LiveRead::set`] — with the tail's
-/// length, and whether the queue changed since the value before or only
-/// the windows moved. One query serves every window; a new window set
+/// length and the context lane's version. One query serves every window; a new window set
 /// points it at the new windows.
 ///
 /// [`LiveRead::set`]: super::LiveRead::set
@@ -47,11 +49,11 @@ pub fn subscribe_queue_upcoming(library: &crate::LibraryManager) -> crate::LiveQ
             );
             loop {
                 tokio::select! {
-                    event = query.recv_with_cause() => {
-                        let Some((cause, result)) = event else { return };
+                    event = query.recv() => {
+                        let Some(result) = event else { return };
                         let value = result.map(|read| crate::QueueUpcomingSnapshot {
                             upcoming_total: read.upcoming_total,
-                            queue_changed: !matches!(cause, coven::LiveQueryCause::Request),
+                            context_version: read.context_version,
                             windows: read.windows,
                         });
                         if tx.send(value).is_err() { return; }

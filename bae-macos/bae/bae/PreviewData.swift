@@ -9,16 +9,16 @@
         private let lock = NSLock()
         private var rows: [BridgeQueueEntry] = []
         private var windows: [BridgeLibraryPageWindow] = []
-        private var changed = false
+        private var version: UInt64 = 0
         /// Whether a value is due that `take` has not taken yet.
         private var due = true
         private var waiter:
             CheckedContinuation<BridgeQueueUpcomingSnapshot, Never>?
 
-        func show(_ rows: [BridgeQueueEntry]) {
+        func show(_ rows: [BridgeQueueEntry], version: UInt64) {
             deliver {
                 self.rows = rows
-                self.changed = true
+                self.version = version
             }
         }
 
@@ -61,10 +61,9 @@
 
         /// The value for the windows asked for; called under the lock.
         private func takeValue() -> BridgeQueueUpcomingSnapshot {
-            defer { changed = false }
-            return BridgeQueueUpcomingSnapshot(
+            BridgeQueueUpcomingSnapshot(
                 upcomingTotal: UInt64(rows.count),
-                queueChanged: changed,
+                contextVersion: version,
                 windows: windows.map { window in
                     let start = min(Int(window.offset), rows.count)
                     let end = min(start + Int(window.limit), rows.count)
@@ -101,6 +100,9 @@
         private var shuffled: Bool
         /// Uniques the entry ids this model mints for inserted tracks.
         private var mintedEntryCount = 0
+        /// Each lane's version, counted per change as core's queue row does.
+        private var manualVersion: UInt64 = 0
+        private var contextVersion: UInt64 = 0
         let upcomingFeed = PreviewUpcomingFeed()
 
         init(
@@ -120,7 +122,12 @@
         }
 
         private func apply() {
-            upcomingFeed.show(hasContext ? upcoming : [])
+            manualVersion += 1
+            contextVersion += 1
+            upcomingFeed.show(
+                hasContext ? upcoming : [],
+                version: contextVersion
+            )
             store.applyQueueSnapshot(
                 BridgeQueueSnapshot(
                     manual: manual,
@@ -131,7 +138,8 @@
                             shuffled: shuffled
                         ) : nil,
                     hasNext: !manual.isEmpty || !upcoming.isEmpty,
-                    hasPrevious: false
+                    hasPrevious: false,
+                    manualVersion: manualVersion
                 )
             )
         }
@@ -156,8 +164,11 @@
         }
 
         /// Move `entryId` before `beforeEntryId` within its lane; `nil` moves
-        /// it to the lane's end — core's reorder semantics.
-        func reorder(_ entryId: String, before beforeEntryId: String?) {
+        /// it to the lane's end — core's reorder semantics — and answer the
+        /// lane's version the move made.
+        func reorder(_ entryId: String, before beforeEntryId: String?)
+            -> UInt64
+        {
             func moved(in lane: [BridgeQueueEntry]) -> [BridgeQueueEntry]? {
                 guard
                     let from = lane.firstIndex(where: {
@@ -182,11 +193,14 @@
             }
             if let lane = moved(in: manual) {
                 manual = lane
+                apply()
+                return manualVersion
             }
-            else if let lane = moved(in: upcoming) {
+            if let lane = moved(in: upcoming) {
                 upcoming = lane
             }
             apply()
+            return contextVersion
         }
 
         /// Play the entry: it becomes now playing, and it — plus whatever sat
@@ -374,7 +388,8 @@
                         )
                     },
                     hasNext: !upcoming.isEmpty,
-                    hasPrevious: false
+                    hasPrevious: false,
+                    manualVersion: 1
                 )
             )
             return store
@@ -425,9 +440,7 @@
                         }
                     },
                     reorderEntry: { id, before in
-                        Task { @MainActor in
-                            model.reorder(id, before: before)
-                        }
+                        await model.reorder(id, before: before)
                     },
                     skipToEntry: { id in
                         Task { @MainActor in

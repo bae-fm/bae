@@ -76,7 +76,7 @@ pub use replay_gain::replay_gain_linear;
 pub use service::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseBoundary,
     PlaybackPauseReason, PlaybackService, PlaybackSideCountdown, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
+    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide, ReorderError,
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use timeline::{StreamPosition, TrackTimeline};

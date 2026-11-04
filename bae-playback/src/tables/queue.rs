@@ -19,6 +19,16 @@ enum Lane {
 }
 
 impl Lane {
+    /// The statement that counts a write changing this lane in its version on
+    /// the queue row: Up Next's entries put in, taken out or moved, or the
+    /// context lane's tracks after the playing one changed.
+    fn count_change(self) -> &'static str {
+        match self {
+            Lane::Manual => MANUAL_CHANGED,
+            Lane::Context => CONTEXT_CHANGED,
+        }
+    }
+
     fn table(self) -> &'static str {
         match self {
             Lane::Manual => "playback_manual",
@@ -33,6 +43,14 @@ impl Lane {
         }
     }
 }
+
+/// Counts a write that changed Up Next's entries.
+pub(super) const MANUAL_CHANGED: &str =
+    "UPDATE playback_queue SET manual_version = manual_version + 1";
+/// Counts a write that changed the context lane's tracks after its playing
+/// one, or which track is playing.
+pub(super) const CONTEXT_CHANGED: &str =
+    "UPDATE playback_queue SET context_version = context_version + 1";
 
 /// The lane an entry id names and the entry number of its row there.
 fn row_key(id: &QueueEntryId) -> (Lane, i64) {
@@ -96,7 +114,9 @@ pub async fn settle_playback_queue(database: &Database, resume: bool) -> Result<
                 return Ok(());
             }
             sql.execute("DELETE FROM playback_state", [])?;
-            sql.execute("DELETE FROM playback_manual", [])?;
+            if sql.execute("DELETE FROM playback_manual", [])? > 0 {
+                sql.execute(MANUAL_CHANGED, [])?;
+            }
             clear_context_on(sql)?;
             sql.execute("UPDATE playback_queue SET repeat = 'off'", [])?;
             Ok(())
@@ -149,7 +169,9 @@ impl PlaybackQueueTables {
     pub async fn clear_manual(&self) -> Result<(), DbError> {
         self.db
             .call_bulk(|sql| {
-                sql.execute("DELETE FROM playback_manual", [])?;
+                if sql.execute("DELETE FROM playback_manual", [])? > 0 {
+                    sql.execute(MANUAL_CHANGED, [])?;
+                }
                 Ok(())
             })
             .await
@@ -202,6 +224,7 @@ impl PlaybackQueueTables {
                 let Some(track_id) = removed else {
                     return Ok(None);
                 };
+                sql.execute(lane.count_change(), [])?;
                 if lane == Lane::Context {
                     // The lane's last row takes what it played from with it,
                     // as a deleted track does (`tracks_leave_playback_queue`).
@@ -219,14 +242,15 @@ impl PlaybackQueueTables {
     }
 
     /// Move the entry to sit just before `before`, or to the end of its lane
-    /// without one. Both must be in the same lane; `false` when either is in
-    /// none or they are in different ones. The context lane's playing track
-    /// stays the playing track wherever it moves.
+    /// without one, and answer the lane's version the move made. Both must be
+    /// in the same lane; `None` when either is in none or they are in
+    /// different ones. The context lane's playing track stays the playing
+    /// track wherever it moves.
     pub async fn reorder(
         &self,
         id: QueueEntryId,
         before: Option<QueueEntryId>,
-    ) -> Result<bool, DbError> {
+    ) -> Result<Option<u64>, DbError> {
         self.db.call(move |sql| reorder_on(sql, id, before)).await
     }
 
@@ -248,6 +272,7 @@ impl PlaybackQueueTables {
                     }
                     Lane::Context => set_cursor_on(sql, located.position)?,
                 }
+                sql.execute(located.lane.count_change(), [])?;
                 Ok(Some(located.entry))
             })
             .await
@@ -365,7 +390,9 @@ fn set_cursor_on(sql: &CovenWrite<'_>, position: i64) -> rusqlite::Result<()> {
 
 /// Empty the context lane and clear what it played from, in the same write.
 fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
-    sql.execute("DELETE FROM playback_context", [])?;
+    if sql.execute("DELETE FROM playback_context", [])? > 0 {
+        sql.execute(CONTEXT_CHANGED, [])?;
+    }
     sql.execute(
         "UPDATE playback_queue \
          SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, cursor = NULL",
@@ -516,7 +543,8 @@ fn add_manual_on(
     // confirming additions read exactly the ones that happened.
     sql.execute(
         "UPDATE playback_queue \
-         SET next_entry = ?, additions = additions + 1, added_tracks = ?",
+         SET next_entry = ?, additions = additions + 1, added_tracks = ?, \
+             manual_version = manual_version + 1",
         params![base + count, count],
     )?;
     Ok(count as usize)
@@ -537,7 +565,10 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<ShuffleChange, DbErr
     } else {
         reorder_context_after_on(sql, cursor, "unshuffled, position")?;
     }
-    sql.execute("UPDATE playback_queue SET shuffled = ?", [on])?;
+    sql.execute(
+        "UPDATE playback_queue SET shuffled = ?, context_version = context_version + 1",
+        [on],
+    )?;
     Ok(ShuffleChange::Changed)
 }
 
@@ -545,10 +576,10 @@ fn reorder_on(
     sql: &CovenWrite<'_>,
     id: QueueEntryId,
     before: Option<QueueEntryId>,
-) -> Result<bool, DbError> {
+) -> Result<Option<u64>, DbError> {
     let Some(moving) = locate_on(sql, id.clone())? else {
         warn!("reorder: queue entry id not found: {id}");
-        return Ok(false);
+        return Ok(None);
     };
     let to = match before {
         None => None,
@@ -558,11 +589,11 @@ fn reorder_on(
                 warn!(
                     "reorder: entry {id} and the entry {before} it goes before are in different lanes"
                 );
-                return Ok(false);
+                return Ok(None);
             }
             None => {
                 warn!("reorder: before id not found: {before}");
-                return Ok(false);
+                return Ok(None);
             }
         },
     };
@@ -611,7 +642,19 @@ fn reorder_on(
             set_cursor_on(sql, moved_cursor)?;
         }
     }
-    Ok(true)
+    sql.execute(lane.count_change(), [])?;
+    let version: i64 = sql.query_row(
+        &format!(
+            "SELECT {column} FROM playback_queue",
+            column = match lane {
+                Lane::Manual => "manual_version",
+                Lane::Context => "context_version",
+            }
+        ),
+        [],
+        |row| row.get(0),
+    )?;
+    Ok(Some(version as u64))
 }
 
 fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
@@ -624,6 +667,7 @@ fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
         .optional()?;
     if let Some((entry, position)) = manual_front {
         sql.execute("DELETE FROM playback_manual WHERE position = ?", [position])?;
+        sql.execute(MANUAL_CHANGED, [])?;
         return Ok(Some(entry));
     }
     let next = sql
@@ -639,6 +683,7 @@ fn advance_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
         return Ok(None);
     };
     set_cursor_on(sql, position)?;
+    sql.execute(CONTEXT_CHANGED, [])?;
     Ok(Some(entry))
 }
 
@@ -659,6 +704,7 @@ fn wrap_on(sql: &CovenWrite<'_>) -> Result<Option<QueueEntry>, DbError> {
         context_from_row,
     )?;
     set_cursor_on(sql, position)?;
+    sql.execute(CONTEXT_CHANGED, [])?;
     Ok(Some(first))
 }
 
@@ -693,6 +739,7 @@ fn step_back_on(
         return Ok(None);
     };
     set_cursor_on(sql, position)?;
+    sql.execute(CONTEXT_CHANGED, [])?;
     Ok(Some(entry))
 }
 

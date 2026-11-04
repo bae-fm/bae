@@ -44,18 +44,17 @@ class QueueUpcomingWindowTest {
     }
 
     @Test
-    fun theLanesLengthAndRowsComeFromOneReadAndOnlyAQueueChangeCountsAsOne() {
+    fun theLanesLengthAndRowsComeFromOneReadAndItsVersionIsCores() {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 500)
-        val changes = player.queue.value.contextChanges
         player.loadUpcomingRange(100, 60)
 
-        feed.deliver(total = 500, offset = 100, read = listOf(upcomingEntry("first")))
+        feed.deliver(total = 500, contextVersion = 4u, offset = 100, read = listOf(upcomingEntry("first")))
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals("first", itemAt(player, 100))
-        assertEquals("a scroll is not a change", changes, player.queue.value.contextChanges)
+        assertEquals(4uL, player.queue.value.contextVersion)
 
-        feed.deliver(total = 300, queueChanged = true, offset = 100, read = listOf(upcomingEntry("second")))
+        feed.deliver(total = 300, contextVersion = 5u, offset = 100, read = listOf(upcomingEntry("second")))
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals("second", itemAt(player, 100))
         assertEquals(
@@ -63,7 +62,7 @@ class QueueUpcomingWindowTest {
             player.queue.value.context
                 ?.upcomingTotal,
         )
-        assertEquals(changes + 1uL, player.queue.value.contextChanges)
+        assertEquals(5uL, player.queue.value.contextVersion)
         assertEquals(1, feed.opened)
     }
 
@@ -72,10 +71,10 @@ class QueueUpcomingWindowTest {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 5)
 
-        player.onQueueValue(emptyList(), null, hasNext = false, hasPrevious = false)
+        player.onQueueValue(emptyList(), null, hasNext = false, hasPrevious = false, manualVersion = 1u)
         assertNull(player.queue.value.context)
 
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false)
+        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, manualVersion = 1u)
         assertEquals("a new context opens the read again", 2, feed.opened)
     }
 
@@ -115,7 +114,7 @@ class QueueUpcomingWindowTest {
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
                 queueUpcomingSource = feed.source,
             )
-        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false)
+        player.onQueueValue(emptyList(), context(), hasNext = true, hasPrevious = false, manualVersion = 1u)
         feed.deliver(total = total)
         shadowOf(Looper.getMainLooper()).idle()
         return player

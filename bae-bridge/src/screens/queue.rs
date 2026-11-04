@@ -15,9 +15,9 @@ pub struct BridgeQueueUpcomingWindow {
 pub struct BridgeQueueUpcomingSnapshot {
     /// The tail's length at the same read, which the windows are laid out in.
     pub upcoming_total: u64,
-    /// Whether the queue changed since the value before; `false` when only
-    /// the windows moved.
-    pub queue_changed: bool,
+    /// How many writes have changed the context lane's tracks after its
+    /// playing one; the same as the value before when only the windows moved.
+    pub context_version: u64,
     pub windows: Vec<BridgeQueueUpcomingWindow>,
 }
 
@@ -82,7 +82,7 @@ impl BridgeQueueUpcomingSnapshot {
     fn from_core(snapshot: bae_library::QueueUpcomingSnapshot) -> Self {
         Self {
             upcoming_total: snapshot.upcoming_total,
-            queue_changed: snapshot.queue_changed,
+            context_version: snapshot.context_version,
             windows: snapshot
                 .windows
                 .into_iter()

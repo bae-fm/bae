@@ -78,14 +78,17 @@ struct QueueDragCoordinatorTests {
                 == QueueFloatingRow(item: grabbed, top: 1 * Self.pitch)
         )
 
-        coordinator.hold(move, lane: .manual)
+        coordinator.laneRead(.manual, version: 1)
+        let commit = coordinator.hold(move, lane: .manual)
         #expect(
             coordinator.floatingRow(in: .manual)
                 == QueueFloatingRow(item: grabbed, top: 3 * Self.pitch)
         )
         // Core's echo: the canonical order now matches the held one and the
         // hold drops. The copy still draws the grabbed row at its slot.
-        coordinator.clearHold(.manual)
+        coordinator.reorderAnswered(.manual, commit: commit, version: 2)
+        coordinator.laneRead(.manual, version: 2)
+        #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
         #expect(
             coordinator.floatingRow(in: .manual)
                 == QueueFloatingRow(item: grabbed, top: 3 * Self.pitch)
@@ -94,6 +97,72 @@ struct QueueDragCoordinatorTests {
         coordinator.settled()
         #expect(coordinator.floatingRow(in: .manual) == nil)
         #expect(coordinator.floatingEntryId(in: .manual) == nil)
+    }
+
+    private static let heldMove = QueueRowMove(from: 1, to: 3, count: 5)
+
+    /// A held reorder ends when the lane's read reaches the version core
+    /// answered the move with, and not on a change before it: another write
+    /// to the lane moving its version on doesn't put the old order back.
+    @Test("a held reorder waits for the version its move made")
+    func holdWaitsForTheMovesVersion() {
+        let coordinator = QueueDragCoordinator()
+        coordinator.laneRead(.manual, version: 4)
+        let commit = coordinator.hold(Self.heldMove, lane: .manual)
+
+        coordinator.laneRead(.manual, version: 5)
+        #expect(
+            coordinator.displayMove(for: .manual, count: 5) == Self.heldMove,
+            "a change before core's answer keeps the move on screen"
+        )
+        coordinator.reorderAnswered(.manual, commit: commit, version: 6)
+        #expect(
+            coordinator.displayMove(for: .manual, count: 5) == Self.heldMove
+        )
+        coordinator.laneRead(.manual, version: 6)
+        #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
+    }
+
+    /// The read can show the move before core's answer reaches the screen;
+    /// the answer then ends the hold at once.
+    @Test("an answer the read already shows ends the hold")
+    func answerAlreadyShownEndsTheHold() {
+        let coordinator = QueueDragCoordinator()
+        let commit = coordinator.hold(Self.heldMove, lane: .context)
+        coordinator.laneRead(.context, version: 9)
+        #expect(
+            coordinator.displayMove(for: .context, count: 5) == Self.heldMove
+        )
+
+        coordinator.reorderAnswered(.context, commit: commit, version: 9)
+        #expect(coordinator.displayMove(for: .context, count: 5) == nil)
+    }
+
+    /// A reorder core refused, or that failed, never stays on screen: the
+    /// lane shows its read at once.
+    @Test("a failed reorder shows the lane's read at once")
+    func failedReorderEndsTheHold() {
+        let coordinator = QueueDragCoordinator()
+        coordinator.laneRead(.manual, version: 2)
+        let commit = coordinator.hold(Self.heldMove, lane: .manual)
+
+        coordinator.reorderFailed(.manual, commit: commit)
+        #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
+    }
+
+    /// Two drops in a row: the first's answer is for a move the second
+    /// replaced, so it leaves the second held.
+    @Test("an earlier reorder's answer leaves a later hold")
+    func earlierAnswerLeavesALaterHold() {
+        let coordinator = QueueDragCoordinator()
+        coordinator.laneRead(.manual, version: 3)
+        let first = coordinator.hold(Self.heldMove, lane: .manual)
+        let later = QueueRowMove(from: 0, to: 2, count: 5)
+        coordinator.hold(later, lane: .manual)
+
+        coordinator.reorderAnswered(.manual, commit: first, version: 3)
+        coordinator.reorderFailed(.manual, commit: first)
+        #expect(coordinator.displayMove(for: .manual, count: 5) == later)
     }
 
     /// A context row released over the manual lane lands there when the

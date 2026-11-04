@@ -233,6 +233,7 @@ class OpenLibrary internal constructor(
                     context = value.context,
                     hasNext = value.hasNext,
                     hasPrevious = value.hasPrevious,
+                    manualVersion = value.manualVersion,
                 )
             },
             onError = { error -> subscriptionFailed("queue", error)?.let(playback.readFailures::failQueue) },

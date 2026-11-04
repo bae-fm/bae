@@ -252,7 +252,9 @@ pub(super) fn fill_on(
 
     // Up Next empties and the context lane is replaced, with what it plays
     // from written below.
-    sql.execute("DELETE FROM playback_manual", [])?;
+    if sql.execute("DELETE FROM playback_manual", [])? > 0 {
+        sql.execute(super::queue::MANUAL_CHANGED, [])?;
+    }
     sql.execute("DELETE FROM playback_context", [])?;
     let play_order = if shuffled { "random()" } else { "unshuffled" };
     // The lane's entries are numbered on from the next free entry number, in
@@ -294,7 +296,8 @@ pub(super) fn fill_on(
     let (source_kind, source_release_id) = source.to_columns();
     sql.execute(
         "UPDATE playback_queue \
-         SET source_kind = ?, source_release_id = ?, shuffled = ?, cursor = ?, next_entry = ?",
+         SET source_kind = ?, source_release_id = ?, shuffled = ?, cursor = ?, next_entry = ?, \
+             context_version = context_version + 1",
         params![source_kind, source_release_id, shuffled, cursor, base + track_count as i64],
     )?;
     let (current, _) = sql.query_row(

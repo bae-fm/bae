@@ -218,14 +218,15 @@ class BaeCorePlayer(
     private var manualEntries: List<BridgeQueueEntry> = emptyList()
     private var contextLane: ContextLane? = null
 
-    /** Counts the queue values taken, and the upcoming values that answered a change to the queue. */
-    private var manualChanges: ULong = 0u
-    private var contextChanges: ULong = 0u
+    /** Each lane's version as core's reads last carried it: Up Next's from the queue value, the
+     *  context lane's from the upcoming read. */
+    private var manualVersion: ULong = 0u
+    private var contextVersion: ULong = 0u
 
     /** The read of the context's tail; the queue shows its failure and retries it. */
     internal val upcoming =
-        QueueUpcomingWindows(queueUpcomingSource, scope) { queueChanged ->
-            if (queueChanged) contextChanges++
+        QueueUpcomingWindows(queueUpcomingSource, scope) { version ->
+            contextVersion = version
             entries = playlistEntries()
             publish()
         }
@@ -496,10 +497,11 @@ class BaeCorePlayer(
         context: BridgePlaybackContext?,
         hasNext: Boolean,
         hasPrevious: Boolean,
+        manualVersion: ULong,
     ) {
         readFailures.queueArrived()
         manualEntries = manual
-        manualChanges++
+        this.manualVersion = manualVersion
         contextLane = context?.let { ContextLane(kind = it.kind, shuffled = it.shuffled) }
         if (contextLane == null) {
             upcoming.close()
@@ -564,8 +566,8 @@ class BaeCorePlayer(
                             upcoming = upcoming.entries(),
                         )
                     },
-                manualChanges = manualChanges,
-                contextChanges = contextChanges,
+                manualVersion = manualVersion,
+                contextVersion = contextVersion,
             )
     }
 

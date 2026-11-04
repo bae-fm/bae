@@ -276,7 +276,7 @@ async fn test_reorder_forward() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap());
+    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap().is_some());
     assert_eq!(f.upcoming().await, names(&["b", "a", "c", "d"]));
 }
 
@@ -326,7 +326,7 @@ async fn test_reorder_before_self_is_noop() {
 async fn test_reorder_unknown_source_is_noop() {
     let mut f = release(&["a", "b"]).await;
     f.add(&["a", "b"]).await;
-    assert!(!f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap());
+    assert!(f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap().is_none());
     assert_eq!(f.upcoming().await, names(&["a", "b"]));
 }
 
@@ -451,7 +451,7 @@ async fn test_reorder_cross_lane_is_noop() {
     f.add(&["m1"]).await;
     let manual = f.manual_ids().await[0].clone();
     let context = f.entry("t2").await;
-    assert!(!f.queue.reorder(manual, Some(context)).await.unwrap());
+    assert!(f.queue.reorder(manual, Some(context)).await.unwrap().is_none());
     assert_eq!(f.upcoming().await, names(&["m1", "t2"]));
 }
 
@@ -652,4 +652,52 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     f.queue.clear_playing_from().await.unwrap();
     upcoming_until!(0);
     value_until!(|read: &crate::ResolvedQueueSnapshot| read.context.is_none());
+}
+
+/// Up Next's version and the context lane's, as the queue screens read them.
+async fn versions(f: &Fixture) -> (u64, u64) {
+    (f.value().await.manual_version, crate::tables::queue_context_version(&f.db).await.unwrap())
+}
+
+/// Each lane's version counts the writes that change that lane, and only
+/// those: Up Next's entries put in, taken out or moved; the context lane's
+/// tracks after the playing one put in, taken out or moved, or which one
+/// plays. A reorder answers the version its move made.
+#[tokio::test]
+async fn each_lanes_version_counts_the_writes_that_change_it() {
+    let mut f = release_and_manual(&["t1", "t2", "t3", "t4"], &["m1", "m2", "m3"]).await;
+    assert_eq!(versions(&f).await, (0, 0));
+
+    f.play_from("t1").await;
+    assert_eq!(versions(&f).await, (0, 1), "a play fills the context lane");
+    f.add(&["m1", "m2", "m3"]).await;
+    assert_eq!(versions(&f).await, (1, 1), "an addition changes Up Next alone");
+
+    let manual = f.manual_ids().await;
+    let moved = f.queue.reorder(manual[2].clone(), Some(manual[0].clone())).await.unwrap();
+    assert_eq!(moved, Some(2), "a reorder answers the version it made");
+    assert_eq!(versions(&f).await, (2, 1));
+
+    let (t2, t4) = (f.entry("t2").await, f.entry("t4").await);
+    let moved = f.queue.reorder(t4, Some(t2)).await.unwrap();
+    assert_eq!(moved, Some(2), "a context move counts on the context lane");
+    assert_eq!(versions(&f).await, (2, 2));
+
+    assert_eq!(
+        f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap(),
+        None,
+        "a refused reorder moves nothing"
+    );
+    assert_eq!(versions(&f).await, (2, 2), "and counts nothing");
+
+    f.next().await;
+    assert_eq!(versions(&f).await, (3, 2), "playing on takes Up Next's first entry");
+    f.queue.clear_up_next().await.unwrap();
+    assert_eq!(versions(&f).await, (4, 2));
+    f.queue.clear_up_next().await.unwrap();
+    assert_eq!(versions(&f).await, (4, 2), "clearing an empty Up Next changes nothing");
+    f.next().await;
+    assert_eq!(versions(&f).await, (4, 3), "playing on in the context lane moves its cursor");
+    f.queue.set_repeat_mode(RepeatMode::Off).await.unwrap();
+    assert_eq!(versions(&f).await, (4, 3), "the repeat mode is no lane's");
 }

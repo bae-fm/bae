@@ -50,7 +50,7 @@ impl PlaybackService {
         match self.playback_queue.next_entry().await {
             Ok(next) => next,
             Err(e) => {
-                self.queue_failed("move the queue on", e);
+                self.queue_failed("move the queue on", &e);
                 NextEntry::Stop
             }
         }
@@ -61,7 +61,7 @@ impl PlaybackService {
             return;
         }
         if let Err(e) = self.playback_queue.set_repeat_mode(mode).await {
-            self.queue_failed("set the repeat mode", e);
+            self.queue_failed("set the repeat mode", &e);
             return;
         }
         self.persist_playback_state().await;

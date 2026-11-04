@@ -41,7 +41,7 @@ class PlaybackReadFailureTest {
         player.readFailures.failQueue(failure)
         assertEquals(failure, player.readFailures.queue.value)
 
-        player.onQueueValue(manual = emptyList(), context = null, hasNext = false, hasPrevious = false)
+        player.onQueueValue(manual = emptyList(), context = null, hasNext = false, hasPrevious = false, manualVersion = 1u)
         assertNull(player.readFailures.queue.value)
     }
 

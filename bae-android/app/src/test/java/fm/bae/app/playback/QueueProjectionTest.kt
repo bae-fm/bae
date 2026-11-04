@@ -64,6 +64,7 @@ class QueueProjectionTest {
             context = null,
             hasNext = true,
             hasPrevious = false,
+            manualVersion = 1u,
         )
 
         assertEquals(listOf(entry("a"), entry("b")), player.queue.value.manual)
@@ -85,6 +86,7 @@ class QueueProjectionTest {
                 ),
             hasNext = true,
             hasPrevious = false,
+            manualVersion = 1u,
         )
 
         feed.deliver(total = 2, read = listOf(entry("c1"), entry("c2")))
@@ -112,6 +114,7 @@ class QueueProjectionTest {
                 ),
             hasNext = true,
             hasPrevious = false,
+            manualVersion = 1u,
         )
 
         val context = player.queue.value.context
@@ -132,6 +135,7 @@ class QueueProjectionTest {
                 ),
             hasNext = true,
             hasPrevious = false,
+            manualVersion = 1u,
         )
 
         val context = player.queue.value.context
@@ -151,6 +155,7 @@ class QueueProjectionTest {
                 ),
             hasNext = true,
             hasPrevious = false,
+            manualVersion = 1u,
         )
 
         player.onQueueValue(
@@ -158,11 +163,12 @@ class QueueProjectionTest {
             context = null,
             hasNext = false,
             hasPrevious = false,
+            manualVersion = 2u,
         )
 
         assertEquals(emptyList<BridgeQueueEntry>(), player.queue.value.manual)
         assertNull(player.queue.value.context)
-        assertEquals("each queue value is a change to the manual lane", 2uL, player.queue.value.manualChanges)
+        assertEquals("Up Next's version is the one core's value carries", 2uL, player.queue.value.manualVersion)
     }
 
     private fun player(feed: UpcomingFeed = UpcomingFeed()): BaeCorePlayer {

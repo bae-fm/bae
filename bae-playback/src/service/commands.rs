@@ -149,24 +149,36 @@ impl PlaybackService {
                     // The id named no queued entry — a stale UI action against a
                     // queue that already moved on.
                     Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                    Err(e) => self.queue_failed("remove a queue entry", e),
+                    Err(e) => self.queue_failed("remove a queue entry", &e),
                 }
             }
-            PlaybackCommand::ReorderQueue { entry_id, before } => {
-                match self.playback_queue.reorder(entry_id, before).await {
-                    Ok(true) => self.on_queue_mutated().await,
-                    Ok(false) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                    Err(e) => self.queue_failed("reorder the queue", e),
+            PlaybackCommand::ReorderQueue { entry_id, before, reply } => {
+                let moved = match self.playback_queue.reorder(entry_id, before).await {
+                    Ok(Some(version)) => {
+                        self.on_queue_mutated().await;
+                        Ok(version)
+                    }
+                    Ok(None) => {
+                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
+                        Err(super::api::ReorderError::QueueChanged)
+                    }
+                    Err(e) => {
+                        self.queue_failed("reorder the queue", &e);
+                        Err(super::api::ReorderError::Queue(e))
+                    }
+                };
+                if reply.send(moved).is_err() {
+                    debug!("a reorder answered a caller that stopped waiting");
                 }
             }
             PlaybackCommand::ClearUpNext => match self.playback_queue.clear_up_next().await {
                 Ok(()) => self.on_queue_mutated().await,
-                Err(e) => self.queue_failed("clear Up Next", e),
+                Err(e) => self.queue_failed("clear Up Next", &e),
             },
             PlaybackCommand::ClearPlayingFrom => {
                 match self.playback_queue.clear_playing_from().await {
                     Ok(()) => self.on_queue_mutated().await,
-                    Err(e) => self.queue_failed("clear the context lane", e),
+                    Err(e) => self.queue_failed("clear the context lane", &e),
                 }
             }
             PlaybackCommand::SetRepeatMode(mode) => {
@@ -177,7 +189,7 @@ impl PlaybackService {
                 // staged side-pause reconcile like any queue mutation.
                 match self.playback_queue.set_shuffle(on).await {
                     Ok(()) => self.on_queue_mutated().await,
-                    Err(e) => self.queue_failed("shuffle the queue", e),
+                    Err(e) => self.queue_failed("shuffle the queue", &e),
                 }
             }
             PlaybackCommand::ReevaluateSidePauseStaging => {
@@ -200,7 +212,7 @@ impl PlaybackService {
                     }
                     // The id named no queued entry — a stale UI action.
                     Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                    Err(e) => self.queue_failed("skip to a queue entry", e),
+                    Err(e) => self.queue_failed("skip to a queue entry", &e),
                 }
             }
             PlaybackCommand::PreviewPlay(target) => {

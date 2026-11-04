@@ -52,12 +52,13 @@ data class QueueContext(
 }
 
 /** The queue as two sections: tracks added by hand ([manual]) and the [context] played from, or
- *  null when there is none. [manualChanges] and [contextChanges] count core's changes to each. */
+ *  null when there is none. [manualVersion] and [contextVersion] are core's versions of each: how
+ *  many writes have changed that lane, as its read last carried them. */
 data class QueueProjection(
     val manual: List<BridgeQueueEntry>,
     val context: QueueContext?,
-    val manualChanges: ULong = 0u,
-    val contextChanges: ULong = 0u,
+    val manualVersion: ULong = 0u,
+    val contextVersion: ULong = 0u,
 ) {
     companion object {
         val EMPTY = QueueProjection(manual = emptyList(), context = null)

@@ -271,6 +271,7 @@ forward! { async this => {
         let played = this.services.playback_play_library_shuffled().await?;
         Ok(crate::types::BridgePlayOutcome::from_core(played))
     }
+
 } }
 
 forward! { sync this => {
@@ -372,22 +373,6 @@ forward! { sync this => {
         }
     }
 
-    /// Move the entry `entry_id` to sit immediately before `before_entry_id`.
-    /// `before_entry_id == None` moves it to the end of the queue.
-    fn reorder_entry(entry_id: String, before_entry_id: Option<String>) {
-        let Some(entry_id) = queue_entry_id(&entry_id) else {
-            return;
-        };
-        let before = match before_entry_id {
-            None => None,
-            Some(before) => match queue_entry_id(&before) {
-                Some(before) => Some(before),
-                None => return,
-            },
-        };
-        this.services.playback_reorder_entry(entry_id, before);
-    }
-
     fn clear_up_next() {
         this.services.playback_clear_up_next();
     }
@@ -403,6 +388,40 @@ forward! { sync this => {
     }
 
 } }
+
+#[uniffi::export(async_runtime = "tokio", cancellable)]
+impl AppHandle {
+    /// Move the entry `entry_id` to sit immediately before `before_entry_id`,
+    /// or to the end of its lane without one, and answer the lane's version
+    /// the move made: a screen holding the moved row shows the lane's read
+    /// again once that read reaches it. A refused move fails with
+    /// `QueueChanged`, and the screen shows the lane's read at once.
+    ///
+    /// The move is sent before the call first waits, so moves sent one after
+    /// another, as a drag sends its steps, reach the queue in that order.
+    pub async fn reorder_entry(
+        self: std::sync::Arc<Self>,
+        entry_id: String,
+        before_entry_id: Option<String>,
+    ) -> Result<u64, BridgeError> {
+        let entry_id = parsed_queue_entry_id(&entry_id)?;
+        let before = before_entry_id.as_deref().map(parsed_queue_entry_id).transpose()?;
+        let answer = self.services.playback_reorder_entry(entry_id, before);
+        self.run_exported("AppHandle.reorder_entry", move |_| async move { Ok(answer.await?) })
+            .await
+    }
+}
+
+/// `entry_id` as the queue's id, or why it isn't one the queue hands out: a
+/// bug of the screen that sent it.
+fn parsed_queue_entry_id(entry_id: &str) -> Result<QueueEntryId, BridgeError> {
+    entry_id.parse().map_err(|e| {
+        BridgeError::diagnostic(
+            crate::types::BridgeErrorCategory::Internal,
+            format!("queue entry id {entry_id:?} is not one the queue hands out: {e}"),
+        )
+    })
+}
 
 /// The queue entry a UI names by the id its queue rows carry. Every id the
 /// bridge hands out parses; one that doesn't names no entry, and is logged.

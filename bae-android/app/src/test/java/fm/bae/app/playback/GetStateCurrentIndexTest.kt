@@ -89,7 +89,7 @@ class GetStateCurrentIndexTest {
         player: BaeCorePlayer,
         manual: List<BridgeQueueEntry>,
     ) {
-        player.onQueueValue(manual = manual, context = null, hasNext = true, hasPrevious = false)
+        player.onQueueValue(manual = manual, context = null, hasNext = true, hasPrevious = false, manualVersion = 1u)
         player.applyPlaybackState(
             playingState(
                 trackId = "cur",

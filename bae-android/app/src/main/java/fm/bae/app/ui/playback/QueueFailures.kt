@@ -25,6 +25,7 @@ import fm.bae.app.coreString
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
+import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
 
 private val logger = BaeLogger("bae.QueueFailures")
@@ -39,6 +40,28 @@ internal class QueueFailures(
 ) {
     var command by mutableStateOf<DisplayError?>(null)
         private set
+
+    /**
+     * Run a queue command that answers, as [run] does, and hand back its answer; null when it failed,
+     * which is shown.
+     */
+    suspend fun <T : Any> answer(
+        operation: String,
+        action: suspend () -> T,
+    ): T? =
+        try {
+            action().also { command = null }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: BridgeException) {
+            logger.error("$operation failed", e)
+            command = context.displayError(e)
+            null
+        } catch (e: Exception) {
+            bugs.reportShownInPlace(operation, e)
+            command = DisplayError(context.coreString("core.error.category.internal"))
+            null
+        }
 
     /**
      * Run a queue command; a failure is logged and shown, a success clears the

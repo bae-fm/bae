@@ -155,5 +155,6 @@ mirror_struct! {
         context: (opt crate::types::BridgePlaybackContext),
         has_next,
         has_previous,
+        manual_version,
     },
 }

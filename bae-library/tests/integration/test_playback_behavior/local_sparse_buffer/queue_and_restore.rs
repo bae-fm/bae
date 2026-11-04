@@ -435,7 +435,12 @@ async fn reorder_entry_displaces_preloaded_track_over_sparse_buffer() {
             vec![track1, track2.clone()],
             &track0,
             &track2,
-            |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
+            |h, entries| {
+                let moved = h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone()));
+                let _answered = tokio::spawn(async move {
+                    moved.await.expect("the reorder moves the entry");
+                });
+            },
         )
         .await;
     })

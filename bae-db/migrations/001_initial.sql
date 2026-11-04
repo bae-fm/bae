@@ -2290,14 +2290,23 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     -- two alike in a row. Starting playback with the library zeroes both.
     additions    INTEGER NOT NULL CHECK (additions >= 0),
     added_tracks INTEGER CHECK (added_tracks > 0),
+    -- How many writes have put entries into Up Next, taken them out or moved
+    -- them; and how many have changed the context lane's tracks after its
+    -- playing one: put them in, taken them out, reordered them, or moved
+    -- which track is playing. Each write that does so counts it here, so a
+    -- queue screen holding a row it moved knows when the lane's read shows
+    -- the move, and its rows know when to read again.
+    manual_version  INTEGER NOT NULL CHECK (manual_version >= 0),
+    context_version INTEGER NOT NULL CHECK (context_version >= 0),
     CHECK ((source_kind IS NULL) = (shuffled IS NULL)
         AND (source_kind IS NULL) = (cursor IS NULL)),
     CHECK ((source_kind IS 'release') = (source_release_id IS NOT NULL)),
     CHECK ((additions = 0) = (added_tracks IS NULL))
 ) STRICT;
 
-INSERT OR IGNORE INTO playback_queue (singleton, repeat, next_entry, additions)
-VALUES (1, 'off', 1, 0);
+INSERT OR IGNORE INTO playback_queue (
+    singleton, repeat, next_entry, additions, manual_version, context_version)
+VALUES (1, 'off', 1, 0, 0, 0);
 
 -- Up Next: tracks queued by hand, drained first, in position order. Each is an
 -- entry of its own, so a track queued twice is two rows. Positions are only an
@@ -2337,6 +2346,10 @@ CREATE INDEX IF NOT EXISTS playback_context_track ON playback_context(track_id);
 -- the lane.
 CREATE TRIGGER IF NOT EXISTS tracks_leave_playback_queue AFTER DELETE ON tracks
 BEGIN
+    UPDATE playback_queue SET manual_version = manual_version + 1
+    WHERE EXISTS (SELECT 1 FROM playback_manual WHERE track_id = OLD.id);
+    UPDATE playback_queue SET context_version = context_version + 1
+    WHERE EXISTS (SELECT 1 FROM playback_context WHERE track_id = OLD.id);
     DELETE FROM playback_manual WHERE track_id = OLD.id;
     DELETE FROM playback_context WHERE track_id = OLD.id;
     -- The lane's last track deleted takes what it played from with it.

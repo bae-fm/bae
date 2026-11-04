@@ -42,9 +42,9 @@ struct QueueSection: View {
     /// Whether a loaded row of the lane is the entry of this id: what tells a
     /// collapsed row its removal has landed.
     let holdsEntry: (String) -> Bool
-    /// Restarts in-flight row loads when it changes; fixed at 0 for the manual
-    /// lane, which is always loaded.
-    let loadEpoch: UInt64
+    /// Restarts in-flight row loads when it changes: the context lane's
+    /// version. Fixed at 0 for the manual lane, which is always loaded.
+    let loadVersion: UInt64
     /// Fetch `[offset, offset + limit)` and merge it into the store. `nil` for
     /// the manual lane, which is never windowed.
     let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
@@ -53,14 +53,20 @@ struct QueueSection: View {
     let laneId: QueueLaneID
     /// The shared drag state every row shift is derived from.
     let coordinator: QueueDragCoordinator
-    /// Counts core's changes to this lane; a change drops the held post-commit
-    /// order.
-    let laneChanges: UInt64
+    /// Core's version of this lane, as its read shows it; reaching the version
+    /// a reorder answered with drops the held post-commit order.
+    let laneVersion: UInt64
     /// Empties this lane; offered only while the lane has rows.
     let onClear: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
-    let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
+    /// Move `entryId` before `beforeEntryId`, or to the lane's end, answering
+    /// the lane's version the move made.
+    let onReorder:
+        @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
+            -> UInt64
+    /// Shows why a reorder moved nothing.
+    let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
     /// Sets this lane's shuffle; `nil` on the manual lane, which has none.
     let onSetShuffle: ((Bool) -> Void)?
@@ -144,7 +150,7 @@ struct QueueSection: View {
                         .opacity(isFloating ? 0 : 1)
                         .task(
                             id: QueueRowLoadID(
-                                epoch: loadEpoch,
+                                epoch: loadVersion,
                                 index: slot.sourceIndex
                             )
                         ) {
@@ -214,11 +220,11 @@ struct QueueSection: View {
                     )
                 )
         }
-        // Core applied the change, so the canonical order now matches the held
-        // one and dropping it doesn't snap.
-        .onChange(of: laneChanges) {
-            coordinator.clearHold(laneId)
-            // Drop only ids whose rows are gone: the rows and the change count
+        // The lane's read reached core's version: a held reorder that made it
+        // now matches the canonical order, and dropping it doesn't snap.
+        .onChange(of: laneVersion, initial: true) {
+            coordinator.laneRead(laneId, version: laneVersion)
+            // Drop only ids whose rows are gone: the rows and the version
             // update separately, and a still-present row would jump back open.
             removingEntryIds = removingEntryIds.filter(holdsEntry)
         }
@@ -278,12 +284,39 @@ extension QueueSection {
                 else {
                     return
                 }
-                coordinator.hold(move, lane: lane)
-                onReorder(entryId, beforeEntryId)
+                commitReorder(entryId, before: beforeEntryId, move, lane)
                 return
             }
-            coordinator.hold(move, lane: lane)
-            onReorder(entryId, nil)
+            commitReorder(entryId, before: nil, move, lane)
+        }
+    }
+
+    /// Hold `move` on screen and ask core for it: the hold ends once the
+    /// lane's read shows the version core answers with, or at once, with the
+    /// failure shown, when core moved nothing.
+    private func commitReorder(
+        _ entryId: String,
+        before beforeEntryId: String?,
+        _ move: QueueRowMove,
+        _ lane: QueueLaneID
+    ) {
+        let commit = coordinator.hold(move, lane: lane)
+        let coordinator = coordinator
+        let onReorder = onReorder
+        let onReorderFailed = onReorderFailed
+        Task { @MainActor in
+            do {
+                let version = try await onReorder(entryId, beforeEntryId)
+                coordinator.reorderAnswered(
+                    lane,
+                    commit: commit,
+                    version: version
+                )
+            }
+            catch {
+                coordinator.reorderFailed(lane, commit: commit)
+                onReorderFailed(error)
+            }
         }
     }
 
@@ -500,16 +533,17 @@ extension QueueSection {
                 items.indices.contains(index) ? items[index] : nil
             },
             holdsEntry: { id in items.contains { $0.id == id } },
-            loadEpoch: 0,
+            loadVersion: 0,
             loadRange: nil,
             acceptsExternalDrops: acceptsExternalDrops,
             laneId: laneId,
             coordinator: QueueDragCoordinator(),
-            laneChanges: 1,
+            laneVersion: 1,
             onClear: {},
             onSkipTo: { _ in },
             onRemove: { _ in },
-            onReorder: { _, _ in },
+            onReorder: { _, _ in 1 },
+            onReorderFailed: { _ in },
             onInsertTracks: { _, _ in },
             onSetShuffle: onSetShuffle,
         )

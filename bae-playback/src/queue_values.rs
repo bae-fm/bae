@@ -34,6 +34,10 @@ pub struct ResolvedQueueSnapshot {
     pub context: Option<ResolvedContext>,
     pub has_next: bool,
     pub has_previous: bool,
+    /// How many writes have changed Up Next, as the queue row counts them:
+    /// a screen holding an Up Next row it moved shows the tables' order again
+    /// once this reaches the version its move made.
+    pub manual_version: u64,
 }
 
 /// The last time tracks went into Up Next since playback started with the

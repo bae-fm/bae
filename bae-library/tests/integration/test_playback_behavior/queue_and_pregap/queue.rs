@@ -270,7 +270,12 @@ async fn test_reorder_entry_displaces_preloaded_track() {
             vec![track1, track2.clone()],
             &track0,
             &track2,
-            |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
+            |h, entries| {
+                let moved = h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone()));
+                let _answered = tokio::spawn(async move {
+                    moved.await.expect("the reorder moves the entry");
+                });
+            },
         )
         .await;
     })
@@ -511,6 +516,38 @@ async fn play_tracks_tells_its_caller_which_tracks_it_left_out() {
         assert_eq!(
             value.context.expect("a list context").source,
             bae_playback::ContextSource::Tracks
+        );
+    })
+    .await;
+}
+
+/// A reorder answers the version of Up Next its move made, which the queue's
+/// read then carries, and one naming an entry the queue no longer holds is
+/// told the queue changed, so the screen that held the move shows the
+/// tables' order.
+#[tokio::test]
+async fn a_reorder_answers_its_lanes_version_or_that_the_queue_changed() {
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        let handle = &fixture.playback_handle;
+        handle.add_to_queue(fixture.track_ids[..3].to_vec());
+        let entries = handle.queue_value().await.expect("queue value").manual;
+        assert_eq!(entries.len(), 3);
+        let id = |i: usize| entries[i].entry_id.parse::<bae_playback::QueueEntryId>().unwrap();
+
+        let version = handle.reorder_entry(id(2), Some(id(0))).await.expect("the entry moves");
+        let value = handle.queue_value().await.expect("queue value");
+        assert_eq!(value.manual_version, version, "the read carries the move's version");
+        assert_eq!(value.manual[0].entry_id, entries[2].entry_id);
+
+        let refused = handle
+            .reorder_entry(bae_playback::QueueEntryId::Manual(i64::MAX), Some(id(0)))
+            .await
+            .expect_err("no such entry is queued");
+        assert!(matches!(refused, bae_playback::ReorderError::QueueChanged), "{refused:?}");
+        assert_eq!(
+            handle.queue_value().await.expect("queue value").manual_version,
+            version,
+            "a refused reorder writes nothing"
         );
     })
     .await;

@@ -90,7 +90,8 @@ struct QueueViewControlsTests {
                 onClearPlayingFrom: {},
                 onSkipTo: { _ in },
                 onRemove: { _ in },
-                onReorder: { _, _ in },
+                onReorder: { _, _ in 1 },
+                onReorderFailed: { _ in },
                 onInsertTracks: { _, _ in },
                 onSetShuffle: { _ in }
             )
