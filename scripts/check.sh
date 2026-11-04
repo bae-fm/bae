@@ -229,6 +229,8 @@ check "cargo test (bae-desktop)"       scripts/cargo.sh test -p bae-desktop
 # bae-bridge test above.
 check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
 check "loc english skeleton"           python3 scripts/loc-english-skeleton.py
+check "loc sentence case"              python3 scripts/loc-sentence-case.py
+check "loc sentence case tests"        python3 scripts/tests/loc-sentence-case-test.py
 
 # ── Avalonia skeleton ─────────────────────────────────────────────────────────
 section "Avalonia skeleton"

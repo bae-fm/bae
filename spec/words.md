@@ -12,7 +12,13 @@ Sentence case everywhere: capitalize the first word and proper names only
 buttons, titles of windows, sheets, dialogs and pages, settings rows, field
 labels and notes, on every platform. The one exception is the macOS menu
 bar's menus and items, which use title case as every Mac app's do ("Rename
-Library…", "Open Library"). "bae" itself is always lowercase.
+Library…", "Open Library"). "bae" itself is always lowercase. Each
+translation follows its own language's capitalization: German keeps its
+capitalized nouns, and no language copies English title case.
+scripts/loc-sentence-case.py refuses a capitalized word past a sentence's
+start that is no name, acronym or other label named in the sentence, in the
+macOS, Android and core catalogs, a translation whose every word is
+capitalized, and a menu bar title not in title case.
 
 ## Punctuation
 

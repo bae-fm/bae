@@ -111,7 +111,7 @@ final class CandidateListMenuController: NSObject, NSMenuDelegate {
         items.append(.sectionHeader(title: String(localized: "Folders")))
         items.append(
             ActionMenuItem(
-                title: String(localized: "Add a Folder\u{2026}"),
+                title: String(localized: "Add a folder\u{2026}"),
                 symbol: "plus"
             ) { [weak self] in
                 self?.actions.onAddFolder()

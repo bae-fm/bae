@@ -21370,7 +21370,7 @@
         }
       }
     },
-    "Add a Folder…" : {
+    "Add a folder…" : {
       "comment" : "Watched-folders menu: add a new folder to watch for imports.",
       "localizations" : {
         "ar" : {
@@ -21400,7 +21400,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add a Folder…"
+            "value" : "Add a folder…"
           }
         },
         "de" : {
