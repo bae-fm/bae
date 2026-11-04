@@ -29,7 +29,7 @@ pub(crate) struct FolderReadingCommit {
     /// How the walk read folders nothing was stored for.
     pub(crate) scanned_decisions: Vec<(FolderReleaseDecisionKey, FolderReading)>,
     /// Every entry the folder yields, in the order the walk yielded them.
-    pub(crate) items: Vec<ScanItemToWrite>,
+    pub(crate) items: Vec<FolderEntryToWrite>,
     /// Every directory in the folder with its mtime, or `None` when one could
     /// not be read, which clears the root's record.
     pub(crate) directories: Option<Vec<(PathBuf, i64)>>,
@@ -38,7 +38,7 @@ pub(crate) struct FolderReadingCommit {
 /// What storing one folder's reading did.
 pub(crate) struct FolderReadingWrite {
     /// Each entry, with what its write did, in the order they were written.
-    pub(crate) writes: Vec<(ScanItem, ScanItemWrite)>,
+    pub(crate) writes: Vec<(crate::folder_scanner::FolderEntry, ScanItemWrite)>,
     /// Entries under the folder the new reading no longer yields.
     pub(crate) pruned: Vec<CandidateKey>,
     /// Releases groupings rebuilt without the pruned entries.
@@ -121,7 +121,10 @@ impl ImportTables {
             }
         }
         for item in &items {
-            let coverage = item.item.coverage();
+            let coverage = match item {
+                FolderEntryToWrite::Release(to_write) => to_write.item.coverage(),
+                FolderEntryToWrite::Sidecar(sidecar) => sidecar.coverage(),
+            };
             if !coverage.folder.starts_with(&folder_path) {
                 return Err(DbError::Message(format!(
                     "folder scan entry at {} is outside {}",
@@ -178,7 +181,7 @@ impl ImportTables {
                         observed_at,
                         finding,
                     )?;
-                    writes.push((item.item, write));
+                    writes.push((item.into_entry(), write));
                 }
                 let folder_bytes = coven::path_bytes(&folder_path);
                 let (below_first, below_past) = bae_db::watched_path::paths_below(&folder_path);

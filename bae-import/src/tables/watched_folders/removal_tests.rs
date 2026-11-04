@@ -114,7 +114,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     let left: Vec<crate::CandidateKey> = tables.load_folder_scan_snapshots().await.unwrap()[0]
         .items
         .iter()
-        .filter_map(crate::folder_scanner::ScanItem::persisted_key)
+        .map(crate::folder_scanner::ScanItem::key)
         .collect();
     assert_eq!(left, vec![crate::CandidateKey::grouping("picked")]);
 

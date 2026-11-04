@@ -333,7 +333,11 @@ impl ImportServiceHandle {
             .save_folder_scan_items(
                 &watched_folder,
                 generation,
-                vec![crate::tables::ScanItemToWrite { item, seed, folder_date: None }],
+                vec![crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+                    item,
+                    seed,
+                    folder_date: None,
+                })],
             )
             .await?
             .is_none()

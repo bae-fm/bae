@@ -239,6 +239,21 @@ pub(crate) async fn scan_in(db: &Database, item: ScanItem) -> crate::tables::Sca
         .expect("the scan generation is current")
 }
 
+/// Store `sidecar` under `/music` as a scan stores a folder's sidecar files.
+pub(crate) async fn sidecar_in(
+    db: &Database,
+    sidecar: FolderSidecar,
+) -> crate::tables::ScanItemWrite {
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = host_root("/music");
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables
+        .save_folder_sidecar(&root, generation, &sidecar)
+        .await
+        .unwrap()
+        .expect("the scan generation is current")
+}
+
 /// The relative paths of the files the release at `key` holds, when it can be
 /// imported.
 async fn release_files(db: &Database, key: &crate::CandidateKey) -> Vec<String> {
@@ -257,7 +272,7 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
         scanned(&["Album/Disc 1", "Album/Disc 2", "Album/Disc 3", "Album/Disc 4", "Other/Disc 1"])
             .await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
+    sidecar_in(&db, sidecar_of("Album", &["cover.jpg"])).await;
 
     tables
         .combine_releases(crate::CandidateKey::grouping("discs"), members[..2].to_vec())
@@ -269,8 +284,7 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
         ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
     );
 
-    let write =
-        scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["booklet.pdf", "cover.jpg"]))).await;
+    let write = sidecar_in(&db, sidecar_of("Album", &["booklet.pdf", "cover.jpg"])).await;
     assert_eq!(write.regrouped().unwrap().written.len(), 1);
     assert_eq!(
         release_files(&db, &crate::CandidateKey::grouping("discs")).await,
@@ -315,7 +329,7 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
         }]),
         ..sidecar_of("Album", &[])
     };
-    scan_in(&db, ScanItem::Sidecar(broken)).await;
+    sidecar_in(&db, broken).await;
     let Some(ScanItem::Invalid(invalid)) =
         stored(&db, &crate::CandidateKey::grouping("discs")).await
     else {
@@ -336,7 +350,7 @@ async fn releases_in_one_folder_read_its_files_and_only_one_grouping_does() {
 async fn a_release_reading_the_folders_files_replaces_its_sidecar() {
     let (db, _temp, members) = scanned(&["Album/Disc 1", "Album/Disc 2"]).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
+    sidecar_in(&db, sidecar_of("Album", &["cover.jpg"])).await;
     tables
         .combine_releases(crate::CandidateKey::grouping("discs"), members.clone())
         .await
@@ -356,7 +370,7 @@ async fn a_release_reading_the_folders_files_replaces_its_sidecar() {
         ["Disc 1/01.flac", "Disc 2/01.flac"]
     );
 
-    let write = scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
+    let write = sidecar_in(&db, sidecar_of("Album", &["cover.jpg"])).await;
     assert_eq!(write.superseded_keys(), [album.key()]);
     assert_eq!(
         release_files(&db, &crate::CandidateKey::grouping("discs")).await,
@@ -392,7 +406,7 @@ async fn a_grouping_that_comes_to_read_taken_files_waits_for_them() {
         scanned(&["Album/Disc 1", "Album/Disc 2", "Album/Disc 3/Audio", "Album/Disc 4/Audio"])
             .await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
+    sidecar_in(&db, sidecar_of("Album", &["cover.jpg"])).await;
     tables
         .combine_releases(crate::CandidateKey::grouping("first"), members[..2].to_vec())
         .await
@@ -461,7 +475,7 @@ async fn groupings_contend_only_for_files_that_are_there() {
         .unwrap()
         .unwrap();
 
-    let write = scan_in(&db, ScanItem::Sidecar(sidecar_of("Box", &["cover.jpg"]))).await;
+    let write = sidecar_in(&db, sidecar_of("Box", &["cover.jpg"])).await;
     assert!(write.regrouped().unwrap().written.is_empty());
     for key in [crate::CandidateKey::grouping("first"), crate::CandidateKey::grouping("second")] {
         let error = tables
@@ -492,14 +506,8 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
         .await
         .unwrap()
         .unwrap();
-    scan_in(
-        &db,
-        ScanItem::Sidecar(FolderSidecar {
-            files: SidecarFiles::Downloading,
-            ..sidecar_of("Album", &[])
-        }),
-    )
-    .await;
+    sidecar_in(&db, FolderSidecar { files: SidecarFiles::Downloading, ..sidecar_of("Album", &[]) })
+        .await;
     let error = tables
         .load_release_candidate(&crate::CandidateKey::grouping("discs"))
         .await
@@ -507,7 +515,7 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
         .expect_err("the album's files are not known yet");
     assert_eq!(error, GroupingBlock::FolderFilesDownloading { folder: "Album".into() });
 
-    scan_in(&db, ScanItem::Sidecar(sidecar_of("Album", &["cover.jpg"]))).await;
+    sidecar_in(&db, sidecar_of("Album", &["cover.jpg"])).await;
     assert_eq!(
         release_files(&db, &crate::CandidateKey::grouping("discs")).await,
         ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]

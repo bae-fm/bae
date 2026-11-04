@@ -151,9 +151,6 @@ pub(super) fn insert_item(
         ScanItem::Invalid(candidate) => {
             insert_invalid(sql, watched_folder_path, generation, source_kind, candidate)
         }
-        ScanItem::Sidecar(_) => Err(DbError::Message(
-            "a folder's sidecar files are stored as a sidecar, not as a scan entry".to_string(),
-        )),
     }
 }
 

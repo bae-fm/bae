@@ -145,7 +145,7 @@ fn item_was_read_for(
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
             snapshot.was_read_from(candidate.files.audio())
         }
-        ScanItem::Invalid(_) | ScanItem::Sidecar(_) => false,
+        ScanItem::Invalid(_) => false,
     }
 }
 
@@ -222,8 +222,8 @@ impl ImportTables {
         &self,
         watched_folder_path: &Path,
         generation: u64,
-        items: Vec<ScanItemToWrite>,
-    ) -> Result<Option<Vec<(ScanItem, ScanItemWrite)>>, DbError> {
+        items: Vec<FolderEntryToWrite>,
+    ) -> Result<Option<Vec<(crate::folder_scanner::FolderEntry, ScanItemWrite)>>, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
         let observed_at =
@@ -244,14 +244,14 @@ impl ImportTables {
                         observed_at,
                         Finding::FirstRead,
                     )?;
-                    writes.push((to_write.item, write));
+                    writes.push((to_write.into_entry(), write));
                 }
                 Ok(Some(writes))
             })
             .await
     }
 
-    /// Store one scan result with no seed and no folder date, as the scan's
+    /// Store one release entry with no seed and no folder date, as the scan's
     /// batched write stores it.
     #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn save_folder_scan_item(
@@ -260,18 +260,45 @@ impl ImportTables {
         generation: u64,
         item: &ScanItem,
     ) -> Result<Option<ScanItemWrite>, DbError> {
-        let writes = self
-            .save_folder_scan_items(
-                watched_folder_path,
-                generation,
-                vec![ScanItemToWrite {
-                    item: item.clone(),
-                    seed: ScanItemSeed::Tags(None),
-                    folder_date: None,
-                }],
-            )
-            .await?;
-        Ok(writes.map(|mut writes| writes.pop().expect("one item stores one write").1))
+        self.save_one_folder_entry(
+            watched_folder_path,
+            generation,
+            FolderEntryToWrite::Release(ScanItemToWrite {
+                item: item.clone(),
+                seed: ScanItemSeed::Tags(None),
+                folder_date: None,
+            }),
+        )
+        .await
+    }
+
+    /// Store one folder's sidecar files, as the scan's batched write stores
+    /// them.
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
+    pub async fn save_folder_sidecar(
+        &self,
+        watched_folder_path: &Path,
+        generation: u64,
+        sidecar: &crate::folder_scanner::FolderSidecar,
+    ) -> Result<Option<ScanItemWrite>, DbError> {
+        self.save_one_folder_entry(
+            watched_folder_path,
+            generation,
+            FolderEntryToWrite::Sidecar(sidecar.clone()),
+        )
+        .await
+    }
+
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
+    async fn save_one_folder_entry(
+        &self,
+        watched_folder_path: &Path,
+        generation: u64,
+        entry: FolderEntryToWrite,
+    ) -> Result<Option<ScanItemWrite>, DbError> {
+        let writes =
+            self.save_folder_scan_items(watched_folder_path, generation, vec![entry]).await?;
+        Ok(writes.map(|mut writes| writes.pop().expect("one entry stores one write").1))
     }
 
     /// Replace the directories recorded for `watched_folder_path` with those a
@@ -419,7 +446,24 @@ fn superseded_keys(
     )
 }
 
-/// One scan item as a pass hands it to the store.
+/// What a pass hands the store for one folder, in the order the walk
+/// yielded it.
+pub(crate) enum FolderEntryToWrite {
+    Release(ScanItemToWrite),
+    Sidecar(crate::folder_scanner::FolderSidecar),
+}
+
+impl FolderEntryToWrite {
+    /// The entry this writes.
+    pub(crate) fn into_entry(self) -> crate::folder_scanner::FolderEntry {
+        match self {
+            Self::Release(to_write) => crate::folder_scanner::FolderEntry::Release(to_write.item),
+            Self::Sidecar(sidecar) => crate::folder_scanner::FolderEntry::Sidecar(sidecar),
+        }
+    }
+}
+
+/// One release entry as a pass hands it to the store.
 pub(crate) struct ScanItemToWrite {
     pub(crate) item: ScanItem,
     pub(crate) seed: ScanItemSeed,
@@ -445,18 +489,17 @@ fn write_scan_item(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
-    to_write: &ScanItemToWrite,
+    to_write: &FolderEntryToWrite,
     observed_at: i64,
     finding: Finding,
 ) -> Result<ScanItemWrite, DbError> {
-    if let ScanItem::Sidecar(folder_sidecar) = &to_write.item {
-        return sidecar::write_sidecar(sql, watched_folder_path, generation, folder_sidecar);
-    }
-    let Some(entry_key) = to_write.item.persisted_key() else {
-        return Err(DbError::Message(
-            "a folder reading is stored as a decision, not as a scan entry".to_string(),
-        ));
+    let to_write = match to_write {
+        FolderEntryToWrite::Release(to_write) => to_write,
+        FolderEntryToWrite::Sidecar(folder_sidecar) => {
+            return sidecar::write_sidecar(sql, watched_folder_path, generation, folder_sidecar)
+        }
     };
+    let entry_key = to_write.item.key();
     validate_scan_item_ownership(watched_folder_path, &entry_key, &to_write.item)?;
     let EntryWrite::Stored { replaced: superseded_keys, found } = write_entry(
         sql,
@@ -521,11 +564,7 @@ pub(super) fn write_entry(
     source: EntrySource,
 ) -> Result<EntryWrite, DbError> {
     let ScanItemToWrite { item, seed, folder_date } = to_write;
-    let Some(entry_key) = item.persisted_key() else {
-        return Err(DbError::Message(
-            "a folder reading is stored as a decision, not as a scan entry".to_string(),
-        ));
-    };
+    let entry_key = item.key();
     let sources = match source {
         EntrySource::Scanned { .. } => RowSources::Scanned,
         EntrySource::Grouping => RowSources::Any,
@@ -533,11 +572,6 @@ pub(super) fn write_entry(
     let folder = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.as_path(),
         ScanItem::Invalid(candidate) => candidate.path.as_path(),
-        ScanItem::Sidecar(_) => {
-            return Err(DbError::Message(format!(
-                "{entry_key} is not a release, so it is not stored as a scan entry"
-            )))
-        }
     };
     // Only a scan sees a folder. A grouping's release is dated by the folders
     // it takes in, so writing it must not record its folder as found now.
@@ -621,7 +655,7 @@ pub(super) fn write_entry(
         ScanItem::Valid(candidate) | ScanItem::Discovered(candidate) => {
             Some(crate::CandidateFiles::of(candidate))
         }
-        ScanItem::Invalid(_) | ScanItem::Sidecar(_) => None,
+        ScanItem::Invalid(_) => None,
     };
     super::import_state::end_file_work_unless_of_on(sql, &entry_key, held.as_ref())?;
     if let Some(snapshot) = carried {
@@ -667,10 +701,10 @@ pub(super) fn validate_scan_item_ownership(
     entry_key: &CandidateKey,
     item: &ScanItem,
 ) -> Result<(), DbError> {
-    if item.persisted_key().as_ref() != Some(entry_key) {
+    if &item.key() != entry_key {
         return Err(DbError::Message(format!(
-            "folder scan entry key {entry_key} does not match its item key {:?}",
-            item.persisted_key()
+            "folder scan entry key {entry_key} does not match its item key {}",
+            item.key()
         )));
     }
     let root = watched_folder_path;
@@ -682,7 +716,6 @@ pub(super) fn validate_scan_item_ownership(
             candidate.grouping.is_some()
         }
         ScanItem::Invalid(candidate) => candidate.grouping.is_some(),
-        ScanItem::Sidecar(_) => false,
     };
     let (item_root, item_path) = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
@@ -690,9 +723,6 @@ pub(super) fn validate_scan_item_ownership(
         }
         ScanItem::Invalid(candidate) => {
             (candidate.watched_folder_path.as_path(), candidate.path.clone())
-        }
-        ScanItem::Sidecar(sidecar) => {
-            (sidecar.watched_folder_path.as_path(), sidecar.folder.clone())
         }
     };
     if item_root.as_os_str() != watched_folder_path.as_os_str()

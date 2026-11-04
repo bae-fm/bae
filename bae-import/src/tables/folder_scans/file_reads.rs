@@ -30,10 +30,10 @@ impl ImportTables {
                 Ok((items, sidecars, stored_tags))
             })
             .process(move |(items, sidecars, stored_tags)| {
-                let entries: Vec<ScanItem> = items()?
+                let entries: Vec<crate::folder_scanner::FolderEntry> = items()?
                     .into_iter()
-                    .map(|stored| stored.item)
-                    .chain(sidecars.into_iter().map(ScanItem::Sidecar))
+                    .map(|stored| crate::folder_scanner::FolderEntry::Release(stored.item))
+                    .chain(sidecars.into_iter().map(crate::folder_scanner::FolderEntry::Sidecar))
                     .collect();
                 FileReads::stored(&entries, &stored_tags, tags)
                     .map_err(|error| DbError::Message(error.to_string()))

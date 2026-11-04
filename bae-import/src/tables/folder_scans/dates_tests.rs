@@ -40,11 +40,11 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
             .save_folder_scan_items(
                 &root,
                 generation,
-                vec![crate::tables::ScanItemToWrite {
+                vec![crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
                     item: ScanItem::Valid(candidate(&root, name)),
                     seed: crate::tables::ScanItemSeed::Tags(None),
                     folder_date: date,
-                }],
+                })],
             )
             .await
             .unwrap();
@@ -108,11 +108,11 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
         .save_folder_scan_items(
             &root,
             generation,
-            vec![crate::tables::ScanItemToWrite {
+            vec![crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
                 item: ScanItem::Valid(item),
                 seed: crate::tables::ScanItemSeed::Tags(None),
                 folder_date: Some(FolderDate::Created(123)),
-            }],
+            })],
         )
         .await
         .unwrap();

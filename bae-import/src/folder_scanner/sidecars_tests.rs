@@ -12,7 +12,7 @@ fn sidecars(root: &Path, decisions: FolderReleaseDecisions) -> Vec<FolderSidecar
     scan_for_candidates_with_decisions_collect(root.to_path_buf(), decisions)
         .into_iter()
         .filter_map(|item| match item {
-            WalkItem::Entry(ScanItem::Sidecar(sidecar)) => Some(sidecar),
+            WalkItem::Entry(FolderEntry::Sidecar(sidecar)) => Some(sidecar),
             _ => None,
         })
         .collect()
@@ -92,7 +92,9 @@ fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
     let album_release = combined_album
         .iter()
         .find_map(|item| match item {
-            WalkItem::Entry(ScanItem::Valid(candidate)) if candidate.path == album => {
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate)))
+                if candidate.path == album =>
+            {
                 Some(candidate)
             }
             _ => None,
@@ -123,7 +125,9 @@ fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
     let artist_release = items
         .iter()
         .find_map(|item| match item {
-            WalkItem::Entry(ScanItem::Valid(candidate)) if candidate.path == artist => {
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate)))
+                if candidate.path == artist =>
+            {
                 Some(candidate)
             }
             _ => None,
@@ -141,7 +145,7 @@ fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
     let mut folders: Vec<&Path> = items
         .iter()
         .filter_map(|item| match item {
-            WalkItem::Entry(ScanItem::Sidecar(sidecar)) => Some(sidecar.folder.as_path()),
+            WalkItem::Entry(FolderEntry::Sidecar(sidecar)) => Some(sidecar.folder.as_path()),
             _ => None,
         })
         .collect();

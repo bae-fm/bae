@@ -65,7 +65,6 @@ pub(super) async fn change_folder_reading(
             candidate.path.starts_with(&decided)
         }
         ScanItem::Invalid(candidate) => candidate.path.starts_with(&decided),
-        ScanItem::Sidecar(_) => false,
     })))
 }
 
@@ -196,7 +195,12 @@ async fn read_folder_again(
     let mut items = Vec::with_capacity(walked.items.len());
     for item in walked.items {
         let item = match item {
-            crate::folder_scanner::WalkItem::Entry(item) => item,
+            crate::folder_scanner::WalkItem::Entry(FolderEntry::Release(item)) => item,
+            // A folder's sidecar files are no release: no date, no tags.
+            crate::folder_scanner::WalkItem::Entry(FolderEntry::Sidecar(sidecar)) => {
+                items.push(crate::tables::FolderEntryToWrite::Sidecar(sidecar));
+                continue;
+            }
             crate::folder_scanner::WalkItem::Reading { key, decision, grouping } => {
                 scanned_decisions.push((
                     key,
@@ -209,24 +213,7 @@ async fn read_folder_again(
                 continue;
             }
         };
-        let path = match &item {
-            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
-            ScanItem::Invalid(candidate) => candidate.path.clone(),
-            // A folder's sidecar files are no release: no date, no tags.
-            ScanItem::Sidecar(_) => {
-                items.push(crate::tables::ScanItemToWrite {
-                    item,
-                    seed: crate::tables::ScanItemSeed::Tags(None),
-                    folder_date: None,
-                });
-                continue;
-            }
-        };
-        let folder_date = bae_util::task_failure::blocking("read a folder's date", move || {
-            crate::folder_scanner::FolderDate::read(&path)
-        })
-        .await
-        .map_err(|failed| services.diagnostics.bug(failed))??;
+        let folder_date = super::scan_items::folder_date(&item, &services.diagnostics).await?;
         let seed = super::scan_item_seed(
             tables,
             &services.diagnostics,
@@ -235,7 +222,11 @@ async fn read_folder_again(
             reads.clone(),
         )
         .await?;
-        items.push(crate::tables::ScanItemToWrite { item, seed, folder_date });
+        items.push(crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+            item,
+            seed,
+            folder_date,
+        }));
     }
     let prepared_at = started.elapsed();
 
@@ -252,7 +243,11 @@ async fn read_folder_again(
     // The walk read each candidate with the file decisions stored then. One
     // stored since describes files this reading did not settle.
     for to_write in &items {
-        let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = &to_write.item else {
+        let crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+            item: ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
+            ..
+        }) = to_write
+        else {
             continue;
         };
         let edits = tables.load_candidate_file_edits(&candidate.files.content_hash()).await?;
@@ -283,11 +278,11 @@ async fn read_folder_again(
     // write left it.
     let mut stored: Vec<ScanItem> = Vec::new();
     let mut stored_at: HashMap<CandidateKey, usize> = HashMap::new();
-    for (item, _) in &writes {
-        let Some(key) = item.persisted_key() else {
+    for (entry, _) in &writes {
+        let FolderEntry::Release(item) = entry else {
             continue;
         };
-        match stored_at.entry(key) {
+        match stored_at.entry(item.key()) {
             std::collections::hash_map::Entry::Occupied(at) => {
                 stored[*at.get()] = item.clone();
             }
@@ -299,8 +294,8 @@ async fn read_folder_again(
     }
     let changed = writes.iter().filter(|(_, write)| write.changed()).count();
     let unchanged = writes.len() - changed;
-    for (item, write) in writes {
-        announce_scan_write(item, &write, services).await?;
+    for (entry, write) in writes {
+        announce_scan_write(entry, &write, services).await?;
     }
     for candidate_key in &pruned {
         services.event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {

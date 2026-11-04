@@ -75,11 +75,15 @@ fn top_level_folder_of(root: &Path, path: &Path) -> String {
 /// The folder directly under `root` that `item` is read from.
 fn top_level_folder_of_item(root: &Path, item: &WalkItem) -> String {
     match item {
-        WalkItem::Entry(ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) => {
+        WalkItem::Entry(FolderEntry::Release(
+            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
+        )) => top_level_folder_of(root, &candidate.path),
+        WalkItem::Entry(FolderEntry::Release(ScanItem::Invalid(candidate))) => {
             top_level_folder_of(root, &candidate.path)
         }
-        WalkItem::Entry(ScanItem::Invalid(candidate)) => top_level_folder_of(root, &candidate.path),
-        WalkItem::Entry(ScanItem::Sidecar(sidecar)) => top_level_folder_of(root, &sidecar.folder),
+        WalkItem::Entry(FolderEntry::Sidecar(sidecar)) => {
+            top_level_folder_of(root, &sidecar.folder)
+        }
         WalkItem::Reading { key, .. } => key
             .relative_folder
             .text()
@@ -219,7 +223,9 @@ fn a_pass_reads_folders_at_once_and_says_what_each_says_on_its_own() {
     let root_items: Vec<&WalkItem> =
         said.items.iter().filter(|item| top_level_folder_of_item(&root, item).is_empty()).collect();
     assert_eq!(root_items.len(), 1);
-    let Some(WalkItem::Entry(ScanItem::Valid(root_release))) = said.items.last() else {
+    let Some(WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(root_release)))) =
+        said.items.last()
+    else {
         panic!("the root's own release is said last: {:?}", said.items.last());
     };
     assert_eq!(root_release.path, root);
@@ -382,10 +388,10 @@ fn cancelling_a_pass_stops_every_folder_it_is_reading() {
     assert!(matches!(result, Err(FolderScanError::Cancelled)), "{result:?}");
     // The cancelled folder's walk reads none of its files into a release.
     assert!(
-        !said
-            .items
-            .iter()
-            .any(|item| matches!(item, WalkItem::Entry(ScanItem::Valid(_) | ScanItem::Invalid(_)))),
+        !said.items.iter().any(|item| matches!(
+            item,
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(_) | ScanItem::Invalid(_)))
+        )),
         "{:?}",
         said.items
     );
@@ -526,7 +532,9 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
         };
         assert_eq!(items(&dated), items(&by_name), "the items of {folder:?}");
     }
-    let Some(WalkItem::Entry(ScanItem::Valid(root_release))) = dated.items.last() else {
+    let Some(WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(root_release)))) =
+        dated.items.last()
+    else {
         panic!("the root's own release is said last: {:?}", dated.items.last());
     };
     assert_eq!(

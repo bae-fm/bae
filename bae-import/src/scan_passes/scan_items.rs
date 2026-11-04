@@ -10,7 +10,7 @@ struct PersistedScanItems {
     commit: crate::FolderStateCommitGuard,
     /// Each item with what its write changed, in the order they were written;
     /// rows a write left as they were are not announced.
-    writes: Vec<(ScanItem, crate::tables::ScanItemWrite)>,
+    writes: Vec<(FolderEntry, crate::tables::ScanItemWrite)>,
 }
 
 /// Store `items` in one write, in the order the walk yielded them, each
@@ -19,15 +19,19 @@ struct PersistedScanItems {
 async fn persist_scan_items(
     root: &Path,
     generation: u64,
-    items: Vec<ScanItem>,
+    items: Vec<FolderEntry>,
     reads: &Arc<crate::folder_scanner::FileReads>,
     services: &crate::ImportServices,
 ) -> Result<Option<PersistedScanItems>, crate::ImportError> {
     let tables = &services.tables;
     let mut dated = Vec::with_capacity(items.len());
-    for item in items {
-        let folder_date = folder_date(&item, &services.diagnostics).await?;
-        dated.push((item, folder_date));
+    for entry in items {
+        // A folder's sidecar files are no release: no date, no tags.
+        let folder_date = match &entry {
+            FolderEntry::Release(item) => folder_date(item, &services.diagnostics).await?,
+            FolderEntry::Sidecar(_) => None,
+        };
+        dated.push((entry, folder_date));
     }
     loop {
         // Each item as the file decisions stored right now describe it, and
@@ -35,13 +39,25 @@ async fn persist_scan_items(
         // reading a folder's tags off a network share takes as long as the
         // share does, and every pane control waits on this lock.
         let mut prepared = Vec::with_capacity(dated.len());
-        for (item, folder_date) in &dated {
+        for (entry, folder_date) in &dated {
+            let item = match entry {
+                FolderEntry::Release(item) => item,
+                FolderEntry::Sidecar(sidecar) => {
+                    prepared
+                        .push((crate::tables::FolderEntryToWrite::Sidecar(sidecar.clone()), None));
+                    continue;
+                }
+            };
             let (item, edits_read) = with_stored_file_edits(item, tables).await?;
             let seed =
                 scan_item_seed(tables, &services.diagnostics, &item, generation, reads.clone())
                     .await?;
             prepared.push((
-                crate::tables::ScanItemToWrite { item, seed, folder_date: *folder_date },
+                crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+                    item,
+                    seed,
+                    folder_date: *folder_date,
+                }),
                 edits_read,
             ));
         }
@@ -71,16 +87,14 @@ async fn persist_scan_items(
     }
 }
 
-/// The date of the folder `item` was read from; `None` for a folder's
-/// sidecar files, which are no release.
-async fn folder_date(
+/// The date of the folder `item` was read from.
+pub(super) async fn folder_date(
     item: &ScanItem,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<crate::folder_scanner::FolderDate>, crate::ImportError> {
     let path = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
         ScanItem::Invalid(candidate) => candidate.path.clone(),
-        ScanItem::Sidecar(_) => return Ok(None),
     };
     bae_util::task_failure::blocking("read a folder's date", move || {
         crate::folder_scanner::FolderDate::read(&path)
@@ -109,10 +123,12 @@ async fn with_stored_file_edits(
     Ok((item, Some((content_hash, revision))))
 }
 
-/// Announce what one stored scan item changed: the entries it displaced,
-/// then the item itself. An unchanged row is announced to nobody.
+/// Announce what one stored entry changed: the entries it displaced, then
+/// the release it is. A folder's sidecar files are no row of the list; what
+/// their write displaced and rebuilt is announced on its own. An unchanged
+/// row is announced to nobody.
 pub(super) async fn announce_scan_write(
-    item: ScanItem,
+    entry: FolderEntry,
     write: &crate::tables::ScanItemWrite,
     services: &crate::ImportServices,
 ) -> Result<(), crate::ImportError> {
@@ -125,7 +141,9 @@ pub(super) async fn announce_scan_write(
             candidate_key: candidate_key.clone(),
         }));
     }
-    announce_item(item, write.found(), services).await?;
+    if let FolderEntry::Release(item) = entry {
+        announce_item(item, write.found(), services).await?;
+    }
     if let Some(regrouped) = write.regrouped() {
         announce_regrouped(regrouped, services).await?;
     }
@@ -143,7 +161,7 @@ pub(super) async fn announce_regrouped(
         }));
     }
     for item in &regrouped.written {
-        let found = item.persisted_key().is_some_and(|key| regrouped.found.contains(&key));
+        let found = regrouped.found.contains(&item.key());
         announce_item(item.clone(), found, services).await?;
     }
     Ok(())
@@ -174,9 +192,6 @@ async fn announce_item(
         ScanItem::Invalid(candidate) => {
             event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)));
         }
-        // A folder's sidecar files are no row of the list; what their
-        // write displaced and rebuilt is announced on its own.
-        ScanItem::Sidecar(_) => {}
     }
     Ok(())
 }
@@ -187,7 +202,7 @@ async fn announce_item(
 pub(super) async fn store_scan_items(
     root: &Path,
     generation: u64,
-    items: Vec<ScanItem>,
+    items: Vec<FolderEntry>,
     reads: &Arc<crate::folder_scanner::FileReads>,
     services: &crate::ImportServices,
     written_keys: &mut Vec<bae_db::RelativeFolder>,
@@ -201,15 +216,15 @@ pub(super) async fn store_scan_items(
     else {
         return Ok(false);
     };
-    for (item, write) in writes {
+    for (entry, write) in writes {
         if !write.changed() {
             continue;
         }
         displaced_keys.extend(write.superseded_keys().iter().cloned());
-        if let Some(relative_folder) = item.relative_folder() {
-            written_keys.push(relative_folder.clone());
+        if let FolderEntry::Release(item) = &entry {
+            written_keys.push(item.relative_folder().clone());
         }
-        announce_scan_write(item, &write, services).await?;
+        announce_scan_write(entry, &write, services).await?;
     }
     Ok(true)
 }
@@ -301,7 +316,11 @@ pub async fn store_scan_item(
         .save_folder_scan_items(
             watched_folder_path,
             generation,
-            vec![crate::tables::ScanItemToWrite { item: item.clone(), seed, folder_date: None }],
+            vec![crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+                item: item.clone(),
+                seed,
+                folder_date: None,
+            })],
         )
         .await?;
     Ok(writes.map(|mut writes| writes.pop().expect("one item stores one write").1))

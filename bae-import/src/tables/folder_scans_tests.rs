@@ -134,10 +134,12 @@ pub(crate) async fn commit_reading_under(
             scanned_decisions: Vec::new(),
             items: items
                 .into_iter()
-                .map(|item| crate::tables::ScanItemToWrite {
-                    item,
-                    seed: crate::tables::ScanItemSeed::Tags(None),
-                    folder_date: None,
+                .map(|item| {
+                    crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
+                        item,
+                        seed: crate::tables::ScanItemSeed::Tags(None),
+                        folder_date: None,
+                    })
                 })
                 .collect(),
             directories: Some(Vec::new()),
@@ -211,7 +213,7 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     assert!(tables.finish_folder_scan(root, generation, None).await.unwrap().is_some());
     let complete = tables.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(complete[0].items.len(), 1);
-    assert_eq!(complete[0].items[0].persisted_key(), second.persisted_key());
+    assert_eq!(complete[0].items[0].key(), second.key());
     assert_eq!(complete[0].status, crate::FolderScanStatus::Complete);
 
     assert!(
@@ -237,7 +239,7 @@ async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_th
     let snapshot = tables.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(snapshot.len(), 1);
     assert_eq!(snapshot[0].items.len(), 1);
-    assert_eq!(snapshot[0].items[0].persisted_key(), existing.persisted_key());
+    assert_eq!(snapshot[0].items[0].key(), existing.key());
 }
 
 /// An entry whose generation is ahead of its root's was written by nothing
@@ -726,7 +728,7 @@ pub(crate) async fn stored_keys(db: &Database, root: &std::path::Path) -> Vec<cr
         .await
         .unwrap()
         .iter()
-        .filter_map(crate::folder_scanner::ScanItem::persisted_key)
+        .map(crate::folder_scanner::ScanItem::key)
         .collect();
     keys.sort();
     keys

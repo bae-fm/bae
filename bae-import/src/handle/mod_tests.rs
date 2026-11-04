@@ -341,11 +341,11 @@ pub(super) async fn rescan_unread_into(
 ) {
     let root = candidate.watched_folder_path.clone();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    let unread = crate::tables::ScanItemToWrite {
+    let unread = crate::tables::FolderEntryToWrite::Release(crate::tables::ScanItemToWrite {
         item: crate::folder_scanner::ScanItem::Valid(candidate),
         seed: crate::tables::ScanItemSeed::Tags(None),
         folder_date: None,
-    };
+    });
     tables.save_folder_scan_items(&root, generation, vec![unread]).await.unwrap();
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
 }

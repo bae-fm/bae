@@ -125,7 +125,7 @@ impl DecisionFixture {
             .await
             .unwrap()
             .iter()
-            .filter_map(|item| item.relative_folder().map(bae_db::RelativeFolder::text))
+            .map(|item| item.relative_folder().text())
             .collect();
         paths.sort();
         paths

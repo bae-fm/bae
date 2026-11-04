@@ -217,7 +217,7 @@ impl InvalidCandidate {
 /// folders nothing was stored for.
 #[derive(Debug, Clone, PartialEq)]
 pub enum WalkItem {
-    Entry(ScanItem),
+    Entry(FolderEntry),
     /// The scan read a folder its own way, because nothing was stored for it:
     /// the grouping it proposes at that folder, under the key the scan gave
     /// it. It is stored as the folder's decision, not as a scan entry, before
@@ -230,9 +230,18 @@ pub enum WalkItem {
     },
 }
 
-/// One entry the store keeps for a folder the scan read: a release candidate,
-/// one that looked like a release but failed validation, or the files no
-/// release there owns.
+/// What the store keeps for a folder the scan read: a release entry, or the
+/// files no release there owns. A scan writes them in the order the walk
+/// yielded them, since a release takes its files from a sidecar holding them.
+#[derive(Debug, Clone, PartialEq)]
+pub enum FolderEntry {
+    Release(ScanItem),
+    /// The files under a folder that none of the releases read there owns.
+    Sidecar(FolderSidecar),
+}
+
+/// One release entry the store keeps for a folder the scan read: a release
+/// candidate, or one that looked like a release but failed validation.
 ///
 /// Comparable, because that is how a pass tells what it changed from what it
 /// merely found again: a walk of an untouched folder produces items equal to
@@ -246,8 +255,6 @@ pub enum ScanItem {
     Discovered(FolderCandidate),
     Valid(FolderCandidate),
     Invalid(InvalidCandidate),
-    /// The files under a folder that none of the releases read there owns.
-    Sidecar(FolderSidecar),
 }
 
 /// The files under a folder that none of the releases the scan read there
@@ -290,13 +297,11 @@ pub enum SidecarFiles {
 /// desktop-only.
 #[cfg(desktop)]
 impl ScanItem {
-    /// The key this entry is stored under, or `None` for a folder's sidecar
-    /// files, which are stored with the folder rather than as a release.
-    pub(crate) fn persisted_key(&self) -> Option<CandidateKey> {
+    /// The key this entry is stored and addressed under.
+    pub(crate) fn key(&self) -> CandidateKey {
         match self {
-            Self::Discovered(candidate) | Self::Valid(candidate) => Some(candidate.key()),
-            Self::Invalid(candidate) => Some(candidate.key()),
-            Self::Sidecar(_) => None,
+            Self::Discovered(candidate) | Self::Valid(candidate) => candidate.key(),
+            Self::Invalid(candidate) => candidate.key(),
         }
     }
 
@@ -314,25 +319,25 @@ impl ScanItem {
                 folder: candidate.path.clone(),
                 whole_subtree: candidate.grouping.is_some(),
             },
-            // The folder whose files it holds: what a reading of one folder
-            // checks it stays inside. Which release holds a file is settled
-            // file by file, not by coverage (see the store's sidecar writes).
-            Self::Sidecar(sidecar) => {
-                Coverage { folder: sidecar.folder.clone(), whole_subtree: false }
-            }
         }
     }
 
-    /// The folder below the watched root the list shows this entry as, or
-    /// `None` for a folder's sidecar files, which are no row of the list.
-    pub(crate) fn relative_folder(&self) -> Option<&RelativeFolder> {
+    /// The folder below the watched root the list shows this entry as.
+    pub(crate) fn relative_folder(&self) -> &RelativeFolder {
         match self {
-            Self::Discovered(candidate) | Self::Valid(candidate) => {
-                Some(&candidate.relative_folder)
-            }
-            Self::Invalid(candidate) => Some(&candidate.relative_folder),
-            Self::Sidecar(_) => None,
+            Self::Discovered(candidate) | Self::Valid(candidate) => &candidate.relative_folder,
+            Self::Invalid(candidate) => &candidate.relative_folder,
         }
+    }
+}
+
+#[cfg(desktop)]
+impl FolderSidecar {
+    /// The folder whose files it holds, and nothing below it: what a reading
+    /// of one folder checks it stays inside. Which release holds a file is
+    /// settled file by file, not by coverage (see the store's sidecar writes).
+    pub(crate) fn coverage(&self) -> Coverage {
+        Coverage { folder: self.folder.clone(), whole_subtree: false }
     }
 }
 

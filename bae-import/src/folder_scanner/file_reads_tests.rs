@@ -41,7 +41,10 @@ fn measured(duration_ms: u64) -> ScannedAudio {
 #[test]
 fn stored_rows_that_disagree_about_a_file_fail_the_pass() {
     let error = FileReads::stored(
-        &[stored_release(measured(5_000)), stored_release(measured(6_000))],
+        &[
+            FolderEntry::Release(stored_release(measured(5_000))),
+            FolderEntry::Release(stored_release(measured(6_000))),
+        ],
         &[],
         Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
     )
@@ -49,7 +52,10 @@ fn stored_rows_that_disagree_about_a_file_fail_the_pass() {
     .expect("the rows disagree");
     assert!(error.to_string().contains("/music/Album/01.flac"), "{error}");
     assert!(FileReads::stored(
-        &[stored_release(measured(5_000)), stored_release(measured(5_000))],
+        &[
+            FolderEntry::Release(stored_release(measured(5_000))),
+            FolderEntry::Release(stored_release(measured(5_000))),
+        ],
         &[],
         Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
     )
@@ -100,7 +106,7 @@ fn scan_reading(root: &Path, reads: &FileReads) -> Vec<FolderCandidate> {
         &ScanCancellation::new(),
         |_| {},
         |item| {
-            if let WalkItem::Entry(ScanItem::Valid(candidate)) = item {
+            if let WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate))) = item {
                 releases.insert(candidate.key(), candidate);
             }
         },

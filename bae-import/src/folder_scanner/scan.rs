@@ -469,7 +469,9 @@ where
             &[],
         )? {
             if let ProjectedScanNode::Candidate(candidate) = &node {
-                on_item(WalkItem::Entry(ScanItem::Discovered(candidate.clone())));
+                on_item(WalkItem::Entry(FolderEntry::Release(ScanItem::Discovered(
+                    candidate.clone(),
+                ))));
             }
             nodes.push(node);
             holds_its_own_node = true;
@@ -572,10 +574,10 @@ where
     for node in nodes {
         match node {
             ProjectedScanNode::Candidate(candidate) => {
-                on_item(WalkItem::Entry(ScanItem::Valid(candidate)))
+                on_item(WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate))))
             }
             ProjectedScanNode::Invalid(candidate) => {
-                on_item(WalkItem::Entry(ScanItem::Invalid(candidate)))
+                on_item(WalkItem::Entry(FolderEntry::Release(ScanItem::Invalid(candidate))))
             }
         }
     }
@@ -609,7 +611,7 @@ where
     // Every folder above one of these has been read and none took its files,
     // so they are the folder's to say.
     for loose in std::mem::take(&mut scanned.loose) {
-        on_item(WalkItem::Entry(ScanItem::Sidecar(sidecar_of(&walk.scan, loose)?)));
+        on_item(WalkItem::Entry(FolderEntry::Sidecar(sidecar_of(&walk.scan, loose)?)));
     }
     Ok(scanned)
 }

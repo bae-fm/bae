@@ -22,7 +22,7 @@ mod watched_folders;
 
 pub use folder_scans::{FinishedScan, ScanItemWrite};
 pub(crate) use folder_scans::{
-    FolderReadingCommit, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
+    FolderEntryToWrite, FolderReadingCommit, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
 };
 pub use import_list::SelectionWrite;
 pub use import_state::ImportCommitError;

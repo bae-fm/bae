@@ -9,7 +9,7 @@ use bae_audio::{decode_audio, probe_audio_from_path};
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::cue_flac::parse_cue_sheet;
 use bae_import::folder_scanner::{
-    collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,
+    collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions, FolderEntry,
     FolderReleaseDecisions, ScanItem, StoredCandidateEdits, WalkItem,
 };
 use bae_import::rip_reading::read_rip_artifacts;
@@ -171,11 +171,13 @@ fn scanner_recognizes_cue_alac_pair() {
         &StoredCandidateEdits::none(),
         &FolderReleaseDecisions::default(),
         |item| match item {
-            WalkItem::Entry(ScanItem::Valid(c)) => candidates.push(c),
-            WalkItem::Entry(ScanItem::Invalid(c)) => {
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(c))) => candidates.push(c),
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Invalid(c))) => {
                 panic!("ALAC fixture must scan as a valid release, got invalid: {}", c.reason())
             }
-            WalkItem::Entry(ScanItem::Discovered(_) | ScanItem::Sidecar(_))
+            WalkItem::Entry(
+                FolderEntry::Release(ScanItem::Discovered(_)) | FolderEntry::Sidecar(_),
+            )
             | WalkItem::Reading { .. } => {}
         },
     )

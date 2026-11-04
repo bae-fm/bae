@@ -299,7 +299,7 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
         ScanItem::Invalid(invalid) => {
             panic!("folder must stay importable, got invalid: {}", invalid.reason())
         }
-        ScanItem::Discovered(_) | ScanItem::Sidecar(_) => {
+        ScanItem::Discovered(_) => {
             panic!("terminal scan helper returned a progress item")
         }
     };
@@ -461,7 +461,7 @@ fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
             assert_eq!(candidate.files.audio().count(), 5);
         }
         ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason()),
-        ScanItem::Discovered(_) | ScanItem::Sidecar(_) => {
+        ScanItem::Discovered(_) => {
             panic!("terminal scan helper returned a progress item")
         }
     }
@@ -495,7 +495,7 @@ fn multi_file_cue_with_missing_secondary_file_stays_unbound() {
             assert_eq!(candidate.files.track_count(), 1);
         }
         ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason()),
-        ScanItem::Discovered(_) | ScanItem::Sidecar(_) => {
+        ScanItem::Discovered(_) => {
             panic!("terminal scan helper returned a progress item")
         }
     }

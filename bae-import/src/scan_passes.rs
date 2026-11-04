@@ -3,7 +3,7 @@
 //! folders under it whose contents changed read again, or one folder read as
 //! a person decided; each stores what it read and announces what changed.
 
-use crate::folder_scanner::ScanItem;
+use crate::folder_scanner::{FolderEntry, ScanItem};
 use crate::handle::ScanEvent;
 use crate::volume::{directory_modified_at, volume_kind, VolumeKind};
 use crate::watching::{FolderReadingRequest, FolderWatcher, RootPass};

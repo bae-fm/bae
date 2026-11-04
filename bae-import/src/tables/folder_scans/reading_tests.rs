@@ -1,8 +1,7 @@
 //! A folder reading's commit: what it stores and what it prunes.
 
-use crate::folder_scanner::ScanItem;
 use crate::tables::folder_scans::tests::*;
-use crate::tables::release_groupings::tests::{scan_in, scanned, sidecar_of};
+use crate::tables::release_groupings::tests::{scanned, sidecar_in, sidecar_of};
 use crate::tables::tests::*;
 use bae_db::test_fixtures::empty_db;
 use bae_db::watched_path::host_root;
@@ -17,7 +16,7 @@ async fn reading_a_folder_again_prunes_only_its_own_sidecars() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
     for folder in ["Album", "Album/Disc 1", "Album 2", "Album0"] {
-        scan_in(&db, ScanItem::Sidecar(sidecar_of(folder, &["cover.jpg"]))).await;
+        sidecar_in(&db, sidecar_of(folder, &["cover.jpg"])).await;
     }
 
     let stamp = tables.begin_folder_reading(&root).await.unwrap();

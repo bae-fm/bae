@@ -154,14 +154,14 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
     }
     assert!(matches!(
         first_item,
-        WalkItem::Entry(ScanItem::Discovered(candidate)) if candidate.path == first
+        WalkItem::Entry(FolderEntry::Release(ScanItem::Discovered(candidate))) if candidate.path == first
     ));
     scan.entered
         .recv_timeout(std::time::Duration::from_secs(2))
         .expect("later directory is suspended");
     assert!(
         scan.says_while_held(
-            |item| matches!(item, WalkItem::Entry(ScanItem::Valid(candidate)) if candidate.path == first)
+            |item| matches!(item, WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate))) if candidate.path == first)
         ),
         "the immediate listing proves the file-free group cannot own shared release files"
     );
@@ -199,7 +199,10 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
         } if key.relative_folder == bae_db::RelativeFolder::test("Group")
     )));
     assert!(
-        scan.says_while_held(|item| matches!(item, WalkItem::Entry(ScanItem::Valid(_)))),
+        scan.says_while_held(|item| matches!(
+            item,
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(_)))
+        )),
         "a wrapper the scan has read does not hold its descendants back"
     );
 
@@ -286,7 +289,7 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
         )]),
     );
     assert!(separate.iter().any(
-        |item| matches!(item, WalkItem::Entry(ScanItem::Valid(candidate)) if candidate.relative_folder.text() == "Solo Artist/1973 - Box/CD1")
+        |item| matches!(item, WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate))) if candidate.relative_folder.text() == "Solo Artist/1973 - Box/CD1")
     ));
 }
 
@@ -421,7 +424,12 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
             FolderReleaseDecisionAuthor::User,
         )]),
         |item| {
-            if !matches!(item, WalkItem::Entry(ScanItem::Discovered(_) | ScanItem::Sidecar(_))) {
+            if !matches!(
+                item,
+                WalkItem::Entry(
+                    FolderEntry::Release(ScanItem::Discovered(_)) | FolderEntry::Sidecar(_)
+                )
+            ) {
                 items.push(item);
             }
         },
@@ -431,7 +439,7 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
     let invalid: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            WalkItem::Entry(ScanItem::Invalid(candidate)) => Some(candidate),
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Invalid(candidate))) => Some(candidate),
             _ => None,
         })
         .collect();
@@ -470,7 +478,9 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate.relative_folder.text()),
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate))) => {
+                Some(candidate.relative_folder.text())
+            }
             _ => None,
         })
         .collect();
@@ -497,14 +507,16 @@ fn a_folder_that_yields_one_release_decides_nothing() {
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            WalkItem::Entry(ScanItem::Valid(candidate)) => Some(candidate.relative_folder.text()),
+            WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate))) => {
+                Some(candidate.relative_folder.text())
+            }
             _ => None,
         })
         .collect();
     assert_eq!(releases, vec!["Artist - Album"]);
     assert!(items.iter().any(|item| matches!(
         item,
-        WalkItem::Entry(ScanItem::Valid(candidate))
+        WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate)))
             if candidate.grouping.is_none()
     )));
 }

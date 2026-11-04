@@ -121,19 +121,21 @@ impl FileReads {
     /// Two rows that say different things about one version of a file are a
     /// store no scan wrote, so the pass fails rather than take either.
     pub(crate) fn stored(
-        entries: &[ScanItem],
+        entries: &[FolderEntry],
         stored_tags: &[(FileVersion, FileTags)],
         tags: Arc<dyn FileTagReader>,
     ) -> Result<Self, FolderScanError> {
         let mut known = Known::default();
         for entry in entries {
             match entry {
-                ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+                FolderEntry::Release(
+                    ScanItem::Discovered(candidate) | ScanItem::Valid(candidate),
+                ) => {
                     for file in &candidate.files.files {
                         known.learn_release_file(file)?;
                     }
                 }
-                ScanItem::Invalid(candidate) => {
+                FolderEntry::Release(ScanItem::Invalid(candidate)) => {
                     for file in &candidate.files {
                         known.learn_skipped_file(file)?;
                     }
@@ -149,7 +151,7 @@ impl FileReads {
                 }
                 // A sheet is never parsed as a sidecar file, so only its
                 // images say anything.
-                ScanItem::Sidecar(sidecar) => match &sidecar.files {
+                FolderEntry::Sidecar(sidecar) => match &sidecar.files {
                     SidecarFiles::Valid(files) => {
                         for file in files {
                             if matches!(file.role, FileRole::Artwork | FileRole::DamagedImage) {

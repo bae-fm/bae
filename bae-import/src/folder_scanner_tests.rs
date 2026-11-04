@@ -65,9 +65,16 @@ pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions
                 .record_scanned_folder_release_decision(&key, decision, &grouping)
                 .await
                 .unwrap(),
-            WalkItem::Entry(item) => {
+            WalkItem::Entry(FolderEntry::Release(item)) => {
                 tables
                     .save_folder_scan_item(&root, generation, &item)
+                    .await
+                    .unwrap()
+                    .expect("the scan generation is current");
+            }
+            WalkItem::Entry(FolderEntry::Sidecar(sidecar)) => {
+                tables
+                    .save_folder_sidecar(&root, generation, &sidecar)
                     .await
                     .unwrap()
                     .expect("the scan generation is current");
@@ -87,12 +94,9 @@ pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions
         match item {
             ScanItem::Invalid(_) => invalid.push(item),
             ScanItem::Discovered(_) | ScanItem::Valid(_) => valid.push(item),
-            ScanItem::Sidecar(_) => {
-                unreachable!("the scan tables load only releases: {item:?}")
-            }
         }
     }
-    let shown = |item: &ScanItem| item.relative_folder().expect("a release shows a path").text();
+    let shown = |item: &ScanItem| item.relative_folder().text();
     valid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
     invalid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
     valid.into_iter().chain(invalid).collect()
@@ -146,7 +150,7 @@ pub(super) fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
         .filter_map(|item| match item {
             ScanItem::Valid(c) => Some(c),
             ScanItem::Invalid(_) => None,
-            ScanItem::Discovered(_) | ScanItem::Sidecar(_) => None,
+            ScanItem::Discovered(_) => None,
         })
         .collect()
 }
@@ -157,7 +161,7 @@ pub(super) fn scan_for_candidates_with_decisions_collect(
 ) -> Vec<WalkItem> {
     let mut items = Vec::new();
     scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
-        if !matches!(item, WalkItem::Entry(ScanItem::Discovered(_))) {
+        if !matches!(item, WalkItem::Entry(FolderEntry::Release(ScanItem::Discovered(_)))) {
             items.push(item);
         }
     })
