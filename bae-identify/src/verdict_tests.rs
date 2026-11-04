@@ -174,7 +174,7 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
         ledger: None,
     };
     let IdentifyState::Found { findings, .. } =
-        verdict.resume_state(Default::default(), Default::default())
+        verdict.resume_state(Default::default(), Default::default(), Default::default())
     else {
         panic!("a found verdict resumes as Found");
     };
@@ -453,7 +453,7 @@ fn a_resumed_failure_stands_its_findings_back_up() {
         vec!["rel-1"]
     );
     let IdentifyState::Failed { findings, .. } =
-        verdict.resume_state(Default::default(), Default::default())
+        verdict.resume_state(Default::default(), Default::default(), Default::default())
     else {
         panic!("a failed verdict resumes as Failed");
     };

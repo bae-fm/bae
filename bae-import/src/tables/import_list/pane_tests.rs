@@ -132,8 +132,9 @@ async fn the_row_and_the_pane_name_the_same_records() {
 }
 
 /// A verdict whose releases the folder's files rule out reads back as the
-/// check the pane states beside Import, and the pane reads the rate that
-/// rules a CD out off the folder's files, where alone it is stored.
+/// check the pane states beside Import, and the resumed state reads where
+/// the audio came from, and the rate that rules a CD out, off the stored
+/// signals.
 #[tokio::test]
 async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
     let (db, _tmp, root) = watched_root().await;
@@ -207,6 +208,14 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .await
         .unwrap()
         .expect("the candidate reads back");
+    let bae_identify::IdentifyState::Found { context, .. } = &detail.resumed_identify_state else {
+        panic!("a found verdict resumes as Found, got {:?}", detail.resumed_identify_state);
+    };
+    assert_eq!(
+        context.origin,
+        bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
+        "the resumed state stands up beside its stored signals' origin"
+    );
     assert_eq!(detail.resumed_identify_state.rate_ruling_out_cd(), Some(96_000));
 }
 

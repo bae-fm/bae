@@ -895,8 +895,11 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
         crate::CandidateFiles::of(&candidate),
         candidate,
         IdentifyRunId::for_test(1),
-        TerminalVerdict::NotFoundAnywhere { ledger: None }
-            .resume_state(Default::default(), Default::default()),
+        TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        ),
         CallPriority::Background,
         CancellationToken::new(),
     )

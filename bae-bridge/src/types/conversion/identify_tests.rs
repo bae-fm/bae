@@ -157,7 +157,7 @@ fn a_disc_id_nobody_looked_up_crosses_with_why() {
 }
 
 /// An unread sheet crosses with the rate of the audio the run was over:
-/// the stored step states no number, the audio's files do.
+/// the stored step states no number, the run's signals do.
 #[test]
 fn an_unread_sheet_crosses_with_the_audio_s_rate() {
     let mut state = in_flight(BarcodeProgress::Skipped);
@@ -166,7 +166,6 @@ fn an_unread_sheet_crosses_with_the_audio_s_rate() {
     };
     context.origin.not_cd_rate = Some(96_000);
     context.disc.signal = DiscIdSignal::NotCdAudio;
-    context.audio.rate_ruling_out_cd = Some(96_000);
     match BridgeIdentifyState::from_core(state) {
         BridgeIdentifyState::Triangulating { run, .. } => assert!(matches!(
             run.disc_id,

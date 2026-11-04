@@ -40,6 +40,7 @@ use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
 use crate::signals::AudioFacts;
 use bae_catalogs::search::{MetadataResult, SourceFailure};
+use bae_catalogs::AudioOrigin;
 use bae_catalogs::{InternalFailure, LookupFailure};
 
 /// Which lookup failed, and — where several providers answer it — which
@@ -240,14 +241,21 @@ impl TerminalVerdict {
     /// beside the lookups that failed — the pane it showed as it ended.
     ///
     /// `text` is the candidate's own stored lines, which is what the rows are
-    /// judged and ordered against, and `audio` is its audio read off its
-    /// files. Both belong to the candidate rather than to the run, so they
-    /// stand back up beside the matches.
-    pub fn resume_state(self, text: CandidateText, audio: AudioFacts) -> IdentifyState {
+    /// judged and ordered against, `audio` is its audio read off its files,
+    /// and `origin` is where its stored signals say that audio came from. All
+    /// three belong to the candidate rather than to the run, so they stand
+    /// back up beside the matches.
+    pub fn resume_state(
+        self,
+        text: CandidateText,
+        audio: AudioFacts,
+        origin: AudioOrigin,
+    ) -> IdentifyState {
         let context = || SignalsContext {
             text: text.clone(),
             text_settled: true,
             audio: audio.clone(),
+            origin: origin.clone(),
             ..SignalsContext::default()
         };
         match self {

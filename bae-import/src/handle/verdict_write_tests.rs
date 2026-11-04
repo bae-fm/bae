@@ -257,7 +257,11 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         .hold_answer_for_test(
             &key,
             run,
-            &row.verdict.clone().resume_state(Default::default(), Default::default()),
+            &row.verdict.clone().resume_state(
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            ),
         )
         .await;
     assert!(matches!(
