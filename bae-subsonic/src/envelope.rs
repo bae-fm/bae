@@ -16,6 +16,7 @@ use axum::body::Body;
 use axum::http::header::CONTENT_TYPE;
 use axum::http::StatusCode;
 use axum::response::Response;
+use bae_util::xml::xml_escape;
 use serde_json::{Map, Value};
 
 use crate::error::SubError;
@@ -134,7 +135,7 @@ impl Element {
             out.push(' ');
             out.push_str(name);
             out.push_str("=\"");
-            out.push_str(&xml_escape_attr(&val_to_text(value)));
+            out.push_str(&xml_escape(&val_to_text(value)));
             out.push('"');
         }
         if self.children.is_empty() {
@@ -192,21 +193,6 @@ fn val_to_json(value: &Val) -> Value {
         Val::Int(i) => Value::Number((*i).into()),
         Val::Bool(b) => Value::Bool(*b),
     }
-}
-
-fn xml_escape_attr(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    for c in input.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            _ => out.push(c),
-        }
-    }
-    out
 }
 
 /// Render an OK response carrying an optional payload element (ping has none).

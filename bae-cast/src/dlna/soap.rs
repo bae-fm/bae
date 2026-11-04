@@ -11,6 +11,8 @@
 
 use std::time::Duration;
 
+use bae_util::xml::xml_escape;
+
 /// The AVTransport service type, named in every AVTransport `SOAPACTION` header
 /// and in the `u:` namespace of its action elements.
 pub(crate) const AV_TRANSPORT: &str = "urn:schemas-upnp-org:service:AVTransport:1";
@@ -152,24 +154,6 @@ fn didl_lite(url: &str, metadata: &DidlMetadata) -> String {
         content_type = xml_escape(metadata.content_type),
         url = xml_escape(url),
     )
-}
-
-/// Escape the five XML special characters so arbitrary text (titles, URLs, and a
-/// whole embedded DIDL document) is safe inside element content and attributes.
-/// UTF-8 (unicode) passes through unchanged.
-pub(crate) fn xml_escape(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    for ch in input.chars() {
-        match ch {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            _ => out.push(ch),
-        }
-    }
-    out
 }
 
 /// Render a duration as UPnP `H:MM:SS` (the `REL_TIME` seek target format).
