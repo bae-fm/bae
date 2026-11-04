@@ -291,6 +291,20 @@ fn stream_url_encodes_format_and_track() {
     assert!(wav.ends_with("&format=wav"), "{wav}");
 }
 
+/// A cover's URL names it by its Subsonic `coverArt` id, the release's album
+/// id and the cover's version, so a replaced cover has a new URL.
+#[test]
+fn cover_url_names_the_cover_by_its_cover_art_id() {
+    let provider = cover_url_provider("http://10.0.0.5:9000".to_string(), credential());
+    let url = provider(&bae_db::ImageRef {
+        id: "release-1".to_string(),
+        version: "v2".to_string(),
+        image_type: bae_db::LibraryImageType::Cover,
+    });
+    assert!(url.starts_with("http://10.0.0.5:9000/rest/getCoverArt?id=al-release-1~v2&"), "{url}");
+    assert!(!url.contains("cover="), "{url}");
+}
+
 /// The token in a minted URL is `md5(password + salt)` over the URL's own
 /// salt — the exact derivation bae-subsonic recomputes to authenticate the
 /// request.
@@ -306,7 +320,7 @@ fn minted_token_matches_the_credential() {
     let params: std::collections::HashMap<_, _> =
         url.split_once('?').unwrap().1.split('&').filter_map(|pair| pair.split_once('=')).collect();
     let salt = params["s"];
-    let expected = md5_hex(&format!("{}{salt}", credential.password));
+    let expected = bae_subsonic::token(&credential.password, salt);
     assert_eq!(params["t"], expected, "token must be md5(password + salt)");
 }
 

@@ -31,10 +31,7 @@ thiserror = { workspace = true }
 # axum 0.8 matches the router bae-subsonic returns.
 axum = { workspace = true, features = ["http1", "tokio"] }
 tokio-util = { workspace = true }
-# The salted-token the minted media URLs carry (md5(password + salt)), matching
-# bae-subsonic's auth check. Keyed `md5` (its lib name) so cargo-machete resolves
-# `use md5::…`; the crate is `md-5` but exposes `md5`.
-md5 = { workspace = true }
+# The fresh salt each minted media URL carries, and the AirPlay keys.
 hex = { workspace = true }
 rand = { workspace = true }
 # The LAN IP the receiver reaches this device at (the ephemeral server binds

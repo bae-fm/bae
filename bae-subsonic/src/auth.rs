@@ -73,15 +73,20 @@ fn check(params: &Params, credential: &SubsonicCredential) -> Result<(), SubErro
     Ok(())
 }
 
-/// Whether `token` equals `md5(password + salt)`. The comparison is
-/// case-insensitive: the hex is conventionally lowercase, but a client that
-/// upper-cases it still authenticates.
-fn tokens_match(token: &str, password: &str, salt: &str) -> bool {
+/// The token a request carries for `password` and `salt`:
+/// `md5(password + salt)` in lowercase hex.
+pub fn token(password: &str, salt: &str) -> String {
     let mut hasher = Md5::new();
     hasher.update(password.as_bytes());
     hasher.update(salt.as_bytes());
-    let expected = hex::encode(hasher.finalize());
-    token.eq_ignore_ascii_case(&expected)
+    hex::encode(hasher.finalize())
+}
+
+/// Whether `token` is [`token`] of `password` and `salt`. The comparison is
+/// case-insensitive: the hex is conventionally lowercase, but a client that
+/// upper-cases it still authenticates.
+fn tokens_match(token: &str, password: &str, salt: &str) -> bool {
+    token.eq_ignore_ascii_case(&self::token(password, salt))
 }
 
 #[cfg(test)]

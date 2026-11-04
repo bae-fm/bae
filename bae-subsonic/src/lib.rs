@@ -33,7 +33,9 @@ mod library_map;
 mod model;
 mod params;
 
+pub use auth::token;
 pub use controller::{SubsonicServerController, SubsonicServerError, SubsonicServerStatus};
+pub use id::{album_cover_art_id, song_id};
 
 /// Shared handler state: the library, the one accepted credential, and where a
 /// panic in a request or a stream is reported.

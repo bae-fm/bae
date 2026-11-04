@@ -34,7 +34,6 @@ use bae_playback::renderer::{
 use bae_playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
 use bae_preferences::SubsonicCredential;
 use bae_util::task_failure::{blocking, caught, caught_sync, TaskFailed};
-use md5::{Digest, Md5};
 use rand::RngCore;
 use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
@@ -643,7 +642,8 @@ impl CastController {
 fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> MediaUrlProvider {
     Arc::new(move |track_id: &str, format: RendererStreamFormat| {
         let mut url = format!(
-            "{base_url}/rest/stream?id=tr-{track_id}&{auth}&v=1.16.1&c=bae-cast",
+            "{base_url}/rest/stream?id={song}&{auth}&v=1.16.1&c=bae-cast",
+            song = bae_subsonic::song_id(track_id),
             auth = auth_params(&credential),
         );
         match format {
@@ -657,15 +657,14 @@ fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> Medi
     })
 }
 
-/// Build the cover-art-URL provider. The server serves the release's current
-/// cover and ignores `cover`; it is there so a replaced cover has a new URL,
-/// which a receiver that cached the old art fetches again.
+/// Build the cover-art-URL provider. The cover is named by its `coverArt`
+/// id, which carries its version, so a replaced cover has a new URL, which a
+/// receiver that cached the old art fetches again.
 fn cover_url_provider(base_url: String, credential: SubsonicCredential) -> CoverUrlProvider {
     Arc::new(move |cover: &bae_db::ImageRef| {
         format!(
-            "{base_url}/rest/getCoverArt?id=al-{release_id}&cover={version}&{auth}&v=1.16.1&c=bae-cast",
-            release_id = cover.id,
-            version = cover.version,
+            "{base_url}/rest/getCoverArt?id={cover_art}&{auth}&v=1.16.1&c=bae-cast",
+            cover_art = bae_subsonic::album_cover_art_id(&cover.id, &cover.version),
             auth = auth_params(&credential),
         )
     })
@@ -676,16 +675,8 @@ fn cover_url_provider(base_url: String, credential: SubsonicCredential) -> Cover
 /// random per call, so no two URLs share one.
 fn auth_params(credential: &SubsonicCredential) -> String {
     let salt = random_hex(8);
-    let token = md5_hex(&format!("{}{}", credential.password, salt));
+    let token = bae_subsonic::token(&credential.password, &salt);
     format!("u={}&t={token}&s={salt}", credential.username)
-}
-
-/// Lowercase-hex md5 of `input` — the token derivation bae-subsonic's auth
-/// recomputes and compares.
-fn md5_hex(input: &str) -> String {
-    let mut hasher = Md5::new();
-    hasher.update(input.as_bytes());
-    hex::encode(hasher.finalize())
 }
 
 /// `n` random bytes as lowercase hex (a 2n-char string).

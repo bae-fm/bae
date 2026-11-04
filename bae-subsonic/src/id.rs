@@ -27,6 +27,16 @@ const ALBUM_PREFIX: &str = "al-";
 const TRACK_PREFIX: &str = "tr-";
 const VERSION_SEPARATOR: char = '~';
 
+/// The Subsonic song id of the track `track_id`.
+pub fn song_id(track_id: &str) -> String {
+    SubId::Track(track_id.to_string()).encode()
+}
+
+/// The `coverArt` id of the release `release_id`'s cover at `version`.
+pub fn album_cover_art_id(release_id: &str, version: &str) -> String {
+    SubId::Album(release_id.to_string()).cover_art_id(version)
+}
+
 /// A parsed Subsonic id and the kind of entity it names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SubId {
