@@ -161,7 +161,7 @@ async fn resolve_audio_fields(
             let file = files.iter().find(|f| f.id == segment.file_id);
             (
                 audio.content_type.as_str().to_string(),
-                file.map(|f| file_suffix(&f.original_filename)),
+                file.and_then(|f| bae_db::stored_name::file_extension(&f.original_filename)),
                 file.map(|f| f.file_size),
             )
         }
@@ -301,11 +301,6 @@ pub(crate) fn artist_id3(
         cover_art: image.map(|image| SubId::Artist(id.to_string()).cover_art_id(&image.version)),
         music_brainz_id,
     }
-}
-
-/// The file extension, lowercased, with no leading dot — Subsonic's `suffix`.
-fn file_suffix(filename: &str) -> String {
-    filename.rsplit_once('.').map(|(_, ext)| ext.to_ascii_lowercase()).unwrap_or_default()
 }
 
 /// The credits a song shows: the track's own, else its album's.

@@ -52,3 +52,14 @@ fn an_empty_name_names_no_file() {
     }
     folder_path(RELEASE, "").expect_err("an empty folder name");
 }
+
+/// A file's extension is its own name's, whatever dots its folders hold.
+#[test]
+fn a_file_s_extension_is_its_own_name_s() {
+    assert_eq!(file_extension("Disc 1/Track.FLAC").as_deref(), Some("flac"));
+    assert_eq!(file_extension("Album.v2/Track.tar.gz").as_deref(), Some("gz"));
+    assert_eq!(file_extension("Disc.1/track"), None);
+    assert_eq!(file_extension("track"), None);
+    assert_eq!(file_extension(".hidden"), None);
+    assert_eq!(file_extension("track."), None);
+}

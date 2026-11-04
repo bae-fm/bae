@@ -57,6 +57,16 @@ pub fn folder_path(release_id: &str, folder_name: &str) -> Result<RelativePath, 
     })
 }
 
+/// The extension a file's name in its release ends on, lowercased and
+/// without its dot: its own name's (not a folder's above it) text after its
+/// last dot. `None` for a name with no dot past its first character (`track`,
+/// `.hidden`) or with nothing after it.
+pub fn file_extension(original_filename: &str) -> Option<String> {
+    let name = original_filename.rsplit('/').next().unwrap_or(original_filename);
+    let (stem, extension) = name.rsplit_once('.')?;
+    (!stem.is_empty() && !extension.is_empty()).then(|| extension.to_lowercase())
+}
+
 #[cfg(test)]
 #[path = "stored_name_tests.rs"]
 mod tests;
