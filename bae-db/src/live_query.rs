@@ -15,11 +15,29 @@
 use tokio_util::sync::CancellationToken;
 
 mod values;
-pub use values::{LiveSource, LiveValues, LiveValuesError};
+pub use values::{LiveSource, LiveValues};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
 /// ended.
 pub struct LiveQueryCancelled;
+
+/// Why a subscription's read or request got no answer.
+#[derive(Debug, thiserror::Error)]
+pub enum LiveQueryError {
+    /// The surface cancelled, or the library closed.
+    #[error("live query cancelled")]
+    Cancelled,
+    /// The query's read failed; the next write that reruns it delivers again.
+    #[error(transparent)]
+    Query(#[from] coven::CovenError),
+}
+
+/// The live query ending is the subscription's cancellation.
+impl From<LiveQueryCancelled> for LiveQueryError {
+    fn from(_: LiveQueryCancelled) -> Self {
+        Self::Cancelled
+    }
+}
 
 /// A reconfigurable live query and the cancellation that ends it.
 pub struct CancellableLiveQuery<Request, Projection> {

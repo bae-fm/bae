@@ -1,7 +1,7 @@
 //! The album grid's multi-selection, read through one live query whose ids
 //! change as the selection does.
 
-use bae_db::live_query::CancellableLiveQuery;
+use bae_db::live_query::{CancellableLiveQuery, LiveQueryError};
 use std::collections::BTreeSet;
 
 /// One value the subscription delivered: the ids it read, and those of them
@@ -10,21 +10,6 @@ use std::collections::BTreeSet;
 pub struct AlbumSelectionSnapshot {
     pub requested: BTreeSet<String>,
     pub gone: Vec<String>,
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum LiveAlbumSelectionError {
-    #[error("album selection subscription cancelled")]
-    Cancelled,
-    #[error(transparent)]
-    Query(#[from] coven::CovenError),
-}
-
-/// The live query ending is this subscription's cancellation.
-impl From<bae_db::live_query::LiveQueryCancelled> for LiveAlbumSelectionError {
-    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
-        Self::Cancelled
-    }
 }
 
 /// Which selected albums are gone from the library, wherever in the grid
@@ -44,15 +29,12 @@ impl LiveAlbumSelection {
     pub fn set_albums(
         &self,
         album_ids: impl IntoIterator<Item = String>,
-    ) -> Result<(), LiveAlbumSelectionError> {
-        self.query
-            .set(album_ids.into_iter().collect())
-            .map(|_| ())
-            .map_err(LiveAlbumSelectionError::from)
+    ) -> Result<(), LiveQueryError> {
+        self.query.set(album_ids.into_iter().collect()).map(|_| ()).map_err(LiveQueryError::from)
     }
 
-    pub async fn next(&self) -> Result<AlbumSelectionSnapshot, LiveAlbumSelectionError> {
-        let event = self.query.next().await.map_err(LiveAlbumSelectionError::from)?;
+    pub async fn next(&self) -> Result<AlbumSelectionSnapshot, LiveQueryError> {
+        let event = self.query.next().await.map_err(LiveQueryError::from)?;
         Ok(AlbumSelectionSnapshot { requested: event.request.clone(), gone: event.result? })
     }
 

@@ -31,7 +31,7 @@ pub mod test_libraries;
 mod track_decode;
 mod upload_progress;
 mod upload_throughput;
-pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection, LiveAlbumSelectionError};
+pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection};
 pub use assembly::open_library_manager;
 pub use bootstrap::{
     create_library, join_with_invite, reset_device, restore_from_code, restore_from_saved_code,
@@ -45,7 +45,7 @@ pub use bae_db::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
 pub use file_transfers::{FileTransferChange, FileTransfersWatch};
 pub use keychain::{ForgetSavedRestoreCodeError, Keychain, SavedRestoreCodesError};
-pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus, LiveLibraryStatusError};
+pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus};
 pub use live_read::{live_read_channel, SubscriptionReader};
 pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::{

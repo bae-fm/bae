@@ -38,7 +38,7 @@ impl LibrarySearchSubscription {
     /// Search for `query`; a blank one is no search. Returns the revision the
     /// answer will carry.
     pub fn set_query(&self, query: String) -> Result<u64, BridgeError> {
-        self.inner.set_query(&query).map_err(search_error)
+        self.inner.set_query(&query).map_err(BridgeError::from)
     }
 
     pub async fn next(self: Arc<Self>) -> Result<BridgeLibrarySearchSnapshot, BridgeError> {
@@ -56,7 +56,7 @@ impl LibrarySearchSubscription {
                         results: crate::types::BridgeSearchResults::from_core(snapshot.results),
                         request_revision: snapshot.request_revision,
                     })
-                    .map_err(search_error)
+                    .map_err(BridgeError::from)
             })
             .await
     }
@@ -69,13 +69,6 @@ impl LibrarySearchSubscription {
                 Ok(())
             })
             .await
-    }
-}
-
-fn search_error(error: bae_views::LiveLibrarySearchError) -> BridgeError {
-    match error {
-        bae_views::LiveLibrarySearchError::Cancelled => BridgeError::Cancelled,
-        bae_views::LiveLibrarySearchError::Query(error) => BridgeError::database_query(error),
     }
 }
 
@@ -128,7 +121,7 @@ impl ArtistSearchSubscription {
                 &query,
                 windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect(),
             )
-            .map_err(search_error)
+            .map_err(BridgeError::from)
     }
 
     pub async fn next(self: Arc<Self>) -> Result<BridgeArtistSearchSnapshot, BridgeError> {
@@ -156,7 +149,7 @@ impl ArtistSearchSubscription {
                         total_count: snapshot.total_count,
                         request_revision: snapshot.request_revision,
                     })
-                    .map_err(search_error)
+                    .map_err(BridgeError::from)
             })
             .await
     }
@@ -215,7 +208,7 @@ impl LibraryStatusSubscription {
                 source: check.source.into_core().catalog(),
                 source_group_id: check.source_group_id,
             }))
-            .map_err(status_error)
+            .map_err(BridgeError::from)
     }
 
     pub async fn next(self: Arc<Self>) -> Result<BridgeLibraryStatusSnapshot, BridgeError> {
@@ -238,7 +231,7 @@ impl LibraryStatusSubscription {
                             .collect(),
                         request_revision: snapshot.request_revision,
                     })
-                    .map_err(status_error)
+                    .map_err(BridgeError::from)
             })
             .await
     }
@@ -255,13 +248,6 @@ impl LibraryStatusSubscription {
 }
 
 #[cfg(feature = "desktop")]
-fn status_error(error: bae_library::LiveLibraryStatusError) -> BridgeError {
-    match error {
-        bae_library::LiveLibraryStatusError::Cancelled => BridgeError::Cancelled,
-        bae_library::LiveLibraryStatusError::Query(error) => BridgeError::database_query(error),
-    }
-}
-
 #[cfg(feature = "desktop")]
 pub(crate) fn library_statuses(
     inner: bae_library::LiveLibraryStatus,

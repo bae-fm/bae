@@ -581,6 +581,17 @@ mirror_enum! {
 
 /// A failed config read or write, in the class core gave it: a setting the
 /// person can fix, or a write that never finished.
+/// A subscription's end is the caller's cancellation; a failed read is a
+/// database query's failure.
+impl From<bae_db::live_query::LiveQueryError> for BridgeError {
+    fn from(error: bae_db::live_query::LiveQueryError) -> Self {
+        match error {
+            bae_db::live_query::LiveQueryError::Cancelled => Self::Cancelled,
+            bae_db::live_query::LiveQueryError::Query(error) => Self::database_query(error),
+        }
+    }
+}
+
 impl From<bae_preferences::PreferencesError> for BridgeError {
     fn from(error: bae_preferences::PreferencesError) -> Self {
         BridgeError::Diagnostic {

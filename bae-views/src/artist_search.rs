@@ -2,10 +2,11 @@
 //! open, moved in place to each text the person types and to the windows of
 //! its list on screen.
 
-use super::search::{LibrarySearchQuery, LiveLibrarySearchError};
+use super::search::LibrarySearchQuery;
 use super::*;
 use crate::album_detail::ArtistSearchResult;
 use bae_db::client::artist_credit_names::{credit_names_column, credit_names_json_sql};
+use bae_db::live_query::LiveQueryError;
 use bae_db::{LibraryBrowseWindow, LibraryPageWindows};
 
 /// What an artist picker reads: the artists its text finds, parsed as every
@@ -54,18 +55,14 @@ impl LiveArtistSearch {
     /// Read `windows` of what `raw` finds from now on; a blank text is no
     /// search. Returns the revision the answer will carry, which repeating the
     /// standing request keeps.
-    pub fn set_view(
-        &self,
-        raw: &str,
-        windows: LibraryPageWindows,
-    ) -> Result<u64, LiveLibrarySearchError> {
+    pub fn set_view(&self, raw: &str, windows: LibraryPageWindows) -> Result<u64, LiveQueryError> {
         self.query
             .set(ArtistSearchView { query: LibrarySearchQuery::parse(raw), windows })
-            .map_err(LiveLibrarySearchError::from)
+            .map_err(LiveQueryError::from)
     }
 
-    pub async fn next(&self) -> Result<ArtistSearchSnapshot, LiveLibrarySearchError> {
-        let event = self.query.next().await.map_err(LiveLibrarySearchError::from)?;
+    pub async fn next(&self) -> Result<ArtistSearchSnapshot, LiveQueryError> {
+        let event = self.query.next().await.map_err(LiveQueryError::from)?;
         let request_revision = event.revision.0;
         Ok((self.resolve)(event.result?, request_revision))
     }

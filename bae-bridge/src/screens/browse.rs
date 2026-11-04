@@ -42,14 +42,14 @@ macro_rules! browse_subscription {
                 &self,
                 windows: Vec<crate::types::BridgeLibraryPageWindow>,
             ) -> Result<(), BridgeError> {
-                self.inner.set_windows(core_windows(windows)).map_err(browse_error)
+                self.inner.set_windows(core_windows(windows)).map_err(BridgeError::from)
             }
 
             pub async fn next(self: Arc<Self>) -> Result<$snapshot, BridgeError> {
                 let runtime = self.runtime.clone();
                 runtime
                     .run(concat!(stringify!($object), ".next"), move || async move {
-                        self.inner.next().await.map($snapshot::from_core).map_err(browse_error)
+                        self.inner.next().await.map($snapshot::from_core).map_err(BridgeError::from)
                     })
                     .await
             }
@@ -210,13 +210,6 @@ browse_subscription! {
     snapshot: BridgeComposerDetailRowsSnapshot,
 }
 
-fn browse_error(error: bae_views::LiveLibraryBrowseError) -> BridgeError {
-    match error {
-        bae_views::LiveLibraryBrowseError::Cancelled => BridgeError::Cancelled,
-        bae_views::LiveLibraryBrowseError::Query(error) => BridgeError::database_query(error),
-    }
-}
-
 fn core_windows(
     windows: Vec<crate::types::BridgeLibraryPageWindow>,
 ) -> BTreeSet<bae_db::LibraryPageWindow> {
@@ -307,7 +300,7 @@ pub(crate) fn album_selection(
 impl AlbumSelectionSubscription {
     /// Read `album_ids` from now on.
     pub fn set_albums(&self, album_ids: Vec<String>) -> Result<(), BridgeError> {
-        self.inner.set_albums(album_ids).map_err(selection_error)
+        self.inner.set_albums(album_ids).map_err(BridgeError::from)
     }
 
     pub async fn next(self: Arc<Self>) -> Result<BridgeAlbumSelectionSnapshot, BridgeError> {
@@ -321,7 +314,7 @@ impl AlbumSelectionSubscription {
                         requested: snapshot.requested.into_iter().collect(),
                         gone: snapshot.gone,
                     })
-                    .map_err(selection_error)
+                    .map_err(BridgeError::from)
             })
             .await
     }
@@ -334,12 +327,5 @@ impl AlbumSelectionSubscription {
                 Ok(())
             })
             .await
-    }
-}
-
-fn selection_error(error: bae_library::LiveAlbumSelectionError) -> BridgeError {
-    match error {
-        bae_library::LiveAlbumSelectionError::Cancelled => BridgeError::Cancelled,
-        bae_library::LiveAlbumSelectionError::Query(error) => BridgeError::database_query(error),
     }
 }

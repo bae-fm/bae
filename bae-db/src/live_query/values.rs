@@ -1,6 +1,7 @@
 //! One live source of values a surface pulls each value of, with nothing
 //! to reconfigure, ended by the surface or by the library closing.
 
+use super::LiveQueryError;
 use tokio_util::sync::CancellationToken;
 
 /// What a surface pulls values from: a coven live query, or coven's sync
@@ -53,17 +54,6 @@ where
     }
 }
 
-/// Why a pull got no value.
-#[derive(Debug, thiserror::Error)]
-pub enum LiveValuesError {
-    /// The surface cancelled, or the library closed.
-    #[error("live values cancelled")]
-    Cancelled,
-    /// The query's read failed; the next write that reruns it delivers again.
-    #[error(transparent)]
-    Query(#[from] coven::CovenError),
-}
-
 /// A live source's values, one per pull: the first at once, then one after
 /// each change to what it reads. Made over a token the library's
 /// closing cancels, by the library manager or the import service, so closing
@@ -88,13 +78,13 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
     }
 
     /// The next value, or why there is none.
-    pub async fn next(&self) -> Result<T, LiveValuesError> {
+    pub async fn next(&self) -> Result<T, LiveQueryError> {
         tokio::select! {
             biased;
-            () = self.cancellation.cancelled() => Err(LiveValuesError::Cancelled),
+            () = self.cancellation.cancelled() => Err(LiveQueryError::Cancelled),
             value = async {
                 let mut query = self.query.lock().await;
-                let query = query.as_mut().ok_or(LiveValuesError::Cancelled)?;
+                let query = query.as_mut().ok_or(LiveQueryError::Cancelled)?;
                 let value = query.next().await;
                 #[cfg(any(test, feature = "test-utils"))]
                 {
@@ -103,7 +93,7 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
                 }
                 match value {
                     Some(value) => Ok(value?),
-                    None => Err(LiveValuesError::Cancelled),
+                    None => Err(LiveQueryError::Cancelled),
                 }
             } => value,
         }

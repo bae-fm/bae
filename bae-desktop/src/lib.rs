@@ -98,10 +98,10 @@ impl DesktopServices {
                                 watcher_diagnostics.bug(failed);
                             }
                         }
-                        Err(bae_db::live_query::LiveValuesError::Query(error)) => {
+                        Err(bae_db::live_query::LiveQueryError::Query(error)) => {
                             tracing::warn!("the servers' settings couldn't be read: {error}");
                         }
-                        Err(bae_db::live_query::LiveValuesError::Cancelled) => {
+                        Err(bae_db::live_query::LiveQueryError::Cancelled) => {
                             tracing::debug!("server settings follower stopped: the library closed");
                             break;
                         }

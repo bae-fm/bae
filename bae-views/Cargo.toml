@@ -33,7 +33,6 @@ chrono = { workspace = true }
 rusqlite = { workspace = true }
 # The id sets a live read binds as one JSON list.
 serde_json = { workspace = true }
-thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]

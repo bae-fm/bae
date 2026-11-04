@@ -39,21 +39,6 @@ pub struct LibrarySearchSnapshot {
     pub request_revision: u64,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum LiveLibrarySearchError {
-    #[error("search subscription cancelled")]
-    Cancelled,
-    #[error(transparent)]
-    Query(#[from] coven::CovenError),
-}
-
-/// The live query ending is this subscription's cancellation.
-impl From<bae_db::live_query::LiveQueryCancelled> for LiveLibrarySearchError {
-    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
-        Self::Cancelled
-    }
-}
-
 /// A live library search whose query changes in place: one reconfigurable
 /// query for as long as the search field is open, instead of a new live query
 /// per keystroke.
@@ -83,12 +68,14 @@ impl LiveLibrarySearch {
 
     /// Search for `raw`, parsed as every surface parses a query: a blank one is
     /// no search. Returns the revision the answer will carry.
-    pub fn set_query(&self, raw: &str) -> Result<u64, LiveLibrarySearchError> {
-        self.query.set(LibrarySearchQuery::parse(raw)).map_err(LiveLibrarySearchError::from)
+    pub fn set_query(&self, raw: &str) -> Result<u64, bae_db::live_query::LiveQueryError> {
+        self.query
+            .set(LibrarySearchQuery::parse(raw))
+            .map_err(bae_db::live_query::LiveQueryError::from)
     }
 
-    pub async fn next(&self) -> Result<LibrarySearchSnapshot, LiveLibrarySearchError> {
-        let event = self.query.next().await.map_err(LiveLibrarySearchError::from)?;
+    pub async fn next(&self) -> Result<LibrarySearchSnapshot, bae_db::live_query::LiveQueryError> {
+        let event = self.query.next().await.map_err(bae_db::live_query::LiveQueryError::from)?;
         let request_revision = event.revision.0;
         let query = event.request.clone();
         let projection = event.result?;

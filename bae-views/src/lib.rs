@@ -33,8 +33,7 @@ pub use release_files::{
     ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest, ReleaseFilesSnapshot,
 };
 pub use search::{
-    LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, LiveLibrarySearchError,
-    SEARCH_RESULT_LIMIT,
+    LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, SEARCH_RESULT_LIMIT,
 };
 pub use storage_browse::{
     ReleaseQueueRun, StorageBrowseSnapshot, StorageBrowseView, StorageQueues, UploadQueueRun,

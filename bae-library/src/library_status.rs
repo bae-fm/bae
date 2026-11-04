@@ -1,7 +1,7 @@
 //! Whether the releases an import pane offers are already in the library,
 //! read through one live query whose checks change as the offers do.
 
-use bae_db::live_query::CancellableLiveQuery;
+use bae_db::live_query::{CancellableLiveQuery, LiveQueryError};
 use bae_db::{LibraryCheck, LibraryStatus};
 use std::collections::BTreeSet;
 
@@ -11,21 +11,6 @@ use std::collections::BTreeSet;
 pub struct LibraryStatusSnapshot {
     pub statuses: Vec<LibraryStatus>,
     pub request_revision: u64,
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum LiveLibraryStatusError {
-    #[error("library status subscription cancelled")]
-    Cancelled,
-    #[error(transparent)]
-    Query(#[from] coven::CovenError),
-}
-
-/// The live query ending is this subscription's cancellation.
-impl From<bae_db::live_query::LiveQueryCancelled> for LiveLibraryStatusError {
-    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
-        Self::Cancelled
-    }
 }
 
 /// The library membership of a set of offered releases. A new set of offers
@@ -45,12 +30,12 @@ impl LiveLibraryStatus {
     pub fn set_checks(
         &self,
         checks: impl IntoIterator<Item = LibraryCheck>,
-    ) -> Result<u64, LiveLibraryStatusError> {
-        self.query.set(checks.into_iter().collect()).map_err(LiveLibraryStatusError::from)
+    ) -> Result<u64, LiveQueryError> {
+        self.query.set(checks.into_iter().collect()).map_err(LiveQueryError::from)
     }
 
-    pub async fn next(&self) -> Result<LibraryStatusSnapshot, LiveLibraryStatusError> {
-        let event = self.query.next().await.map_err(LiveLibraryStatusError::from)?;
+    pub async fn next(&self) -> Result<LibraryStatusSnapshot, LiveQueryError> {
+        let event = self.query.next().await.map_err(LiveQueryError::from)?;
         let request_revision = event.revision.0;
         Ok(LibraryStatusSnapshot { statuses: event.result?, request_revision })
     }

@@ -1,4 +1,4 @@
-use bae_db::live_query::CancellableLiveQuery;
+use bae_db::live_query::{CancellableLiveQuery, LiveQueryError};
 use bae_db::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 use std::sync::Arc;
 
@@ -61,21 +61,6 @@ pub type LiveDownloadBrowse = LiveLibraryBrowse<
     LibraryBrowseSnapshot<bae_transfers::DownloadRow>,
 >;
 
-#[derive(Debug, thiserror::Error)]
-pub enum LiveLibraryBrowseError {
-    #[error("browse subscription cancelled")]
-    Cancelled,
-    #[error(transparent)]
-    Query(#[from] coven::CovenError),
-}
-
-/// The live query ending is this subscription's cancellation.
-impl From<bae_db::live_query::LiveQueryCancelled> for LiveLibraryBrowseError {
-    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
-        Self::Cancelled
-    }
-}
-
 /// A windowed list read live: the windows it reads move in place, and each
 /// read resolves to the `Snapshot` its screen takes.
 pub struct LiveLibraryBrowse<Projection, Snapshot> {
@@ -95,12 +80,12 @@ where
         Self { query, resolve: Arc::new(resolve) }
     }
 
-    pub fn set_windows(&self, windows: LibraryPageWindows) -> Result<(), LiveLibraryBrowseError> {
-        self.query.set(windows).map(|_| ()).map_err(LiveLibraryBrowseError::from)
+    pub fn set_windows(&self, windows: LibraryPageWindows) -> Result<(), LiveQueryError> {
+        self.query.set(windows).map(|_| ()).map_err(LiveQueryError::from)
     }
 
-    pub async fn next(&self) -> Result<Snapshot, LiveLibraryBrowseError> {
-        let event = self.query.next().await.map_err(LiveLibraryBrowseError::from)?;
+    pub async fn next(&self) -> Result<Snapshot, LiveQueryError> {
+        let event = self.query.next().await.map_err(LiveQueryError::from)?;
         let revision = event.revision.0;
         let cause = event.cause;
         let projection = event.result?;

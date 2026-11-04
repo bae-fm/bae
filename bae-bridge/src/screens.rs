@@ -85,7 +85,7 @@ macro_rules! pulled_values {
                 runtime
                     .run(concat!(stringify!($object), ".next"), move || async move {
                         loop {
-                            let value = self.values.next().await.map_err(values_error)?;
+                            let value = self.values.next().await.map_err(BridgeError::from)?;
                             if let Some(value) = ($convert)(value) {
                                 return Ok(value);
                             }
@@ -114,13 +114,6 @@ macro_rules! pulled_values {
             Arc::new($object { values, runtime })
         }
     };
-}
-
-fn values_error(error: bae_db::live_query::LiveValuesError) -> BridgeError {
-    match error {
-        bae_db::live_query::LiveValuesError::Cancelled => BridgeError::Cancelled,
-        bae_db::live_query::LiveValuesError::Query(error) => BridgeError::database_query(error),
-    }
 }
 
 pulled_values! {
