@@ -252,6 +252,12 @@ impl LibraryManager {
     }
 }
 
+/// How far along an output is, in whole percent, when `done` of its `total`
+/// steps are finished. An output with no steps is at zero.
+pub(super) fn output_percent(done: usize, total: usize) -> u8 {
+    ((done * 100) / total.max(1)) as u8
+}
+
 /// The hidden folder beside a release's output folder that an output uses
 /// for `purpose`, named after the release's folder name and id, written as
 /// coven writes a name (see [`bae_db::stored_name`]).

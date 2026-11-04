@@ -2,6 +2,7 @@
 //! byte-for-byte. The output queue, staging, marker, and replace logic live in
 //! [`super::output`]; the save (rendered-output) arm in [`super::save`].
 
+use super::output::output_percent;
 use super::*;
 use tracing::info;
 
@@ -26,8 +27,7 @@ impl LibraryManager {
         let total = files.len();
         for (index, file) in files.iter().enumerate() {
             self.export_one_file(file, staging_dir).await?;
-            let percent = (((index + 1) * 100) / total.max(1)) as u8;
-            self.set_output_progress(release_id, percent);
+            self.set_output_progress(release_id, output_percent(index + 1, total));
         }
         Ok(())
     }

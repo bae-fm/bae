@@ -3,6 +3,7 @@
 //! token-pattern filename. The output queue/staging/marker/replace live in
 //! [`super::output`]; the verbatim export arm in [`super::export`].
 
+use super::output::output_percent;
 use super::*;
 use crate::SaveTrackPlan;
 use bae_db::TrackAudioMeta;
@@ -243,7 +244,7 @@ impl LibraryManager {
             let release_id = release_id.to_string();
             Arc::new(move || {
                 let saved = saved.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-                manager.set_output_progress(&release_id, ((saved * 100) / total.max(1)) as u8);
+                manager.set_output_progress(&release_id, output_percent(saved, total));
             })
         };
         // Decoding and encoding are CPU work: save as many tracks at once as
