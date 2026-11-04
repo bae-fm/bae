@@ -114,6 +114,23 @@ async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
     assert_eq!(label_count(&db).await, 3);
 }
 
+/// A catalog id the library holds on two labels, as when two devices apart
+/// each gave it to a different label of one name, refuses the write: bae
+/// never picks one of them.
+#[tokio::test]
+async fn a_catalog_id_two_labels_hold_refuses_the_write() {
+    let (db, _tmp) = library().await;
+    add_label(&db, "label-a", "Label Name", None, Some("7190")).await;
+    add_label(&db, "label-b", "Label Name", None, Some("7190")).await;
+
+    let error = write(&db, vec![with_ids(label(Some("Label Name"), None), None, Some("7190"))])
+        .await
+        .unwrap_err();
+
+    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error:?}");
+    assert!(placed(&db).await.is_empty());
+}
+
 /// A label whose two catalog ids two library labels hold refuses the write
 /// with both labels for the person to answer, and writes nothing.
 #[tokio::test]

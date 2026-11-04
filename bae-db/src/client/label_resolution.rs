@@ -13,7 +13,8 @@
 //!    id is the library label holding that id, followed through any merge.
 //!    Two different labels holding the label's two ids is the conflict a
 //!    person settles on the import page; a matched label holding a different
-//!    id of the same catalog is refused outright.
+//!    id of the same catalog, and an id several library labels hold, are
+//!    refused outright.
 //! 4. **The label the release names.** On an edit, a label carrying no
 //!    catalog id whose name is the name of a label the release names now is
 //!    that label, so saving a release keeps its labels.
@@ -271,12 +272,12 @@ fn resolve_label_on(
 
     let by_musicbrainz = label
         .musicbrainz_label_id()
-        .map(|id| label_by_catalog_id_on(tx, CatalogColumn::MusicBrainz, id, decided))
+        .map(|id| label_by_catalog_id_on(tx, CatalogColumn::MusicBrainz, id, name, decided))
         .transpose()?
         .flatten();
     let by_discogs = label
         .discogs_label_id()
-        .map(|id| label_by_catalog_id_on(tx, CatalogColumn::Discogs, id, decided))
+        .map(|id| label_by_catalog_id_on(tx, CatalogColumn::Discogs, id, name, decided))
         .transpose()?
         .flatten();
     let matched = match (by_discogs, by_musicbrainz) {
@@ -451,14 +452,18 @@ enum CatalogColumn {
 }
 
 /// The label holding `catalog_id`: one this write makes, else the library
-/// label whose `column` holds it or whose row the catalog id names, followed
-/// through any merge to the label it shows as, as this write leaves it.
-fn label_by_catalog_id_on<Q: QueryOne>(
+/// label whose `column` holds it or whose row the catalog id names (its
+/// column may have been filled in or edited since), followed through any
+/// merge to the label it shows as, as this write leaves it. Several library
+/// labels holding it is a library holding one catalog entry on two labels,
+/// and the write is refused: bae never picks one.
+fn label_by_catalog_id_on<Q: QueryRows>(
     sql: &Q,
     column: CatalogColumn,
     catalog_id: &str,
+    name: &str,
     decided: &Decided,
-) -> Result<Option<LabelRow>, DbError> {
+) -> Result<Option<LabelRow>, IdentityWriteError> {
     let held = |row: &LabelRow| match column {
         CatalogColumn::Discogs => row.discogs_label_id.as_deref() == Some(catalog_id),
         CatalogColumn::MusicBrainz => row.musicbrainz_label_id.as_deref() == Some(catalog_id),
@@ -469,28 +474,35 @@ fn label_by_catalog_id_on<Q: QueryOne>(
     if let Some(filled) = decided.fills.iter().find(|filled| held(filled)) {
         return Ok(Some(filled.clone()));
     }
-    let (column, identity) = match column {
+    let (catalog, column, identity) = match column {
         CatalogColumn::Discogs => {
-            ("discogs_label_id", crate::identity::label_id(None, Some(catalog_id)))
+            ("Discogs", "discogs_label_id", crate::identity::label_id(None, Some(catalog_id)))
         }
-        CatalogColumn::MusicBrainz => {
-            ("musicbrainz_label_id", crate::identity::label_id(Some(catalog_id), None))
-        }
+        CatalogColumn::MusicBrainz => (
+            "MusicBrainz",
+            "musicbrainz_label_id",
+            crate::identity::label_id(Some(catalog_id), None),
+        ),
     };
-    Ok(sql
-        .query_row(
-            &format!(
-                "SELECT l.* FROM labels l WHERE l.id IN ( \
-                     SELECT {} FROM labels named \
-                     WHERE named.{column} = ?1 OR named.id = ?2) \
-                 ORDER BY l.id = ?2 DESC, l.id LIMIT 1",
-                shown_label_id("named.id")
-            ),
-            params![catalog_id, identity],
-            LabelRow::from_row,
-        )
-        .optional()?
-        .map(|row| decided.overlaid(row)))
+    let holding: Vec<LabelRow> = sql.query(
+        &format!(
+            "SELECT l.* FROM labels l WHERE l.id IN ( \
+                 SELECT {} FROM labels named \
+                 WHERE named.{column} = ?1 OR named.id = ?2) \
+             ORDER BY l.id",
+            shown_label_id("named.id")
+        ),
+        params![catalog_id, identity],
+        LabelRow::from_row,
+    )?;
+    match holding.as_slice() {
+        [] => Ok(None),
+        [one] => Ok(Some(decided.overlaid(one.clone()))),
+        _ => Err(IdentityWriteError::Unresolvable(format!(
+            "label '{name}' has {catalog} id {catalog_id}, which {} library labels hold",
+            holding.len()
+        ))),
+    }
 }
 
 /// Make the release `release_id`'s label rows exactly `rows`, in order,
