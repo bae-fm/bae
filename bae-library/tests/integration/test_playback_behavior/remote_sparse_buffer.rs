@@ -357,3 +357,65 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
     })
     .await;
 }
+
+/// A relaunch that resumes the last track 50 s in reads its file from where
+/// that decode starts, not from the track's start: the fresh buffer's first
+/// window is the one the decode reads first. The track starts at 2:00 of the
+/// file, about 21 MB in, and the resumed point is about 9 MB past that, more
+/// than two fill windows away, so no read the resumed decode needs lies near
+/// the track's start.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_resume_at_a_position_reads_from_there_not_the_track_start() {
+    with_fixture(RemoteMultiWindowPlayback::new("remote-resume-start"), async |playback| {
+        let last_track = playback.track_ids[2].clone();
+        let resolved =
+            bae_db::ResolvedTrackAudio::resolve(playback.library.database(), &last_track)
+                .await
+                .expect("the last track's audio");
+        let track_start = resolved.segments[0].span.start_byte.expect("a CUE track's start byte");
+        playback.play_and_wait(&last_track).await;
+        playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(50)));
+        wait_for_seeked_on(&mut playback.progress_rx)
+            .await
+            .expect("the seek before shutdown lands");
+        playback.playback_handle.shutdown().await;
+        // What the first session read stays on this device; the relaunch reads
+        // storage only for what it no longer holds.
+        let flac = playback
+            .library
+            .release_file_ref_for_test(&resolved.segments[0].file_id)
+            .await
+            .expect("the FLAC's coven file");
+        playback.library.evict_file_for_test(flac.id()).await.expect("evict the FLAC");
+        let first_read = playback.cloud.reads().await.len();
+
+        let (handle, _capture_rx) = start_capture_service(&playback.library).await;
+        let mut progress_rx = handle.subscribe_progress();
+        wait_for_state_on(
+            &mut progress_rx,
+            |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == last_track),
+        )
+        .await
+        .expect("the relaunch restores the last track paused");
+        handle.resume();
+        wait_for_position_advance(&mut progress_rx)
+            .await
+            .expect("the resumed track plays on from its position");
+        handle.shutdown().await;
+
+        let reads = playback.cloud.reads().await;
+        let near_track_start = reads[first_read..]
+            .iter()
+            .filter(|(object, _, _)| *object == playback.flac_object)
+            .filter(|(_, offset, _)| {
+                (track_start.saturating_sub(64 * 1024)..track_start + 2 * 1024 * 1024)
+                    .contains(offset)
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            near_track_start.is_empty(),
+            "the resume read near the track's start byte {track_start}: {near_track_start:?}"
+        );
+    })
+    .await;
+}

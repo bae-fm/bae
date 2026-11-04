@@ -129,3 +129,39 @@ fn multi_segment_track_finishes_only_after_last_segment() {
     decoder.join().unwrap().expect("two-segment decode succeeds");
     assert_eq!(pulled, total_frames);
 }
+
+/// The byte a fresh buffer's reader fetches first is where its window's
+/// decode first reads: the landing byte at a natural start, the scrub point
+/// a position starts from, and nothing it can know for a sample seek inside
+/// the segment or a decode from the stream's start.
+#[test]
+fn a_window_first_reads_where_its_decode_starts() {
+    let span = bae_db::SegmentSpan {
+        start_sample: 44_100,
+        end_sample: None,
+        start_byte: Some(70_000),
+        end_byte: None,
+    };
+    let first_read = |start_offset, start| {
+        let buffer = filled_sparse_buffer(&[0; 16]);
+        let id = buffer.id();
+        StreamDecodeParams::new(
+            vec![SegmentDecodeParams::with_start(buffer, span, start_offset, start)],
+            true,
+            0,
+            0,
+        )
+        .first_read_byte(id)
+    };
+    let point = bae_db::ScrubPoint { sample: 88_200, byte: 300_000, exact_from: 88_200 };
+
+    assert_eq!(first_read(0, SegmentStart::Span), Some(70_000));
+    assert_eq!(first_read(50_000, SegmentStart::ScrubPoint(point)), Some(300_000));
+    assert_eq!(first_read(50_000, SegmentStart::Span), None);
+    assert_eq!(first_read(0, SegmentStart::StreamStart), None);
+    assert_eq!(
+        StreamDecodeParams::new(Vec::new(), true, 0, 0).first_read_byte(7),
+        None,
+        "no window reads through the buffer"
+    );
+}

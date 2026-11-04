@@ -290,11 +290,13 @@ pub struct CovenFileReader {
 /// puts the playing track's first, and the windows it fetches up front.
 struct PlaybackRead {
     arbiter: Arc<FetchArbiter>,
-    /// The byte the playing track's audio starts at, when it's past the header
-    /// (a track that seeks into the file). The reader fetches this window up
-    /// front, in parallel with the demuxer's header probe, so the decoder's seek
-    /// finds the bytes already buffered instead of paying a second serial
-    /// round-trip. `None` for a track that starts at byte 0.
+    /// The byte the decode first reads past the file's header, when known
+    /// (`StreamDecodeParams::first_read_byte`): a track's landing byte, or the
+    /// scrub point a decode from a position starts at. The reader fetches
+    /// this window up front, in parallel with the demuxer's header probe, so
+    /// the decoder's jump finds the bytes already buffered instead of paying a
+    /// second serial round-trip. `None` when the decode reads on from the
+    /// header or only the demuxer knows where it lands.
     prefetch_byte: Option<u64>,
     /// Whether to also prefetch the file's end window. `true` for APE, whose
     /// demuxer reads the tail (its mandatory index lives there) when it opens, so
@@ -387,18 +389,18 @@ impl AudioDataReader for CovenFileReader {
                     )
                 };
 
-                // Prefetch the track's start window in parallel with the demuxer's
-                // header probe. The decoder reads the header at byte 0, then seeks
-                // to the track, and the fill only fetches what a registered reader is
-                // already demanding — so without this the seek blocks while the fill
-                // notices the new demand and comes round to it. Since the stored
-                // `start_byte` is the exact seektable landing (the playback seek lands
-                // there — a by-byte FLAC seek jumps straight to it, and APE
-                // sample-seeks its index to it), pull that window now, concurrent with
-                // the probe, so the seek lands on buffered bytes.
+                // Prefetch the decode's first window in parallel with the
+                // demuxer's header probe. The decoder reads the header at byte 0,
+                // then jumps to where it starts, and the fill only fetches what a
+                // registered reader is already demanding — so without this the
+                // jump blocks while the fill notices the new demand and comes
+                // round to it. The byte is exact (a track's stored landing, which
+                // a by-byte FLAC seek jumps straight to and APE sample-seeks its
+                // index to, or a stored scrub point), so pull that window now,
+                // concurrent with the probe, so the jump lands on buffered bytes.
                 if let Some(start) = playback.prefetch_byte {
                     if start < source_size {
-                        prefetch(start, "track-start");
+                        prefetch(start, "decode-start");
                     }
                 }
 
@@ -473,7 +475,7 @@ const CLOUD_STREAM_READ_SIZE: u64 = FILL_WINDOW_SIZE;
 /// the playing track has a fetch in flight, so preloading the next track can't
 /// steal the current track's startup bandwidth. Best-effort — a failed prefetch
 /// just leaves the fill to fetch the window on demand, and so does one that
-/// panicked, which is reported. `what` labels the window (track-start /
+/// panicked, which is reported. `what` labels the window (decode-start /
 /// file-end) in the log.
 fn spawn_window_prefetch(
     diagnostics: &Diagnostics,

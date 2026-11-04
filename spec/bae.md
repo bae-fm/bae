@@ -3281,6 +3281,11 @@ from the frames it has indexed. So the seek decodes
 from the last scrub point (§3.7) that plays the new position exactly, or from
 the file's start before the first, and plays the samples a play from the
 start plays there. In each case the first sample played is the one asked for.
+A file's buffer, made when a track that plays from it loads, fetches first,
+beside the read that opens the file, the window that track's decode reads
+first: the byte import recorded at a track start, the scrub point a load at a
+saved position starts from. A load that seeks by FFmpeg's index fetches what
+the decode asks for, since only FFmpeg knows where that lands.
 Any other lossy track is seeked a little early and decoded up to the new
 position, so its decoder has the frames before it.
 

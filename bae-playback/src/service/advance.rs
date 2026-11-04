@@ -117,15 +117,18 @@ impl PlaybackService {
             None => false,
         };
 
+        // A preload is a natural transition, so no pregap is skipped: decode from
+        // the track's first sample to its end.
         let prepared = prepare_track_for_playback(
             &self.database,
             &self.diagnostics,
             track_id,
+            TrackStart::Natural,
             &mut self.file_buffers,
             &self.command_tx,
         )
         .await;
-        let prepared = match prepared {
+        let (prepared, decode) = match prepared {
             Ok(p) => p,
             Err(e) => {
                 error!("Failed to preload track {}: {}", track_id, e);
@@ -133,10 +136,6 @@ impl PlaybackService {
                 return;
             }
         };
-
-        // A preload is a natural transition, so no pregap is skipped: decode from
-        // the track's first sample to its end.
-        let decode = prepared.decode_params(0, true);
 
         // A preload has no stream yet. `spawn_decoder` mints the decoder's cancel
         // token, carried in `PreloadedNext` so promotion hands it to whatever

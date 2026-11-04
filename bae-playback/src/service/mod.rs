@@ -176,6 +176,15 @@ impl PlaybackPreparedTrack {
     }
 
     /// Decoder windows for this track starting `offset` samples in.
+    /// The track's decode from `start`: from its position in the stream,
+    /// the pregap included or not as `start` says.
+    fn decode_from(&self, start: TrackStart) -> StreamDecodeParams {
+        let include_pregap = start.includes_pregap();
+        let offset =
+            if include_pregap { start.position(self.timeline).frames(self.sample_rate) } else { 0 };
+        self.decode_params(offset, include_pregap)
+    }
+
     fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
         stream_decode(
             &self.segments,

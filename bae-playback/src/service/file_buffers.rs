@@ -128,9 +128,10 @@ impl FileBuffers {
     }
 }
 
-/// Resolve `track_id` and back each of its segments with the buffer its bytes
-/// stream from: the cached one when that file is already being fetched,
-/// otherwise a fresh buffer whose fill task starts here.
+/// Resolve `track_id`, back each of its segments with the buffer its bytes
+/// stream from, and give its decode from `start`: the cached buffer when that
+/// file is already being fetched, otherwise a fresh one whose fill task starts
+/// here, fetching first the window that decode reads first.
 ///
 /// Not a `FileBuffers` method: the prepared track it builds carries those
 /// buffers onward into the slot, and an owner hands its retained state to no
@@ -139,17 +140,25 @@ pub(super) async fn prepare_track_for_playback(
     database: &bae_db::Database,
     diagnostics: &Diagnostics,
     track_id: &str,
+    start: TrackStart,
     file_buffers: &mut FileBuffers,
     command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
-) -> Result<PlaybackPreparedTrack, PlaybackError> {
+) -> Result<(PlaybackPreparedTrack, StreamDecodeParams), PlaybackError> {
     let resolved = ResolvedTrackAudio::resolve(database, track_id).await?;
+    // Read the replay-gain mode once, here, and pass it down — rather than a
+    // preferences read buried inside `finalize_playback_track`. Read before
+    // any buffer is made, so nothing fails between caching a buffer and
+    // starting its fill.
+    let replay_gain_mode = bae_preferences::preferences(database).await?.replay_gain_mode;
 
-    let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
+    // The fresh buffers, each with the file its fill reads.
+    let mut fresh = Vec::new();
     for segment in &resolved.segments {
         // A cached buffer is live by construction: buffers are cancelled only
-        // when they leave the cache (`release` / `cancel_all`), so its fill task
-        // is still serving demand.
+        // when they leave the cache (`release` / `cancel_all`), and a fresh one
+        // has its fill started below before this returns, so its fill task is
+        // still serving demand.
         let buffer = match file_buffers.cached.get(&segment.file_id) {
             Some(cached) => {
                 info!("Reusing cached file buffer");
@@ -157,35 +166,37 @@ pub(super) async fn prepare_track_for_playback(
             }
             None => {
                 let buffer = create_sparse_buffer(segment.file_size);
-                let reader = Box::new(bae_track_audio::data_source::CovenFileReader::for_playback(
-                    database.clone(),
-                    segment.file_id.clone(),
-                    file_buffers.arbiter.clone(),
-                    segment.span.start_byte,
-                    is_ape,
-                    diagnostics.clone(),
-                ));
-                reader.start_reading(
-                    buffer.clone(),
-                    playback_fill_error_handler(command_tx.clone(), buffer.id()),
-                );
                 file_buffers.cached.insert(segment.file_id.clone(), buffer.clone());
+                fresh.push((segment.file_id.clone(), buffer.clone()));
                 buffer
             }
         };
         prepared_segments.push(PreparedAudioSegment::of(segment, buffer));
     }
 
-    // Read the replay-gain mode once, here, and pass it down — rather than a
-    // preferences read buried inside `finalize_playback_track`.
-    let replay_gain_mode = bae_preferences::preferences(database).await?.replay_gain_mode;
-
-    Ok(finalize_playback_track(
+    let prepared = finalize_playback_track(
         track_id.to_string(),
         &resolved,
         prepared_segments,
         replay_gain_mode,
-    ))
+    );
+    let decode = prepared.decode_from(start);
+    let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
+    for (file_id, buffer) in fresh {
+        let reader = Box::new(bae_track_audio::data_source::CovenFileReader::for_playback(
+            database.clone(),
+            file_id,
+            file_buffers.arbiter.clone(),
+            decode.first_read_byte(buffer.id()),
+            is_ape,
+            diagnostics.clone(),
+        ));
+        reader.start_reading(
+            buffer.clone(),
+            playback_fill_error_handler(command_tx.clone(), buffer.id()),
+        );
+    }
+    Ok((prepared, decode))
 }
 
 /// The playback shape of a fill-error handler: a failed byte fill reports itself

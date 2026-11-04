@@ -75,6 +75,20 @@ impl SegmentDecodeParams {
         self.span.start_sample + self.start_offset
     }
 
+    /// The byte the decode first reads past the file's head, when known:
+    /// a scrub point's frame, or at a natural start the span's landing byte,
+    /// which a byte jump lands on and APE's sample seek through its index
+    /// lands on too. `None` from the stream's start, which the head is, and
+    /// for a sample seek mid-segment, whose landing only the demuxer finds.
+    pub(crate) fn first_read_byte(&self) -> Option<u64> {
+        match self.start {
+            SegmentStart::ScrubPoint(point) => Some(point.byte),
+            SegmentStart::StreamStart => None,
+            SegmentStart::Span if self.start_offset == 0 => self.span.start_byte,
+            SegmentStart::Span => None,
+        }
+    }
+
     /// Where the demuxer starts: a scrub point's frame, the stream's start,
     /// or the recorded landing byte at a natural start (`start_offset == 0`)
     /// of a byte-seekable codec. Any other start, and APE, sample-seeks to
@@ -102,6 +116,17 @@ impl StreamDecodeParams {
         trailing_silence_frames: u64,
     ) -> Self {
         Self { segments, byte_seekable, leading_silence_frames, trailing_silence_frames }
+    }
+
+    /// The byte the first window reading through the buffer `buffer_id`
+    /// first reads past its file's head (`SegmentDecodeParams::first_read_byte`),
+    /// which a fresh buffer's reader fetches first; `None` when no window
+    /// reads through it or that byte isn't known.
+    pub fn first_read_byte(&self, buffer_id: u64) -> Option<u64> {
+        self.segments
+            .iter()
+            .find(|segment| segment.buffer.id() == buffer_id)
+            .and_then(SegmentDecodeParams::first_read_byte)
     }
 
     #[cfg(desktop)]

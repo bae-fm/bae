@@ -97,11 +97,12 @@ impl PlaybackService {
             &self.database,
             &self.diagnostics,
             track_id,
+            start,
             &mut self.file_buffers,
             &self.command_tx,
         )
         .await;
-        let prepared = match prepared {
+        let (prepared, decode) = match prepared {
             Ok(p) => p,
             Err(e) => {
                 error!("Failed to prepare track {}: {}", track_id, e);
@@ -128,10 +129,6 @@ impl PlaybackService {
         self.emit_state();
 
         let start_position = start.position(prepared.timeline);
-        let include_pregap = start.includes_pregap();
-        let start_sample_offset =
-            if include_pregap { start_position.frames(prepared.sample_rate) } else { 0 };
-        let decode = prepared.decode_params(start_sample_offset, include_pregap);
         let fmt = prepared.track_fmt(start_position);
         let generation = self.next_load_generation();
 
