@@ -81,7 +81,8 @@ pub(crate) fn read_file_tags(
                 path.clone(),
                 relative_path,
                 metadata.len(),
-                super::file_tag_snapshot::modified_at_nanos(path, &metadata)?,
+                crate::folder_scanner::file_modified_at_ns(path, &metadata)
+                    .map_err(|error| ImportError::FileTags { detail: error.to_string() })?,
             ))
         })
         .collect::<Result<Vec<_>, _>>()?;

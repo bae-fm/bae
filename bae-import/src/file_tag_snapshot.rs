@@ -15,7 +15,6 @@ use lofty::TextEncoding;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
-use std::time::UNIX_EPOCH;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FileObservation {
@@ -539,32 +538,9 @@ fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
     }
     Ok(FileObservation {
         relative_path: file.relative_path.clone(),
-        modified_at_ns: modified_at_nanos(&file.path, &metadata)?,
+        modified_at_ns: crate::folder_scanner::file_modified_at_ns(&file.path, &metadata)
+            .map_err(|error| ImportError::FileTags { detail: error.to_string() })?,
         size: metadata.len(),
-    })
-}
-
-/// The stamp a file is compared by: its modification time as nanoseconds since
-/// the Unix epoch, which is how the scan recorded it and how SQLite stores it.
-pub(crate) fn modified_at_nanos(
-    path: &Path,
-    metadata: &std::fs::Metadata,
-) -> Result<i64, ImportError> {
-    let since_epoch = metadata
-        .modified()
-        .map_err(|error| ImportError::file_tags("read modification time of", path, error))?
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| ImportError::FileTags {
-            detail: format!(
-                "modification time of {} is before the Unix epoch: {error}",
-                path.display()
-            ),
-        })?;
-    i64::try_from(since_epoch.as_nanos()).map_err(|error| ImportError::FileTags {
-        detail: format!(
-            "modification time of {} exceeds SQLite's integer range: {error}",
-            path.display()
-        ),
     })
 }
 

@@ -106,6 +106,8 @@ impl DirectoryReader for OsDirectoryReader {
     }
 }
 
+/// The stamp a file is compared by: its modification time as nanoseconds since
+/// the Unix epoch, which is how the scan records it and how SQLite stores it.
 pub(crate) fn file_modified_at_ns(
     path: &Path,
     metadata: &std::fs::Metadata,
