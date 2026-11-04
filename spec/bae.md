@@ -2048,8 +2048,9 @@ Two ways put a release back on disk, from desktop:
   track's Save as replaces a file only when the person confirms it.
   Each file's track number is the track's number on its side, and its disc
   number the track's medium's position, written only for a release of several
-  mediums. A lossless preset writes the 16, 24 or 32 bits it names, whatever
-  depth the source has. A preset can
+  mediums, and its YEAR the pressing's year, else the album's. A lossless
+  preset writes the 16, 24 or 32 bits it names, whatever depth the source
+  has. A preset can
   write a release as one image with a CUE sheet. FLAC and MP3 presets come
   built in (Appendix C).
 
@@ -3449,7 +3450,9 @@ connects to his laptop, lists the artists, opens an album and plays it.
 
 - **What it serves.** Browsing by artist and album, album lists, one song,
   search, streaming, cover art (Appendix D). A Subsonic album is a bae release.
-  bae has no folder tree, so it shows one folder holding everything.
+  bae has no folder tree, so it shows one folder holding everything. An album,
+  and each of its songs, shows the release's year: its pressing's, else its
+  album's.
 - **Streaming.** A track that is one whole file is served as that file, with
   byte ranges. Any other track is decoded from its segments and served as WAV.
   A client that asks for a transcode gets one, MP3 at 128 kbps unless it says

@@ -35,7 +35,7 @@ impl LibraryManager {
         let total_tracks = self.database.count_tracks_for_release(&release.id).await?;
         let disc = self.database.get_release_mediums(&release.id).await?.disc_number(track);
 
-        let year = release.pressing.year.or(album.year);
+        let year = release.shown_year(album.year);
 
         let tags = SaveTags {
             title: track.title.clone(),

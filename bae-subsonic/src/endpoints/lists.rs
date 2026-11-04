@@ -105,7 +105,7 @@ async fn release_album_pairs(
 }
 
 fn pair_year(pair: &(DbRelease, DbAlbum)) -> Option<i32> {
-    pair.0.pressing.year.or(pair.1.year)
+    pair.0.shown_year(pair.1.year)
 }
 
 /// Fisher–Yates shuffle seeded from the wall clock. `random` only needs an
@@ -151,13 +151,10 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
     let tracks = services.get_tracks_for_release(&info.release_id).await.map_err(lib_err)?;
     let track = tracks.iter().find(|t| t.id == track_id).ok_or_else(SubError::not_found)?;
     let files = services.get_files_for_release(&info.release_id).await.map_err(lib_err)?;
-    let display = services.get_track_display(&track_id).await.map_err(lib_err)?;
     let mediums = services.get_release_mediums(&info.release_id).await.map_err(lib_err)?;
-    let cover_art = release_album_id3_with(services, &release).await?.cover_art;
+    let album = release_album_id3_with(services, &release).await?;
 
-    let child =
-        track_child(services, track, &release, &display.album_title, &files, &mediums, cover_art)
-            .await?;
+    let child = track_child(services, track, &release, &album, &files, &mediums).await?;
     Ok(Some(child.to_element()))
 }
 

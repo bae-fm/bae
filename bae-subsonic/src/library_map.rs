@@ -114,7 +114,7 @@ pub(crate) async fn release_album_id3_with(
         song_count: tracks.len() as i64,
         duration: total_duration_secs(&tracks),
         created: Some(release.created_at.to_rfc3339()),
-        year: release.pressing.year.or(album.album.year),
+        year: release.shown_year(album.album.year),
         music_brainz_id: release_mb_id(services, &release.id).await?,
     })
 }
@@ -185,18 +185,18 @@ async fn resolve_audio_fields(
     })
 }
 
-/// The `Child` (song) for a track on `release`. `album_title`, the release's
-/// files and mediums, and its `coverArt` id are passed in so a whole-album
-/// build resolves them once rather than per track. Its disc is its medium's
-/// position, stated only for a release of several mediums.
+/// The `Child` (song) for a track on `release`. The release's `AlbumID3`,
+/// whose title, year and `coverArt` its songs show, and its files and
+/// mediums are passed in so a whole-album build resolves them once rather
+/// than per track. Its disc is its medium's position, stated only for a
+/// release of several mediums.
 pub(crate) async fn track_child(
     services: &AppServices,
     track: &DbTrack,
     release: &DbRelease,
-    album_title: &str,
+    album: &AlbumId3,
     files: &[DbFile],
     mediums: &bae_db::DbReleaseMediums,
-    cover_art: Option<String>,
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
 
@@ -206,11 +206,11 @@ pub(crate) async fn track_child(
         id: track_wire_id(&track.id),
         parent: Some(album_wire_id(&release.id)),
         title: track.title.clone(),
-        album: Some(album_title.to_string()),
+        album: Some(album.name.clone()),
         artist: Some(bae_db::credits::library_line(&credits)).filter(|line| !line.is_empty()),
         track: Some(track.track_number.get()),
-        year: release.pressing.year,
-        cover_art,
+        year: album.year,
+        cover_art: album.cover_art.clone(),
         size: audio.size,
         content_type: Some(audio.content_type),
         suffix: audio.suffix,
@@ -245,7 +245,7 @@ pub(crate) async fn search_track_child(
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let cover_art = release_cover_art(services, &audio.release_id).await?;
+    let album = release_album_id3_with(services, &release).await?;
     let credits = shown_track_credits(services, track_id).await?;
 
     Ok(Child {
@@ -255,8 +255,8 @@ pub(crate) async fn search_track_child(
         album: Some(album_title.to_string()),
         artist: Some(artist_name.to_string()),
         track: None,
-        year: release.pressing.year,
-        cover_art,
+        year: album.year,
+        cover_art: album.cover_art,
         size: audio.size,
         content_type: Some(audio.content_type),
         suffix: audio.suffix,

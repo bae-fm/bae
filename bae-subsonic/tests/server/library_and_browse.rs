@@ -218,6 +218,36 @@ async fn get_song_and_unknown() {
     assert!(unknown.text().contains(r#""code":70"#));
 }
 
+/// A release whose pressing states no year shows its album's, on the album
+/// and on each of its songs alike: the per-track release's files name one
+/// year, which is its album's.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_song_shows_the_year_its_album_shows() {
+    let lib = seed_library().await;
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_diagnostics::Diagnostics::noop(),
+    );
+
+    let album =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
+            .await;
+    let album = &album.sub()["album"];
+    assert_eq!(album["year"], 2001);
+    let song = &album["song"][0];
+    assert_eq!(song["year"], 2001, "getAlbum's song");
+
+    let song_id = song["id"].as_str().unwrap().to_string();
+    let one = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
+    assert_eq!(one.sub()["song"]["year"], 2001, "getSong");
+
+    let found = call(&router, "search3", &authed("f=json&query=First%20Track")).await;
+    let hit = &found.sub()["searchResult3"]["song"][0];
+    assert_eq!(hit["title"], "First Track");
+    assert_eq!(hit["year"], 2001, "search3's song");
+}
+
 // ──────────────────────────────── lists + search ────────────────────────────
 
 #[tokio::test(flavor = "multi_thread")]

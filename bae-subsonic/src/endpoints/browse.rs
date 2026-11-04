@@ -123,8 +123,6 @@ pub(crate) async fn get_album(
         .ok_or_else(SubError::not_found)?;
 
     let album = release_album_id3_with(services, &release).await?;
-    let album_title = album.name.clone();
-    let cover_art = album.cover_art.clone();
 
     let tracks = services.get_tracks_for_release(&release_id).await.map_err(lib_err)?;
     let files = services.get_files_for_release(&release_id).await.map_err(lib_err)?;
@@ -132,18 +130,7 @@ pub(crate) async fn get_album(
 
     let mut songs = Vec::with_capacity(tracks.len());
     for track in &tracks {
-        songs.push(
-            track_child(
-                services,
-                track,
-                &release,
-                &album_title,
-                &files,
-                &mediums,
-                cover_art.clone(),
-            )
-            .await?,
-        );
+        songs.push(track_child(services, track, &release, &album, &files, &mediums).await?);
     }
     Ok(Some(album.with_songs(songs)))
 }
