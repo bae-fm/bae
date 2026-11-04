@@ -206,6 +206,44 @@ impl StoredCandidate {
     }
 }
 
+/// One loaded candidate, as a read of import's candidate state returns it:
+/// the `import_candidate_state` row with the verdict, signals, provenance, and
+/// file decisions that hang off it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbImportCandidateState {
+    pub content_hash: String,
+    pub candidate_key: crate::CandidateKey,
+    /// What identification concluded, or `None` when nothing has identified
+    /// this candidate yet — including when a file decision cleared what had,
+    /// because that verdict described a folder shape that no longer applies.
+    pub identify: Option<DbCandidateIdentifyResult>,
+    /// The signals identification settled on, or `None` when nothing has
+    /// extracted them.
+    pub signals: Option<bae_identify::signals::Signals>,
+    /// What a person decided this candidate's identification asks about. Every
+    /// run of it reads this at its start; the default is what a candidate
+    /// nobody has decided anything about runs with.
+    pub lookup_choices: bae_identify::LookupChoices,
+    /// The user's decisions about this candidate's files: which audio each
+    /// track sheet describes, and which files are the release's tracks.
+    pub file_edits: crate::folder_scanner::CandidateFileEdits,
+    /// What the draft's values were read from, or `None` for a draft typed
+    /// in, cleared, or blank.
+    pub metadata_provenance: Option<crate::MetadataProvenance>,
+    /// What the candidate is linked to in the catalogs, or `None` while it is
+    /// linked to none. It names a release, not a shape, so file decisions
+    /// and draft edits leave it standing.
+    pub release_link: Option<crate::ReleaseLink>,
+    /// Who wrote the draft: nobody, discovery's tag seed, identification's
+    /// pick, or a person. Stored on the draft, since a person's draft may be
+    /// read from nowhere.
+    pub metadata_author: crate::MetadataAuthor,
+    /// Revision of the editable metadata group. Every draft, artist, track, or
+    /// cover mutation advances it so a source projection cannot overwrite a
+    /// newer edit.
+    pub metadata_revision: u64,
+}
+
 #[cfg(test)]
 #[path = "rows_tests.rs"]
 mod tests;

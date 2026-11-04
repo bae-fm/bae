@@ -881,6 +881,28 @@ pub(super) fn insert_file_tags_draft(
     Ok(())
 }
 
+/// Everything a person settled about one candidate through its pane, keyed by
+/// the same content hash the rest of its state is.
+///
+/// Read as a group by the per-candidate query, which draws the header, the
+/// cover and the mapping table from them at once. Kept off
+/// [`DbImportCandidateState`] because that one is read for the whole queue and
+/// none of these are.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbCandidatePaneRows {
+    /// The cover the user chose. `None` leaves the picked release's default
+    /// cover standing.
+    pub cover: Option<crate::CoverSelection>,
+    /// The candidate's one stored draft: album fields and one row per audio
+    /// slot, each carrying its physical decision.
+    pub draft: crate::CandidateDraft,
+    /// Where the pane was when the person last left this candidate. `None`
+    /// before the pane has been touched.
+    pub session: Option<crate::CandidateSession>,
+    /// The last import of this candidate that failed.
+    pub failure: Option<crate::ImportFailure>,
+}
+
 #[cfg(test)]
 #[path = "pane_rows_tests.rs"]
 mod tests;

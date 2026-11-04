@@ -14,24 +14,26 @@ mod import_list;
 mod import_origin;
 pub(crate) mod import_state;
 mod label_identity_choice;
-mod models;
 mod release_groupings;
 mod skipped_candidates;
 mod source_releases;
 mod watched_folders;
 
+pub(crate) use folder_scans::DbCandidateFileTagSnapshot;
 pub use folder_scans::{FinishedScan, ScanItemWrite};
 pub(crate) use folder_scans::{
     FolderEntryToWrite, FolderReadingCommit, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
 };
 pub use import_list::SelectionWrite;
-pub use import_state::ImportCommitError;
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, ImportClaim, ImportCommitGuard, ImportRows, NewArtistImages, RunVerdictSaved,
     ScannedCandidateKey,
 };
-pub use models::*;
+pub use import_state::{
+    DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState, ImportCommitError,
+    NewImportCandidateVerdict, VerdictPick,
+};
 pub use release_groupings::GroupingChanges;
 pub(crate) use release_groupings::GroupingFacts;
 pub use watched_folders::WatchedFoldersRemoved;

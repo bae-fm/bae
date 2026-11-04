@@ -575,6 +575,62 @@ impl ImportTables {
     }
 }
 
+/// What a caller supplies to record one candidate's identify verdict via
+/// [`crate::CandidatePreparations::store_verdict`]. Every outcome,
+/// failed included, becomes one `import_candidate_verdict` row. Their timestamp
+/// is stamped by the write path from the injected clock, the same convention as
+/// `created_at` in bae-db's row writers: a timestamp that
+/// records "when this write happened" is the DB layer's to assign, not data a
+/// caller hands in.
+///
+/// It carries no file decisions: those are the user's half of the row and the
+/// verdict write leaves them alone.
+#[derive(Debug, Clone)]
+pub struct NewImportCandidateVerdict {
+    /// The files the verdict answers: the row it addresses, and the
+    /// file-decision revision it was derived from.
+    pub content_hash: String,
+    pub file_edit_revision: u64,
+    /// Where the candidate was last seen on disk. Not identity — the hash is —
+    /// so a moved folder keeps reading the same row under its unchanged hash.
+    pub candidate_key: crate::CandidateKey,
+    pub verdict: bae_identify::TerminalVerdict,
+    /// The settled signals the run reached this verdict on: the disc ID, the
+    /// barcodes, the classified text, and what every audio unit plays for.
+    /// Stored beside the verdict so the pane and the queue read them back
+    /// instead of extracting them again.
+    pub signals: bae_identify::signals::Signals,
+    /// The release this verdict picked unattended and the draft read from
+    /// it, or `None` where it picked none. Only a run that settled on one
+    /// release picks one, and the pick replaces whatever link and draft
+    /// stand.
+    pub pick: Option<VerdictPick>,
+    /// The catalog releases the run read, and the pick's as its settle read
+    /// them: each one the verdict's rows or the pick name is stored in the
+    /// verdict's write.
+    pub releases: Vec<bae_catalogs::source_release::SourceRelease>,
+}
+
+/// The release an identification run picked unattended, and the draft it
+/// read from it.
+#[derive(Debug, Clone)]
+pub struct VerdictPick {
+    pub link: bae_identify::PressingLink,
+    pub metadata: crate::CandidateMetadataDraft,
+}
+
+/// What identification concluded about one candidate. Present as a whole or
+/// absent as a whole: it is one verdict row with the match rows hanging off
+/// it, written or cleared in one transaction.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbCandidateIdentifyResult {
+    pub verdict: bae_identify::TerminalVerdict,
+    /// The person kept their own draft over what the verdict offered: none
+    /// of its releases is the folder's, or it found none. A decision about
+    /// this verdict, so the next one starts without it.
+    pub kept_own_draft: bool,
+}
+
 #[cfg(test)]
 #[path = "verdict_rows_tests.rs"]
 mod tests;

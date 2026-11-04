@@ -737,3 +737,13 @@ pub(crate) async fn stored_keys(db: &Database, root: &std::path::Path) -> Vec<cr
 pub(crate) fn key_of(root: &std::path::Path, name: &str) -> crate::CandidateKey {
     crate::CandidateKey::folder(&folder_below(root, name))
 }
+
+/// Every watched root with its status and every stored entry under it.
+/// Only tests read whole snapshots; production reads entries by key.
+#[derive(Debug, Clone)]
+pub struct DbFolderScanSnapshot {
+    pub watched_folder_path: std::path::PathBuf,
+    pub generation: u64,
+    pub status: crate::FolderScanStatus,
+    pub items: Vec<crate::folder_scanner::ScanItem>,
+}

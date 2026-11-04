@@ -34,6 +34,7 @@ use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_ca
 pub(super) use file_decision_rows::{load_candidate_file_edits_on, store_file_edits};
 pub use import_commit::ImportCommitError;
 pub(crate) use import_commit::{ImportCommitGuard, ImportRows, NewArtistImages};
+pub use pane_rows::DbCandidatePaneRows;
 pub(super) use pane_rows::{cover_read_columns, load_pane_rows_on, read_cover};
 pub(super) use pane_rows::{read_provenance, PROVENANCE_COLUMNS};
 pub(crate) use preparation_rows::{
@@ -42,10 +43,12 @@ pub(crate) use preparation_rows::{
 };
 pub(super) use release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
 pub(super) use rows::load_states_on;
+pub use rows::DbImportCandidateState;
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, CandidateStateSeed};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
+pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, VerdictPick};
 // The source releases' tests store a run's releases as a release run does.
 #[cfg(test)]
 pub(super) use run_rows::store_release_run_on;

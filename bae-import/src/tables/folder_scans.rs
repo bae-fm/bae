@@ -35,6 +35,7 @@ pub(super) use self::read::{load_item_by_key, require_current_candidate, RowSour
 pub(crate) use self::reading::FolderReadingStamp;
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
 pub(super) use self::tag_snapshot::load_candidate_file_tag_snapshot;
+pub(crate) use self::tag_snapshot::DbCandidateFileTagSnapshot;
 
 /// Each watched folder's scan, in the order the folders are listed (their
 /// `position`, by its index), with the count of its current generation's

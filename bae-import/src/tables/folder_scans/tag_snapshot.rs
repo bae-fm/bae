@@ -388,6 +388,17 @@ fn tag_values<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<
     })
 }
 
+/// The current scan stamp for one candidate and whatever file-tag snapshot is
+/// stored beneath it. The stored snapshot may carry an older stamp: callers
+/// compare the two before reuse, while replacement uses the current pair as a
+/// compare-and-set expectation.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DbCandidateFileTagSnapshot {
+    pub scan_generation: u64,
+    pub candidate: crate::folder_scanner::FolderCandidate,
+    pub snapshot: Option<crate::file_tag_snapshot::FileTagSnapshot>,
+}
+
 #[cfg(test)]
 #[path = "tag_snapshot_tests.rs"]
 pub(crate) mod tests;
