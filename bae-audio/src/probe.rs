@@ -214,7 +214,7 @@ unsafe fn probed_lossy_bitrate_kbps(
         return Some(kbps);
     }
 
-    let start = if (*stream).start_time == AV_NOPTS_VALUE { 0 } else { (*stream).start_time };
+    let start = crate::sample_clock::stream_origin(stream);
     if av_seek_frame(fmt_ctx, stream_index, start, AVSEEK_FLAG_BACKWARD) < 0 {
         warn!("probe_audio_from_path: cannot seek {path} to measure audio bitrate");
         return None;

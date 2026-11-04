@@ -18,6 +18,19 @@ pub(crate) struct SampleClock {
     origin: i64,
 }
 
+/// The timestamp `stream` starts at: its start time, or zero when it states none.
+///
+/// # Safety
+/// `stream` must be a valid, probed stream.
+pub(crate) unsafe fn stream_origin(stream: *const ffmpeg_sys_next::AVStream) -> i64 {
+    let start_time = (*stream).start_time;
+    if start_time == ffmpeg_sys_next::AV_NOPTS_VALUE {
+        0
+    } else {
+        start_time
+    }
+}
+
 impl SampleClock {
     pub(crate) fn new(
         time_base: ffmpeg_sys_next::AVRational,
@@ -35,9 +48,7 @@ impl SampleClock {
         stream: *const ffmpeg_sys_next::AVStream,
         sample_rate: u32,
     ) -> Self {
-        let start_time = (*stream).start_time;
-        let origin = if start_time == ffmpeg_sys_next::AV_NOPTS_VALUE { 0 } else { start_time };
-        Self::new((*stream).time_base, sample_rate, origin)
+        Self::new((*stream).time_base, sample_rate, stream_origin(stream))
     }
 
     fn samples(&self) -> ffmpeg_sys_next::AVRational {
