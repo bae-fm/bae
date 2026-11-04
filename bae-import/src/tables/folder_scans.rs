@@ -37,20 +37,6 @@ pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
 pub(super) use self::tag_snapshot::load_candidate_file_tag_snapshot;
 pub(crate) use self::tag_snapshot::DbCandidateFileTagSnapshot;
 
-/// Each watched folder's scan, in the order the folders are listed (their
-/// `position`, by its index), with the count of its current generation's
-/// folders. A scan root is always a watched folder: deleting the folder
-/// deletes its root.
-pub(super) const FOLDER_SCAN_PROGRESS: &str = "SELECT roots.watched_folder_path, roots.status, \
-            roots.error, roots.volume, \
-            (SELECT COUNT(*) FROM scan_candidate AS candidate \
-             WHERE candidate.watched_folder_path = roots.watched_folder_path \
-               AND candidate.generation = roots.generation \
-               AND candidate.source_kind = 'folder') \
-     FROM watched_import_folders AS watched \
-     JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
-     ORDER BY watched.position";
-
 pub(super) use self::dates::forget_discovery_at_or_below;
 pub(super) use self::file_decisions::settle_candidate_files;
 pub(super) use self::sidecar::load_sidecar;

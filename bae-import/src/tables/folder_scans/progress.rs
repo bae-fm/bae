@@ -9,12 +9,26 @@ use crate::folder_scan_status::FolderScanProgress;
 use crate::watched_folder::WatchedFolder;
 use crate::{FolderScanStatus, WatchedFolderScanStatus};
 
+/// Each watched folder's scan, in the order the folders are listed (their
+/// `position`, by its index), with the count of its current generation's
+/// folders. A scan root is always a watched folder: deleting the folder
+/// deletes its root.
+const FOLDER_SCAN_PROGRESS: &str = "SELECT roots.watched_folder_path, roots.status, \
+            roots.error, roots.volume, \
+            (SELECT COUNT(*) FROM scan_candidate AS candidate \
+             WHERE candidate.watched_folder_path = roots.watched_folder_path \
+               AND candidate.generation = roots.generation \
+               AND candidate.source_kind = 'folder') \
+     FROM watched_import_folders AS watched \
+     JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
+     ORDER BY watched.position";
+
 fn load_folder_scan_progress_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
     let mut statuses = Vec::new();
     for (watched_folder_path, status, error, volume, found_count) in
-        sql.query(super::FOLDER_SCAN_PROGRESS, [], |row| {
+        sql.query(FOLDER_SCAN_PROGRESS, [], |row| {
             Ok((
                 path_column::get(row, 0)?,
                 row.get::<_, String>(1)?,
