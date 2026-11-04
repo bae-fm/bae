@@ -106,7 +106,7 @@ impl BridgeHost {
             host.wait_for_closing(store)
         })
         .await
-        .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))
+        .map_err(|failed| BridgeError::unfinished(self.diagnostics.bug(failed)))
     }
 
     /// Finish every recorded removal, on the caller's task, writing how many

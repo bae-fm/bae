@@ -278,6 +278,12 @@ impl BridgeError {
     pub(crate) fn internal(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Internal, detail)
     }
+    /// The error work that did not finish fails with — it panicked, or its
+    /// runtime shut down under it — once `reported` has gone to diagnostics
+    /// as the bug a panic is.
+    pub(crate) fn unfinished(reported: bae_util::task_failure::TaskFailed) -> Self {
+        Self::internal(reported)
+    }
 }
 
 /// Why playback couldn't start or continue. The cases where this device can't

@@ -98,14 +98,14 @@ impl BridgeHost {
             created.open(200, false)
         })
         .await
-        .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))??;
+        .map_err(|failed| BridgeError::unfinished(self.diagnostics.bug(failed)))??;
         let set_up = self.set_up_dev_library(&app, profile, device_name, steps).await;
         let closing = app.clone();
         let closed = bae_util::task_failure::blocking("close the new library", move || {
             closing.close_library(None)
         })
         .await
-        .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))?;
+        .map_err(|failed| BridgeError::unfinished(self.diagnostics.bug(failed)))?;
         set_up?;
         closed?;
         Ok(library_id)

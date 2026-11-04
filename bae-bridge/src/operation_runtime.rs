@@ -100,7 +100,7 @@ impl OperationRuntime {
     /// The error an operation that did not finish fails with: a panic is
     /// reported as the bug it is; a runtime shutting down under it is not.
     fn failed(&self, failed: TaskFailed) -> BridgeError {
-        BridgeError::internal(self.diagnostics.bug(failed))
+        BridgeError::unfinished(self.diagnostics.bug(failed))
     }
 }
 
