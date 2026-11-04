@@ -132,3 +132,13 @@ fn a_number_a_shop_assigns_itself_is_no_code() {
         assert!(comparison_key(&code).is_ok(), "{code}");
     }
 }
+
+/// Two barcodes are one product written alike, or with one comparison key:
+/// a UPC-A and the EAN-13 it widens to, spaces and dashes aside.
+#[test]
+fn two_spellings_of_one_code_are_one_product() {
+    assert!(same_product("012345678905", "0 012345 678905"));
+    assert!(same_product("not a code", "not a code"));
+    assert!(!same_product("012345678905", "5051961234567"));
+    assert!(!same_product("not a code", "another"));
+}

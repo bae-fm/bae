@@ -69,7 +69,8 @@ pub(super) fn next_round(
                     pool.all().any(|result| result.release() == *release)
                 }
                 PressingKey::Barcode { barcode: code } => barcode.lookups().iter().any(|lookup| {
-                    same_barcode(&lookup.value, code) && asked_of(&lookup.providers, source)
+                    bae_types::barcode::same_product(&lookup.value, code)
+                        && asked_of(&lookup.providers, source)
                 }),
                 PressingKey::CatalogNumber { number, artist, .. } => {
                     catalog.lookups().iter().any(|lookup| {
@@ -116,14 +117,6 @@ pub(super) fn offered_rows(context: &SignalsContext) -> Vec<Vec<MetadataResult>>
 
 fn asked_of(providers: &[super::ProviderLookup], source: LookupCatalog) -> bool {
     providers.iter().any(|provider| provider.source == source)
-}
-
-/// Whether two printed barcodes are one code.
-fn same_barcode(a: &str, b: &str) -> bool {
-    a == b
-        || bae_types::barcode::comparison_key(a)
-            .ok()
-            .is_some_and(|key| bae_types::barcode::comparison_key(b).ok() == Some(key))
 }
 
 #[cfg(test)]

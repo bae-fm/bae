@@ -141,6 +141,12 @@ pub fn comparison_key(stated: &str) -> Result<String, Unusable> {
     Ok(digits)
 }
 
+/// Whether two written barcodes name one product: written alike, or with one
+/// [`comparison_key`].
+pub fn same_product(a: &str, b: &str) -> bool {
+    a == b || comparison_key(a).is_ok_and(|key| comparison_key(b).ok() == Some(key))
+}
+
 /// `stated` barcodes as written, in order, leaving out a blank one and one
 /// naming a product an earlier one names (see [`comparison_key`]), so a code
 /// written twice in two spellings is kept in its first. A value that is no
@@ -148,10 +154,7 @@ pub fn comparison_key(stated: &str) -> Result<String, Unusable> {
 pub fn each_product_once(stated: impl IntoIterator<Item = String>) -> Vec<String> {
     let mut kept: Vec<String> = Vec::new();
     for value in stated {
-        let key = comparison_key(&value).ok();
-        let named = kept
-            .iter()
-            .any(|known| *known == value || (key.is_some() && comparison_key(known).ok() == key));
+        let named = kept.iter().any(|known| same_product(known, &value));
         if !value.trim().is_empty() && !named {
             kept.push(value);
         }

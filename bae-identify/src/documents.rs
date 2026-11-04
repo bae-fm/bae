@@ -162,12 +162,10 @@ impl DocumentReading {
                 result.notes = document.notes.clone();
                 result.links = document.links.clone();
                 for barcode in &document.barcodes {
-                    let key = bae_types::barcode::comparison_key(barcode).ok();
-                    let stated = result.barcodes.iter().any(|stated| {
-                        stated == barcode
-                            || (key.is_some()
-                                && bae_types::barcode::comparison_key(stated).ok() == key)
-                    });
+                    let stated = result
+                        .barcodes
+                        .iter()
+                        .any(|stated| bae_types::barcode::same_product(stated, barcode));
                     if !stated {
                         result.barcodes.push(barcode.clone());
                     }
