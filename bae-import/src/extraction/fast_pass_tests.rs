@@ -131,6 +131,34 @@ fn non_utf8_cue_is_decoded_not_dropped() {
     );
 }
 
+/// A folder whose name isn't UTF-8 still gives its name, as it is shown, and
+/// the catalog number in its brackets. Only the folder's name is read from
+/// its path; its files are read from the scan.
+#[cfg(unix)]
+#[test]
+fn a_folder_whose_name_is_not_utf8_gives_its_name_and_bracketed_catalog() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let tmp = TempDir::new().unwrap();
+    let scanned = tmp.path().join("Some Folder");
+    fs::create_dir_all(&scanned).unwrap();
+    fs::write(scanned.join("audio.flac"), fixture_flac()).unwrap();
+    let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        &scanned,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("candidate scan");
+    let folder = tmp.path().join(std::ffi::OsStr::from_bytes(b"Caf\xE9 [LABELA071]"));
+
+    let pass = gather_non_ocr_sources(&[folder], &files)
+        .expect("scanned fixture audio has complete timing");
+
+    let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
+    assert!(texts.contains(&r"Caf\xE9 [LABELA071]"), "the folder's name is dropped: {texts:?}");
+    assert_eq!(pass.bracket_catalogs, ["LABELA071"]);
+}
+
 /// A FLAC carrying these Vorbis comments.
 fn tagged_flac(path: &Path, comments: &[(&str, &str)]) {
     use lofty::config::WriteOptions;

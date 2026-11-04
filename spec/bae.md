@@ -719,6 +719,8 @@ two different things about one file fails the scan.
   the groups and nesting of the import list, and every decision about it
   (skipped, read as one release, kept apart). Its name, and its place below
   the watched folder, show escaped the same way: `Caf\xE9`, `Artist/Caf\xE9`.
+  Identification reads its name as it shows, so a catalog number in its
+  brackets still counts.
 - **Two files that show one name**, such as a Latin-1 `Café.flac` and one
   spelled `Caf\xE9.flac`, can't both be in a release, which names each file
   once. A release that would hold both, including the files of a folder it

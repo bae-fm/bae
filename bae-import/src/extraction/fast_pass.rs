@@ -81,16 +81,14 @@ pub(super) fn gather_non_ocr_sources(
 ) -> Result<FastPass, crate::ImportError> {
     let mut pass = FastPass::empty();
 
-    // Every selected source contributes its folder and parent names.
+    // Every selected source contributes its folder and parent names, as
+    // they are shown: a name that isn't UTF-8 is escaped, not dropped.
+    let shown_name = |path: Option<&Path>| {
+        path.and_then(Path::file_name).map(|name| coven::path_text(Path::new(name)))
+    };
     for folder in folders {
-        let folder_name =
-            folder.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_string();
-        let parent_name = folder
-            .parent()
-            .and_then(|p| p.file_name())
-            .and_then(|n| n.to_str())
-            .unwrap_or_default()
-            .to_string();
+        let folder_name = shown_name(Some(folder)).unwrap_or_default();
+        let parent_name = shown_name(folder.parent()).unwrap_or_default();
 
         // The name goes in as written; the classifier reduces it itself.
         for raw in [&parent_name, &folder_name] {
