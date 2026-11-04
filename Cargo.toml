@@ -193,17 +193,6 @@ incremental = false
 [profile.dev.package."*"]
 opt-level = 3
 
-# Fork carrying the Swift `Task.cancel()` propagation work we're upstreaming
-# (mozilla/uniffi-rs PR branch): cancellation flows through
-# `withTaskCancellationHandler` into Rust drop, opted into per function with
-# `#[uniffi::export(cancellable)]`. The branch is mozilla/main plus those
-# commits, so bae dogfoods exactly what upstream is reviewing. Drop these
-# `[patch]` entries once the PR lands and a uniffi release ships with it.
-#
-# On uniffi bump: regenerate bindings, then confirm
-# `bae-macos/bae/bae/bae_bridge.swift` still contains
-# `uniffiRustCallAsyncCancellable` and `cancelFunc:`. If the upstream Swift
-# template changed shape, the branch needs rebasing.
 [patch.crates-io]
 # Android's platform verifier treats unavailable revocation data as a soft
 # failure while preserving confirmed revocation. The published 0.7.1 verifier
@@ -222,12 +211,22 @@ sqlite3-parser = { git = "https://github.com/bae-fm/lemon-rs", rev = "c0fc0b12a0
 # two after 8.2 (in the 9.0 line); drop this entry once bae moves to it.
 notify = { git = "https://github.com/bae-fm/notify", rev = "673d0932ccdcfa3944860171caf9b611403ba2ff" }
 
+# Fork carrying the Swift `Task.cancel()` propagation work we're upstreaming
+# (mozilla/uniffi-rs PR branch): cancellation flows through
+# `withTaskCancellationHandler` into Rust drop, opted into per function with
+# `#[uniffi::export(cancellable)]`. The branch is mozilla/main plus those
+# commits, so bae dogfoods exactly what upstream is reviewing. Drop these
+# entries once the PR lands and a uniffi release ships with it.
+#
+# On uniffi bump: regenerate bindings, then confirm
+# `bae-macos/bae/bae/bae_bridge.swift` still contains
+# `uniffiRustCallAsyncCancellable` and `cancelFunc:`. If the upstream Swift
+# template changed shape, the branch needs rebasing.
 uniffi = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_bindgen = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_core = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_internal_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_macros = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
-
 uniffi_meta = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_pipeline = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
 uniffi_udl = { git = "https://github.com/bae-fm/uniffi-rs", branch = "upstream-swift-cancel" }
