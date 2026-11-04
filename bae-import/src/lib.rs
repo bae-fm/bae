@@ -259,7 +259,7 @@ pub use identification::IdentificationHandle;
 #[cfg(desktop)]
 pub use identify_service::{IdentifyRunId, IdentifyServiceHandle};
 #[cfg(desktop)]
-pub use import_failure::{IdentityConflict, ImportFailure, ImportFailureReason};
+pub use import_failure::{ImportFailure, ImportFailureReason};
 #[cfg(desktop)]
 pub use list::{
     ImportCandidateListLocation, ImportCounts, ImportListId, ImportListItem, ImportListNarrowing,
@@ -290,8 +290,6 @@ pub use session::{
     PaneOutcome, SearchForm, SearchTab,
 };
 pub use tables::SCHEMA_PARTS;
-#[cfg(desktop)]
-pub use tables::{ArtistIdentityConflictChoice, LabelIdentityConflictChoice};
 
 /// The schema this crate's tests open their stores on: bae-db's part and
 /// import's.

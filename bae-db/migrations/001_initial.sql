@@ -3608,9 +3608,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     -- The pane's last command, when it failed: which command, the class of
     -- its failure, and the failure's untranslated text.
     error_command  TEXT CHECK (error_command IN (
-        'import', 'choose_artist_identity', 'choose_label_identity', 'read_file_tags',
-        'change_lookups', 'change_search_words', 'change_agreements', 'keep_own_draft',
-        'link_shared_album', 'unlink')),
+        'import', 'read_file_tags', 'change_lookups', 'change_search_words',
+        'change_agreements', 'keep_own_draft', 'link_shared_album', 'unlink')),
     error_category TEXT,
     error_detail   TEXT,
     CHECK ((error_command IS NULL) = (error_category IS NULL)),
@@ -3770,62 +3769,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_failure (
     error             TEXT NOT NULL,
     failed_at         TEXT NOT NULL,
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
-) STRICT;
-
--- The failure where one incoming artist name matches two library artists, each
--- already linked to a different provider.
-CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_conflict (
-    content_hash                  TEXT PRIMARY KEY,
-    incoming_artist_name          TEXT NOT NULL,
-    discogs_artist_id             TEXT NOT NULL,
-    musicbrainz_artist_id         TEXT NOT NULL,
-    discogs_library_artist_id     TEXT NOT NULL,
-    musicbrainz_library_artist_id TEXT NOT NULL,
-    FOREIGN KEY (content_hash)
-        REFERENCES import_candidate_failure (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (discogs_library_artist_id) REFERENCES artists (id) ON DELETE CASCADE,
-    FOREIGN KEY (musicbrainz_library_artist_id) REFERENCES artists (id) ON DELETE CASCADE
-) STRICT;
-
--- A person's answer for one conflicting credit in this candidate. The original
--- ids remain evidence; only a merge attaches both to one artist. For
--- 'neither', artist_id reserves the new row's identity; import creates it in
--- the same transaction as the release. These choices are device-local.
-CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_choice (
-    content_hash TEXT NOT NULL REFERENCES import_candidate_state(content_hash) ON DELETE CASCADE,
-    discogs_artist_id TEXT NOT NULL,
-    musicbrainz_artist_id TEXT NOT NULL,
-    choice TEXT NOT NULL CHECK (choice IN ('same_artist', 'discogs_artist', 'musicbrainz_artist', 'neither')),
-    artist_id TEXT NOT NULL,
-    PRIMARY KEY (content_hash, discogs_artist_id, musicbrainz_artist_id)
-) STRICT;
-
--- The failure where one incoming label carries a MusicBrainz id and a Discogs
--- id that two library labels hold.
-CREATE TABLE IF NOT EXISTS import_candidate_label_identity_conflict (
-    content_hash                 TEXT PRIMARY KEY,
-    incoming_label_name          TEXT NOT NULL,
-    discogs_label_id             TEXT NOT NULL,
-    musicbrainz_label_id         TEXT NOT NULL,
-    discogs_library_label_id     TEXT NOT NULL,
-    musicbrainz_library_label_id TEXT NOT NULL,
-    FOREIGN KEY (content_hash)
-        REFERENCES import_candidate_failure (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (discogs_library_label_id) REFERENCES labels (id) ON DELETE CASCADE,
-    FOREIGN KEY (musicbrainz_library_label_id) REFERENCES labels (id) ON DELETE CASCADE
-) STRICT;
-
--- A person's answer for one conflicting label in this candidate. The label's
--- ids stay as the catalogs stated them; only a merge attaches both to one
--- label. For 'neither', label_id reserves the new row's identity; import
--- creates it in the same transaction as the release.
-CREATE TABLE IF NOT EXISTS import_candidate_label_identity_choice (
-    content_hash TEXT NOT NULL REFERENCES import_candidate_state(content_hash) ON DELETE CASCADE,
-    discogs_label_id TEXT NOT NULL,
-    musicbrainz_label_id TEXT NOT NULL,
-    choice TEXT NOT NULL CHECK (choice IN ('same_label', 'discogs_label', 'musicbrainz_label', 'neither')),
-    label_id TEXT NOT NULL,
-    PRIMARY KEY (content_hash, discogs_label_id, musicbrainz_label_id)
 ) STRICT;
 
 -- ── Identification ────────────────────────────────────────────────────────────

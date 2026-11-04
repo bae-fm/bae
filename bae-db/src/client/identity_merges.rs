@@ -1,7 +1,6 @@
-//! One library artist or label merged into another, as a person's answer to
-//! an import's identity conflict records it, or as a write does on finding
-//! one catalog id on several: the survivor takes the absorbed one's catalog
-//! ids, and the absorbed one stays, recorded as merged into the
+//! One library artist or label merged into another, as a write does on
+//! finding one catalog id on several: the survivor takes the absorbed one's
+//! catalog ids, and the absorbed one stays, recorded as merged into the
 //! survivor (`artist_merges`, `label_merges`). Neither row is deleted and no
 //! credit or release label is rewritten: both are shared with devices that
 //! may be naming the absorbed one while apart, and every read shows the
@@ -11,7 +10,7 @@ use super::*;
 
 /// An artist merged into another, with the catalog ids the survivor takes
 /// where it holds none of that catalog.
-pub struct ArtistMerge<'a> {
+pub(crate) struct ArtistMerge<'a> {
     pub survivor: &'a str,
     pub absorbed: &'a str,
     pub discogs_artist_id: Option<&'a str>,
@@ -26,7 +25,10 @@ pub struct ArtistMerge<'a> {
 /// A survivor without an image of its own takes the absorbed artist's, its
 /// row naming the same coven file, so nothing is uploaded again; the
 /// absorbed artist's image row goes.
-pub fn merge_artist_on(conn: &CovenWrite<'_>, merge: &ArtistMerge<'_>) -> Result<(), DbError> {
+pub(crate) fn merge_artist_on(
+    conn: &CovenWrite<'_>,
+    merge: &ArtistMerge<'_>,
+) -> Result<(), DbError> {
     let image =
         |artist_id: &str| super::files::image_file_on(conn, &LibraryImageType::Artist, artist_id);
     let (surviving_image, absorbed_image) = (image(merge.survivor)?, image(merge.absorbed)?);
@@ -67,7 +69,7 @@ pub fn merge_artist_on(conn: &CovenWrite<'_>, merge: &ArtistMerge<'_>) -> Result
 
 /// A label merged into another, with the catalog ids the survivor takes
 /// where it holds none of that catalog.
-pub struct LabelMerge<'a> {
+pub(crate) struct LabelMerge<'a> {
     pub survivor: &'a str,
     pub absorbed: &'a str,
     pub discogs_label_id: Option<&'a str>,
@@ -77,7 +79,7 @@ pub struct LabelMerge<'a> {
 }
 
 /// Merge `merge.absorbed` into `merge.survivor` inside the caller's write.
-pub fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> Result<(), DbError> {
+pub(crate) fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> Result<(), DbError> {
     let changed = conn.execute(
         "UPDATE labels SET \
              musicbrainz_label_id = COALESCE(musicbrainz_label_id, ?2), \

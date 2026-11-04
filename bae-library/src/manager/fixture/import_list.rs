@@ -211,7 +211,6 @@ impl LibraryManager {
                                 detail: FIXTURE_IMPORT_FAILURE.to_string(),
                             },
                             failed_at: bae_db::client::utc_now(self.clock.as_ref()),
-                            identity_conflict: None,
                         },
                     )
                     .await

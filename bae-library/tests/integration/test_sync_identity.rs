@@ -45,23 +45,36 @@ async fn remote_album_by(
     artist: DbArtist,
     title: &str,
 ) -> (String, String, String) {
-    let artist_id = device
+    let artist_id = credited_artist(device, artist).await;
+    let (album_id, release_id) = album_credited_to(device, &artist_id, title).await;
+    (artist_id, album_id, release_id)
+}
+
+/// The library artist `artist` resolves to on `device`, as a metadata edit
+/// resolves it.
+async fn credited_artist(device: &TestDevice, artist: DbArtist) -> String {
+    device
         .manager()
         .find_or_create_artists(&[artist])
         .await
         .expect("resolve the album's artist")
-        .remove(0);
+        .remove(0)
+}
+
+/// A Remote album credited to the library artist `artist_id`, holding one
+/// release. Returns `(album_id, release_id)`.
+async fn album_credited_to(device: &TestDevice, artist_id: &str, title: &str) -> (String, String) {
     // The album arrives with its release in one write, as an import writes
     // them.
     let album = DbAlbum::new_test(title);
-    let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist_id);
+    let credit = bae_db::DbAlbumArtist::new_test(&album.id, artist_id);
     let release = DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
     device
         .database()
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
-    (artist_id, album.id, release.id)
+    (album.id, release.id)
 }
 
 async fn remote_release_in(device: &TestDevice, album_id: &str) -> String {
@@ -357,24 +370,27 @@ fn the_same_record_set_on_two_devices_merges() {
     });
 }
 
-/// Record, on `device`, the import failure where one incoming artist matched
-/// two library artists — the state the identity merge consolidates.
-async fn record_identity_conflict(device: &TestDevice, discogs_artist: &str, mb_artist: &str) {
-    device
-        .database()
-        .execute_local_sql_for_test(&format!(
-            "INSERT INTO import_candidate_state (content_hash, candidate_key) \
-                 VALUES ('conflict', CAST('/Album' AS BLOB));
-             INSERT INTO import_candidate_failure (content_hash, error, failed_at) \
-                 VALUES ('conflict', 'artist identity', '2026-01-01T00:00:00Z');
-             INSERT INTO import_candidate_artist_identity_conflict \
-                 (content_hash, incoming_artist_name, discogs_artist_id, musicbrainz_artist_id, \
-                  discogs_library_artist_id, musicbrainz_library_artist_id) \
-                 VALUES ('conflict', 'Artist', '{DISCOGS_ARTIST}', '{MB_ARTIST}', \
-                         '{discogs_artist}', '{mb_artist}');"
-        ))
-        .await
-        .unwrap();
+/// Two library artists holding one MusicBrainz id, on both devices: device
+/// A gives its Discogs artist the MusicBrainz id while device B, apart,
+/// credits the MusicBrainz artist on its own. Returns the artist a write
+/// meeting the id keeps — the one with the smaller id — the one it merges
+/// into it, and the albums' releases.
+async fn one_id_on_two_artists(devices: &TwoDevices) -> (String, String, Vec<String>) {
+    devices.pause().await;
+    let (discogs, _, discogs_release) =
+        remote_album_by(devices.a(), catalog_artist(None, Some(DISCOGS_ARTIST)), "Album").await;
+    let filled =
+        credited_artist(devices.a(), catalog_artist(Some(MB_ARTIST), Some(DISCOGS_ARTIST))).await;
+    assert_eq!(filled, discogs, "A's Discogs artist takes the MusicBrainz id");
+    let (musicbrainz, _, musicbrainz_release) =
+        remote_album_by(devices.b(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
+    assert_ne!(musicbrainz, discogs);
+    devices.resume().await;
+    let releases = vec![discogs_release, musicbrainz_release];
+    releases_on_both(devices, &releases.iter().map(String::as_str).collect::<Vec<_>>()).await;
+    let (survivor, absorbed) =
+        if discogs < musicbrainz { (discogs, musicbrainz) } else { (musicbrainz, discogs) };
+    (survivor, absorbed, releases)
 }
 
 /// A draft on `device` that names `artist_id` as its album artist — local
@@ -397,33 +413,23 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
         .unwrap();
 }
 
-/// Device A confirms that its Discogs artist and its MusicBrainz artist are
-/// one artist while device B has a draft crediting the MusicBrainz one. B's own
-/// draft never stops it from taking A's library.
+/// Device A credits a MusicBrainz id two of its artists hold, merging them,
+/// while device B has a draft crediting the one merged away. B's own draft
+/// never stops it from taking A's library.
 #[test]
 fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
     run_two_device_test(async |devices| {
-        let (discogs, _, release_id) =
-            remote_album_by(devices.a(), catalog_artist(None, Some(DISCOGS_ARTIST)), "Album").await;
-        let (musicbrainz, album_id, other_release) =
-            remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
-        releases_on_both(devices, &[&release_id, &other_release]).await;
-        draft_crediting(devices.b(), &musicbrainz).await;
+        let (survivor, absorbed, _) = one_id_on_two_artists(devices).await;
+        let (album_id, release_id) = album_credited_to(devices.a(), &absorbed, "Credited").await;
+        releases_on_both(devices, &[&release_id]).await;
+        draft_crediting(devices.b(), &absorbed).await;
 
-        record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
-        bae_import::tables::ImportTables::new(devices.a().database().clone())
-            .choose_import_artist_identity(
-                "conflict",
-                0,
-                bae_import::ArtistIdentityConflictChoice::SameArtist,
-                &coven::UuidIds,
-            )
-            .await
-            .unwrap();
+        let credited = credited_artist(devices.a(), catalog_artist(Some(MB_ARTIST), None)).await;
+        assert_eq!(credited, survivor, "the write keeps the artist with the smaller id");
 
-        devices.converge("SELECT id FROM artists").await;
+        devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
         for database in [devices.a().database(), devices.b().database()] {
-            assert_eq!(album_artist_ids(database, &album_id).await, vec![discogs.clone()]);
+            assert_eq!(album_artist_ids(database, &album_id).await, vec![survivor.clone()]);
         }
         assert_nothing_held(devices).await;
     });
@@ -435,31 +441,19 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
 #[test]
 fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
     run_two_device_test(async |devices| {
-        let (discogs, _, release_id) =
-            remote_album_by(devices.a(), catalog_artist(None, Some(DISCOGS_ARTIST)), "Album").await;
-        let (musicbrainz, _, other_release) =
-            remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
-        releases_on_both(devices, &[&release_id, &other_release]).await;
+        let (survivor, absorbed, mut releases) = one_id_on_two_artists(devices).await;
 
         devices.pause().await;
-        record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
-        bae_import::tables::ImportTables::new(devices.a().database().clone())
-            .choose_import_artist_identity(
-                "conflict",
-                0,
-                bae_import::ArtistIdentityConflictChoice::SameArtist,
-                &coven::UuidIds,
-            )
-            .await
-            .unwrap();
-        let (credited, new_album, new_release) =
-            remote_album_by(devices.b(), catalog_artist(Some(MB_ARTIST), None), "New").await;
-        assert_eq!(credited, musicbrainz, "B credits the artist it already has");
+        let credited = credited_artist(devices.a(), catalog_artist(Some(MB_ARTIST), None)).await;
+        assert_eq!(credited, survivor, "the write keeps the artist with the smaller id");
+        let (new_album, new_release) = album_credited_to(devices.b(), &absorbed, "New").await;
         devices.resume().await;
 
-        releases_on_both(devices, &[&release_id, &other_release, &new_release]).await;
+        releases.push(new_release);
+        releases_on_both(devices, &releases.iter().map(String::as_str).collect::<Vec<_>>()).await;
+        devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
         for database in [devices.a().database(), devices.b().database()] {
-            assert_eq!(album_artist_ids(database, &new_album).await, vec![discogs.clone()]);
+            assert_eq!(album_artist_ids(database, &new_album).await, vec![survivor.clone()]);
         }
         assert_nothing_held(devices).await;
     });

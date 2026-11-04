@@ -397,8 +397,7 @@ extension MappingFixtures {
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         releaseLink: BridgeReleaseLink? = releaseLink,
         metadataAuthor: BridgeMetadataAuthor? = nil,
-        metadataRevision: UInt64 = 1,
-        failure: BridgeImportFailure? = nil,
+        failure: BridgeError? = nil,
         presentation: BridgeMetadataPresentation = .draft,
         candidateKey key: Data = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough",
@@ -430,7 +429,6 @@ extension MappingFixtures {
             ),
             importStatus: nil,
             fileEvidence: [],
-            metadataRevision: metadataRevision,
             signals: nil,
             stage: .drafting(
                 draft: BridgeCandidateDraftPane(

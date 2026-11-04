@@ -20,36 +20,6 @@ extension ImportView {
         }
     }
 
-    /// Record the answer against the draft the person saw.
-    func chooseArtistIdentityConflict(
-        candidate: Candidate,
-        metadataRevision: UInt64,
-        choice: BridgeArtistIdentityConflictChoice
-    ) {
-        runCandidateMutation(candidate: candidate) {
-            try await importer.chooseCandidateArtistIdentity(
-                candidate.key,
-                metadataRevision: metadataRevision,
-                choice: choice
-            )
-        }
-    }
-
-    /// Record the answer against the draft the person saw.
-    func chooseLabelIdentityConflict(
-        candidate: Candidate,
-        metadataRevision: UInt64,
-        choice: BridgeLabelIdentityConflictChoice
-    ) {
-        runCandidateMutation(candidate: candidate) {
-            try await importer.chooseCandidateLabelIdentity(
-                candidate.key,
-                metadataRevision: metadataRevision,
-                choice: choice
-            )
-        }
-    }
-
     /// Run one of the pane's commands. Core clears the failure the pane states
     /// as it starts and stores this one's in its place, so a failure comes
     /// back here only when the pane does not state it.

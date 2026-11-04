@@ -96,19 +96,9 @@ impl ImportService {
         error: &crate::ImportError,
         failed_at: chrono::DateTime<chrono::Utc>,
     ) -> crate::ImportFailure {
-        let identity_conflict = match error {
-            crate::ImportError::ArtistIdentityConflict(conflict) => {
-                Some(crate::IdentityConflict::Artist(conflict.as_ref().clone()))
-            }
-            crate::ImportError::LabelIdentityConflict(conflict) => {
-                Some(crate::IdentityConflict::Label(conflict.as_ref().clone()))
-            }
-            _ => None,
-        };
         crate::ImportFailure {
             reason: crate::ImportFailureReason { detail: error.to_string() },
             failed_at,
-            identity_conflict,
         }
     }
 
@@ -235,13 +225,8 @@ impl ImportService {
         // now, before any file is read or row written, the one thing an
         // import asks a provider for. A fetch that fails fails the import;
         // importing again fetches again.
-        let new_artists = self
-            .new_discogs_artists(
-                &prepared.artist_credits,
-                &prepared.picked_artists,
-                Some(&categorized.content_hash()),
-            )
-            .await?;
+        let new_artists =
+            self.new_discogs_artists(&prepared.artist_credits, &prepared.picked_artists).await?;
         if !new_artists.is_empty() {
             self.event_tx
                 .send_once_written(
@@ -653,8 +638,7 @@ impl ImportService {
         library_image: Option<(&bae_db::DbLibraryImage, &[u8])>,
         artist_images: &[DiscogsArtistImage],
     ) -> Result<(), crate::ImportError> {
-        let pictures =
-            self.staged_artist_pictures(&rows.artists, guard.content_hash(), artist_images).await?;
+        let pictures = self.staged_artist_pictures(&rows.artists, artist_images).await?;
         let images: Vec<_> =
             pictures.images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
         self.tables

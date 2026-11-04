@@ -56,8 +56,6 @@
                 mappingActions: inertMappingActions(),
                 commitActions: ImportCommitActions(
                     confirmImport: {},
-                    chooseArtistIdentity: { _, _ in },
-                    chooseLabelIdentity: { _, _ in },
                     viewInLibrary: { _ in },
                 ),
                 albumActions: DraftAlbumActions(

@@ -4,12 +4,10 @@
 //! are one.
 
 use super::*;
-use crate::tables::artist_identity_choice::resolve_for_import_on;
-use crate::tables::label_identity_choice::label_answers_on;
 use bae_db::client::artist_resolution::{
     identity_write_failure, relink, relink_album_artists, relink_track_artists,
 };
-use bae_db::client::label_resolution::import_label_write;
+use bae_db::client::label_resolution::label_write;
 use bae_db::client::write::{
     insert_audio_format_row, insert_audio_segment_row, insert_release_artist_role_row,
     insert_release_file_row, insert_release_medium_row, insert_release_row,
@@ -86,7 +84,7 @@ fn require_import_commit_guard(
             expectation.verify(candidate_key, source, current.as_ref()).map_err(DbError::Message)
         }
         #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -106,7 +104,7 @@ fn end_import_attempt_of_commit(
             super::move_import_on(sql, candidate_key, import_id, None)
         }
         #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -134,7 +132,7 @@ fn record_import_origin_on(
             }
         }
         #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -158,8 +156,6 @@ fn delete_what_the_import_spent_on(
             delete_verdict(sql, content_hash)?;
             super::lookup_choice_rows::delete_lookup_choices(sql, content_hash)?;
             super::session_rows::delete_session(sql, content_hash)?;
-            crate::tables::artist_identity_choice::delete_choices_on(sql, content_hash)?;
-            crate::tables::label_identity_choice::delete_choices_on(sql, content_hash)?;
             super::album_pick_rows::delete_album_pick(sql, content_hash)?;
             super::pane_rows::delete_draft(sql, content_hash)?;
             // The cover takes its copies and its fetched bytes.
@@ -167,7 +163,7 @@ fn delete_what_the_import_spent_on(
             super::release_link_rows::store_release_link(sql, content_hash, None)
         }
         #[cfg(test)]
-        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+        ImportCommitGuard::UncheckedTestSetup => Ok(()),
     }
 }
 
@@ -241,22 +237,9 @@ pub(crate) enum ImportCommitGuard {
         /// ends with the release.
         import_id: String,
     },
-    /// A test's import of a release no scanned candidate stands behind,
-    /// optionally answering for the candidate state at `content_hash`.
+    /// A test's import of a release no scanned candidate stands behind.
     #[cfg(test)]
-    UncheckedTestSetup { content_hash: Option<String> },
-}
-
-impl ImportCommitGuard {
-    /// The folder hash of the candidate the import commits: what its artist
-    /// decisions are stored under, and what this device records it imported.
-    pub(crate) fn content_hash(&self) -> Option<&str> {
-        match self {
-            Self::Candidate { expectation, .. } => Some(&expectation.candidate.content_hash),
-            #[cfg(test)]
-            Self::UncheckedTestSetup { content_hash } => content_hash.as_deref(),
-        }
-    }
+    UncheckedTestSetup,
 }
 
 /// The row lists an import commit writes around its release — the artist, work,
@@ -387,8 +370,7 @@ impl ImportTables {
                     // before the links below point at them.
                     let credits =
                         ArtistCredits { credits: &artist_credits, picked: &picked_artists };
-                    let resolved = resolve_for_import_on(&credits, tx, guard.content_hash())
-                        .map_err(identity_write_failure)?;
+                    let resolved = credits.resolve_on(tx).map_err(identity_write_failure)?;
                     let inserted: BTreeSet<String> =
                         resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
                     if inserted != expected_new_artists {
@@ -420,13 +402,7 @@ impl ImportTables {
                         replace_album_artists(tx, &album.id, &album_artists, &now)?;
                     }
 
-                    // A test's commit stands for no candidate, which holds
-                    // no answers to label conflicts.
-                    let label_answers = match guard.content_hash() {
-                        Some(hash) => label_answers_on(tx, hash, &release.pressing.labels)?,
-                        None => Vec::new(),
-                    };
-                    insert_release_row(tx, &release, &import_label_write(&labels, &label_answers))
+                    insert_release_row(tx, &release, &label_write(&labels))
                         .map_err(identity_write_failure)?;
                     record_import_origin_on(tx, &guard, &release.id)
                         .map_err(import_commit_failure)?;
@@ -506,6 +482,24 @@ impl ImportTables {
             .await
             .map(|_| ())
             .map_err(import_commit_error)
+    }
+}
+
+impl ImportTables {
+    /// Resolve `credits` against the library as it stands, without writing:
+    /// what an import committing them now would link and create.
+    pub(crate) async fn resolve_artists(
+        &self,
+        credits: &[DbArtist],
+        picked: &[String],
+    ) -> Result<bae_db::client::artist_resolution::ResolvedArtists, bae_db::IdentityWriteError>
+    {
+        let (credits, picked) = (credits.to_vec(), picked.to_vec());
+        self.database
+            .read_resolving_identities(move |sql| {
+                ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql)
+            })
+            .await
     }
 }
 

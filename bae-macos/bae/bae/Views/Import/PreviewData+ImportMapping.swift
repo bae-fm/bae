@@ -399,7 +399,7 @@
             edit: BridgeRawReleaseEdit = blankDraftValues,
             mapping: BridgeMappingTable,
             cover: BridgeCoverChoice? = nil,
-            failure: BridgeImportFailure? = nil,
+            failure: BridgeError? = nil,
             presentation: BridgeMetadataPresentation = .draft
         ) -> Candidate {
             Candidate(
@@ -423,7 +423,6 @@
                     ),
                     importStatus: nil,
                     fileEvidence: [],
-                    metadataRevision: 1,
                     signals: nil,
                     stage: .drafting(
                         draft: BridgeCandidateDraftPane(

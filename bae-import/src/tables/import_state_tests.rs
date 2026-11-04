@@ -5,7 +5,7 @@ use crate::folder_scanner::CategorizedFiles;
 use crate::tables::tests::*;
 use crate::tables::NewImportCandidateVerdict;
 use crate::{
-    ArtistAssignment, AudioFile, ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+    ArtistAssignment, AudioFile, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
 use bae_catalogs::catalog::LookupCatalog;
@@ -397,20 +397,6 @@ pub(crate) fn walkthrough_folder() -> tempfile::TempDir {
     }
     std::fs::write(tmp.path().join("cd.cue"), cue).unwrap();
     tmp
-}
-
-pub(crate) fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist) -> ImportFailure {
-    ImportFailure {
-        reason: crate::ImportFailureReason::error("the artist identities disagree"),
-        failed_at: fixed_now(),
-        identity_conflict: Some(crate::IdentityConflict::Artist(bae_db::ArtistIdentityConflict {
-            incoming_artist_name: "Artist One".to_string(),
-            discogs_artist_id: "discogs-1".to_string(),
-            musicbrainz_artist_id: "mb-1".to_string(),
-            discogs_artist: discogs.clone().into(),
-            musicbrainz_artist: musicbrainz.clone().into(),
-        })),
-    }
 }
 
 /// Store `verdict` for a fresh candidate and read it back, with the

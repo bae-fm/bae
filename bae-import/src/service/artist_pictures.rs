@@ -50,9 +50,8 @@ impl ImportService {
         &self,
         credits: &[bae_db::DbArtist],
         picked: &[String],
-        content_hash: Option<&str>,
     ) -> Result<std::collections::BTreeSet<String>, crate::ImportError> {
-        let resolved = self.tables.resolve_artists(credits, picked, content_hash).await?;
+        let resolved = self.tables.resolve_artists(credits, picked).await?;
         Ok(resolved.inserts.iter().filter_map(|artist| artist.discogs_artist_id.clone()).collect())
     }
 
@@ -62,11 +61,9 @@ impl ImportService {
     pub(super) async fn staged_artist_pictures(
         &self,
         artists: &bae_db::ArtistCredits<'_>,
-        content_hash: Option<&str>,
         fetched: &[DiscogsArtistImage],
     ) -> Result<StagedArtistPictures, crate::ImportError> {
-        let expected =
-            self.tables.resolve_artists(artists.credits, artists.picked, content_hash).await?;
+        let expected = self.tables.resolve_artists(artists.credits, artists.picked).await?;
         Ok(StagedArtistPictures {
             expected_new_artists: expected.inserts.iter().map(|artist| artist.id.clone()).collect(),
             images: artist_image_rows(&expected.inserts, fetched)?,

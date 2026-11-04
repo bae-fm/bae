@@ -115,8 +115,8 @@ pub enum ArtistStanding {
     Library,
     /// Committing creates the artist.
     New,
-    /// Several library artists could be this one; `choices` are the ones the
-    /// person may pick.
+    /// Several library artists carry its name and no catalog id tells them
+    /// apart; `choices` are the ones the person may pick.
     Choose { choices: Vec<ExistingArtist> },
 }
 
@@ -181,7 +181,7 @@ impl ArtistAssignment {
         Some(match &resolved.resolution {
             CreditResolution::Library { .. } => ArtistStanding::Library,
             CreditResolution::New => ArtistStanding::New,
-            CreditResolution::Ambiguous { artists } | CreditResolution::Conflicting { artists } => {
+            CreditResolution::Ambiguous { artists } => {
                 ArtistStanding::Choose { choices: artists.clone() }
             }
         })

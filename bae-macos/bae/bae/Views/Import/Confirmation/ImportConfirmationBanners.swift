@@ -9,15 +9,10 @@ struct ImportConfirmationBanners: View {
     /// The error written to the candidate when committing the edit failed.
     let error: String?
     /// The last failed import of this candidate, kept across relaunches.
-    let failure: BridgeImportFailure?
+    let failure: BridgeError?
     let canEdit: Bool
     /// Try the failed import again.
     let onRetry: () -> Void
-    /// The person's answer, including returning to the release picker.
-    let onChooseArtistIdentity: (BridgeArtistIdentityConflictChoice) -> Void
-    /// The person's answer to a label conflict, including returning to the
-    /// release picker.
-    let onChooseLabelIdentity: (BridgeLabelIdentityConflictChoice) -> Void
     let onViewInLibrary: (String) -> Void
 
     var body: some View {
@@ -86,20 +81,12 @@ struct ImportConfirmationBanners: View {
 
     @ViewBuilder
     private var importFailureBanner: some View {
-        switch failure {
-        case .artistIdentityConflict(let conflict, let error):
-            if let displayed = DisplayError(error) {
-                artistIdentityConflict(conflict, error: displayed)
-            }
-        case .labelIdentityConflict(let conflict, let error):
-            if let displayed = DisplayError(error) {
-                labelIdentityConflict(conflict, error: displayed)
-            }
-        case .other(let error):
-            if let displayed = DisplayError(error) {
+        if let failure {
+            if let displayed = DisplayError(failure) {
                 persistedFailure(displayed)
             }
-        case nil:
+        }
+        else {
             importStatusFailure
         }
     }
@@ -125,126 +112,6 @@ struct ImportConfirmationBanners: View {
         }
         .notice(.danger)
     }
-
-    private func artistIdentityConflict(
-        _ conflict: BridgeArtistIdentityConflict,
-        error: DisplayError
-    ) -> some View {
-        let answer = onChooseArtistIdentity
-        return identityConflict(
-            kind: "artist",
-            symbol: "person.2.badge.gearshape.fill",
-            incomingName: conflict.incomingArtistName,
-            error: error,
-            choices: [
-                IdentityChoice(key: "same_artist") { answer(.sameArtist) },
-                IdentityChoice(
-                    key: "discogs_artist",
-                    existingName: conflict.discogsArtist.name
-                ) { answer(.discogsArtist) },
-                IdentityChoice(
-                    key: "musicbrainz_artist",
-                    existingName: conflict.musicbrainzArtist.name
-                ) { answer(.musicBrainzArtist) },
-                IdentityChoice(key: "neither") { answer(.neither) },
-                IdentityChoice(key: "change_match") { answer(.changeMatch) },
-            ]
-        )
-    }
-
-    private func labelIdentityConflict(
-        _ conflict: BridgeLabelIdentityConflict,
-        error: DisplayError
-    ) -> some View {
-        let answer = onChooseLabelIdentity
-        return identityConflict(
-            kind: "label",
-            symbol: "building.2.fill",
-            incomingName: conflict.incomingLabelName,
-            error: error,
-            choices: [
-                IdentityChoice(key: "same_label") { answer(.sameLabel) },
-                IdentityChoice(
-                    key: "discogs_label",
-                    existingName: conflict.discogsLabel.name
-                ) { answer(.discogsLabel) },
-                IdentityChoice(
-                    key: "musicbrainz_label",
-                    existingName: conflict.musicbrainzLabel.name
-                ) { answer(.musicBrainzLabel) },
-                IdentityChoice(key: "neither") { answer(.neither) },
-                IdentityChoice(key: "change_match") { answer(.changeMatch) },
-            ]
-        )
-    }
-
-    /// One answer to an identity conflict: its string key under the
-    /// conflict's kind, the library entry it names, and what it sends.
-    private struct IdentityChoice {
-        let key: String
-        var existingName: String?
-        let choose: () -> Void
-    }
-
-    /// The banner for an incoming artist or label whose two catalog IDs name
-    /// two library entries: its name, why it stopped, and the five answers.
-    private func identityConflict(
-        kind: String,
-        symbol: String,
-        incomingName: String,
-        error: DisplayError,
-        choices: [IdentityChoice]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            HStack(
-                alignment: .firstTextBaseline,
-                spacing: ThemeSpace.related
-            ) {
-                Image(systemName: symbol)
-                    .foregroundStyle(StatusTone.warning.color)
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    Text(incomingName)
-                        .themeText(.strong)
-                    Text(
-                        verbatim: localizedCoreString(
-                            "ui.import.\(kind)_identity_conflict.explanation"
-                        )
-                    )
-                }
-                .themeText(.body)
-                .foregroundStyle(StatusTone.warning.color)
-            }
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ForEach(choices, id: \.key) { choice in
-                    Button(action: choice.choose) {
-                        VStack(
-                            alignment: .leading,
-                            spacing: ThemeSpace.hairline
-                        ) {
-                            Text(
-                                verbatim: localizedCoreString(
-                                    "ui.import.\(kind)_identity_conflict.\(choice.key)"
-                                )
-                            )
-                            if let name = choice.existingName {
-                                Text(verbatim: name)
-                                    .themeText(.detail)
-                            }
-                        }
-                    }
-                    .accessibilityIdentifier("\(kind)-identity-\(choice.key)")
-                }
-            }
-            .controlSize(.small)
-            .disabled(!canEdit)
-            ErrorDetailDisclosure(
-                error: error,
-                tone: .warning,
-                showIcon: false
-            )
-        }
-        .notice(.warning)
-    }
 }
 
 #if DEBUG
@@ -265,16 +132,12 @@ struct ImportConfirmationBanners: View {
                 ),
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",
-                failure: .other(
-                    error: .Diagnostic(
-                        category: .import,
-                        detail: "The folder is no longer where it was"
-                    )
+                failure: .Diagnostic(
+                    category: .import,
+                    detail: "The folder is no longer where it was"
                 ),
                 canEdit: true,
                 onRetry: {},
-                onChooseArtistIdentity: { _ in },
-                onChooseLabelIdentity: { _ in },
                 onViewInLibrary: { _ in },
             )
         }

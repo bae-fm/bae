@@ -108,7 +108,7 @@ async fn commit_import(db: &Database, release: &DbRelease, commit: Commit<'_>) {
     let mediums = [bae_db::DbReleaseMedium::new_test(&release.id)];
     ImportTables::new(db.clone())
         .finalize_import_atomic(
-            crate::tables::ImportCommitGuard::UncheckedTestSetup { content_hash: None },
+            crate::tables::ImportCommitGuard::UncheckedTestSetup,
             commit.album,
             release,
             commit.track_files,
@@ -398,4 +398,96 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
             .expect("the pane is followed to the end"),
         "a read shows the release beside the import still going"
     );
+}
+
+/// An import whose credit's MusicBrainz and Discogs ids name two library
+/// artists, and whose label's two ids name two library labels, imports: the
+/// MusicBrainz id decides each, and the Discogs ids that disagree are dropped,
+/// so every library artist and label stays as it was.
+#[tokio::test]
+async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let by_discogs = DbArtist {
+        discogs_artist_id: Some("discogs-1".to_string()),
+        ..test_artist("artist-by-discogs", "Artist Name", now)
+    };
+    let by_musicbrainz = DbArtist {
+        musicbrainz_artist_id: Some("mb-1".to_string()),
+        ..test_artist("artist-by-musicbrainz", "Artist Name", now)
+    };
+    for artist in [&by_discogs, &by_musicbrainz] {
+        db.insert_artist(artist).await.unwrap();
+    }
+    use bae_db::test_fixtures::labels::{add_label, label, with_ids};
+    add_label(&db, "label-by-discogs", "Label Name", None, Some("7190")).await;
+    add_label(&db, "label-by-musicbrainz", "Label Name", Some("mb-label"), None).await;
+
+    let incoming = DbArtist {
+        discogs_artist_id: Some("discogs-1".to_string()),
+        musicbrainz_artist_id: Some("mb-1".to_string()),
+        ..test_artist("artist-incoming", "Artist Name", now)
+    };
+    let album = test_album(ALBUM_A, "Album Title A", now);
+    let mut release = test_release(RELEASE_A, &album.id, now);
+    release.pressing.labels =
+        vec![with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-label"), Some("7190"))];
+    let track = test_track(TRACK_A, &release.id, "Track Title A", now);
+    let track_files = vec![crate::TrackFile {
+        db_track: track.clone(),
+        audio: crate::TrackAudio::Standalone {
+            file_path: tmp.path().join("Track.flac"),
+            source_audio: scanned_flac(),
+        },
+    }];
+    let credits = [incoming.clone()];
+    let album_artists = [bae_db::DbAlbumArtist::new(&album.id, &incoming.id, 0, now)];
+    let track_artists = [bae_db::DbTrackArtist::new(&track.id, &incoming.id, 0, now)];
+
+    commit_import(
+        &db,
+        &release,
+        Commit {
+            album: Some(&album),
+            track_files: &track_files,
+            rows: crate::tables::ImportRows {
+                artists: bae_db::ArtistCredits { credits: &credits, picked: &[] },
+                album_artists: &album_artists,
+                track_artists: &track_artists,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )
+    .await;
+
+    let credited: Vec<String> = db
+        .get_artists_for_album(&album.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|artist| artist.artist.id)
+        .collect();
+    assert_eq!(credited, std::slice::from_ref(&by_musicbrainz.id));
+    for artist in [&by_discogs, &by_musicbrainz] {
+        let stored = db.find_artist_by_id(&artist.id).await.unwrap().unwrap();
+        assert_eq!(
+            (stored.discogs_artist_id, stored.musicbrainz_artist_id),
+            (artist.discogs_artist_id.clone(), artist.musicbrainz_artist_id.clone())
+        );
+    }
+    let placed: Vec<(Option<String>, Option<String>)> = db
+        .read(|sql| {
+            Ok(sql.query(
+                "SELECT l.discogs_label_id, r.label_id FROM release_labels r \
+                 JOIN labels l ON l.id = r.label_id ORDER BY r.position",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(placed, [(None, Some("label-by-musicbrainz".to_string()))]);
 }

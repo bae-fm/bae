@@ -29,8 +29,5 @@ struct ImportMappingActions {
 /// What the commit bar calls back into.
 struct ImportCommitActions {
     let confirmImport: () -> Void
-    let chooseArtistIdentity:
-        (UInt64, BridgeArtistIdentityConflictChoice) -> Void
-    let chooseLabelIdentity: (UInt64, BridgeLabelIdentityConflictChoice) -> Void
     let viewInLibrary: (String) -> Void
 }

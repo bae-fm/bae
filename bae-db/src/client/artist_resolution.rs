@@ -10,9 +10,10 @@
 //!    id is the library artist holding that id, followed through any merge.
 //!    One id is one artist: several library artists holding it, as two
 //!    devices apart can leave them, are merged in the write, into the
-//!    smallest id. Two different artists holding the credit's two ids is the
-//!    conflict a person settles on the import page; a matched artist holding a
-//!    different id is refused, and the import page offers it to pick.
+//!    smallest id. Where the credit's two ids disagree — they name two
+//!    different artists, or the artist one names holds another id of the
+//!    other catalog — the MusicBrainz id decides: the Discogs id is dropped
+//!    from the credit and given to nothing.
 //! 2. **Otherwise the name.** A credit is the one library artist whose
 //!    `name_key`, or one of whose other printed names (`artist_credits`),
 //!    equals the credit's folded name and whose catalog ids do not contradict
@@ -34,17 +35,9 @@ use super::*;
 /// the statement changes.
 #[derive(Debug, thiserror::Error)]
 pub enum IdentityWriteError {
-    /// Two library artists each hold one of the credit's catalog ids — the
-    /// conflict a person resolves on the import page.
-    #[error(transparent)]
-    ArtistIdentityConflict(Box<crate::ArtistIdentityConflict>),
-    /// Two library labels each hold one of the label's catalog ids — the
-    /// conflict a person resolves on the import page.
-    #[error(transparent)]
-    LabelIdentityConflict(Box<crate::LabelIdentityConflict>),
-    /// The statement cannot be linked to the library as it stands: its ids
-    /// contradict the artist or label they match, or a picked artist no
-    /// longer exists.
+    /// The statement cannot be written as the library stands, for the reason
+    /// the text gives: a picked artist no longer exists, or the write's own
+    /// statements contradict each other.
     #[error("{0}")]
     Unresolvable(String),
     #[error(transparent)]
@@ -273,16 +266,14 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
             continue;
         }
 
-        let committed = match catalog_match_on(sql, credit, &external_id_updates)? {
-            CatalogMatch::Unmatched => None,
-            CatalogMatch::Artist(held) => {
-                for absorbed in held.absorbed {
-                    merge_into(&mut merges, &mut ids, &held.artist.id, absorbed, credit.created_at);
-                }
-                Some(held.artist)
+        let (credit, matched) = settled_catalog_match_on(sql, credit, &external_id_updates)?;
+        let credit = &credit;
+        let committed = matched.map(|held| {
+            for absorbed in held.absorbed {
+                merge_into(&mut merges, &mut ids, &held.artist.id, absorbed, credit.created_at);
             }
-            CatalogMatch::Conflict(conflict) => return Err(conflict.into_error()),
-        };
+            held.artist
+        });
         let pending_by_catalog = pending_catalog_indices(&inserts, credit);
         let resolved_id = match committed {
             Some(existing) => {
@@ -373,12 +364,10 @@ pub fn resolve_credit_on<Q: QueryOne + QueryRows>(
         musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
         created_at: chrono::DateTime::<Utc>::MIN_UTC,
     };
-    Ok(match catalog_match_on(sql, &row, &[])? {
-        CatalogMatch::Artist(held) => CreditResolution::Library { artist: held.artist.into() },
-        CatalogMatch::Conflict(conflict) => {
-            CreditResolution::Conflicting { artists: conflict.artists() }
-        }
-        CatalogMatch::Unmatched => {
+    let (row, matched) = settled_catalog_match_on(sql, &row, &[])?;
+    Ok(match matched {
+        Some(held) => CreditResolution::Library { artist: held.artist.into() },
+        None => {
             let mut named = name_matches_on(sql, &row, &[])?;
             match named.len() {
                 0 => CreditResolution::New,
@@ -502,36 +491,9 @@ pub(super) enum CatalogMatch {
     Unmatched,
     /// The library artist its ids name.
     Artist(HeldArtist),
-    /// Its ids name library artists that disagree with it.
-    Conflict(CatalogConflict),
-}
-
-pub(super) enum CatalogConflict {
-    /// Two different artists each hold one of the credit's ids.
-    Identity(Box<crate::ArtistIdentityConflict>),
-    /// A matched artist holds a different id of the same catalog.
-    Contradicted { artists: Vec<DbArtist>, detail: String },
-}
-
-impl CatalogConflict {
-    fn into_error(self) -> IdentityWriteError {
-        match self {
-            Self::Identity(conflict) => IdentityWriteError::ArtistIdentityConflict(conflict),
-            Self::Contradicted { detail, .. } => IdentityWriteError::Unresolvable(detail),
-        }
-    }
-
-    /// The library artists the credit's ids point at.
-    fn artists(self) -> Vec<crate::ExistingArtist> {
-        match self {
-            Self::Identity(conflict) => {
-                let crate::ArtistIdentityConflict { discogs_artist, musicbrainz_artist, .. } =
-                    *conflict;
-                vec![discogs_artist, musicbrainz_artist]
-            }
-            Self::Contradicted { artists, .. } => artists.into_iter().map(Into::into).collect(),
-        }
-    }
+    /// Its two ids disagree: they name two library artists, or the artist one
+    /// names holds another id of the other catalog.
+    Disagrees,
 }
 
 /// The library artist a catalog id names, and the other library artists
@@ -562,9 +524,8 @@ pub(super) fn catalog_match_on<Q: QueryRows>(
     let by_discogs = held_by(CatalogColumn::Discogs, credit.discogs_artist_id.as_deref())?;
     let by_musicbrainz =
         held_by(CatalogColumn::MusicBrainz, credit.musicbrainz_artist_id.as_deref())?;
-    let matched = match matching_artist(credit, by_discogs, by_musicbrainz) {
-        Ok(matched) => matched,
-        Err(conflict) => return Ok(CatalogMatch::Conflict(conflict)),
+    let Ok(matched) = matching_artist(credit, by_discogs, by_musicbrainz) else {
+        return Ok(CatalogMatch::Disagrees);
     };
     if let Some(artist) = matched {
         return Ok(CatalogMatch::Artist(HeldArtist { artist, absorbed }));
@@ -587,6 +548,31 @@ pub(super) fn catalog_match_on<Q: QueryRows>(
         Some(held) => CatalogMatch::Artist(held),
         None => CatalogMatch::Unmatched,
     })
+}
+
+/// The credit as the catalog-id step settles it, and the library artist its
+/// ids name. Where its two ids disagree, the MusicBrainz id decides: the
+/// Discogs id is dropped from the credit, which then goes by its MusicBrainz
+/// id alone, and nothing is given the Discogs id.
+pub(super) fn settled_catalog_match_on<Q: QueryRows>(
+    sql: &Q,
+    credit: &DbArtist,
+    staged: &[(String, DbArtist)],
+) -> Result<(DbArtist, Option<HeldArtist>), DbError> {
+    match catalog_match_on(sql, credit, staged)? {
+        CatalogMatch::Unmatched => Ok((credit.clone(), None)),
+        CatalogMatch::Artist(held) => Ok((credit.clone(), Some(held))),
+        CatalogMatch::Disagrees => {
+            let settled = DbArtist { discogs_artist_id: None, ..credit.clone() };
+            match catalog_match_on(sql, &settled, staged)? {
+                CatalogMatch::Unmatched => Ok((settled, None)),
+                CatalogMatch::Artist(held) => Ok((settled, Some(held))),
+                CatalogMatch::Disagrees => {
+                    unreachable!("a credit carrying one catalog id agrees with what it names")
+                }
+            }
+        }
+    }
 }
 
 /// Every shown library artist whose folded name is the credit's and whose
@@ -726,38 +712,25 @@ fn merge_into(
     }
 }
 
+/// The credit's two ids disagree about which library artist it is.
+struct IdsDisagree;
+
+/// The one library artist `incoming`'s ids name, of the one its Discogs id
+/// names and the one its MusicBrainz id names.
 fn matching_artist(
     incoming: &DbArtist,
     by_discogs: Option<DbArtist>,
     by_musicbrainz: Option<DbArtist>,
-) -> Result<Option<DbArtist>, CatalogConflict> {
-    let contradicted = |artists: Vec<DbArtist>| CatalogConflict::Contradicted {
-        artists,
-        detail: format!("artist '{}' has conflicting source IDs", incoming.name),
-    };
+) -> Result<Option<DbArtist>, IdsDisagree> {
     let matched = match (by_discogs, by_musicbrainz) {
         (Some(discogs), Some(musicbrainz)) if discogs.id != musicbrainz.id => {
-            if !ids_agree(&discogs, incoming) || !ids_agree(&musicbrainz, incoming) {
-                return Err(contradicted(vec![discogs, musicbrainz]));
-            }
-            let (Some(discogs_artist_id), Some(musicbrainz_artist_id)) =
-                (incoming.discogs_artist_id.clone(), incoming.musicbrainz_artist_id.clone())
-            else {
-                unreachable!("two catalog matches come from the credit's two catalog ids")
-            };
-            return Err(CatalogConflict::Identity(Box::new(crate::ArtistIdentityConflict {
-                incoming_artist_name: incoming.name.clone(),
-                discogs_artist_id,
-                musicbrainz_artist_id,
-                discogs_artist: discogs.into(),
-                musicbrainz_artist: musicbrainz.into(),
-            })));
+            return Err(IdsDisagree)
         }
         (Some(artist), _) | (_, Some(artist)) => Some(artist),
         (None, None) => None,
     };
     match matched {
-        Some(existing) if !ids_agree(&existing, incoming) => Err(contradicted(vec![existing])),
+        Some(existing) if !ids_agree(&existing, incoming) => Err(IdsDisagree),
         matched => Ok(matched),
     }
 }

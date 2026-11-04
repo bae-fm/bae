@@ -1,41 +1,5 @@
 use super::*;
 
-forward! { async this => {
-    /// Record the person's answer to the candidate's artist conflict.
-    fn choose_candidate_artist_identity(
-        candidate_key: Vec<u8>,
-        metadata_revision: u64,
-        choice: crate::types::BridgeArtistIdentityConflictChoice,
-    ) -> crate::types::BridgePaneOutcome {
-        Ok(crate::types::BridgePaneOutcome::from_core(
-            this.services
-                .pane_choose_artist_identity(
-                    &candidate_key.into(),
-                    metadata_revision,
-                    choice.into_core(),
-                )
-                .await?,
-        ))
-    }
-
-    /// Record the person's answer to the candidate's label conflict.
-    fn choose_candidate_label_identity(
-        candidate_key: Vec<u8>,
-        metadata_revision: u64,
-        choice: crate::types::BridgeLabelIdentityConflictChoice,
-    ) -> crate::types::BridgePaneOutcome {
-        Ok(crate::types::BridgePaneOutcome::from_core(
-            this.services
-                .pane_choose_label_identity(
-                    &candidate_key.into(),
-                    metadata_revision,
-                    choice.into_core(),
-                )
-                .await?,
-        ))
-    }
-} }
-
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     /// Open an import list showing `view`, with nothing folded and nothing

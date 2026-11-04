@@ -352,10 +352,9 @@ on screen, so an artist added, renamed or given another name meanwhile shows
 as it is. Typing a name, or picking an artist for a tag credit that spelled it
 differently, prints the artist's own name.
 
-Two artists are merged into one in two ways: on the import page, when an
-import's credit shows that two library artists are the same person and the
-person says so (§3.7), and by any write that finds one catalog id on two
-artists, since one id is one artist (below). bae has no other merge action.
+Two artists are merged into one by any write that finds one catalog id on
+two artists, since one id is one artist (below). bae has no merge action yet:
+merging artists a person names is for the main app, designed later.
 
 Merging records that one artist was absorbed into the other; both rows stay, so
 a credit another device gave the absorbed artist still resolves. Every read
@@ -372,7 +371,10 @@ writes the credit, so nothing landing in between can make it wrong:
    that id, followed through any merge. One id is one artist: where several
    hold it, the write merges them into the one with the smallest id, which
    takes the ids and sort name it lacks from the others, and the credit
-   names it.
+   names it. Where the credit's two ids disagree, naming two artists or an
+   artist that holds a different id of the other catalog, the MusicBrainz id
+   decides: the credit's Discogs id is dropped, and the credit goes by its
+   MusicBrainz id alone.
 2. Otherwise it is the one library artist whose folded name matches and whose
    ids don't contradict the credit. The folding ignores case, accents and
    spacing, and takes a word-final sigma (ς) as σ.
@@ -384,16 +386,18 @@ name.
 **Edge cases.**
 
 - **Two ids, two artists.** A credit names MusicBrainz artist X and Discogs
-  artist Y, and the library holds X and Y as separate artists. The write is
-  refused, and the import page shows the conflict for the person to settle
-  (§3.7). bae never settles it on its own.
+  artist Y, and the library holds X and Y as separate artists. The credit
+  names X, and Y keeps its own ids; nobody is asked (rule 1).
 - **One id, two artists.** The library holds a credit's id on two artists,
   as when two devices apart each gave it to a different artist of that name.
   The two are one artist, so the next write naming that id merges them into
   the smaller id (rule 1) and goes on; nobody is asked.
-- **A contradicting id.** A credit whose id names an artist that holds a
-  different id of either catalog is refused outright. A credit whose name
-  alone matches such an artist is not that artist (rule 2).
+- **A contradicting id.** A credit whose Discogs id names an artist holding
+  a different MusicBrainz id goes by its MusicBrainz id alone: the artist
+  holding that id, or a new one. A credit whose MusicBrainz id names an
+  artist holding a different Discogs id is that artist, which keeps its own
+  Discogs id. A credit whose name alone matches an artist holding a
+  different id is not that artist (rule 2).
 
 **Record labels.** A label row holds a name, its name key, and the label's
 MusicBrainz and Discogs ids where known. A release's label row names one, or
@@ -404,7 +408,9 @@ import's or an edit's save:
 1. A label carrying a MusicBrainz or Discogs id is the library label holding
    that id, followed through any merge. One id is one label: where several
    hold it, the write merges them into the one with the smallest id, which
-   takes the ids it lacks from the others.
+   takes the ids it lacks from the others. Where the label's two ids
+   disagree, as a credit's can, the MusicBrainz id decides and the Discogs
+   id is dropped.
 2. On an edit, a label carrying no id whose name is the name of a label the
    release names now is that label, so saving a release keeps its labels.
 3. Otherwise it is the one library label whose name key matches and whose
@@ -415,15 +421,14 @@ import's or an edit's save:
    key: *DFC* is not *Dance Floor Corporation*.
 4. Several such labels, or none, make a new label.
 
-A label that matches fills in its missing ids. Two labels merge on the
-import page, when an import's label shows that two library labels are one
-and the person says so (§3.7), and in any write that finds one id on both
-(rule 1). Both rows stay, and every read shows the
-survivor, following a chain or a loop as artists do; no list sorts by label,
-so no table keeps the label each label shows as. The artist edge cases hold
-for labels: two ids naming two labels stop the import for the person to
-settle (§3.7), and a label whose name matches a label holding a different id
-of the same catalog is refused.
+A label that matches fills in its missing ids. Two labels merge in any
+write that finds one id on both (rule 1); as for artists, bae has no merge
+action yet. Both rows stay, and every read shows the survivor, following a
+chain or a loop as artists do; no list sorts by label, so no table keeps the
+label each label shows as. The artist edge cases hold for labels: two ids
+naming two labels name the MusicBrainz one, and a label whose name alone
+matches a label holding a different id of the same catalog is not that
+label.
 
 ### 2.4 Works
 
@@ -1568,33 +1573,11 @@ reported and stops for the session, as it does when the library closes.
 - **Two ids, two artists.** Carol imports a release crediting *Artist Name*
   with a Discogs id and a MusicBrainz id. The library already holds two
   artists of that name: A, from a Discogs import, holds the Discogs id; B,
-  from a MusicBrainz import, holds the MusicBrainz id. The import fails with
-  the conflict, and the import page offers five answers:
-
-  | Answer | The credit names |
-  |---|---|
-  | Same artist | A and B, merged into one (§2.3) |
-  | It's A | A; the credit's MusicBrainz id is ignored |
-  | It's B | B; the credit's Discogs id is ignored |
-  | Neither | a new artist carrying neither id |
-  | Change the pressing or match | whatever the new match credits (§3.5) |
-
-  bae never picks for her: either catalog's id could be the wrong one, and a
-  wrong guess credits the album to another artist on every device. Her answer
-  is stored with the candidate like any pane control (§3.6), and the
-  candidate is ready again.
-- **Two ids, two labels.** The same holds for a label: a label carrying a
-  Discogs id and a MusicBrainz id that two library labels hold fails the
-  import with the conflict, and the import page offers the same five
-  answers: the same label (the two merged, §2.3), the Discogs id's label,
-  the MusicBrainz id's label, a new label carrying neither id, or changing
-  the pressing or match.
-- **An answer belongs to its source.** An artist or label answer, and the
-  failed import a conflict left, hold for the credits and labels they were
-  given for. Editing the draft keeps them; changing what the draft is read
-  from (another pressing or match, the files' tags, unlinking) or clearing
-  it discards both, so a conflict the new source brings is the person's to
-  decide again.
+  from a MusicBrainz import, holds the MusicBrainz id. The import credits B
+  and drops the credit's Discogs id (§2.3); A keeps its own. Nobody is asked,
+  and nothing on the import page offers to merge them. A label carrying two
+  ids that two library labels hold imports the same way, as the MusicBrainz
+  id's label.
 - **Identifying a library release again.** A release already in the library
   can be identified again from its own files; its Disc IDs come from the rip
   logs and CUE sheets this device holds of it, each sheet bound to its audio
@@ -4377,8 +4360,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
 | `import_candidate_session` | where the pane was, and its last failure |
-| `import_candidate_failure`, `import_candidate_artist_identity_conflict`, `import_candidate_label_identity_conflict` | why the last import failed |
-| `import_candidate_artist_identity_choice`, `import_candidate_label_identity_choice` | the person's answers to an artist or label conflict, which the import follows (§3.7) |
+| `import_candidate_failure` | why the last import failed |
 
 Beside them, keyed by the candidate's key as the import list names it:
 
@@ -4636,7 +4618,7 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 | `live_results.rs` | windows and sections of live lists |
 | `import/candidate.rs`, `import/grouping.rs` | watched folders, candidate files, CUE binding, import steps, grouped folders |
 | `import/identify.rs` | clues, lookups, the run's ledger, identify state |
-| `import/list.rs` | the import list, its filter, the candidate pane and its commands, and the artist and label conflicts an import stops on |
+| `import/list.rs` | the import list, its filter, and the candidate pane and its commands |
 | `import/search.rs` | catalog search results, pressings and album cards |
 | `import/triage.rs` | candidate rows, states, badges, selection, matched pressings |
 | `cover.rs` | catalog cover galleries |

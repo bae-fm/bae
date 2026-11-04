@@ -41,9 +41,6 @@ pub enum CreditResolution {
     /// Several library artists carry the credit's name and no catalog id tells
     /// them apart. Committing creates a new artist unless the person picks one.
     Ambiguous { artists: Vec<ExistingArtist> },
-    /// The credit's catalog ids point at library artists that disagree with
-    /// it. Committing fails until the person picks one, or merges them.
-    Conflicting { artists: Vec<ExistingArtist> },
 }
 
 /// One credit and what it resolves to.
@@ -51,18 +48,6 @@ pub enum CreditResolution {
 pub struct ResolvedCredit {
     pub credit: ArtistCredit,
     pub resolution: CreditResolution,
-}
-
-/// Two exact provider identities that currently belong to different library
-/// artists. Import stops until the person chooses how this credit is used.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("artist '{incoming_artist_name}' has source IDs belonging to different library artists")]
-pub struct ArtistIdentityConflict {
-    pub incoming_artist_name: String,
-    pub discogs_artist_id: String,
-    pub musicbrainz_artist_id: String,
-    pub discogs_artist: ExistingArtist,
-    pub musicbrainz_artist: ExistingArtist,
 }
 
 /// Whether every catalog id both artists carry agrees. An absent id makes no

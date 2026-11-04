@@ -46,7 +46,7 @@ pub use label_resolution::LabelWrite;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use artist_resolution::{identity_write_failure, relink};
 mod file_row;
-pub mod identity_merges;
+pub(crate) mod identity_merges;
 pub use file_row::FileRow;
 pub mod pending;
 pub mod queued_uploads;

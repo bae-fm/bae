@@ -68,8 +68,6 @@ use rows::load_states_rows_on;
 use std::str::FromStr;
 use verdict_rows::{delete_verdict, store_verdict};
 
-pub(crate) use session_rows::move_pane_on;
-
 impl ImportTables {
     /// Every stored `import_candidate_state` row, keyed by `content_hash`, for
     /// the tests that read back everything a write stored. A column holding a

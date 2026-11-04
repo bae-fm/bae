@@ -46,7 +46,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
 }
 
 #[tokio::test]
-async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
+async fn a_credit_whose_discogs_id_names_another_artist_is_its_musicbrainz_artist() {
     let (manager, _tmp) = setup_test_manager().await;
     let discogs_artist = DbArtist {
         id: bae_util::test_ids::test_uuid("cross-provider-discogs-artist"),
@@ -75,12 +75,17 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
         created_at: manager.clock.now().into(),
     };
 
-    let error = manager
-        .find_or_create_artists(&[incoming])
-        .await
-        .expect_err("a third provider identity cannot be resolved by merging two artists");
+    let resolved = manager.find_or_create_artists(&[incoming]).await.unwrap();
 
-    assert!(matches!(error, LibraryError::Refused(_)));
+    assert_eq!(
+        resolved,
+        std::slice::from_ref(&musicbrainz_artist.id),
+        "the MusicBrainz id decides"
+    );
+    let musicbrainz_artist = manager.get_artist_by_id(&musicbrainz_artist.id).await.unwrap();
+    assert_eq!(musicbrainz_artist.unwrap().discogs_artist_id, None, "the Discogs id is dropped");
+    let discogs_artist = manager.get_artist_by_id(&discogs_artist.id).await.unwrap().unwrap();
+    assert_eq!(discogs_artist.musicbrainz_artist_id.as_deref(), Some("musicbrainz-other"));
 }
 
 // ── Credit lines: printed names and joins, one builder for every surface ────

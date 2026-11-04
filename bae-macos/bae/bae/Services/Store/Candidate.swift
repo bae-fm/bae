@@ -238,8 +238,7 @@ extension BridgePaneFailure {
         guard let displayed = DisplayError(error) else { return nil }
         let why = displayed.line
         switch command {
-        case .import, .chooseArtistIdentity, .chooseLabelIdentity,
-            .keepOwnDraft, .linkSharedAlbum, .unlink:
+        case .import, .keepOwnDraft, .linkSharedAlbum, .unlink:
             return why
         case .readFileTags:
             return String(localized: "Couldn't read file tags: \(why)")
@@ -468,7 +467,7 @@ struct Candidate: Equatable, Identifiable {
 
     /// The last import of this candidate that failed, as it survives a
     /// relaunch.
-    var failure: BridgeImportFailure? {
+    var failure: BridgeError? {
         draft?.failure
     }
 

@@ -143,10 +143,6 @@ pub enum LibraryError {
     /// what asked for it, whose line the refusal shows under.
     #[error("release {release_id} is not in the library")]
     ReleaseMissing { release_id: String, work: ReleaseWork },
-    #[error("Import error: {0}")]
-    ArtistIdentityConflict(#[source] Box<bae_db::ArtistIdentityConflict>),
-    #[error("Import error: {0}")]
-    LabelIdentityConflict(#[source] Box<bae_db::LabelIdentityConflict>),
     /// A verbatim release export (reproducing the imported file set) failed.
     #[error("Export error: {0}")]
     Export(String),
@@ -263,21 +259,9 @@ impl From<coven::CovenError> for LibraryError {
 impl From<bae_db::IdentityWriteError> for LibraryError {
     fn from(error: bae_db::IdentityWriteError) -> Self {
         match error {
-            bae_db::IdentityWriteError::ArtistIdentityConflict(conflict) => {
-                Self::ArtistIdentityConflict(conflict)
-            }
-            bae_db::IdentityWriteError::LabelIdentityConflict(conflict) => {
-                Self::LabelIdentityConflict(conflict)
-            }
             bae_db::IdentityWriteError::Db(error) => Self::Database(error),
             bae_db::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
         }
-    }
-}
-
-impl From<bae_db::ArtistIdentityConflict> for LibraryError {
-    fn from(error: bae_db::ArtistIdentityConflict) -> Self {
-        Self::ArtistIdentityConflict(Box::new(error))
     }
 }
 
@@ -336,9 +320,6 @@ impl LibraryError {
                 ReleaseWork::Transfer => C::Internal,
             },
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
-            LibraryError::ArtistIdentityConflict(_) | LibraryError::LabelIdentityConflict(_) => {
-                C::Import
-            }
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),

@@ -6,74 +6,6 @@ use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::service::tests::*;
 
-#[test]
-fn terminal_import_failure_preserves_a_label_identity_conflict() {
-    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let label = |id: &str| bae_db::ExistingLabel {
-        label_id: id.to_string(),
-        name: "Label Name".to_string(),
-        musicbrainz_label_id: None,
-        discogs_label_id: None,
-    };
-    let conflict = bae_db::LabelIdentityConflict {
-        incoming_label_name: "Label Name".to_string(),
-        discogs_label_id: "7190".to_string(),
-        musicbrainz_label_id: "mb-label".to_string(),
-        discogs_label: label("by-discogs"),
-        musicbrainz_label: label("by-musicbrainz"),
-    };
-    let error = crate::ImportError::from(bae_db::IdentityWriteError::LabelIdentityConflict(
-        Box::new(conflict.clone()),
-    ));
-
-    let failure = ImportService::terminal_failure(&error, failed_at);
-
-    assert_eq!(failure.identity_conflict, Some(crate::IdentityConflict::Label(conflict)));
-}
-
-#[test]
-fn terminal_import_failure_preserves_an_artist_identity_conflict() {
-    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let discogs_artist = bae_db::ExistingArtist {
-        artist_id: "artist-discogs".to_string(),
-        name: "Artist One".to_string(),
-        sort_name: None,
-        musicbrainz_artist_id: None,
-        discogs_artist_id: Some("discogs-1".to_string()),
-    };
-    let musicbrainz_artist = bae_db::ExistingArtist {
-        artist_id: "artist-musicbrainz".to_string(),
-        name: "Artist Two".to_string(),
-        sort_name: None,
-        musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
-        discogs_artist_id: None,
-    };
-    let error =
-        crate::ImportError::ArtistIdentityConflict(Box::new(bae_db::ArtistIdentityConflict {
-            incoming_artist_name: "Mapped Artist".to_string(),
-            discogs_artist_id: "discogs-1".to_string(),
-            musicbrainz_artist_id: "musicbrainz-1".to_string(),
-            discogs_artist: discogs_artist.clone(),
-            musicbrainz_artist: musicbrainz_artist.clone(),
-        }));
-
-    let failure = ImportService::terminal_failure(&error, failed_at);
-
-    assert_eq!(failure.failed_at, failed_at);
-    assert!(matches!(
-        failure.identity_conflict,
-        Some(crate::IdentityConflict::Artist(bae_db::ArtistIdentityConflict {
-            discogs_artist: actual_discogs,
-            musicbrainz_artist: actual_musicbrainz,
-            ..
-        })) if actual_discogs == discogs_artist && actual_musicbrainz == musicbrainz_artist
-    ));
-}
-
 fn local_import_command(
     import_id: &str,
     candidate_key: &crate::CandidateKey,
@@ -281,12 +213,6 @@ async fn seed_spent_rows(test: &TestService, content_hash: &str) {
              (content_hash, presentation, find_online_section, search_tab, search_artist, \
               search_album, search_catalog, search_barcode) \
          VALUES (?1, 'find_online', 'automatic', 'general', '', '', '', '')",
-        "INSERT INTO import_candidate_artist_identity_choice \
-             (content_hash, discogs_artist_id, musicbrainz_artist_id, choice, artist_id) \
-         VALUES (?1, 'discogs-1', 'musicbrainz-1', 'neither', 'artist-reserved')",
-        "INSERT INTO import_candidate_label_identity_choice \
-             (content_hash, discogs_label_id, musicbrainz_label_id, choice, label_id) \
-         VALUES (?1, 'discogs-label-1', 'musicbrainz-label-1', 'neither', 'label-reserved')",
         "INSERT INTO albums (id, title, created_at) \
          VALUES ('album-picked', 'Picked Album', '2026-01-01T00:00:00+00:00')",
         "INSERT INTO import_candidate_album_pick (content_hash, album_id) \
@@ -317,8 +243,6 @@ async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'stat
         "import_candidate_lookup_choices",
         "import_candidate_chosen_catalog",
         "import_candidate_session",
-        "import_candidate_artist_identity_choice",
-        "import_candidate_label_identity_choice",
         "import_candidate_album_pick",
         "import_candidate_edit",
         "import_candidate_album_artist_assignment",

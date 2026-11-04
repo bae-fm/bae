@@ -8,10 +8,6 @@
 #[cfg(desktop)]
 mod album_link_rows;
 #[cfg(desktop)]
-mod artist_identity_choice;
-#[cfg(desktop)]
-mod artist_identity_merge;
-#[cfg(desktop)]
 mod downscaled_copies;
 #[cfg(desktop)]
 mod folder_scans;
@@ -20,8 +16,6 @@ mod import_list;
 mod import_origin;
 #[cfg(desktop)]
 pub(crate) mod import_state;
-#[cfg(desktop)]
-mod label_identity_choice;
 #[cfg(desktop)]
 mod release_groupings;
 mod skipped_candidates;
@@ -33,8 +27,6 @@ mod watched_folders;
 pub const SCHEMA_PARTS: &[bae_db::SchemaPart] =
     &[watched_folders::SCHEMA, skipped_candidates::SCHEMA, import_list::SCHEMA];
 
-#[cfg(desktop)]
-pub use artist_identity_choice::ArtistIdentityConflictChoice;
 #[cfg(desktop)]
 pub(crate) use folder_scans::DbCandidateFileTagSnapshot;
 #[cfg(desktop)]
@@ -56,8 +48,6 @@ pub use import_state::{
     DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState, ImportCommitError,
     NewImportCandidateVerdict, VerdictPick,
 };
-#[cfg(desktop)]
-pub use label_identity_choice::LabelIdentityConflictChoice;
 #[cfg(desktop)]
 pub use release_groupings::GroupingChanges;
 #[cfg(desktop)]

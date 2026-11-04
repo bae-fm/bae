@@ -34,7 +34,6 @@ pub struct ImportCandidateDetailProjection {
     /// The stored verdict's columns, as the list reads them. `None` with no
     /// stored verdict for the candidate's current file shape.
     pub verdict: Option<VerdictSummary>,
-    pub metadata_revision: u64,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<Signals>,
     /// What is running for the candidate, from its standing.
@@ -144,7 +143,6 @@ impl ImportCandidateDetailProjection {
             skipped,
             resumed_identify_state,
             verdict,
-            metadata_revision,
             signals,
             standing: facts,
             listed,
@@ -249,7 +247,6 @@ impl ImportCandidateDetailProjection {
             live,
             import_status,
             file_evidence,
-            metadata_revision,
             signals,
             stage,
         }
@@ -335,8 +332,6 @@ pub struct ImportCandidateDetail {
     /// of the selected pressing; which lookups found a result is the run's
     /// ledger's to say.
     pub file_evidence: Vec<FileEvidence>,
-    /// Revision of the exact metadata draft and selected cover in this value.
-    pub metadata_revision: u64,
     pub signals: Option<Signals>,
     pub stage: CandidateStage,
 }

@@ -237,22 +237,6 @@ pub(super) fn save_preparation_on(
             )))
         }
     };
-    if stored.link != prep.link
-        || stored.metadata.provenance != prep.metadata.provenance
-        || prep.metadata.draft.release_edit().is_blank()
-    {
-        // An answer belongs to these source credits and labels. Changing
-        // their source requires the person to decide any new conflict.
-        crate::tables::artist_identity_choice::delete_choices_on(sql, content_hash)?;
-        crate::tables::label_identity_choice::delete_choices_on(sql, content_hash)?;
-        for identity in [
-            super::failure_rows::ConflictIdentity::Artist,
-            super::failure_rows::ConflictIdentity::Label,
-        ] {
-            super::failure_rows::delete_conflict_failure_on(sql, identity, content_hash)?;
-        }
-    }
-
     if stored.identification != prep.identification {
         match &prep.identification {
             Some(identification) => store_verdict(sql, content_hash, identification)?,

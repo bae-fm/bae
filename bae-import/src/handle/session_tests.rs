@@ -66,7 +66,7 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
     handle.move_candidate_pane(&key, PaneMove::FindOnline).await.unwrap();
 
     let failed = handle
-        .run_pane_command(&key, PaneCommand::ChooseArtistIdentity, async {
+        .run_pane_command(&key, PaneCommand::ReadFileTags, async {
             Err::<(), _>(ImportError::CandidateImportInProgress)
         })
         .await
@@ -76,7 +76,7 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
     assert_eq!(
         session.error,
         Some(PaneFailure {
-            command: PaneCommand::ChooseArtistIdentity,
+            command: PaneCommand::ReadFileTags,
             error: UiError::diagnostic(
                 UiErrorCategory::CandidateImportInProgress,
                 ImportError::CandidateImportInProgress

@@ -228,8 +228,6 @@ pub struct BridgeImportCandidateDetail {
     /// of the selected pressing; which lookups found a result is the run's
     /// ledger's to say.
     pub file_evidence: Vec<BridgeFileEvidence>,
-    /// Revision of the exact metadata draft and selected cover in this value.
-    pub metadata_revision: u64,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<BridgeSignals>,
     pub stage: BridgeCandidateStage,
@@ -283,8 +281,8 @@ pub struct BridgeCandidateDraftPane {
     pub mapping: BridgeMappingTable,
     /// The cover this candidate commits with.
     pub cover: Option<BridgeCoverChoice>,
-    /// The last import of this candidate that failed.
-    pub failure: Option<BridgeImportFailure>,
+    /// Why the last import of this candidate failed.
+    pub failure: Option<BridgeError>,
     /// Where the pane was when the person last left this candidate, or where
     /// it opens for one nobody has touched. Written through
     /// `move_candidate_pane` and `set_candidate_search_form`, and by
@@ -383,8 +381,6 @@ pub struct BridgeCandidateSession {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePaneCommand {
     Import,
-    ChooseArtistIdentity,
-    ChooseLabelIdentity,
     ReadFileTags,
     ChangeLookups,
     ChangeSearchWords,
@@ -420,8 +416,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Import,
-        ChooseArtistIdentity,
-        ChooseLabelIdentity,
         ReadFileTags,
         ChangeLookups,
         ChangeSearchWords,
@@ -502,86 +496,4 @@ mirror_struct! {
         search: (BridgeSearchForm),
         error: (opt BridgePaneFailure),
     },
-}
-
-/// An import that failed, as the pane still shows it after a relaunch.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeImportFailure {
-    /// One incoming artist matched two library artists; the pane offers to
-    /// choose how this import credits the artist.
-    ArtistIdentityConflict { conflict: BridgeArtistIdentityConflict, error: BridgeError },
-    /// One incoming label's catalog ids matched two library labels; the pane
-    /// offers to choose how this import names the label.
-    LabelIdentityConflict { conflict: BridgeLabelIdentityConflict, error: BridgeError },
-    /// Any other failure: a generic line and its diagnostic detail.
-    Other { error: BridgeError },
-}
-
-/// A library label as a conflict names it. Mirrors
-/// `bae_db::ExistingLabel`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeExistingLabel {
-    pub label_id: String,
-    pub name: String,
-    pub musicbrainz_label_id: Option<String>,
-    pub discogs_label_id: Option<String>,
-}
-
-mirror_struct! {
-    #[cfg(feature = "desktop")]
-    BridgeExistingLabel = bae_db::ExistingLabel,
-    from_core: pub(crate) fn,
-    fields: { label_id, name, musicbrainz_label_id, discogs_label_id },
-}
-
-/// The two library labels an incoming label's two catalog ids name.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeLabelIdentityConflict {
-    pub incoming_label_name: String,
-    pub discogs_label: BridgeExistingLabel,
-    pub musicbrainz_label: BridgeExistingLabel,
-}
-
-/// The person's answer to a label conflict on the import page. Mirrors the
-/// core choice without deciding which label an answer names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeLabelIdentityConflictChoice {
-    SameLabel,
-    DiscogsLabel,
-    MusicBrainzLabel,
-    Neither,
-    ChangeMatch,
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeLabelIdentityConflictChoice = bae_import::LabelIdentityConflictChoice,
-    into_core: pub(crate) fn,
-    variants: { SameLabel, DiscogsLabel, MusicBrainzLabel, Neither, ChangeMatch },
-}
-
-/// The two library rows an incoming cross-provider artist identity connected.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeArtistIdentityConflict {
-    pub incoming_artist_name: String,
-    pub discogs_artist: BridgeExistingArtist,
-    pub musicbrainz_artist: BridgeExistingArtist,
-}
-
-/// The person's answer on the import page. Mirrors the core choice without
-/// deciding which artist an answer credits.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeArtistIdentityConflictChoice {
-    SameArtist,
-    DiscogsArtist,
-    MusicBrainzArtist,
-    Neither,
-    ChangeMatch,
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    BridgeArtistIdentityConflictChoice = bae_import::ArtistIdentityConflictChoice,
-    into_core: pub(crate) fn,
-    variants: { SameArtist, DiscogsArtist, MusicBrainzArtist, Neither, ChangeMatch },
 }

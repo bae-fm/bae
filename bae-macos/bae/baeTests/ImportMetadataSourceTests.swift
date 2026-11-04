@@ -338,8 +338,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
                 key: key,
                 detail: MappingFixtures.detail(
                     mapping: MappingFixtures.fileTagsTable,
-                    metadataProvenance: .fileMetadata,
-                    metadataRevision: UInt64(applications)
+                    metadataProvenance: .fileMetadata
                 )
             )
             XCTAssertEqual(

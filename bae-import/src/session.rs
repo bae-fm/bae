@@ -41,10 +41,6 @@ pub struct SearchForm {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PaneCommand {
     Import,
-    /// Apply the person's answer to an import artist identity conflict.
-    ChooseArtistIdentity,
-    /// Apply the person's answer to an import label identity conflict.
-    ChooseLabelIdentity,
     /// Read the files' own tags into the draft.
     ReadFileTags,
     /// Change which identifiers identification looks up.

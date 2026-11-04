@@ -151,18 +151,6 @@ struct ImportMappingPane: View {
                 failure: candidate.failure,
                 canEdit: detail.actionable,
                 onRetry: commitActions.confirmImport,
-                onChooseArtistIdentity: {
-                    commitActions.chooseArtistIdentity(
-                        detail.metadataRevision,
-                        $0
-                    )
-                },
-                onChooseLabelIdentity: {
-                    commitActions.chooseLabelIdentity(
-                        detail.metadataRevision,
-                        $0
-                    )
-                },
                 onViewInLibrary: commitActions.viewInLibrary,
             )
         }

@@ -194,9 +194,6 @@ pub enum BridgeCreditResolution {
     /// Several library artists carry the name and no catalog id tells them
     /// apart. Committing creates a new artist unless the person picks one.
     Ambiguous { artists: Vec<BridgeExistingArtist> },
-    /// The credit's catalog ids point at library artists that disagree with
-    /// it. Committing fails until the person picks one, or merges them.
-    Conflicting { artists: Vec<BridgeExistingArtist> },
 }
 
 /// One credit and what it resolves to. Mirror of

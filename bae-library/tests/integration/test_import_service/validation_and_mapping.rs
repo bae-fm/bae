@@ -355,7 +355,6 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
             after.draft().unwrap().metadata_provenance,
             before.draft().unwrap().metadata_provenance
         );
-        assert_eq!(after.metadata_revision, before.metadata_revision);
         assert_eq!(after.draft().unwrap().cover, before.draft().unwrap().cover);
         assert_eq!(after.resumed_identify_state, before.resumed_identify_state);
         let tracks = bae_import::mapping_tracks(&after.draft().unwrap().mapping);

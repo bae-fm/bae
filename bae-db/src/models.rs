@@ -17,7 +17,6 @@ use std::num::NonZeroU32;
 
 mod artist_identity;
 mod images;
-mod label_identity;
 mod query;
 mod scrub_points;
 // Only an import and an edit applying a catalog's release write a release
@@ -26,12 +25,8 @@ mod scrub_points;
 mod release_rows;
 
 pub use artist_identity::artist_source_ids_are_compatible;
-pub use artist_identity::{
-    ArtistIdentityConflict, CreditResolution, ExistingArtist, ResolvedCredit,
-};
+pub use artist_identity::{CreditResolution, ExistingArtist, ResolvedCredit};
 pub use images::*;
-pub use label_identity::label_ids_are_compatible;
-pub use label_identity::{ExistingLabel, LabelIdentityConflict};
 pub use query::*;
 #[cfg(desktop)]
 pub use release_rows::{ReleaseRows, TrackRow, WorkGraphRows};
@@ -39,7 +34,7 @@ pub use scrub_points::ScrubPoints;
 
 /// Whether two statements of one catalog id agree: an absent id makes no
 /// claim; two present ids must be equal.
-fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
+pub(crate) fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
     !matches!((left, right), (Some(left), Some(right)) if left != right)
 }
 

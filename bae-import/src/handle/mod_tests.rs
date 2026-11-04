@@ -553,7 +553,6 @@ pub(crate) async fn picked_stored_candidate_with(
     let fixture = stored_candidate_with(providers).await;
     let revision = fixture.handle.select_candidate_file_tags(fixture.key.clone()).await.unwrap();
     assert_eq!(revision, 1);
-    assert_eq!(pane(&fixture.handle, &fixture.key).await.metadata_revision, revision);
     fixture
 }
 

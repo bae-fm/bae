@@ -169,7 +169,6 @@ private func detail(
         ),
         importStatus: nil,
         fileEvidence: [],
-        metadataRevision: 1,
         signals: nil,
         stage: .drafting(
             draft: BridgeCandidateDraftPane(

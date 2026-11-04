@@ -7,19 +7,18 @@
 //! The rule, for each label of the release, in order:
 //!
 //! 1. **A label stating only a catalog number** names no library label.
-//! 2. **An import's answer.** A label whose two catalog ids the person
-//!    answered a conflict over names the label the answer says.
-//! 3. **A catalog id is decisive.** A label carrying a MusicBrainz or Discogs
+//! 2. **A catalog id is decisive.** A label carrying a MusicBrainz or Discogs
 //!    id is the library label holding that id, followed through any merge.
 //!    One id is one label: several library labels holding it, as two devices
 //!    apart can leave them, are merged in the write, into the smallest id.
-//!    Two different labels holding the label's two ids is the conflict a
-//!    person settles on the import page; a matched label holding a different
-//!    id of the same catalog is refused outright.
-//! 4. **The label the release names.** On an edit, a label carrying no
+//!    Where the label's two ids disagree — they name two different labels, or
+//!    the label one names holds another id of the other catalog — the
+//!    MusicBrainz id decides: the Discogs id is dropped from the label and
+//!    given to nothing.
+//! 3. **The label the release names.** On an edit, a label carrying no
 //!    catalog id whose name is the name of a label the release names now is
 //!    that label, so saving a release keeps its labels.
-//! 5. **Otherwise the name.** A label is the one library label whose
+//! 4. **Otherwise the name.** A label is the one library label whose
 //!    `name_key` equals the label's ([`bae_types::text_match::label_name_key`])
 //!    and whose catalog ids do not contradict the label's. Several such
 //!    labels, or none, make a new label.
@@ -40,46 +39,12 @@ pub struct LabelWrite<'a> {
     fresh_ids: &'a [String],
     /// `created_at` for a new label.
     now: &'a str,
-    /// What a person answered for labels whose two catalog ids two library
-    /// labels held, which an import's write follows.
-    #[cfg(desktop)]
-    answers: &'a [LabelAnswer],
-}
-
-/// A person's answer for a label whose Discogs and MusicBrainz ids two
-/// library labels held: the label a place stating both ids names.
-#[cfg(desktop)]
-pub struct LabelAnswer {
-    pub discogs_label_id: String,
-    pub musicbrainz_label_id: String,
-    pub label: AnsweredLabel,
-}
-
-/// The label a [`LabelAnswer`] names.
-#[cfg(desktop)]
-pub enum AnsweredLabel {
-    /// A library label, by the id it shows as.
-    Library(String),
-    /// A new label carrying neither catalog id, made under this id.
-    New(String),
 }
 
 /// The [`LabelWrite`] of a write that gives new labels the ids of `parts`,
 /// made at its time.
-pub(crate) fn label_write(parts: &LabelParts) -> LabelWrite<'_> {
-    LabelWrite {
-        fresh_ids: &parts.fresh_ids,
-        now: &parts.now,
-        #[cfg(desktop)]
-        answers: &[],
-    }
-}
-
-/// The `label_write` of an import, which follows `answers` to its label
-/// conflicts.
-#[cfg(desktop)]
-pub fn import_label_write<'a>(parts: &'a LabelParts, answers: &'a [LabelAnswer]) -> LabelWrite<'a> {
-    LabelWrite { answers, ..label_write(parts) }
+pub fn label_write(parts: &LabelParts) -> LabelWrite<'_> {
+    LabelWrite { fresh_ids: &parts.fresh_ids, now: &parts.now }
 }
 
 /// What a write of labels takes along into its closure: an id for each label
@@ -120,11 +85,9 @@ impl LabelRow {
 
     /// Whether no catalog id `label` carries contradicts this row's.
     fn agrees_with(&self, label: &ReleaseLabel) -> bool {
-        crate::label_ids_are_compatible(
-            &self.existing(),
-            label.musicbrainz_label_id(),
-            label.discogs_label_id(),
-        )
+        let agrees = crate::models::source_ids_are_compatible;
+        agrees(self.musicbrainz_label_id.as_deref(), label.musicbrainz_label_id())
+            && agrees(self.discogs_label_id.as_deref(), label.discogs_label_id())
     }
 
     /// Fill each catalog id this row lacks from `label`.
@@ -134,15 +97,6 @@ impl LabelRow {
         }
         if self.discogs_label_id.is_none() {
             self.discogs_label_id = label.discogs_label_id().map(str::to_string);
-        }
-    }
-
-    pub fn existing(&self) -> crate::ExistingLabel {
-        crate::ExistingLabel {
-            label_id: self.id.clone(),
-            name: self.name.clone(),
-            musicbrainz_label_id: self.musicbrainz_label_id.clone(),
-            discogs_label_id: self.discogs_label_id.clone(),
         }
     }
 }
@@ -284,11 +238,6 @@ fn resolve_label_on(
     rows: &mut [(Option<String>, Option<&str>)],
     write: &LabelWrite<'_>,
 ) -> Result<String, IdentityWriteError> {
-    #[cfg(desktop)]
-    if let Some(id) = import_answer(label, name, decided, write) {
-        return Ok(id);
-    }
-
     let by_musicbrainz = label
         .musicbrainz_label_id()
         .map(|id| label_by_catalog_id_on(tx, CatalogColumn::MusicBrainz, id, decided, write.now))
@@ -308,24 +257,9 @@ fn resolve_label_on(
                 (true, false) => Some(absorb_pending(decided, rows, discogs, musicbrainz)),
                 (false, true) => Some(absorb_pending(decided, rows, musicbrainz, discogs)),
                 _ => {
-                    if !discogs.agrees_with(label) || !musicbrainz.agrees_with(label) {
-                        return Err(contradicted(name));
-                    }
-                    let (Some(discogs_label_id), Some(musicbrainz_label_id)) = (
-                        label.discogs_label_id().map(str::to_string),
-                        label.musicbrainz_label_id().map(str::to_string),
-                    ) else {
-                        unreachable!("two catalog matches come from the label's two catalog ids")
-                    };
-                    return Err(IdentityWriteError::LabelIdentityConflict(Box::new(
-                        crate::LabelIdentityConflict {
-                            incoming_label_name: name.to_string(),
-                            discogs_label_id,
-                            musicbrainz_label_id,
-                            discogs_label: discogs.existing(),
-                            musicbrainz_label: musicbrainz.existing(),
-                        },
-                    )));
+                    return resolve_by_musicbrainz_on(
+                        tx, label, name, named_now, decided, rows, write,
+                    )
                 }
             }
         }
@@ -334,7 +268,7 @@ fn resolve_label_on(
     };
     if let Some(existing) = matched {
         if !existing.agrees_with(label) {
-            return Err(contradicted(name));
+            return resolve_by_musicbrainz_on(tx, label, name, named_now, decided, rows, write);
         }
         return Ok(decided.link(existing, label));
     }
@@ -399,46 +333,20 @@ fn resolve_label_on(
     Ok(id)
 }
 
-/// The library label the write's answer to a conflict over `label`'s two
-/// catalog ids names, made new where the answer was neither; `None` where it
-/// holds no answer for these ids.
-#[cfg(desktop)]
-fn import_answer(
+/// The library label `label` names going by its MusicBrainz id alone: where
+/// its two ids disagree, the MusicBrainz id decides and the Discogs id is
+/// given to nothing.
+fn resolve_by_musicbrainz_on(
+    tx: &CovenWrite<'_>,
     label: &ReleaseLabel,
     name: &str,
+    named_now: &[(String, String)],
     decided: &mut Decided,
+    rows: &mut [(Option<String>, Option<&str>)],
     write: &LabelWrite<'_>,
-) -> Option<String> {
-    let (Some(musicbrainz), Some(discogs)) =
-        (label.musicbrainz_label_id(), label.discogs_label_id())
-    else {
-        return None;
-    };
-    let answer = write.answers.iter().find(|answer| {
-        answer.discogs_label_id == discogs && answer.musicbrainz_label_id == musicbrainz
-    });
-    match answer.map(|answer| &answer.label) {
-        Some(AnsweredLabel::Library(id)) => Some(id.clone()),
-        Some(AnsweredLabel::New(id)) => {
-            let id = id.clone();
-            if !decided.inserts.iter().any(|pending| pending.id == id) {
-                decided.inserts.push(LabelRow {
-                    id: id.clone(),
-                    name: name.to_string(),
-                    musicbrainz_label_id: None,
-                    discogs_label_id: None,
-                });
-            }
-            Some(id)
-        }
-        None => None,
-    }
-}
-
-fn contradicted(name: &str) -> IdentityWriteError {
-    IdentityWriteError::Unresolvable(format!(
-        "label '{name}' has catalog ids that contradict the library label they match"
-    ))
+) -> Result<String, IdentityWriteError> {
+    let settled = label.clone().with_ids(label.musicbrainz_label_id().map(str::to_string), None);
+    resolve_label_on(tx, &settled, name, named_now, decided, rows, write)
 }
 
 /// Drop the label `pending` this write was making in favour of the library

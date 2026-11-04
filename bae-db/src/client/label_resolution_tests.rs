@@ -114,26 +114,59 @@ async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
     assert_eq!(label_count(&db).await, 3);
 }
 
-/// A label whose two catalog ids two library labels hold refuses the write
-/// with both labels for the person to answer, and writes nothing.
+/// A label whose two catalog ids two library labels hold is the MusicBrainz
+/// one, and the Discogs id that disagrees is dropped: neither label changes.
 #[tokio::test]
-async fn two_labels_holding_the_labels_two_ids_are_the_identity_conflict() {
+async fn two_labels_holding_the_labels_two_ids_leave_the_musicbrainz_one() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
 
-    let error =
-        write(&db, vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))])
-            .await
-            .unwrap_err();
+    write(&db, vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))])
+        .await
+        .unwrap();
 
-    let IdentityWriteError::LabelIdentityConflict(conflict) = error else {
-        panic!("expected a label identity conflict, got {error:?}");
-    };
-    assert_eq!(conflict.discogs_label.label_id, "by-discogs");
-    assert_eq!(conflict.musicbrainz_label.label_id, "by-musicbrainz");
-    assert_eq!(conflict.incoming_label_name, "Label Name");
-    assert!(placed(&db).await.is_empty());
+    assert_eq!(ids_of(&placed(&db).await), [Some("by-musicbrainz")]);
+    assert_eq!(stored_label(&db, "by-musicbrainz").await.discogs_label_id, None);
+    assert_eq!(stored_label(&db, "by-discogs").await.musicbrainz_label_id, None);
+    assert_eq!(label_count(&db).await, 2);
+}
+
+/// A label whose MusicBrainz id names a label holding another Discogs id is
+/// that label; the Discogs id it carries is dropped.
+#[tokio::test]
+async fn a_musicbrainz_label_holding_another_discogs_id_is_the_label() {
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+    add_label(&db, "held", "Label Name", Some("mb-label"), Some("9999")).await;
+
+    write(&db, vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))])
+        .await
+        .unwrap();
+
+    assert_eq!(ids_of(&placed(&db).await), [Some("held")]);
+    assert_eq!(stored_label(&db, "held").await.discogs_label_id.as_deref(), Some("9999"));
+    assert_eq!(label_count(&db).await, 1);
+}
+
+/// A label whose Discogs id names a label holding another MusicBrainz id goes
+/// by its MusicBrainz id: no library label holds it, so it is a new label
+/// carrying that id alone.
+#[tokio::test]
+async fn a_discogs_label_holding_another_musicbrainz_id_leaves_the_label_its_musicbrainz_id() {
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+    add_label(&db, "held", "Label Name", Some("mb-other"), Some("7190")).await;
+
+    write(&db, vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))])
+        .await
+        .unwrap();
+
+    let made = crate::identity::label_id(Some("mb-label"), None);
+    assert_eq!(placed(&db).await[0].0, made);
+    let made = stored_label(&db, made.as_deref().unwrap()).await;
+    assert_eq!(
+        (made.musicbrainz_label_id.as_deref(), made.discogs_label_id.as_deref()),
+        (Some("mb-label"), None)
+    );
 }
 
 /// Fill in `discogs` on the label `id` on `db`, as a device does once a

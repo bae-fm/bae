@@ -133,21 +133,9 @@ pub enum ImportError {
     #[error("{0}")]
     Refused(String),
 
-    /// Two library artists each hold one of a credit's catalog ids: the
-    /// conflict a person resolves on the import page.
-    #[cfg(desktop)]
-    #[error("Import error: {0}")]
-    ArtistIdentityConflict(Box<bae_db::ArtistIdentityConflict>),
-
-    /// Two library labels each hold one of a label's catalog ids: the
-    /// conflict a person resolves on the import page.
-    #[cfg(desktop)]
-    #[error("Import error: {0}")]
-    LabelIdentityConflict(Box<bae_db::LabelIdentityConflict>),
-
-    /// The release's credits cannot be linked to the library as it stands:
-    /// their ids contradict the artist or label they match, or a picked
-    /// artist no longer exists.
+    /// The release's credits or labels cannot be written as the library
+    /// stands, for the reason the text gives: a picked artist no longer
+    /// exists, or the write's own statements contradict each other.
     #[cfg(desktop)]
     #[error("{detail}")]
     Unresolvable { detail: String },
@@ -296,15 +284,13 @@ impl ImportError {
     }
 }
 
-/// An import's write to the library's records failed: a conflict a person
-/// resolves, credits or labels that cannot be linked, or the store.
+/// An import's write to the library's records failed: credits or labels
+/// that cannot be written, or the store.
 #[cfg(desktop)]
 impl From<bae_db::IdentityWriteError> for ImportError {
     fn from(error: bae_db::IdentityWriteError) -> Self {
         use bae_db::IdentityWriteError as E;
         match error {
-            E::ArtistIdentityConflict(conflict) => Self::ArtistIdentityConflict(conflict),
-            E::LabelIdentityConflict(conflict) => Self::LabelIdentityConflict(conflict),
             E::Unresolvable(detail) => Self::Unresolvable { detail },
             E::Db(error) => Self::Database(error),
         }
@@ -343,11 +329,7 @@ impl ImportError {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
             #[cfg(desktop)]
-            Self::Refused(_)
-            | Self::ArtistIdentityConflict(_)
-            | Self::LabelIdentityConflict(_)
-            | Self::Unresolvable { .. }
-            | Self::LibraryChanged => C::Import,
+            Self::Refused(_) | Self::Unresolvable { .. } | Self::LibraryChanged => C::Import,
             #[cfg(desktop)]
             Self::Database(_)
             | Self::CatalogSession(crate::CatalogSessionError::Preferences(_)) => C::Database,

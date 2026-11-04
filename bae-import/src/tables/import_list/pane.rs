@@ -28,7 +28,6 @@ pub(super) struct CandidateDetailRows {
     actionable: bool,
     skipped: bool,
     current: Option<DbImportCandidateState>,
-    metadata_revision: u64,
     standing: crate::TriageRuntimeFacts,
     listed: ListedColumns,
     stage: StageRows,
@@ -97,15 +96,6 @@ pub(super) fn load_candidate_detail_on(
     let state = load_states_on(sql, bae_db::client::query::CandidateRows::One(&content_hash))?
         .remove(&content_hash);
     let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
-    let metadata_revision = sql.query_row(
-        "SELECT s.metadata_revision \
-             FROM scan_candidate c JOIN import_candidate_state s \
-               ON s.content_hash = c.content_hash \
-             WHERE c.watched_folder_path = ? AND c.path = ?",
-        params![coven::path_bytes(&candidate.watched_folder_path), candidate.key()],
-        |row| row.get::<_, i64>(0),
-    )?;
-    let metadata_revision = to_u64(metadata_revision, "import_candidate_state.metadata_revision")?;
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
     let stage = match imported {
@@ -123,7 +113,6 @@ pub(super) fn load_candidate_detail_on(
         actionable,
         skipped,
         current,
-        metadata_revision,
         standing,
         listed,
         stage,
@@ -143,10 +132,9 @@ fn draft_rows_on(
     let pane_rows = load_pane_rows_on(sql, content_hash)?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions = crate::tables::artist_identity_choice::resolve_import_credits_on(
-        sql,
-        content_hash,
+    let artist_resolutions = bae_db::client::artist_resolution::resolve_credits_with(
         pane_rows.draft.credits(),
+        |credit| bae_db::client::artist_resolution::resolve_credit_on(sql, credit),
     )?;
     // The linked pressing's stored releases: what names its records and
     // checks it against the library.
@@ -217,17 +205,8 @@ fn candidate_album_on(
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
-        let Self {
-            candidate,
-            source_error,
-            actionable,
-            skipped,
-            current,
-            metadata_revision,
-            standing,
-            listed,
-            stage,
-        } = self;
+        let Self { candidate, source_error, actionable, skipped, current, standing, listed, stage } =
+            self;
         let listed = listed.listed(&candidate.key())?;
         let signals = current.as_ref().and_then(|state| state.signals.clone());
         let lookup_choices =
@@ -303,7 +282,6 @@ impl CandidateDetailRows {
             skipped,
             resumed_identify_state,
             verdict,
-            metadata_revision,
             signals,
             standing,
             listed,

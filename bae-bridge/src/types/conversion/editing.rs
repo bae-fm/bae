@@ -32,7 +32,6 @@ mirror_enum! {
         Library { artist: (BridgeExistingArtist) },
         New,
         Ambiguous { artists: (each BridgeExistingArtist) },
-        Conflicting { artists: (each BridgeExistingArtist) },
     },
 }
 

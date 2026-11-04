@@ -657,7 +657,6 @@ impl crate::types::BridgeImportCandidateDetail {
             live,
             import_status,
             file_evidence,
-            metadata_revision,
             signals,
             stage,
         } = detail;
@@ -675,7 +674,6 @@ impl crate::types::BridgeImportCandidateDetail {
                 .into_iter()
                 .map(crate::types::BridgeFileEvidence::from_core)
                 .collect(),
-            metadata_revision,
             signals: signals.map(crate::types::BridgeSignals::from_core),
             stage: crate::types::BridgeCandidateStage::from_core(stage),
         }
@@ -736,42 +734,9 @@ impl crate::types::BridgeCandidateDraftPane {
             metadata_author: crate::types::BridgeMetadataAuthor::from_core(metadata_author),
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
-            failure: failure.map(crate::types::BridgeImportFailure::from_core),
+            failure: failure
+                .map(|failure| crate::types::BridgeError::from_core(failure.reason.ui_error())),
             session: crate::types::BridgeCandidateSession::from_core(session),
-        }
-    }
-}
-
-impl crate::types::BridgeImportFailure {
-    fn from_core(failure: bae_import::ImportFailure) -> Self {
-        let bae_import::ImportFailure { reason, failed_at: _, identity_conflict } = failure;
-        let error = crate::types::BridgeError::from_core(reason.ui_error());
-        match identity_conflict {
-            Some(bae_import::IdentityConflict::Label(conflict)) => Self::LabelIdentityConflict {
-                conflict: crate::types::BridgeLabelIdentityConflict {
-                    incoming_label_name: conflict.incoming_label_name,
-                    discogs_label: crate::types::BridgeExistingLabel::from_core(
-                        conflict.discogs_label,
-                    ),
-                    musicbrainz_label: crate::types::BridgeExistingLabel::from_core(
-                        conflict.musicbrainz_label,
-                    ),
-                },
-                error,
-            },
-            Some(bae_import::IdentityConflict::Artist(conflict)) => Self::ArtistIdentityConflict {
-                conflict: crate::types::BridgeArtistIdentityConflict {
-                    incoming_artist_name: conflict.incoming_artist_name,
-                    discogs_artist: crate::types::BridgeExistingArtist::from_core(
-                        conflict.discogs_artist,
-                    ),
-                    musicbrainz_artist: crate::types::BridgeExistingArtist::from_core(
-                        conflict.musicbrainz_artist,
-                    ),
-                },
-                error,
-            },
-            None => Self::Other { error },
         }
     }
 }

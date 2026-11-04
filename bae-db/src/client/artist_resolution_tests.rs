@@ -1,7 +1,8 @@
 //! How the store resolves the artists an import credits: a credit whose
 //! catalog ids or name match a library artist is that artist, credits of
 //! one write that name the same artist are one new artist, artists holding
-//! one id are merged, and ids that name two different artists are refused.
+//! one id are merged, and where the credit's ids disagree the MusicBrainz id
+//! decides.
 
 use super::*;
 use crate::test_fixtures::temp_db;
@@ -198,24 +199,62 @@ fn a_picked_artist_that_is_gone_refuses_the_write() {
     assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
 }
 
+/// A credit whose MusicBrainz id and Discogs id name two library artists is
+/// the MusicBrainz one, and the Discogs id that disagrees is dropped: no
+/// artist is given it.
 #[test]
-fn two_artists_holding_the_credits_two_ids_are_the_identity_conflict() {
+fn two_artists_holding_the_credits_two_ids_leave_the_musicbrainz_one() {
     let conn = library();
     add_artist(&conn, "by-discogs", "Artist Name", Some("discogs-1"), None);
     add_artist(&conn, "by-musicbrainz", "Artist Name", None, Some("mb-1"));
 
-    let error = resolve_artists_on(
-        &conn,
-        &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))],
-        &HashSet::new(),
-    )
-    .unwrap_err();
+    let resolved =
+        resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]);
 
-    let IdentityWriteError::ArtistIdentityConflict(conflict) = error else {
-        panic!("expected the identity conflict, got {error}");
-    };
-    assert_eq!(conflict.discogs_artist.artist_id, "by-discogs");
-    assert_eq!(conflict.musicbrainz_artist.artist_id, "by-musicbrainz");
+    assert_eq!(resolved.ids, ["by-musicbrainz"]);
+    assert!(resolved.inserts.is_empty());
+    assert!(resolved.merges.is_empty());
+    assert!(
+        resolved.external_id_updates.iter().all(|(_, artist)| artist.discogs_artist_id.is_none()),
+        "the disagreeing Discogs id goes nowhere: {:?}",
+        resolved.external_id_updates
+    );
+}
+
+/// A credit whose MusicBrainz id names an artist holding another Discogs id
+/// is that artist; the credit's Discogs id is dropped.
+#[test]
+fn a_musicbrainz_artist_holding_another_discogs_id_is_the_credit() {
+    let conn = library();
+    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-x"), Some("mb-1"));
+
+    let resolved =
+        resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]);
+
+    assert_eq!(resolved.ids, ["library-artist"]);
+    assert!(resolved.inserts.is_empty());
+    assert!(resolved
+        .external_id_updates
+        .iter()
+        .all(|(_, artist)| artist.discogs_artist_id.as_deref() != Some("discogs-1")));
+}
+
+/// A credit whose Discogs id names an artist holding another MusicBrainz id
+/// goes by its MusicBrainz id: no library artist holds it, so it is a new
+/// artist carrying that id alone.
+#[test]
+fn a_discogs_artist_holding_another_musicbrainz_id_leaves_the_credit_its_musicbrainz_id() {
+    let conn = library();
+    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-1"), Some("mb-2"));
+
+    let resolved =
+        resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))]);
+
+    let identity = crate::identity::artist_id(Some("mb-1"), None).unwrap();
+    assert_eq!(resolved.ids, [identity.as_str()]);
+    assert_eq!(resolved.inserts.len(), 1);
+    assert_eq!(resolved.inserts[0].musicbrainz_artist_id.as_deref(), Some("mb-1"));
+    assert_eq!(resolved.inserts[0].discogs_artist_id, None);
 }
 
 /// One catalog id is one artist: two library artists holding it are merged
@@ -314,8 +353,10 @@ fn a_read_credit_with_another_catalog_id_than_the_named_artist_is_new() {
     assert_eq!(read_credit(&conn, "Artist Name", Some("discogs-y")), crate::CreditResolution::New);
 }
 
+/// A read of a credit whose two ids name two artists names the MusicBrainz
+/// one, as the write does.
 #[test]
-fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
+fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
     let conn = library();
     add_artist(&conn, "by-discogs", "Artist One", Some("discogs-1"), None);
     add_artist(&conn, "by-musicbrainz", "Artist Two", None, Some("mb-1"));
@@ -332,10 +373,10 @@ fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
     )
     .unwrap();
 
-    let crate::CreditResolution::Conflicting { artists } = resolution else {
-        panic!("the credit's two ids name two artists");
+    let crate::CreditResolution::Library { artist } = resolution else {
+        panic!("the MusicBrainz id names the artist, got {resolution:?}");
     };
-    assert_eq!(artist_ids(&artists), ["by-discogs", "by-musicbrainz"]);
+    assert_eq!(artist.artist_id, "by-musicbrainz");
 }
 
 /// A read of a credit whose id two library artists hold names the one the
@@ -499,8 +540,10 @@ async fn credits_of_one_write_reuse_an_artist_waiting_to_be_inserted() {
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
 
+/// A write crediting ids that name two library artists credits the
+/// MusicBrainz one and leaves both artists as they were.
 #[tokio::test]
-async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
+async fn exact_source_ids_naming_two_artists_credit_the_musicbrainz_one() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let discogs_artist = make_artist("Artist One", Some("d123"), None);
     let musicbrainz_artist = make_artist("Artist Two", None, Some("mb-abc"));
@@ -508,19 +551,16 @@ async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
     db.insert_artist(&musicbrainz_artist).await.unwrap();
 
     let incoming = make_artist("Artist Three", Some("d123"), Some("mb-abc"));
-    let error = db
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .expect_err("source IDs belonging to different artists must fail");
+    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
-    let IdentityWriteError::ArtistIdentityConflict(conflict) = error else {
-        panic!("expected a typed artist identity conflict");
-    };
-    assert_eq!(conflict.incoming_artist_name, "Artist Three");
-    assert_eq!(conflict.discogs_artist_id, "d123");
-    assert_eq!(conflict.musicbrainz_artist_id, "mb-abc");
-    assert_eq!(conflict.discogs_artist.artist_id, discogs_artist.id);
-    assert_eq!(conflict.musicbrainz_artist.artist_id, musicbrainz_artist.id);
+    assert_eq!(resolved, std::slice::from_ref(&musicbrainz_artist.id));
+    for artist in [&discogs_artist, &musicbrainz_artist] {
+        let stored = db.find_artist_by_id(&artist.id).await.unwrap().unwrap();
+        assert_eq!(
+            (stored.discogs_artist_id, stored.musicbrainz_artist_id),
+            (artist.discogs_artist_id.clone(), artist.musicbrainz_artist_id.clone())
+        );
+    }
     assert!(db.find_artist_by_id(&incoming.id).await.unwrap().is_none());
 }
 

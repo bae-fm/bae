@@ -61,9 +61,7 @@ fn a_field_summarizes_its_artists() {
         resolved("New Two", CreditResolution::New),
         resolved(
             "Shared",
-            CreditResolution::Conflicting {
-                artists: vec![library_artist("a"), library_artist("b")],
-            },
+            CreditResolution::Ambiguous { artists: vec![library_artist("a"), library_artist("b")] },
         ),
     ];
     let picked = ArtistAssignment::picked(library_artist("picked"));
