@@ -58,8 +58,8 @@ impl BridgeHost {
             self.remove_unopenable_library_now(store, &crate::screens::ClosingSteps::unread())
                 .await
                 .map_err(|error| {
-                    BridgeError::diagnostic(
-                        crate::BridgeErrorCategory::from_core(error.category()),
+                    BridgeError::categorized(
+                        error.category(),
                         format!("dev reset: removing library {store} didn't finish: {error}"),
                     )
                 })?;

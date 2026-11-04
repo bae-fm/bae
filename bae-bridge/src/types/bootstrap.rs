@@ -363,18 +363,18 @@ impl BridgeBootstrapResult {
         error: bae_library::RestoreFromCodeError,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Self, BridgeError> {
-        let category = BridgeErrorCategory::from_core(error.category());
+        let category = error.category();
         match error {
             bae_library::RestoreFromCodeError::Cancelled => Err(BridgeError::Cancelled),
             bae_library::RestoreFromCodeError::Restore(error) => match *error {
                 coven::BootstrapError::JoinRequestSent => Ok(Self::JoinRequestSent),
                 coven::BootstrapError::Published { handle, source } => Ok(Self::Published {
                     library: Arc::new(crate::OpenedLibrary::new(handle, host)),
-                    error: BridgeError::diagnostic(category, source),
+                    error: BridgeError::categorized(category, source),
                 }),
-                error => Err(BridgeError::diagnostic(category, error)),
+                error => Err(BridgeError::categorized(category, error)),
             },
-            error => Err(BridgeError::diagnostic(category, error)),
+            error => Err(BridgeError::categorized(category, error)),
         }
     }
 }

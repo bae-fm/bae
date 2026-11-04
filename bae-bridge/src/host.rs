@@ -399,9 +399,8 @@ impl BridgeHost {
 #[cfg(target_os = "android")]
 #[uniffi::export]
 pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
-    bae_library::set_temporary_directory(std::path::Path::new(&directory)).map_err(|error| {
-        BridgeError::diagnostic(crate::BridgeErrorCategory::from_core(error.category()), error)
-    })
+    bae_library::set_temporary_directory(std::path::Path::new(&directory))
+        .map_err(|error| BridgeError::categorized(error.category(), error))
 }
 
 /// Open the library `library_id`, writing the open's steps into `opening`'s

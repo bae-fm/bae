@@ -160,17 +160,17 @@ impl BridgePlaylistEntry {
 
 impl From<bae_db::people::ProfileError> for BridgeError {
     fn from(error: bae_db::people::ProfileError) -> Self {
-        Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+        Self::categorized(error.category(), error)
     }
 }
 impl From<bae_library::people::AvatarError> for BridgeError {
     fn from(error: bae_library::people::AvatarError) -> Self {
-        Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+        Self::categorized(error.category(), error)
     }
 }
 impl From<bae_db::collections::CollectionError> for BridgeError {
     fn from(error: bae_db::collections::CollectionError) -> Self {
-        Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+        Self::categorized(error.category(), error)
     }
 }
 impl From<bae_db::DbError> for BridgeError {

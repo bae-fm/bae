@@ -44,9 +44,7 @@ impl BridgeHost {
     pub(super) async fn saved_restore_codes_now(&self) -> Result<Vec<coven::StoreId>, BridgeError> {
         Ok(bae_library::saved_restore_codes(&self.coven)
             .await
-            .map_err(|error| {
-                BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
-            })?
+            .map_err(|error| BridgeError::categorized(error.category(), error))?
             .iter()
             .map(coven::SavedRestoreEntry::store_id)
             .collect())
@@ -90,12 +88,7 @@ impl BridgeHost {
                     .map(|codes| {
                         codes.into_iter().map(BridgeSavedRestoreEntry::from_core).collect()
                     })
-                    .map_err(|error| {
-                        BridgeError::diagnostic(
-                            BridgeErrorCategory::from_core(error.category()),
-                            error,
-                        )
-                    })
+                    .map_err(|error| BridgeError::categorized(error.category(), error))
             })
             .await
     }
@@ -269,12 +262,7 @@ impl BridgeHost {
                             .map(|join| Arc::new(BridgeUnfinishedJoin { join }))
                             .collect()
                     })
-                    .map_err(|error| {
-                        BridgeError::diagnostic(
-                            BridgeErrorCategory::from_core(error.category()),
-                            error,
-                        )
-                    })
+                    .map_err(|error| BridgeError::categorized(error.category(), error))
             })
             .await
     }

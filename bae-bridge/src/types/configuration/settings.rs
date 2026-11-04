@@ -249,6 +249,14 @@ impl BridgeError {
     ) -> Self {
         BridgeError::Diagnostic { category, detail: detail.to_string() }
     }
+    /// A core failure in the class core gave it, `category`, with `detail`
+    /// as its untranslated text.
+    pub(crate) fn categorized(
+        category: bae_diagnostics::UiErrorCategory,
+        detail: impl std::fmt::Display,
+    ) -> Self {
+        Self::diagnostic(BridgeErrorCategory::from_core(category), detail)
+    }
     pub(crate) fn database(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Database, detail)
     }
@@ -567,20 +575,14 @@ impl From<bae_db::live_query::LiveQueryError> for BridgeError {
 
 impl From<bae_preferences::PreferencesError> for BridgeError {
     fn from(error: bae_preferences::PreferencesError) -> Self {
-        BridgeError::Diagnostic {
-            category: BridgeErrorCategory::from_core(error.category()),
-            detail: error.to_string(),
-        }
+        BridgeError::categorized(error.category(), error)
     }
 }
 
 /// A failed read or write of bae's directory, in the class core gave it.
 impl From<bae_app_dir::AppDirError> for BridgeError {
     fn from(error: bae_app_dir::AppDirError) -> Self {
-        BridgeError::Diagnostic {
-            category: BridgeErrorCategory::from_core(error.category()),
-            detail: error.to_string(),
-        }
+        BridgeError::categorized(error.category(), error)
     }
 }
 
@@ -617,19 +619,14 @@ impl From<bae_library::LibraryError> for BridgeError {
         ) {
             return BridgeError::Cancelled;
         }
-        BridgeError::Diagnostic {
-            category: BridgeErrorCategory::from_core(error.category()),
-            detail: error.database_fault(),
-        }
+        let category = error.category();
+        BridgeError::categorized(category, error.database_fault())
     }
 }
 
 impl From<bae_library::CreateLibraryError> for BridgeError {
     fn from(error: bae_library::CreateLibraryError) -> Self {
-        BridgeError::Diagnostic {
-            category: BridgeErrorCategory::from_core(error.category()),
-            detail: error.to_string(),
-        }
+        BridgeError::categorized(error.category(), error)
     }
 }
 
@@ -645,12 +642,9 @@ impl BridgePlaybackErrorReason {
             PlaybackErrorReason::AudioOutput { problem } => {
                 Self::AudioOutput { problem: BridgeAudioOutputProblem::from_core(problem) }
             }
-            PlaybackErrorReason::Diagnostic { failure, detail } => Self::Diagnostic {
-                error: BridgeError::Diagnostic {
-                    category: BridgeErrorCategory::from_core(failure.category()),
-                    detail,
-                },
-            },
+            PlaybackErrorReason::Diagnostic { failure, detail } => {
+                Self::Diagnostic { error: BridgeError::categorized(failure.category(), detail) }
+            }
         }
     }
 }
