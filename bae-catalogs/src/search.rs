@@ -399,7 +399,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         source: LookupCatalog::MusicBrainz,
         release_id: r.id,
         title: r.title,
-        artist: r.artist_credit.first().map(|ac| ac.name.clone()),
+        artist: musicbrainz_credit_line(&r.artist_credit),
         year: pressing.year,
         labels: pressing.labels,
         area: pressing.facts.area,
@@ -420,6 +420,21 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         track_titles: Vec::new(),
         notes,
     })
+}
+
+/// The artist line a MusicBrainz credit list prints: each credited name, then
+/// what MusicBrainz prints after it. None for a release crediting no one.
+fn musicbrainz_credit_line(credits: &[crate::musicbrainz::MbArtistCredit]) -> Option<String> {
+    if credits.is_empty() {
+        return None;
+    }
+    let joins: Vec<Option<String>> = credits
+        .iter()
+        .map(|credit| bae_types::credits::stated_join(credit.joinphrase.as_deref()))
+        .collect();
+    Some(bae_types::credits::credit_line(
+        credits.iter().zip(&joins).map(|(credit, join)| (credit.name.as_str(), join.as_deref())),
+    ))
 }
 
 /// The releases on other catalogs a MusicBrainz release's relations name as
@@ -465,7 +480,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         source: LookupCatalog::MusicBrainz,
         release_id: r.id,
         title: r.title,
-        artist: r.artist_credit.first().map(|ac| ac.name.clone()),
+        artist: musicbrainz_credit_line(&r.artist_credit),
         year: parse_year(r.date.as_deref()),
         labels,
         area: facts.area,

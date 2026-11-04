@@ -866,3 +866,46 @@ fn a_search_result_carries_its_notes() {
     };
     assert_eq!(discogs_search_result_to_metadata(result).notes, vec!["Small label".to_string()]);
 }
+
+/// A MusicBrainz search result's artist is its whole credit as it prints,
+/// each name followed by the words MusicBrainz prints after it.
+#[test]
+fn a_musicbrainz_search_result_names_its_whole_credit() {
+    let release: crate::musicbrainz::SearchRelease = serde_json::from_value(serde_json::json!({
+        "id": "mb-release-1",
+        "title": "Album Title",
+        "artist-credit": [
+            { "name": "Artist One", "joinphrase": " & " },
+            { "name": "Artist Two", "joinphrase": "" }
+        ],
+        "label-info": []
+    }))
+    .expect("search release parses");
+    assert_eq!(
+        search_release_to_metadata(release, None).artist.as_deref(),
+        Some("Artist One & Artist Two")
+    );
+}
+
+/// A release a Disc ID lookup returned names its whole credit as its artist.
+#[test]
+fn discid_metadata_names_its_whole_credit() {
+    let response: MbReleaseResponse = serde_json::from_value(serde_json::json!({
+        "id": "mb-release-1",
+        "title": "Album Title",
+        "artist-credit": [
+            { "name": "Artist One", "joinphrase": " feat. " },
+            { "name": "Artist Two" }
+        ],
+        "label-info": [],
+        "media": [
+            { "format": "CD", "discs": [{ "id": "disc-1" }], "tracks": [] }
+        ],
+        "relations": [],
+        "cover-art-archive": { "front": false, "darkened": false }
+    }))
+    .expect("MusicBrainz DiscID response parses");
+    let metadata = mb_discid_release_to_metadata("disc-1", response)
+        .expect("the release contains the queried disc");
+    assert_eq!(metadata.artist.as_deref(), Some("Artist One feat. Artist Two"));
+}
