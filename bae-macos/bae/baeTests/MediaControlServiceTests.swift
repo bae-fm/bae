@@ -166,6 +166,7 @@ struct MediaControlServiceTests {
             previewTimeline(
                 target: BridgePreviewTarget(
                     path: Data("/tmp/Other Track.flac".utf8),
+                    name: "Other Track.flac",
                     startSample: 0,
                     endSample: nil
                 ),
@@ -296,6 +297,7 @@ private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())
 
 private let previewTarget = BridgePreviewTarget(
     path: Data("/tmp/Preview Track.flac".utf8),
+    name: "Preview Track.flac",
     startSample: 0,
     endSample: nil
 )

@@ -33,6 +33,7 @@
                 localPath: fakePath("Track \(index).flac"),
                 previewTarget: BridgePreviewTarget(
                     path: fakePath("Track \(index).flac"),
+                    name: "Track \(index).flac",
                     startSample: 0,
                     endSample: nil
                 ),
@@ -54,6 +55,7 @@
                 previewTarget: role == .audio
                     ? BridgePreviewTarget(
                         path: fakePath(file.file.name),
+                        name: file.file.fileName,
                         startSample: 0,
                         endSample: nil
                     ) : nil,
@@ -187,6 +189,8 @@
                                             path: fakePath(
                                                 moreTracksAudio.file.name
                                             ),
+                                            name: moreTracksAudio.file
+                                                .fileName,
                                             startSample: 0,
                                             endSample: nil
                                         ),
@@ -224,6 +228,7 @@
                 containerName: mappedAudioContainer.file.fileName,
                 previewTarget: BridgePreviewTarget(
                     path: fakePath(mappedAudioContainer.file.name),
+                    name: mappedAudioContainer.file.fileName,
                     startSample: UInt64(index) * 44_100,
                     endSample: UInt64(index + 1) * 44_100
                 ),

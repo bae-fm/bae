@@ -110,7 +110,7 @@ struct MainAppView: View {
             // Audio preview overlay
             if let preview = importStore.previewState.active {
                 PreviewOverlay(
-                    path: preview.target.path,
+                    name: preview.target.name,
                     isPlaying: preview.isPlaying
                 )
             }

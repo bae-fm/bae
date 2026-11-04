@@ -59,6 +59,7 @@
                                 "/Music/Downloads/Album Title/01 Track Title.flac"
                         )
                         .pathBytes,
+                        name: "01 Track Title.flac",
                         startSample: 0,
                         endSample: nil
                     ),

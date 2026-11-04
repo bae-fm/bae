@@ -7,14 +7,18 @@ pub struct BridgePreviewTarget {
     /// The file's path as coven's bytes (`coven::path_bytes`), which the app
     /// sends back to play it.
     pub path: Vec<u8>,
+    /// The file's name, as the preview shows what it plays. Playing a target
+    /// reads only its path and samples.
+    pub name: String,
     pub start_sample: u64,
     pub end_sample: Option<u64>,
 }
 
 impl BridgePreviewTarget {
     pub(crate) fn from_core(target: bae_track_audio::PreviewTarget) -> Self {
+        let name = target.name();
         let (path, start_sample, end_sample) = target.into_sample_range();
-        Self { path: coven::path_bytes(&path), start_sample, end_sample }
+        Self { path: coven::path_bytes(&path), name, start_sample, end_sample }
     }
 
     pub(crate) fn into_core(

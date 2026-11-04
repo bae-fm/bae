@@ -266,6 +266,7 @@
                 previewTarget: role == .audio
                     ? BridgePreviewTarget(
                         path: path,
+                        name: name,
                         startSample: 0,
                         endSample: nil
                     ) : nil,

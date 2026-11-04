@@ -241,6 +241,7 @@ struct PlaybackProgressViewTests {
     func previewClocks() async throws {
         let target = BridgePreviewTarget(
             path: Data("/Music/Track.flac".utf8),
+            name: "Track.flac",
             startSample: 0,
             endSample: nil
         )

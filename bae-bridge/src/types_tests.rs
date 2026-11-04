@@ -648,8 +648,15 @@ fn an_s3_location_crosses_back_with_its_prefix_parsed() {
     );
 }
 
+/// A preview target crosses with its file's name, which the preview shows.
+#[test]
+fn a_preview_target_crosses_with_its_files_name() {
+    let target = bae_track_audio::PreviewTarget::whole_file("/music/Album/01 Track.flac".into());
+    assert_eq!(BridgePreviewTarget::from_core(target).name, "01 Track.flac");
+}
+
 /// A file whose name isn't UTF-8 crosses to the app and back as its own
-/// bytes, so auditioning it opens that file.
+/// bytes, so auditioning it opens that file, and shows as its escape.
 #[cfg(target_os = "linux")]
 #[test]
 fn a_preview_target_whose_name_is_not_utf8_comes_back_as_its_path() {
@@ -660,6 +667,7 @@ fn a_preview_target_whose_name_is_not_utf8_comes_back_as_its_path() {
     let target = bae_track_audio::PreviewTarget::sample_range(path.clone(), 0, Some(44_100));
     let crossed = BridgePreviewTarget::from_core(target);
     assert_eq!(crossed.path, b"/music/Album/Caf\xE9.flac");
+    assert_eq!(crossed.name, "Caf\\xE9.flac");
     let back = crossed.into_core().expect("a path core gave the app comes back");
     assert_eq!(back.into_sample_range(), (path, 0, Some(44_100)));
 }

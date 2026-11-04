@@ -214,16 +214,12 @@
             writtenLibrary = nil
             rate = playbackRate
             var info: [String: Any] = [:]
-            info[MPMediaItemPropertyTitle] = previewTitle(from: target.path)
+            info[MPMediaItemPropertyTitle] = target.name
             // A preview clip always has a known length; track it through the
             // shared path so the scrubber is enabled, as with a library track.
             trackDuration(durationMs, into: &info)
             info[MPNowPlayingInfoPropertyPlaybackRate] = playbackRate
             publish(info, on: MPNowPlayingInfoCenter.default())
-        }
-
-        private func previewTitle(from path: Data) -> String {
-            URL(filePathBytes: path, isDirectory: false).lastPathComponent
         }
     }
 #endif

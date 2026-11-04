@@ -48,6 +48,7 @@ extension MappingFixtures {
             localPath: Data("/tmp/walkthrough/\(index).flac".utf8),
             previewTarget: BridgePreviewTarget(
                 path: Data("/tmp/walkthrough/\(index).flac".utf8),
+                name: "\(index).flac",
                 startSample: 0,
                 endSample: nil
             ),
@@ -138,6 +139,7 @@ extension MappingFixtures {
         localPath: containerPath,
         previewTarget: BridgePreviewTarget(
             path: containerPath,
+            name: "Album Title.flac",
             startSample: 0,
             endSample: nil
         ),
@@ -235,6 +237,7 @@ extension MappingFixtures {
         let startSample = UInt64(index) * 200 * 44_100
         let previewTarget = BridgePreviewTarget(
             path: containerPath,
+            name: "Album Title.flac",
             startSample: startSample,
             endSample: startSample + 200 * 44_100
         )

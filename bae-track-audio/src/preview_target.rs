@@ -38,6 +38,11 @@ impl PreviewTarget {
         &self.path
     }
 
+    /// The file's name, as a preview shows what it plays.
+    pub fn name(&self) -> String {
+        bae_util::path_text::name_text(&self.path)
+    }
+
     /// The stretch of the file, in samples.
     pub fn span(&self) -> bae_db::SegmentSpan {
         self.span

@@ -132,6 +132,7 @@ struct ImportMappingTracksLayoutTests {
     func cueWindowsHaveDistinctPreviewIdentity() async throws {
         let otherWindow = BridgePreviewTarget(
             path: audioPath,
+            name: "track.flac",
             startSample: 44_100,
             endSample: 88_200
         )
@@ -344,7 +345,12 @@ extension ImportMappingTracksLayoutTests {
 
     fileprivate var audioPath: Data { Data("/tmp/source/track.flac".utf8) }
     fileprivate var previewTarget: BridgePreviewTarget {
-        BridgePreviewTarget(path: audioPath, startSample: 0, endSample: nil)
+        BridgePreviewTarget(
+            path: audioPath,
+            name: "track.flac",
+            startSample: 0,
+            endSample: nil
+        )
     }
     fileprivate var longAudioName: String {
         "A very long source filename that must remain inside its column.flac"
@@ -428,6 +434,7 @@ extension ImportMappingTracksLayoutTests {
             containerName: longAudioName,
             previewTarget: BridgePreviewTarget(
                 path: audioPath,
+                name: "track.flac",
                 startSample: UInt64(number - 1) * 44_100,
                 endSample: UInt64(number) * 44_100
             ),

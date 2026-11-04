@@ -3840,7 +3840,8 @@ name that isn't valid Unicode still opens: a path core gives the app to open
 or send back (a file to audition or read, an image to draw), and a folder or
 file the person picks (an export or save target, the folder a release's files
 move into). The app makes a file URL from the bytes, and the bytes from a
-URL's file-system representation. Text that shows a path comes from core,
+URL's file-system representation. Text that shows a path or a file's name,
+such as the name a preview shows for the file it plays, comes from core,
 escaped (§3.1).
 
 What the import queue is keyed by crosses as bytes the same way, so a folder
