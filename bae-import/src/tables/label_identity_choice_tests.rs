@@ -5,7 +5,7 @@
 use super::*;
 use bae_db::client::label_resolution::{import_label_write, write_release_labels_on};
 use bae_db::test_fixtures::labels::{
-    add_label, ids_of, label, library, placed, read_labels, stored_label, with_ids, write, RELEASE,
+    add_label, ids_of, label, library, placed, stored_label, with_ids, RELEASE,
 };
 use bae_types::pressing::ReleaseLabel;
 
@@ -72,17 +72,14 @@ fn conflicting() -> ReleaseLabel {
     with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-label"), Some("7190"))
 }
 
-/// "Same label" merges the MusicBrainz library label into the Discogs one,
-/// which takes its id; a release naming the absorbed label reads the
-/// survivor; and the import then names the survivor.
+/// "Same label" merges the MusicBrainz library label into the Discogs one
+/// (bae-db's merge, tested beside it), dismisses the failure, and the import
+/// then names the survivor.
 #[tokio::test]
 async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor() {
     let (db, _tmp) = library().await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name Records", Some("mb-label"), None).await;
-    write(&db, vec![with_ids(label(Some("Label Name Records"), None), Some("mb-label"), None)])
-        .await
-        .unwrap();
     record_conflict(&db, true).await;
 
     ImportTables::new(db.clone())
@@ -96,21 +93,6 @@ async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor(
         .unwrap();
 
     assert!(!has_failure(&db).await);
-    let survivor = stored_label(&db, "by-discogs").await;
-    assert_eq!(survivor.musicbrainz_label_id.as_deref(), Some("mb-label"));
-    assert_eq!(read_labels(&db).await, vec![label(Some("Label Name"), None)]);
-    let into: String = db
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT into_label_id FROM label_merges WHERE id = 'by-musicbrainz'",
-                [],
-                |row| row.get(0),
-            )?)
-        })
-        .await
-        .unwrap();
-    assert_eq!(into, "by-discogs");
-
     write_as_import(&db, vec![conflicting()]).await.unwrap();
     assert_eq!(ids_of(&placed(&db).await), [Some("by-discogs")]);
 }

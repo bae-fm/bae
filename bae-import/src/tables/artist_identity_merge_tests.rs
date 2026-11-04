@@ -4,8 +4,11 @@ use super::*;
 use crate::tables::import_state::tests::*;
 use bae_db::test_fixtures::{empty_db, fixed_now};
 
+/// "Same artist" merges the two library artists (bae-db's merge, tested
+/// beside it), moves this device's drafts naming the absorbed artist to the
+/// survivor, and dismisses every candidate's failure on the pair.
 #[tokio::test]
-async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_the_failure() {
+async fn resolving_an_artist_identity_conflict_merges_the_artists_and_moves_the_drafts() {
     let (db, _tmp) = empty_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
@@ -20,92 +23,18 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let musicbrainz = DbArtist {
         id: bae_util::test_ids::test_uuid("conflict-merge-musicbrainz-artist"),
         name: "Artist One".to_string(),
-        sort_name: Some("Artist One, The".to_string()),
+        sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("mb-1".to_string()),
         created_at: fixed_now(),
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
-    let album = DbAlbum {
-        id: bae_util::test_ids::test_uuid("conflict-merge-album"),
-        title: "Album Title".to_string(),
-        year: None,
-        is_compilation: false,
-        created_at: fixed_now(),
-    };
-    db.insert_album(&album).await.unwrap();
-    let release_id = bae_util::test_ids::test_uuid("conflict-merge-release");
-    let track_id = bae_util::test_ids::test_uuid("conflict-merge-track");
-    let work_id = bae_util::test_ids::test_uuid("conflict-merge-work");
     let pending_hash = "pending-artist-merge".to_string();
     let seed_discogs_id = discogs.id.clone();
     let seed_musicbrainz_id = musicbrainz.id.clone();
-    let seed_album_id = album.id.clone();
-    let seed_release_id = release_id.clone();
-    let seed_track_id = track_id.clone();
-    let seed_work_id = work_id.clone();
     let seed_pending_hash = pending_hash.clone();
     db.call(move |sql| {
-        sql.execute(
-            "INSERT INTO releases (id, album_id, created_at, album_order) VALUES (?, ?, '2026-01-02T03:04:05Z', 0)",
-            params![seed_release_id, seed_album_id],
-        )?;
-        let medium_id = bae_db::identity::release_medium_id(&seed_release_id, 1);
-        sql.execute(
-            "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES (?, ?, 1, 'cd', 1, '2026-01-02T03:04:05Z')",
-            params![medium_id, seed_release_id],
-        )?;
-        sql.execute(
-            "INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, duration_ms, created_at) VALUES (?, ?, 'Track Title', ?, 1, 1, 180000, '2026-01-02T03:04:05Z')",
-            params![seed_track_id, seed_release_id, medium_id],
-        )?;
-        sql.execute(
-            "INSERT INTO works (id, title, musicbrainz_work_id, created_at) VALUES (?, 'Work Title', 'work-1', '2026-01-02T03:04:05Z')",
-            params![seed_work_id],
-        )?;
-        let reference_tables = [
-            ("album_artists", "album_id", seed_album_id.as_str(), false),
-            ("track_artists", "track_id", seed_track_id.as_str(), false),
-            ("work_artists", "work_id", seed_work_id.as_str(), true),
-            (
-                "release_artist_roles",
-                "release_id",
-                seed_release_id.as_str(),
-                true,
-            ),
-            (
-                "track_artist_roles",
-                "track_id",
-                seed_track_id.as_str(),
-                true,
-            ),
-        ];
-        for (artist_index, artist_id) in [&seed_discogs_id, &seed_musicbrainz_id]
-            .into_iter()
-            .enumerate()
-        {
-            for (table, owner_column, owner_id, has_source) in reference_tables {
-                let source_column = if has_source { ", source" } else { "" };
-                let source_value = if has_source { ", 'musicbrainz'" } else { "" };
-                sql.execute(
-                    &format!(
-                        "INSERT INTO {table} \
-                             (id, {owner_column}, artist_id, position{source_column}, \
-                              created_at) \
-                         VALUES (?, ?, ?, ?{source_value}, '2026-01-02T03:04:05Z')"
-                    ),
-                    params![
-                        bae_util::test_ids::test_uuid(&format!(
-                            "conflict-merge-{table}-{artist_index}"
-                        )),
-                        owner_id,
-                        artist_id,
-                        artist_index as i64
-                    ],
-                )?;
-            }
-        }
         sql.execute(
             "INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES (?, CAST('/pending' AS BLOB))",
             [&seed_pending_hash],
@@ -147,10 +76,6 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     })
     .await
     .unwrap();
-    for (artist, bytes) in [(&discogs.id, b"four".as_slice()), (&musicbrainz.id, b"one".as_slice())]
-    {
-        store_artist_image(&db, artist, bytes).await;
-    }
     let failure = artist_identity_failure(&discogs, &musicbrainz);
     tables.save_import_candidate_failure(&hash, 0, &failure).await.unwrap();
     tables.save_import_candidate_failure(&pending_hash, 0, &failure).await.unwrap();
@@ -166,27 +91,13 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .unwrap();
 
     let survivor = db.find_artist_by_id(&discogs.id).await.unwrap().unwrap();
-    assert_eq!(survivor.discogs_artist_id.as_deref(), Some("discogs-1"));
-    assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-1"));
-    // The absorbed artist stays, recorded as merged, and every credit shows
-    // the survivor: the album's list names it twice, as it named the two.
-    assert!(db.find_artist_by_id(&musicbrainz.id).await.unwrap().is_some());
-    assert_eq!(
-        db.get_artists_for_album(&album.id)
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|artist| artist.artist.id)
-            .collect::<Vec<_>>(),
-        vec![discogs.id.clone(), discogs.id.clone()]
-    );
+    assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-1"), "the two were merged");
     let absorbed_id = musicbrainz.id.clone();
     let survivor_id = discogs.id.clone();
     let pending_hash_for_read = pending_hash.clone();
     let (absorbed_references, pending_album_artists, pending_track_artists) = db
         .read(move |sql| {
             let mut absorbed_references = 0_i64;
-            // Only this device's drafts move; shared credits stay as written.
             for table in [
                 "import_candidate_album_artist_assignment",
                 "import_candidate_track_artist_assignment",
@@ -214,99 +125,10 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .await
         .unwrap();
     assert_eq!(absorbed_references, 0);
-    assert_eq!(
-        artist_image_bytes(&db, &discogs.id).await,
-        b"four",
-        "the survivor keeps its own image"
-    );
     assert_eq!(pending_album_artists, 1);
     assert_eq!(pending_track_artists, 1);
     assert!(tables.load_import_candidate_pane_rows(&hash).await.unwrap().failure.is_none());
     assert!(tables.load_import_candidate_pane_rows(&pending_hash).await.unwrap().failure.is_none());
-}
-
-async fn store_artist_image(db: &Database, artist_id: &str, bytes: &[u8]) {
-    db.write_library_image(
-        &DbLibraryImage {
-            id: artist_id.to_string(),
-            image_type: LibraryImageType::Artist,
-            content_type: bae_util::content_type::ContentType::Jpeg,
-        },
-        bytes,
-    )
-    .await
-    .unwrap();
-}
-
-async fn artist_image_bytes(db: &Database, artist_id: &str) -> Vec<u8> {
-    let file = artist_image_file(db, artist_id).await;
-    db.read_file(&file).await.unwrap()
-}
-
-async fn artist_image_file(db: &Database, artist_id: &str) -> coven::FileRef {
-    db.library_image_file(artist_id, &LibraryImageType::Artist)
-        .await
-        .unwrap()
-        .expect("the artist has an image")
-}
-
-/// When only the absorbed artist has an image, the survivor takes it: its
-/// row references the absorbed artist's coven file, which nothing stages or
-/// uploads again.
-#[tokio::test]
-async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor() {
-    let (db, _tmp) = empty_db().await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let (_, hash) = stored_pane_candidate(&db).await;
-    let discogs = DbArtist {
-        id: bae_util::test_ids::test_uuid("image-move-discogs-artist"),
-        name: "Artist One".to_string(),
-        sort_name: None,
-        discogs_artist_id: Some("discogs-1".to_string()),
-        musicbrainz_artist_id: None,
-        created_at: fixed_now(),
-    };
-    let musicbrainz = DbArtist {
-        id: bae_util::test_ids::test_uuid("image-move-musicbrainz-artist"),
-        name: "Artist One".to_string(),
-        sort_name: None,
-        discogs_artist_id: None,
-        musicbrainz_artist_id: Some("mb-1".to_string()),
-        created_at: fixed_now(),
-    };
-    db.insert_artist(&discogs).await.unwrap();
-    db.insert_artist(&musicbrainz).await.unwrap();
-    store_artist_image(&db, &musicbrainz.id, b"absorbed").await;
-    let absorbed = artist_image_file(&db, &musicbrainz.id).await.id();
-    tables
-        .save_import_candidate_failure(&hash, 0, &artist_identity_failure(&discogs, &musicbrainz))
-        .await
-        .unwrap();
-
-    tables
-        .choose_import_artist_identity(
-            &hash,
-            0,
-            crate::ArtistIdentityConflictChoice::SameArtist,
-            &coven::UuidIds,
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(artist_image_file(&db, &discogs.id).await.id(), absorbed);
-    assert_eq!(
-        db.queued_upload_count_in_namespace_for_test(bae_db::synced::ARTIST_IMAGES_NAMESPACE)
-            .await
-            .unwrap(),
-        1,
-        "the merge stages no second copy"
-    );
-    assert_eq!(artist_image_bytes(&db, &discogs.id).await, b"absorbed");
-    assert!(db
-        .find_library_image(&musicbrainz.id, &LibraryImageType::Artist)
-        .await
-        .unwrap()
-        .is_none());
 }
 
 #[tokio::test]

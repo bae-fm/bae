@@ -99,3 +99,7 @@ pub fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> Result<(
     )?;
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "identity_merges_tests.rs"]
+mod tests;
