@@ -361,6 +361,7 @@
     <string name="admin_change_make_admin">Fă-l pe %1$s administrator</string>
     <string name="admin_change_make_member">Fă-l pe %1$s membru</string>
     <string name="admin_change_remove">Elimină %1$s</string>
+    <string name="admin_change_remove_unread_device">Elimină un dispozitiv</string>
     <string name="admin_change_waiting">Așteaptă sincronizarea</string>
     <string name="admin_change_refused">Refuzat</string>
     <string name="admin_change_stopped">Oprit</string>

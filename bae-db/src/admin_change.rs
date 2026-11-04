@@ -12,7 +12,8 @@ pub struct AdminChange {
 }
 
 /// What an admin change changes. A person is named by their profile, which
-/// they may not have made; a device keeps its name after its removal.
+/// they may not have made; a device keeps its name after its removal, and
+/// one this device hasn't read yet has no name here.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AdminChangeKind {
     RenameLibrary {
@@ -29,7 +30,7 @@ pub enum AdminChangeKind {
     },
     RemoveDevice {
         device: coven::DeviceId,
-        name: String,
+        name: Option<String>,
     },
     /// Letting in the person a sent invite's request names: by the name
     /// the invite gave them, or for a replacement invite, which names

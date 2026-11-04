@@ -7,13 +7,14 @@ pub struct BridgeAdminChange {
     pub change: BridgeAdminChangeKind,
     pub state: BridgeAdminChangeState,
 }
-/// What an admin change changes. A person without a profile has no name.
+/// What an admin change changes. A person without a profile has no name, nor
+/// does a device this device hasn't read yet.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAdminChangeKind {
     RenameLibrary { name: String },
     SetRole { member: String, person: Option<String>, role: super::BridgeMemberRole },
     RemovePerson { member: String, person: Option<String> },
-    RemoveDevice { device: u64, name: String },
+    RemoveDevice { device: u64, name: Option<String> },
     Approve { member: String, person: Option<String> },
 }
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

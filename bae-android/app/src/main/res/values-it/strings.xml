@@ -361,6 +361,7 @@
     <string name="admin_change_make_admin">Rendi %1$s amministratore</string>
     <string name="admin_change_make_member">Rendi %1$s membro</string>
     <string name="admin_change_remove">Rimuovi %1$s</string>
+    <string name="admin_change_remove_unread_device">Rimuovi un dispositivo</string>
     <string name="admin_change_waiting">In attesa di sincronizzazione</string>
     <string name="admin_change_refused">Rifiutato</string>
     <string name="admin_change_stopped">Interrotto</string>

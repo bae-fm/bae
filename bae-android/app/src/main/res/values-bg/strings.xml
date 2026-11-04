@@ -359,6 +359,7 @@
     <string name="admin_change_make_admin">Направи %1$s администратор</string>
     <string name="admin_change_make_member">Направи %1$s член</string>
     <string name="admin_change_remove">Премахване на %1$s</string>
+    <string name="admin_change_remove_unread_device">Премахване на устройство</string>
     <string name="admin_change_waiting">Изчаква синхронизиране</string>
     <string name="admin_change_refused">Отказано</string>
     <string name="admin_change_stopped">Спряно</string>

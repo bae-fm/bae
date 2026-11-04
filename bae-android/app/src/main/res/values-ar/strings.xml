@@ -375,6 +375,7 @@
     <string name="admin_change_make_admin">جعل %1$s مسؤولًا</string>
     <string name="admin_change_make_member">جعل %1$s عضوًا</string>
     <string name="admin_change_remove">إزالة %1$s</string>
+    <string name="admin_change_remove_unread_device">إزالة جهاز</string>
     <string name="admin_change_waiting">في انتظار المزامنة</string>
     <string name="admin_change_refused">مرفوض</string>
     <string name="admin_change_stopped">متوقّف</string>

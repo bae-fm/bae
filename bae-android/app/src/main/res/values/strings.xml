@@ -417,6 +417,7 @@
     <string name="admin_change_make_admin">Make %1$s an admin</string>
     <string name="admin_change_make_member">Make %1$s a member</string>
     <string name="admin_change_remove">Remove %1$s</string>
+    <string name="admin_change_remove_unread_device">Remove a device</string>
     <string name="admin_change_waiting">Waiting to sync</string>
     <string name="admin_change_refused">Refused</string>
     <string name="admin_change_stopped">Stopped</string>

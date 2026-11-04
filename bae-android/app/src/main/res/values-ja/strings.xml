@@ -355,6 +355,7 @@
     <string name="admin_change_make_admin">%1$sを管理者にする</string>
     <string name="admin_change_make_member">%1$sをメンバーにする</string>
     <string name="admin_change_remove">%1$sを削除</string>
+    <string name="admin_change_remove_unread_device">デバイスを削除</string>
     <string name="admin_change_waiting">同期待ち</string>
     <string name="admin_change_refused">拒否されました</string>
     <string name="admin_change_stopped">停止しました</string>

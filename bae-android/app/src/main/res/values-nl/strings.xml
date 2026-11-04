@@ -359,6 +359,7 @@
     <string name="admin_change_make_admin">%1$s beheerder maken</string>
     <string name="admin_change_make_member">%1$s lid maken</string>
     <string name="admin_change_remove">%1$s verwijderen</string>
+    <string name="admin_change_remove_unread_device">Een apparaat verwijderen</string>
     <string name="admin_change_waiting">Wacht op synchronisatie</string>
     <string name="admin_change_refused">Geweigerd</string>
     <string name="admin_change_stopped">Gestopt</string>

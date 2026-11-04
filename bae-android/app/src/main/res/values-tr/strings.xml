@@ -359,6 +359,7 @@
     <string name="admin_change_make_admin">%1$s kişisini yönetici yap</string>
     <string name="admin_change_make_member">%1$s kişisini üye yap</string>
     <string name="admin_change_remove">%1$s kaldır</string>
+    <string name="admin_change_remove_unread_device">Bir cihazı kaldır</string>
     <string name="admin_change_waiting">Eşitleme bekleniyor</string>
     <string name="admin_change_refused">Reddedildi</string>
     <string name="admin_change_stopped">Durduruldu</string>

@@ -367,6 +367,7 @@
     <string name="admin_change_make_admin">Udělat z uživatele %1$s správce</string>
     <string name="admin_change_make_member">Udělat z uživatele %1$s člena</string>
     <string name="admin_change_remove">Odebrat %1$s</string>
+    <string name="admin_change_remove_unread_device">Odebrat zařízení</string>
     <string name="admin_change_waiting">Čeká na synchronizaci</string>
     <string name="admin_change_refused">Odmítnuto</string>
     <string name="admin_change_stopped">Zastaveno</string>

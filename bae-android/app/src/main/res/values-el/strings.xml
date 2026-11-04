@@ -357,6 +357,7 @@
     <string name="admin_change_make_admin">Ορισμός του/της %1$s ως διαχειριστή</string>
     <string name="admin_change_make_member">Ορισμός του/της %1$s ως μέλους</string>
     <string name="admin_change_remove">Αφαίρεση %1$s</string>
+    <string name="admin_change_remove_unread_device">Αφαίρεση συσκευής</string>
     <string name="admin_change_waiting">Αναμονή για συγχρονισμό</string>
     <string name="admin_change_refused">Απορρίφθηκε</string>
     <string name="admin_change_stopped">Διακόπηκε</string>

@@ -2287,7 +2287,9 @@ Removing a person or a device, changing a role, renaming the library and
 approving a request are admin changes. Each is one write on the device that asks: coven checks it
 against the library as that device has it, except an approval, which only sync
 checks, and records it, with or without a connection, and the call returns
-once it is recorded. Sync then catches up,
+once it is recorded. A person, device or circle that device hasn't read yet
+isn't refused there, since it may have joined elsewhere: the change is
+recorded, and sync refuses it as gone if it finds none once it has read on. Sync then catches up,
 checks it again and publishes it; until then the library is unchanged, on that
 device too
 ([coven §11.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#111-the-steps)).
@@ -2301,7 +2303,8 @@ is and how it ended, so the row holds neither. Each change shows, under
 **Changes from this Mac** in Library settings on a Mac and **Changes from this
 phone** in Settings and People on Android, as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
-device's name as they stand: waiting to sync, then done, refused or
+device's name as they stand ("Remove a device" for one this device hasn't
+read yet): waiting to sync, then done, refused or
 stopped. Refused says why the library refused it (Ben is no longer in the
 library, it would leave the library without an admin, or this device isn't
 allowed to make it, such as an approval after another admin demoted Ana).

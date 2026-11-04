@@ -216,7 +216,52 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
         else {
             panic!("one removal, stopped by the laptop's own: {stopped:?}");
         };
-        assert_eq!((*device, name.as_str()), (tablet_id, "Device B"));
+        assert_eq!((*device, name.as_deref()), (tablet_id, Some("Device B")));
+    });
+}
+
+/// Robin's laptop asks to remove a device it hasn't read: coven journals
+/// the removal, since a device registered elsewhere may not have reached
+/// the laptop yet. The change is listed waiting, with no name to show, and
+/// once the laptop syncs and still finds no such device, the library
+/// refuses it as gone.
+#[test]
+fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
+    run_two_device_test(async |devices| {
+        let laptop = devices.a();
+        laptop.stop_sync().await;
+        let mut changes = laptop.manager().subscribe_admin_changes();
+        crate::followed::value_matching(&mut changes, Vec::is_empty).await;
+        let unknown = coven::DeviceId(u64::MAX);
+        laptop.manager().remove_device(unknown).await.unwrap();
+        let waiting =
+            crate::followed::value_matching(&mut changes, |changes| !changes.is_empty()).await;
+        let [AdminChange {
+            change: AdminChangeKind::RemoveDevice { device, name: None },
+            state: AdminChangeState::Waiting,
+            ..
+        }] = waiting.as_slice()
+        else {
+            panic!("one waiting removal of an unnamed device: {waiting:?}");
+        };
+        assert_eq!(*device, unknown);
+
+        laptop.database().start_sync().await.unwrap();
+        let refused = crate::followed::value_matching(&mut changes, |changes| {
+            changes.iter().any(|change| change.state != AdminChangeState::Waiting)
+        })
+        .await;
+        let [AdminChange {
+            state:
+                AdminChangeState::Refused(coven::OperationRejection::TargetGone(
+                    coven::EntryTarget::Device(gone),
+                )),
+            ..
+        }] = refused.as_slice()
+        else {
+            panic!("one removal refused as gone: {refused:?}");
+        };
+        assert_eq!(*gone, unknown);
     });
 }
 

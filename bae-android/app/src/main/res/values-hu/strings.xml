@@ -357,6 +357,7 @@
     <string name="admin_change_make_admin">%1$s legyen adminisztrátor</string>
     <string name="admin_change_make_member">%1$s legyen tag</string>
     <string name="admin_change_remove">%1$s eltávolítása</string>
+    <string name="admin_change_remove_unread_device">Egy eszköz eltávolítása</string>
     <string name="admin_change_waiting">Szinkronizálásra vár</string>
     <string name="admin_change_refused">Elutasítva</string>
     <string name="admin_change_stopped">Leállítva</string>

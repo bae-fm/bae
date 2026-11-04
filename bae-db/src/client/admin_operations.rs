@@ -79,9 +79,9 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
                 device: row.get::<_, Option<coven::DeviceId>>(5)?.ok_or_else(|| {
                     super::read::column_conversion_error(row, 5, "a removal names no device")
                 })?,
-                name: row.get::<_, Option<String>>(9)?.ok_or_else(|| {
-                    super::read::column_conversion_error(row, 9, "coven lists no such device")
-                })?,
+                // coven journals the removal of a device this device
+                // hasn't read, which it lists only once it has.
+                name: row.get(9)?,
             },
             other => {
                 return Err(super::read::column_conversion_error(

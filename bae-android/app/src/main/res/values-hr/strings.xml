@@ -363,6 +363,7 @@
     <string name="admin_change_make_admin">Postavi osobu %1$s za administratora</string>
     <string name="admin_change_make_member">Postavi osobu %1$s za člana</string>
     <string name="admin_change_remove">Ukloni %1$s</string>
+    <string name="admin_change_remove_unread_device">Ukloni uređaj</string>
     <string name="admin_change_waiting">Čeka sinkronizaciju</string>
     <string name="admin_change_refused">Odbijeno</string>
     <string name="admin_change_stopped">Zaustavljeno</string>

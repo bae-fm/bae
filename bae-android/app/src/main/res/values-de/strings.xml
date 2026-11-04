@@ -359,6 +359,7 @@
     <string name="admin_change_make_admin">%1$s zum Admin machen</string>
     <string name="admin_change_make_member">%1$s zum Mitglied machen</string>
     <string name="admin_change_remove">%1$s entfernen</string>
+    <string name="admin_change_remove_unread_device">Ein Gerät entfernen</string>
     <string name="admin_change_waiting">Wartet auf Synchronisierung</string>
     <string name="admin_change_refused">Abgelehnt</string>
     <string name="admin_change_stopped">Gestoppt</string>

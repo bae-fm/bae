@@ -367,6 +367,7 @@
     <string name="admin_change_make_admin">Зробити %1$s адміністратором</string>
     <string name="admin_change_make_member">Зробити %1$s учасником</string>
     <string name="admin_change_remove">Вилучити %1$s</string>
+    <string name="admin_change_remove_unread_device">Вилучити пристрій</string>
     <string name="admin_change_waiting">Очікує синхронізації</string>
     <string name="admin_change_refused">Відхилено</string>
     <string name="admin_change_stopped">Зупинено</string>

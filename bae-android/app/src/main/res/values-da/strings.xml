@@ -357,6 +357,7 @@
     <string name="admin_change_make_admin">Gør %1$s til administrator</string>
     <string name="admin_change_make_member">Gør %1$s til medlem</string>
     <string name="admin_change_remove">Fjern %1$s</string>
+    <string name="admin_change_remove_unread_device">Fjern en enhed</string>
     <string name="admin_change_waiting">Venter på synkronisering</string>
     <string name="admin_change_refused">Afvist</string>
     <string name="admin_change_stopped">Stoppet</string>

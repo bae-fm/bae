@@ -357,6 +357,7 @@
     <string name="admin_change_make_admin">Tee käyttäjästä %1$s ylläpitäjä</string>
     <string name="admin_change_make_member">Tee käyttäjästä %1$s jäsen</string>
     <string name="admin_change_remove">Poista %1$s</string>
+    <string name="admin_change_remove_unread_device">Poista laite</string>
     <string name="admin_change_waiting">Odottaa synkronointia</string>
     <string name="admin_change_refused">Hylätty</string>
     <string name="admin_change_stopped">Pysäytetty</string>

@@ -119,7 +119,13 @@ private struct AdminChangeRow: View {
         case .removePerson(_, let person):
             String(localized: "Remove \(personName(person))")
         case .removeDevice(_, let name):
-            String(localized: "Remove \(name)")
+            // A device this Mac hasn't read yet has no name to show.
+            if let name {
+                String(localized: "Remove \(name)")
+            }
+            else {
+                String(localized: "Remove a device")
+            }
         case .approve(_, let person):
             String(localized: "Let \(personName(person)) in")
         }

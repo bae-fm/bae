@@ -119,7 +119,9 @@ private fun BridgeAdminChangeKind.description(): String {
         }
 
         is BridgeAdminChangeKind.RemoveDevice -> {
-            stringResource(R.string.admin_change_remove, name)
+            // A device this phone hasn't read yet has no name to show.
+            name?.let { stringResource(R.string.admin_change_remove, it) }
+                ?: stringResource(R.string.admin_change_remove_unread_device)
         }
 
         is BridgeAdminChangeKind.Approve -> {

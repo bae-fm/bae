@@ -355,6 +355,7 @@
     <string name="admin_change_make_admin">%1$s 님을 관리자로 지정</string>
     <string name="admin_change_make_member">%1$s 님을 구성원으로 지정</string>
     <string name="admin_change_remove">%1$s 제거</string>
+    <string name="admin_change_remove_unread_device">기기 제거</string>
     <string name="admin_change_waiting">동기화 대기 중</string>
     <string name="admin_change_refused">거부됨</string>
     <string name="admin_change_stopped">중지됨</string>

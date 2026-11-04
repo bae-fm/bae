@@ -355,6 +355,7 @@
     <string name="admin_change_make_admin">將 %1$s 設為管理員</string>
     <string name="admin_change_make_member">將 %1$s 設為成員</string>
     <string name="admin_change_remove">移除%1$s</string>
+    <string name="admin_change_remove_unread_device">移除一台裝置</string>
     <string name="admin_change_waiting">等待同步</string>
     <string name="admin_change_refused">已拒絕</string>
     <string name="admin_change_stopped">已停止</string>

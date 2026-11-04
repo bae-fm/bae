@@ -363,6 +363,7 @@
     <string name="admin_change_make_admin">להפוך את %1$s למנהל</string>
     <string name="admin_change_make_member">להפוך את %1$s לחבר</string>
     <string name="admin_change_remove">הסר %1$s</string>
+    <string name="admin_change_remove_unread_device">הסר מכשיר</string>
     <string name="admin_change_waiting">ממתין לסנכרון</string>
     <string name="admin_change_refused">נדחה</string>
     <string name="admin_change_stopped">נעצר</string>
