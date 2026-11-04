@@ -180,6 +180,7 @@ impl ImportServices {
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
+        file_tags: std::sync::Arc<dyn file_tag_snapshot::FileTagReader>,
         diagnostics: bae_diagnostics::Diagnostics,
         closing: tokio_util::sync::CancellationToken,
     ) -> Self {
@@ -192,7 +193,7 @@ impl ImportServices {
             preparations,
             clock,
             ids,
-            file_tags: std::sync::Arc::new(file_tag_snapshot::LoftyFileTagReader),
+            file_tags,
             directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
             folder_state_commit: folder_state_commit::FolderStateCommit::default(),
             import_cancels: import_cancel::ImportCancels::default(),

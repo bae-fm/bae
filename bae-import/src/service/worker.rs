@@ -17,6 +17,36 @@ impl ImportService {
         ids: coven::IdSourceRef,
         closing: tokio_util::sync::CancellationToken,
     ) -> Result<ImportServiceHandle, crate::ImportError> {
+        Self::start_reading_tags_through(
+            runtime_handle,
+            database,
+            catalogs,
+            remote_images,
+            diagnostics,
+            preparations,
+            clock,
+            ids,
+            closing,
+            Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+        )
+        .await
+    }
+
+    /// [`Self::start`] reading folders' tags through `file_tags`: Lofty for
+    /// the app, a reader a test decides the answers and timing of for a
+    /// test.
+    pub(crate) async fn start_reading_tags_through(
+        runtime_handle: tokio::runtime::Handle,
+        database: bae_db::Database,
+        catalogs: crate::CatalogSessions,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
+        diagnostics: bae_diagnostics::Diagnostics,
+        preparations: crate::CandidatePreparations,
+        clock: coven::ClockRef,
+        ids: coven::IdSourceRef,
+        closing: tokio_util::sync::CancellationToken,
+        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+    ) -> Result<ImportServiceHandle, crate::ImportError> {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
         // anything reads the list.
@@ -31,48 +61,13 @@ impl ImportService {
             catalogs,
             remote_images,
             preparations,
-            clock.clone(),
-            ids.clone(),
-            diagnostics.clone(),
-            closing,
-        );
-        Self::start_with(runtime_handle, services, runtime, diagnostics)
-    }
-
-    /// [`Self::start`] reading folders' tags through `file_tags`, for a test
-    /// that decides how long a read takes.
-    #[cfg(test)]
-    pub(crate) fn start_reading_tags_with(
-        runtime_handle: tokio::runtime::Handle,
-        database: bae_db::Database,
-        catalogs: crate::CatalogSessions,
-        remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        diagnostics: bae_diagnostics::Diagnostics,
-        preparations: crate::CandidatePreparations,
-        clock: coven::ClockRef,
-        ids: coven::IdSourceRef,
-        closing: tokio_util::sync::CancellationToken,
-        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
-    ) -> ImportServiceHandle {
-        let runtime = CandidateRuntime::new(
-            crate::tables::ImportTables::new(database.clone()),
-            diagnostics.clone(),
-        );
-        let event_tx = crate::handle::ImportEventBus::new(runtime.clone());
-        let mut services = crate::ImportServices::new(
-            event_tx,
-            database,
-            catalogs,
-            remote_images,
-            preparations,
             clock,
             ids,
+            file_tags,
             diagnostics.clone(),
             closing,
         );
-        services.file_tags = file_tags;
         Self::start_with(runtime_handle, services, runtime, diagnostics)
-            .expect("a test's library is open while its import service starts")
     }
 
     fn start_with(

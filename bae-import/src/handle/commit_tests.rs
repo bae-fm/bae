@@ -171,7 +171,7 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     let (reader, mut entered) = HeldTagReader::new();
     reader.hold(&slow_root);
     let _opens = OpensOnDrop(reader.clone());
-    let handle = parts.start_reading_tags_with(reader.clone());
+    let handle = parts.start_reading_tags_with(reader.clone()).await.unwrap();
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
     handle.add_watched_folder(slow_root.clone()).await.unwrap();
     tokio::time::timeout(HANG_GUARD, entered.recv())
@@ -212,7 +212,7 @@ async fn two_candidates() -> (
     rescan_unread_into(&tables, held_candidate.clone()).await;
     let (_, edited_key, _) = picked_candidate(&tables, &other, "Edited Album").await;
     let (reader, entered) = HeldTagReader::new();
-    let handle = parts.start_reading_tags_with(reader.clone());
+    let handle = parts.start_reading_tags_with(reader.clone()).await.unwrap();
     handle.select_candidate_file_tags(edited_key.clone()).await.unwrap();
     (handle, reader, entered, (held_key, held_candidate.path), edited_key, [tmp, other])
 }

@@ -178,11 +178,11 @@ pub(crate) mod import {
         }
 
         /// [`Self::start`] reading folders' tags through `file_tags`.
-        pub(crate) fn start_reading_tags_with(
+        pub(crate) async fn start_reading_tags_with(
             &self,
             file_tags: std::sync::Arc<dyn crate::file_tag_snapshot::FileTagReader>,
-        ) -> ImportServiceHandle {
-            crate::ImportService::start_reading_tags_with(
+        ) -> Result<ImportServiceHandle, crate::ImportError> {
+            crate::ImportService::start_reading_tags_through(
                 tokio::runtime::Handle::current(),
                 self.database.clone(),
                 self.catalogs.clone(),
@@ -194,6 +194,7 @@ pub(crate) mod import {
                 self.closing.child_token(),
                 file_tags,
             )
+            .await
         }
 
         /// Edit this library's preferences in one write of their row, as the
