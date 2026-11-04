@@ -172,7 +172,7 @@ impl ImportService {
         }
         let identity_files = stored_candidate.files.release_files().cloned().collect::<Vec<_>>();
         let audio_observations = blocking("validate the import's file identities", move || {
-            crate::file_identity::validate_scanned_file_identities(&identity_files)
+            super::file_identity::validate_scanned_file_identities(&identity_files)
         })
         .await
         .map_err(|failed| self.diagnostics.bug(failed))??;
@@ -440,7 +440,7 @@ impl ImportService {
                     file.path.display()
                 ),
             })?;
-            crate::file_identity::require_scanned_identity(
+            super::file_identity::require_scanned_identity(
                 file,
                 original.size(),
                 original.modified_at(),

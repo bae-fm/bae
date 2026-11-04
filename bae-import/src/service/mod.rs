@@ -26,6 +26,7 @@ use tracing::{debug, error, info, warn};
 pub(crate) mod artist_pictures;
 mod content_type;
 mod cover_image;
+mod file_identity;
 mod format_prep;
 mod importing;
 mod progress;

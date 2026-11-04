@@ -37,8 +37,6 @@ pub mod extraction;
 #[cfg(desktop)]
 mod file_evidence;
 #[cfg(desktop)]
-mod file_identity;
-#[cfg(desktop)]
 pub(crate) mod file_metadata_seed;
 #[cfg(desktop)]
 pub mod file_tag_mapper;

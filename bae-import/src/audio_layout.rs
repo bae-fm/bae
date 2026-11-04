@@ -300,7 +300,7 @@ pub(crate) fn resolve_track_files(
 /// cannot read, and the folder changed under the choice. Whether each file on
 /// disk is still the one scanned is the import's own check, made once for
 /// every release file before any is read
-/// ([`crate::file_identity::validate_scanned_file_identities`]).
+/// ([`crate::service::file_identity::validate_scanned_file_identities`]).
 fn audio_file<'a>(
     files: &'a CategorizedFiles,
     audio: &AudioFile,
