@@ -351,76 +351,12 @@ pub enum ReleaseFileScope {
     Recursive,
 }
 
-/// The stable address of one folder-boundary decision.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FolderReleaseDecisionKey {
-    pub watched_folder_path: PathBuf,
-    /// The folder below the watched root; [`RelativeFolder::root`] names the
-    /// root.
-    pub relative_folder: RelativeFolder,
-}
-
-/// How a folder holding several releases' worth of audio is read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum FolderReleaseDecision {
-    CombineAsOneRelease,
-    KeepAsSeparateReleases,
-}
-
-/// Who decided. The scan decides every such folder for itself so the queue has
-/// candidates to work on rather than a card to answer, and stores that as the
-/// folder's decision; the user's own answer replaces it and is never decided
-/// over again.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum FolderReleaseDecisionAuthor {
-    User,
-    Heuristic,
-}
-
 /// The part of a watched root one stored entry reads its files from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Coverage {
     pub folder: PathBuf,
     /// Every file below `folder`, rather than `folder`'s own.
     pub whole_subtree: bool,
-}
-
-/// How one folder reads, as stored: whether its releases are one, who said
-/// so, and the key of the grouping that says it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FolderReading {
-    pub decision: FolderReleaseDecision,
-    pub author: FolderReleaseDecisionAuthor,
-    pub grouping: CandidateKey,
-}
-
-/// How each folder under one watched root reads, loaded before its scan
-/// begins, by the folder below the root.
-#[derive(Debug, Clone, Default)]
-pub struct FolderReleaseDecisions(HashMap<RelativeFolder, FolderReading>);
-
-impl FolderReleaseDecisions {
-    pub fn new(readings: HashMap<RelativeFolder, FolderReading>) -> Self {
-        Self(readings)
-    }
-
-    /// How the folder at `relative_folder` reads, if anything is stored.
-    pub(crate) fn get(&self, relative_folder: &RelativeFolder) -> Option<&FolderReading> {
-        self.0.get(relative_folder)
-    }
-
-    /// Every folder's reading, by the folder below the root.
-    #[cfg(test)]
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&RelativeFolder, &FolderReading)> {
-        self.0.iter()
-    }
-
-    /// Read `relative_folder` as `reading`, whatever was stored for it — the
-    /// reading a decision about to be stored gives.
-    #[cfg(desktop)]
-    pub(crate) fn insert(&mut self, relative_folder: RelativeFolder, reading: FolderReading) {
-        self.0.insert(relative_folder, reading);
-    }
 }
 
 /// A folder candidate detected during filesystem scanning.
