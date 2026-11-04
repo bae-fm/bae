@@ -107,13 +107,6 @@ impl FolderDate {
             .map(|times| times.arrival())
             .map_err(|error| FolderScanError::io(path, error))
     }
-
-    pub(crate) fn columns(self) -> (i64, &'static str) {
-        match self {
-            Self::AddedToDirectory(at) => (at, "added_to_directory"),
-            Self::Created(at) => (at, "created"),
-        }
-    }
 }
 
 /// The dates of each of `folders`, directly under `root` and relative to it,

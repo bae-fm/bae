@@ -5,6 +5,32 @@
 use super::*;
 use crate::folder_scanner::FolderDate;
 
+/// A folder's date as `folder_discovery` stores it: the time, and which of
+/// the filesystem's dates it is.
+fn date_columns(date: FolderDate) -> (i64, &'static str) {
+    match date {
+        FolderDate::AddedToDirectory(at) => (at, "added_to_directory"),
+        FolderDate::Created(at) => (at, "created"),
+    }
+}
+
+/// The date [`date_columns`] stored for `folder`, or none when none was.
+fn stored_date(
+    folder: &Path,
+    at: Option<i64>,
+    kind: Option<&str>,
+) -> Result<Option<FolderDate>, DbError> {
+    match (at, kind) {
+        (None, None) => Ok(None),
+        (Some(at), Some("added_to_directory")) => Ok(Some(FolderDate::AddedToDirectory(at))),
+        (Some(at), Some("created")) => Ok(Some(FolderDate::Created(at))),
+        _ => Err(DbError::Message(format!(
+            "invalid stored folder date for {}",
+            coven::path_text(folder)
+        ))),
+    }
+}
+
 /// What is known about when a folder was found, kept by its path on disk
 /// rather than with the scan row of whichever watched folder covers it.
 pub(super) struct FolderDiscovery {
@@ -40,20 +66,7 @@ impl FolderDiscovery {
             .optional()?;
         let (first_seen_at, settled, stored_date) = match stored {
             Some((first_seen_at, settled, at, kind)) => {
-                let date = match (at, kind.as_deref()) {
-                    (None, None) => None,
-                    (Some(at), Some("added_to_directory")) => {
-                        Some(FolderDate::AddedToDirectory(at))
-                    }
-                    (Some(at), Some("created")) => Some(FolderDate::Created(at)),
-                    _ => {
-                        return Err(DbError::Message(format!(
-                            "invalid stored folder date for {}",
-                            coven::path_text(&folder)
-                        )))
-                    }
-                };
-                (first_seen_at, settled, date)
+                (first_seen_at, settled, stored_date(&folder, at, kind.as_deref())?)
             }
             None => (now, false, None),
         };
@@ -76,7 +89,7 @@ impl FolderDiscovery {
     /// Store what is known, marking the folder read as a release or as broken
     /// when `settles`. Writes nothing when nothing changed.
     pub(super) fn store(&self, sql: &CovenWrite<'_>, settles: bool) -> Result<(), DbError> {
-        let date = self.folder_date.map(FolderDate::columns);
+        let date = self.folder_date.map(date_columns);
         sql.execute(
             "INSERT INTO folder_discovery \
                  (folder, first_seen_at, settled, source_date, source_date_kind) \
