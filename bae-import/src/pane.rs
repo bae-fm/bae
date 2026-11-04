@@ -312,6 +312,30 @@ pub(crate) fn file_metadata_draft(
     Ok(crate::reading_draft::candidate_draft(values, units))
 }
 
+/// The candidate draft a release's reading writes, keeping each current
+/// track on its file. A reading of tracks lays every value it states over
+/// the folder's audio; a release that lists none leaves the draft's tracks
+/// as they are. Where the release states no year, the pressing's is
+/// `pressing_year`, the folder's — see
+/// `identify::row_facts::folder_pressing_year`.
+pub(crate) fn external_candidate_draft(
+    values: bae_catalogs::release_values::ReleaseValues,
+    current: &crate::CandidateDraft,
+    pressing_year: Option<i32>,
+) -> Result<crate::CandidateDraft, crate::ImportError> {
+    let mut draft = if values.tracks.is_empty() {
+        album_over_draft(values, current)
+    } else {
+        values_over_audio(values, current)?
+    };
+    if draft.pressing.year.trim().is_empty() {
+        if let Some(year) = pressing_year {
+            draft.pressing.year = year.to_string();
+        }
+    }
+    Ok(draft)
+}
+
 #[cfg(test)]
 #[path = "pane_tests.rs"]
 mod tests;

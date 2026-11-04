@@ -15,6 +15,7 @@ mod combinations;
 mod commit;
 mod covers;
 mod discogs_key;
+mod draft_source;
 mod edits;
 mod event_bus;
 mod file_decisions;
@@ -25,10 +26,10 @@ mod import;
 mod list;
 mod lookup_choices;
 mod picks;
-mod scan;
 mod search;
 mod session;
 mod shared_album;
+mod skip;
 mod verdict_write;
 mod watch;
 
@@ -37,7 +38,7 @@ pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
 #[cfg(any(test, feature = "test-utils"))]
 pub use event_bus::{ImportProgressFeed, ScanEvents};
 pub use import::ImportStart;
-pub(crate) use scan::external_metadata_with_cover;
+pub(crate) use picks::external_metadata_with_cover;
 pub use search::GroupedSearchResults;
 pub(crate) use verdict_write::VerdictWrite;
 

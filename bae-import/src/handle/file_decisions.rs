@@ -4,6 +4,14 @@
 use super::*;
 
 impl ImportServiceHandle {
+    /// Tell surfaces a folder candidate's files were bound anew.
+    pub(super) fn announce_source_candidate(
+        &self,
+        candidate: crate::folder_scanner::FolderCandidate,
+    ) {
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }));
+    }
+
     /// For each FILE reference of the track sheet at `sheet_file_id`, the
     /// candidate's audio files, each offered or refused with the reason.
     ///

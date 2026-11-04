@@ -228,11 +228,7 @@ async fn lead_metadata(
         .read(audio)
         .map_err(crate::ImportError::from)
         .and_then(|values| {
-            crate::ImportServiceHandle::external_candidate_draft(
-                values,
-                &current.metadata.draft,
-                pressing_year,
-            )
+            crate::pane::external_candidate_draft(values, &current.metadata.draft, pressing_year)
         })
         .map_err(|error| {
             tracing::error!(
