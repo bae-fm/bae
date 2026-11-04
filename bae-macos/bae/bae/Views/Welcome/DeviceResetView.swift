@@ -71,7 +71,7 @@ struct DeviceResetView: View {
         case .offered:
             localizedCoreString("core.sync.reset_device.confirm")
         case .unfinished:
-            String(localized: "Finish Resetting")
+            String(localized: "Finish resetting")
         }
     }
 }

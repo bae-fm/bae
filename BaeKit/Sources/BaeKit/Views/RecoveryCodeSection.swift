@@ -65,6 +65,6 @@ public struct RecoveryCodeSection: View {
     }
 
     private var showButton: some View {
-        Button("Show Code") { reveal.show(sync.generateRestoreCode) }
+        Button("Show code") { reveal.show(sync.generateRestoreCode) }
     }
 }

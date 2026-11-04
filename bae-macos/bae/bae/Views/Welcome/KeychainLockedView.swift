@@ -9,7 +9,7 @@ struct KeychainLockedView: View {
     var body: some View {
         VStack(spacing: ThemeSpace.edge) {
             Spacer()
-            Text("Library Locked")
+            Text("Library locked")
                 .themeText(.title)
             // Core's sentence for this failure, as every surface shows it.
             Text(BridgeErrorCategory.keyringLocked.localizedLine)

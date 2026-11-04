@@ -217,7 +217,7 @@ fn a_failure_no_record_shows_is_its_own_line() {
     assert!(activity(&unrecorded).failure.is_some());
 }
 
-/// The list offers Retry Now for a pass a server error failed while coven
+/// The list offers Retry now for a pass a server error failed while coven
 /// would run a pass for the retry, and not while a held failure would
 /// answer it at once; nor with nothing failing.
 #[test]

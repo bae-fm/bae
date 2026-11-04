@@ -97,7 +97,7 @@ struct MembersSection: View {
                 )
             }
             if store.selfIsAdmin {
-                Button("Invite a Person…") { inviteSheet = .form }
+                Button("Invite a person…") { inviteSheet = .form }
             }
         }
         .sheet(item: $inviteSheet) { sheet in
@@ -295,9 +295,9 @@ private struct MemberRow: View {
                     .opacity(member.isSelf ? 1 : 0)
                 Spacer()
                 Menu {
-                    Button("Make Admin") { onSetRole(.admin) }
+                    Button("Make admin") { onSetRole(.admin) }
                         .disabled(member.role == .admin)
-                    Button("Make Member") { onSetRole(.member) }
+                    Button("Make member") { onSetRole(.member) }
                         .disabled(member.role == .member)
                 } label: {
                     StatusChip(verbatim: member.role.label)
@@ -333,7 +333,7 @@ private struct MemberRow: View {
             // A row's person never changes, so including this only in one's
             // own row never changes a row's size after it first lays out.
             if member.isSelf {
-                Button("Add Device…", action: onAddDevice)
+                Button("Add device…", action: onAddDevice)
                     .buttonStyle(.link)
                     .padding(.leading, ThemeSpace.group)
             }
@@ -450,7 +450,7 @@ private struct InviteRow: View {
                         .themeIcon(.small)
                 }
                 .buttonStyle(.borderless)
-                .help("Check for Requests")
+                .help("Check for requests")
             }
             if let held = invite.held {
                 ErrorText(localizedCoreString(held.reason.key))

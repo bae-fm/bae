@@ -141,9 +141,9 @@ extension BridgeSaveFilenameToken {
     /// as in real filenames.
     var sampleValue: String {
         switch self {
-        case .title: String(localized: "Track Title")
-        case .artist: String(localized: "Artist Name")
-        case .album: String(localized: "Album Title")
+        case .title: String(localized: "Track title")
+        case .artist: String(localized: "Artist name")
+        case .album: String(localized: "Album title")
         case .year: "2020"
         case .trackNumber: "04"
         case .discNumber: "1"

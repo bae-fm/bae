@@ -390,7 +390,7 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
     manager.close().await.unwrap();
 }
 
-// Retry Now as the activity list offers it, against coven's own retry: each
+// Retry now as the activity list offers it, against coven's own retry: each
 // failure it is offered for runs a pass when retried; each failure only the
 // person can clear, and a provider's cooldown, offers none, since coven would
 // answer the retry at once and run no pass.
@@ -443,7 +443,7 @@ async fn fail_a_pass(
     failed
 }
 
-/// Each failure coven retries by itself offers Retry Now, and retrying runs
+/// Each failure coven retries by itself offers Retry now, and retrying runs
 /// a pass at once, which syncs: storage unreachable, a server error,
 /// throttling without a cooldown, a conflict, an expired upload session. A
 /// missing object fails no pass here: the pass reads it as absent.
@@ -481,7 +481,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
 }
 
 /// Each failure only the person can clear, or that never retries, offers no
-/// Retry Now: coven holds every pass for it, and a retry would answer with
+/// Retry now: coven holds every pass for it, and a retry would answer with
 /// the failure at once, sending nothing to storage.
 #[tokio::test]
 async fn each_failure_the_person_clears_offers_no_retry() {
@@ -521,7 +521,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
     }
 }
 
-/// A 429 asking every request to wait ten minutes offers no Retry Now while
+/// A 429 asking every request to wait ten minutes offers no Retry now while
 /// the wait lasts: a retry would only say when it ends. Once it ends Retry
 /// Now is offered again, and retrying runs a pass that syncs.
 #[tokio::test]

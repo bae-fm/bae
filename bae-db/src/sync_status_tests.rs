@@ -660,7 +660,7 @@ fn a_failure_no_retry_clears_offers_none() {
     }
 }
 
-/// A slot blocked by a failure coven retries offers Retry Now; one blocked
+/// A slot blocked by a failure coven retries offers Retry now; one blocked
 /// for good, or waiting on what another device hasn't sent, doesn't. A
 /// block whose reason names no state leaves coven's sync state synced, and
 /// its slot's record says whether it retries.
@@ -683,7 +683,7 @@ fn a_blocked_slot_offers_retry_only_for_a_retried_failure() {
     assert!(!unnamed(coven::PendingReason::Waits(coven::Prerequisite::SequenceCatchUp)));
 }
 
-/// coven's own operation that failed its last attempt offers Retry Now when
+/// coven's own operation that failed its last attempt offers Retry now when
 /// it retries by itself, and not when it waits for the person.
 #[test]
 fn a_failed_operation_offers_retry_only_when_coven_retries_it() {
@@ -715,7 +715,7 @@ fn a_failed_operation_offers_retry_only_when_coven_retries_it() {
 }
 
 /// With the pass synced, a record of a failure coven retries by itself,
-/// such as an upload a server error refused, offers Retry Now; a record
+/// such as an upload a server error refused, offers Retry now; a record
 /// waiting for the person or for other work doesn't, nor does nothing
 /// pending.
 #[test]

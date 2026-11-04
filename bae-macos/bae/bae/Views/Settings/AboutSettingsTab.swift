@@ -23,7 +23,7 @@ struct AboutSettingsTab: View {
                     .themeText(.mono)
                     .foregroundStyle(.tertiary)
             }
-            Button("Check for Updates…") {
+            Button("Check for updates…") {
                 onCheckForUpdates()
             }
             .disabled(!canCheckForUpdates)

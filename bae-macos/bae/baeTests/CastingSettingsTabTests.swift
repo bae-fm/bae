@@ -72,7 +72,7 @@ struct CastingSettingsTabTests {
             "Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.",
             "Turn off casting?",
             "This will stop casting to %@.",
-            "Turn Off",
+            "Turn off",
         ] {
             #expect(try locales(key) == reference, "\(key) is missing locales")
         }

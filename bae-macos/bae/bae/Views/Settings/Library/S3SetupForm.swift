@@ -48,8 +48,8 @@ struct S3SetupForm: View {
                 Text("Leave the endpoint empty for AWS.")
             }
             Section {
-                TextField("Access Key", text: $fields.accessKey)
-                SecureField("Secret Key", text: $fields.secretKey)
+                TextField("Access key", text: $fields.accessKey)
+                SecureField("Secret key", text: $fields.secretKey)
             }
             Section {
                 DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
@@ -64,7 +64,7 @@ struct S3SetupForm: View {
     private var advanced: some View {
         @Bindable
         var fields = fields
-        TextField("Key Prefix", text: $fields.keyPrefix)
+        TextField("Key prefix", text: $fields.keyPrefix)
         Picker("Profile", selection: $fields.profile) {
             Text("Automatic").tag(S3SetupFields.ProfileChoice.automatic)
             ForEach(S3SetupFields.profileNames, id: \.self) { name in
@@ -76,7 +76,7 @@ struct S3SetupForm: View {
                 .selectionDisabled(fields.detection == nil)
         }
         HStack {
-            Button("Detect Settings") { fields.detect() }
+            Button("Detect settings") { fields.detect() }
                 .disabled(fields.isDetecting || !fields.ready)
             if fields.isDetecting {
                 ProgressView()

@@ -20,7 +20,7 @@ struct RenameLibrarySheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Rename Library")
+                Text("Rename library")
                     .themeText(.heading)
                 Spacer()
             }
@@ -70,7 +70,7 @@ struct RenameLibrarySheet: View {
 }
 
 #if DEBUG
-    #Preview("Rename Library") {
+    #Preview("Rename library") {
         @Previewable
         @State
         var state = RenameLibrarySheetState(

@@ -301,14 +301,14 @@ impl SyncStatusSnapshot {
     /// Whether the status line offers Reconnect: a start failed and left
     /// sync not running with storage set up on this device, and starting it
     /// again is what retries it.
-    /// A loop that runs retries a failed pass by itself, and Retry Now ends
+    /// A loop that runs retries a failed pass by itself, and Retry now ends
     /// its wait; with no storage set up on this device there is no sync to
     /// start, and signing in to the recorded storage again is the way back.
     pub fn reconnect_offered(&self) -> bool {
         self.error.is_some() && self.storage_set_up() && !self.running()
     }
 
-    /// Whether the activity list offers Retry Now: pressing it runs a pass,
+    /// Whether the activity list offers Retry now: pressing it runs a pass,
     /// and a failure that pass can clear holds work back.
     ///
     /// Whether a pass runs is coven's answer (`retry_effect`), decided as it

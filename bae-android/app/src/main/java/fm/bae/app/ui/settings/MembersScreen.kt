@@ -287,7 +287,7 @@ private fun inviteCallbacks(
 ): InviteCallbacks =
     InviteCallbacks(
         onOpen = dialogs::open,
-        // Retry Now reads a request that has arrived at once, instead of at the next check.
+        // Retry now reads a request that has arrived at once, instead of at the next check.
         onRefresh = { session.messages.startRetrySync(session.appHandle::retryNow) },
     )
 

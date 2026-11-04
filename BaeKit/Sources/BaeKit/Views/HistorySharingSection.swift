@@ -62,7 +62,7 @@ public struct HistorySharingSection: View {
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                 TextField("Your name", text: $name)
-                Button("Create Profile") {
+                Button("Create profile") {
                     let name = name.trimmingCharacters(in: .whitespaces)
                     run { try await sync.createProfile(name) }
                 }

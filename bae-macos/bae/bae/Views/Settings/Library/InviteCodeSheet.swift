@@ -7,7 +7,7 @@ private let logger = Logger.bae("InviteCodeSheet")
 /// One of this device's open invites, shown again: while sync grants its
 /// access, that it is doing so, and why coven holds it when it does; then
 /// the QR code of an in-person invite, or the code of a sent one with Copy
-/// and Share, and when it expires; and Cancel Invitation. It closes when the
+/// and Share, and when it expires; and Cancel invitation. It closes when the
 /// invite ends.
 struct InviteCodeSheet: View {
     let inviteId: String
@@ -58,7 +58,7 @@ struct InviteCodeSheet: View {
             titleVisibility: .visible,
             presenting: invite
         ) { shown in
-            Button("Cancel Invitation", role: .destructive) { cancel(shown) }
+            Button("Cancel invitation", role: .destructive) { cancel(shown) }
             Button(
                 localizedCoreString("core.invite.cancel_confirm.keep"),
                 role: .cancel
@@ -144,7 +144,7 @@ struct InviteCodeSheet: View {
         if let error {
             ErrorDetailDisclosure(error: error)
         }
-        Button("Cancel Invitation", role: .destructive) {
+        Button("Cancel invitation", role: .destructive) {
             confirmingCancel = true
         }
         .disabled(task != nil)

@@ -63,7 +63,7 @@ struct InvitePersonSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Invite a Person")
+                Text("Invite a person")
                     .themeText(.heading)
                 Spacer()
                 Button("Done", action: onDismiss)
@@ -89,8 +89,8 @@ struct InvitePersonSheet: View {
                 }
                 Section {
                     if usesAccessKey {
-                        TextField("Access Key", text: $accessKeyId)
-                        SecureField("Secret Key", text: $secretAccessKey)
+                        TextField("Access key", text: $accessKeyId)
+                        SecureField("Secret key", text: $secretAccessKey)
                     }
                     else {
                         TextField("Their account email", text: $email)
@@ -99,7 +99,7 @@ struct InvitePersonSheet: View {
                 }
                 Section {
                     Picker(selection: $delivery) {
-                        Text("In Person").tag(Delivery.inPerson)
+                        Text("In person").tag(Delivery.inPerson)
                         Text("Send").tag(Delivery.send)
                     } label: {
                         EmptyView()
@@ -126,7 +126,7 @@ struct InvitePersonSheet: View {
             }
             HStack {
                 Spacer()
-                Button("Create Invitation") { create() }
+                Button("Create invitation") { create() }
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(!ready)

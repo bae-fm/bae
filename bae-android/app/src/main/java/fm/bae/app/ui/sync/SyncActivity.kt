@@ -146,7 +146,7 @@ private fun SyncActivitySheet(
 
 /**
  * What sync is doing: what needs the person first, then what is moving, and
- * Retry Now while core offers it, when a retry can clear a failure. The
+ * Retry now while core offers it, when a retry can clear a failure. The
  * uploads' line shows the bytes [uploadTransfer] says they have moved, which
  * change apart from [activity].
  */

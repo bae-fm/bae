@@ -26,7 +26,7 @@ pub struct SyncActivity {
     pub uploads: Option<UploadsInFlight>,
     /// The releases this device is downloading to keep offline, while any is.
     pub downloads: Option<DownloadsInFlight>,
-    /// Retry Now is offered: a retry would run a pass, and a failure that
+    /// Retry now is offered: a retry would run a pass, and a failure that
     /// pass can clear holds work back (`SyncStatusSnapshot::retry_offered`).
     pub retry_offered: bool,
 }

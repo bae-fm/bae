@@ -12,7 +12,7 @@
 
 # Established loanwords / technical terms kept identical to en (confirmed
 # against the locale's other good entries using the same term).
-it	Access Key
+it	Access key
 it	Account
 it	Album
 it	Audio
@@ -27,7 +27,7 @@ it	Password
 it	Provider
 it	pairing_provider
 it	S3-compatible
-it	Secret Key
+it	Secret key
 it	Volume
 nl	Account
 nl	Album
@@ -179,7 +179,7 @@ nl	appearance_indigo
 nl	appearance_amber
 
 # Technical labels and example values that every locale keeps verbatim: AWS
-# field names (Access Key, Secret Key, S3 bucket), the S3-compatible provider
+# field names (Access key, Secret key, S3 bucket), the S3-compatible provider
 # label, and the barcode / catalogue-number examples shown under an input.
 # Read against each locale's neighbouring entries, which use the same terms.
 ar	S3-compatible
@@ -190,10 +190,10 @@ cs	S3-compatible
 cs	cloud_provider_s3
 cs	e.g. 4943674251780
 cs	e.g. WPCR-80001
-de	Access Key
+de	Access key
 de	Cloud sync
 de	S3-compatible
-de	Secret Key
+de	Secret key
 de	Separate discs
 de	cloud_provider_s3
 de	e.g. 4943674251780

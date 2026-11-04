@@ -109,7 +109,7 @@ struct SyncStatusLine: View {
 
 /// The last sync failure, under the status line or under Sign In where this
 /// device has no storage set up: Reconnect where a start failed with storage
-/// set up, and Reset Device where sync found another copy of this device.
+/// set up, and Reset device where sync found another copy of this device.
 struct SyncFailureLines: View {
     /// Offered when sync found another copy of this device.
     let onResetDevice: () -> Void
@@ -301,8 +301,8 @@ struct S3KeySheet: View {
         VStack(spacing: 0) {
             Form {
                 Section {
-                    TextField("Access Key", text: $accessKey)
-                    SecureField("Secret Key", text: $secretKey)
+                    TextField("Access key", text: $accessKey)
+                    SecureField("Secret key", text: $secretKey)
                 } footer: {
                     Text("Enter an access key for this library's bucket.")
                 }

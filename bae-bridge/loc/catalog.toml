@@ -12290,7 +12290,7 @@ nb = "Personens tilgangsnøkler er endret."
 fi = "Tämän henkilön käyttöavaimet muuttuivat."
 
 [messages."core.pending.action.update_app"]
-value = "Update App"
+value = "Update app"
 
 [messages."core.pending.action.update_app".translations]
 es = "Actualizar aplicación"
@@ -12309,7 +12309,7 @@ cs = "Aktualizovat aplikaci"
 hr = "Ažuriraj aplikaciju"
 zh-Hant = "更新應用程式"
 it = "Aggiorna app"
-tr = "Uygulamayı Güncelle"
+tr = "Uygulamayı güncelle"
 nl = "App bijwerken"
 sk = "Aktualizovať aplikáciu"
 hu = "Alkalmazás frissítése"
@@ -12322,7 +12322,7 @@ nb = "Oppdater app"
 fi = "Päivitä sovellus"
 
 [messages."core.pending.action.sign_in"]
-value = "Sign In"
+value = "Sign in"
 
 [messages."core.pending.action.sign_in".translations]
 es = "Iniciar sesión"
@@ -12341,7 +12341,7 @@ cs = "Přihlásit se"
 hr = "Prijavi se"
 zh-Hant = "登入"
 it = "Accedi"
-tr = "Oturum Aç"
+tr = "Oturum aç"
 nl = "Aanmelden"
 sk = "Prihlásiť sa"
 hu = "Bejelentkezés"
@@ -12386,7 +12386,7 @@ nb = "Koble til igjen"
 fi = "Yhdistä uudelleen"
 
 [messages."core.pending.action.restore_file"]
-value = "Restore Source File"
+value = "Restore source file"
 
 [messages."core.pending.action.restore_file".translations]
 es = "Restaurar archivo de origen"
@@ -12405,7 +12405,7 @@ cs = "Obnovit zdrojový soubor"
 hr = "Vrati izvornu datoteku"
 zh-Hant = "還原來源檔案"
 it = "Ripristina file sorgente"
-tr = "Kaynak Dosyayı Geri Yükle"
+tr = "Kaynak dosyayı geri yükle"
 nl = "Bronbestand herstellen"
 sk = "Obnoviť zdrojový súbor"
 hu = "Forrásfájl visszaállítása"
@@ -12418,7 +12418,7 @@ nb = "Gjenopprett kildefil"
 fi = "Palauta lähdetiedosto"
 
 [messages."core.pending.action.resume_uploads"]
-value = "Resume Uploads"
+value = "Resume uploads"
 
 [messages."core.pending.action.resume_uploads".translations]
 es = "Reanudar cargas"
@@ -12437,7 +12437,7 @@ cs = "Pokračovat v nahrávání"
 hr = "Nastavi prijenose"
 zh-Hant = "繼續上傳"
 it = "Riprendi caricamenti"
-tr = "Yüklemeleri Sürdür"
+tr = "Yüklemeleri sürdür"
 nl = "Uploads hervatten"
 sk = "Pokračovať v nahrávaní"
 hu = "Feltöltések folytatása"
@@ -12483,7 +12483,7 @@ fi = "Yritä uudelleen"
 
 [messages."core.pending.action.cancel_upload"]
 comment = "Pending sync list: the action on a release whose move to the cloud stopped because an original file changed; makes the release local on this device again, so the person can move it once more."
-value = "Cancel Upload"
+value = "Cancel upload"
 
 [messages."core.pending.action.cancel_upload".translations]
 es = "Cancelar carga"
@@ -12502,7 +12502,7 @@ cs = "Zrušit nahrávání"
 hr = "Otkaži prijenos"
 zh-Hant = "取消上傳"
 it = "Annulla caricamento"
-tr = "Yüklemeyi İptal Et"
+tr = "Yüklemeyi iptal et"
 nl = "Upload annuleren"
 sk = "Zrušiť nahrávanie"
 hu = "Feltöltés megszakítása"
@@ -12516,7 +12516,7 @@ fi = "Peruuta lähetys"
 
 [messages."core.pending.action.restore_from_code"]
 comment = "Pending sync list: the action on a record whose person's keys another of their devices replaced; restores this library on this device with the person's current recovery code."
-value = "Restore With Code"
+value = "Restore with code"
 
 [messages."core.pending.action.restore_from_code".translations]
 es = "Restaurar con código"
@@ -12535,7 +12535,7 @@ cs = "Obnovit pomocí kódu"
 hr = "Vrati pomoću koda"
 zh-Hant = "使用還原碼還原"
 it = "Ripristina con codice"
-tr = "Kodla Geri Yükle"
+tr = "Kodla geri yükle"
 nl = "Herstellen met code"
 sk = "Obnoviť pomocou kódu"
 hu = "Visszaállítás kóddal"
@@ -12548,7 +12548,7 @@ nb = "Gjenopprett med kode"
 fi = "Palauta koodilla"
 
 [messages."core.sync.reset_device.confirm"]
-value = "Reset Device"
+value = "Reset device"
 
 [messages."core.sync.reset_device.confirm".translations]
 es = "Restablecer dispositivo"
@@ -12567,7 +12567,7 @@ cs = "Resetovat zařízení"
 hr = "Ponovno postavi uređaj"
 zh-Hant = "重設裝置"
 it = "Reimposta dispositivo"
-tr = "Aygıtı Sıfırla"
+tr = "Aygıtı sıfırla"
 nl = "Apparaat herstellen"
 sk = "Obnoviť zariadenie"
 hu = "Eszköz alaphelyzetbe állítása"
@@ -12580,7 +12580,7 @@ nb = "Tilbakestill enhet"
 fi = "Nollaa laite"
 
 [messages."core.pending.action.review"]
-value = "Show Details"
+value = "Show details"
 
 [messages."core.pending.action.review".translations]
 es = "Mostrar detalles"
@@ -12599,7 +12599,7 @@ cs = "Zobrazit podrobnosti"
 hr = "Prikaži pojedinosti"
 zh-Hant = "顯示詳細資訊"
 it = "Mostra dettagli"
-tr = "Ayrıntıları Göster"
+tr = "Ayrıntıları göster"
 nl = "Details tonen"
 sk = "Zobraziť podrobnosti"
 hu = "Részletek megjelenítése"
@@ -14195,7 +14195,7 @@ fi = "Synkronointi pysäytetty"
 
 [messages."core.activity.title"]
 comment = "Title of the sync activity list the title bar's indicator opens, and the indicator's spoken label."
-value = "Sync Activity"
+value = "Sync activity"
 
 [messages."core.activity.title".translations]
 es = "Actividad de sincronización"
@@ -14228,7 +14228,7 @@ fi = "Synkronoinnin tila"
 
 [messages."core.activity.attention"]
 comment = "Sync activity list: heading of the section listing what needs the person, such as signing in again."
-value = "Needs Attention"
+value = "Needs attention"
 
 [messages."core.activity.attention".translations]
 es = "Requiere atención"
@@ -14261,7 +14261,7 @@ fi = "Vaatii huomiota"
 
 [messages."core.activity.open_settings"]
 comment = "Sync activity list: button that opens the sync settings, where each item that needs attention offers its action."
-value = "Open Sync Settings"
+value = "Open sync settings"
 
 [messages."core.activity.open_settings".translations]
 es = "Abrir ajustes de sincronización"
@@ -14360,7 +14360,7 @@ fi = "Kaikki on ajan tasalla."
 
 [messages."core.activity.retry_now"]
 comment = "Sync activity list: button that retries every waiting upload, download and connection now instead of after its wait."
-value = "Retry Now"
+value = "Retry now"
 
 [messages."core.activity.retry_now".translations]
 es = "Reintentar ahora"

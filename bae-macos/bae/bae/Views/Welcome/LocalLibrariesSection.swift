@@ -95,8 +95,8 @@ private struct LibraryRow: View {
     private var primaryTitle: LocalizedStringKey {
         switch library.state {
         case .openable, .unreadable: "Open"
-        case .replacementUnfinished(.restore): "Finish Restoring"
-        case .replacementUnfinished(.reset): "Finish Resetting"
+        case .replacementUnfinished(.restore): "Finish restoring"
+        case .replacementUnfinished(.reset): "Finish resetting"
         }
     }
 

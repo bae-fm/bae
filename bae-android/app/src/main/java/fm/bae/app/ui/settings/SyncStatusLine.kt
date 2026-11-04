@@ -114,7 +114,7 @@ internal fun SyncFailureNotice(
 }
 
 /**
- * Reset Device, after its warning, where sync found another copy of this
+ * Reset device, after its warning, where sync found another copy of this
  * device; nothing for any other failure.
  */
 @Composable

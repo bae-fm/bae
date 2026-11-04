@@ -1762,7 +1762,7 @@ original for the cache, and retries a failed download by itself.
 If an original goes missing before its upload, the move waits for it, the
 pending list naming the file. If one changed, its upload stops before a
 changed byte is sent and the move fails: none of its files switches, and the
-pending list names the file and offers Cancel Upload.
+pending list names the file and offers Cancel upload.
 
 **Cancelling an upload** while any of its files is still queued, or after its
 move failed, cancels the release's move in one write. Nothing was switched, so
@@ -2205,7 +2205,7 @@ history setting.
   person, by a profile write that failed after it, is used at once: asking
   writes the profile in one write.
 - **Settings shows a profile not written yet.** Under listening history, a
-  person with no profile gets their name field and **Create Profile**. While
+  person with no profile gets their name field and **Create profile**. While
   their circle is being made it says the profile is being made and appears
   once the library syncs, in place of the form, following `profile_request`
   and coven's outcome as one read. A circle that wasn't made shows why
@@ -2334,7 +2334,7 @@ follow coven's list of this device's open invites
 which coven ends when the invite is approved, declined, cancelled or expires,
 so an expired invite leaves People when its lifetime ends. Only the
 device that made it shows the row, since only that device can act on it. The
-row's refresh button runs Retry Now for the library (§6.4), so the request
+row's refresh button runs Retry now for the library (§6.4), so the request
 shows the moment Dan says he has entered the code, without waiting for the next
 check. Opening the row shows the invite again, with **Cancel invite**. Closing
 the request dialog keeps the request, and the row opens it again. Approving is
@@ -2459,7 +2459,7 @@ her restore code with that key inside it, so scanning it is enough
 The code to type holds no key, and asks for it separately.
 
 **Where the code shows.** The apps call the restore code the *recovery code*.
-Carol adds a device from **Add Device…** under her own row in People, shown
+Carol adds a device from **Add device…** under her own row in People, shown
 only for a library with a cloud home. Its sheet tells her to choose **Add
 device** on the new device, then scan its QR code or type the code it shows;
 on S3 it says the QR code carries her key. While it shows the code it watches
@@ -2538,7 +2538,7 @@ nothing else. coven knows R2 by its endpoint's host and fills in how to talk to
 it
 ([coven E.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#e3-s3-settings-and-profiles)).
 An Advanced section holds the optional key prefix and a choice of profile,
-automatic by default. For a service coven doesn't know, *Detect Settings*
+automatic by default. For a service coven doesn't know, *Detect settings*
 probes the bucket with the key and shows what it found, which the person can
 then use, naming the probe while it runs. When coven refuses a setup, bae says
 why in plain words.
@@ -2655,8 +2655,8 @@ phones, updating as it changes. What it shows is the sync status the status
 line reads (below), with the upload and download queues' counts read in the
 same read of the library's tables. Bytes moving change none of them, so they
 send it nothing. What needs the person comes first, under
-*Needs Attention*: the failure's line and each pending record in plain words, with
-*Open Sync Settings*, where each record offers its action. A failure a pending record shows has no line of its own: a pass that
+*Needs attention*: the failure's line and each pending record in plain words, with
+*Open sync settings*, where each record offers its action. A failure a pending record shows has no line of its own: a pass that
 storage refused or couldn't reach leaves the connection's record, a blocked
 slot and a failed operation of coven's own have theirs, and the failure again
 beside its record would read as a second problem. Then one row per
@@ -2664,14 +2664,14 @@ thing moving: syncing, while coven's sync state says so (a pass moving, or a
 file being sent or downloaded), the uploads ("2
 uploading · 10 queued", with the bytes their providers confirmed), and the
 offline downloads, which on the phones open the downloads list. With nothing
-to show it says everything is up to date. *Retry Now* shows only while pressing
+to show it says everything is up to date. *Retry now* shows only while pressing
 it would run a pass and a failure that pass can clear holds work back. coven
 publishes what a retry made now would do, decided as it answers the retry
 ([coven api.md
 E5](https://github.com/bae-fm/coven/blob/main/spec/api.md#e5-storage-and-sync)):
 run a pass, or be answered at once because sync isn't running, a failure only
 the person can clear holds every pass (signing in again, an update, a reset),
-or the provider asked every request to wait. Retry Now shows only while it
+or the provider asked every request to wait. Retry now shows only while it
 would run a pass, and comes back on its own when such a wait ends. The failure
 is the pass's own, such as storage unreachable or answering with a server
 error, or with the pass not failing, a pending record's that coven retries by
@@ -2731,11 +2731,11 @@ a keychain entry deleted by hand, while coven keeps the location it recorded.
 coven then reports no storage set up on this device
 ([coven F.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#f4-opening-closing-and-sync)),
 and core sends no status line for it: there is no sync to describe. In its
-place Settings shows the recorded storage's rows and *Sign In*, which connects
+place Settings shows the recorded storage's rows and *Sign in*, which connects
 that location again, never other storage: a new access key for its S3 bucket,
 the provider's sign-in for Dropbox and OneDrive, iCloud's own setup for
 iCloud. Why a start failed there, such as on a keychain locked for the
-session, shows under *Sign In* as it would under the line, with no
+session, shows under *Sign in* as it would under the line, with no
 *Reconnect*: there is no storage on this device to start sync with. A
 library with no recorded location offers setting up sync instead.
 
@@ -2769,20 +2769,20 @@ and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.
 
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
-a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
+a file of his vinyl rip moved before it uploaded. The list offers *Sign in* for
 the first: core signs in with the access the library's folder needs, then
 connects that location again under this device's name. On a library in an S3
-bucket, *Sign In* asks for a new access key for that bucket instead, the same
+bucket, *Sign in* asks for a new access key for that bucket instead, the same
 form Settings shows a device that lost its key, and connects the bucket again
 with it. For the second it
 offers to restore the file: put it back where it was imported from, and coven
 retries the upload. A file that changed instead stops its release's move to
-the cloud, and its record offers *Cancel Upload*, which ends the move and
+the cloud, and its record offers *Cancel upload*, which ends the move and
 leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
 in its place or the release anew if it left the queue (§4.3); a file coven
 keeps here after a move retries its own download. Other records offer
-*Retry*, *Reconnect*, *Resume Uploads*, *Update App* or *Restore With Code*. bae never asks for a storage
+*Retry*, *Reconnect*, *Resume uploads*, *Update app* or *Restore with code*. bae never asks for a storage
 administrator's credentials: the person makes and deletes S3 access keys in the
 provider's console, and no record asks them to delete one
 ([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
@@ -2795,7 +2795,7 @@ offers nothing.
   register the device again under keys that no longer count, asking storage to
   take back a device the library removed.
 - **Replaced keys.** When another of the person's devices replaced their keys,
-  this device can no longer send. Its record offers *Restore With Code*: bae
+  this device can no longer send. Its record offers *Restore with code*: bae
   closes the library and asks for the person's current restore code, warning
   that restoring loads the library from storage again and discards edits on
   this device that haven't synced. Core checks first that the code restores
@@ -2875,7 +2875,7 @@ its control says so in core's words for that transfer.
   is the pass's failure, such as being offline; the provider asking every
   request to wait, with the date and time it ends, after which sync goes on by
   itself; or that sync isn't running. A pass held by such a wait, or by a
-  failure only the person can clear, answers at once. *Retry Now* in the
+  failure only the person can clear, answers at once. *Retry now* in the
   activity list waits for the same answer and shows a retry that didn't sync
   the same way on Android, and in the list on macOS.
 - **A newer schema.** Data written by a newer app needs an update;
@@ -2915,9 +2915,9 @@ before anything changes.
 
 The apps show such a library with that line, in red, where they list
 libraries that can't open: the Mac's library list, and the library switcher
-on phones. They offer only its call. *Finish Restoring* asks for the person's
+on phones. They offer only its call. *Finish restoring* asks for the person's
 current restore code, and the S3 key for a library on S3, then restores
-again. *Finish Resetting* resets again, without the warning the person
+again. *Finish resetting* resets again, without the warning the person
 already accepted. Opening the library, such as at launch, lands on the same
 screen. Going back leaves the library waiting and returns to the open
 library, to the Mac's library list, or on a phone with no library open, to

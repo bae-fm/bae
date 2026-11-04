@@ -117,7 +117,7 @@ struct SyncSetupWizard: View {
     private var headerTitle: String {
         switch step {
         case .selectProvider:
-            String(localized: "Set Up Sync")
+            String(localized: "Set up sync")
         case .configure(let provider):
             provider.displayName
         }

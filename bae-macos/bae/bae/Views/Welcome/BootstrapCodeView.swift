@@ -122,7 +122,7 @@ struct BootstrapCodeView: View {
             Text("Restore with the code saved in iCloud Keychain.")
         case .restore(nil):
             Text(
-                "Scan or paste the code shown by Add Device… on one of your devices. If you've lost every device, use your recovery code."
+                "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your recovery code."
             )
         case .join, .resume:
             Text(
@@ -146,7 +146,7 @@ struct BootstrapCodeView: View {
         case (.some(.join), _), (.some(.resume), _), (_, .resume): "Join"
         case (_, .restore(nil)), (_, .join): "Add"
         case (_, .restore(.some)), (_, .restoreOver): "Restore"
-        case (_, .finishRestore): "Finish Restoring"
+        case (_, .finishRestore): "Finish restoring"
         }
     }
 
@@ -210,8 +210,8 @@ private struct AttemptDetailsSection: View {
                 signInNote(invite.metadata)
             }
             if attempt.needsS3Key {
-                TextField("Access Key", text: $accessKey)
-                SecureField("Secret Key", text: $secretKey)
+                TextField("Access key", text: $accessKey)
+                SecureField("Secret key", text: $secretKey)
             }
         }
     }
@@ -230,7 +230,7 @@ private struct AttemptDetailsSection: View {
 
 /// A join running: the library's name, what it waits on, and, while it waits
 /// for approval, until when it waits and a sent invite's confirmation number
-/// with when it checks next and Check Now. Cancel shows only until the
+/// with when it checks next and Check now. Cancel shows only until the
 /// request may have been sent.
 private struct JoinWaitingView: View {
     let form: BootstrapCodeForm
@@ -260,7 +260,7 @@ private struct JoinWaitingView: View {
                         .buttonStyle(.bordered)
                 }
                 if case .waitingForApproval(_, let nextCheck) = form.status {
-                    Button("Check Now") { form.checkNow() }
+                    Button("Check now") { form.checkNow() }
                         .buttonStyle(PrimaryButtonStyle())
                         .disabled(!nextCheck.endsOnCheckNow)
                 }
@@ -272,7 +272,7 @@ private struct JoinWaitingView: View {
 }
 
 extension BridgeNextCheck {
-    /// Whether Check Now ends this wait: the join's own backoff, but neither a
+    /// Whether Check now ends this wait: the join's own backoff, but neither a
     /// check already running nor a provider's cooldown.
     fileprivate var endsOnCheckNow: Bool {
         if case .at = self { return true }

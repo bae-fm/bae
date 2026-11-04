@@ -220,7 +220,7 @@
     <string name="cast_connecting">Connecting to %1$s…</string>
     <string name="cast_turn_off_title">Turn off casting?</string>
     <string name="cast_turn_off_message">This will stop casting to %1$s.</string>
-    <string name="cast_turn_off_confirm">Turn Off</string>
+    <string name="cast_turn_off_confirm">Turn off</string>
     <string name="settings_casting">Casting</string>
     <string name="settings_enable_casting">Enable casting</string>
     <string name="settings_casting_help">Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</string>

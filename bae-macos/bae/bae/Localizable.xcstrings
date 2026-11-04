@@ -19691,7 +19691,7 @@
         }
       }
     },
-    "Access Key" : {
+    "Access key" : {
       "comment" : "S3 sync: access key secure field placeholder",
       "localizations" : {
         "ar" : {
@@ -19721,7 +19721,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Access Key"
+            "value" : "Access key"
           }
         },
         "de" : {
@@ -19775,7 +19775,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Access Key"
+            "value" : "Access key"
           }
         },
         "ja" : {
@@ -19841,7 +19841,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erişim Anahtarı"
+            "value" : "Erişim anahtarı"
           }
         },
         "uk" : {
@@ -24137,179 +24137,6 @@
         }
       }
     },
-    "Album Title" : {
-      "comment" : "Export filename preview: sample value for the album token",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "عنوان الألبوم"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Заглавие на албум"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Název alba"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Albumtitel"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Album Title"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Albumtitel"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Τίτλος άλμπουμ"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Título del álbum"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Albumin nimi"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Titre de l'album"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "שם האלבום"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Naslov albuma"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Album címe"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Titolo album"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アルバムタイトル"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "앨범 제목"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Albumtittel"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Albumtitel"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tytuł albumu"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Título do álbum"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Título do álbum"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Titlul albumului"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Názov albumu"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Albumtitel"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Albüm adı"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Назва альбому"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "专辑标题"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "專輯標題"
-          }
-        }
-      }
-    },
     "Album year" : {
       "comment" : "Edit-metadata: album year field placeholder — the album's original year, on its own line under the album artist, apart from the pressing's Year in the Release facts",
       "localizations" : {
@@ -26384,7 +26211,7 @@
         }
       }
     },
-    "Artist Name" : {
+    "Artist name" : {
       "comment" : "Export filename preview: sample value for the artist token",
       "localizations" : {
         "ar" : {
@@ -26414,7 +26241,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Artist Name"
+            "value" : "Artist name"
           }
         },
         "de" : {
@@ -29992,6 +29819,179 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Güncellemeleri Denetle…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевірити наявність оновлень…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查更新…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "檢查更新…"
+          }
+        }
+      }
+    },
+    "Check for updates…" : {
+      "comment" : "App menu item (after About) that triggers a Sparkle update check",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "التحقق من التحديثات…"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка за актуализации…"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zkontrolovat aktualizace…"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søg efter opdateringer…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Updates suchen …"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Έλεγχος για ενημερώσεις…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones…"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarkista päivitykset…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher les mises à jour…"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בדוק עדכונים…"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjeri ima li ažuriranja…"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frissítések keresése…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifica aggiornamenti…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップデートを確認…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "업데이트 확인…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se etter oppdateringer…"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controleren op updates…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprawdź dostępność aktualizacji…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificar atualizações…"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Procurar atualizações…"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caută actualizări…"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skontrolovať aktualizácie…"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sök efter uppdateringar…"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güncellemeleri denetle…"
           }
         },
         "uk" : {
@@ -51113,7 +51113,7 @@
         }
       }
     },
-    "Key Prefix" : {
+    "Key prefix" : {
       "comment" : "Sync wizard: S3 key-prefix text field title",
       "localizations" : {
         "ar" : {
@@ -51143,7 +51143,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Key Prefix"
+            "value" : "Key prefix"
           }
         },
         "de" : {
@@ -51263,7 +51263,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anahtar Öneki"
+            "value" : "Anahtar öneki"
           }
         },
         "uk" : {
@@ -52844,7 +52844,7 @@
         }
       }
     },
-    "Library Locked" : {
+    "Library locked" : {
       "comment" : "Unlock screen title",
       "localizations" : {
         "ar" : {
@@ -52874,7 +52874,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Library Locked"
+            "value" : "Library locked"
           }
         },
         "de" : {
@@ -69341,7 +69341,7 @@
         }
       }
     },
-    "Rename Library" : {
+    "Rename library" : {
       "comment" : "Rename-library sheet title",
       "localizations" : {
         "ar" : {
@@ -69371,7 +69371,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rename Library"
+            "value" : "Rename library"
           }
         },
         "de" : {
@@ -69491,7 +69491,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplığı Yeniden Adlandır"
+            "value" : "Kitaplığı yeniden adlandır"
           }
         },
         "uk" : {
@@ -73836,7 +73836,7 @@
         }
       }
     },
-    "Secret Key" : {
+    "Secret key" : {
       "comment" : "S3 sync: secret key secure field placeholder",
       "localizations" : {
         "ar" : {
@@ -73866,7 +73866,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Secret Key"
+            "value" : "Secret key"
           }
         },
         "de" : {
@@ -73920,7 +73920,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Secret Key"
+            "value" : "Secret key"
           }
         },
         "ja" : {
@@ -73986,7 +73986,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gizli Anahtar"
+            "value" : "Gizli anahtar"
           }
         },
         "uk" : {
@@ -74701,7 +74701,7 @@
         }
       }
     },
-    "Set Up Sync" : {
+    "Set up sync" : {
       "comment" : "Sync wizard: title on the provider-selection step",
       "localizations" : {
         "ar" : {
@@ -74731,7 +74731,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Set Up Sync"
+            "value" : "Set up sync"
           }
         },
         "de" : {
@@ -74851,7 +74851,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eşzamanlamayı Kur"
+            "value" : "Eşzamanlamayı kur"
           }
         },
         "uk" : {
@@ -84903,7 +84903,7 @@
         }
       }
     },
-    "Track Title" : {
+    "Track title" : {
       "comment" : "Export filename preview: sample value for the title token",
       "localizations" : {
         "ar" : {
@@ -84933,7 +84933,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Track Title"
+            "value" : "Track title"
           }
         },
         "de" : {
@@ -85940,7 +85940,7 @@
         }
       }
     },
-    "Turn Off" : {
+    "Turn off" : {
       "comment" : "Casting settings: the confirming button that turns casting off",
       "localizations" : {
         "ar" : {
@@ -85970,7 +85970,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Turn Off"
+            "value" : "Turn off"
           }
         },
         "de" : {
@@ -87301,7 +87301,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Kullan"
+            "value" : "iCloud kullan"
           }
         },
         "uk" : {
@@ -99066,7 +99066,7 @@
         }
       }
     },
-    "Cancel Invitation" : {
+    "Cancel invitation" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -100062,7 +100062,7 @@
         }
       }
     },
-    "Create Invitation" : {
+    "Create invitation" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -100228,7 +100228,7 @@
         }
       }
     },
-    "Create Profile" : {
+    "Create profile" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -100726,7 +100726,7 @@
         }
       }
     },
-    "Detect Settings" : {
+    "Detect settings" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -101722,7 +101722,7 @@
         }
       }
     },
-    "Invite a Person" : {
+    "Invite a person" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -101888,7 +101888,7 @@
         }
       }
     },
-    "Invite a Person…" : {
+    "Invite a person…" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -102386,7 +102386,7 @@
         }
       }
     },
-    "Look Again" : {
+    "Look again" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -102552,7 +102552,7 @@
         }
       }
     },
-    "Make Admin" : {
+    "Make admin" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -102718,7 +102718,7 @@
         }
       }
     },
-    "Make Member" : {
+    "Make member" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -106714,7 +106714,7 @@
         }
       }
     },
-    "Scan or paste the code shown by Add Device… on one of your devices. If you've lost every device, use your recovery code." : {
+    "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your recovery code." : {
       "comment" : "Add device screen: explanation under the code field. Add Device… is the People button on another of the person's devices that shows the code.",
       "localizations" : {
         "ar" : {
@@ -106756,7 +106756,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scan or paste the code shown by Add Device… on one of your devices. If you've lost every device, use your recovery code."
+            "value" : "Scan or paste the code shown by Add device… on one of your devices. If you've lost every device, use your recovery code."
           }
         },
         "es" : {
@@ -107219,7 +107219,7 @@
         }
       }
     },
-    "Sign In…" : {
+    "Sign in…" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -111415,7 +111415,7 @@
         }
       }
     },
-    "Finish Restoring" : {
+    "Finish restoring" : {
       "comment" : "Button: finishes restoring a library whose restore with the person's recovery code stopped partway on this device.",
       "extractionState" : "manual",
       "localizations" : {
@@ -111583,7 +111583,7 @@
         }
       }
     },
-    "Finish Resetting" : {
+    "Finish resetting" : {
       "comment" : "Button: finishes resetting this device for a library, after a reset stopped partway.",
       "extractionState" : "manual",
       "localizations" : {
@@ -120392,7 +120392,7 @@
         }
       }
     },
-    "Add Device…" : {
+    "Add device…" : {
       "comment" : "People: button under this device's own person that opens Add a device, the sheet that adds another of their devices.",
       "localizations" : {
         "ar" : {
@@ -120434,7 +120434,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add Device…"
+            "value" : "Add device…"
           }
         },
         "es" : {
@@ -121430,7 +121430,7 @@
         }
       }
     },
-    "Show Code" : {
+    "Show code" : {
       "comment" : "Settings, Your recovery code section: button revealing the code in place.",
       "localizations" : {
         "ar" : {
@@ -121472,7 +121472,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show Code"
+            "value" : "Show code"
           }
         },
         "es" : {
@@ -124601,7 +124601,7 @@
         }
       }
     },
-    "In Person" : {
+    "In person" : {
       "comment" : "Invite sheet: show the invite as a QR code to the person beside you; your device lets them in on its own.",
       "extractionState" : "manual",
       "localizations" : {
@@ -124644,7 +124644,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In Person"
+            "value" : "In person"
           }
         },
         "es" : {
@@ -125645,7 +125645,7 @@
         }
       }
     },
-    "Check for Requests" : {
+    "Check for requests" : {
       "comment" : "People: help for an open invite's refresh button, which checks for its request now.",
       "extractionState" : "manual",
       "localizations" : {
@@ -125688,7 +125688,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Check for Requests"
+            "value" : "Check for requests"
           }
         },
         "es" : {
@@ -125993,7 +125993,7 @@
         }
       }
     },
-    "Check Now" : {
+    "Check now" : {
       "comment" : "Joining: button that checks for approval now instead of waiting.",
       "extractionState" : "manual",
       "localizations" : {
@@ -126036,7 +126036,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Check Now"
+            "value" : "Check now"
           }
         },
         "es" : {

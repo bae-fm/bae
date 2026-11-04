@@ -93,7 +93,7 @@ internal fun SettingsSyncSection(
 
 /**
  * The last sync failure, with Reconnect where a start failed with storage set
- * up, or Reset Device, after its warning, where sync found another copy of this
+ * up, or Reset device, after its warning, where sync found another copy of this
  * device.
  */
 @Composable

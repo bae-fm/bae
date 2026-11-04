@@ -463,7 +463,7 @@ async fn an_upload_whose_row_is_deleted_leaves_the_queue() {
 }
 
 /// An original that changes before its upload fails its release's move: the
-/// pending list names the file and offers Cancel Upload, which ends the move,
+/// pending list names the file and offers Cancel upload, which ends the move,
 /// and the release stays on this device only.
 #[tokio::test]
 async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {

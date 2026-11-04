@@ -55,7 +55,7 @@ struct CastingSettingsTab: View {
             isPresented: confirmingDisconnect,
             presenting: pendingDisconnect
         ) { _ in
-            Button("Turn Off", role: .destructive) { setEnabled(false) }
+            Button("Turn off", role: .destructive) { setEnabled(false) }
             Button("Cancel", role: .cancel) {}
         } message: { device in
             Text("This will stop casting to \(device).")

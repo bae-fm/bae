@@ -18,7 +18,7 @@ public struct CloudProviderConnectedSection: View {
                 LabeledContent("Endpoint", value: endpoint)
             }
             if !prefix.isEmpty {
-                LabeledContent("Key Prefix", value: prefix)
+                LabeledContent("Key prefix", value: prefix)
             }
         case .dropbox, .oneDrive:
             if let account = location.accountLabel {

@@ -2,7 +2,7 @@
     import SwiftUI
 
     /// What sync is doing on this device, as the title bar's indicator opens it:
-    /// what needs the person first, then what is moving, and Retry Now while
+    /// what needs the person first, then what is moving, and Retry now while
     /// core offers it, when a retry can clear a failure. Its sections go
     /// inside the platform's list or form.
     public struct SyncActivityList: View {

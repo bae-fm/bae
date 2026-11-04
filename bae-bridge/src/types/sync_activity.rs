@@ -19,7 +19,7 @@ pub struct BridgeSyncActivity {
     pub syncing: bool,
     pub uploads: Option<BridgeUploadsInFlight>,
     pub downloads: Option<BridgeDownloadsInFlight>,
-    /// The list offers Retry Now: a retry would run a pass, and a failure
+    /// The list offers Retry now: a retry would run a pass, and a failure
     /// that pass can clear holds work back.
     pub retry_offered: bool,
 }

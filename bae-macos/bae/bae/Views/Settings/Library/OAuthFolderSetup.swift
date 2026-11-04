@@ -48,7 +48,7 @@
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Button("Sign In…") { browser.signIn() }
+                        Button("Sign in…") { browser.signIn() }
                             .disabled(browser.isWorking)
                     }
                 }
@@ -91,7 +91,7 @@
                         }
                     }
                     .pickerStyle(.inline)
-                    Button("Look Again") { browser.lookAgain() }
+                    Button("Look again") { browser.lookAgain() }
                         .disabled(browser.isWorking)
                 }
             case .oneDrive:

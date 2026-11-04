@@ -47,7 +47,7 @@ forward! { sync this => {
 
 forward! { async this => {
     /// The person asked to retry everything now: pulling to refresh, or
-    /// Retry Now in the sync activity list, which the list shows only while
+    /// Retry now in the sync activity list, which the list shows only while
     /// `BridgeSyncActivity::retry_offered` says it runs a pass that can clear
     /// a failure.
     /// Ends every ordinary backoff, answered or not, and runs a pass;
