@@ -2,7 +2,7 @@
 
 use crate::tables::tests::*;
 use bae_db::test_fixtures::live_query::live_db;
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 /// The scan progress counts the folders the walk in flight has reached, and
 /// is gone once the walk finishes.
@@ -27,7 +27,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     assert_eq!(initial.folders[0].found_count, 1);
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
-    let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let grown = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a scan item wakes the scan progress")
         .expect("the query stays open")
@@ -38,7 +38,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     assert_eq!(grown.folders[0].found_count, 2);
 
     tables.finish_folder_scan(root, generation, None).await.unwrap();
-    let complete = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let complete = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("finishing the scan wakes the scan progress")
         .expect("the query stays open")

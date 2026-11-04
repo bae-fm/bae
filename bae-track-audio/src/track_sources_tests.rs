@@ -1,10 +1,10 @@
 use super::*;
 use crate::data_source::LocalReader;
 use bae_util::open_files_peak::OpenFilesPeak;
+use bae_util::test_channels::HANG_GUARD;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 const FILE_BYTES: usize = 64 * 1024;
 
@@ -310,10 +310,8 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
     drop(pass);
     pass_dropped.send(()).unwrap();
 
-    let next_read = tokio::time::timeout(Duration::from_secs(10), next_read)
-        .await
-        .expect("the track reads again")
-        .unwrap();
+    let next_read =
+        tokio::time::timeout(HANG_GUARD, next_read).await.expect("the track reads again").unwrap();
     assert!(
         matches!(next_read, Err(bae_audio::sparse_buffer::BufferStop::Cancelled)),
         "the dropped pass stopped its stream: {next_read:?}"

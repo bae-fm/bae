@@ -7,7 +7,6 @@ use crate::album_detail::{ComposerDetailItem, ComposerHeading};
 use crate::*;
 use bae_db::test_fixtures::live_query::first_page;
 use bae_db::test_fixtures::{exec_batch, temp_db};
-use std::time::Duration;
 
 const COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01";
 const OTHER_COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a02";
@@ -85,6 +84,7 @@ enum Shown {
     Credit(&'static str),
 }
 
+use bae_util::test_channels::HANG_GUARD;
 use Shown::{Credit, Work};
 
 /// The rows of `artist`'s page, each with whether it opens a heading, by
@@ -362,7 +362,7 @@ async fn the_page_rows_follow_writes_in_their_windows() {
         "DELETE FROM release_artist_roles WHERE id = '6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f02';",
     )
     .await;
-    let after = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let after = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a credit leaving the page wakes its rows")
         .expect("the query stays open")

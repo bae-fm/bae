@@ -8,6 +8,7 @@ use bae_db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
 use bae_library::storage::transfer::{TransferProgress, TransferService};
 use bae_library::{CancellationToken, LibraryManager};
 use bae_util::content_type::ContentType;
+use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
 use bae_views::StorageBrowseView;
 use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
@@ -126,7 +127,7 @@ async fn expect_storage_state(
     expected: ReleaseStorageState,
 ) {
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
+        let value = tokio::time::timeout(HANG_GUARD, subscription.next())
             .await
             .expect("storage subscription delivers a value")
             .expect("storage projection resolves");
@@ -365,7 +366,7 @@ async fn the_detail_views_follow_a_releases_pin() {
     let shown = |pinned: bool| {
         let (release, album) = (&release, &album);
         async move {
-            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let value = release.next().await.expect("the release detail resolves");
                     if value.value.is_some_and(|detail| {
@@ -537,7 +538,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
         },
     );
     let next = || async {
-        tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+        tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("storage subscription delivers a value")
             .expect("storage projection resolves")
@@ -622,7 +623,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     let values =
         bae_app::live_reads::subscribe_storage_browse(&mgr, &views, view(&[&pinned, &unpinned]));
     let next = || async {
-        tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+        tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("storage subscription delivers a value")
             .expect("storage projection resolves")

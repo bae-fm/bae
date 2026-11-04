@@ -11,6 +11,7 @@ use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_identify::signals::{DiscIdSignal, Signals};
 use bae_identify::TerminalVerdict;
+use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -430,7 +431,7 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     fixture.provider.wait_for_request("/release/mb-mid-write?", 1).await;
     start_import_for(&fixture, &dir).await;
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(20), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("pass finishes after the import claims the candidate")
         .unwrap();
@@ -477,7 +478,7 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
         .unwrap();
     fixture.provider.release();
 
-    let row = tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
+    let row = tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&dir))
         .await
         .expect("the run's answer lands");
     assert_eq!(row.metadata_author, crate::MetadataAuthor::Identification);

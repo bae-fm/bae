@@ -5,6 +5,7 @@ use bae_diagnostics::RecordingBugReporter;
 use tokio::sync::oneshot;
 
 use super::*;
+use bae_util::test_channels::HANG_GUARD;
 
 struct DropSignal(Option<oneshot::Sender<()>>);
 
@@ -83,7 +84,7 @@ async fn dropping_run_aborts_the_owned_task() {
     started_rx.await.expect("owned task starts");
     caller.abort();
 
-    tokio::time::timeout(std::time::Duration::from_secs(1), dropped_rx)
+    tokio::time::timeout(HANG_GUARD, dropped_rx)
         .await
         .expect("cancellation aborts the owned task")
         .expect("owned task holds the drop signal");
@@ -111,7 +112,7 @@ async fn dropping_run_to_completion_keeps_the_owned_task_alive() {
     started_rx.await.expect("owned task starts");
     caller.abort();
     continue_tx.send(()).expect("release owned operation");
-    tokio::time::timeout(std::time::Duration::from_secs(1), completed_rx)
+    tokio::time::timeout(HANG_GUARD, completed_rx)
         .await
         .expect("owned operation completes after caller disappears")
         .expect("completion signal remains connected");
@@ -187,12 +188,10 @@ async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
     caller.abort();
     continue_tx.send(()).expect("release owned operation");
 
-    let operation = tokio::task::spawn_blocking(move || {
-        reports.recv_timeout(std::time::Duration::from_secs(5))
-    })
-    .await
-    .expect("the wait joins")
-    .expect("the panic is reported");
+    let operation = tokio::task::spawn_blocking(move || reports.recv_timeout(HANG_GUARD))
+        .await
+        .expect("the wait joins")
+        .expect("the panic is reported");
     assert_eq!(operation, "test persistent operation");
     owned.shutdown_background();
 }

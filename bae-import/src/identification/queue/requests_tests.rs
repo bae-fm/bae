@@ -6,6 +6,7 @@ use super::*;
 use crate::identification::tests::*;
 use crate::tables::NewImportCandidateVerdict;
 use bae_catalogs::test_releases::mb_release_json;
+use bae_util::test_channels::HANG_GUARD;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,7 +15,7 @@ async fn await_run_priority(
     events: &mut crate::ImportEvents,
     key: &crate::CandidateKey,
 ) -> CallPriority {
-    tokio::time::timeout(Duration::from_secs(20), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             if let ImportEvent::IdentifyStateChanged { candidate_key, priority, .. } =
                 events.recv().await.expect("the import event bus stays open")
@@ -124,7 +125,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
 
     fixture.start_explicit_lookup(&dir);
 
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
+    tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&dir))
         .await
         .expect("interactive lookup stores its verdict");
     assert!(fixture.provider.count_containing("/discid/") > 0);
@@ -154,7 +155,7 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
 
     fixture.start_explicit_lookup(&dir);
 
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
+    tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&dir))
         .await
         .expect("an explicit lookup stores its verdict over a pre-filled draft");
     tokio::time::timeout(Duration::from_secs(5), async {
@@ -244,7 +245,7 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     fixture.provider.wait_for_request("/discid/", 1).await;
     let first_run = loop {
-        let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
+        let event = tokio::time::timeout(HANG_GUARD, events.recv())
             .await
             .expect("the active run reports its state")
             .expect("the import event bus remains open");
@@ -258,7 +259,7 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
     // The person presses again while the first run is still at the provider.
     fixture.start_explicit_lookup(&dir);
 
-    let replacement = tokio::time::timeout(Duration::from_secs(10), async {
+    let replacement = tokio::time::timeout(HANG_GUARD, async {
         loop {
             if let ImportEvent::IdentifyStateChanged { candidate_key, run, .. } =
                 events.recv().await.expect("the import event bus remains open")
@@ -339,12 +340,9 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     fixture.start_explicit_lookup(&waiting);
 
     // Still waiting: every slot is held, and a request is not a fifth one.
-    tokio::time::timeout(
-        Duration::from_secs(20),
-        fixture.identification().commands_taken_for_test(),
-    )
-    .await
-    .expect("the queue takes the request");
+    tokio::time::timeout(HANG_GUARD, fixture.identification().commands_taken_for_test())
+        .await
+        .expect("the queue takes the request");
     assert_eq!(
         fixture.identification_status(&waiting_key).await,
         Some(crate::IdentificationStatus::Queued),
@@ -374,7 +372,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     );
 
     fixture.identification().shut_down();
-    tokio::time::timeout(Duration::from_secs(20), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("the sweep ends once identification shuts down")
         .expect("the sweep does not panic");
@@ -434,7 +432,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
 
     fixture.provider.release();
     fixture.await_identified_row(&running).await;
-    tokio::time::timeout(Duration::from_secs(20), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("the automatic admission has nothing left outstanding")
         .unwrap();
@@ -470,7 +468,7 @@ async fn a_requested_run_is_counted() {
     fixture.start_explicit_lookup(&dir);
     fixture.await_identified_row(&dir).await;
 
-    let progress = tokio::time::timeout(Duration::from_secs(10), async {
+    let progress = tokio::time::timeout(HANG_GUARD, async {
         let mut progress = Vec::new();
         loop {
             progress.push(counts.recv().await.expect("the count stays open"));

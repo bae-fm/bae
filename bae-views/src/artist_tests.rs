@@ -4,8 +4,8 @@
 use crate::*;
 use bae_db::test_fixtures::live_query::*;
 use bae_db::test_fixtures::{temp_db, ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
+use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
-use std::time::Duration;
 
 const ALBUM_1999: &str = "88f57246-3e65-4eb9-8d36-ee8d40326cfc";
 const ALBUM_2001_LOWER: &str = "88183677-683b-485e-8224-f6a328c233c7";
@@ -329,7 +329,7 @@ async fn artist_browse_reads_its_windows_and_their_images() {
     assert!(initial.windows[0].rows[0].image.is_none());
 
     let artist_image = write_artist_image(&db, ARTIST_ID, "artist image bytes").await;
-    let imaged = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let imaged = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("an image on a listed artist wakes artist browse")
         .expect("the query stays open")

@@ -9,6 +9,7 @@ use bae_db::test_fixtures::live_query::{live_db, next_run_is_only_the_request, R
 use bae_db::test_fixtures::window_cost::{offsets, report, LIMIT, RUNS, SIZES};
 use bae_db::test_fixtures::{empty_db, exec};
 use bae_db::{LibraryPageWindow, LibraryPageWindows};
+use bae_util::test_channels::HANG_GUARD;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -41,7 +42,7 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
 
     record_import(&db, &candidate.files.content_hash()).await;
 
-    let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let imported = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("the recorded import wakes the list")
         .expect("the query stays open")
@@ -135,7 +136,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
     assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 1);
 
     exec(&db, "DELETE FROM releases WHERE id = ?1", &[RELEASE_ID]).await;
-    let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let deleted = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("deleting the release wakes the list")
         .expect("the query stays open")
@@ -169,7 +170,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     assert_eq!(candidate_names(&initial.result.unwrap()), vec!["first".to_string()]);
 
     requests.set(through(list, [(1, 1)])).unwrap();
-    let moved = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let moved = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("the window change reruns the query")
         .expect("the query stays open");
@@ -236,7 +237,7 @@ async fn import_list_wakes_on_a_scan_item() {
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
-    let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let grown = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a scan item wakes the list")
         .expect("the query stays open")
@@ -307,7 +308,7 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     assert_eq!(found(scans.next().await.expect("the query stays open").unwrap()), 0);
 
     tables.save_folder_scan_item(root, rescan, &scan_candidate(root, "first")).await.unwrap();
-    let progressed = tokio::time::timeout(Duration::from_secs(2), scans.next())
+    let progressed = tokio::time::timeout(HANG_GUARD, scans.next())
         .await
         .expect("the re-confirmed folder moves the scan progress")
         .expect("the query stays open")
@@ -315,7 +316,7 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     assert_eq!(found(progressed), 1);
 
     requests.set(through(list, [(0, 49)])).unwrap();
-    let next = tokio::time::timeout(Duration::from_secs(2), subscription.next())
+    let next = tokio::time::timeout(HANG_GUARD, subscription.next())
         .await
         .expect("a new request reruns the list")
         .expect("the query stays open");

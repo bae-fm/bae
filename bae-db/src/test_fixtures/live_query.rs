@@ -4,8 +4,8 @@
 use super::exec_batch;
 use crate::{Database, DbLibraryImage, LibraryImageType, LibraryPageWindow};
 use bae_util::content_type::ContentType;
+use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
-use std::time::Duration;
 
 pub const ARTIST_ID: &str = "96f0ef68-c284-4f74-b3f6-d9a4b48ee6d1";
 pub const ALBUM_ID: &str = "975b724f-fce7-4fdb-85be-9f57fd9ba496";
@@ -68,7 +68,7 @@ where
     Value: Clone + PartialEq + Send + 'static,
 {
     let revision = live.requests().set(request).expect("the subscription is open");
-    let event = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let event = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a new request reruns the query")
         .expect("the query stays open");

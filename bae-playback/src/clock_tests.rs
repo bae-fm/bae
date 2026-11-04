@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_channels::HANG_GUARD;
 use std::time::Duration;
 
 fn start() -> DateTime<Utc> {
@@ -19,9 +20,7 @@ async fn manual_clock_wait_completes_only_once_the_deadline_is_reached() {
     );
 
     clock.advance(Duration::from_secs(1));
-    tokio::time::timeout(Duration::from_secs(1), sleep)
-        .await
-        .expect("the wait completes at the deadline");
+    tokio::time::timeout(HANG_GUARD, sleep).await.expect("the wait completes at the deadline");
     assert_eq!(clock.now(), deadline);
 }
 
@@ -37,7 +36,7 @@ async fn manual_clock_lists_only_the_waits_still_pending() {
 
     drop(dropped);
     clock.advance(Duration::from_secs(5));
-    tokio::time::timeout(Duration::from_secs(1), &mut completes)
+    tokio::time::timeout(HANG_GUARD, &mut completes)
         .await
         .expect("the wait completes at its deadline");
     assert_eq!(
@@ -50,7 +49,7 @@ async fn manual_clock_lists_only_the_waits_still_pending() {
 #[tokio::test]
 async fn manual_clock_wait_for_a_passed_deadline_completes_at_once() {
     let clock = ManualPlaybackClock::new(start());
-    tokio::time::timeout(Duration::from_secs(1), clock.sleep_until(start()))
+    tokio::time::timeout(HANG_GUARD, clock.sleep_until(start()))
         .await
         .expect("a deadline already reached needs no wait");
 }

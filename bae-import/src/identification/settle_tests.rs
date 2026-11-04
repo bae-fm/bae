@@ -10,9 +10,9 @@ use bae_catalogs::test_releases::{
     mb_release_json_with_catalog, mb_search_json,
 };
 use bae_identify::FolderCheck;
+use bae_util::test_channels::HANG_GUARD;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
 fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
     use crate::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
@@ -641,7 +641,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     // The host recovers; Retry runs the candidate again.
     fixture.provider.reroute("/release/mb-cover-1/front", 200, cover_png());
     fixture.start_explicit_lookup(&dir);
-    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+    tokio::time::timeout(HANG_GUARD, fixture.identification().drained_for_test())
         .await
         .expect("the retried run ends");
 
@@ -748,7 +748,7 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
 
     // Exactly what a person asking to identify the candidate does.
     fixture.start_explicit_lookup(&dir);
-    let row = tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
+    let row = tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&dir))
         .await
         .expect("the explicit Lookup recorder stores the verdict");
 
@@ -797,10 +797,7 @@ async fn a_cancelled_candidate_writes_no_row() {
     fixture.provider.wait_for_request("/discid/", 1).await;
     fixture.identification().shut_down();
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(10), pass)
-        .await
-        .expect("a cancelled queue returns")
-        .unwrap();
+    tokio::time::timeout(HANG_GUARD, pass).await.expect("a cancelled queue returns").unwrap();
 
     assert!(
         fixture.identified_for(&dir).await.is_none(),

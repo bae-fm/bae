@@ -9,6 +9,7 @@ use crate::extraction::service::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_identify::signals::{ArtworkScan, TextOrigin};
+use bae_util::test_channels::HANG_GUARD;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -316,13 +317,10 @@ async fn a_cancelled_pass_waiting_for_a_read_starts_none() {
         );
         // The pass sends its first snapshot just before it waits for a permit,
         // and runs on until it waits before the test runs again.
-        tokio::time::timeout(
-            Duration::from_secs(30),
-            watch.wait_for(|snapshot| snapshot.is_some()),
-        )
-        .await
-        .expect("the pass reaches its images")
-        .expect("the pass is running");
+        tokio::time::timeout(HANG_GUARD, watch.wait_for(|snapshot| snapshot.is_some()))
+            .await
+            .expect("the pass reaches its images")
+            .expect("the pass is running");
 
         handle.cancel(&key);
         drop(reads_elsewhere);
@@ -368,11 +366,9 @@ impl ArtworkAnalyzer for OrderedAnalyzer {
             .expect("every image has a turn");
         let answered = self
             .turn_changed
-            .wait_timeout_while(
-                self.answered.lock().unwrap(),
-                Duration::from_secs(30),
-                |answered| *answered < turn,
-            )
+            .wait_timeout_while(self.answered.lock().unwrap(), HANG_GUARD, |answered| {
+                *answered < turn
+            })
             .unwrap();
         assert!(!answered.1.timed_out(), "{name} waited for its turn");
         let mut answered = answered.0;
@@ -494,9 +490,7 @@ async fn bound_reached_and_held(
 ) -> std::sync::mpsc::Receiver<()> {
     tokio::task::spawn_blocking(move || {
         for _ in 0..IMAGES_IN_FLIGHT {
-            entries
-                .recv_timeout(Duration::from_secs(30))
-                .expect("the bound's worth of images are read at once");
+            entries.recv_timeout(HANG_GUARD).expect("the bound's worth of images are read at once");
         }
         assert!(
             entries.recv_timeout(Duration::from_millis(200)).is_err(),

@@ -1139,6 +1139,7 @@ dependencies = [
  "bae-catalogs",
  "bae-db",
  "bae-diagnostics",
+ "bae-util",
  "coven",
  "reqwest",
  "rusqlite",

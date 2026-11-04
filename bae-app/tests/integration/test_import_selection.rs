@@ -10,6 +10,7 @@ use bae_import::{
     ImportListItem, ImportListOrder, ImportListSnapshot, ImportListView, LiveImportList,
     PendingFilter, TriageTab,
 };
+use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
 use tempfile::TempDir;
 
@@ -35,7 +36,7 @@ async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
     }
     services.import_add_watched_folder(collection.to_path_buf()).await.unwrap();
     let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let snapshot = list.next().await.expect("the list answers");
             if snapshot.summary.counts.pending as usize == count {
@@ -52,7 +53,7 @@ async fn until(
     list: &LiveImportList,
     accept: impl Fn(&ImportListSnapshot) -> bool,
 ) -> ImportListSnapshot {
-    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let snapshot = list.next().await.expect("the list answers");
             if accept(&snapshot) {
@@ -284,7 +285,7 @@ async fn reached_in_order(
     reached: impl Fn(&CandidateRuntimeSnapshot) -> bool,
 ) -> Vec<bae_import::CandidateKey> {
     let mut order: Vec<bae_import::CandidateKey> = Vec::new();
-    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    tokio::time::timeout(HANG_GUARD, async {
         while order.len() < count {
             let arrivals: Vec<bae_import::CandidateKey> =
                 match changes.recv().await.expect("the runtime answers") {

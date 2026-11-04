@@ -12,6 +12,7 @@ use crate::{Admission, IdentificationRuntime};
 
 use crate::IdentificationInFlight;
 use crate::ImportEvent;
+use bae_util::test_channels::HANG_GUARD;
 
 /// A reader that joins after imports started reads every one of them.
 #[tokio::test]
@@ -113,11 +114,11 @@ async fn a_re_identify_run_is_held_by_the_runtime_alone() {
 // A screen follows one key's runtime as a live query of the tables, so
 // however many writes land before it pulls, it reads where they left off.
 
-/// The next value `query` delivers, or the test fails after five seconds.
+/// The next value `query` delivers; the test fails if none ever comes.
 async fn next_runtime(
     query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>>,
 ) -> Option<crate::CandidateRuntimeSnapshot> {
-    tokio::time::timeout(std::time::Duration::from_secs(5), query.next())
+    tokio::time::timeout(HANG_GUARD, query.next())
         .await
         .expect("the query delivers")
         .expect("the query stays open")
@@ -137,12 +138,12 @@ async fn runtime_until(
     }
 }
 
-/// Wait for the percents watch to satisfy a condition, or fail the test
-/// after five seconds.
-async fn within_five_seconds<T, E: std::fmt::Debug>(
+/// Wait for the percents watch to satisfy a condition, failing the test if
+/// it never does.
+async fn percents_reach<T, E: std::fmt::Debug>(
     waiting: impl std::future::Future<Output = Result<T, E>>,
 ) {
-    tokio::time::timeout(std::time::Duration::from_secs(5), waiting)
+    tokio::time::timeout(HANG_GUARD, waiting)
         .await
         .expect("the percents get there")
         .expect("the percents watch stays open");
@@ -200,7 +201,7 @@ async fn the_import_counts_query_delivers_each_write_that_moves_them() {
         (second.clone(), scanned_key(&runtime, second).await),
     ];
     let mut next_counts = async || {
-        tokio::time::timeout(std::time::Duration::from_secs(5), counts.next())
+        tokio::time::timeout(HANG_GUARD, counts.next())
             .await
             .expect("the query delivers")
             .expect("the query stays open")
@@ -266,7 +267,7 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
     claim(&runtime, other).await;
     let mut percents = runtime.watch_import_percents();
     measuring(&runtime, key, 40).await;
-    within_five_seconds(percents.wait_for(|percents| percents.get(key) == Some(&40))).await;
+    percents_reach(percents.wait_for(|percents| percents.get(key) == Some(&40))).await;
     let mut query = runtime.tables.subscribe_candidate_runtime(key);
     assert_eq!(
         import_step(&next_runtime(&mut query).await),
@@ -274,7 +275,7 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
     );
 
     runtime.record_event(&progress(key, 41));
-    within_five_seconds(percents.wait_for(|percents| percents.get(key) == Some(&41))).await;
+    percents_reach(percents.wait_for(|percents| percents.get(key) == Some(&41))).await;
     assert!(!percents.percents().contains_key(other), "a claim no report moved has no percent");
     assert!(
         tokio::time::timeout(std::time::Duration::from_millis(100), query.next()).await.is_err(),
@@ -290,6 +291,6 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
             album_id: "alb".to_string(),
         },
     });
-    within_five_seconds(percents.wait_for(|percents| !percents.contains_key(key))).await;
+    percents_reach(percents.wait_for(|percents| !percents.contains_key(key))).await;
     runtime_until(&mut query, Option::is_none).await;
 }

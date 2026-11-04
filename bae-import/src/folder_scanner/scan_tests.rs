@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_channels::HANG_GUARD;
 use std::sync::Arc;
 
 /// Reads directories normally, except inside `blocked`, where it is held.
@@ -62,7 +63,7 @@ impl SuspendedScan {
     /// on the thread that started the scan, so it can arrive after the walk
     /// is held.
     fn says_while_held(&self, wanted: impl Fn(&WalkItem) -> bool) -> bool {
-        while let Ok(item) = self.items.recv_timeout(std::time::Duration::from_secs(2)) {
+        while let Ok(item) = self.items.recv_timeout(HANG_GUARD) {
             if wanted(&item) {
                 return true;
             }
@@ -142,23 +143,17 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
 
     let scan = SuspendedScan::spawn(root.clone(), "Collection/Release 99");
 
-    let mut first_item =
-        scan.items.recv_timeout(std::time::Duration::from_secs(2)).expect("first release emits");
+    let mut first_item = scan.items.recv_timeout(HANG_GUARD).expect("first release emits");
     // The folder's own reading comes first — it is what says the releases
     // below it are separate.
     if matches!(first_item, WalkItem::Reading { .. }) {
-        first_item = scan
-            .items
-            .recv_timeout(std::time::Duration::from_secs(2))
-            .expect("first release emits");
+        first_item = scan.items.recv_timeout(HANG_GUARD).expect("first release emits");
     }
     assert!(matches!(
         first_item,
         WalkItem::Entry(FolderEntry::Release(ScanItem::Discovered(candidate))) if candidate.path == first
     ));
-    scan.entered
-        .recv_timeout(std::time::Duration::from_secs(2))
-        .expect("later directory is suspended");
+    scan.entered.recv_timeout(HANG_GUARD).expect("later directory is suspended");
     assert!(
         scan.says_while_held(
             |item| matches!(item, WalkItem::Entry(FolderEntry::Release(ScanItem::Valid(candidate))) if candidate.path == first)
@@ -184,9 +179,7 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
 
     let scan = SuspendedScan::spawn(root.clone(), "Group/Release 99");
 
-    scan.entered
-        .recv_timeout(std::time::Duration::from_secs(2))
-        .expect("final sibling is suspended");
+    scan.entered.recv_timeout(HANG_GUARD).expect("final sibling is suspended");
     // `Release 01`, `Release 03`, `Release 99` have no part 2, so they are
     // not the discs of one release: once two of them are known to hold audio
     // the scan says so, and the ones it has reached are ready to identify.
@@ -226,9 +219,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
 
     let scan = SuspendedScan::spawn(root.clone(), "Group/Release 99");
 
-    scan.entered
-        .recv_timeout(std::time::Duration::from_secs(2))
-        .expect("final sibling is suspended");
+    scan.entered.recv_timeout(HANG_GUARD).expect("final sibling is suspended");
     assert!(scan.says_while_held(|item| matches!(
         item,
         WalkItem::Reading {
@@ -341,7 +332,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
             |_| {},
         )
     });
-    entered_rx.recv_timeout(std::time::Duration::from_secs(2)).expect("reader did not start");
+    entered_rx.recv_timeout(HANG_GUARD).expect("reader did not start");
     cancellation.cancel();
     assert!(matches!(scan.join().unwrap(), Err(FolderScanError::Cancelled)));
 }

@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use bae_app::{bootstrap, BootstrapError};
 use bae_app_dir::AppDir;
+use bae_util::test_channels::HANG_GUARD;
 use coven::{Clock, Storage};
 use tempfile::TempDir;
 
@@ -111,10 +112,10 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             .unwrap();
     });
     setup.block_on(async {
-        tokio::time::timeout(Duration::from_secs(20), clock.sleeping.notified()).await.unwrap();
+        tokio::time::timeout(HANG_GUARD, clock.sleeping.notified()).await.unwrap();
     });
     let app = app_rx
-        .recv_timeout(Duration::from_secs(20))
+        .recv_timeout(HANG_GUARD)
         .expect("startup returns while the provider's clock is held")
         .unwrap();
     startup.join().unwrap();

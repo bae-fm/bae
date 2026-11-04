@@ -609,10 +609,9 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
         &f.db,
         bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow { offset: 0, limit: 10 }]),
     );
-    let wait = std::time::Duration::from_secs(10);
     macro_rules! value_until {
         ($check:expr) => {
-            tokio::time::timeout(wait, async {
+            tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
                 loop {
                     let read = value.next().await.expect("the query stays open").unwrap();
                     if $check(&read) {
@@ -626,7 +625,7 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     }
     macro_rules! upcoming_until {
         ($total:expr) => {
-            tokio::time::timeout(wait, async {
+            tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
                 loop {
                     let read = upcoming.next().await.expect("the query stays open").result.unwrap();
                     if read.upcoming_total == $total {

@@ -7,6 +7,7 @@ use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::ScanEvent;
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_identify::signals::ArtworkScan;
+use bae_util::test_channels::HANG_GUARD;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -68,14 +69,14 @@ impl ArtworkAnalyzer for PanicAnalyzer {
     }
 }
 
-/// Drain `SignalsUpdated` events until `expected` of them arrive, or time out.
+/// Drain `SignalsUpdated` events until `expected` of them arrive.
 pub(super) async fn collect_signals(rx: &mut crate::ImportEvents, expected: usize) -> Vec<Signals> {
     collect_snapshots(rx, expected).await.into_iter().map(|(signals, _)| signals).collect()
 }
 
 /// Wait until the run behind `watch` has ended, which drops its end.
 pub(super) async fn run_ended(watch: &mut crate::extraction::ExtractionWatch) {
-    tokio::time::timeout(Duration::from_secs(30), async { while watch.changed().await.is_ok() {} })
+    tokio::time::timeout(HANG_GUARD, async { while watch.changed().await.is_ok() {} })
         .await
         .expect("the extraction ends");
 }
@@ -97,7 +98,7 @@ pub(super) async fn collect_snapshots(
 ) -> Vec<(Signals, ArtworkScan)> {
     let mut out = Vec::new();
     while out.len() < expected {
-        let event = tokio::time::timeout(Duration::from_secs(30), rx.recv())
+        let event = tokio::time::timeout(HANG_GUARD, rx.recv())
             .await
             .expect("timed out collecting events")
             .expect("channel closed");
@@ -223,7 +224,7 @@ pub(super) fn start(
 
 /// Wait until the gated analyzer has entered an image.
 pub(super) async fn ocr_entered(entries: std::sync::mpsc::Receiver<()>) {
-    tokio::task::spawn_blocking(move || entries.recv_timeout(Duration::from_secs(30)))
+    tokio::task::spawn_blocking(move || entries.recv_timeout(HANG_GUARD))
         .await
         .unwrap()
         .expect("the OCR pass reaches an image");
@@ -497,7 +498,7 @@ async fn a_settled_reading_is_kept_before_it_is_announced() {
         CallPriority::Interactive,
     );
 
-    tokio::time::timeout(Duration::from_secs(30), tx.send_held())
+    tokio::time::timeout(HANG_GUARD, tx.send_held())
         .await
         .expect("the run announces its settled reading");
     let kept = handle.inner.settled.get_cloned(&key).is_some();

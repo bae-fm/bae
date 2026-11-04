@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::identification::tests::*;
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 fn files(revision: u64) -> CandidateFiles {
     CandidateFiles { content_hash: "hash-1".to_string(), file_edit_revision: revision }
@@ -178,7 +178,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     assert_eq!(counted(&initial, crate::PendingFilter::Identified), 0);
 
     fixture.start_explicit_lookup(&dir);
-    let reading = tokio::time::timeout(Duration::from_secs(30), async {
+    let reading = tokio::time::timeout(HANG_GUARD, async {
         loop {
             let snapshot = next_page(&list).await;
             if page_live(&snapshot)[&key].facts.identification

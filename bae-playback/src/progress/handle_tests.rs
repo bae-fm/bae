@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_channels::HANG_GUARD;
 use tokio::time::{timeout, Duration};
 
 /// The fan-out over a fresh library's `playback_now` row, with the
@@ -38,7 +39,7 @@ async fn forwards_to_live_subscribers_and_prunes_dropped_ones() {
 
     progress_tx.send(PlaybackProgress::VolumeChanged { volume: 0.5 }).unwrap();
 
-    match timeout(Duration::from_secs(1), live.recv())
+    match timeout(HANG_GUARD, live.recv())
         .await
         .expect("live subscriber receives event")
         .expect("live subscriber channel stays open")
@@ -149,7 +150,7 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
 /// The next event the fan-out forwards, which it writes and folds into
 /// the positions first.
 async fn next_event(events: &mut PlaybackProgressFeed) -> PlaybackProgress {
-    timeout(Duration::from_secs(1), events.recv())
+    timeout(HANG_GUARD, events.recv())
         .await
         .expect("the fan-out forwards the event")
         .expect("the fan-out stays open")

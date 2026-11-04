@@ -5,6 +5,7 @@ use super::*;
 use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_import::identification::MAX_IN_FLIGHT;
 use bae_import::{CandidateKey, ImportServiceHandle};
+use bae_util::test_channels::HANG_GUARD;
 use bae_util::test_host::FakeHost;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -103,7 +104,7 @@ impl Library {
         self.services.import_add_watched_folder(self.root.clone()).await.unwrap();
         self.services.import_refresh_watched_folder(self.root.clone()).await.unwrap();
         tokio::time::timeout(
-            Duration::from_secs(30),
+            HANG_GUARD,
             self.import.wait_for_list(bae_import::ImportListView::default(), |projection| {
                 projection.summary.counts.pending as usize
                     + projection.summary.counts.done as usize

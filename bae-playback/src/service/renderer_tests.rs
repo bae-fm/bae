@@ -5,6 +5,7 @@ use crate::renderer::{ReceiverStatus, RendererFlavor, RendererPlayerState, Rende
 use crate::service::tests::*;
 use crate::RemotePlayback;
 use bae_audio::track_stream::create_track_stream_pair;
+use bae_util::test_channels::HANG_GUARD;
 
 /// `play_on` mid-track keeps the current track and queue position, switches the
 /// renderer to Remote, and reissues the current track to the device at its
@@ -407,7 +408,7 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
         .await;
 
     let second = loop {
-        let media = tokio::time::timeout(std::time::Duration::from_secs(5), loads.recv())
+        let media = tokio::time::timeout(HANG_GUARD, loads.recv())
             .await
             .expect("the device is loaded with the next track")
             .expect("the fake channel keeps its load sender");

@@ -9,9 +9,9 @@ use bae_catalogs::test_releases::{
     mb_release_json_with_catalog,
 };
 use bae_identify::TerminalVerdict;
+use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 
 // What a run asks the catalogs by catalog number, read off the requests the
 // fake provider received.
@@ -600,7 +600,7 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
-    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+    tokio::time::timeout(HANG_GUARD, fixture.identification().drained_for_test())
         .await
         .expect("the explicit run ends");
 
@@ -648,7 +648,7 @@ async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
     );
     started_rx.await.expect("the lookup starts");
     token.cancel();
-    tokio::time::timeout(Duration::from_secs(2), dropped_rx)
+    tokio::time::timeout(HANG_GUARD, dropped_rx)
         .await
         .expect("the lookup is dropped once its run is cancelled")
         .expect("the guard reports its drop");
@@ -672,7 +672,7 @@ async fn a_lookup_that_panics_ends_its_run_as_broken() {
         },
     );
 
-    let event = tokio::time::timeout(Duration::from_secs(5), event_rx.recv())
+    let event = tokio::time::timeout(HANG_GUARD, event_rx.recv())
         .await
         .expect("the run hears the lookup end")
         .expect("the driver's channel is open");

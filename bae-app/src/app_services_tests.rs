@@ -1,5 +1,6 @@
 use super::*;
 use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_util::test_channels::HANG_GUARD;
 use tempfile::TempDir;
 
 /// Build a real `AppServices` — library manager, actor-backed playback,
@@ -82,7 +83,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
 async fn queue_value_with_context(services: &AppServices) -> bae_playback::ResolvedQueueSnapshot {
     let values = services.subscribe_queue_values();
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+        let value = tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("queue subscription delivers")
             .expect("queue projection resolves");
@@ -104,7 +105,7 @@ async fn upcoming_until(
     accept: impl Fn(&bae_library::QueueUpcomingSnapshot) -> bool,
 ) -> bae_library::QueueUpcomingSnapshot {
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
+        let value = tokio::time::timeout(HANG_GUARD, subscription.next())
             .await
             .expect("upcoming subscription delivers")
             .expect("upcoming windows resolve");
@@ -255,7 +256,7 @@ async fn inspected_export_until(
 ) -> bae_transfers::OutputPhaseRow {
     use bae_views::storage_inspector::StorageInspectorTransfer;
     loop {
-        let snapshot = tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())
+        let snapshot = tokio::time::timeout(HANG_GUARD, inspector.next())
             .await
             .expect("the inspector delivers")
             .expect("the inspector reads");
@@ -350,7 +351,7 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release_id.to_string())).unwrap();
     let next = || async {
-        tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())
+        tokio::time::timeout(HANG_GUARD, inspector.next())
             .await
             .expect("the inspector delivers")
             .expect("the inspector reads")
@@ -383,16 +384,15 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
 async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_closes() {
     let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
     let values = services.subscribe_download_counts();
-    tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+    tokio::time::timeout(HANG_GUARD, values.next())
         .await
         .expect("the download counts subscription delivers")
         .expect("the download counts resolve");
 
     services.close().await.unwrap();
 
-    let ended = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
-        .await
-        .expect("the subscription ends");
+    let ended =
+        tokio::time::timeout(HANG_GUARD, values.next()).await.expect("the subscription ends");
     assert!(
         matches!(ended, Err(bae_db::live_query::LiveQueryError::Cancelled)),
         "the subscription heard from the closed store: {ended:?}"
@@ -406,7 +406,7 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
     let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
     let release = services.subscribe_release_detail();
     release.set(Some("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string())).unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(5), release.next())
+    tokio::time::timeout(HANG_GUARD, release.next())
         .await
         .expect("the release detail delivers")
         .expect("the release detail resolves");
@@ -415,10 +415,7 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
 
     // Values sent before the close may still be waiting to be read.
     loop {
-        match tokio::time::timeout(std::time::Duration::from_secs(5), release.next())
-            .await
-            .expect("the live read ends")
-        {
+        match tokio::time::timeout(HANG_GUARD, release.next()).await.expect("the live read ends") {
             Ok(_) => {}
             Err(
                 bae_library::LiveReadError::Query(error)
@@ -448,7 +445,7 @@ async fn the_release_files_read_answers_the_request_it_is_set_to() {
         let files = &files;
         async move {
             files.set(Some(asked.clone())).unwrap();
-            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let snapshot = files.next().await.expect("the read runs");
                     if snapshot.request.as_ref() == Some(&asked) {

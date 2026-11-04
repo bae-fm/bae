@@ -7,6 +7,7 @@ use bae_app::live_reads::LiveStorageBrowse;
 use bae_db::{Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection};
 use bae_library::{CancellationToken, LibraryManager};
 use bae_util::content_type::ContentType;
+use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
 use bae_views::StorageBrowseView;
 use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
@@ -158,7 +159,7 @@ async fn test_multiple_releases_independent_completion() {
     assert_eq!(mgr.count_pending_uploads_for_release(&release_b).await.unwrap(), 0);
 
     let mut downloads = mgr.subscribe_download_snapshot();
-    let settled = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let settled = tokio::time::timeout(HANG_GUARD, async {
         loop {
             let queue = downloads.next().await.expect("the query stays open").unwrap();
             if queue
@@ -179,7 +180,7 @@ async fn test_multiple_releases_independent_completion() {
     for release_id in [&release_a, &release_b] {
         let release = bae_app::live_reads::subscribe_release_detail(&mgr, &views);
         release.set(Some(release_id.clone())).unwrap();
-        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        tokio::time::timeout(HANG_GUARD, async {
             loop {
                 let value = release.next().await.expect("the release detail resolves");
                 if value.value.is_some_and(|detail| {
@@ -460,7 +461,7 @@ async fn next_storage_release(
     release_id: &str,
 ) -> bae_views::album_detail::ReleaseSummary {
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
+        let value = tokio::time::timeout(HANG_GUARD, subscription.next())
             .await
             .expect("storage subscription delivers a value")
             .expect("storage projection resolves");
@@ -507,7 +508,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     bae_library::test_libraries::connect_storage(&mgr, &cloud).await;
     // The disk's answer for the release's originals is a value of its own,
     // and may land before or after the cloud home's.
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+    tokio::time::timeout(HANG_GUARD, async {
         while !next_storage_release(&values, &release_id)
             .await
             .storage_actions

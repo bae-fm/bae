@@ -6,7 +6,7 @@ use crate::{ArtistSearchView, LibrarySearchQuery};
 use bae_db::test_fixtures::live_query::write_artist_image;
 use bae_db::test_fixtures::{exec, exec_batch, temp_db};
 use bae_db::LibraryPageWindow;
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 const FIRST: &str = "1a7c1f53-6d0e-4f43-9a52-0c3f3a9f0a01";
 const SECOND: &str = "2b8d2a64-7e1f-4a54-8b63-1d4a4b0a1b02";
@@ -94,7 +94,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         &["5eb05d97-ab4c-4d87-9e96-4a7d7e3d4e05"],
     )
     .await;
-    let added = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let added = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a new match wakes the search")
         .expect("the query stays open")
@@ -105,7 +105,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
     db.add_artist_credit_name(FIRST, &bae_db::EnteredName::parse("Artist Alias").unwrap())
         .await
         .unwrap();
-    let named = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let named = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a found artist's new name wakes the search")
         .expect("the query stays open")

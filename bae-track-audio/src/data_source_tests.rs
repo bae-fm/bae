@@ -2,8 +2,8 @@ use super::*;
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::BufferStop;
 use bae_diagnostics::RecordingBugReporter;
+use bae_util::test_channels::HANG_GUARD;
 use std::sync::Mutex;
-use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::time::timeout;
 
@@ -124,7 +124,7 @@ async fn preload_fetch_yields_while_the_playing_track_is_fetching() {
 
     // Once the playing track's fetch finishes, the preload proceeds.
     arbiter.end_foreground_fetch();
-    timeout(Duration::from_secs(5), waiter)
+    timeout(HANG_GUARD, waiter)
         .await
         .expect("a preload must unblock once the playing track goes idle")
         .expect("waiter task");
@@ -244,7 +244,7 @@ async fn read_at_the_ceiling_is_served_not_starved() {
     let _read_log = start_recording_fill(contents, None, &buffer);
 
     let read_result = timeout(
-        Duration::from_secs(5),
+        HANG_GUARD,
         tokio::task::spawn_blocking(move || {
             let mut b = [0u8; 1];
             let n = reader.read(&mut b).ok();
@@ -538,7 +538,7 @@ async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
     // parked fill, which upgrades to None and exits.
     drop(buffer);
     assert!(weak.upgrade().is_none(), "the buffer must be freed");
-    timeout(Duration::from_secs(5), fill)
+    timeout(HANG_GUARD, fill)
         .await
         .expect("the parked fill task must exit when the buffer is dropped, not leak")
         .expect("the fill task must not panic")
@@ -572,7 +572,7 @@ async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
         n
     });
 
-    let outcome = timeout(Duration::from_secs(10), read_handle).await;
+    let outcome = timeout(HANG_GUARD, read_handle).await;
 
     // Whatever happened, unblock every parked reader/fill so their threads
     // exit (a reader stuck on the condvar can't otherwise be cancelled) — and
@@ -623,7 +623,7 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     }));
 
     let stop = timeout(
-        Duration::from_secs(5),
+        HANG_GUARD,
         tokio::task::spawn_blocking(move || {
             let mut b = [0u8; 1];
             reader.read(&mut b)
@@ -637,7 +637,7 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     };
     assert!(seen.to_string().contains("/volume/track.flac"), "{seen}");
 
-    let reported = timeout(Duration::from_secs(5), fill)
+    let reported = timeout(HANG_GUARD, fill)
         .await
         .expect("the fill exits on the failure")
         .expect("fill task")
@@ -669,7 +669,7 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
     buffer.cancel();
     gate.release(0);
 
-    timeout(Duration::from_secs(5), fill)
+    timeout(HANG_GUARD, fill)
         .await
         .expect("the fill exits")
         .expect("fill task")

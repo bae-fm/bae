@@ -609,17 +609,17 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
 #[cfg(feature = "desktop")]
 mod candidate_runtime {
     use super::*;
-    use std::time::Duration;
+    use bae_util::test_channels::HANG_GUARD;
 
-    /// Pull from `subscription` until a value satisfies `wanted`; only the
-    /// timeout fails.
+    /// Pull from `subscription` until a value satisfies `wanted`; only a
+    /// value that never comes fails.
     fn pull_until(
         handle: &Arc<super::super::AppHandle>,
         subscription: &Arc<crate::CandidateRuntimeSubscription>,
         wanted: impl Fn(&Option<crate::types::BridgeCandidateRuntimeSnapshot>) -> bool,
     ) -> Option<crate::types::BridgeCandidateRuntimeSnapshot> {
         handle.runtime.block_on(async {
-            tokio::time::timeout(Duration::from_secs(5), async {
+            tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let value = subscription.clone().next().await.expect("the pull reads");
                     if wanted(&value) {

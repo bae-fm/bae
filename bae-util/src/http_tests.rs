@@ -1,4 +1,5 @@
 use super::*;
+use crate::test_channels::HANG_GUARD;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::oneshot;
 use tokio::time::{timeout, Duration};
@@ -49,7 +50,7 @@ async fn client_builder_times_out_when_response_stalls() {
     let request = tokio::spawn(async move { client.get(&request_url).send().await });
 
     accepted_rx.await.expect("test listener should accept the request");
-    let result = timeout(Duration::from_secs(1), request)
+    let result = timeout(HANG_GUARD, request)
         .await
         .expect("request should finish before the outer guard")
         .expect("request task should finish");

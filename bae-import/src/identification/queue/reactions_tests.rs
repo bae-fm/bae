@@ -7,9 +7,9 @@ use super::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::identification::tests::*;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
+use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// An analyzer held at each image behind a [`crate::tests::gate::Gate`].
 struct GatedAnalyzer(crate::tests::gate::Held);
@@ -56,7 +56,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     );
     // The other candidate is carried to its verdict. The picked one left the
     // queue with the run the pick ended.
-    tokio::time::timeout(Duration::from_secs(30), fixture.await_identified_row(&other))
+    tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&other))
         .await
         .expect("the pass answers the candidate nobody picked");
 
@@ -84,7 +84,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 
     fixture.identification().shut_down();
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(10), pass).await.expect("the pass ends").unwrap();
+    tokio::time::timeout(HANG_GUARD, pass).await.expect("the pass ends").unwrap();
 }
 
 /// Skipping is a decision about the candidate, so it ends its run. Unskipping
@@ -191,7 +191,7 @@ async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
     fixture.import.clear_candidate_metadata(key.clone()).await.expect("the metadata is cleared");
 
     assert!(!fixture.import.is_identifying(&key), "the clear ends the run it found");
-    tokio::time::timeout(Duration::from_secs(30), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("the candidate left the queue, so the automatic admission holds nothing")
         .unwrap();
@@ -315,13 +315,13 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     fixture.provider.release();
 
     // The pass returns rather than waiting forever on the run it lost.
-    tokio::time::timeout(Duration::from_secs(30), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("the pass frees the slot its superseded run held")
         .unwrap();
 
     fixture.await_identified_row(&dir).await;
-    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+    tokio::time::timeout(HANG_GUARD, fixture.identification().drained_for_test())
         .await
         .expect("the queue lets go of the answered job");
     let runs: Vec<(IdentifyRunId, IdentifyState)> = drain_events(&mut events)
@@ -379,7 +379,7 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     fixture.provider.wait_for_request("/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(15), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("pass finishes after import ownership changes")
         .unwrap();
@@ -417,7 +417,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     // Start the pass and hold extraction inside OCR, so the candidate is
     // genuinely mid-flight when the folder goes.
     let pass = fixture.drain_automatic_task();
-    tokio::task::spawn_blocking(move || entered.recv_timeout(Duration::from_secs(30)))
+    tokio::task::spawn_blocking(move || entered.recv_timeout(HANG_GUARD))
         .await
         .unwrap()
         .expect("extraction reaches the artwork");
@@ -427,7 +427,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     fixture.rescan(&fixture.import, 0).await;
     gate.open();
 
-    tokio::time::timeout(Duration::from_secs(30), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("the pass must finish rather than wait on a candidate that is gone")
         .unwrap();

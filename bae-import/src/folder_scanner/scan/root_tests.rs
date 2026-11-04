@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_channels::HANG_GUARD;
 use std::sync::Arc;
 
 /// Everything a pass over `root` said, in the order it said it.
@@ -112,11 +113,7 @@ impl DirectoryReader for ListsOneFolderAfterAnother {
         if directory == self.held {
             let (listed, changed) = &self.awaited_listed;
             let (listed, timeout) = changed
-                .wait_timeout_while(
-                    listed.lock().unwrap(),
-                    std::time::Duration::from_secs(10),
-                    |listed| !*listed,
-                )
+                .wait_timeout_while(listed.lock().unwrap(), HANG_GUARD, |listed| !*listed)
                 .unwrap();
             if timeout.timed_out() && !*listed {
                 return Err(FolderScanError::Other(format!(
@@ -301,7 +298,7 @@ fn a_folder_that_fails_stops_the_others_and_fails_the_pass() {
         done_tx.send((result, said)).unwrap();
     });
     let (result, said) = done_rx
-        .recv_timeout(std::time::Duration::from_secs(10))
+        .recv_timeout(HANG_GUARD)
         .expect("the failing folder stops the folders read beside it");
 
     match result {
@@ -381,9 +378,8 @@ fn cancelling_a_pass_stops_every_folder_it_is_reading() {
         let (result, said) = pass_over_root(&*pass_reader, &pass_root, &cancellation);
         done_tx.send((result, said)).unwrap();
     });
-    let (result, said) = done_rx
-        .recv_timeout(std::time::Duration::from_secs(10))
-        .expect("cancelling reaches every folder being read");
+    let (result, said) =
+        done_rx.recv_timeout(HANG_GUARD).expect("cancelling reaches every folder being read");
 
     assert!(matches!(result, Err(FolderScanError::Cancelled)), "{result:?}");
     // The cancelled folder's walk reads none of its files into a release.
@@ -434,9 +430,7 @@ impl DirectoryReader for DatedFolders {
                 begun.push(directory.to_path_buf());
                 all_begun.notify_all();
                 let (begun, timeout) = all_begun
-                    .wait_timeout_while(begun, std::time::Duration::from_secs(10), |begun| {
-                        begun.len() < FOLDERS_AT_ONCE
-                    })
+                    .wait_timeout_while(begun, HANG_GUARD, |begun| begun.len() < FOLDERS_AT_ONCE)
                     .unwrap();
                 if timeout.timed_out() && begun.len() < FOLDERS_AT_ONCE {
                     return Err(FolderScanError::Other(format!(

@@ -4,6 +4,7 @@ use crate::audio_output::{
 };
 use crate::service::tests::*;
 use bae_audio::track_stream::create_track_stream_pair;
+use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
 async fn retiring_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
@@ -424,7 +425,7 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
             })
             .await
             .expect("the track's row is deleted");
-        let stopped = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        let stopped = tokio::time::timeout(HANG_GUARD, async {
             while let Some(progress) = progress_rx.recv().await {
                 if matches!(
                     progress,

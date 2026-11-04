@@ -226,6 +226,7 @@ use crate::airplay::srp::SrpGroup;
 use crate::airplay::tlv8::{state, tlv_type, Tlv8};
 use bae_playback::airplay_output::AirPlayStreamControl;
 use bae_playback::airplay_output::PcmSource;
+use bae_util::test_channels::HANG_GUARD;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use std::net::UdpSocket;
@@ -275,7 +276,7 @@ fn run_full_ap2_session(
     let addr = tcp.local_addr().unwrap();
     // Bind the audio (data) socket up front so its real port rides in SETUP.
     let data_udp = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
-    data_udp.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    data_udp.set_read_timeout(Some(HANG_GUARD)).unwrap();
     let data_port = data_udp.local_addr().unwrap().port();
 
     let server = std::thread::spawn(move || {

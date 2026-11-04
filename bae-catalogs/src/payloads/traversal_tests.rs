@@ -1,6 +1,7 @@
 use super::*;
 use crate::source_release::UnfetchedDocument;
 use crate::test_documents::{linked_discogs_master, linked_discogs_release, linked_release_group};
+use bae_util::test_channels::HANG_GUARD;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -203,7 +204,7 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
     let discogs = server.fakes.discogs_client("fixture-token");
     let selected = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     let payloads = tokio::time::timeout(
-        std::time::Duration::from_secs(15),
+        HANG_GUARD,
         server.providers.fetch_payloads(
             Some(&discogs),
             &LookupCatalog::ALL,

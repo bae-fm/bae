@@ -1,6 +1,7 @@
 use super::*;
 use crate::remote_image::tests::*;
 use crate::remote_image::RemoteImageCache;
+use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
 async fn download_rejects_short_non_image_response() {
@@ -26,10 +27,9 @@ async fn download_rejects_bytes_that_are_not_an_image() {
 async fn download_rejects_declared_over_cap_response() {
     let url = start_declared_length_response(bae_util::http::MAX_IMAGE_BYTES + 1).await;
     let cache = RemoteImageCache::for_test(direct_http());
-    let result =
-        tokio::time::timeout(std::time::Duration::from_secs(1), cache.fetch_required(&url))
-            .await
-            .expect("oversized response should fail before reading the body");
+    let result = tokio::time::timeout(HANG_GUARD, cache.fetch_required(&url))
+        .await
+        .expect("oversized response should fail before reading the body");
     let error = result.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("too large")),

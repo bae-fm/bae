@@ -10,7 +10,7 @@ use bae_db::test_fixtures::{
     TRACK_WORK_A, WORK_A,
 };
 use bae_util::content_type::ContentType;
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
     crate::folder_scanner::ScannedAudio {
@@ -392,7 +392,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
         }
     }
     assert!(
-        !tokio::time::timeout(Duration::from_secs(20), pane_saw_both)
+        !tokio::time::timeout(HANG_GUARD, pane_saw_both)
             .await
             .expect("the pane reads the release")
             .expect("the pane is followed to the end"),

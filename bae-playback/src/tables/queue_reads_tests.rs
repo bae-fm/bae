@@ -4,6 +4,7 @@
 use super::*;
 use crate::tables::tests::*;
 use crate::QueueAddition;
+use bae_util::test_channels::HANG_GUARD;
 
 /// Each addition that puts tracks in counts one, with how many it put in,
 /// wherever in Up Next they go; two alike in a row are two values. Tracks the
@@ -88,9 +89,9 @@ async fn the_live_query_delivers_each_addition() {
     );
 }
 
-/// The query's next value, within five seconds.
+/// The query's next value.
 async fn next(additions: &mut coven::LiveQuery<Option<QueueAddition>>) -> Option<QueueAddition> {
-    tokio::time::timeout(std::time::Duration::from_secs(5), additions.next())
+    tokio::time::timeout(HANG_GUARD, additions.next())
         .await
         .expect("a value in time")
         .expect("the query runs")

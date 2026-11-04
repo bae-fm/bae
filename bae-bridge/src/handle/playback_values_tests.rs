@@ -1,8 +1,7 @@
 //! What playback is doing, as the app pulls it.
 
-use std::time::Duration;
-
 use crate::types::{BridgePlaybackValueState, BridgePlaybackValues};
+use bae_util::test_channels::HANG_GUARD;
 
 /// The first value `values` answers that `wanted` takes.
 fn pull_until(
@@ -11,7 +10,7 @@ fn pull_until(
     wanted: impl Fn(&BridgePlaybackValues) -> bool,
 ) -> BridgePlaybackValues {
     handle.runtime.block_on(async {
-        tokio::time::timeout(Duration::from_secs(10), async {
+        tokio::time::timeout(HANG_GUARD, async {
             loop {
                 let value = values.clone().next().await.expect("the pull reads");
                 if wanted(&value) {

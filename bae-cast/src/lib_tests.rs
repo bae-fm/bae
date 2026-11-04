@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_channels::HANG_GUARD;
 
 fn credential() -> SubsonicCredential {
     SubsonicCredential { username: "castuser".to_string(), password: "castpassword".to_string() }
@@ -182,7 +183,7 @@ fn the_picker_lists_the_devices_from_the_library() {
     let listed = services.subscribe_cast_devices();
     let until_listed = |names: &[&str]| {
         runtime.block_on(async {
-            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let devices = listed.next().await.expect("the picker's list reads");
                     let shown: Vec<_> = devices.iter().map(|device| device.name.as_str()).collect();

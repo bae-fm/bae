@@ -16,7 +16,7 @@ use crate::{MetadataProvenance, TriageTab};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_db::test_fixtures::live_query::{live_db, ALBUM_ID, RELEASE_ID};
 use bae_db::test_fixtures::{exec, write_cover};
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 /// Each header's group name and whether it offers to combine, in order.
 fn combinable(read: &ImportListProjection) -> Vec<(String, bool)> {
@@ -557,7 +557,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
         .unwrap();
 
     let read = tokio::time::timeout(
-        Duration::from_secs(10),
+        HANG_GUARD,
         tables.load_import_list_read(request(TriageTab::Pending).await),
     )
     .await;
@@ -700,7 +700,7 @@ async fn a_done_row_reads_its_library_release() {
     assert_eq!(done.release_link, None);
 
     exec(&db, "UPDATE albums SET title = 'Retitled' WHERE id = ?1", &[ALBUM_ID]).await;
-    let retitled = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let retitled = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("retitling the album wakes the list")
         .expect("the query stays open")

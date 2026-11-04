@@ -34,6 +34,8 @@ uuid = { workspace = true, features = ["v4"] }
 [dev-dependencies]
 # Test databases with bae's schema.
 bae-db = { workspace = true, features = ["test-utils"] }
+# The bound on a test's wait for an event.
+bae-util = { workspace = true }
 # The HTTP status and the JSON failure a Discogs check can end with.
 reqwest = { workspace = true }
 serde_json = { workspace = true }

@@ -9,9 +9,9 @@ use crate::{identity, DbAlbumArtist};
 use crate::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::ReleaseRecord;
+use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use std::collections::BTreeSet;
-use std::time::Duration;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -596,7 +596,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         &[IDENTITY_ID, RELEASE_ID],
     )
     .await;
-    let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("identity write wakes the library statuses")
         .expect("the query stays open")
@@ -619,7 +619,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL WHERE id = ?1",
         &[IDENTITY_ID],
     ).await;
-    let album_only = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let album_only = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("identity kind change wakes the library statuses")
         .expect("the query stays open")

@@ -10,6 +10,7 @@ use bae_audio::test_samples::filled_sparse_buffer;
 use bae_audio::{
     decode_audio, decode_audio_to_sink, encode_i32, init, DecodeError, DecodedSink, EncodeFormat,
 };
+use bae_util::test_channels::HANG_GUARD;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
@@ -201,7 +202,7 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
         drop(seek_reader);
         (n, out)
     });
-    let (n, out) = timeout(Duration::from_secs(10), read)
+    let (n, out) = timeout(HANG_GUARD, read)
         .await
         .expect("a deep local seek must be served, not hang")
         .expect("seek read task");

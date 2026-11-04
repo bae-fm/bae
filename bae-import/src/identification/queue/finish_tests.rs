@@ -6,9 +6,9 @@
 use super::*;
 use crate::identification::tests::*;
 use bae_catalogs::test_releases::{mb_barcode_search_json, mb_release_json};
+use bae_util::test_channels::HANG_GUARD;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Every import the worker reports on for `key` until one ends: the ids it
 /// reported under, and the error the ending one failed with, if it failed.
@@ -17,7 +17,7 @@ async fn await_import_ending(
     key: &crate::CandidateKey,
 ) -> (std::collections::BTreeSet<String>, Option<String>) {
     let mut ids = std::collections::BTreeSet::new();
-    tokio::time::timeout(Duration::from_secs(30), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let event = events.recv().await.expect("the import event bus stays open");
             let ImportEvent::ImportProgress { candidate_key, progress } = event else {
@@ -191,7 +191,7 @@ async fn a_run_a_person_asked_for_with_the_setting_off_imports_nothing() {
     let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&dir);
-    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+    tokio::time::timeout(HANG_GUARD, fixture.identification().drained_for_test())
         .await
         .expect("the person's run ends");
 
@@ -245,7 +245,7 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
         "what imported is the pick's draft, read from the picked release"
     );
 
-    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+    tokio::time::timeout(HANG_GUARD, fixture.identification().drained_for_test())
         .await
         .expect("the queue has nothing left to do");
     assert_no_import(&fixture, &mut events, &key, "the asked-for import ended").await;
@@ -268,7 +268,7 @@ async fn importing_a_selection_while_the_pick_is_read_imports_it_once_stored() {
     assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
     assert_eq!(failure, None, "the import completes");
 
-    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+    tokio::time::timeout(HANG_GUARD, fixture.identification().drained_for_test())
         .await
         .expect("the queue has nothing left to do");
     assert_no_import(&fixture, &mut events, &key, "the asked-for import ended").await;
@@ -333,7 +333,7 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
 
     let mut opened = false;
     loop {
-        let count = tokio::time::timeout(Duration::from_secs(10), counts.recv())
+        let count = tokio::time::timeout(HANG_GUARD, counts.recv())
             .await
             .expect("identification progress arrives")
             .expect("the count stays open");

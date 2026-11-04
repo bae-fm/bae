@@ -4,8 +4,8 @@
 
 use super::*;
 use bae_db::test_fixtures::*;
+use bae_util::test_channels::HANG_GUARD;
 use std::num::NonZeroU32;
-use std::time::Duration;
 
 /// Edit the preferences as a setter does, refusing nothing.
 async fn set(db: &Database, edit: impl FnOnce(&mut Preferences) + Send + 'static) {
@@ -17,11 +17,11 @@ async fn set(db: &Database, edit: impl FnOnce(&mut Preferences) + Send + 'static
     .unwrap();
 }
 
-/// The next value `values` delivers, failing the test after five seconds.
+/// The next value `values` delivers, failing the test if none ever comes.
 async fn next(values: &mut coven::LiveQuery<Preferences>) -> Preferences {
-    tokio::time::timeout(Duration::from_secs(5), values.next())
+    tokio::time::timeout(HANG_GUARD, values.next())
         .await
-        .expect("the live query delivers within five seconds")
+        .expect("the live query delivers")
         .expect("the store is open")
         .unwrap()
 }

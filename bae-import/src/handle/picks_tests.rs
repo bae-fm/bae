@@ -786,7 +786,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         )
         .await
         .expect("the person's pick applies");
-    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+    tokio::time::timeout(HANG_GUARD, fixture.identification().drained_for_test())
         .await
         .expect("the queue has nothing left to do");
 

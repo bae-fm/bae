@@ -14,7 +14,6 @@ use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_catalogs::test_releases::{discogs_release_json, mb_release_json, mb_titled_release_json};
 use bae_util::test_channels::HANG_GUARD;
-use std::time::Duration;
 use tempfile::TempDir;
 
 /// The list under one filter entry, and the keys and filter entries its last
@@ -472,7 +471,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
                 .await
         })
     };
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let event = events.recv().await.expect("the pick raises an event");
             if matches!(

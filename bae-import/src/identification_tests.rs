@@ -12,6 +12,7 @@ use bae_catalogs::test_releases::mb_release_json;
 use bae_db::Database;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::{FolderCheck, VerdictSummary};
+use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
@@ -277,7 +278,7 @@ impl Fixture {
     /// The list holds `expected` candidates, as the reads already over left it.
     pub(crate) async fn await_listed(&self, import: &ImportServiceHandle, expected: usize) {
         tokio::time::timeout(
-            Duration::from_secs(30),
+            HANG_GUARD,
             import.wait_for_list(crate::ImportListView::default(), |projection| {
                 projection.summary.counts.pending as usize
                     + projection.summary.counts.done as usize
@@ -346,12 +347,9 @@ impl Fixture {
     /// Start the queue if needed, and wait until every release found so far is
     /// admitted and every automatic job has ended.
     pub(crate) async fn drain_automatic(&self) {
-        tokio::time::timeout(
-            Duration::from_secs(30),
-            self.identification().automatic_drained_for_test(),
-        )
-        .await
-        .expect("the automatic admission's queue drains");
+        tokio::time::timeout(HANG_GUARD, self.identification().automatic_drained_for_test())
+            .await
+            .expect("the automatic admission's queue drains");
     }
 
     /// The same, as a task a test can watch while it acts on the queue.
@@ -502,7 +500,7 @@ impl Fixture {
     /// Let the held read answer and wait for the queue to be done.
     pub(crate) async fn finish_reading(&self) {
         self.provider.release();
-        tokio::time::timeout(Duration::from_secs(30), self.identification().drained_for_test())
+        tokio::time::timeout(HANG_GUARD, self.identification().drained_for_test())
             .await
             .expect("the settle ends");
     }
@@ -652,7 +650,7 @@ pub(crate) async fn await_run_state(
     key: &crate::CandidateKey,
     accept: impl Fn(IdentifyRunId, &IdentifyState) -> bool,
 ) -> IdentifyRunId {
-    tokio::time::timeout(Duration::from_secs(20), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             match events.recv().await.expect("the import event bus stays open") {
                 ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. }
@@ -737,7 +735,7 @@ pub(crate) fn page_window(offset: u64, limit: u64) -> bae_db::LibraryPageWindows
 
 /// The list's next snapshot.
 pub(crate) async fn next_page(list: &crate::LiveImportList) -> crate::ImportListSnapshot {
-    tokio::time::timeout(Duration::from_secs(20), list.next())
+    tokio::time::timeout(HANG_GUARD, list.next())
         .await
         .expect("the list delivers")
         .expect("the list answers")

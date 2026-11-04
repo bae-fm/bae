@@ -8,8 +8,8 @@ use bae_db::test_fixtures::composed_work::*;
 use bae_db::test_fixtures::live_query::*;
 use bae_db::test_fixtures::*;
 use bae_db::test_fixtures::{exec, exec_batch};
+use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
-use std::time::Duration;
 
 /// The grid's selection reads through one subscription: its ids move in
 /// place, it answers with the selected ids that name no album in the library,
@@ -29,7 +29,7 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
     assert_eq!(selected.result.unwrap(), vec!["missing-album"]);
 
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[ALBUM_ID]).await;
-    let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let deleted = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("deleting a selected album wakes the selection")
         .expect("the query stays open")
@@ -50,7 +50,7 @@ async fn next_album_page_is_only_a_rename(
 ) -> AlbumBrowseProjection {
     let album_id = shown.windows[0].rows[0].album.id.clone();
     exec(db, "UPDATE albums SET title = ?1 WHERE id = ?2", &[title, album_id.as_str()]).await;
-    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let renamed = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("renaming the shown album wakes album browse")
         .expect("the query stays open")
@@ -75,7 +75,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
 
     let cover = bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "cover bytes").await;
 
-    let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("cover write wakes album browse")
         .expect("the query stays open")
@@ -103,7 +103,7 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
     bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
     let primary =
         bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
-    let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("the primary release's cover wakes the browse")
         .expect("the query stays open")
@@ -169,7 +169,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
 
     exec(&db, "UPDATE albums SET title = 'Album Title Renamed' WHERE id = ?1", &[OTHER_ALBUM_ID])
         .await;
-    let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let renamed_event = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("non-first album metadata wakes album browse")
         .expect("the query stays open");
@@ -183,7 +183,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         &[OTHER_ALBUM_ID],
     )
     .await;
-    let reordered = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let reordered = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("non-first album ordering field wakes album browse")
         .expect("the query stays open")
@@ -239,7 +239,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let replaced_other_cover =
         bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "replaced other cover bytes")
             .await;
-    let cover_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let cover_updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a requested album's cover version wakes album browse")
         .expect("the query stays open")
@@ -280,7 +280,7 @@ async fn library_search_moves_between_queries_on_one_subscription() {
     assert_eq!(found.results.albums[0].id, ALBUM_ID);
 
     exec(&db, "UPDATE albums SET title = 'Album Title Renamed' WHERE id = ?1", &[ALBUM_ID]).await;
-    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let renamed = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a found album's edit wakes the search")
         .expect("the query stays open")
@@ -339,7 +339,7 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
 
     exec(&db, "DELETE FROM albums WHERE id = ?1", &[ALBUM_ID]).await;
 
-    let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let deleted = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("album deletion wakes album detail")
         .expect("the query stays open")
@@ -371,7 +371,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
                 db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
             })
             .await;
-        let updated = tokio::time::timeout(Duration::from_secs(20), live.next())
+        let updated = tokio::time::timeout(HANG_GUARD, live.next())
             .await
             .unwrap()
             .expect("the query stays open")

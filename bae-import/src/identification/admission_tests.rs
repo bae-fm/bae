@@ -6,8 +6,8 @@ use super::*;
 use crate::identification::tests::*;
 use crate::ImportCandidateSnapshot;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
+use bae_util::test_channels::HANG_GUARD;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// A folder found again under a new name — renamed, or moved within the
 /// watched folder — holds files a run already answered. It is a release found
@@ -382,10 +382,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
         found_while_automatic: false,
     }));
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(15), pass)
-        .await
-        .expect("pass finishes after the re-scan")
-        .unwrap();
+    tokio::time::timeout(HANG_GUARD, pass).await.expect("pass finishes after the re-scan").unwrap();
 
     let progress: Vec<_> = std::iter::from_fn(|| counts.try_recv().ok()).collect();
     assert!(

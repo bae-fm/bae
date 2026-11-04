@@ -1,7 +1,7 @@
 //! Where playback is, as the surfaces that move the position on themselves
 //! pull it.
 
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 /// A library that has played nothing reads no line and no seek; cancelling
 /// ends the pulls.
@@ -12,9 +12,7 @@ fn the_timeline_starts_with_no_line_until_cancelled() {
 
     let first = handle
         .runtime
-        .block_on(async {
-            tokio::time::timeout(Duration::from_secs(10), timeline.clone().next()).await
-        })
+        .block_on(async { tokio::time::timeout(HANG_GUARD, timeline.clone().next()).await })
         .expect("the first value in time")
         .expect("the pull reads");
     assert_eq!(

@@ -1,6 +1,6 @@
 //! The additions to Up Next, as the app pulls them.
 
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
 /// A handle over a fresh library holding one album of `tracks` tracks, and
 /// the album's track ids in order.
@@ -46,7 +46,7 @@ fn each_addition_reaches_the_app_once() {
     let additions = handle.subscribe_queue_additions();
     let pull = || {
         handle.runtime.block_on(async {
-            tokio::time::timeout(Duration::from_secs(10), additions.clone().next())
+            tokio::time::timeout(HANG_GUARD, additions.clone().next())
                 .await
                 .expect("an addition in time")
                 .expect("the pull reads")

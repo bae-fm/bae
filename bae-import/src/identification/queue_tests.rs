@@ -6,6 +6,7 @@
 use super::*;
 use crate::identification::tests::*;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
+use bae_util::test_channels::HANG_GUARD;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -52,7 +53,7 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
 
     let pass = fixture.drain_automatic_task();
 
-    let change = tokio::time::timeout(Duration::from_secs(10), changes.recv())
+    let change = tokio::time::timeout(HANG_GUARD, changes.recv())
         .await
         .expect("the queue state is published before identification")
         .expect("candidate runtime remains open");
@@ -66,7 +67,7 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
     );
 
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(20), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("the pass finishes after the provider resumes")
         .unwrap();
@@ -121,7 +122,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     }
 
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(20), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("the pass finishes after the provider resumes")
         .unwrap();
@@ -194,7 +195,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     let admitted = musicbrainz.admitted_requests();
 
     fixture.identification().shut_down();
-    tokio::time::timeout(Duration::from_secs(20), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("the sweep ends once identification shuts down")
         .expect("the sweep does not panic");
@@ -343,7 +344,7 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
     let queue = tokio::spawn(async move {
         super::run(&context, &loop_token, &mut bus, &mut asked).await;
     });
-    tokio::time::timeout(Duration::from_secs(30), answered)
+    tokio::time::timeout(HANG_GUARD, answered)
         .await
         .expect("the requested job ends")
         .expect("the queue says so");
@@ -385,7 +386,7 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     fixture.set_identify_automatically(false).await;
 
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(20), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("the pass ends once the write it waited for has landed")
         .unwrap();
@@ -428,7 +429,7 @@ async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
     fixture.set_identify_automatically(false).await;
     assert!(fixture.import.is_identifying(&key));
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(20), pass)
+    tokio::time::timeout(HANG_GUARD, pass)
         .await
         .expect("the queued run finishes after the setting turns off")
         .unwrap();
@@ -495,7 +496,7 @@ async fn automatic_off_leaves_the_queue_to_finish() {
         "the candidate a person asked for is still being answered"
     );
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(20), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("the automatic admission's queue finishes what it admitted")
         .unwrap();
@@ -518,7 +519,7 @@ async fn turning_automatic_identification_off_finishes_what_is_queued() {
 
     fixture.set_identify_automatically(false).await;
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(30), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("the queue finishes what it held")
         .unwrap();
@@ -571,7 +572,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
 
     fixture.identification().shut_down();
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(20), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("the sweep ends once identification shuts down")
         .expect("the sweep does not panic");
@@ -727,7 +728,7 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
     fixture.identification().cancel(vec![waiting_key.clone()]).await.unwrap();
     await_not_identifying(&fixture, &waiting_key).await;
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(30), sweep).await.expect("the pass ends").unwrap();
+    tokio::time::timeout(HANG_GUARD, sweep).await.expect("the pass ends").unwrap();
 
     assert_eq!(
         fixture.provider.count_containing("query=barcode"),
@@ -761,7 +762,7 @@ async fn a_cancelled_run_leaves_the_candidate_as_it_was_until_asked_again() {
     fixture.provider.wait_for_request("/discid/", 1).await;
 
     fixture.identification().cancel(vec![key.clone()]).await.unwrap();
-    tokio::time::timeout(Duration::from_secs(10), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("cancelling the only job drains the pass")
         .unwrap();
@@ -785,7 +786,7 @@ async fn a_cancelled_run_leaves_the_candidate_as_it_was_until_asked_again() {
     );
 
     fixture.identification().rerun_identify(key.clone());
-    tokio::time::timeout(Duration::from_secs(15), fixture.await_identified_row(&dir))
+    tokio::time::timeout(HANG_GUARD, fixture.await_identified_row(&dir))
         .await
         .expect("a person asking identifies it again");
 }
@@ -800,7 +801,7 @@ async fn cancelling_everything_empties_the_queue() {
     fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
 
     fixture.identification().cancel_all().await.unwrap();
-    tokio::time::timeout(Duration::from_secs(10), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("cancelling everything drains the pass")
         .unwrap();
@@ -844,7 +845,7 @@ async fn a_cancelled_answer_is_not_written() {
 
     fixture.identification().cancel(vec![key.clone()]).await.unwrap();
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(10), sweep)
+    tokio::time::timeout(HANG_GUARD, sweep)
         .await
         .expect("cancelling the only job drains the pass")
         .unwrap();

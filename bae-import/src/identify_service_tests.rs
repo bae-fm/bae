@@ -13,6 +13,7 @@ use bae_db::Database;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::IdentifyState;
 use bae_identify::TerminalVerdict;
+use bae_util::test_channels::HANG_GUARD;
 use std::time::Duration;
 
 async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
@@ -95,7 +96,7 @@ fn absent_signals() -> Signals {
 /// is already on the bus.
 pub(super) async fn drivers_ended(inner: &Arc<IdentifyServiceInner>) {
     inner.driver_tasks.close();
-    tokio::time::timeout(Duration::from_secs(30), inner.driver_tasks.wait())
+    tokio::time::timeout(HANG_GUARD, inner.driver_tasks.wait())
         .await
         .expect("every driver returns");
 }

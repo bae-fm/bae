@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_channels::HANG_GUARD;
 
 /// A follow whose store closes hears why and then ends, reporting no bug:
 /// its task stops instead of reading the closed store again and again.
@@ -31,7 +32,7 @@ async fn a_follow_ends_once_its_store_closes() {
 /// Wait for `follow`'s task to end, seen as its reads closing: the task
 /// holds their sender until it ends.
 async fn follow_ends<Request, Value>(follow: &mut LibraryFollow<Request, Value>) {
-    while tokio::time::timeout(std::time::Duration::from_secs(10), follow.reads.recv())
+    while tokio::time::timeout(HANG_GUARD, follow.reads.recv())
         .await
         .expect("the follow's task ends")
         .is_some()
@@ -99,11 +100,10 @@ async fn a_failed_read_is_reported_as_a_bug() {
     });
     let _follow = LibraryFollow::new(query, Vec::new(), "the missing table", &diagnostics);
 
-    let (operation, detail) =
-        tokio::time::timeout(std::time::Duration::from_secs(10), reports.recv())
-            .await
-            .expect("the failed read is reported")
-            .expect("the reporter stays open");
+    let (operation, detail) = tokio::time::timeout(HANG_GUARD, reports.recv())
+        .await
+        .expect("the failed read is reported")
+        .expect("the reporter stays open");
     assert_eq!(operation, "read the missing table for playback");
     assert!(detail.contains("no_such_table"), "{detail}");
     database.close().await.unwrap();

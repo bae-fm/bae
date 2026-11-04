@@ -17,7 +17,6 @@ use bae_identify::LookupChoiceEdit;
 use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use std::path::Path;
-use std::time::Duration;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -795,7 +794,7 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
         .claim_candidate_for_import(&crate::CandidateKey::folder(&candidate), "import-1")
         .await;
 
-    let change = tokio::time::timeout(Duration::from_secs(1), changes.recv())
+    let change = tokio::time::timeout(HANG_GUARD, changes.recv())
         .await
         .expect("the queued status is published")
         .expect("runtime changes remain open");

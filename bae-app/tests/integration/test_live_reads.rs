@@ -9,13 +9,12 @@ use bae_library::test_libraries::{
 };
 use bae_transfers::StoredTransition;
 use bae_types::release_storage::ReleaseStorageAction;
+use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::StorageRowStatus;
 use bae_views::LibraryViews;
 use coven::MemoryStorage;
 use std::sync::Arc;
 use tempfile::TempDir;
-
-const WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// A test library over in-memory storage, with storage not yet set up.
 async fn open_library() -> (TestLibrary, Arc<MemoryStorage>, TempDir) {
@@ -69,13 +68,13 @@ async fn queued_upload_library(
     (library, storage, dir, release, file_id)
 }
 
-/// Pull `next` until `wanted` holds of a value, failing after [`WAIT`].
+/// Pull `next` until `wanted` holds of a value, failing if none ever does.
 async fn until<Value, Error: std::fmt::Debug>(
     what: &str,
     mut next: impl AsyncFnMut() -> Result<Value, Error>,
     wanted: impl Fn(&Value) -> bool,
 ) {
-    tokio::time::timeout(WAIT, async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             if wanted(&next().await.unwrap()) {
                 return;
@@ -151,7 +150,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
 
     let values = bae_app::live_reads::subscribe_album_detail(&manager, &views(&manager));
     values.set(Some(album.id.clone())).unwrap();
-    let delivered = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let delivered = tokio::time::timeout(HANG_GUARD, async {
         loop {
             match values.next().await {
                 Ok(snapshot) if snapshot.id.is_none() => continue,
@@ -194,11 +193,10 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         let values = &values;
         async move {
             loop {
-                let snapshot =
-                    tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
-                        .await
-                        .expect("the album detail delivers")
-                        .expect("the album detail resolves");
+                let snapshot = tokio::time::timeout(HANG_GUARD, values.next())
+                    .await
+                    .expect("the album detail delivers")
+                    .expect("the album detail resolves");
                 if snapshot.id == id {
                     return snapshot;
                 }
@@ -237,7 +235,7 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
         |accept: fn(&[bae_types::release_storage::ReleaseStorageAction]) -> bool| {
             let values = &values;
             async move {
-                tokio::time::timeout(std::time::Duration::from_secs(20), async {
+                tokio::time::timeout(HANG_GUARD, async {
                     loop {
                         let snapshot = values.next().await.expect("the release detail resolves");
                         if let Some(detail) = snapshot.value {
@@ -308,7 +306,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
 
     loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+        let value = tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("the pin reaches the storage view")
             .unwrap();
@@ -321,7 +319,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
 async fn next_storage_value(
     values: &bae_app::live_reads::LiveStorageBrowse,
 ) -> bae_views::StorageBrowseSnapshot {
-    tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+    tokio::time::timeout(HANG_GUARD, values.next())
         .await
         .expect("the storage view delivers")
         .expect("the storage view resolves")
@@ -466,7 +464,7 @@ async fn inspector_until(
     inspector: &bae_library::LiveDetail<bae_views::storage_inspector::StorageInspector>,
     accept: impl Fn(&bae_views::storage_inspector::StorageInspector) -> bool,
 ) -> bae_views::storage_inspector::StorageInspector {
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let snapshot = inspector.next().await.expect("the inspector reads");
             if let Some(value) = snapshot.value.filter(|value| accept(value)) {

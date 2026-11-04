@@ -12,10 +12,10 @@ use crate::identification::tests::*;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;
 use bae_catalogs::test_releases::mb_release_json;
+use bae_util::test_channels::HANG_GUARD;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
-use std::time::Duration;
 
 /// A pass that reads two disc folders as one release probes each disc's audio
 /// once: the release reuses the facts the disc folders were read with.
@@ -691,7 +691,7 @@ async fn a_relaunch_queues_no_candidate_the_library_stored() {
     let import = fixture.parts.start().await.unwrap();
     let identification = import.start_identification_queue();
     fixture.rescan(&import, 1).await;
-    tokio::time::timeout(Duration::from_secs(30), identification.automatic_drained_for_test())
+    tokio::time::timeout(HANG_GUARD, identification.automatic_drained_for_test())
         .await
         .expect("the relaunched queue drains");
 

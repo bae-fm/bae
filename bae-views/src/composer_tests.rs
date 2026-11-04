@@ -7,8 +7,8 @@ use bae_db::test_fixtures::composed_work::*;
 use bae_db::test_fixtures::live_query::*;
 use bae_db::test_fixtures::*;
 use bae_db::test_fixtures::{exec, exec_batch};
+use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
-use std::time::Duration;
 
 const COMPOSER_A: &str = "5dcc4999-03bd-42cc-8d14-8bf0a05effa3";
 const COMPOSER_B: &str = "2b748d47-e5b7-4c40-8716-1e608b9dfc3d";
@@ -430,7 +430,7 @@ async fn next_composer_page_is_only_a_rename(
 ) -> ComposerBrowseProjection {
     let composer_id = shown.windows[0].rows[0].artist.id.clone();
     exec(db, "UPDATE artists SET name = ?1 WHERE id = ?2", &[name, composer_id.as_str()]).await;
-    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let renamed = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("renaming the shown composer wakes composer browse")
         .expect("the query stays open")
@@ -490,7 +490,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         &[OTHER_COMPOSER_ID],
     )
     .await;
-    let renamed_event = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let renamed_event = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("non-first composer metadata wakes composer browse")
         .expect("the query stays open");
@@ -538,7 +538,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
 
     let replaced_composer_image =
         write_artist_image(&db, OTHER_COMPOSER_ID, "replaced composer image bytes").await;
-    let image_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
+    let image_updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a requested composer's image version wakes composer browse")
         .expect("the query stays open")
@@ -594,7 +594,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
             ComposerBrowseProjection,
         >,
                             expected: Vec<(&str, i64)>| {
-            tokio::time::timeout(Duration::from_secs(20), async {
+            tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let shown = live.next().await.expect("the query stays open").result.unwrap();
                     let rows = shown.windows[0]
