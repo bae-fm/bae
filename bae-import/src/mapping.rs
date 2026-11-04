@@ -13,6 +13,7 @@ use crate::folder_scanner::{
 use crate::probe::SourceDurations;
 use crate::types::{AudioFile, CandidateDraft, CandidateTrack, RawTrackEdit};
 use crate::ImportError;
+use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use std::collections::{BTreeSet, HashMap};
 
 /// The mapping table: every source unit the folder offers, alongside the track
@@ -504,10 +505,7 @@ impl RowBuilder<'_> {
                 track: track.edit.as_edit(),
                 position: position.text(),
                 duration_ms: source_length.or(probed_duration_ms),
-                lengths_disagree: crate::audio_layout::lengths_disagree(
-                    probed_duration_ms,
-                    source_length,
-                ),
+                lengths_disagree: lengths_disagree(probed_duration_ms, source_length),
             },
         ))
     }
@@ -705,6 +703,16 @@ fn disc_options(files: &CategorizedFiles) -> Vec<u32> {
     let mut options = (1..=bound.max(1)).collect::<BTreeSet<_>>();
     options.extend(assigned);
     options.into_iter().collect()
+}
+
+/// Whether a row's two lengths are far enough apart to be worth pointing at.
+/// `false` when either side has no number: there is nothing to compare, which
+/// is not the same as agreeing.
+fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
+    let (Some(file), Some(release)) = (file_ms, release_ms) else {
+        return false;
+    };
+    file.abs_diff(release) > LENGTH_DISAGREEMENT_MS
 }
 
 #[cfg(test)]

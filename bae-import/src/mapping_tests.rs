@@ -5,6 +5,7 @@ use crate::folder_scanner::{
 };
 use crate::pane::blank_candidate_draft;
 use crate::probe::{source_durations, SourceDurations};
+use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use bae_types::pressing::{made_of, Medium};
 use std::fs;
 use std::path::Path;
@@ -795,4 +796,19 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     for (name, count) in ["first.flac", "second.flac"].into_iter().zip(opens) {
         assert_eq!(bae_audio::test_reads::probes(&tmp.path().join(name)), count);
     }
+}
+
+/// The row decides one way for both surfaces. A rip that differs by a
+/// pregap and a rounded second reads as agreement; one that differs by a
+/// whole different take does not; and a length nobody could read is not a
+/// disagreement, because there is nothing to compare.
+#[test]
+fn a_length_nobody_can_read_is_not_a_disagreement() {
+    assert!(!lengths_disagree(Some(180_000), Some(180_000)));
+    assert!(!lengths_disagree(Some(180_000), Some(180_000 + LENGTH_DISAGREEMENT_MS)));
+    assert!(lengths_disagree(Some(180_000), Some(180_001 + LENGTH_DISAGREEMENT_MS)));
+    assert!(lengths_disagree(Some(180_000), Some(120_000)));
+    assert!(!lengths_disagree(None, Some(180_000)));
+    assert!(!lengths_disagree(Some(180_000), None));
+    assert!(!lengths_disagree(None, None));
 }

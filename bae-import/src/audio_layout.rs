@@ -11,20 +11,9 @@ use crate::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
 use crate::probe::{sheet_analysis, SourceDurations};
 use crate::types::{AudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::ImportError;
-use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::debug;
-
-/// Whether a row's two lengths are far enough apart to be worth pointing at.
-/// `false` when either side has no number: there is nothing to compare, which
-/// is not the same as agreeing.
-pub(crate) fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
-    let (Some(file), Some(release)) = (file_ms, release_ms) else {
-        return false;
-    };
-    file.abs_diff(release) > LENGTH_DISAGREEMENT_MS
-}
 
 /// What one of the folder's audio files contributes to the unit list.
 #[derive(Debug, Clone)]

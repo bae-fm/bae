@@ -4,7 +4,6 @@ use crate::folder_scanner::{
     SheetDiscEdits, StoredCandidateEdits,
 };
 use crate::probe::source_durations;
-use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use std::fs;
 use std::path::Path;
 
@@ -323,21 +322,6 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
         analyses.windows(2).all(|pair| pair[0] == pair[1]),
         "one sheet is parsed and probed once for all its slices",
     );
-}
-
-/// The row decides one way for both surfaces. A rip that differs by a
-/// pregap and a rounded second reads as agreement; one that differs by a
-/// whole different take does not; and a length nobody could read is not a
-/// disagreement, because there is nothing to compare.
-#[test]
-fn a_length_nobody_can_read_is_not_a_disagreement() {
-    assert!(!lengths_disagree(Some(180_000), Some(180_000)));
-    assert!(!lengths_disagree(Some(180_000), Some(180_000 + LENGTH_DISAGREEMENT_MS)));
-    assert!(lengths_disagree(Some(180_000), Some(180_001 + LENGTH_DISAGREEMENT_MS)));
-    assert!(lengths_disagree(Some(180_000), Some(120_000)));
-    assert!(!lengths_disagree(None, Some(180_000)));
-    assert!(!lengths_disagree(Some(180_000), None));
-    assert!(!lengths_disagree(None, None));
 }
 
 /// A slice's length comes from the sheet's own timing, and the last slice —
