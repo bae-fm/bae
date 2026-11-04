@@ -176,35 +176,12 @@ impl PlaybackPreparedTrack {
 
     /// Decoder windows for this track starting `offset` samples in.
     fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
-        let mut remaining_offset = offset;
-        let leading_silence_frames =
-            if include_pregap { self.generated_pregap_frames.saturating_sub(offset) } else { 0 };
-        if include_pregap {
-            remaining_offset = remaining_offset.saturating_sub(self.generated_pregap_frames);
-        }
-
-        let mut segments = Vec::new();
-        for segment in &self.segments {
-            if !include_pregap && segment.role == DbAudioSegmentRole::AudioPregap {
-                continue;
-            }
-            let segment_len =
-                segment.span.end_sample.map(|end| end.saturating_sub(segment.span.start_sample));
-            if let Some(len) = segment_len {
-                if remaining_offset >= len {
-                    remaining_offset -= len;
-                    continue;
-                }
-            }
-            segments.push(segment.decode_params(remaining_offset, &self.content_type));
-            remaining_offset = 0;
-        }
-
-        StreamDecodeParams::new(
-            segments,
-            bae_audio::byte_jump_keeps_place(&self.content_type),
-            leading_silence_frames,
-            0,
+        stream_decode(
+            &self.segments,
+            &self.content_type,
+            self.generated_pregap_frames,
+            offset,
+            include_pregap,
         )
     }
 
@@ -242,6 +219,66 @@ impl PlaybackPreparedTrack {
     }
 }
 
+/// `resolved`'s stream decoded once from its first sample, as playback decodes
+/// the track from its start: the silence a CUE `PREGAP` generates, then each
+/// segment, pregap included, starting where playback starts it (an MP3 from
+/// the stream's start or a stored scrub point). Each segment reads through
+/// the buffer `buffer_of` gives it.
+pub fn track_stream_decode(
+    resolved: &ResolvedTrackAudio,
+    mut buffer_of: impl FnMut(&bae_db::ResolvedTrackAudioSegment) -> SharedSparseBuffer,
+) -> StreamDecodeParams {
+    let segments: Vec<PreparedAudioSegment> = resolved
+        .segments
+        .iter()
+        .map(|segment| PreparedAudioSegment::of(segment, buffer_of(segment)))
+        .collect();
+    stream_decode(&segments, &resolved.content_type, resolved.generated_pregap_frames(), 0, true)
+}
+
+/// Decoder windows for a track's stream from `offset` samples in, over its
+/// `segments` of a `content_type` file, after `generated_pregap_frames` of
+/// silence a CUE `PREGAP` generates. Without `include_pregap` the silence and
+/// the stored pregap segment are left out, and `offset` counts from INDEX 01.
+fn stream_decode(
+    segments: &[PreparedAudioSegment],
+    content_type: &bae_util::content_type::ContentType,
+    generated_pregap_frames: u64,
+    offset: u64,
+    include_pregap: bool,
+) -> StreamDecodeParams {
+    let mut remaining_offset = offset;
+    let leading_silence_frames =
+        if include_pregap { generated_pregap_frames.saturating_sub(offset) } else { 0 };
+    if include_pregap {
+        remaining_offset = remaining_offset.saturating_sub(generated_pregap_frames);
+    }
+
+    let mut windows = Vec::new();
+    for segment in segments {
+        if !include_pregap && segment.role == DbAudioSegmentRole::AudioPregap {
+            continue;
+        }
+        let segment_len =
+            segment.span.end_sample.map(|end| end.saturating_sub(segment.span.start_sample));
+        if let Some(len) = segment_len {
+            if remaining_offset >= len {
+                remaining_offset -= len;
+                continue;
+            }
+        }
+        windows.push(segment.decode_params(remaining_offset, content_type));
+        remaining_offset = 0;
+    }
+
+    StreamDecodeParams::new(
+        windows,
+        bae_audio::byte_jump_keeps_place(content_type),
+        leading_silence_frames,
+        0,
+    )
+}
+
 #[derive(Clone)]
 struct PreparedAudioSegment {
     role: DbAudioSegmentRole,
@@ -254,6 +291,17 @@ struct PreparedAudioSegment {
 }
 
 impl PreparedAudioSegment {
+    /// `segment`, its bytes read through `buffer`.
+    fn of(segment: &bae_db::ResolvedTrackAudioSegment, buffer: SharedSparseBuffer) -> Self {
+        Self {
+            role: segment.role.clone(),
+            file_id: segment.file_id.clone(),
+            buffer,
+            span: segment.span,
+            scrub_points: segment.scrub_points.clone(),
+        }
+    }
+
     /// This segment's decoder window, starting `offset` samples in, in a file
     /// of `content_type`, from where [`segment_start`] says.
     fn decode_params(

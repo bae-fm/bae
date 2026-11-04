@@ -44,32 +44,20 @@ impl LibraryManager {
     /// and seeks by. One stream per file the segments read; they close when
     /// the returned decode is dropped.
     pub fn open_track_decode(&self, audio: &bae_db::ResolvedTrackAudio) -> crate::TrackDecode {
-        use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
-
         let mut streams: std::collections::HashMap<
-            &str,
+            String,
             bae_audio::sparse_buffer::SharedSparseBuffer,
         > = std::collections::HashMap::new();
-        let segments = audio
-            .segments
-            .iter()
-            .map(|segment| {
-                let buffer = streams
-                    .entry(segment.file_id.as_str())
-                    .or_insert_with(|| {
-                        self.open_release_file_stream(&segment.file_id, segment.file_size)
-                    })
-                    .clone();
-                SegmentDecodeParams::new(buffer, segment.span, 0)
-            })
-            .collect();
+        let decode = bae_playback::service::track_stream_decode(audio, |segment| {
+            streams
+                .entry(segment.file_id.clone())
+                .or_insert_with(|| {
+                    self.open_release_file_stream(&segment.file_id, segment.file_size)
+                })
+                .clone()
+        });
         crate::TrackDecode::new(
-            StreamDecodeParams::new(
-                segments,
-                bae_audio::byte_jump_keeps_place(&audio.content_type),
-                audio.generated_pregap_frames(),
-                0,
-            ),
+            decode,
             audio.sample_rate.get(),
             audio.channels.get(),
             self.diagnostics.clone(),

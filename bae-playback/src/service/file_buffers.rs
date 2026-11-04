@@ -173,13 +173,7 @@ pub(super) async fn prepare_track_for_playback(
                 buffer
             }
         };
-        prepared_segments.push(PreparedAudioSegment {
-            role: segment.role.clone(),
-            file_id: segment.file_id.clone(),
-            buffer,
-            span: segment.span,
-            scrub_points: segment.scrub_points.clone(),
-        });
+        prepared_segments.push(PreparedAudioSegment::of(segment, buffer));
     }
 
     // Read the replay-gain mode once, here, and pass it down — rather than a

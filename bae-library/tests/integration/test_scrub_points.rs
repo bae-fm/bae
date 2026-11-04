@@ -451,3 +451,50 @@ async fn per_track_mp3s_store_points() {
         assert_eq!(points.len(), [2, 3][index], "{points:?}");
     }
 }
+
+/// The decode a remote renderer is served starts an MP3 track where playback
+/// starts it, so it holds what a decode of the file from its start holds.
+#[tokio::test]
+async fn a_served_mp3_decode_holds_the_files_samples() {
+    bae_util::test_logs::install();
+    let file = noise_mp3(12, 17);
+    let written = file.clone();
+    let (library, imported) = bae_library::test_libraries::imported_release_setup(
+        release("scrub-points-served-mp3", &[("Track One", "0:12")]),
+        "test",
+        uuid::Uuid::new_v4().to_string(),
+        move |dir| std::fs::write(dir.join("01 Track One.mp3"), &written).unwrap(),
+    )
+    .await
+    .expect("import the release");
+    let audio = tracks(&library, &imported.release_id).await.remove(0);
+    let decode = library.open_track_decode(&audio);
+    let served = tokio::task::spawn_blocking(move || {
+        let mut sink = Collected::default();
+        decode
+            .run_to_sink(&mut sink, std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)))
+            .map(|()| sink.samples)
+    })
+    .await
+    .expect("the decode task runs")
+    .expect("the track decodes");
+
+    let whole =
+        bae_audio::decode_audio(bae_audio::test_samples::filled_sparse_buffer(&file), None, None)
+            .expect("decode the file");
+    assert_eq!(served, whole.samples);
+}
+
+/// A decode's interleaved samples.
+#[derive(Default)]
+struct Collected {
+    samples: Vec<i32>,
+}
+
+impl bae_audio::DecodedSink for Collected {
+    fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
+
+    fn on_samples(&mut self, samples: &[i32]) {
+        self.samples.extend_from_slice(samples);
+    }
+}
