@@ -308,7 +308,7 @@ forward! {
         /// appear in the import list as its read finds them.
         fn add_watched_folder(path: Vec<u8>) -> () {
             this.services
-                .import_add_watched_folder(crate::path_bytes::path_from_app(path)?)
+                .import_add_watched_folder(crate::from_app::path(path)?)
                 .await
                 .map_err(BridgeError::from)
         }
@@ -333,14 +333,14 @@ forward! {
 
         fn remove_watched_folder(path: Vec<u8>) -> () {
             this.services
-                .import_remove_watched_folder(crate::path_bytes::path_from_app(path)?)
+                .import_remove_watched_folder(crate::from_app::path(path)?)
                 .await
                 .map_err(BridgeError::from)
         }
 
         fn refresh_watched_folder(path: Vec<u8>) -> () {
             this.services
-                .import_refresh_watched_folder(crate::path_bytes::path_from_app(path)?)
+                .import_refresh_watched_folder(crate::from_app::path(path)?)
                 .await
                 .map_err(BridgeError::from)
         }
@@ -730,7 +730,7 @@ forward! {
         /// the deep cloud read + copy runs on the queue worker.
         fn enqueue_export(release_id: String, target_dir: Vec<u8>) -> () {
             this.services
-                .enqueue_export(&release_id, crate::path_bytes::path_from_app(target_dir)?)
+                .enqueue_export(&release_id, crate::from_app::path(target_dir)?)
                 .await
                 .map_err(BridgeError::from)
         }
@@ -746,7 +746,7 @@ forward! {
             this.services
                 .enqueue_release_save(
                     &release_id,
-                    crate::path_bytes::path_from_app(target_dir)?,
+                    crate::from_app::path(target_dir)?,
                     &preset_id,
                 )
                 .await
@@ -757,7 +757,7 @@ forward! {
         /// (must apply to track saves). Always a constructed file — decoded, encoded
         /// to the preset codec, tagged, cover embedded — never a verbatim copy.
         fn save_track(track_id: String, output_path: Vec<u8>, preset_id: String) -> () {
-            let output_path = crate::path_bytes::path_from_app(output_path)?;
+            let output_path = crate::from_app::path(output_path)?;
             this.services
                 .save_track(&track_id, &output_path, &preset_id)
                 .await

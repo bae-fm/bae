@@ -6,7 +6,7 @@ forward! { async this => {
     fn rename_profile(name: String) -> () { Ok(this.services.rename_profile(&name).await?) }
     fn set_history_sharing(sharing: BridgeSharing) -> () { Ok(this.services.set_history_sharing(sharing.into_core()).await?) }
     fn set_avatar(bytes: Option<Vec<u8>>) -> () { Ok(this.services.set_avatar(bytes).await?) }
-    fn avatar(person: String) -> Option<Vec<u8>> { Ok(this.services.avatar(coven::MemberId(person.parse().map_err(BridgeError::config)?)).await?) }
+    fn avatar(person: String) -> Option<Vec<u8>> { Ok(this.services.avatar(crate::from_app::member(&person)?).await?) }
     fn set_rating(target: BridgeRatingTarget, stars: Option<BridgeStars>) -> () { Ok(this.services.set_rating(target.into_core(), stars.map(BridgeStars::into_core)).await?) }
     fn ratings() -> Vec<BridgeRating> { Ok(this.services.ratings().await?.into_iter().map(BridgeRating::from_core).collect()) }
     fn create_playlist(name: String, sharing: BridgeSharing) -> BridgePlaylist { Ok(BridgePlaylist::from_core(this.services.create_playlist(&name,sharing.into_core()).await?)) }

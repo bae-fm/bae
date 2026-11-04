@@ -14,8 +14,7 @@ impl AppHandle {
 // awaits off its own thread.
 forward! { async this => {
     fn rename_library(name: String) -> () {
-        let name = bae_db::EnteredName::parse(&name)
-            .map_err(|error| BridgeError::config(error.to_string()))?;
+        let name = crate::from_app::name(&name)?;
         this.services.rename_library(&name).await?;
         Ok(())
     }

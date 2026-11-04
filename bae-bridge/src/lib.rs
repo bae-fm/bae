@@ -11,6 +11,7 @@ mod audio_focus;
 mod bridge_utils;
 #[cfg(all(feature = "dev-reset", unix))]
 mod dev_reset;
+mod from_app;
 mod handle;
 mod host;
 // Only a phone calls into its host: its audio focus and sign-in presenter.
@@ -20,7 +21,6 @@ mod init;
 mod keyed_values;
 mod oauth;
 mod operation_runtime;
-mod path_bytes;
 mod screens;
 mod setup;
 #[cfg(feature = "desktop")]

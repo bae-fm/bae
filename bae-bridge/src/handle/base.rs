@@ -165,7 +165,7 @@ forward! { async this => {
     }
 
     fn detach_release_audio(release_id: String, new_path: Vec<u8>) -> () {
-        let new_path = crate::path_bytes::path_from_app(new_path)?;
+        let new_path = crate::from_app::path(new_path)?;
         Ok(this.services.detach_release_audio(&release_id, &new_path).await?)
     }
 

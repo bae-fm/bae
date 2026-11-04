@@ -90,7 +90,7 @@ impl BridgeHost {
         self: Arc<Self>,
         library_id: String,
     ) -> Result<(), BridgeError> {
-        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let store = crate::from_app::store(&library_id)?;
         self.operations
             .clone()
             .run("BridgeHost.forget_saved_restore_code", move || async move {
@@ -146,7 +146,7 @@ impl BridgeHost {
         opening: Arc<crate::BridgeLibraryOpening>,
         cancellation: Arc<BootstrapCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let store = crate::from_app::store(&library_id)?;
         let report = opening.report();
         let cancel = cancellation.cancel.subscribe();
         let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
@@ -293,7 +293,7 @@ impl BridgeHost {
     ) -> Result<Arc<BridgeDeviceReset>, BridgeError> {
         Ok(Arc::new(BridgeDeviceReset {
             host: self,
-            store: coven::StoreId(library_id.parse().map_err(BridgeError::config)?),
+            store: crate::from_app::store(&library_id)?,
             device_name,
         }))
     }

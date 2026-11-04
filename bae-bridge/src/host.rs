@@ -288,7 +288,7 @@ impl BridgeHost {
         library_id: String,
         opening: Arc<crate::BridgeLibraryOpening>,
     ) -> Result<crate::BridgeUnsentWork, BridgeError> {
-        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let store = crate::from_app::store(&library_id)?;
         let builder = self.builder();
         let report = opening.report();
         self.operations
@@ -310,7 +310,7 @@ impl BridgeHost {
         library_id: String,
         closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
-        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let store = crate::from_app::store(&library_id)?;
         let steps =
             closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
         self.operations
@@ -355,7 +355,7 @@ impl BridgeHost {
         let builder = self.builder();
         let steps = setup.writer();
         let name = match name {
-            Some(name) => bae_db::EnteredName::parse(&name).map_err(BridgeError::config)?,
+            Some(name) => crate::from_app::name(&name)?,
             None => bae_library::library_name::generate_library_name(),
         };
         self.operations
@@ -413,7 +413,7 @@ pub fn init_app(
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-    host.wait_for_closing(coven::StoreId(library_id.parse().map_err(BridgeError::config)?));
+    host.wait_for_closing(crate::from_app::store(&library_id)?);
     host.diagnostics.open_app(
         host.app_dir.clone(),
         library_id,
@@ -435,7 +435,7 @@ pub fn init_app_on_fixture(
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-    host.wait_for_closing(coven::StoreId(library_id.parse().map_err(BridgeError::config)?));
+    host.wait_for_closing(crate::from_app::store(&library_id)?);
     host.diagnostics.open_app_on_fixture(
         fixture_path.into(),
         host.app_dir.clone(),

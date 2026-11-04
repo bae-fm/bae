@@ -25,7 +25,7 @@ impl BridgePreviewTarget {
         self,
     ) -> Result<bae_track_audio::PreviewTarget, crate::types::BridgeError> {
         Ok(bae_track_audio::PreviewTarget::sample_range(
-            crate::path_bytes::path_from_app(self.path)?,
+            crate::from_app::path(self.path)?,
             self.start_sample,
             self.end_sample,
         ))

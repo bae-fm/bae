@@ -14,7 +14,7 @@ impl crate::types::BridgeFolderReleaseDecisionKey {
     ) -> Result<bae_import::FolderReleaseDecisionKey, crate::types::BridgeError> {
         let Self { watched_folder_path, relative_folder } = self;
         Ok(bae_import::FolderReleaseDecisionKey {
-            watched_folder_path: crate::path_bytes::path_from_app(watched_folder_path)?,
+            watched_folder_path: crate::from_app::path(watched_folder_path)?,
             relative_folder: bae_db::RelativeFolder::from_bytes(relative_folder).map_err(
                 |error| {
                     crate::types::BridgeError::internal(format!("a folder from the app: {error}"))

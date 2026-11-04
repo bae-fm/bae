@@ -53,7 +53,7 @@ impl BridgeHost {
         for (done, library) in libraries.iter().enumerate() {
             steps.step(Step::RemovingLibraries, done as u64, total);
             tracing::info!(library = %library.id, "dev reset: removing a library");
-            let store = coven::StoreId(library.id.parse().map_err(BridgeError::config)?);
+            let store = crate::from_app::store(&library.id)?;
             self.closed(store).await?;
             self.remove_unopenable_library_now(store, &crate::screens::ClosingSteps::unread())
                 .await
@@ -85,8 +85,7 @@ impl BridgeHost {
         self.app_dir.clear().map_err(BridgeError::internal)?;
 
         steps.uncounted(Step::CreatingLibrary);
-        let name =
-            bae_db::EnteredName::parse(&profile.library_name).map_err(BridgeError::config)?;
+        let name = crate::from_app::name(&profile.library_name)?;
         tracing::info!(name = %profile.library_name, "dev reset: creating the library");
         let created = Arc::new(crate::OpenedLibrary::new(
             bae_library::create_library(self.builder(), name).await?,
