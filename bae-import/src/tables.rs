@@ -7,7 +7,6 @@
 mod album_link_rows;
 mod artist_identity_choice;
 mod artist_identity_merge;
-mod candidate_state_rows;
 mod downscaled_copies;
 mod folder_scans;
 mod import_list;

@@ -164,7 +164,7 @@ fn delete_what_the_import_spent_on(
             super::album_pick_rows::delete_album_pick(sql, content_hash)?;
             super::pane_rows::delete_draft(sql, content_hash)?;
             // The cover takes its copies and its fetched bytes.
-            super::pane_rows::delete_cover(sql, content_hash)?;
+            super::cover_rows::delete_cover(sql, content_hash)?;
             super::release_link_rows::store_release_link(sql, content_hash, None)
         }
         #[cfg(test)]

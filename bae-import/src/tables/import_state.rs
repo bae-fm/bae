@@ -7,6 +7,7 @@ use super::*;
 use bae_db::client::query::CandidateRows;
 
 mod album_pick_rows;
+mod cover_rows;
 mod draft_store;
 pub(super) mod failure_rows;
 mod file_decision_rows;
@@ -17,7 +18,6 @@ mod lookup_failure_columns;
 mod match_rows;
 mod pane_rows;
 mod preparation_rows;
-mod prepared_asset_rows;
 mod release_link_rows;
 mod rows;
 mod run_rows;
@@ -29,13 +29,14 @@ mod standing_rows;
 mod verdict_rows;
 
 pub(super) use album_pick_rows::load_album_pick_on;
+pub(super) use cover_rows::{cover_read_columns, read_cover};
 use failure_rows::{delete_failure_on, load_failure_on};
 use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_candidates};
 pub(super) use file_decision_rows::{load_candidate_file_edits_on, store_file_edits};
 pub use import_commit::ImportCommitError;
 pub(crate) use import_commit::{ImportCommitGuard, ImportRows, NewArtistImages};
+pub(super) use pane_rows::load_pane_rows_on;
 pub use pane_rows::DbCandidatePaneRows;
-pub(super) use pane_rows::{cover_read_columns, load_pane_rows_on, read_cover};
 pub(super) use pane_rows::{read_provenance, PROVENANCE_COLUMNS};
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,

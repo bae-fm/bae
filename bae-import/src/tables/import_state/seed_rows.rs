@@ -68,7 +68,7 @@ pub(crate) fn ensure_candidate_state(
         }
     };
     if let Some(cover) = cover {
-        crate::tables::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;
+        super::cover_rows::save_cover(sql, &content_hash, &cover)?;
     }
     Ok(())
 }

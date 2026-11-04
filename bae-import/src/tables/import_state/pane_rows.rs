@@ -1,6 +1,6 @@
 //! The draft's rows — the album fields, the tracks with their decisions, the
-//! artist assignments, the cover — as one candidate's save writes them and
-//! the pane's read draws them.
+//! artist assignments — as one candidate's save writes them and the pane's
+//! read draws them with the candidate's cover (`cover_rows`).
 //!
 //! Every row group hangs off the candidate by content hash, and the draft's
 //! own provenance and tracks hang off `import_candidate_edit`. A save writes
@@ -17,13 +17,11 @@ pub(crate) use provenance::{
 
 use super::*;
 use crate::cover_art::PreparedCover;
-use crate::tables::downscaled_copies::{copies_json_sql, copies_of};
 use crate::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
     MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 use bae_catalogs::credits::ArtistCredit;
-use bae_catalogs::remote_image::RemoteImageSet;
 use std::str::FromStr;
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
@@ -32,11 +30,6 @@ const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, medium, side, track_number, stated_length_ms, \
      file_kind, file_id, sheet_id, slice_index";
-
-pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_cover WHERE content_hash = ?", [content_hash])?;
-    Ok(())
-}
 
 /// The column a draft's author is stored as.
 fn author_column(author: MetadataAuthor) -> &'static str {
@@ -319,7 +312,7 @@ pub(super) fn load_draft_and_cover_on(
 ) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
     if let Some(draft) = load_drafts_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
     {
-        return Ok((draft, load_cover_on(sql, content_hash)?));
+        return Ok((draft, super::cover_rows::load_cover_on(sql, content_hash)?));
     }
     if crate::tables::import_origin::imported_release_on(sql, content_hash)?.is_some() {
         return Err(DbError::Message(format!(
@@ -344,94 +337,6 @@ pub(super) fn load_draft_and_cover_on(
             ))
         })?;
     Ok((candidate.blank_draft(), candidate.blank_cover().as_ref().map(PreparedCover::selection)))
-}
-
-/// A candidate's cover choice as columns of a read that joins its row as
-/// `cover`, with the copies the catalog serves of a remote one as a JSON
-/// array. A candidate with no choice reads `cover_row` as NULL.
-pub(crate) fn cover_read_columns() -> String {
-    // Only a remote choice has an address for copies to reference.
-    let copies = copies_json_sql(
-        "import_candidate_cover_copy",
-        "copy.content_hash = cover.content_hash AND copy.image_url = cover.url",
-    );
-    format!(
-        "cover.content_hash AS cover_row, cover.kind AS cover_kind, \
-         cover.file_id AS cover_file_id, cover.url AS cover_url, \
-         cover.source AS cover_source, {copies} AS cover_copies"
-    )
-}
-
-/// One candidate's [`cover_read_columns`] as SQLite hands them over.
-pub(crate) struct StoredCover {
-    kind: String,
-    file_id: Option<String>,
-    url: Option<String>,
-    source: Option<String>,
-    copies: String,
-}
-
-/// The [`cover_read_columns`] of `row`; none for a candidate that chose no
-/// cover.
-pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>> {
-    if row.get::<_, Option<String>>("cover_row")?.is_none() {
-        return Ok(None);
-    }
-    Ok(Some(StoredCover {
-        kind: row.get("cover_kind")?,
-        file_id: row.get("cover_file_id")?,
-        url: row.get("cover_url")?,
-        source: row.get("cover_source")?,
-        copies: row.get("cover_copies")?,
-    }))
-}
-
-impl StoredCover {
-    pub(crate) fn selection(self) -> Result<CoverSelection, DbError> {
-        match self.kind.as_str() {
-            "local" => Ok(CoverSelection::Local(
-                self.file_id
-                    .ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
-            )),
-            "embedded" => Ok(CoverSelection::Embedded(self.file_id.ok_or_else(|| {
-                DbError::Message("an embedded cover names no source file".into())
-            })?)),
-            "remote" => {
-                Ok(CoverSelection::Remote(
-                    RemoteImageSet::with_copies(
-                        self.url.ok_or_else(|| {
-                            DbError::Message("a remote cover names no address".into())
-                        })?,
-                        copies_of(&self.copies)?,
-                    ),
-                    Catalog::from_str(&self.source.ok_or_else(|| {
-                        DbError::Message("a remote cover names no source".into())
-                    })?)
-                    .map_err(DbError::Message)?,
-                ))
-            }
-            other => Err(DbError::unreadable("import_candidate_cover.kind", other)),
-        }
-    }
-}
-
-/// The cover the candidate `content_hash` chose, if it chose one.
-pub(super) fn load_cover_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
-    content_hash: &str,
-) -> Result<Option<CoverSelection>, DbError> {
-    sql.query_row(
-        &format!(
-            "SELECT {} FROM import_candidate_cover AS cover WHERE cover.content_hash = ?",
-            cover_read_columns()
-        ),
-        [content_hash],
-        read_cover,
-    )
-    .optional()?
-    .flatten()
-    .map(StoredCover::selection)
-    .transpose()
 }
 
 /// Every candidate's complete stored draft, or the one `only` names: one row

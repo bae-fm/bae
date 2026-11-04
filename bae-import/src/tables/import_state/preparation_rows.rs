@@ -148,7 +148,7 @@ pub(super) fn load_preparation_on(
         return Ok(Some(CandidatePreparationRead::Imported { release_id }));
     }
     let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, content_hash)?;
-    let cover = prepared_asset_rows::load_prepared_cover_on(sql, content_hash, cover)?;
+    let cover = cover_rows::load_prepared_cover_on(sql, content_hash, cover)?;
     Ok(Some(CandidatePreparationRead::Stored(CandidatePreparation {
         content_hash: state.content_hash,
         candidate_key: state.candidate_key,
@@ -285,10 +285,8 @@ pub(super) fn save_preparation_on(
         }
         if stored.metadata.cover != prep.metadata.cover {
             match &prep.metadata.cover {
-                Some(cover) => {
-                    crate::tables::candidate_state_rows::save_cover(sql, content_hash, cover)?
-                }
-                None => pane_rows::delete_cover(sql, content_hash)?,
+                Some(cover) => cover_rows::save_cover(sql, content_hash, cover)?,
+                None => cover_rows::delete_cover(sql, content_hash)?,
             }
         }
     } else {
@@ -300,7 +298,7 @@ pub(super) fn save_preparation_on(
             pane_rows::insert_provenance(sql, content_hash, provenance)?;
         }
         if let Some(cover) = &prep.metadata.cover {
-            crate::tables::candidate_state_rows::save_cover(sql, content_hash, cover)?;
+            cover_rows::save_cover(sql, content_hash, cover)?;
         }
     }
     if (&stored.file_edits.sheet_bindings, &stored.file_edits.sheet_discs)
