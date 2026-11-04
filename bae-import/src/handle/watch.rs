@@ -187,6 +187,26 @@ impl ImportServiceHandle {
             })?
             .map_err(|detail| crate::ImportError::Watch { detail })
     }
+
+    /// The first folder scans `accept` admits, waiting through the query's
+    /// values until one does.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn wait_for_folder_scans(
+        &self,
+        mut accept: impl FnMut(&crate::FolderScanProgress) -> bool,
+    ) -> crate::FolderScanProgress {
+        let mut scans = self.tables.subscribe_folder_scan_progress();
+        loop {
+            let progress = scans
+                .next()
+                .await
+                .expect("the folder scan query stays open")
+                .expect("the folder scan query reads");
+            if accept(&progress) {
+                return progress;
+            }
+        }
+    }
 }
 
 #[cfg(test)]

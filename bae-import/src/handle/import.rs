@@ -480,6 +480,62 @@ impl ImportServiceHandle {
         let _commit = self.folder_state_commit.lock("release an import claim").await;
         Ok(self.runtime.move_import(candidate_key, import_id, None).await?)
     }
+
+    /// Claim a candidate the way committing an import does, for a test with no
+    /// worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn claim_candidate_for_import_for_test(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        import_id: &str,
+    ) {
+        self.claim_candidate_for_import(candidate_key, import_id).await;
+    }
+
+    /// End an import's claim on a candidate the way the import's own ending
+    /// does, for a test with no worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn end_candidate_import_for_test(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        import_id: &str,
+    ) {
+        self.runtime
+            .move_import(candidate_key, import_id, None)
+            .await
+            .expect("a test ends the claim it made");
+    }
+
+    /// Move an import's claim the way the worker's steps do, for a test with
+    /// no worker behind it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn move_candidate_import_for_test(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        import_id: &str,
+        step: crate::ImportStep,
+    ) {
+        self.runtime
+            .move_import(candidate_key, import_id, Some(step))
+            .await
+            .expect("a test moves the claim it made");
+    }
+
+    /// Claim `candidate_key` for the test import `import_id`, under the lock
+    /// [`Self::save_candidate_verdict_if_current`] holds across its check and
+    /// write, so no verdict is stored for a claimed candidate.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) async fn claim_candidate_for_import(
+        &self,
+        candidate_key: &crate::CandidateKey,
+        import_id: &str,
+    ) {
+        let _commit = self.folder_state_commit.lock("claim a candidate for a test").await;
+        self.runtime
+            .claim_for_import(candidate_key, import_id, false)
+            .await
+            .expect("a test claims a candidate no import owns");
+    }
 }
 
 #[cfg(test)]

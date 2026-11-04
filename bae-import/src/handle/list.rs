@@ -107,6 +107,45 @@ impl ImportServiceHandle {
     > {
         self.tables.subscribe_invalid_candidate(initial)
     }
+
+    /// The import list for `view` as one window over every item, for a test
+    /// that watches it change.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn subscribe_whole_list(&self, view: crate::ImportListView) -> crate::LiveImportList {
+        self.subscribe_list_window(view, bae_db::LibraryPageWindow { offset: 0, limit: u64::MAX })
+            .await
+    }
+
+    /// The import list for `view` through one window, for a test that
+    /// watches what changes off the page.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn subscribe_list_window(
+        &self,
+        view: crate::ImportListView,
+        window: bae_db::LibraryPageWindow,
+    ) -> crate::LiveImportList {
+        self.open_list(view, std::iter::once(window).collect())
+            .await
+            .expect("the import list opens")
+    }
+
+    /// The first import list `accept` admits, waiting through the query's
+    /// values until one does. The list lands after the commit it reflects, so
+    /// a test that just observed a scan event waits here for the read.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn wait_for_list(
+        &self,
+        view: crate::ImportListView,
+        mut accept: impl FnMut(&crate::ImportListSnapshot) -> bool,
+    ) -> crate::ImportListSnapshot {
+        let subscription = self.subscribe_whole_list(view).await;
+        loop {
+            let snapshot = subscription.next().await.expect("the import list query stays open");
+            if accept(&snapshot) {
+                return snapshot;
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -444,6 +444,32 @@ impl ImportServiceHandle {
         });
         ScanEvents(scan_events)
     }
+
+    /// Stop the first thread that reports a measured percent of `phase` of
+    /// an import before the report is recorded or delivered, until
+    /// [`Self::release_progress`], for a test that acts while an import is
+    /// partway through.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn hold_progress_at(&self, phase: crate::ImportPhase) {
+        self.event_tx.hold_progress_at(phase);
+    }
+
+    /// Wait until a thread is stopped where [`Self::hold_progress_at`] said.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn progress_held(&self) {
+        self.event_tx.send_held().await;
+    }
+
+    /// Let the stopped thread go on.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn release_progress(&self) {
+        self.event_tx.release_send();
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn emit_event_for_test(&self, event: ImportEvent) {
+        self.event_tx.send(event);
+    }
 }
 
 #[cfg(test)]
