@@ -33,9 +33,7 @@ use super::{check_no_error, expect_state};
 
 /// The nonce prefix for the pair-verify messages: four zero bytes then the label.
 fn pair_verify_nonce(label: &[u8; 8]) -> Nonce {
-    let mut bytes = [0u8; 12];
-    bytes[4..].copy_from_slice(label);
-    Nonce::from(bytes)
+    super::ap2_channel::nonce_with_tail(label)
 }
 
 /// The pair-verify state machine, driven M1→M3 and yielding the X25519 shared
@@ -186,16 +184,15 @@ impl Ap2AudioCipher {
     /// 4..12). Returns the ciphertext+tag followed by the 8-byte little-endian
     /// nonce counter, which the sender appends after the RTP payload.
     pub(crate) fn seal(&mut self, aad: &[u8], payload: &[u8]) -> Vec<u8> {
-        let mut nonce_bytes = [0u8; 12];
-        nonce_bytes[4..].copy_from_slice(&self.counter.to_le_bytes());
+        let tail = self.counter.to_le_bytes();
         let sealed = self
             .cipher
-            .encrypt(Nonce::from_slice(&nonce_bytes), Payload { msg: payload, aad })
+            .encrypt(&super::ap2_channel::nonce_with_tail(&tail), Payload { msg: payload, aad })
             .expect("ChaCha20-Poly1305 seal cannot fail for a valid key");
         self.counter = self.counter.wrapping_add(1);
 
         let mut out = sealed;
-        out.extend_from_slice(&nonce_bytes[4..]);
+        out.extend_from_slice(&tail);
         out
     }
 

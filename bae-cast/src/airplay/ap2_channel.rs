@@ -35,6 +35,14 @@ pub(crate) fn control_keys(shared: &[u8; 32]) -> ([u8; 32], [u8; 32]) {
 }
 
 /// The audio session key `shk` the SETUP streams plist carries to the receiver.
+/// The 12-byte ChaCha20-Poly1305 nonce AirPlay 2 uses everywhere: four zero
+/// bytes, then 8 bytes of `tail` (a little-endian counter or a message label).
+pub(crate) fn nonce_with_tail(tail: &[u8; 8]) -> Nonce {
+    let mut bytes = [0u8; 12];
+    bytes[4..].copy_from_slice(tail);
+    Nonce::from(bytes)
+}
+
 pub(crate) fn audio_key(shared: &[u8; 32]) -> [u8; 32] {
     hkdf32(b"Events-Salt", shared, b"Events-Write-Encryption-Key")
 }
@@ -77,21 +85,17 @@ impl HapChannel {
         }
     }
 
-    fn nonce(counter: u64) -> [u8; 12] {
-        let mut nonce = [0u8; 12];
-        nonce[4..].copy_from_slice(&counter.to_le_bytes());
-        nonce
-    }
-
     /// Seal `plaintext` into one or more length-prefixed encrypted blocks.
     pub(crate) fn seal(&mut self, plaintext: &[u8]) -> Vec<u8> {
         let mut out = Vec::with_capacity(plaintext.len() + 18);
         for block in plaintext.chunks(MAX_BLOCK) {
             let aad = (block.len() as u16).to_le_bytes();
-            let nonce = Self::nonce(self.write_counter);
             let sealed = self
                 .write_cipher
-                .encrypt(Nonce::from_slice(&nonce), Payload { msg: block, aad: &aad })
+                .encrypt(
+                    &nonce_with_tail(&self.write_counter.to_le_bytes()),
+                    Payload { msg: block, aad: &aad },
+                )
                 .expect("ChaCha20-Poly1305 seal cannot fail for a valid key");
             self.write_counter = self.write_counter.wrapping_add(1);
             out.extend_from_slice(&aad);
@@ -117,7 +121,6 @@ impl HapChannel {
             return Ok(None);
         }
         let aad = [self.in_buf[0], self.in_buf[1]];
-        let nonce = Self::nonce(self.read_counter);
         #[expect(
             clippy::map_err_ignore,
             reason = "an AEAD failure is opaque by design: it says only that the tag did not verify"
@@ -125,7 +128,7 @@ impl HapChannel {
         let plaintext = self
             .read_cipher
             .decrypt(
-                Nonce::from_slice(&nonce),
+                &nonce_with_tail(&self.read_counter.to_le_bytes()),
                 Payload { msg: &self.in_buf[2..frame_len], aad: &aad },
             )
             .map_err(|_| ChannelError::Decrypt)?;
