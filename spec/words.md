@@ -60,6 +60,12 @@ catalogs, source and every locale.
 
 - **Devices.** The phones and Macs that have a copy of the library. "This
   device" is the one in your hand.
+- **Recovery code.** The person's own code that adds a new device of theirs
+  to the library, or gets the library back when every device is lost. Always
+  "recovery code", in the apps and in bae's spec; "restore code" is coven's
+  name for it
+  ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
+  An invite is another person's code, never a recovery code.
 - **Everyone.** The listening-history choice that shares your plays with the
   library's people. Not "Household", not "Members".
 

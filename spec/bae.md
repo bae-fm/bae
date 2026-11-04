@@ -2073,10 +2073,10 @@ admin can rename it. Ana renames Household to Home; every device shows Home
 once it syncs the rename. Renaming is an admin entry in coven, so only admins
 can do it: the name is the household's, not one person's.
 
-The name lives in the store. A restore code carries no name: it is kept for
+The name lives in the store. A recovery code carries no name: it is kept for
 years, written down, and a name inside it would go stale with the first
 rename. An invite carries the current name, since it expires within a week.
-The entry coven keeps a restore code in, in iCloud Keychain on Apple devices
+The entry coven keeps a recovery code in, in iCloud Keychain on Apple devices
 and in the phone's Block Store on Android, also saves the name, as one of the
 person's devices last saw it, so a new device's list can say which library
 each code is for (§5.6). It is only a label there: a rename made
@@ -2248,7 +2248,7 @@ editable by every member.
 | Operation | Who | What bae does |
 |---|---|---|
 | Add a person | an admin, by invite ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)) | the new person's device writes their `people` row as it joins |
-| Add a device | the person, from the new device, with their restore code ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) | nothing beyond coven |
+| Add a device | the person, from the new device, with their recovery code ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) | nothing beyond coven |
 | Remove a device | the person, for their own; an admin, for anyone's | nothing beyond coven |
 | Remove a person | an admin | their circle goes, with its rows |
 | Rename the library | an admin | every device shows the new name (§5.1) |
@@ -2289,17 +2289,17 @@ do at the provider, titled as a removal still to happen.
 
 A new phone's first screen is bae's sheep and name over **Scan code** and
 **Enter code**, with no other words: the code says what it is for. An invite
-joins someone's library, and the person's own restore code adds this device to
-theirs. An Android phone that has restore codes saved on it lists them above
+joins someone's library, and the person's own recovery code adds this device to
+theirs. An Android phone that has recovery codes saved on it lists them above
 the two buttons (below). A Mac's first screen offers **Join library** and **Add device**, which
 both lead to the same scan-or-type screen where the code decides the same way,
-and **Create new library**. A restore code's screens call that adding this
+and **Create new library**. A recovery code's screens call that adding this
 device: the button is **Add**, and the running restore says it is adding this
 device. A saved code, in iCloud Keychain or on an Android phone, and a restore
 over this device's copy (§6.4), say **Restore**. A scanned code starts at once, as an invite does, with
 no screen to confirm it: the person scanned it to add this device, so the
 running restore shows next. Only an S3 code without the key stops first, to ask
-for it. A typed restore code shows where its library is stored and waits for
+for it. A typed recovery code shows where its library is stored and waits for
 **Add**. A code that doesn't read says so on the code screen, and a restore
 that fails shows its error beside **Add**, to try again.
 
@@ -2385,7 +2385,7 @@ People lists each person's active devices. Their removed and replaced
 devices, whose records coven keeps, sit under them in a **Removed devices**
 list that starts closed, each marked removed or replaced, with no actions.
 
-**Adding a device.** Carol's new tablet joins with her restore code alone; no
+**Adding a device.** Carol's new tablet joins with her recovery code alone; no
 other device approves it. The code holds Carol's keys, so it already proves the
 tablet is hers
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)),
@@ -2454,13 +2454,13 @@ than looking like a device with no saved codes. An Android phone without
 Google Play services has no Block Store and keeps no saved codes, so its first
 screen lists none.
 
-**The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
+**The S3 key.** On S3 a recovery code doesn't reach the bucket alone: the device
 also needs Carol's S3 access key. The QR code one of her own devices shows is
-her restore code with that key inside it, so scanning it is enough
+her recovery code with that key inside it, so scanning it is enough
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
 The code to type holds no key, and asks for it separately.
 
-**Where the code shows.** The apps call the restore code the *recovery code*.
+**Where the code shows.** The recovery code is coven's *restore code*.
 Carol adds a device from **Add device…** under her own row in People, shown
 only for a library with a cloud home. Its sheet tells her to choose **Add
 device** on the new device, then scan its QR code or type the code it shows;
@@ -2798,7 +2798,7 @@ offers nothing.
   take back a device the library removed.
 - **Replaced keys.** When another of the person's devices replaced their keys,
   this device can no longer send. Its record offers *Restore with code*: bae
-  closes the library and asks for the person's current restore code, warning
+  closes the library and asks for the person's current recovery code, warning
   that restoring loads the library from storage again and discards edits on
   this device that haven't synced. Core checks first that the code restores
   this library; another library's code, or an invite, changes nothing. coven
@@ -2918,7 +2918,7 @@ before anything changes.
 The apps show such a library with that line, in red, where they list
 libraries that can't open: the Mac's library list, and the library switcher
 on phones. They offer only its call. *Finish restoring* asks for the person's
-current restore code, and the S3 key for a library on S3, then restores
+current recovery code, and the S3 key for a library on S3, then restores
 again. *Finish resetting* resets again, without the warning the person
 already accepted. Opening the library, such as at launch, lands on the same
 screen. Going back leaves the library waiting and returns to the open
@@ -2941,7 +2941,7 @@ library until it is unlocked again.
 leave out every library and its stores and the keyring: they are this
 device's, and a copy elsewhere would be a second copy of it (coven's
 [§19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)).
-The restore code saved in Block Store goes with the backup, so a phone set up
+The recovery code saved in Block Store goes with the backup, so a phone set up
 from one lists it on its first screen (§5.6).
 
 **Removing a library from a device.** Dan stops using his old laptop. Removing
@@ -2998,7 +2998,7 @@ deleted at once.
   to retry. Removals, finishing them and looking for them each hold one
   removal lock, an OS file lock that excludes other processes too, so a
   lookup never sees a removal still waiting on coven.
-- **The restore code stays.** The restore code and S3 key coven saved in iCloud
+- **The recovery code stays.** The recovery code and S3 key coven saved in iCloud
   Keychain are Dan's, not the laptop's, and every one of his Apple devices sees
   them. Removing Household from the laptop keeps them: his other devices still
   offer restoring it, and so does the laptop, now that it no longer holds the
@@ -3482,9 +3482,9 @@ library is registered there by id.
 | Call | What it does |
 |---|---|
 | `create_library` | creates a new library's store and gives this device its identity; given no name, the bridge generates one |
-| `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
-| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain, or in this phone's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
-| `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this phone's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
+| `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a recovery code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
+| `saved_restore_codes` | lists the recovery codes coven saved in iCloud Keychain, or in this phone's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
+| `forget_saved_restore_code` | deletes a saved recovery code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this phone's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
@@ -4519,7 +4519,7 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 | `library_playback.rs` | albums, releases, tracks, files, audio formats, covers and galleries, records, catalogs, cloud providers, libraries |
 | `configuration/library.rs` | search results, artists, composers and works, the storage table, the queue and its additions, sync status and pending records |
 | `configuration/services.rs` | settings, the MCP and Subsonic servers, receivers, cloud-home setup |
-| `configuration/settings.rs` | sorting, restore codes, people and devices, save presets, errors |
+| `configuration/settings.rs` | sorting, recovery codes, people and devices, save presets, errors |
 | `playback_values.rs` | the playing track, position, side-pause prompt, media controls, preview |
 | `events_and_transfers.rs` | the artwork reader, uploads, downloads, exports and saves |
 | `editing.rs` | release detail and edits, artist credits, the mapping table, edit validation |

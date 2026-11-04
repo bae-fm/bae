@@ -376,7 +376,7 @@
     <string name="restore_code_carries_s3_key">The QR code also carries your S3 access key, so a device that scans it won\'t ask for the key.</string>
     <string name="onboarding_s3_key_scanned">Your S3 access key came with the scanned code.</string>
     <string name="voice_play_not_found">Couldn\'t find “%1$s” in your library.</string>
-    <!-- Restore codes saved on this phone, on the welcome screen -->
+    <!-- Recovery codes saved on this phone, on the welcome screen -->
     <string name="onboarding_saved_codes_title">Saved on this phone</string>
     <string name="onboarding_saved_codes_explanation">Recovery codes bae saved on this phone, including ones copied from the phone you set it up from. Tap a library to restore it.</string>
     <string name="onboarding_saved_codes_failed">Couldn’t read the recovery codes saved on this phone</string>
