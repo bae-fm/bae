@@ -102,11 +102,10 @@ impl EncodeFormat {
         match self {
             Self::Flac { bits_per_sample }
             | Self::PcmWav { bits_per_sample }
-            | Self::PcmAiff { bits_per_sample } => match bits_per_sample {
-                1..=16 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16),
-                17..=32 => Ok(AVSampleFormat::AV_SAMPLE_FMT_S32),
-                _ => Err(format!("Unsupported PCM bit depth: {bits_per_sample}")),
-            },
+            | Self::PcmAiff { bits_per_sample } => Ok(match SampleWidth::of(bits_per_sample)? {
+                SampleWidth::S16 => AVSampleFormat::AV_SAMPLE_FMT_S16,
+                SampleWidth::S32 => AVSampleFormat::AV_SAMPLE_FMT_S32,
+            }),
             Self::Mp3 { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
             // FFmpeg's native aac encoder accepts only planar float.
             Self::Aac { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_FLTP),
@@ -184,20 +183,21 @@ impl EncodeFormat {
             | Self::PcmWav { bits_per_sample }
             | Self::PcmAiff { bits_per_sample } => {
                 let frame_data = (*frame).data[0];
-                match bits_per_sample {
-                    1..=16 => {
+                match SampleWidth::of(bits_per_sample)
+                    .expect("FLAC bit depth was validated before encoding")
+                {
+                    SampleWidth::S16 => {
                         let dst = frame_data as *mut i16;
                         for i in 0..chunk_samples {
                             *dst.add(i) = (samples[sample_offset + i] >> 16) as i16;
                         }
                     }
-                    17..=32 => {
+                    SampleWidth::S32 => {
                         let dst = frame_data as *mut i32;
                         for i in 0..chunk_samples {
                             *dst.add(i) = samples[sample_offset + i];
                         }
                     }
-                    _ => unreachable!("FLAC bit depth was validated before encoding"),
                 }
             }
             Self::Mp3 { .. } => {
@@ -240,6 +240,24 @@ fn pcm_codec_id(bits_per_sample: u32, big_endian: bool) -> ffmpeg_sys_next::AVCo
         (25..=32, false) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S32LE,
         (25..=32, true) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S32BE,
         _ => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_NONE,
+    }
+}
+
+/// The width a PCM sample is handed to the encoder at: 16 bits for a depth up
+/// to 16, 32 bits for a depth up to 32.
+#[derive(Clone, Copy)]
+enum SampleWidth {
+    S16,
+    S32,
+}
+
+impl SampleWidth {
+    fn of(bits_per_sample: u32) -> Result<Self, String> {
+        match bits_per_sample {
+            1..=16 => Ok(Self::S16),
+            17..=32 => Ok(Self::S32),
+            _ => Err(format!("Unsupported PCM bit depth: {bits_per_sample}")),
+        }
     }
 }
 
