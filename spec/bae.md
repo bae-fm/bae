@@ -3022,11 +3022,11 @@ device remembers (§7.8).
 
 ### 7.1 The queue
 
-The queue has two parts: *Up Next*, then what's *playing from*.
+The queue has two parts: *Up next*, then what's *playing from*.
 
 Ana plays her CD rip from its third track. The release becomes what she is
 playing from, with the cursor on track 3. She then adds two tracks of Ben's
-download to Up Next:
+download to Up next:
 
 ```
 now playing   Album Title, track 3          (from the release)
@@ -3034,7 +3034,7 @@ up next       Ben's track 1, Ben's track 5  (played first, then gone)
 playing from  Album Title, tracks 4–11
 ```
 
-When track 3 ends, Up Next drains first, then the release continues at track
+When track 3 ends, Up next drains first, then the release continues at track
 4.
 
 What's playing from is a release, several releases in the order chosen, a
@@ -3055,18 +3055,18 @@ in. Its rows are filled once, when playing starts; after that they
 can be removed and reordered but never grow. A release named twice among
 several plays twice. Removing the playing row leaves the track after it
 next. Once its last row leaves, removed or its track deleted from the
-library, nothing is playing from. Every entry, in Up Next or what's playing
+library, nothing is playing from. Every entry, in Up next or what's playing
 from, is its own, so the same track queued twice is two entries, each
 removable, reorderable and skipped to on its own.
 
 | Command | Effect |
 |---|---|
-| Play a release, from a track or shuffled | Up Next is cleared; the release is what's playing from |
-| Play a list of tracks, from one of them | Up Next is cleared; the list is what's playing from |
-| Play next / add to queue | tracks go to the front or end of Up Next |
+| Play a release, from a track or shuffled | Up next is cleared; the release is what's playing from |
+| Play a list of tracks, from one of them | Up next is cleared; the list is what's playing from |
+| Play next / add to queue | tracks go to the front or end of Up next |
 | Remove, reorder, skip to | acts on one entry, within its own part |
-| Clear Up Next | empties Up Next only |
-| Clear playing from | drops what's playing from; the current track plays on, then Up Next, then playback stops |
+| Clear up next | empties Up next only |
+| Clear playing from | drops what's playing from; the current track plays on, then Up next, then playback stops |
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless
@@ -3081,7 +3081,7 @@ it played everything named:
 | Start track gone | the track to start from is no longer on the release or in the library, or the list has none at its index; the queue is as it was |
 
 A reorder answers too. The queue keeps a version for each part, counting the
-writes that change it: Up Next's for every entry put in, taken out or moved;
+writes that change it: Up next's for every entry put in, taken out or moved;
 what's playing from's for every change to its tracks after the current one,
 or to which one is current. A reorder that moved its entry answers with its
 part's version after the move; one whose entry, or the entry it goes before,
@@ -3110,7 +3110,7 @@ reorders made meanwhile. Repeating a shuffled list shuffles it afresh for each
 pass.
 
 **Previous** goes back one track within the first three seconds of a track,
-and restarts the track after that. Playing an Up Next entry, previous goes back
+and restarts the track after that. Playing an Up next entry, previous goes back
 to the track of what's playing from that it interrupted.
 
 ### 7.3 Gapless, sides and discs
@@ -3125,7 +3125,7 @@ When side A ends, playback pauses and shows "Side A ended"; he presses Play,
 or Next, to start side B. A CD box set pauses between discs the same way.
 
 - **When it pauses.** Only between two tracks of one release, on different
-  sides, while playing that release in order. Up Next entries and a shuffled
+  sides, while playing that release in order. Up next entries and a shuffled
   list never pause: they aren't a record being played.
 - **Side or disc.** A boundary is a change of medium or of side, and the
   current track's medium says what it is: a record or cassette pauses at a
@@ -3698,7 +3698,7 @@ the playing track's display and the queue's repeat mode, a value after each
 change; while the row names a track the library no longer holds, until
 playback moves off it, no value is sent. A failure shows once wherever the
 person is: a value reading a failure whose number was shown shows nothing.
-Each time tracks go into Up Next, the write that puts them in counts the
+Each time tracks go into Up next, the write that puts them in counts the
 addition on the queue's row, with how many tracks it put in; starting
 playback with the library zeroes the count, so no earlier addition is
 confirmed again. The app pulls a live query of that count, a value per
@@ -4218,13 +4218,13 @@ All sync (§5), except `local_history`, `profile_request` and
 | Table | Holds |
 |---|---|
 | `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether it's shuffled, which of its rows is playing, the number the next entry of either part gets, never given twice, and each part's version, the count of writes that changed it, which the screens holding a moved row wait for (§7.1) |
-| `playback_manual` | Up Next entry, in order: the track it plays |
+| `playback_manual` | Up next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver, preview, last failure and the count of failures (§9.4) |
 | `cast_device` | receiver the cast picker lists, as discovery last found it: its id, name and kind (Cast, UPnP or AirPlay) |
 
-A play's fill, Clear Up Next, Clear playing from and the emptying as a library
+A play's fill, Clear up next, Clear playing from and the emptying as a library
 opens without resuming are bulk writes: plain SQLite on these device-local
 tables, with no record kept of each row changed, so emptying a lane of a whole
 library takes one step. After each, every screen following a table it changed

@@ -22,7 +22,7 @@ public class PlaybackStore {
     /// The volume, mute and repeat mode; `nil` until core's first playback
     /// value says them.
     public var settings: PlaybackSettings?
-    /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
+    /// The manual lane ("Up next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [BridgeQueueEntry] = []
     /// Up Next's version as core's queue value carries it: how many writes
     /// have changed the lane, which a held reorder waits for.

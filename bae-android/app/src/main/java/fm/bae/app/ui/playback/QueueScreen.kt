@@ -195,7 +195,7 @@ internal fun LazyListScope.queueContent(
         return
     }
     // Only show the empty message when nothing follows at all; with a context
-    // present, the "Playing From" section below carries the queue.
+    // present, the "Playing from" section below carries the queue.
     if (order.isEmpty) {
         item(key = "empty") {
             Text(

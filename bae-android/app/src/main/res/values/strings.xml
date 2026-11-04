@@ -48,8 +48,8 @@
     <!-- Album detail -->
     <string name="album_not_in_library">This album isn\'t in your library anymore.</string>
     <string name="shuffle">Shuffle</string>
-    <string name="play_next">Play Next</string>
-    <string name="add_to_queue">Add to Queue</string>
+    <string name="play_next">Play next</string>
+    <string name="add_to_queue">Add to queue</string>
     <string name="track_options">Track options</string>
     <string name="album_options">Album options</string>
     <string name="delete_album">Delete Album…</string>
@@ -72,12 +72,12 @@
 
     <!-- Queue -->
     <string name="queue_clear">Clear</string>
-    <string name="queue_clear_up_next">Clear Up Next</string>
-    <string name="queue_clear_playing_from">Clear Playing From</string>
-    <string name="queue_section_now_playing">Now Playing</string>
-    <string name="queue_section_up_next">Up Next</string>
-    <string name="queue_section_playing_from">Playing From</string>
-    <string name="queue_section_your_library">Your Library</string>
+    <string name="queue_clear_up_next">Clear up next</string>
+    <string name="queue_clear_playing_from">Clear playing from</string>
+    <string name="queue_section_now_playing">Now playing</string>
+    <string name="queue_section_up_next">Up next</string>
+    <string name="queue_section_playing_from">Playing from</string>
+    <string name="queue_section_your_library">Your library</string>
     <string name="queue_section_these_tracks">These tracks</string>
     <string name="shuffle_library">Shuffle library</string>
     <string name="queue_nothing_up_next">Nothing up next</string>

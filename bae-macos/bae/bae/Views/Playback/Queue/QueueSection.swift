@@ -22,7 +22,7 @@ private struct QueueRowSlot: Identifiable {
     let sourceIndex: Int
 }
 
-/// One queue lane (the manual "Up Next" lane or the context) as a labelled
+/// One queue lane (the manual "Up next" lane or the context) as a labelled
 /// section of reorderable rows. `itemAt` returns `nil` for an unloaded context
 /// row, which shows a placeholder and calls `loadRange`.
 struct QueueSection: View {
@@ -361,9 +361,9 @@ extension QueueSection {
     private var clearLaneLabel: String {
         switch laneId {
         case .manual:
-            return String(localized: "Clear Up Next")
+            return String(localized: "Clear up next")
         case .context:
-            return String(localized: "Clear Playing From")
+            return String(localized: "Clear playing from")
         }
     }
 
@@ -556,7 +556,7 @@ extension QueueSection {
 
     #Preview("Up Next lane") {
         queueSectionPreview(
-            title: "Up Next",
+            title: "Up next",
             shuffled: false,
             count: 2,
             acceptsExternalDrops: true,

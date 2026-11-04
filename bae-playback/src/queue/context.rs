@@ -23,7 +23,7 @@ impl PlaybackQueue {
         Ok(())
     }
 
-    /// Drop the context lane ("Clear Playing From"). The playing track keeps
+    /// Drop the context lane ("Clear playing from"). The playing track keeps
     /// playing; when it ends Up Next drains and then playback stops.
     pub async fn clear_playing_from(&mut self) -> Result<(), DbError> {
         if !self.tables.clear_context().await? {

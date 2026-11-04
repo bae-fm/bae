@@ -328,9 +328,9 @@ mirror_struct! {
 }
 
 /// Which kind of source the context plays from, so the UI labels the section
-/// (a release's "Playing From", a list of tracks, or the whole library). A
+/// (a release's "Playing from", a list of tracks, or the whole library). A
 /// single- or multi-release source is both `Release` here — the queue pane's
-/// "Playing From" title is the same for one album or several. A single
+/// "Playing from" title is the same for one album or several. A single
 /// release's id stays in core (the UI labels by kind, not by id here).
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackSourceKind {

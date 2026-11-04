@@ -336,7 +336,7 @@ private fun sessionActions(
 
 /**
  * The open library UI and what the app's snackbar says over its screens: it
- * confirms Play Next and Add to Queue, since the now-playing bar is hidden
+ * confirms Play next and Add to queue, since the now-playing bar is hidden
  * while nothing plays, and tells the person what failed — what they did, with
  * Retry, and what core reported with no screen of its own, to dismiss.
  */

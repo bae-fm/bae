@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The queue pane: a header, the now-playing card when active, and the manual
-/// "Up Next" and context lanes as `QueueSection`s sharing one drag coordinator.
+/// "Up next" and context lanes as `QueueSection`s sharing one drag coordinator.
 struct QueueView: View {
     @Environment(PlaybackStore.self)
     private var playbackStore
@@ -39,7 +39,7 @@ struct QueueView: View {
     @State
     private var dragCoordinator = QueueDragCoordinator()
 
-    /// The manual "Up Next" lane, played first and always loaded in full.
+    /// The manual "Up next" lane, played first and always loaded in full.
     private var manual: [BridgeQueueEntry] { playbackStore.manualQueue }
     /// What's playing from, or `nil`; its tracks come from the upcoming read.
     private var context: QueuePlaybackContext? { playbackStore.queueContext }
@@ -82,7 +82,7 @@ struct QueueView: View {
                         QueueSection(
                             // Labelled only when it has rows.
                             title: manual.isEmpty
-                                ? nil : String(localized: "Up Next"),
+                                ? nil : String(localized: "Up next"),
                             shuffled: false,
                             count: manual.count,
                             itemAt: { index in
@@ -169,7 +169,7 @@ struct QueueView: View {
         // No background: QueuePanel supplies the panel material.
     }
 
-    /// The context section's title: "Playing From", plus the album title when
+    /// The context section's title: "Playing from", plus the album title when
     /// known, for a release; "These tracks" for a list of tracks; "Your
     /// Library" for the library.
     private static func contextSectionTitle(_ context: QueuePlaybackContext)
@@ -178,13 +178,13 @@ struct QueueView: View {
         switch context.kind {
         case .release:
             guard let sourceTitle = context.sourceTitle else {
-                return String(localized: "Playing From")
+                return String(localized: "Playing from")
             }
-            return String(localized: "Playing From") + " · " + sourceTitle
+            return String(localized: "Playing from") + " · " + sourceTitle
         case .tracks:
             return String(localized: "These tracks")
         case .library:
-            return String(localized: "Your Library")
+            return String(localized: "Your library")
         }
     }
 
@@ -219,7 +219,7 @@ struct QueueView: View {
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 // Not `Eyebrow`: this label is accent, not secondary.
-                Text("Now Playing")
+                Text("Now playing")
                     .themeText(.eyebrow)
                     .foregroundStyle(Theme.accent)
                 if let title = nowPlayingTitle {
@@ -269,8 +269,8 @@ struct QueueView: View {
             }
             .buttonStyle(.plain)
             .disabled(onGoToNowPlaying == nil)
-            .help("Go to Now Playing")
-            .accessibilityLabel("Go to Now Playing")
+            .help("Go to now playing")
+            .accessibilityLabel("Go to now playing")
         }
         .card(elevated: true)
         .padding(.horizontal, ThemeSpace.group)

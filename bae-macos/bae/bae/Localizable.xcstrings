@@ -20037,7 +20037,7 @@
         }
       }
     },
-    "Add %lld Albums Next" : {
+    "Add %lld albums next" : {
       "localizations" : {
         "ar" : {
           "variations" : {
@@ -20153,13 +20153,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Add %lld Album Next"
+                  "value" : "Add %lld album next"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Add %lld Albums Next"
+                  "value" : "Add %lld albums next"
                 }
               }
             }
@@ -20617,7 +20617,7 @@
         }
       }
     },
-    "Add %lld Albums to Queue" : {
+    "Add %lld albums to queue" : {
       "localizations" : {
         "ar" : {
           "variations" : {
@@ -20733,13 +20733,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Add %lld Album to Queue"
+                  "value" : "Add %lld album to queue"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Add %lld Albums to Queue"
+                  "value" : "Add %lld albums to queue"
                 }
               }
             }
@@ -22580,7 +22580,7 @@
         }
       }
     },
-    "Add Next" : {
+    "Add next" : {
       "comment" : "Album card context menu: enqueue next",
       "localizations" : {
         "ar" : {
@@ -22610,7 +22610,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add Next"
+            "value" : "Add next"
           }
         },
         "de" : {
@@ -22730,7 +22730,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sıraya Sonraki Olarak Ekle"
+            "value" : "Sıraya sonraki olarak ekle"
           }
         },
         "uk" : {
@@ -22926,7 +22926,7 @@
         }
       }
     },
-    "Add to Queue" : {
+    "Add to queue" : {
       "comment" : "Menu item: append to the playback queue",
       "localizations" : {
         "ar" : {
@@ -22956,7 +22956,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add to Queue"
+            "value" : "Add to queue"
           }
         },
         "de" : {
@@ -30533,7 +30533,7 @@
         }
       }
     },
-    "Clear Playing From" : {
+    "Clear playing from" : {
       "comment" : "Queue panel: clear the context lane, the 'Playing From' section (tooltip / accessibility)",
       "localizations" : {
         "ar" : {
@@ -30563,7 +30563,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear Playing From"
+            "value" : "Clear playing from"
           }
         },
         "de" : {
@@ -30706,7 +30706,7 @@
         }
       }
     },
-    "Clear Up Next" : {
+    "Clear up next" : {
       "comment" : "Queue panel: clear the manual lane, the 'Up Next' section (tooltip / accessibility)",
       "localizations" : {
         "ar" : {
@@ -30736,7 +30736,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clear Up Next"
+            "value" : "Clear up next"
           }
         },
         "de" : {
@@ -48001,6 +48001,179 @@
         }
       }
     },
+    "Go to now playing" : {
+      "comment" : "Menu: navigate to the now-playing album",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الانتقال إلى قيد التشغيل الآن"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Към текущо възпроизвеждане"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přejít na právě hrané"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå til Afspilles nu"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go to now playing"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu „Aktuelle Wiedergabe“"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Μετάβαση στο Αναπαράγεται τώρα"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ir a En reproducción"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siirry kohtaan Nyt toistetaan"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aller à la lecture en cours"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עבור למתנגן כעת"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idi na trenutnu reprodukciju"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugrás a Most szól nézetre"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vai a In riproduzione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再生中の項目へ移動"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금 재생 중으로 이동"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå til Spilles nå"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ga naar Nu afspelen"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przejdź do teraz odtwarzanego"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ir para Tocando agora"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ir para A reproduzir"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mergi la Se redă acum"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prejsť na Prehráva sa"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå till Spelas nu"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Şimdi çalana git"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перейти до відтворюваного"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往正在播放"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往現正播放"
+          }
+        }
+      }
+    },
     "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned." : {
       "localizations" : {
         "ar" : {
@@ -58380,7 +58553,7 @@
         }
       }
     },
-    "Now Playing" : {
+    "Now playing" : {
       "comment" : "Queue panel: now-playing section header",
       "localizations" : {
         "ar" : {
@@ -58410,7 +58583,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Now Playing"
+            "value" : "Now playing"
           }
         },
         "de" : {
@@ -62533,7 +62706,7 @@
         }
       }
     },
-    "Play %lld Albums" : {
+    "Play %lld albums" : {
       "localizations" : {
         "ar" : {
           "variations" : {
@@ -62649,13 +62822,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Play %lld Album"
+                  "value" : "Play %lld album"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Play %lld Albums"
+                  "value" : "Play %lld albums"
                 }
               }
             }
@@ -63113,7 +63286,7 @@
         }
       }
     },
-    "Play Next" : {
+    "Play next" : {
       "comment" : "Menu item: enqueue immediately after the current track",
       "localizations" : {
         "ar" : {
@@ -63143,7 +63316,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Play Next"
+            "value" : "Play next"
           }
         },
         "de" : {
@@ -63632,7 +63805,7 @@
         }
       }
     },
-    "Playing From" : {
+    "Playing from" : {
       "comment" : "Queue panel: context (release being played from) section header",
       "localizations" : {
         "ar" : {
@@ -63662,7 +63835,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Playing From"
+            "value" : "Playing from"
           }
         },
         "de" : {
@@ -68281,179 +68454,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sıradan kaldır"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вилучити з черги"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "从队列移除"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "從佇列移除"
-          }
-        }
-      }
-    },
-    "Remove from Queue" : {
-      "comment" : "Queue row context menu: remove the item",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "إزالة من قائمة الانتظار"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Премахване от опашката"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odebrat z fronty"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fjern fra køen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove from Queue"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus Warteschlange entfernen"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αφαίρεση από την ουρά"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quitar de la cola"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Poista jonosta"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Retirer de la file"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הסר מהתור"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ukloni iz reda"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eltávolítás a sorból"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rimuovi dalla coda"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "キューから削除"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "대기열에서 제거"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fjern fra køen"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uit wachtrij verwijderen"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usuń z kolejki"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remover da fila"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remover da fila"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elimină din coadă"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odstrániť z poradia"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ta bort från kön"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sıradan Kaldır"
           }
         },
         "uk" : {
@@ -86805,7 +86805,7 @@
         }
       }
     },
-    "Up Next" : {
+    "Up next" : {
       "comment" : "Queue panel: manual lane section header",
       "localizations" : {
         "ar" : {
@@ -86835,7 +86835,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Up Next"
+            "value" : "Up next"
           }
         },
         "de" : {
@@ -89401,7 +89401,7 @@
         }
       }
     },
-    "Your Library" : {
+    "Your library" : {
       "comment" : "Queue panel: context section header when playing the whole library",
       "localizations" : {
         "ar" : {
@@ -89431,7 +89431,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your Library"
+            "value" : "Your library"
           }
         },
         "de" : {

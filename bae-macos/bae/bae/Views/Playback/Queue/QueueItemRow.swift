@@ -91,7 +91,7 @@ struct QueueItemRow: View {
             onSkipTo(item.id)
         }
         .contextMenu {
-            Button("Remove from Queue") {
+            Button("Remove from queue") {
                 onRemove(item.id)
             }
         }

@@ -128,8 +128,8 @@ struct AlbumExpansionContent: View {
             Button("Play", action: onPlay)
             Button("Shuffle", action: onShuffle)
             Divider()
-            Button("Play Next") { onAddNextAlbum() }
-            Button("Add to Queue") { onAddAlbumToQueue() }
+            Button("Play next") { onAddNextAlbum() }
+            Button("Add to queue") { onAddAlbumToQueue() }
             Divider()
             Button("Edit…") { onEdit() }
             Button("Storage…") { onOpenStorage() }

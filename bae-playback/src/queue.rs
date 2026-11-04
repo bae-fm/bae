@@ -107,7 +107,7 @@ impl PlaybackQueue {
         self.tables.add_manual(track_ids, ManualPlace::At(index)).await
     }
 
-    /// Empty Up Next ("Clear Up Next"). The context lane is untouched.
+    /// Empty Up next ("Clear up next"). The context lane is untouched.
     pub async fn clear_up_next(&mut self) -> Result<(), DbError> {
         self.tables.clear_manual().await
     }

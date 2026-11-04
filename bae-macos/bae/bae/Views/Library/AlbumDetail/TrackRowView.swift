@@ -124,8 +124,8 @@ struct TrackRowView: View {
         }
         .contextMenu {
             Button("Play") { onPlay() }
-            Button("Play Next") { onAddNext(track.id) }
-            Button("Add to Queue") { onAddToQueue(track.id) }
+            Button("Play next") { onAddNext(track.id) }
+            Button("Add to queue") { onAddToQueue(track.id) }
             Divider()
             Button("Save As…") { onExportTrack(track.id) }
         }

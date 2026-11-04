@@ -683,7 +683,7 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
     .await;
 }
 
-/// The counterpart: clearing "Playing From" drops the section the release
+/// The counterpart: clearing "Playing from" drops the section the release
 /// filled, but not the track coming out of the speakers — that keeps playing,
 /// and Up Next keeps its rows.
 #[tokio::test]

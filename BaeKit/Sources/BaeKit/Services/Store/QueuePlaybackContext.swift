@@ -2,7 +2,7 @@ import Foundation
 
 /// A queue row. `entryId` is unique across both lanes: every row is an entry
 /// of its own, so the same track queued twice is two rows. `trackId` is what a
-/// cross-lane drag enqueues (a context row dropped into "Up Next" inserts the
+/// cross-lane drag enqueues (a context row dropped into "Up next" inserts the
 /// track; entry ids only ever address a row in their own lane).
 extension BridgeQueueEntry: Identifiable {
     public var id: String {
@@ -15,7 +15,7 @@ extension BridgeQueueEntry: Identifiable {
 /// The context lane (what the queue is playing from): its kind (a release, a
 /// list of tracks or the whole library, which the section header labels) and
 /// whether it was ordered by shuffle (rendered as a shuffle indicator). Shown
-/// as its own section, distinct from the manual "Up Next" lane. Its tracks are
+/// as its own section, distinct from the manual "Up next" lane. Its tracks are
 /// read through `PlaybackStore`'s upcoming read, not carried here.
 public struct QueuePlaybackContext: Equatable, Sendable {
     public let kind: BridgePlaybackSourceKind

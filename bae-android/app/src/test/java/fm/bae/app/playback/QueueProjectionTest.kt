@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
  * The two-lane queue projection ([BaeCorePlayer.onQueueValue] → [BaeCorePlayer.queue]).
- * A queue value carries a manual lane ("Up Next") and an optional
+ * A queue value carries a manual lane ("Up next") and an optional
  * context lane (what the queue plays from), whose tracks the upcoming read
  * brings. The projection keeps the two apart, passing each lane's
  * [BridgeQueueEntry]s through, and carries the context's source kind and

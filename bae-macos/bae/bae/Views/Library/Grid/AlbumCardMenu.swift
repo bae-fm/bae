@@ -16,20 +16,20 @@ struct AlbumCardMenu {
 
     var playLabel: String {
         targetCount > 1
-            ? String(localized: "Play \(targetCount) Albums")
+            ? String(localized: "Play \(targetCount) albums")
             : String(localized: "Play")
     }
 
     var addToQueueLabel: String {
         targetCount > 1
-            ? String(localized: "Add \(targetCount) Albums to Queue")
-            : String(localized: "Add to Queue")
+            ? String(localized: "Add \(targetCount) albums to queue")
+            : String(localized: "Add to queue")
     }
 
     var addNextLabel: String {
         targetCount > 1
-            ? String(localized: "Add \(targetCount) Albums Next")
-            : String(localized: "Add Next")
+            ? String(localized: "Add \(targetCount) albums next")
+            : String(localized: "Add next")
     }
 
     var deleteLabel: String {
