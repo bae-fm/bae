@@ -1,5 +1,5 @@
 use super::*;
-use bae_audio::sparse_buffer::create_sparse_buffer;
+use bae_audio::test_samples::filled_sparse_buffer;
 
 /// Counts the frames a decode hands it.
 #[derive(Default)]
@@ -27,8 +27,7 @@ fn verified_window_reads() -> (Vec<u64>, u64, u64) {
     let bytes = std::fs::read(&path).unwrap();
     let start_sample = 20 * 44_100;
     let landing = bae_audio::seek_landing_bytes(&path, &[start_sample]).expect("landing byte")[0];
-    let buffer = create_sparse_buffer(bytes.len() as u64);
-    buffer.append_at(0, &bytes);
+    let buffer = filled_sparse_buffer(&bytes);
     let decode = StreamDecodeParams::new(
         vec![SegmentDecodeParams::new(
             buffer.clone(),
@@ -84,8 +83,7 @@ fn multi_segment_track_finishes_only_after_last_segment() {
         .collect();
     let flac =
         encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &original, sample_rate, 1).unwrap();
-    let buffer = create_sparse_buffer(flac.len() as u64);
-    buffer.append_at(0, &flac);
+    let buffer = filled_sparse_buffer(&flac);
 
     let split = sample_rate as u64;
     let span = |start: u64, end: u64| bae_db::SegmentSpan {

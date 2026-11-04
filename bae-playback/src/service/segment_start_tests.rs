@@ -4,13 +4,7 @@
 
 use crate::service::tests::*;
 use crate::service::*;
-
-/// A sparse buffer holding all of `bytes`.
-fn filled_buffer(bytes: &[u8]) -> SharedSparseBuffer {
-    let buffer = create_sparse_buffer(bytes.len() as u64);
-    buffer.append_at(0, bytes);
-    buffer
-}
+use bae_audio::test_samples::filled_sparse_buffer;
 
 /// Takes a verifying decode's scrub points as import's sink does, and
 /// discards its samples.
@@ -38,7 +32,7 @@ fn import_scrub_points(
 ) -> Vec<bae_db::ScrubPoint> {
     use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
     let decode = StreamDecodeParams::new(
-        vec![SegmentDecodeParams::new(filled_buffer(bytes), span, 0)],
+        vec![SegmentDecodeParams::new(filled_sparse_buffer(bytes), span, 0)],
         bae_audio::byte_jump_keeps_place(content_type),
         0,
         0,
@@ -105,7 +99,7 @@ mod scrub_points {
         target: u64,
         end: u64,
     ) -> (Vec<u64>, Vec<f32>) {
-        let buffer = filled_buffer(flac);
+        let buffer = filled_sparse_buffer(flac);
         let mut prepared = test_prepared_track("track", buffer.clone());
         prepared.sample_rate = SAMPLE_RATE;
         prepared.segments[0].span = SegmentSpan { end_sample: Some(end), ..segment };
@@ -124,7 +118,7 @@ mod scrub_points {
             end_byte: None,
         };
         play(StreamDecodeParams::new(
-            vec![SegmentDecodeParams::new(filled_buffer(flac), window, 0)],
+            vec![SegmentDecodeParams::new(filled_sparse_buffer(flac), window, 0)],
             true,
             0,
             0,
@@ -452,7 +446,7 @@ mod mp3_scrub_points {
         play(
             StreamDecodeParams::new(
                 vec![SegmentDecodeParams::with_start(
-                    filled_buffer(&mp3.bytes),
+                    filled_sparse_buffer(&mp3.bytes),
                     SegmentSpan::whole_file(),
                     0,
                     SegmentStart::StreamStart,
@@ -492,7 +486,7 @@ mod mp3_scrub_points {
         target: u64,
         end: Option<u64>,
     ) -> (Vec<u64>, Vec<f32>) {
-        let buffer = filled_buffer(&mp3.bytes);
+        let buffer = filled_sparse_buffer(&mp3.bytes);
         let played = scrub_from(buffer.clone(), mp3, points, target, end);
         (buffer.read_log(), played)
     }
@@ -785,7 +779,7 @@ mod mp3_scrub_points {
 
         let mut packets = Packets(Vec::new());
         bae_audio::decode_audio_to_sink(
-            filled_buffer(&mp3.bytes),
+            filled_sparse_buffer(&mp3.bytes),
             None,
             None,
             &mut packets,
@@ -874,11 +868,7 @@ mod image_track_starts {
     ) -> (Vec<f32>, Vec<f32>) {
         let temp = tempfile::tempdir().expect("tempdir");
         let (bytes, track2) = image_track2(temp.path(), name, format);
-        let buffer = || {
-            let buffer = create_sparse_buffer(bytes.len() as u64);
-            buffer.append_at(0, &bytes);
-            buffer
-        };
+        let buffer = || filled_sparse_buffer(&bytes);
 
         let mut prepared = test_prepared_track("track-2", buffer());
         prepared.content_type = content_type;

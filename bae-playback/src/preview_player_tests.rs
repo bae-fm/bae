@@ -2,6 +2,7 @@ use super::*;
 use crate::audio_output::{
     audio_event_channel, AudioOutput, CaptureAudioDevice, FailingAudioDevice, FailingAudioOutput,
 };
+use bae_audio::test_samples::filled_sparse_buffer;
 use std::sync::Arc;
 
 /// A one-second stereo preview of `preview.wav` over `buffer` — the shape every
@@ -106,8 +107,7 @@ async fn preview_plays_only_the_requested_sample_window() {
     );
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
-    let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
-    reference_buffer.append_at(0, &reference_bytes);
+    let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
     let expected: Vec<f32> = reference
@@ -153,8 +153,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
 
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
-    let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
-    reference_buffer.append_at(0, &reference_bytes);
+    let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
     let half_second = probe.sample_rate as usize * probe.channels as usize / 2;
@@ -274,8 +273,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let captured = second_capture.wait_for_samples(1_000, Duration::from_secs(10)).await;
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
-    let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
-    reference_buffer.append_at(0, &reference_bytes);
+    let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
     let played_samples = restarted_at.frames(probe.sample_rate) as usize * probe.channels as usize;
