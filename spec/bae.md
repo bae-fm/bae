@@ -1456,7 +1456,19 @@ import runs.
 
 **The cover.** The cover comes from the folder's own image files, an image
 embedded in a tag, or a catalog's image (the Cover Art Archive for
-MusicBrainz, or Discogs). While the draft is the one read from the pressing
+MusicBrainz, or Discogs).
+
+A draft read from a folder's tracks starts with the first of these that
+exists: an image in the folder whose name begins with the word cover, folder
+or front (a leading number or punctuation is ignored, and a name that also
+says back, rear, disc, cd, booklet, inlay or inside does not count); the
+picture embedded in the tags of its tracks, from the first track that has
+one; any other image in the folder. A track's embedded picture is the one
+marked front cover, else its first picture of any kind, among those in a
+format bae can store (JPEG, PNG, GIF or WebP). Embedded art is the fallback,
+so having a picture comes before which picture it is.
+
+While the draft is the one read from the pressing
 the candidate is linked to, the picker offers that pressing's covers: every
 claimed release's own images, then their albums', read from the stored
 releases as they stand, so a later fetch that stored more shows it. The
