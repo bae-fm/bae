@@ -172,15 +172,6 @@ pub struct BridgeCandidateFile {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeCandidateSourceAudio {
-    /// Aggregate source-audio facts for the collapsed release line.
-    pub summary: BridgeSourceAudioSummary,
-    /// Every physical audio file contributing to the summary, in
-    /// release-relative path order.
-    pub files: Vec<BridgeFileInfo>,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFiles {
     /// Core-derived identity of the audio files behind a file-metadata preview.
     pub file_metadata_identity: String,
@@ -189,8 +180,8 @@ pub struct BridgeCandidateFiles {
     pub files: Vec<BridgeCandidateFile>,
     /// Artwork supported by the cover decoder, in source order.
     pub cover_files: Vec<BridgeCandidateFile>,
-    /// Core-derived aggregate and physical files for the effective source audio.
-    pub source_audio: Option<BridgeCandidateSourceAudio>,
+    /// What the candidate's audio is, summarized over its audio files.
+    pub source_audio: Option<BridgeSourceAudioSummary>,
 }
 
 /// Phase-0 preparation step, mirroring bae-library's `PrepareStep`. The UI

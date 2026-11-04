@@ -143,14 +143,11 @@
             fileMetadataIdentity: "more-tracks-audio",
             files: [moreTracksAudio],
             coverFiles: [],
-            sourceAudio: BridgeCandidateSourceAudio(
-                summary: .uniform(
-                    descriptor: BridgeSourceAudioDescriptor(
-                        layout: .file,
-                        format: sourceAudioFormat
-                    )
-                ),
-                files: [moreTracksAudio.file]
+            sourceAudio: .uniform(
+                descriptor: BridgeSourceAudioDescriptor(
+                    layout: .file,
+                    format: sourceAudioFormat
+                )
             )
         )
 

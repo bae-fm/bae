@@ -1,30 +1,8 @@
-//! A release's files: its source audio in release order and the facts each
-//! format gives, and the content hash its files are known by.
+//! A release's files: the facts each format gives its source audio, and the
+//! content hash its files are known by.
 
 use super::*;
 use crate::folder_scanner::tests::*;
-
-#[test]
-fn source_audio_keeps_every_physical_file_in_release_order() {
-    let files = CategorizedFiles {
-        files: vec![
-            audio_entry("/music/02.flac", "02.flac", 20),
-            audio_entry("/music/03.flac", "03.flac", 30),
-        ],
-        parts: Vec::new(),
-    };
-
-    let source_audio = files.source_audio().expect("candidate has source audio");
-
-    assert_eq!(
-        source_audio.files.iter().map(|file| file.relative_path.as_str()).collect::<Vec<_>>(),
-        ["02.flac", "03.flac"]
-    );
-    assert!(matches!(
-        source_audio.summary,
-        bae_db::source_audio::SourceAudioSummary::Uniform { .. }
-    ));
-}
 
 fn mp3_with_id3_padding(padding: usize) -> Vec<u8> {
     let mut bytes = fake_mp3();

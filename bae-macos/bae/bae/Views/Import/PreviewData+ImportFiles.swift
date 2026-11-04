@@ -160,14 +160,11 @@
             ]
                 + previewLogDocuments,
             coverFiles: [backImage, coverImage, scanImage],
-            sourceAudio: BridgeCandidateSourceAudio(
-                summary: .uniform(
-                    descriptor: BridgeSourceAudioDescriptor(
-                        layout: .cue,
-                        format: previewSourceAudioFormat
-                    )
-                ),
-                files: [mappedAudioContainer.file]
+            sourceAudio: .uniform(
+                descriptor: BridgeSourceAudioDescriptor(
+                    layout: .cue,
+                    format: previewSourceAudioFormat
+                )
             )
         )
 
@@ -211,14 +208,11 @@
                     ),
                 ],
             coverFiles: [coverImage],
-            sourceAudio: BridgeCandidateSourceAudio(
-                summary: .uniform(
-                    descriptor: BridgeSourceAudioDescriptor(
-                        layout: .file,
-                        format: previewSourceAudioFormat
-                    )
-                ),
-                files: trackAudioFiles.map(\.file)
+            sourceAudio: .uniform(
+                descriptor: BridgeSourceAudioDescriptor(
+                    layout: .file,
+                    format: previewSourceAudioFormat
+                )
             )
         )
 

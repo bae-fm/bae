@@ -15,18 +15,6 @@ impl BridgeFileInfo {
     }
 }
 
-impl BridgeCandidateSourceAudio {
-    /// Borrowed core input: `CandidateSourceAudio` carries the folder's files by
-    /// reference, so this is not `mirror_struct`'s owned copy.
-    fn from_core(source_audio: bae_import::folder_scanner::CandidateSourceAudio<'_>) -> Self {
-        let bae_import::folder_scanner::CandidateSourceAudio { summary, files } = source_audio;
-        Self {
-            summary: BridgeSourceAudioSummary::from_core(summary),
-            files: files.into_iter().map(BridgeFileInfo::from_core).collect(),
-        }
-    }
-}
-
 impl BridgeCandidateFile {
     fn from_core(entry: bae_import::folder_scanner::CandidateFile) -> Self {
         use bae_import::folder_scanner::{CandidateFile, FileRole};
@@ -73,7 +61,7 @@ mirror_struct! {
 
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_import::folder_scanner::CategorizedFiles) -> Self {
-        let source_audio = files.source_audio().map(BridgeCandidateSourceAudio::from_core);
+        let source_audio = files.source_audio_summary().map(BridgeSourceAudioSummary::from_core);
         let file_metadata_identity = files.file_metadata_identity();
         let cover_files =
             files.cover_files().cloned().map(BridgeCandidateFile::from_core).collect();

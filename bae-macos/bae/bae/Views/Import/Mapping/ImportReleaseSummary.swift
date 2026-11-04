@@ -8,7 +8,7 @@ struct ImportReleaseSummary {
     let titleIsPlaceholder: Bool
     let artist: String?
     let factsLine: String
-    let sourceAudio: BridgeCandidateSourceAudio?
+    let sourceAudio: BridgeSourceAudioSummary?
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
         let provenance = candidate.metadataProvenance
@@ -189,16 +189,16 @@ extension ImportReleaseSummaryView.Style {
 
 /// The candidate's aggregate source-audio facts as non-interactive text.
 struct ImportSourceAudioSummaryView: View {
-    let sourceAudio: BridgeCandidateSourceAudio
+    let sourceAudio: BridgeSourceAudioSummary
 
     var body: some View {
-        Text(sourceAudio.summary.text)
+        Text(sourceAudio.text)
             .themeText(.detail)
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(localizedCoreString("core.audio.label"))
-            .accessibilityValue(sourceAudio.summary.text)
+            .accessibilityValue(sourceAudio.text)
     }
 }
