@@ -326,26 +326,38 @@ impl RtspConnection {
 
 /// A request parsed by the scripted-fake test receiver.
 #[cfg(test)]
-struct ParsedRequest {
-    method: Method,
+pub(super) struct ParsedRequest {
+    pub(super) method: Method,
     headers: Vec<(String, String)>,
+    pub(super) body: Vec<u8>,
 }
 
 #[cfg(test)]
 impl ParsedRequest {
-    fn header(&self, key: &str) -> Option<&str> {
+    pub(super) fn header(&self, key: &str) -> Option<&str> {
         self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(key)).map(|(_, v)| v.as_str())
+    }
+
+    /// The request's `CSeq`, which the receiver echoes on its reply.
+    pub(super) fn cseq(&self) -> &str {
+        self.header("CSeq").expect("a request carries a CSeq")
+    }
+
+    /// The body as text.
+    pub(super) fn body_text(&self) -> String {
+        String::from_utf8_lossy(&self.body).into_owned()
     }
 }
 
 /// Read a full RTSP request from a stream — the receiver side, used only by the
 /// scripted-fake test receiver. Mirrors [`RtspResponse::read_from`]: request
-/// line, headers, then `Content-Length` body bytes (drained, not returned).
+/// line, headers, then the `Content-Length` body bytes. `None` when the sender
+/// closed the connection before a request.
 #[cfg(test)]
-fn read_request(reader: &mut impl BufRead) -> io::Result<ParsedRequest> {
+pub(super) fn read_request(reader: &mut impl BufRead) -> io::Result<Option<ParsedRequest>> {
     let mut request_line = String::new();
     if reader.read_line(&mut request_line)? == 0 {
-        return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "no request"));
+        return Ok(None);
     }
     let method = match request_line.trim_end().split(' ').next().unwrap_or("") {
         "OPTIONS" => Method::Options,
@@ -379,7 +391,7 @@ fn read_request(reader: &mut impl BufRead) -> io::Result<ParsedRequest> {
         .map_or(0, |(_, v)| v.trim().parse::<usize>().expect("valid content-length"));
     let mut body = vec![0u8; content_length];
     reader.read_exact(&mut body)?;
-    Ok(ParsedRequest { method, headers })
+    Ok(Some(ParsedRequest { method, headers, body }))
 }
 
 #[cfg(test)]

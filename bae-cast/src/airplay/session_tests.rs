@@ -1,7 +1,8 @@
 use super::*;
 use crate::airplay::crypto::apple_public_key;
+use crate::airplay::rtsp::read_request;
 use bae_playback::airplay_output::AirPlayStreamControl;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufReader, Write};
 use std::net::{TcpListener, UdpSocket};
 
 #[test]
@@ -67,16 +68,17 @@ fn handshake_drives_the_7_1_sequence_in_order() {
         let mut volume_body = String::new();
 
         for _ in 0..5 {
-            let (method, cseq, body) = read_request(&mut reader);
-            match method.as_str() {
-                "ANNOUNCE" => announce_sdp = body,
-                "SET_PARAMETER" => volume_body = body,
+            let request = read_request(&mut reader).unwrap().expect("the sender sent a request");
+            let cseq = request.cseq().to_string();
+            match request.method {
+                Method::Announce => announce_sdp = request.body_text(),
+                Method::SetParameter => volume_body = request.body_text(),
                 _ => {}
             }
-            let extra = if method == "SETUP" {
+            let extra = if request.method == Method::Setup {
                 "Session: ABCD1234\r\nTransport: RTP/AVP/UDP;unicast;server_port=6000;\
                  control_port=6001;timing_port=6002\r\n"
-            } else if method == "RECORD" {
+            } else if request.method == Method::Record {
                 // The receiver reports its audio latency in frames.
                 "Audio-Latency: 11025\r\n"
             } else {
@@ -86,7 +88,7 @@ fn handshake_drives_the_7_1_sequence_in_order() {
                 .write_all(format!("RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\n{extra}\r\n").as_bytes())
                 .unwrap();
             writer.flush().unwrap();
-            methods.push(method);
+            methods.push(request.method.as_str().to_string());
         }
         (methods, announce_sdp, volume_body)
     });
@@ -146,17 +148,16 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         let mut reader = BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;
         // Answer every request until the sender closes the connection.
-        loop {
-            let (method, cseq, _body) = read_request(&mut reader);
-            if method.is_empty() {
-                break;
-            }
-            let extra = match method.as_str() {
-                "SETUP" => format!(
+        while let Some(request) =
+            read_request(&mut reader).unwrap_or_else(|error| panic!("fake receiver: {error}"))
+        {
+            let cseq = request.cseq().to_string();
+            let extra = match request.method {
+                Method::Setup => format!(
                     "Transport: RTP/AVP/UDP;unicast;server_port={audio_port};\
                      control_port={control_port};timing_port=1\r\n"
                 ),
-                "RECORD" => "Audio-Latency: 11025\r\n".to_string(),
+                Method::Record => "Audio-Latency: 11025\r\n".to_string(),
                 _ => String::new(),
             };
             writer
@@ -189,36 +190,4 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         Duration::from_millis(250),
         "playback offsets by the latency the session paces by"
     );
-}
-
-/// Read one RTSP request from the fake receiver's socket: the method, the
-/// CSeq, and the body (drained by Content-Length). A closed connection
-/// reads as an empty method.
-fn read_request(reader: &mut impl BufRead) -> (String, String, String) {
-    let mut line = String::new();
-    reader.read_line(&mut line).unwrap();
-    let method = line.split(' ').next().unwrap_or("").to_string();
-
-    let mut cseq = String::new();
-    let mut content_length = 0usize;
-    loop {
-        let mut header = String::new();
-        reader.read_line(&mut header).unwrap();
-        let header = header.trim_end_matches(['\r', '\n']);
-        if header.is_empty() {
-            break;
-        }
-        if let Some((key, value)) = header.split_once(':') {
-            match key.trim().to_ascii_lowercase().as_str() {
-                "cseq" => cseq = value.trim().to_string(),
-                "content-length" => {
-                    content_length = value.trim().parse().expect("valid content-length")
-                }
-                _ => {}
-            }
-        }
-    }
-    let mut body = vec![0u8; content_length];
-    std::io::Read::read_exact(reader, &mut body).unwrap();
-    (method, cseq, String::from_utf8_lossy(&body).into_owned())
 }

@@ -78,7 +78,7 @@ fn scripted_fake_receiver_drives_the_setup_sequence_in_order() {
         let mut record_session = None;
 
         for _ in 0..4 {
-            let request = read_request(&mut reader).unwrap();
+            let request = read_request(&mut reader).unwrap().expect("the sender sent a request");
             let cseq = request.header("CSeq").unwrap().to_string();
             if request.method == Method::Record {
                 record_session = request.header("Session").map(str::to_string);

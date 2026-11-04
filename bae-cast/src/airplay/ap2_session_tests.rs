@@ -1,5 +1,6 @@
 use super::*;
 use crate::airplay::ap2_channel::control_keys;
+use crate::airplay::rtsp::read_request;
 use std::io::{BufRead, Write};
 use std::net::TcpListener;
 
@@ -252,36 +253,6 @@ fn pv_nonce(label: &[u8; 8]) -> Nonce {
     Nonce::from(b)
 }
 
-/// Read one plaintext RTSP request (method, path, CSeq, body) from the pairing
-/// phase.
-fn read_plaintext_request(reader: &mut impl BufRead) -> (String, String, String, Vec<u8>) {
-    let mut line = String::new();
-    reader.read_line(&mut line).unwrap();
-    let mut parts = line.split(' ');
-    let method = parts.next().unwrap_or("").to_string();
-    let path = parts.next().unwrap_or("").to_string();
-    let mut cseq = String::new();
-    let mut len = 0usize;
-    loop {
-        let mut h = String::new();
-        reader.read_line(&mut h).unwrap();
-        let h = h.trim_end_matches(['\r', '\n']);
-        if h.is_empty() {
-            break;
-        }
-        if let Some((k, v)) = h.split_once(':') {
-            match k.trim().to_ascii_lowercase().as_str() {
-                "cseq" => cseq = v.trim().to_string(),
-                "content-length" => len = v.trim().parse().expect("valid content-length"),
-                _ => {}
-            }
-        }
-    }
-    let mut body = vec![0u8; len];
-    std::io::Read::read_exact(reader, &mut body).unwrap();
-    (method, path, cseq, body)
-}
-
 /// What the fake receiver captured over one full session.
 struct Captured {
     methods: Vec<String>,
@@ -334,7 +305,11 @@ fn run_full_ap2_session(
         };
 
         // pair-setup M1 -> M2 (salt + B)
-        let (_m, _p, cseq, _b) = read_plaintext_request(&mut reader);
+        let cseq = read_request(&mut reader)
+            .unwrap()
+            .expect("the sender sent a request")
+            .cseq()
+            .to_string();
         respond(
             &mut writer,
             &cseq,
@@ -345,7 +320,11 @@ fn run_full_ap2_session(
                 .encode(),
         );
         // pair-setup M3 -> M4 (bare)
-        let (_m, _p, cseq, _b) = read_plaintext_request(&mut reader);
+        let cseq = read_request(&mut reader)
+            .unwrap()
+            .expect("the sender sent a request")
+            .cseq()
+            .to_string();
         respond(&mut writer, &cseq, Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode());
 
         // pair-verify M1 -> M2 (device eph + signed encrypted identity)
@@ -354,7 +333,8 @@ fn run_full_ap2_session(
         let eph = StaticSecret::random_from_rng(SecureRng);
         let eph_pub = PublicKey::from(&eph);
         let signing = SigningKey::generate(&mut SecureRng);
-        let (_m, _p, cseq, m1) = read_plaintext_request(&mut reader);
+        let request = read_request(&mut reader).unwrap().expect("the sender sent a request");
+        let (cseq, m1) = (request.cseq().to_string(), request.body);
         let m1_tlv = Tlv8::decode(&m1).unwrap();
         let sender_pub: [u8; 32] = m1_tlv.get(tlv_type::PUBLIC_KEY).unwrap().try_into().unwrap();
         let shared = eph.diffie_hellman(&PublicKey::from(sender_pub)).to_bytes();
@@ -384,7 +364,11 @@ fn run_full_ap2_session(
                 .encode(),
         );
         // pair-verify M3 -> M4 (bare)
-        let (_m, _p, cseq, _m3) = read_plaintext_request(&mut reader);
+        let cseq = read_request(&mut reader)
+            .unwrap()
+            .expect("the sender sent a request")
+            .cseq()
+            .to_string();
         respond(&mut writer, &cseq, Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode());
 
         // -- Encrypted control channel (keys derived from the verify secret).
