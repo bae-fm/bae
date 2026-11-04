@@ -12,7 +12,7 @@ async fn label_count(db: &Database) -> i64 {
 /// number-only label names no library label.
 #[tokio::test]
 async fn a_label_is_the_library_label_holding_its_catalog_id() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "held", "Warner Strategic Marketing", None, Some("7190")).await;
 
     write(
@@ -43,7 +43,7 @@ async fn a_label_is_the_library_label_holding_its_catalog_id() {
 /// new.
 #[tokio::test]
 async fn a_label_without_ids_is_the_one_library_label_of_its_name_key() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "rhino", "Rhino Records", None, None).await;
     add_label(&db, "columbia-1", "Columbia", None, Some("1866")).await;
     add_label(&db, "columbia-2", "Columbia Records", None, Some("5320")).await;
@@ -78,7 +78,7 @@ async fn a_label_without_ids_is_the_one_library_label_of_its_name_key() {
 /// device that meets a catalog's label makes the one row its id names.
 #[tokio::test]
 async fn one_write_makes_one_new_label_of_two_places_naming_it() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
 
     write(
         &db,
@@ -101,7 +101,7 @@ async fn one_write_makes_one_new_label_of_two_places_naming_it() {
 /// where the name alone would not say which label it is.
 #[tokio::test]
 async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "columbia-1", "Columbia", None, Some("1866")).await;
     add_label(&db, "columbia-2", "Columbia", None, Some("5320")).await;
     write(&db, vec![label(Some("Columbia"), Some("C 1"))]).await.unwrap();
@@ -118,7 +118,7 @@ async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
 /// with both labels for the person to answer, and writes nothing.
 #[tokio::test]
 async fn two_labels_holding_the_labels_two_ids_are_the_identity_conflict() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
 

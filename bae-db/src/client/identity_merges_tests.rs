@@ -266,7 +266,7 @@ async fn merge_label(db: &Database, survivor: &str, absorbed: &str) -> Result<()
 /// absorbed label keeps naming it and reads the survivor.
 #[tokio::test]
 async fn the_surviving_label_takes_the_absorbed_ones_id_and_its_releases_read_the_survivor() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name Records", Some("mb-label"), None).await;
     crate::test_fixtures::labels::write(
@@ -296,7 +296,7 @@ async fn the_surviving_label_takes_the_absorbed_ones_id_and_its_releases_read_th
 
 #[tokio::test]
 async fn a_label_merge_chain_ending_at_the_absorbed_label_ends_at_the_survivor() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "earlier", "Label Name", None, None).await;
     add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
@@ -315,7 +315,7 @@ async fn a_label_merge_chain_ending_at_the_absorbed_label_ends_at_the_survivor()
 
 #[tokio::test]
 async fn a_label_merge_into_a_missing_survivor_is_refused() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
     add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
 
     let refused = merge_label(&db, "missing", "by-musicbrainz").await.unwrap_err();

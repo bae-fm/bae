@@ -2733,16 +2733,6 @@ VALUES (
 -- (`coven::path_bytes`), so a folder whose name isn't valid Unicode keys its
 -- own rows; `coven_path_text` shows one.
 
--- The folders the desktop app watches for releases to import, in the user's
--- order. Scan results belong to one watched folder (`folder_scan_roots` and
--- below). What is known about a folder under one — the user's decisions, and
--- when it was found — is keyed by its path on disk, so it outlives a takeover
--- and goes when no watched folder covers the folder.
-CREATE TABLE IF NOT EXISTS watched_import_folders (
-    path      BLOB PRIMARY KEY,
-    position  INTEGER NOT NULL UNIQUE CHECK (position >= 0)
-) STRICT;
-
 -- Folders read as one release, or a folder whose releases are kept apart.
 -- A grouping anchored at a folder reads the releases below it as one or keeps
 -- them apart; the scan proposes one where a folder yields several releases,

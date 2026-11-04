@@ -191,9 +191,8 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     "work_search_entry",
     "artist_search_entry",
     "artist_credit_search_entry",
-    // Import: the folders this device watches, what scanning found in
-    // them, and each candidate's state while it is imported.
-    "watched_import_folders",
+    // Import: what scanning found in the folders this device watches, and
+    // each candidate's state while it is imported.
     "release_grouping",
     "release_grouping_member",
     "skipped_import_candidates",

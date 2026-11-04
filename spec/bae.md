@@ -4193,9 +4193,11 @@ The schema is one migration, which coven applies as migration 1: each
 crate's parts of it, in crate order, each part a domain's SQL files beside its
 code. bae-library assembles it from bae-db's part,
 `bae-db/migrations/001_initial.sql`, which holds every table no other part
-does, and the import list's, in `bae-import/src/tables/import_list/`. A part
-runs after the parts creating the tables its triggers fire on. Every table is `STRICT`. "Syncs" means coven syncs its rows
-(Appendix B); every other table stays on the device.
+does, and bae-import's, under `bae-import/src/tables/`: the watched folders'
+(`watched_folders.sql`) and the import list's (`import_list/`). A part runs
+after the parts creating the tables its triggers fire on. Every table is
+`STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
+stays on the device.
 
 A list is stored as rows, one per item, when its items have an identity of
 their own, when a query filters, sorts, joins, counts or indexes them, or when

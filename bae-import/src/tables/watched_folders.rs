@@ -1,23 +1,35 @@
 //! The watched folders, `watched_import_folders`: which folders import reads,
 //! each keyed by its canonical spelling and in the order it was added. No two
 //! overlap. Every folder a scan, a decision or a skip stores lies under one.
+//! Its table is `watched_folders.sql`, which every device's library holds.
 
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use bae_db::RelativeFolder;
+#[cfg(desktop)]
 use std::path::{Path, PathBuf};
 
+#[cfg(desktop)]
 mod removal;
+#[cfg(desktop)]
 pub use removal::WatchedFoldersRemoved;
+
+/// The watched folders' part of the library's schema.
+pub(super) const SCHEMA: bae_db::SchemaPart =
+    bae_db::SchemaPart::new(&[include_str!("watched_folders.sql")]);
 
 /// The folders at or below one folder, as a condition on a stored folder
 /// column: the range each owner of rows kept by folder forgets when the
 /// folder stops being watched.
+#[cfg(desktop)]
 pub(crate) struct FoldersAtOrBelow {
     folder: Vec<u8>,
     below_first: Vec<u8>,
     below_past: Vec<u8>,
 }
 
+#[cfg(desktop)]
 impl FoldersAtOrBelow {
     pub(crate) fn of(folder: &Path) -> Self {
         let (below_first, below_past) = bae_db::watched_path::paths_below(folder);
@@ -41,6 +53,7 @@ impl FoldersAtOrBelow {
 
 /// `folder`, a stored folder under the watched folder `root`, as the folder
 /// below it.
+#[cfg(desktop)]
 pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {
     bae_db::watched_path::candidate_relative_path(root, folder)
         .map_err(|error| DbError::Message(error.to_string()))
@@ -49,6 +62,7 @@ pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolde
 /// The watched folder covering `folder`. A decision about a folder is deleted
 /// with the watched folder covering it, so one stored outside every watched
 /// folder would never be deleted.
+#[cfg(desktop)]
 pub(super) fn require_watched(sql: &CovenWrite<'_>, folder: &Path) -> Result<PathBuf, DbError> {
     watched_folder_among_on(sql, folder.ancestors())?.ok_or_else(|| {
         DbError::Message(format!("{} is under no watched folder", coven::path_text(folder)))
@@ -58,6 +72,7 @@ pub(super) fn require_watched(sql: &CovenWrite<'_>, folder: &Path) -> Result<Pat
 /// The watched folder among `folders`, each looked up by the watched
 /// folders' key. Watched folders never overlap, so the ancestors of one
 /// folder name at most one.
+#[cfg(desktop)]
 pub(super) fn watched_folder_among_on<'a>(
     sql: &(impl QueryOne + QueryRows),
     folders: impl Iterator<Item = &'a Path>,
@@ -73,6 +88,7 @@ pub(super) fn watched_folder_among_on<'a>(
 }
 
 /// Every watched root, as stored, in the order they were added.
+#[cfg(desktop)]
 pub(super) fn watched_roots_on(sql: &impl QueryRows) -> Result<Vec<PathBuf>, DbError> {
     Ok(sql.query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
         path_column::get(row, 0)
@@ -81,6 +97,7 @@ pub(super) fn watched_roots_on(sql: &impl QueryRows) -> Result<Vec<PathBuf>, DbE
 
 /// Every watched folder, in the order they were added. A stored root that
 /// is not canonical, or overlaps another, fails the read.
+#[cfg(desktop)]
 pub(super) fn watched_folders_on(
     sql: &impl QueryRows,
 ) -> Result<Vec<crate::WatchedFolder>, DbError> {
@@ -89,6 +106,7 @@ pub(super) fn watched_folders_on(
 
 /// The watched folders `roots`, as stored in the order they were added. A
 /// root that is not canonical, or overlaps another, fails the read.
+#[cfg(desktop)]
 fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, DbError> {
     for (index, root) in roots.iter().enumerate() {
         bae_db::watched_path::validate_absolute_root(root)?;
@@ -106,6 +124,7 @@ fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, 
     Ok(roots.into_iter().map(crate::WatchedFolder::from_path).collect())
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     /// Every watched folder, in the order they were added. A stored root that
     /// is not canonical, or overlaps another, fails the read.

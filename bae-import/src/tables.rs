@@ -28,11 +28,10 @@ mod release_groupings;
 mod skipped_candidates;
 #[cfg(desktop)]
 mod source_releases;
-#[cfg(desktop)]
 mod watched_folders;
 
 /// Import's parts of the library's schema, in the order they run.
-pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[import_list::SCHEMA];
+pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[watched_folders::SCHEMA, import_list::SCHEMA];
 
 #[cfg(desktop)]
 pub use artist_identity_choice::ArtistIdentityConflictChoice;

@@ -77,7 +77,7 @@ fn conflicting() -> ReleaseLabel {
 /// then names the survivor.
 #[tokio::test]
 async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::TEST_SCHEMA).await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name Records", Some("mb-label"), None).await;
     record_conflict(&db, true).await;
@@ -101,7 +101,7 @@ async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor(
 /// "It's the Discogs label" names that label and attaches no MusicBrainz id.
 #[tokio::test]
 async fn the_neither_and_one_label_answers_decide_the_import() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::TEST_SCHEMA).await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
     record_conflict(&db, true).await;
@@ -180,7 +180,7 @@ async fn change_source(tables: &ImportTables, content_hash: &str) {
 /// candidate's label answers, and the failure a label conflict left with them.
 #[tokio::test]
 async fn changing_the_source_discards_a_label_answer_and_its_failure() {
-    let (db, _tmp) = library().await;
+    let (db, _tmp) = library(crate::TEST_SCHEMA).await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name", Some("mb-label"), None).await;
     let tables = ImportTables::new(db.clone());
