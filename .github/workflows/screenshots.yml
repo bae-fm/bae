@@ -10,6 +10,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# The gallery shows main as it is now, so a newer push replaces a capture
+# still running: every push's capture otherwise holds a macOS runner for
+# hours and starves the Build workflow's macOS and iOS jobs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
