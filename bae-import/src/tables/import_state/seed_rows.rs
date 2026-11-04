@@ -64,7 +64,7 @@ pub(crate) fn ensure_candidate_state(
         }
         CandidateStateSeed::FileMetadata(seed) => {
             super::pane_rows::insert_file_tags_draft(sql, &content_hash, &seed.draft)?;
-            crate::local_artwork::folder_cover(seed.cover.clone(), files.artwork())
+            crate::cover_art::folder_cover(seed.cover.clone(), files.artwork())
         }
     };
     if let Some(cover) = cover {

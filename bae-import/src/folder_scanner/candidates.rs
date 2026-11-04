@@ -194,7 +194,7 @@ impl InvalidCandidate {
             .filter(|file| file.role == ProposedRole::Image)
             .map(SkippedFile::scanned)
             .collect();
-        let cover = crate::local_artwork::default_local_cover_file(&images)?;
+        let cover = crate::cover_art::default_local_cover_file(&images)?;
         self.files.iter().find(|file| file.relative_path == cover.relative_path)
     }
 

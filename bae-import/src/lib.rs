@@ -71,8 +71,6 @@ mod import_failure;
 #[cfg(desktop)]
 pub mod list;
 #[cfg(desktop)]
-pub(crate) mod local_artwork;
-#[cfg(desktop)]
 mod loudness;
 #[cfg(desktop)]
 pub mod loudness_meter;
