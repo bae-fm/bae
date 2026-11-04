@@ -76,15 +76,8 @@ fn discogs_role_artist_ref(credit: &DiscogsRoleArtist) -> ArtistCredit {
 /// The credit of a Discogs display artist, keyed on its canonical name, with
 /// the name the release prints for it where that is another.
 pub(crate) fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistCredit {
-    ArtistCredit {
-        credited_as: credit
-            .anv
-            .as_deref()
-            .map(str::trim)
-            .filter(|anv| !anv.is_empty() && *anv != credit.name)
-            .map(str::to_string),
-        ..discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
-    }
+    discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
+        .printed_as(credit.anv.as_deref())
 }
 
 /// Album and pressing facts from this release, independently of its tracklist.

@@ -333,7 +333,8 @@ first credit's).
 
 **An artist's other names.** `artists.name` is the name an artist goes by.
 The other names a credit prints for it, a MusicBrainz credit name or a
-Discogs name variation (`anv`) that is not the artist's own, are the
+Discogs name variation (`anv`) that is not the artist's own (the spaces
+around either aside), are the
 artist's `artist_credits`, keyed by the artist and the folded name, so two
 devices meeting one printed name write one row. A credit links one of them,
 or none to print the artist's own name; it is never text. Importing decides

@@ -696,3 +696,22 @@ fn a_side_letter_alone_names_its_side() {
     assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "B1"]);
     assert_eq!(parsed.mediums[0].sides.get(), 2);
 }
+
+/// A Discogs name variation is kept only where it prints another name than
+/// the artist's own, the spaces around either aside, as a MusicBrainz
+/// credit name is.
+#[test]
+fn a_name_variation_printing_the_artist_s_own_name_is_not_kept() {
+    let credit = |name: &str, anv: &str| {
+        discogs_track_artist_ref(&DiscogsArtist {
+            anv: Some(anv.to_string()),
+            join: None,
+            name: name.to_string(),
+            id: "discogs-artist-a".to_string(),
+        })
+        .credited_as
+    };
+    assert_eq!(credit("Artist Name ", "Artist Name"), None);
+    assert_eq!(credit("Artist Name", " Artist Name "), None);
+    assert_eq!(credit("Artist Name", " Other Name "), Some("Other Name".to_string()));
+}

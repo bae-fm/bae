@@ -34,21 +34,23 @@ pub(super) fn mb_artist_ref(name: String, artist: &MbArtistRef) -> ArtistCredit 
 /// name the credit prints), with the printed name kept where it is another.
 /// `None` where neither names anyone.
 pub(super) fn mb_credited_artist(artist: &MbArtistRef, printed: &str) -> Option<ArtistCredit> {
-    let printed = Some(printed.trim()).filter(|printed| !printed.is_empty());
     let name = artist
         .name
         .as_deref()
         .map(str::trim)
         .filter(|name| !name.is_empty())
-        .or(printed)?
+        .or(Some(printed.trim()).filter(|printed| !printed.is_empty()))?
         .to_string();
-    Some(ArtistCredit {
-        credited_as: printed.filter(|printed| *printed != name).map(str::to_string),
-        name,
-        sort_name: artist.sort_name.clone(),
-        musicbrainz_artist_id: artist.id.clone(),
-        discogs_artist_id: None,
-    })
+    Some(
+        ArtistCredit {
+            credited_as: None,
+            name,
+            sort_name: artist.sort_name.clone(),
+            musicbrainz_artist_id: artist.id.clone(),
+            discogs_artist_id: None,
+        }
+        .printed_as(Some(printed)),
+    )
 }
 
 pub(super) fn mb_relation_is_composer(relation: &MbRelation) -> bool {

@@ -27,6 +27,19 @@ impl ArtistCredit {
         }
     }
 
+    /// The credit as its source prints it, `printed`: kept, trimmed, where it
+    /// is not blank and is another name than the credit's own, the spaces
+    /// around that aside.
+    #[must_use]
+    pub fn printed_as(mut self, printed: Option<&str>) -> Self {
+        let name = self.name.trim();
+        self.credited_as = printed
+            .map(str::trim)
+            .filter(|printed| !printed.is_empty() && *printed != name)
+            .map(str::to_string);
+        self
+    }
+
     /// What the credit prints: the name its source printed, else its name.
     pub fn printed(&self) -> &str {
         self.credited_as.as_deref().unwrap_or(&self.name)
