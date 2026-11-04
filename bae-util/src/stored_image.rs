@@ -11,8 +11,14 @@ use crate::content_type::ContentType;
 
 /// The longest side, in pixels, of an image bae stores.
 pub const STORED_MAX_EDGE: u32 = 600;
+/// The longest side, in pixels, of an image bae decodes: a camera's photo
+/// fits (a 48-megapixel one is 8064 by 6048).
 const MAX_DECODE_DIMENSION: u32 = 8_192;
-const MAX_DECODE_ALLOC_BYTES: u64 = 128 * 1024 * 1024;
+/// The most a decode may allocate: the largest image the dimension limit
+/// admits, at 8-bit RGBA, so every JPEG, GIF and WebP within that limit
+/// decodes. A 16-bit PNG takes twice that per pixel, so one is refused past
+/// about 5,800 pixels square.
+const MAX_DECODE_ALLOC_BYTES: u64 = MAX_DECODE_DIMENSION as u64 * MAX_DECODE_DIMENSION as u64 * 4;
 
 /// Decode the first image using the formats and resource limits shared by
 /// remote validation and [`stored_jpeg`].

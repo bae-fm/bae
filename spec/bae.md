@@ -1689,7 +1689,9 @@ Two kinds of file, matching coven's
   path, size and modification time and never change, move or delete it.
 - **Covers, artist images and avatars: bae's own.** bae makes them, each
   downscaled to at most 600 pixels as JPEG, and hands the bytes to coven,
-  which keeps them.
+  which keeps them. It makes one from an image up to 8,192 pixels on its
+  longer side, a 48-megapixel camera photo included; a 16-bit PNG, which
+  takes twice the memory to decode, up to about 5,800 pixels square.
 
 A cover belongs to one release, an artist image to one artist, an avatar to one
 person. A row references its image by the id of a coven file, the record coven

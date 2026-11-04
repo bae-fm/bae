@@ -92,11 +92,55 @@ fn transparent_images_encode_as_jpeg() {
     }
 }
 
+/// CRC-32 (ISO-HDLC), as a PNG chunk's trailer holds it.
+fn crc32(bytes: &[u8]) -> u32 {
+    let mut crc = !0u32;
+    for byte in bytes {
+        crc ^= u32::from(*byte);
+        for _ in 0..8 {
+            crc = if crc & 1 == 1 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+        }
+    }
+    !crc
+}
+
+/// A 16-bit RGBA PNG inside the dimension limit can still need more than
+/// the decode may allocate: 6000 by 6000 at 8 bytes a pixel. It is refused
+/// on its header, before its pixels are read, so the image is a 1-pixel PNG
+/// whose header claims that size.
 #[test]
-fn gif_canvas_exceeding_decode_allocation_is_rejected() {
-    let mut bytes = crate::test_cover_art::SOLID_GIF.to_vec();
-    bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
-    bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
+fn a_png_needing_more_than_the_decode_allocation_is_refused() {
+    let mut png = Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgba16(image::ImageBuffer::from_pixel(1, 1, image::Rgba([1u16; 4])))
+        .write_to(&mut png, image::ImageFormat::Png)
+        .unwrap();
+    let mut bytes = png.into_inner();
+    // The IHDR chunk follows the 8-byte signature: its length, its type,
+    // then width and height, and its CRC over type and data.
+    assert_eq!(&bytes[12..16], b"IHDR");
+    bytes[16..20].copy_from_slice(&6000u32.to_be_bytes());
+    bytes[20..24].copy_from_slice(&6000u32.to_be_bytes());
+    let crc = crc32(&bytes[12..29]);
+    bytes[29..33].copy_from_slice(&crc.to_be_bytes());
+
     let error = stored_jpeg(&bytes).unwrap_err();
     assert!(error.contains("Memory limit"), "{error}");
+}
+
+/// A 48-megapixel camera photo, 8064 by 6048, is inside the dimension limit,
+/// so its decode fits the decode's memory limit too and it is stored
+/// downscaled. Its pixels vary so the JPEG holds a real photo's entropy.
+#[test]
+fn a_48_megapixel_photo_is_stored() {
+    let (width, height) = (8064, 6048);
+    let photo = image::RgbImage::from_fn(width, height, |x, y| {
+        let mixed = x.wrapping_mul(2_654_435_761) ^ y.wrapping_mul(2_246_822_519);
+        let [r, g, b, _] = mixed.to_le_bytes();
+        image::Rgb([r, g, b])
+    });
+    let mut jpeg = Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(photo).write_to(&mut jpeg, image::ImageFormat::Jpeg).unwrap();
+
+    let out = stored_jpeg(jpeg.get_ref()).unwrap();
+    assert_eq!(decoded_dims(&out), (600, 450));
 }
