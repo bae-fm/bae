@@ -372,7 +372,7 @@ writes the credit, so nothing landing in between can make it wrong:
    that id, followed through any merge.
 2. Otherwise it is the one library artist whose folded name matches and whose
    ids don't contradict the credit. The folding ignores case, accents and
-   spacing.
+   spacing, and takes a word-final sigma (ς) as σ.
 3. Several such artists, or none, make a new artist.
 
 A credit that matches an artist fills in that artist's missing ids and sort

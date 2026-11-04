@@ -4,11 +4,14 @@
 use unicode_normalization::UnicodeNormalization;
 
 /// The text decomposed, its combining marks dropped (so diacritics go), and
-/// lowercased one character at a time.
+/// lowercased one character at a time, a final sigma as the medial one: the
+/// letter a capital sigma lowercases to depends on where it stands, and two
+/// spellings of one name compare alike whichever was written.
 pub(super) fn folded(text: &str) -> impl Iterator<Item = char> + '_ {
     text.nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
         .flat_map(char::to_lowercase)
+        .map(|c| if c == 'ς' { 'σ' } else { c })
 }
 
 /// A value as it is looked up: lowercase, diacritics folded away, and
@@ -57,19 +60,18 @@ const STOP_WORDS: &[&str] = &[
     "y",
 ];
 
-/// Text as two spellings of one name compare: NFD decomposed, combining marks
-/// dropped (so diacritics go), lowercased, whitespace runs collapsed to one
-/// space, and leading and trailing non-alphanumerics stripped. Never displayed.
+/// Text as two spellings of one name compare: decomposed, its combining
+/// marks dropped (so diacritics go), lowercased with a final sigma as the
+/// medial one, as [`squash`] folds it, with whitespace runs collapsed to one
+/// space and leading and trailing non-alphanumerics stripped. Never
+/// displayed.
 ///
 /// The one normalization of a name: candidate text clusters by it, and an
 /// artist is found by it — see [`super::artist_name_key`].
 pub fn normalize(text: &str) -> String {
-    let decomposed: String =
-        text.nfd().filter(|c| !unicode_normalization::char::is_combining_mark(*c)).collect();
-    let s = decomposed.to_lowercase();
-    let mut collapsed = String::with_capacity(s.len());
+    let mut collapsed = String::with_capacity(text.len());
     let mut prev_space = false;
-    for c in s.chars() {
+    for c in folded(text) {
         if c.is_whitespace() {
             if !prev_space {
                 collapsed.push(' ');

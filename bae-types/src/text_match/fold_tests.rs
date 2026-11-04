@@ -46,3 +46,14 @@ fn normalize_folds_an_artist_name_however_it_is_cased_or_accented() {
     assert_eq!(normalize("ÄRTIST  Name"), "artist name");
     assert_eq!(normalize("Ärtist Name"), "artist name");
 }
+
+/// A capital sigma lowercases to the final form at a word's end in running
+/// text and to the medial form alone; every fold takes the two forms as one
+/// letter, so a name compares alike however its sigma was cased.
+#[test]
+fn both_sigma_forms_fold_as_one_letter() {
+    assert_eq!(squash("ΟΔΟΣ"), squash("οδος"));
+    assert_eq!(words("ΟΔΟΣ ΔΥΟ"), words("οδος δυο"));
+    assert_eq!(normalize("οδοσ"), normalize("οδος"));
+    assert_eq!(normalize("ΟΔΟΣ ΔΥΟ"), normalize("οδοσ δυο"));
+}
