@@ -230,6 +230,8 @@
     <string name="onboarding_invite_ended">Тази покана е приключила. Отхвърлена е или е отменена, изтекла е, или устройството, което я е създало, вече не е в библиотеката.</string>
     <string name="onboarding_waiting_until">Изчаква одобрение до %1$s</string>
     <string name="onboarding_status_connecting">Свързване…</string>
+    <string name="onboarding_status_registering">Това устройство се регистрира…</string>
+    <string name="onboarding_status_finishing">Завършване…</string>
     <string name="loading_finding_libraries">Търсене на вашите библиотеки…</string>
     <string name="loading_opening_library">Библиотеката се отваря…</string>
     <string name="loading_resetting_device">Това устройство се нулира…</string>

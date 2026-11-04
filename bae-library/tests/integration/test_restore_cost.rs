@@ -15,8 +15,12 @@
 
 use bae_app_dir::AppDir;
 use bae_library::{FixtureAlbum, LibraryFixture};
-use coven::{Clock, Coven, CovenHandle, MemoryStorage, SecretText, Storage, SyncState, SyncStatus};
-use std::sync::atomic::{AtomicU64, Ordering};
+use coven::{
+    Clock, Coven, CovenHandle, MemoryStorage, SecretText, Storage, SyncState, SyncStatus,
+    WallTimerError,
+};
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -40,17 +44,39 @@ struct Library {
 /// timing lines report real durations.
 struct BenchClock {
     origin: Instant,
-    ahead: AtomicU64,
+    /// Seconds the wall clock has jumped ahead of real time.
+    ahead: tokio::sync::watch::Sender<u64>,
+}
+
+/// The bench's wall clock, `ahead` seconds past real time since `origin`.
+fn bench_wall(origin: Instant, ahead: u64) -> SystemTime {
+    UNIX_EPOCH + Duration::from_secs(1_800_000_000 + ahead) + origin.elapsed()
 }
 
 impl Clock for BenchClock {
     fn now(&self) -> SystemTime {
-        UNIX_EPOCH
-            + Duration::from_secs(1_800_000_000 + self.ahead.load(Ordering::SeqCst))
-            + self.origin.elapsed()
+        bench_wall(self.origin, *self.ahead.borrow())
     }
     fn elapsed(&self) -> Duration {
         self.origin.elapsed()
+    }
+    /// Ends when real time reaches `at`, or at once when a jump passes it.
+    fn sleep_until(
+        &self,
+        at: SystemTime,
+    ) -> Pin<Box<dyn Future<Output = Result<(), WallTimerError>> + Send>> {
+        let origin = self.origin;
+        let mut ahead = self.ahead.subscribe();
+        Box::pin(async move {
+            loop {
+                let now = bench_wall(origin, *ahead.borrow_and_update());
+                let Ok(left) = at.duration_since(now) else { return Ok(()) };
+                tokio::select! {
+                    () = tokio::time::sleep(left) => {}
+                    jumped = ahead.changed() => jumped.map_err(WallTimerError::new)?,
+                }
+            }
+        })
     }
 }
 
@@ -91,7 +117,8 @@ fn albums(write: usize, per_write: usize) -> LibraryFixture {
 
 async fn restore_cost(library: Library) {
     let floor = library.floor;
-    let clock = Arc::new(BenchClock { origin: Instant::now(), ahead: AtomicU64::new(0) });
+    let clock =
+        Arc::new(BenchClock { origin: Instant::now(), ahead: tokio::sync::watch::Sender::new(0) });
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let owner_dir = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
@@ -147,7 +174,7 @@ async fn restore_cost(library: Library) {
         pass(&handle, &clock).await;
     }
     if floor {
-        clock.ahead.fetch_add(8 * 24 * 60 * 60, Ordering::SeqCst);
+        clock.ahead.send_modify(|ahead| *ahead += 8 * 24 * 60 * 60);
         pass(&handle, &clock).await;
         pass(&handle, &clock).await;
     }

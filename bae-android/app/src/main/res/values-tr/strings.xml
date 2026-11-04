@@ -230,6 +230,8 @@
     <string name="onboarding_invite_ended">Bu davet sona erdi. Reddedildi veya iptal edildi, süresi doldu ya da daveti oluşturan cihaz artık kitaplıkta değil.</string>
     <string name="onboarding_waiting_until">%1$s tarihine kadar onay bekleniyor</string>
     <string name="onboarding_status_connecting">Bağlanıyor…</string>
+    <string name="onboarding_status_registering">Bu cihaz kaydediliyor…</string>
+    <string name="onboarding_status_finishing">Tamamlanıyor…</string>
     <string name="loading_finding_libraries">Kitaplıklarınız aranıyor…</string>
     <string name="loading_opening_library">Kitaplık açılıyor…</string>
     <string name="loading_resetting_device">Bu cihaz sıfırlanıyor…</string>

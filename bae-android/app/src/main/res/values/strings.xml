@@ -281,6 +281,8 @@
     <!-- %1$s = the date and time the invite expires, after which the join ends -->
     <string name="onboarding_waiting_until">Waiting for approval until %1$s</string>
     <string name="onboarding_status_connecting">Connecting…</string>
+    <string name="onboarding_status_registering">Registering this device…</string>
+    <string name="onboarding_status_finishing">Finishing…</string>
     <string name="loading_finding_libraries">Finding your libraries…</string>
     <string name="loading_opening_library">Opening the library…</string>
     <string name="loading_resetting_device">Resetting this device…</string>

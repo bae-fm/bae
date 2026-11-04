@@ -229,6 +229,8 @@
     <string name="onboarding_invite_ended">Tämä kutsu on päättynyt. Se hylättiin tai peruttiin, se vanheni, tai sen luonut laite ei ole enää kirjastossa.</string>
     <string name="onboarding_waiting_until">Odottaa hyväksyntää %1$s asti</string>
     <string name="onboarding_status_connecting">Yhdistetään…</string>
+    <string name="onboarding_status_registering">Rekisteröidään tätä laitetta…</string>
+    <string name="onboarding_status_finishing">Viimeistellään…</string>
     <string name="loading_finding_libraries">Etsitään kirjastojasi…</string>
     <string name="loading_opening_library">Avataan kirjastoa…</string>
     <string name="loading_resetting_device">Nollataan tätä laitetta…</string>

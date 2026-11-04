@@ -236,6 +236,8 @@
     <string name="onboarding_invite_ended">To zaproszenie się zakończyło. Zostało odrzucone lub anulowane, wygasło albo urządzenia, które je utworzyło, nie ma już w bibliotece.</string>
     <string name="onboarding_waiting_until">Oczekiwanie na zatwierdzenie do %1$s</string>
     <string name="onboarding_status_connecting">Łączenie…</string>
+    <string name="onboarding_status_registering">Rejestrowanie tego urządzenia…</string>
+    <string name="onboarding_status_finishing">Kończenie…</string>
     <string name="loading_finding_libraries">Wyszukiwanie bibliotek…</string>
     <string name="loading_opening_library">Otwieranie biblioteki…</string>
     <string name="loading_resetting_device">Resetowanie tego urządzenia…</string>

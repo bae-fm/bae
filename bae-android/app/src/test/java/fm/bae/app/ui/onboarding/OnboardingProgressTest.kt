@@ -95,6 +95,26 @@ class OnboardingProgressTest {
         assertTrue(OnboardingStep.Running(invite, opening).cancellable())
     }
 
+    /** Registering this device after loading names the step, uncounted, and the join can't be cancelled. */
+    @Test
+    fun registeringNamesItsStep() {
+        val status = BridgeBootstrapStatus.Registering
+        assertFalse(OnboardingStep.Running(invite, status).cancellable())
+        assertFalse(status.hasStepBar())
+        compose.setContent { StatusLines(status) }
+        compose.onNodeWithText("Registering this device…").assertIsDisplayed()
+    }
+
+    /** The last work before the library opens names the step, uncounted, and the join can't be cancelled. */
+    @Test
+    fun committingNamesItsStep() {
+        val status = BridgeBootstrapStatus.Committing
+        assertFalse(OnboardingStep.Running(invite, status).cancellable())
+        assertFalse(status.hasStepBar())
+        compose.setContent { StatusLines(status) }
+        compose.onNodeWithText("Finishing…").assertIsDisplayed()
+    }
+
     /**
      * Loading the library shows its step's line, not a bare spinner. The step's catalog key comes from the bridge, which a
      * unit test can't load, so the test names it.

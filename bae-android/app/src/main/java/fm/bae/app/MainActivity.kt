@@ -36,12 +36,7 @@ class MainActivity : ComponentActivity() {
             ContentView(
                 oauthProviders = app.oauthProviders,
                 oauthProvidersError = app.oauthProvidersError,
-                startupFailure =
-                    app.platformStartupError?.let {
-                        val line = coreString("core.error.category.internal")
-                        ScreenFailure(FailedStep.STARTUP, DisplayError(line, it.message))
-                    }
-                        ?: app.startupError?.let { (step, error) -> ScreenFailure(step, displayError(error)) },
+                startupFailure = app.startupError?.let { (step, error) -> ScreenFailure(step, displayError(error)) },
                 bugs = app.bugs,
                 shortcutAction = pendingShortcut,
                 onShortcutHandled = { pendingShortcut = null },

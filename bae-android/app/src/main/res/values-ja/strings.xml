@@ -227,6 +227,8 @@
     <string name="onboarding_invite_ended">この招待は終了しました。拒否または取り消されたか、期限切れになったか、招待を作成したデバイスがもうライブラリにありません。</string>
     <string name="onboarding_waiting_until">%1$s まで承認を待っています</string>
     <string name="onboarding_status_connecting">接続しています…</string>
+    <string name="onboarding_status_registering">このデバイスを登録しています…</string>
+    <string name="onboarding_status_finishing">最終処理をしています…</string>
     <string name="loading_finding_libraries">ライブラリを探しています…</string>
     <string name="loading_opening_library">ライブラリを開いています…</string>
     <string name="loading_resetting_device">このデバイスをリセットしています…</string>

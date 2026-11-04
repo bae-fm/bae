@@ -154,7 +154,8 @@ public final class BootstrapCodeForm {
         if attempt?.invite == nil { return true }
         switch status {
         case nil, .opening, .connecting: return true
-        case .waitingForApproval, .loading, .pending: return false
+        case .waitingForApproval, .loading, .registering, .committing, .pending:
+            return false
         }
     }
 

@@ -180,6 +180,12 @@ pub fn creation_category(error: &coven::StoreCreationError) -> C {
         // packaging or the platform, which the person can't fix; or coven's
         // work panicked, a bug.
         E::Store(coven::CovenError::NetworkWatch(_) | coven::CovenError::Bug(_)) => C::Internal,
+        E::Store(coven::CovenError::DeviceLocked { .. }) | E::DeviceLocked { .. } => {
+            // bae chooses no file protection class, so coven can't find the
+            // device lock keeping a store's files closed: a DeviceLocked means
+            // coven or bae went wrong.
+            C::Internal
+        }
         E::Store(_) => C::Database,
         E::Identity(_) | E::Directory(_) => C::Internal,
         E::Sync(error) => sync_category(error),
@@ -217,6 +223,12 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         // packaging or the platform, which the person can't fix; or coven's
         // work panicked, a bug.
         E::Store(coven::CovenError::NetworkWatch(_) | coven::CovenError::Bug(_)) => C::Internal,
+        E::Store(coven::CovenError::DeviceLocked { .. }) | E::DeviceLocked { .. } => {
+            // bae chooses no file protection class, so coven can't find the
+            // device lock keeping a store's files closed: a DeviceLocked means
+            // coven or bae went wrong.
+            C::Internal
+        }
         E::Store(_) => C::Database,
         // Restoring as the member whose account holds the store, signed in
         // with another account.
@@ -256,6 +268,10 @@ fn write_category(error: &coven::CovenError) -> C {
         // Only opening watches the network, and a watch the platform
         // refuses is the app's packaging or the platform's fault.
         E::NetworkWatch(_) => C::Internal,
+        // bae chooses no file protection class, so coven can't find the
+        // device lock keeping a store's files closed: a DeviceLocked means
+        // coven or bae went wrong.
+        E::DeviceLocked { .. } => C::Internal,
     }
 }
 

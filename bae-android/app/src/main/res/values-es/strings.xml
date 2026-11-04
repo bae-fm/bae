@@ -232,6 +232,8 @@
     <string name="onboarding_invite_ended">Esta invitación ha terminado. Se rechazó o se canceló, caducó, o el dispositivo que la creó ya no está en la biblioteca.</string>
     <string name="onboarding_waiting_until">Esperando aprobación hasta %1$s</string>
     <string name="onboarding_status_connecting">Conectando…</string>
+    <string name="onboarding_status_registering">Registrando este dispositivo…</string>
+    <string name="onboarding_status_finishing">Finalizando…</string>
     <string name="loading_finding_libraries">Buscando tus bibliotecas…</string>
     <string name="loading_opening_library">Abriendo la biblioteca…</string>
     <string name="loading_resetting_device">Restableciendo este dispositivo…</string>

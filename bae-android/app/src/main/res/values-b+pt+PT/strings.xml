@@ -229,6 +229,8 @@
     <string name="onboarding_invite_ended">Este convite terminou. Foi recusado ou cancelado, expirou, ou o dispositivo que o criou já não está na biblioteca.</string>
     <string name="onboarding_waiting_until">A aguardar aprovação até %1$s</string>
     <string name="onboarding_status_connecting">A ligar…</string>
+    <string name="onboarding_status_registering">A registar este dispositivo…</string>
+    <string name="onboarding_status_finishing">A concluir…</string>
     <string name="loading_finding_libraries">A procurar as suas bibliotecas…</string>
     <string name="loading_opening_library">A abrir a biblioteca…</string>
     <string name="loading_resetting_device">A repor este dispositivo…</string>

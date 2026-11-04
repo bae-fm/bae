@@ -232,6 +232,8 @@
     <string name="onboarding_invite_ended">Cette invitation a pris fin. Elle a été refusée ou annulée, elle a expiré, ou l’appareil qui l’a créée ne fait plus partie de la bibliothèque.</string>
     <string name="onboarding_waiting_until">En attente d’approbation jusqu’au %1$s</string>
     <string name="onboarding_status_connecting">Connexion…</string>
+    <string name="onboarding_status_registering">Enregistrement de cet appareil…</string>
+    <string name="onboarding_status_finishing">Finalisation…</string>
     <string name="loading_finding_libraries">Recherche de vos bibliothèques…</string>
     <string name="loading_opening_library">Ouverture de la bibliothèque…</string>
     <string name="loading_resetting_device">Réinitialisation de cet appareil…</string>

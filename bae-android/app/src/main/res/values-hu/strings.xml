@@ -229,6 +229,8 @@
     <string name="onboarding_invite_ended">Ez a meghívó véget ért. Elutasították vagy visszavonták, lejárt, vagy az azt létrehozó eszköz már nincs a könyvtárban.</string>
     <string name="onboarding_waiting_until">Jóváhagyásra vár eddig: %1$s</string>
     <string name="onboarding_status_connecting">Csatlakozás…</string>
+    <string name="onboarding_status_registering">Az eszköz regisztrálása…</string>
+    <string name="onboarding_status_finishing">Befejezés…</string>
     <string name="loading_finding_libraries">Könyvtárak keresése…</string>
     <string name="loading_opening_library">A könyvtár megnyitása…</string>
     <string name="loading_resetting_device">Az eszköz visszaállítása…</string>

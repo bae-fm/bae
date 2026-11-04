@@ -3606,8 +3606,9 @@ never a bare spinner.
 
 A restore, a join and a device reset load the library from storage, and
 their streams say so step by step: a new installation's database opening,
-with the open's steps as above, then connecting, waiting for approval, and
-loading
+with the open's steps as above, then connecting, waiting for approval,
+loading, registering this device, and finishing: keeping this device's keys
+and publishing the library, the last work before it opens
 ([coven E10](https://github.com/bae-fm/coven/blob/main/spec/api.md#e10-joining-and-restore)).
 Loading reports its steps with how much of each is done: reading the
 library's history for the person's keys, counted in slots, when the saved copy
@@ -3617,6 +3618,9 @@ here, counted in tables; applying the changes saved with them, then
 downloading and applying the changes made since, counted in changes. A step
 runs only when it has work. The apps show each step's name over its bar on
 the restore and join screens, and on the screen a reset loads on.
+Registering and finishing have no count, since how much the registration
+reads isn't known until it has read it: the apps name each as they name
+connecting, and a join in either can no longer be cancelled.
 
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker

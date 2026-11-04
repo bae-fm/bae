@@ -53,6 +53,12 @@ pub enum BridgeBootstrapStatus {
     Loading {
         progress: BridgeLoadProgress,
     },
+    /// Registering this device with the library once it is loaded. No count:
+    /// how much the registration reads isn't known until it has read it.
+    Registering,
+    /// Keeping this device's keys and publishing the library, the last work
+    /// before it opens. No count.
+    Committing,
     Pending {
         records: Vec<BridgePendingRecord>,
     },
@@ -92,6 +98,8 @@ impl BridgeBootstrapStatus {
             coven::BootstrapStatus::Opening(progress) => {
                 Self::Opening { progress: BridgeOpenProgress::from_core(progress) }
             }
+            coven::BootstrapStatus::Registering => Self::Registering,
+            coven::BootstrapStatus::Committing => Self::Committing,
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
                     .into_iter()

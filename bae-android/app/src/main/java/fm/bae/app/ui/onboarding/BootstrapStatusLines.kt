@@ -73,6 +73,14 @@ internal fun StatusLines(
                 emptyList()
             }
 
+            BridgeBootstrapStatus.Registering -> {
+                listOf(stringResource(R.string.onboarding_status_registering))
+            }
+
+            BridgeBootstrapStatus.Committing -> {
+                listOf(stringResource(R.string.onboarding_status_finishing))
+            }
+
             is BridgeBootstrapStatus.Pending -> {
                 status.records.map { context.coreString(it.reason.key) }
             }

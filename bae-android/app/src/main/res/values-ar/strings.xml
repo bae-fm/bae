@@ -242,6 +242,8 @@
     <string name="onboarding_invite_ended">انتهت هذه الدعوة. رُفضت أو أُلغيت، أو انتهت صلاحيتها، أو لم يعد الجهاز الذي أنشأها في المكتبة.</string>
     <string name="onboarding_waiting_until">بانتظار الموافقة حتى %1$s</string>
     <string name="onboarding_status_connecting">جارٍ الاتصال…</string>
+    <string name="onboarding_status_registering">جارٍ تسجيل هذا الجهاز…</string>
+    <string name="onboarding_status_finishing">جارٍ الإنهاء…</string>
     <string name="loading_finding_libraries">جارٍ البحث عن مكتباتك…</string>
     <string name="loading_opening_library">جارٍ فتح المكتبة…</string>
     <string name="loading_resetting_device">جارٍ إعادة تعيين هذا الجهاز…</string>

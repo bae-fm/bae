@@ -230,6 +230,8 @@
     <string name="onboarding_invite_ended">Diese Einladung ist beendet. Sie wurde abgelehnt oder zurückgezogen, ist abgelaufen, oder das Gerät, das sie erstellt hat, ist nicht mehr in der Bibliothek.</string>
     <string name="onboarding_waiting_until">Wartet bis %1$s auf Genehmigung</string>
     <string name="onboarding_status_connecting">Verbindung wird hergestellt …</string>
+    <string name="onboarding_status_registering">Dieses Gerät wird registriert …</string>
+    <string name="onboarding_status_finishing">Wird abgeschlossen …</string>
     <string name="loading_finding_libraries">Deine Bibliotheken werden gesucht…</string>
     <string name="loading_opening_library">Bibliothek wird geöffnet…</string>
     <string name="loading_resetting_device">Dieses Gerät wird zurückgesetzt…</string>

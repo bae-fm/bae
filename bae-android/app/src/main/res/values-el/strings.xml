@@ -229,6 +229,8 @@
     <string name="onboarding_invite_ended">Αυτή η πρόσκληση τερματίστηκε. Απορρίφθηκε ή ακυρώθηκε, έληξε, ή η συσκευή που τη δημιούργησε δεν είναι πλέον στη βιβλιοθήκη.</string>
     <string name="onboarding_waiting_until">Αναμονή για έγκριση έως %1$s</string>
     <string name="onboarding_status_connecting">Γίνεται σύνδεση…</string>
+    <string name="onboarding_status_registering">Γίνεται καταχώριση αυτής της συσκευής…</string>
+    <string name="onboarding_status_finishing">Γίνεται ολοκλήρωση…</string>
     <string name="loading_finding_libraries">Εύρεση των βιβλιοθηκών σας…</string>
     <string name="loading_opening_library">Άνοιγμα της βιβλιοθήκης…</string>
     <string name="loading_resetting_device">Επαναφορά αυτής της συσκευής…</string>

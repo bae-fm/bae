@@ -40,6 +40,10 @@ public struct BootstrapStatusView: View {
                 done: progress.done,
                 total: progress.total
             )
+        case .registering:
+            progress("Registering this device…")
+        case .committing:
+            progress("Finishing…")
         case .pending(let records):
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 progress("Waiting…")

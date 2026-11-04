@@ -26,8 +26,8 @@ class BaeApp : Application() {
      * The process-lifetime host registrations, built at startup and held for
      * the whole app run. Every library open, restore, join, and OAuth sign-in
      * requires it; they reach it the same way as [diagnostics]. Unset only when
-     * [platformStartupError] or [startupError] stopped the launch first, and
-     * then nothing past the startup error screen runs.
+     * [startupError] stopped the launch first, and then nothing past the
+     * startup error screen runs.
      */
     lateinit var host: BridgeHost
         private set
@@ -49,10 +49,6 @@ class BaeApp : Application() {
     var startupError: StartupError? = null
         private set
 
-    /** Android's certificate verification failing to start: a bug, already reported. */
-    var platformStartupError: RuntimeException? = null
-        private set
-
     /** Bugs reported without crashing, for the whole run; the app's snackbar tells the person. */
     val bugs = BugReports()
 
@@ -64,17 +60,10 @@ class BaeApp : Application() {
         diagnostics = BaeDiagnostics.configure()
         BaeCrashReporting.configure(this)
         logger.info("application launched")
-        // Initialize the Android NDK context for the keyring store.
-        // TLS initialization receives the same application context directly;
-        // both must finish before any key or network operation.
+        // Give the NDK context the application context before any key or
+        // network operation: coven's keystore, network watch, Block Store and
+        // certificate verifier all reach the JVM through it.
         Keyring.initializeNdkContext(this)
-        try {
-            AndroidRuntime.initialize(this)
-        } catch (error: RuntimeException) {
-            platformStartupError = error
-            bugs.reportShownInPlace("initialize Android TLS", error)
-            return
-        }
         // bae's directory lives under the app's private files dir: Android app
         // processes have no home directory of their own to put it under.
         // Building it creates it. The host opens the keystore every library's

@@ -236,6 +236,8 @@
     <string name="onboarding_invite_ended">Tato pozvánka skončila. Byla odmítnuta nebo zrušena, vypršela, nebo zařízení, které ji vytvořilo, už v knihovně není.</string>
     <string name="onboarding_waiting_until">Čeká na schválení do %1$s</string>
     <string name="onboarding_status_connecting">Připojování…</string>
+    <string name="onboarding_status_registering">Registrace tohoto zařízení…</string>
+    <string name="onboarding_status_finishing">Dokončování…</string>
     <string name="loading_finding_libraries">Hledají se vaše knihovny…</string>
     <string name="loading_opening_library">Otevírá se knihovna…</string>
     <string name="loading_resetting_device">Resetuje se toto zařízení…</string>

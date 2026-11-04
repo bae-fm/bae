@@ -227,6 +227,8 @@
     <string name="onboarding_invite_ended">이 초대는 종료되었습니다. 거절 또는 취소되었거나, 만료되었거나, 초대를 만든 기기가 더 이상 라이브러리에 없습니다.</string>
     <string name="onboarding_waiting_until">%1$s까지 승인을 기다립니다</string>
     <string name="onboarding_status_connecting">연결 중…</string>
+    <string name="onboarding_status_registering">이 기기를 등록하는 중…</string>
+    <string name="onboarding_status_finishing">마무리하는 중…</string>
     <string name="loading_finding_libraries">라이브러리를 찾는 중…</string>
     <string name="loading_opening_library">라이브러리를 여는 중…</string>
     <string name="loading_resetting_device">이 기기를 재설정하는 중…</string>

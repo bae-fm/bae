@@ -61,7 +61,7 @@ map_err_ignore = "deny"
 # most, the features it needs and whether it is optional.
 
 # Every consumer, including tests, uses coven's application facade.
-coven = { git = "https://github.com/bae-fm/coven", rev = "dfd98eab5bbf970530255a5abfd615ff7567dd6a" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "e30593771799f852f81a47a7543f3cbbf0287a76" }
 # OptionalExtension, dynamic parameters and SQLite callback errors are not
 # re-exported by coven. This is the version coven's SQL contexts use.
 rusqlite = { version = "0.41.1", features = ["functions", "fallible_uint"] }
@@ -119,7 +119,6 @@ getrandom = "0.2"
 hex = "0.4"
 hkdf = "0.12"
 image = { version = "0.25", default-features = false }
-jni = { version = "0.21", default-features = false }
 keyring-core = "1.0.1"
 libc = "0.2"
 libsqlite3-sys = "0.39.0"
@@ -142,7 +141,6 @@ roxmltree = "0.20"
 rsa = "0.9"
 rtrb = "0.3.2"
 rust_cast = "0.21"
-rustls-platform-verifier = "=0.6.2"
 schemars = "1.0"
 serde = "1.0.228"
 serde_json = "1.0.150"
@@ -208,9 +206,14 @@ opt-level = 3
 # template changed shape, the branch needs rebasing.
 [patch.crates-io]
 # Android's platform verifier treats unavailable revocation data as a soft
-# failure while preserving confirmed revocation. The published 0.6.2 verifier
-# misclassifies every revocation-check exception as a revoked certificate.
-rustls-platform-verifier = { git = "https://github.com/bae-fm/rustls-platform-verifier", rev = "c0649fc1bb3e653c9261a3a0672938444b457bc2" }
+# failure while preserving confirmed revocation. The published 0.7.1 verifier
+# misclassifies every revocation-check exception as a revoked certificate. The
+# fork's branch commits its Android AAR in android-release-support/maven,
+# where the Android app's settings.gradle.kts finds it.
+rustls-platform-verifier = { git = "https://github.com/bae-fm/rustls-platform-verifier", rev = "47a4336458b70db9c92a40ba8e0e30ca5fef0b29" }
+# v0.17.0 plus a scanner that builds a token's debug position only when it is
+# logged, which took scanning 001_initial.sql at debug level from 2 s to 1 ms.
+sqlite3-parser = { git = "https://github.com/bae-fm/lemon-rs", rev = "c0fc0b12a08a8bab5cdd93182e99344dca796cd3" }
 
 # notify 8.2's FSEvents callback is `extern "C"` and panics on a path that is
 # not UTF-8 and on any event flag bit it doesn't know (a newer macOS can add

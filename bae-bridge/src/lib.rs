@@ -3,8 +3,6 @@ uniffi::setup_scaffolding!();
 #[macro_use]
 extern crate bae_mirror;
 
-#[cfg(target_os = "android")]
-mod android_tls;
 mod app_dir;
 #[cfg(any(test, not(desktop)))]
 mod audio_focus;

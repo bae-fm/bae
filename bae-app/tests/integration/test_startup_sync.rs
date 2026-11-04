@@ -31,6 +31,14 @@ impl Clock for StorageClock {
         self.sleeping.notify_one();
         sleep
     }
+    fn sleep_until(
+        &self,
+        at: std::time::SystemTime,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<(), coven::WallTimerError>> + Send>,
+    > {
+        self.time.sleep_until(at)
+    }
 }
 
 impl TestApp {

@@ -236,6 +236,8 @@
     <string name="onboarding_invite_ended">Це запрошення завершилося. Його відхилено чи скасовано, термін його дії минув, або пристрою, який його створив, уже немає в бібліотеці.</string>
     <string name="onboarding_waiting_until">Очікує схвалення до %1$s</string>
     <string name="onboarding_status_connecting">Підключення…</string>
+    <string name="onboarding_status_registering">Реєстрація цього пристрою…</string>
+    <string name="onboarding_status_finishing">Завершення…</string>
     <string name="loading_finding_libraries">Пошук ваших бібліотек…</string>
     <string name="loading_opening_library">Відкриття бібліотеки…</string>
     <string name="loading_resetting_device">Скидання цього пристрою…</string>

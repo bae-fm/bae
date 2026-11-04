@@ -84,9 +84,12 @@ allow-git = [
     "https://github.com/bae-fm/uniffi-rs",
     # coven: cloud-sync library, private.
     "https://github.com/bae-fm/coven",
-    # bae's rustls-platform-verifier fork (Android platform-verifier changes),
-    # pinned by coven-storage.
+    # bae's rustls-platform-verifier fork (Android revocation soft failures),
+    # patched in for the verifier coven-storage and reqwest use.
     "https://github.com/bae-fm/rustls-platform-verifier",
+    # bae's lemon-rs fork (sqlite3-parser's scanner builds a token's debug
+    # position only when it is logged).
+    "https://github.com/bae-fm/lemon-rs",
     # bae's notify fork (an FSEvents callback that never panics).
     "https://github.com/bae-fm/notify",
 ]

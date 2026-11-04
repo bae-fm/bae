@@ -233,6 +233,8 @@
     <string name="onboarding_invite_ended">ההזמנה הזו הסתיימה. היא נדחתה או בוטלה, פג תוקפה, או שהמכשיר שיצר אותה כבר לא בספרייה.</string>
     <string name="onboarding_waiting_until">ממתין לאישור עד %1$s</string>
     <string name="onboarding_status_connecting">מתחברים…</string>
+    <string name="onboarding_status_registering">רושמים את המכשיר הזה…</string>
+    <string name="onboarding_status_finishing">מסיימים…</string>
     <string name="loading_finding_libraries">מחפש את הספריות שלך…</string>
     <string name="loading_opening_library">פותח את הספרייה…</string>
     <string name="loading_resetting_device">מאפס את המכשיר הזה…</string>

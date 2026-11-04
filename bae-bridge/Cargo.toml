@@ -66,8 +66,6 @@ tracing-oslog = { workspace = true }
 tracing-oslog = { workspace = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
-jni = { workspace = true }
-rustls-platform-verifier = { workspace = true }
 tracing-android = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]

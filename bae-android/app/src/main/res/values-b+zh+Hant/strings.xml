@@ -227,6 +227,8 @@
     <string name="onboarding_invite_ended">此邀請已結束：它已被拒絕或取消、已過期，或者建立它的裝置已不在資料庫中。</string>
     <string name="onboarding_waiting_until">等待核准，截止於 %1$s</string>
     <string name="onboarding_status_connecting">正在連線…</string>
+    <string name="onboarding_status_registering">正在註冊此裝置…</string>
+    <string name="onboarding_status_finishing">正在完成…</string>
     <string name="loading_finding_libraries">正在尋找你的資料庫…</string>
     <string name="loading_opening_library">正在開啟資料庫…</string>
     <string name="loading_resetting_device">正在重設此裝置…</string>

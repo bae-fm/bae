@@ -71,12 +71,20 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven {
-            url = uri(rustlsPlatformVerifierAndroid.first.parentFile.resolve("maven"))
-            metadataSources {
-                mavenPom()
-                artifact()
+        // The verifier's AAR comes only from the Cargo checkout it was built
+        // with, bae's fork, never from another repository's build of the
+        // same version.
+        exclusiveContent {
+            forRepository {
+                maven {
+                    url = uri(rustlsPlatformVerifierAndroid.first.parentFile.resolve("maven"))
+                    metadataSources {
+                        mavenPom()
+                        artifact()
+                    }
+                }
             }
+            filter { includeGroup("org.rustls") }
         }
         maven {
             url = uri(covenNetwork.first)
@@ -90,7 +98,7 @@ dependencyResolutionManagement {
         create("nativeDeps") {
             library(
                 "rustls-platform-verifier",
-                "rustls",
+                "org.rustls",
                 "rustls-platform-verifier",
             ).version(rustlsPlatformVerifierAndroid.second)
             library("coven-network", "fm.coven", "coven-network").version(covenNetwork.second)

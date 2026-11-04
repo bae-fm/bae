@@ -230,6 +230,8 @@
     <string name="onboarding_invite_ended">Deze uitnodiging is beëindigd. Ze is geweigerd of ingetrokken, ze is verlopen, of het apparaat dat haar heeft gemaakt zit niet meer in de bibliotheek.</string>
     <string name="onboarding_waiting_until">Wacht op goedkeuring tot %1$s</string>
     <string name="onboarding_status_connecting">Verbinden…</string>
+    <string name="onboarding_status_registering">Dit apparaat wordt geregistreerd…</string>
+    <string name="onboarding_status_finishing">Afronden…</string>
     <string name="loading_finding_libraries">Je bibliotheken worden gezocht…</string>
     <string name="loading_opening_library">Bibliotheek wordt geopend…</string>
     <string name="loading_resetting_device">Dit apparaat wordt opnieuw ingesteld…</string>

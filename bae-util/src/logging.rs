@@ -133,10 +133,9 @@ pub fn install(sinks: Vec<LogSink>) {
 /// level hint as tracing-subscriber's `init` sets it. The `log` macros build
 /// their arguments whenever that level admits the record, before any filter
 /// can drop it, and the hint is the finest level any sink keeps of any
-/// target: `debug`, for bae's own crates. Admitted at `debug`, sqlite3-parser
-/// computes a line and column for each token it scans by walking the SQL from
-/// its start, which makes tokenizing SQL quadratic in its length; coven
-/// tokenizes the whole schema when it creates a library.
+/// target: `debug`, for bae's own crates. Admitted at `debug`, every
+/// dependency's debug lines would build their arguments even when every sink
+/// drops them.
 pub(crate) fn install_global(
     subscriber: impl tracing::Subscriber + Send + Sync + 'static,
     log_crate_level: LevelFilter,

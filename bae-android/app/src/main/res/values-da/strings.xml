@@ -229,6 +229,8 @@
     <string name="onboarding_invite_ended">Denne invitation er afsluttet. Den blev afvist eller annulleret, den udløb, eller enheden, der lavede den, er ikke længere i biblioteket.</string>
     <string name="onboarding_waiting_until">Venter på godkendelse indtil %1$s</string>
     <string name="onboarding_status_connecting">Opretter forbindelse…</string>
+    <string name="onboarding_status_registering">Registrerer denne enhed…</string>
+    <string name="onboarding_status_finishing">Afslutter…</string>
     <string name="loading_finding_libraries">Finder dine biblioteker…</string>
     <string name="loading_opening_library">Åbner biblioteket…</string>
     <string name="loading_resetting_device">Nulstiller denne enhed…</string>

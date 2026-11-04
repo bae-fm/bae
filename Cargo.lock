@@ -838,10 +838,8 @@ dependencies = [
  "bae-util",
  "bae-views",
  "coven",
- "jni 0.21.1",
  "keyring-core",
  "libsqlite3-sys",
- "rustls-platform-verifier",
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
@@ -1789,7 +1787,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "coven-crypto",
  "coven-database",
@@ -1806,7 +1804,7 @@ dependencies = [
 [[package]]
 name = "coven-crypto"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1838,7 +1836,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "coven-crypto",
  "coven-format",
@@ -1857,7 +1855,7 @@ dependencies = [
 [[package]]
 name = "coven-format"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "coven-crypto",
  "coven-foundation",
@@ -1871,7 +1869,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "block2",
  "futures-lite",
@@ -1898,7 +1896,7 @@ dependencies = [
 [[package]]
 name = "coven-merge"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "coven-foundation",
  "rusqlite",
@@ -1908,7 +1906,7 @@ dependencies = [
 [[package]]
 name = "coven-storage"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "async-trait",
  "aws-credential-types",
@@ -1925,12 +1923,15 @@ dependencies = [
  "hex",
  "http",
  "http-body",
+ "jni 0.22.4",
+ "ndk-context",
  "oauth2",
  "objc2",
  "objc2-cloud-kit",
  "objc2-foundation",
  "open",
  "reqwest",
+ "rustls-platform-verifier",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -1944,7 +1945,7 @@ dependencies = [
 [[package]]
 name = "coven-sync"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=dfd98eab5bbf970530255a5abfd615ff7567dd6a#dfd98eab5bbf970530255a5abfd615ff7567dd6a"
+source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
 dependencies = [
  "async-trait",
  "coven-crypto",
@@ -4984,12 +4985,12 @@ dependencies = [
 
 [[package]]
 name = "rustls-platform-verifier"
-version = "0.6.2"
-source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=c0649fc1bb3e653c9261a3a0672938444b457bc2#c0649fc1bb3e653c9261a3a0672938444b457bc2"
+version = "0.7.1"
+source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=47a4336458b70db9c92a40ba8e0e30ca5fef0b29#47a4336458b70db9c92a40ba8e0e30ca5fef0b29"
 dependencies = [
  "core-foundation",
  "core-foundation-sys",
- "jni 0.21.1",
+ "jni 0.22.4",
  "log",
  "once_cell",
  "rustls",
@@ -5004,8 +5005,8 @@ dependencies = [
 
 [[package]]
 name = "rustls-platform-verifier-android"
-version = "0.1.1"
-source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=c0649fc1bb3e653c9261a3a0672938444b457bc2#c0649fc1bb3e653c9261a3a0672938444b457bc2"
+version = "0.2.0"
+source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=47a4336458b70db9c92a40ba8e0e30ca5fef0b29#47a4336458b70db9c92a40ba8e0e30ca5fef0b29"
 
 [[package]]
 name = "rustls-webpki"
@@ -5495,8 +5496,7 @@ dependencies = [
 [[package]]
 name = "sqlite3-parser"
 version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbb44bfd84bfd1bde5ee215dd0b27d10c3c601a1b7cf03a91c7d6f607f2a10f7"
+source = "git+https://github.com/bae-fm/lemon-rs?rev=c0fc0b12a08a8bab5cdd93182e99344dca796cd3#c0fc0b12a08a8bab5cdd93182e99344dca796cd3"
 dependencies = [
  "bitflags 2.11.0",
  "bumpalo",
