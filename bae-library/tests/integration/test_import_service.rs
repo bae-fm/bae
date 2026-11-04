@@ -318,6 +318,19 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
     );
 }
 
+/// The first read of one tab that `accept` admits; panics at the hang guard.
+async fn wait_for_tab(
+    f: &ImportFixture,
+    what: &str,
+    tab: bae_import::TriageTab,
+    accept: impl FnMut(&bae_import::ImportListSnapshot) -> bool,
+) -> bae_import::ImportListSnapshot {
+    let view = bae_import::ImportListView { tab, ..bae_import::ImportListView::default() };
+    tokio::time::timeout(HANG_GUARD, f.handle.wait_for_list(view, accept))
+        .await
+        .unwrap_or_else(|_| panic!("timed out waiting for {what}"))
+}
+
 /// Wait for a scan event matching `pred`; panics at the hang guard.
 async fn wait_for_scan_event(
     rx: &mut bae_import::ScanEvents,
