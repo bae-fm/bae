@@ -749,10 +749,6 @@ internal open class FakeAppHandle(
         unfaked("releaseMemory")
     }
 
-    override fun reportNetworkChange() {
-        unfaked("reportNetworkChange")
-    }
-
     override suspend fun retryNow(): BridgeSyncRetryOutcome = unfaked("retryNow")
 
     override suspend fun retryOutbox() {

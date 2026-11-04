@@ -417,7 +417,6 @@ impl AppServices {
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), bae_library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
-    delegate_sync!(manager, network_changed => network_changed() -> ());
     delegate_async!(manager, release_memory => release_memory() -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_db::SyncRetryOutcome> + Send + 'static, bae_library::LibraryError>);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), bae_library::LibraryError>);

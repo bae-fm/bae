@@ -27,7 +27,9 @@ pub async fn storage_library(
     (library, storage)
 }
 
-/// Set up storage, then pause uploads while the caller seeds its queue.
+/// Set up storage and wait for its first pass to end synced, then pause
+/// uploads while the caller seeds its queue. Sync stays started: coven
+/// uploads only while it is.
 pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) {
     let coven::StorageConfig::S3 { bucket, region, endpoint, prefix, profile } = storage.config()
     else {
@@ -51,9 +53,6 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
         .unwrap();
     let mut status = manager.subscribe_sync_status();
     value_matching(&mut status, |value| value.coven.state == coven::SyncState::Synced).await;
-    manager.stop_sync().await.unwrap();
-    value_matching(&mut status, |value| !value.running()).await;
-    manager.unlock_store_key().await.unwrap();
     manager.set_sync_paused(true).await.unwrap();
 }
 

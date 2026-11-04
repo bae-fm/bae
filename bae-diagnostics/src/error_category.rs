@@ -175,6 +175,9 @@ pub fn creation_category(error: &coven::StoreCreationError) -> C {
     match error {
         E::Store(coven::CovenError::Key(error))
         | E::Identity(coven::IdentityError::Custody(error)) => key_category(error),
+        // The platform refused coven's watch of the network: the app's
+        // packaging or the platform, which the person can't fix.
+        E::Store(coven::CovenError::NetworkWatch(_)) => C::Internal,
         E::Store(_) => C::Database,
         E::Identity(_) | E::Directory(_) => C::Internal,
         E::Sync(error) => sync_category(error),
@@ -189,7 +192,7 @@ pub fn creation_category(error: &coven::StoreCreationError) -> C {
 pub fn deletion_category(error: &coven::StoreDeletionError) -> C {
     use coven::StoreDeletionError as E;
     match error {
-        E::Sync(error) => sync_category(error),
+        E::Sync(error) | E::Closing(error) => sync_category(error),
         E::Key(error) => key_category(error),
         E::Lock(_) | E::Unsent(_) => C::Config,
         E::File(_) => C::Internal,
@@ -206,6 +209,9 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         // been sent: the person's state, not a bug.
         E::Code(_) | E::NoUnfinishedJoin(_) | E::JoinRequestSent => C::Config,
         E::Store(coven::CovenError::Key(error)) | E::SecureStorage(error) => key_category(error),
+        // The platform refused coven's watch of the network: the app's
+        // packaging or the platform, which the person can't fix.
+        E::Store(coven::CovenError::NetworkWatch(_)) => C::Internal,
         E::Store(_) => C::Database,
         // Restoring as the member whose account holds the store, signed in
         // with another account.
@@ -240,6 +246,9 @@ fn write_category(error: &coven::CovenError) -> C {
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with.
         E::Shutdown(_) => C::Internal,
+        // Only opening watches the network, and a watch the platform
+        // refuses is the app's packaging or the platform's fault.
+        E::NetworkWatch(_) => C::Internal,
     }
 }
 

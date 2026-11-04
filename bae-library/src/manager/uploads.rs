@@ -141,6 +141,15 @@ impl LibraryManager {
             coven::DrainOutcome::Paused => Err(LibraryError::Storage(
                 "cloud upload pipeline paused after the retry began".to_string(),
             )),
+            // coven holds trailing uploads on a metered network only while
+            // the app asks it to move files on unmetered ones.
+            coven::DrainOutcome::Metered => Err(LibraryError::Storage(
+                "cloud uploads wait for an unmetered network".to_string(),
+            )),
+            // Stopped sync holds no storage connection, and coven tried
+            // nothing: the retry needs connected storage, as coven says
+            // when no storage is set up.
+            coven::DrainOutcome::NotSyncing => Err(coven::SyncError::NoStorage.into()),
             coven::DrainOutcome::Drained { .. } | coven::DrainOutcome::QueueEmpty => Ok(()),
         }
     }
@@ -184,6 +193,12 @@ impl LibraryManager {
         match drained.map_err(|error| error.to_string())? {
             coven::DrainOutcome::Paused => {
                 return Err("uploads paused during the fixture drain".into())
+            }
+            coven::DrainOutcome::NotSyncing => {
+                return Err("sync stopped during the fixture drain".into())
+            }
+            coven::DrainOutcome::Metered => {
+                return Err("uploads held for a metered network during the fixture drain".into())
             }
             coven::DrainOutcome::Drained { .. } | coven::DrainOutcome::QueueEmpty => {}
         }

@@ -79,7 +79,9 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         ));
         devices.a_mut().reopen_with(raised.clone()).await;
         devices.a().storage().set_online(true);
-        devices.a().manager().network_changed();
+        // The cover's upload backs off from its failed attempts; retrying
+        // ends that wait, as the person's retry does.
+        drop(devices.a().manager().retry_now().await.unwrap());
 
         let b = devices.b();
         b.wait_until("the second device stopping for the update", || async {
@@ -102,8 +104,9 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
 
         // The first device's pass that sent the slot publishes the raise
         // after it, and the completion waits for a later pass. Stopping its
-        // sync once that pass has ended keeps the completion from going out
-        // before the second device has loaded the raise.
+        // sync lets the pass running end and starts no later one, which
+        // keeps the completion from going out before the second device has
+        // loaded the raise.
         let a = devices.a();
         a.stop_sync().await;
         assert!(

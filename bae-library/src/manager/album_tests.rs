@@ -11,11 +11,10 @@ use uuid::Uuid;
 #[tokio::test]
 async fn delete_album_removes_release_covers() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
     let release = ReleaseRef::of(
         &manager,
-        upload_release_under_sync_loop(&manager, &temp_dir.path().join("r1"), "Album One", false)
-            .await,
+        upload_release_unpaused(&manager, &temp_dir.path().join("r1"), "Album One", false).await,
     )
     .await;
     store_test_cover(&manager, &release.id, b"image").await;

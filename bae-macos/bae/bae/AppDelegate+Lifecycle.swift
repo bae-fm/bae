@@ -91,7 +91,6 @@ extension AppDelegate {
             secureStorage: secureStorage
         )
         startWatchingForKeychainUnlock()
-        observeDeviceWake()
         #if BAE_DEV_RESET
             if let profilePath = AppRuntime.devResetProfilePath(
                 arguments: CommandLine.arguments
@@ -171,26 +170,8 @@ extension AppDelegate {
         // Refresh the library list so the Open Library submenu reflects
         // libraries created, renamed, or removed elsewhere. Only meaningful
         // once a library is open — the menu that consumes it exists only then.
-        guard let appService else { return }
+        guard appService != nil else { return }
         reloadLibraries()
-        // Coming back to the app is a moment the network may be back too.
-        appService.reportNetworkChange()
-    }
-
-    /// Report the device waking to the open library: the network may be
-    /// back after sleep, and sync's offline backoffs should end now rather
-    /// than run out. Registered once, for the process's life; with no library
-    /// open there is nothing to tell.
-    private func observeDeviceWake() {
-        NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.appService?.reportNetworkChange()
-            }
-        }
     }
 
     func application(_: NSApplication, open urls: [URL]) {

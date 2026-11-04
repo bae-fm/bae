@@ -466,7 +466,7 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
 #[tokio::test]
 async fn album_detail_releases_carry_their_own_pin_state() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
 
     let mut album = create_test_album();
     album.title = "Two Pressings".to_string();
@@ -574,13 +574,26 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
     manager.drain_uploads_expecting_work().await.unwrap();
     let file = release_files(&manager, &release.id).await[0].file;
     manager.evict_file_for_test(file).await.unwrap();
+    // The pin's read of the stored file is refused, not whatever request
+    // comes next: sync runs, and its passes make requests of their own.
+    let files = coven::ObjectPrefix::files(manager.database.store_id_for_test());
+    let stored = home
+        .request_trace()
+        .into_iter()
+        .rev()
+        .find_map(|request| match request {
+            coven::MemoryRequest::Create(path) if files.contains(&path) => Some(path),
+            _ => None,
+        })
+        .expect("the upload created the stored file");
 
     for failure in [coven::StorageFailure::Authentication, coven::StorageFailure::ContainerNotFound]
     {
-        let mut faults = coven::Faults::none();
-        faults.fail_next = 1;
-        faults.failure = failure;
-        home.set_faults(faults).await;
+        home.set_faults(coven::Faults {
+            read_failures: [(stored.clone(), failure)].into(),
+            ..coven::Faults::none()
+        })
+        .await;
         let error = manager
             .pin_release_files_with_progress(&release.id, |_| {})
             .await

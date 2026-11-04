@@ -239,28 +239,22 @@ public struct SyncNudges: Sendable {
     /// and syncs. Pulling to refresh calls it, and returns once the first
     /// pass after it ends, with what came of it.
     public let retryNow: @Sendable () async throws -> BridgeSyncRetryOutcome
-    /// Tell sync the device's network may be back; see
-    /// `AppService.reportNetworkChange`.
-    public let reportNetworkChange: @Sendable () -> Void
 
     public init(
         triggerSync: @escaping @Sendable () -> Void = {},
         retryNow:
             @escaping @Sendable () async throws -> BridgeSyncRetryOutcome = {
                 .synced
-            },
-        reportNetworkChange: @escaping @Sendable () -> Void = {}
+            }
     ) {
         self.triggerSync = triggerSync
         self.retryNow = retryNow
-        self.reportNetworkChange = reportNetworkChange
     }
 
     public init(handle: any AppHandleProtocol) {
         self.init(
             triggerSync: { handle.triggerSync() },
-            retryNow: { try await handle.retryNow() },
-            reportNetworkChange: { handle.reportNetworkChange() }
+            retryNow: { try await handle.retryNow() }
         )
     }
 }

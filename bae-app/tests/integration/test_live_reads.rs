@@ -517,7 +517,7 @@ async fn the_inspector_shows_the_error_an_upload_met() {
     inspector.set(Some(release.id.clone())).unwrap();
     storage
         .set_faults(coven::Faults {
-            fail_next: 1,
+            refuse_file_uploads: 1,
             failure: coven::StorageFailure::Network,
             response: Some(500),
             ..coven::Faults::none()

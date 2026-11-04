@@ -181,6 +181,11 @@ dependencies {
     // The JVM half of the Rust TLS verifier, located through Cargo metadata by
     // settings.gradle.
     implementation(nativeDeps.rustls.platform.verifier)
+    // coven's Android library, located through Cargo metadata by
+    // settings.gradle: the class that takes the platform's network callbacks,
+    // with the ACCESS_NETWORK_STATE its manifest asks for. Opening a library
+    // fails without it.
+    implementation(nativeDeps.coven.network)
     // Google's Block Store, where coven keeps the person's saved restore codes
     // on Android. coven loads its classes whenever it builds the keychain, so
     // opening, creating or restoring a library fails without them.

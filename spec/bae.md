@@ -2881,14 +2881,17 @@ its control says so in core's words for that transfer.
   longer, up to five minutes. While Ana's phone is locked and idle, Android's
   Doze mode blocks bae's network (App Standby does the same to an app left
   unused), so every pass and upload fails that way; once she unlocks it
-  the network is back, but the next attempt would still be minutes away. So
-  the apps tell sync when the network may be back: when the platform reports
-  the network became usable or changed, when bae comes to the foreground, and
-  when the device wakes. Each is reported once, on the change, and only while
-  a library is open. coven then ends every wait whose last attempt got no
-  answer from storage and runs a pass at once; a wait after storage answered,
-  such as with a server error, keeps its time
+  the network is back, but the next attempt would still be minutes away.
+  coven watches the device's network itself while a library is open, and the
+  apps report nothing: when the device gains a usable network or moves to
+  another, Doze or App Standby ending among them, coven ends every wait whose
+  last attempt got no answer from storage and runs a pass at once; a wait
+  after storage answered, such as with a server error, keeps its time
   ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
+  On Android that watch is a class in coven's Android library
+  (`fm.coven:coven-network`, from coven-foundation's `android/maven` folder,
+  found through `cargo metadata`), which the app packages; a store can't open
+  without it.
 - **Retrying now.** Pulling the library down to refresh on a phone asks to
   retry everything now: every ordinary backoff ends, whether storage
   answered the last attempt or not, and a pass runs

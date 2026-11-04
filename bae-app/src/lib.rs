@@ -123,6 +123,12 @@ fn classify_open_error(error: bae_db::DbError) -> BootstrapError {
         bae_db::DbError::Coven(coven::CovenError::Lock(
             coven::StoreLockError::ReplacementUnfinished { by, .. },
         )) => BootstrapError::ReplacementUnfinished(by),
+        // The platform refused coven's watch of the network, as an Android
+        // app packaged without coven's network library is: no retry or
+        // setting fixes it.
+        error @ bae_db::DbError::Coven(coven::CovenError::NetworkWatch(_)) => {
+            BootstrapError::Internal(format!("Failed to open database: {error}"))
+        }
         error => BootstrapError::Database(format!("Failed to open database: {error}")),
     }
 }

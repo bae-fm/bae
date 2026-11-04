@@ -38,10 +38,8 @@ impl TestDevice {
         &self.library.database
     }
 
-    /// Stop the device's sync loop: no new pass starts until sync starts
-    /// again, but a pass already running goes on to its end and can still
-    /// publish what is written meanwhile. A test that needs nothing to reach
-    /// storage takes the device's storage offline instead.
+    /// Stop the device's sync loop: the pass running ends first, and once
+    /// this returns no pass or upload runs until sync starts again.
     pub async fn stop_sync(&self) {
         stores::stop_sync(self.database()).await;
     }
@@ -173,8 +171,7 @@ impl TwoDevices {
         }
     }
 
-    /// Stop both loops before making concurrent offline edits. A pass already
-    /// running on either goes on to its end, as [`TestDevice::stop_sync`] says.
+    /// Stop both loops before making concurrent offline edits.
     pub async fn pause(&self) {
         for device in [self.a(), &self.b] {
             device.stop_sync().await;

@@ -176,14 +176,13 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
 
     // A genuinely Remote release, so storing its cover publishes the file and
     // the delete runs against a cover that names a real cloud object.
     let release1 = ReleaseRef::of(
         &manager,
-        upload_release_under_sync_loop(&manager, &temp_dir.path().join("r1"), "Album One", false)
-            .await,
+        upload_release_unpaused(&manager, &temp_dir.path().join("r1"), "Album One", false).await,
     )
     .await;
     // A sibling release so the album survives the single-release delete.

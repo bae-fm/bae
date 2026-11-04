@@ -171,18 +171,18 @@ pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, Db
 // putting a release through upload at each stage it can be caught in, and
 // reading back what coven kept on this device.
 
-/// Connect injected storage and pause uploads while a test seeds its queue.
+/// Connect injected storage as [`connect_test_cloud_uploading`] does, then
+/// pause uploads while a test seeds its queue. Sync stays started: coven
+/// uploads only while it is, so the test's own drain sends what it seeds.
 pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
-    connect_test_cloud_with_sync_loop(manager).await;
-    manager.database.stop_sync().await.unwrap();
-    let mut status = manager.subscribe_sync_status();
-    crate::followed::value_matching(&mut status, |status| !status.running()).await;
-    manager.database.unlock_store_key().await.unwrap();
+    connect_test_cloud_uploading(manager).await;
     manager.database.set_uploads_paused(true).await.unwrap();
     manager.storage.clone()
 }
 
-pub(super) async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryStorage> {
+/// Connect injected storage and wait for its first pass to end synced; sync
+/// and uploads run.
+pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<MemoryStorage> {
     manager
         .database
         .setup_s3_storage(
@@ -289,10 +289,10 @@ pub(super) async fn wait_for_kept_release(manager: &LibraryManager, release_id: 
 }
 
 /// [`uploaded_release`] for a test connected with
-/// [`connect_test_cloud_with_sync_loop`]: the loop drains the queue, so this
+/// [`connect_test_cloud_uploading`]: coven drains the queue, so this
 /// waits for the upload to finish rather than counting a drain pass this
 /// test does not own.
-pub(super) async fn upload_release_under_sync_loop(
+pub(super) async fn upload_release_unpaused(
     manager: &LibraryManager,
     dir: &std::path::Path,
     album_title: &str,

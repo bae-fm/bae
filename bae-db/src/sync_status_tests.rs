@@ -202,7 +202,7 @@ fn only_a_moving_pass_is_syncing() {
     let syncing = |state| alone(state).syncing();
     assert!(syncing(moving()));
     assert!(!syncing(synced()));
-    assert!(!syncing(coven::SyncState::WaitingToSync(coven::UploadWait::Queued)));
+    assert!(!syncing(coven::SyncState::WaitingToSync(coven::SyncWait::Queued)));
     assert!(!syncing(offline()));
     assert!(!syncing(blocked(coven::PendingReason::Removed, None, coven::SyncState::Removed)));
     assert!(!syncing(failed_status(coven::StatusFailure::Removed, coven::SyncState::Removed)));
@@ -217,7 +217,7 @@ fn only_a_moving_pass_is_syncing() {
 fn with_nothing_pending_the_line_names_the_status() {
     let indicator = |state, effect, error| read(state, Vec::new(), effect, error).indicator();
     let running = coven::RetryEffect::Pass;
-    let waiting = || coven::SyncState::WaitingToSync(coven::UploadWait::Queued);
+    let waiting = || coven::SyncState::WaitingToSync(coven::SyncWait::Queued);
     let unsent = ended(
         coven::LastPass::Offline { failure: coven::StorageFailure::Network, error: "".into() },
         coven::SyncState::OfflineWithUnsentChanges,

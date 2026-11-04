@@ -650,19 +650,18 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
     manager.cancel_release_transition(REL_NONE).await.unwrap();
 }
 
-// Needs the mock cloud home with its sync loop: audio detachment is only
+// Needs the mock cloud home with uploads running: audio detachment is only
 // offered a release whose upload has been accepted, so the transition has
 // to run all the way through a cycle and retire its intent first.
 #[tokio::test]
 async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
     // Really Remote, through the real transition: audio detachment resolves the
     // release's current locality from coven, which a fabricated `remote` column
     // with no cloud objects behind it cannot answer.
     let release_id =
-        upload_release_under_sync_loop(&manager, &temp_dir.path().join("r1"), "Album One", false)
-            .await;
+        upload_release_unpaused(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
 
     // A token cancelled before coven downloads anything: the call stops
     // before its write and removes whatever it made.

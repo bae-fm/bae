@@ -5,17 +5,16 @@ use crate::followed::value_matching;
 use crate::LibraryManager;
 use bae_db::{people::PersonProfile, Database};
 
-/// Ask for this device's person's profile named `name`, sync until the
-/// manager has written it, then stop sync again, as [`super::connect_storage`]
-/// leaves it.
+/// Ask for this device's person's profile named `name`, and sync until the
+/// manager has written it.
 pub async fn made_profile(manager: &LibraryManager, name: &str) -> PersonProfile {
     manager.create_profile(name).await.unwrap();
     requested_profile(manager).await
 }
 
 /// The profile this device's person asked for, written by the manager once
-/// sync has made their private circle; sync runs until it is written, then
-/// stops again.
+/// sync has made their private circle. Sync starts if it was stopped, and
+/// runs on once the profile is written.
 pub async fn requested_profile(manager: &LibraryManager) -> PersonProfile {
     let member = manager
         .own_person()
@@ -25,7 +24,6 @@ pub async fn requested_profile(manager: &LibraryManager) -> PersonProfile {
         .membership
         .id;
     let mut profiles = manager.subscribe_profiles();
-    let mut status = manager.subscribe_sync_status();
     manager.attach_and_start_sync().await.unwrap();
     let profile = own(
         value_matching(&mut profiles, |profiles| {
@@ -34,9 +32,6 @@ pub async fn requested_profile(manager: &LibraryManager) -> PersonProfile {
         .await,
         member,
     );
-    manager.stop_sync().await.unwrap();
-    value_matching(&mut status, |value| !value.running()).await;
-    manager.unlock_store_key().await.unwrap();
     profile
 }
 

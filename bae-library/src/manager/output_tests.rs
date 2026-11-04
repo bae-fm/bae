@@ -82,7 +82,7 @@ async fn make_exportable_release(
 ) -> String {
     let (release, _) = insert_export_release_rows(manager, source_dir, folder_name, files).await;
     manager.upload_release(&release.id, true).await.unwrap();
-    // The sync loop this fixture's tests connect drains the queue itself, so
+    // The uploads this fixture's tests leave running drain the queue, so
     // wait for the upload to finish rather than counting a drain pass this
     // test does not own.
     wait_for_landed_upload(manager, &release.id).await;
@@ -185,7 +185,7 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
 #[tokio::test]
 async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
 
     let source_dir = temp_dir.path().join("source");
     let files: &[(&str, &[u8])] =
@@ -307,7 +307,7 @@ async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
 #[tokio::test]
 async fn export_write_error_marks_failed_until_cancelled() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
 
     let source_dir = temp_dir.path().join("source");
     let release_id = make_exportable_release(

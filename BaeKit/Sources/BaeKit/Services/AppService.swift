@@ -135,8 +135,6 @@ open class AppService: @unchecked Sendable, Observable {
     /// Cast transport: browse for devices, and move playback to or from one.
     private nonisolated let cast: Cast
     private let playbackValues: PlaybackValueHandler
-    /// Reports the network path becoming usable while this library is open.
-    private let networkPathReports: NetworkPathReports
 
     #if DEBUG
         private let testAccess: AppServiceTestAccess
@@ -184,9 +182,6 @@ open class AppService: @unchecked Sendable, Observable {
         sync = components.sync
         downloads = components.downloads
         cast = components.cast
-        networkPathReports = NetworkPathReports { [sync = components.sync] in
-            sync.nudges.reportNetworkChange()
-        }
         playbackValues = PlaybackValueHandler(
             playbackStore: components.playbackStore,
             castStore: components.castStore
@@ -204,12 +199,11 @@ open class AppService: @unchecked Sendable, Observable {
     /// Close the library so nothing of this process holds its store: save
     /// where playback was, stop its services and sync, close the store, and
     /// shut the core's runtime down, off the main actor, writing each step to
-    /// `closing` when the app shows the close. The network reports stop with
-    /// it. The library is closed whether or not this throws: a failure says
+    /// `closing` when the app shows the close. The library is closed whether
+    /// or not this throws: a failure says
     /// what went wrong while closing it. Removing a library instead calls
     /// `removeLibrary` while this service owns the store.
     public func close(showing closing: LibraryClosingSteps?) async throws {
-        defer { networkPathReports.stop() }
         let bridgeClosing = closing?.closing
         try await DetachedWork.run { [appHandle] in
             try appHandle.closeLibrary(closing: bridgeClosing)
@@ -218,16 +212,6 @@ open class AppService: @unchecked Sendable, Observable {
 
     public func triggerSync() {
         sync.nudges.triggerSync()
-    }
-
-    /// Tell sync the device's network may be back. The platform calls it on a
-    /// transition: the app coming to the foreground, or the device waking;
-    /// the session reports the network path itself. Sync ends every backoff
-    /// that followed an attempt no provider answered and runs a pass now, so
-    /// work cut off while the device slept or the app sat in the background
-    /// resumes at once. It requests a pass as `triggerSync` does.
-    public func reportNetworkChange() {
-        sync.nudges.reportNetworkChange()
     }
 
     public nonisolated func renameLibrary(
@@ -247,9 +231,6 @@ open class AppService: @unchecked Sendable, Observable {
     public func removeLibrary(showing removal: LibraryClosingSteps) async throws
         -> BridgeLibraryRemoval
     {
-        // Whatever the outcome this session ends: a failed removal closes
-        // the library and opens it again in a new session.
-        defer { networkPathReports.stop() }
         let removed = try await appHandle.removeLibrary(
             closing: removal.closing
         )
@@ -314,7 +295,6 @@ open class AppService: @unchecked Sendable, Observable {
 
     public func startCommonSubscriptions() {
         membershipStore.start()
-        networkPathReports.start()
         commonSubscriptions.start(
             applyPlayback: { [weak self] values in
                 guard let self else { return }

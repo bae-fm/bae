@@ -100,10 +100,8 @@ fn pass_ends(database: &Database) -> coven::LiveQuery<(Option<coven::LastPass>, 
     })
 }
 
-/// Stop the device's sync loop: once this returns, no new pass starts until
-/// sync starts again, but a pass already running goes on to its end and can
-/// still publish what is written meanwhile. A test that needs nothing to
-/// reach storage takes the device's storage offline instead.
+/// Stop the device's sync loop: the pass running ends first, and once this
+/// returns no pass or upload runs until sync starts again.
 pub async fn stop_sync(database: &Database) {
     database.stop_sync().await.unwrap();
 }
@@ -368,8 +366,7 @@ impl TwoStores {
         &self.b.database
     }
 
-    /// Stop both sync loops, before making concurrent offline edits. A pass
-    /// already running on either goes on to its end, as [`stop_sync`] says.
+    /// Stop both sync loops, before making concurrent offline edits.
     pub async fn pause(&self) {
         for store in [&self.a, &self.b] {
             stop_sync(&store.database).await;

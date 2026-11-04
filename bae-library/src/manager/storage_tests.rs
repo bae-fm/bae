@@ -372,24 +372,16 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
 
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
 
     // Pinned: made Remote with pin, so its file lands in coven's offline cache.
-    let pinned = upload_release_under_sync_loop(
-        &manager,
-        &temp_dir.path().join("pinned"),
-        "Pinned Album",
-        true,
-    )
-    .await;
+    let pinned =
+        upload_release_unpaused(&manager, &temp_dir.path().join("pinned"), "Pinned Album", true)
+            .await;
     // Cloud-only: made Remote without pin, so its file is evictable, not pinned.
-    let cloud_only = upload_release_under_sync_loop(
-        &manager,
-        &temp_dir.path().join("cloud"),
-        "Cloud Album",
-        false,
-    )
-    .await;
+    let cloud_only =
+        upload_release_unpaused(&manager, &temp_dir.path().join("cloud"), "Cloud Album", false)
+            .await;
 
     // Local: not remote, files at a local path.
     let mut local_album = create_test_album();

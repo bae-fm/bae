@@ -571,7 +571,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
 #[tokio::test]
 async fn an_upload_queues_each_release_before_returning() {
     let (manager, temp_dir) = setup_test_manager().await;
-    // A caller-driven connection: no sync loop drains the queue behind the test.
+    // Uploads paused: nothing drains the queue behind the test.
     connect_test_cloud(&manager).await;
     let release = insert_local_release_with_files(
         &manager,
@@ -699,12 +699,22 @@ async fn retry_outbox_now_surfaces_a_missing_cloud_connection() {
 async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     let (manager, _temp, _release, _) = queued_upload_fixture("paused").await;
     manager.set_sync_paused(true).await.unwrap();
-    let before = manager.storage.request_count();
+    // Sync runs, so passes make requests of their own; the retry sends no
+    // file.
+    let before = manager.storage.request_trace().len();
     assert!(matches!(
         manager.database.retry_uploads_now().await.unwrap(),
         coven::DrainOutcome::Paused
     ));
-    assert_eq!(manager.storage.request_count(), before);
+    let files = coven::ObjectPrefix::files(manager.database.store_id_for_test());
+    let sent: Vec<_> = manager.storage.request_trace()[before..]
+        .iter()
+        .filter(
+            |request| matches!(request, coven::MemoryRequest::Create(path) if files.contains(path)),
+        )
+        .cloned()
+        .collect();
+    assert!(sent.is_empty(), "a paused retry sent {sent:?}");
     assert!(manager.is_sync_paused().await.unwrap());
     manager.set_sync_paused(false).await.unwrap();
     manager.retry_outbox_now().await.unwrap();

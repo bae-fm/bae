@@ -16,6 +16,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
     let database = library.database().clone();
     connect_storage(&library, &storage).await;
+    library.stop_sync().await.unwrap();
     let track = bae_util::test_ids::test_uuid("waiting-track");
     let release = bae_util::test_ids::test_uuid("waiting-release");
     let medium = bae_util::test_ids::test_uuid("waiting-medium");

@@ -73,7 +73,7 @@ async fn a_retry_that_fails_again_shows_its_own_error() {
     let mut values = manager.subscribe_sync_status();
     manager.start().unwrap();
     let refuse = |status: u16| coven::Faults {
-        fail_next: 1,
+        refuse_file_uploads: 1,
         failure: coven::StorageFailure::Network,
         response: Some(status),
         ..coven::Faults::none()
@@ -248,43 +248,6 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     manager.close().await.unwrap();
 }
 
-/// Android blocked the network while the phone was locked, so the pass found
-/// no network and backs off. Once the network is back, a sync request still
-/// waits out that backoff; the app's network report ends it and a pass runs
-/// at once. The fixed clock never moves, so no backoff ends by itself.
-#[tokio::test]
-async fn a_network_report_ends_the_offline_backoff_and_syncs() {
-    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
-    let (manager, _temp) = setup_test_manager_with_clock(clock).await;
-    connect_test_cloud_with_sync_loop(&manager).await;
-    let mut status = manager.subscribe_sync_status();
-    manager.storage.set_online(false);
-    manager.trigger_sync();
-    crate::followed::value_matching(&mut status, |status| {
-        matches!(status.shown_pass(), Some(coven::LastPass::Offline { .. }))
-    })
-    .await;
-    manager.storage.set_online(true);
-    let requests = manager.storage.request_trace().len();
-    manager.trigger_sync();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    assert_eq!(
-        manager.storage.request_trace().len(),
-        requests,
-        "a sync request ran a pass inside the offline backoff"
-    );
-    assert!(matches!(
-        manager.sync_status().await.unwrap().shown_pass(),
-        Some(coven::LastPass::Offline { .. })
-    ));
-    manager.network_changed();
-    crate::followed::value_matching(&mut status, |status| {
-        status.coven.state == coven::SyncState::Synced
-    })
-    .await;
-    manager.close().await.unwrap();
-}
-
 /// A launch whose start failed records why in the failure's own category —
 /// a keychain locked for this session reads as locked, not as an internal
 /// failure, on a device whose storage credentials are gone, whose start reads
@@ -401,7 +364,7 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
 async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::FixedClock>) {
     let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
     let (manager, temp_dir) = setup_test_manager_with_clock(clock.clone()).await;
-    connect_test_cloud_with_sync_loop(&manager).await;
+    connect_test_cloud_uploading(&manager).await;
     manager.start().unwrap();
     (manager, temp_dir, clock)
 }

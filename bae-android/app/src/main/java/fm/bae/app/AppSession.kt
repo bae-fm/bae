@@ -2,9 +2,7 @@ package fm.bae.app
 
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
 import androidx.glance.appwidget.updateAll
-import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.BrowserPageStores
 import fm.bae.app.data.Cast
 import fm.bae.app.data.CastStore
@@ -104,7 +102,6 @@ class OpenLibrary internal constructor(
     /** Where this library's code reports a broken guarantee without crashing. */
     val bugs: BugReports get() = runtime.bugs
     private var widgetJob: Job? = null
-    private var networkReports: NetworkChangeReporter? = null
     private var memoryRelease: MemoryRelease? = null
 
     /**
@@ -122,9 +119,8 @@ class OpenLibrary internal constructor(
 
     /**
      * Subscribe to retained values first, then route transient notifications
-     * through the event adapter, report to the handle each time its network
-     * may be back ([NetworkChangeReporter]), and give back its store's cached
-     * memory each time Android asks ([MemoryRelease]).
+     * through the event adapter, and give back its store's cached memory each
+     * time Android asks ([MemoryRelease]).
      *
      * The [PlaybackService] is not started here: Android starts a service only
      * from the foreground, so `PlaybackSystemHooks` starts it when playback
@@ -141,12 +137,6 @@ class OpenLibrary internal constructor(
     fun wireUp(scope: CoroutineScope) {
         subscribeToValues(scope)
         appHandle.triggerSync()
-        networkReports =
-            NetworkChangeReporter(
-                connectivity = checkNotNull(appContext.getSystemService(ConnectivityManager::class.java)),
-                lifecycle = ProcessLifecycleOwner.get().lifecycle,
-                report = appHandle::reportNetworkChange,
-            ).also(NetworkChangeReporter::start)
         memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
         observeNowPlayingForWidget(scope)
     }
@@ -369,9 +359,7 @@ class OpenLibrary internal constructor(
     private suspend fun stopSessionServices() {
         // No screen of this library may still take a tap.
         shownScreens.first { it == 0 }
-        // Then: a report must never reach the handle once it closes.
-        networkReports?.stop()
-        networkReports = null
+        // Then: a release must never reach the handle once it closes.
         memoryRelease?.stop()
         memoryRelease = null
         browserPages.cancel()

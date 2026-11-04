@@ -162,10 +162,6 @@ impl Database {
         self.inner.handle.sync_now();
     }
 
-    pub fn network_changed(&self) {
-        self.inner.handle.network_changed();
-    }
-
     /// Retry now: the retry is in place once this returns, with its answer
     /// to await.
     pub async fn retry_now(&self) -> Result<coven::RetryAnswer, coven::SyncError> {
