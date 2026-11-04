@@ -126,8 +126,28 @@ fn an_album_s_first_year_is_every_pressing_s() {
     let read = record(Some(1963), Some(1963), None);
     let unread = record(Some(2005), None, None);
     let facts = FolderFacts::of(&text(&["1963 Album"]), [&read, &unread]);
-    assert_eq!(facts.album_first_year(std::slice::from_ref(&unread)), Some(1963));
+    assert_eq!(facts.album_first_years(std::slice::from_ref(&unread)), [1963]);
     assert!(facts.names_the_album_year(std::slice::from_ref(&unread)));
+}
+
+/// A row's two catalogs each date the album from their own album page, and
+/// neither speaks for the other: a folder year either names confirms the
+/// album, and names no edition.
+#[test]
+fn every_catalog_s_first_year_is_the_album_s() {
+    let musicbrainz = record(None, Some(1971), None);
+    let discogs = MetadataResult {
+        album_first_year: Some(1970),
+        ..MetadataResult::for_test(LookupCatalog::Discogs, "dg-1", Some("m-1"))
+    };
+    for folder in ["1970 Album", "1971 Album"] {
+        let facts = FolderFacts::of(&text(&[folder]), []);
+        for row in [[musicbrainz.clone(), discogs.clone()], [discogs.clone(), musicbrainz.clone()]]
+        {
+            assert!(facts.names_the_album_year(&row), "{folder}");
+            assert_eq!(facts.pressing_year(&row), None, "{folder}");
+        }
+    }
 }
 
 /// A record whose read document lists `titles`.

@@ -104,24 +104,29 @@ impl FolderFacts {
         }
     }
 
-    /// Whether the folder's years include the year the row's album first came
+    /// Whether the folder's years include a year the row's album first came
     /// out: it confirms the album, as its title and artist do.
     pub(crate) fn names_the_album_year(&self, records: &[MetadataResult]) -> bool {
-        self.album_first_year(records).is_some_and(|first| self.years.contains(&first))
+        self.album_first_years(records).iter().any(|first| self.years.contains(first))
     }
 
-    /// The year the row's album first came out, as a record of it states or
-    /// another pressing of the album on the list does.
-    pub(crate) fn album_first_year(&self, records: &[MetadataResult]) -> Option<i32> {
-        records.iter().find_map(|record| {
-            record.album_first_year.or_else(|| {
-                let group = record.source_group_id.as_ref()?;
-                self.album_years
-                    .iter()
-                    .find(|((catalog, key), _)| *catalog == record.source && key == group)
-                    .map(|(_, year)| *year)
+    /// The years the row's album first came out, one for each record dating
+    /// it, as the record states it or another pressing of its album on the
+    /// list does. Each catalog dates the album from its own album page, and
+    /// neither speaks for the other.
+    pub(crate) fn album_first_years(&self, records: &[MetadataResult]) -> Vec<i32> {
+        records
+            .iter()
+            .filter_map(|record| {
+                record.album_first_year.or_else(|| {
+                    let group = record.source_group_id.as_ref()?;
+                    self.album_years
+                        .iter()
+                        .find(|((catalog, key), _)| *catalog == record.source && key == group)
+                        .map(|(_, year)| *year)
+                })
             })
-        })
+            .collect()
     }
 
     /// The year the folder names the row's pressing by, or none: one answer,
@@ -129,14 +134,15 @@ impl FolderFacts {
     /// read.
     ///
     /// A year the row's own title writes ("1990-2000") is the title's; the
-    /// rest are read as [`StatedYears::of`] reads them, against the year the
-    /// row's album first came out.
+    /// rest are read as [`StatedYears::of`] reads them, against the latest
+    /// year a record of the row says its album first came out: a pressing
+    /// came out after every one of them.
     pub(crate) fn pressing_year(&self, records: &[MetadataResult]) -> Option<i32> {
         let titled: Vec<i32> =
             records.iter().flat_map(|record| title_years(&record.title)).collect();
         let years: Vec<i32> =
             self.years.iter().copied().filter(|year| !titled.contains(year)).collect();
-        StatedYears::of(&years, self.album_first_year(records)).pressing
+        StatedYears::of(&years, self.album_first_years(records).into_iter().max()).pressing
     }
 
     /// Whether the row was released in the year the folder names its pressing
