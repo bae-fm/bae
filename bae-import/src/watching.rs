@@ -17,8 +17,8 @@ use tracing::{debug, error, info, warn};
 mod active_roots;
 mod coordinator;
 mod folder_watcher;
-mod root_backend;
 mod root_change;
+mod root_removal;
 mod root_scan_cause;
 mod watch_batches;
 
@@ -27,10 +27,12 @@ pub(crate) use active_roots::{FolderReadingRequest, RootPass};
 pub(crate) use coordinator::{start_watcher, WatcherCommand};
 use folder_watcher::FolderWatchSnapshot;
 pub(crate) use folder_watcher::FolderWatcher;
-use root_backend::{RootRemovalBackend, ServiceRootRemovalBackend};
 use root_change::{
     affected_roots, changed_events_summary, changed_paths, network_changes, root_change_of,
     roots_for_watch_error, RootChange,
+};
+use root_removal::{
+    run_root_removal, RootRemovalBackend, RootRemovalResult, ServiceRootRemovalBackend,
 };
 use root_scan_cause::RootScanCause;
 pub(crate) use watch_batches::WatchReport;

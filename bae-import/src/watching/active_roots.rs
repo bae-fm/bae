@@ -7,8 +7,6 @@
 use super::*;
 use std::collections::BTreeSet;
 
-mod root_tasks;
-
 /// A caller waiting to hear that what it asked for is over.
 pub(super) type RefreshCompletion = tokio::sync::oneshot::Sender<Result<(), String>>;
 
@@ -409,7 +407,7 @@ impl ActiveRoots {
             &tokio::runtime::Handle::current(),
             "remove a watched folder",
             async move {
-                let result = root_tasks::run_root_removal(
+                let result = run_root_removal(
                     &task_roots,
                     task_parent.as_deref(),
                     scans,
@@ -607,11 +605,6 @@ pub(super) enum RemovalOutcome {
 pub(super) struct RootRemovalCompletion {
     id: u64,
     result: RootRemovalResult,
-}
-
-enum RootRemovalResult {
-    Removed { commit: crate::FolderStateCommitGuard, removed: crate::tables::WatchedFoldersRemoved },
-    Failed(String),
 }
 
 #[cfg(test)]
