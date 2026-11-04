@@ -52,12 +52,7 @@ impl AppDir {
     }
 
     fn create(path: PathBuf) -> std::io::Result<Self> {
-        std::fs::create_dir_all(&path).map_err(|error| {
-            std::io::Error::new(
-                error.kind(),
-                format!("create app directory {}: {error}", path.display()),
-            )
-        })?;
+        std::fs::create_dir_all(&path).map_err(|error| bae_util::fs::io_error_at(&path, error))?;
         Ok(Self {
             path,
             #[cfg(any(test, feature = "test-utils"))]
@@ -136,10 +131,10 @@ impl AppDir {
         use std::io::Write;
         let path = self.path.join("install-id");
         let read = || -> Result<String, AppDirError> {
-            let text = std::fs::read_to_string(&path)?;
-            let id = uuid::Uuid::parse_str(text.trim()).map_err(|error| {
-                AppDirError::Invalid(format!("invalid installation id: {error}"))
-            })?;
+            let text = std::fs::read_to_string(&path)
+                .map_err(|error| bae_util::fs::io_error_at(&path, error))?;
+            let id = uuid::Uuid::parse_str(text.trim())
+                .map_err(|error| AppDirError::Invalid(format!("{}: {error}", path.display())))?;
             Ok(id.to_string())
         };
         match read() {
@@ -148,16 +143,23 @@ impl AppDir {
             Err(error) => return Err(error),
         }
         let id = ids.new_id().to_string();
-        let mut staged = tempfile::NamedTempFile::new_in(&self.path)?;
-        staged.write_all(id.as_bytes())?;
-        staged.as_file().sync_all()?;
+        let mut staged = tempfile::NamedTempFile::new_in(&self.path)
+            .map_err(|error| bae_util::fs::io_error_at(&self.path, error))?;
+        staged
+            .write_all(id.as_bytes())
+            .map_err(|error| bae_util::fs::io_error_at(staged.path(), error))?;
+        staged
+            .as_file()
+            .sync_all()
+            .map_err(|error| bae_util::fs::io_error_at(staged.path(), error))?;
         match staged.persist_noclobber(&path) {
             Ok(_) => {
-                bae_util::fs::sync_directory(&self.path)?;
+                bae_util::fs::sync_directory(&self.path)
+                    .map_err(|error| bae_util::fs::io_error_at(&self.path, error))?;
                 Ok(id)
             }
             Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => read(),
-            Err(error) => Err(error.error.into()),
+            Err(error) => Err(bae_util::fs::io_error_at(&path, error.error).into()),
         }
     }
 

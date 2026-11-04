@@ -96,6 +96,21 @@ fn installation_id_is_shared_by_libraries_and_survives_reopening() {
     assert!(app_dir.install_id(&ids).is_err());
 }
 
+#[test]
+fn an_unreadable_installation_id_names_its_file() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path()).unwrap();
+    let ids = coven::SequentialIds::new();
+    let path = tmp.path().join("install-id");
+    std::fs::create_dir(&path).unwrap();
+    let error = app_dir.install_id(&ids).unwrap_err();
+    assert!(error.to_string().contains(&path.display().to_string()), "{error}");
+    std::fs::remove_dir(&path).unwrap();
+    std::fs::write(&path, "invalid").unwrap();
+    let error = app_dir.install_id(&ids).unwrap_err();
+    assert!(error.to_string().contains(&path.display().to_string()), "{error}");
+}
+
 #[tokio::test]
 async fn an_app_dir_under_a_fresh_home_exists_and_holds_a_new_store() {
     let home = TempDir::new().unwrap();
