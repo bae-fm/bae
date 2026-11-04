@@ -99,7 +99,7 @@ impl ImportServiceHandle {
                 {
                     Ok(found) => found,
                     Err(failed) => {
-                        Err(bae_catalogs::Failure::Internal(diagnostics.bug(failed).into()))
+                        Err(bae_catalogs::Failure::Internal(diagnostics.panicked(failed).into()))
                     }
                 };
                 land_source_search(&tables, &diagnostics, &candidate_key, run, source, found).await;

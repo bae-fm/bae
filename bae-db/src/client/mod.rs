@@ -324,13 +324,11 @@ impl Database {
             .ok_or_else(|| {
                 DbError::Message(format!("database path has no parent: {database_path}"))
             })?;
-        let installation = coven::TestCoven::new();
-        let handle = crate::configure_store(
-            installation.builder(bae_app_dir::AppDir::at(root)?.store_layout()),
-        )
-        .clock(clock.clone())
-        .create_store("Test Library")
-        .await?;
+        let installation = coven::Coven::in_memory(bae_app_dir::AppDir::at(root)?.coven_app_dir());
+        let handle = crate::configure_store(installation.builder())
+            .clock(clock.clone())
+            .create_store("Test Library")
+            .await?;
         Ok(Self::from_handle(handle, clock, Arc::new(coven::UuidIds)))
     }
 }

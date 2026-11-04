@@ -365,8 +365,8 @@ impl CastController {
                             );
                         }
                     }
-                    Err(failed) => {
-                        controller.diagnostics.bug(failed);
+                    Err(bug) => {
+                        controller.diagnostics.panicked(bug);
                     }
                 }
                 if changes.recv().await.is_none() {
@@ -399,8 +399,8 @@ impl CastController {
                                 controller.stop_discovery();
                                 controller.stop_casting();
                             });
-                            if let Err(failed) = applied {
-                                controller.diagnostics.bug(failed);
+                            if let Err(bug) = applied {
+                                controller.diagnostics.panicked(bug);
                             }
                         }
                         #[cfg(test)]
@@ -443,8 +443,8 @@ impl CastController {
                     }
                 })
                 .await;
-                if let Err(failed) = stopped {
-                    diagnostics.bug(failed);
+                if let Err(bug) = stopped {
+                    diagnostics.panicked(bug);
                 }
             }
         });
@@ -510,8 +510,8 @@ impl CastController {
             }
             caught_sync("take a reported renderer", || discovery.report(service))
         });
-        if let Err(failed) = reported {
-            self.diagnostics.bug(failed);
+        if let Err(bug) = reported {
+            self.diagnostics.panicked(bug);
         }
     }
 

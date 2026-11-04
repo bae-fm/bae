@@ -87,10 +87,10 @@ async fn restore_runs(
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
         let new_app_dir =
             bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
-        let installation = coven::TestCoven::new();
+        let installation = coven::Coven::in_memory(new_app_dir.coven_app_dir());
         let (_cancelling, cancel) = tokio::sync::watch::channel(false);
         let started = Instant::now();
-        let builder = installation.builder(new_app_dir.store_layout());
+        let builder = installation.builder();
         let device_name = format!("Restore bench {run}");
         let on_status = |status| eprintln!("run {run}: {status:?} at {:?}", started.elapsed());
         let restored = match downloads {

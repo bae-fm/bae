@@ -8,4 +8,4 @@
 //! the panic as a bug (bae-library's `Diagnostics::bug`); this crate has no bug
 //! reporter of its own.
 
-pub use coven::task::{blocking, caught, caught_sync, joined, panic_message, TaskFailed};
+pub use coven::task::{blocking, caught, caught_sync, joined, panic_message, Bug, TaskFailed};

@@ -417,10 +417,10 @@ async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
     let unprobeable: Result<Option<bae_audio::ProbeResult>, TaskFailed> = Ok(None);
     assert!(resolve_preview_probe(std::path::Path::new("path"), unprobeable).is_none());
 
-    let probe_panicked = Err(TaskFailed::Panicked {
+    let probe_panicked = Err(TaskFailed::Panicked(bae_util::task_failure::Bug {
         operation: "probe the file to preview",
         message: "preview probe panic".to_string(),
-    });
+    }));
     assert!(resolve_preview_probe(std::path::Path::new("path"), probe_panicked).is_none());
 }
 

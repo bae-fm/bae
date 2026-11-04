@@ -27,9 +27,10 @@ fn a_failed_read_of_the_saved_codes_stays_a_failure() {
 #[tokio::test]
 async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
     let temp = tempfile::TempDir::new().unwrap();
-    let layout = AppDir::at(temp.path()).unwrap().store_layout();
-    let here = coven::TestCoven::new()
-        .create_closed_store(&layout, "On This Device", std::sync::Arc::new(coven::UuidIds))
+    let installation =
+        coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
+    let here = installation
+        .create_closed_store("On This Device", std::sync::Arc::new(coven::UuidIds))
         .await
         .unwrap()
         .id();
@@ -53,7 +54,7 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
     };
     let offered = restorable_codes(
         vec![code(here), unreadable(here), code(elsewhere), unreadable(unreadable_elsewhere)],
-        &layout,
+        &installation,
     )
     .await
     .unwrap();

@@ -10,7 +10,7 @@ use crate::audio_output::{
 };
 use bae_audio::Resampler;
 #[cfg(not(target_os = "android"))]
-use bae_util::task_failure::TaskFailed;
+use bae_util::task_failure::Bug;
 
 /// The most source frames pulled at once. An output asks for one device
 /// buffer at a time, a few hundred to a few thousand frames; a larger request
@@ -153,7 +153,7 @@ impl ResamplingDrain {
     /// The panic's caller catches it at the output's own callback boundary:
     /// cpal's, which Android's output does not use.
     #[cfg(not(target_os = "android"))]
-    pub(crate) fn panicked(&mut self, failed: TaskFailed) {
+    pub(crate) fn panicked(&mut self, failed: Bug) {
         self.fail(format!("feeding {}: {failed}", self.output_name));
     }
 

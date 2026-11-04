@@ -16,9 +16,9 @@ use tempfile::TempDir;
 async fn opening_a_library_empties_its_transfer_queues() {
     let temp_dir = TempDir::new().unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
-    let installation = coven::TestCoven::new();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let handle = bae_db::configure_store(installation.builder(app_dir.store_layout()))
+    let handle = bae_db::configure_store(installation.builder())
         .clock(clock.clone())
         .storage_connector(Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap()))
         .create_store("Test Library")

@@ -46,8 +46,7 @@ impl TestApp {
 fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
     let home = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(home.path()).unwrap();
-    let layout = app_dir.store_layout();
-    let installation = coven::TestCoven::new();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let clock = Arc::new(StorageClock {
         time: coven::FixedClock::new(coven::SystemClock.now()),
         sleeping: tokio::sync::Notify::new(),
@@ -56,7 +55,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
     let setup = bae_library::test_libraries::multi_thread_runtime();
     let library_id = setup.block_on(async {
         let handle = bae_library::create_library(
-            installation.builder(layout.clone()).storage_connector(storage.clone()),
+            installation.builder().storage_connector(storage.clone()),
             bae_db::EnteredName::parse("Test Library").unwrap(),
         )
         .await
@@ -84,7 +83,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             .await;
         id
     });
-    let builder = installation.builder(layout).storage_connector(storage.clone());
+    let builder = installation.builder().storage_connector(storage.clone());
     let (app_tx, app_rx) = mpsc::sync_channel(1);
     let startup = std::thread::spawn(move || {
         app_tx

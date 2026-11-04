@@ -329,7 +329,7 @@ pub async fn restore_replacing_device(
         status => on_status(status),
     };
     loading_builder(builder)
-        .restore_device(store, code, s3_credentials, device_name, status, cancel)
+        .restore_device(store, code, s3_credentials, device_name, |_| Ok(()), status, cancel)
         .await
         .map_err(restore_error)
 }

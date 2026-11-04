@@ -605,7 +605,7 @@ async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) ->
     manager.installation.lose_storage_credentials(store).unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let handle = bae_db::configure_store(manager.installation.builder(app_dir.store_layout()))
+    let handle = bae_db::configure_store(manager.installation.builder())
         .clock(clock.clone())
         .storage_connector(manager.storage.clone())
         .open(store, |_| ())
@@ -666,11 +666,10 @@ mod sign_in {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
         let handle =
-            bae_db::configure_store(coven::TestCoven::new().builder(app_dir.store_layout()))
+            bae_db::configure_store(coven::Coven::in_memory(app_dir.coven_app_dir()).builder())
                 .oauth_clients(coven::OAuthClients::new(
                     Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
                     Some("onedrive-id".into()),
-                    clock.clone(),
                 ))
                 .oauth_presenter(presenter)
                 .storage_connector(storage.clone())

@@ -132,8 +132,8 @@ pub(crate) fn start(
             // A queue that panicked is reported and stopped as a shutdown
             // stops it, so its executor ends and what asks it after hears it
             // has stopped.
-            if let Err(failed) = ran {
-                loop_context.diagnostics.bug(failed);
+            if let Err(bug) = ran {
+                loop_context.diagnostics.panicked(bug);
                 loop_token.cancel();
                 loop_tasks.close();
             }

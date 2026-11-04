@@ -423,8 +423,9 @@ telemetry_events! {
         decode_errors: u64,
     },
 
-    /// Keyring store initialization failed — no default store installed, so every
-    /// credential read fails. Emitted by the bridge's `init_keyring`.
+    /// The OS keychain couldn't be opened at startup, so no library's keys
+    /// can be read. Emitted by the bridge's host as it builds coven's
+    /// installation.
     KeyringInitFailed, "keyring_init_failed", Error {},
 
     /// An impossible-state site fired. `kind` names which one; the count per

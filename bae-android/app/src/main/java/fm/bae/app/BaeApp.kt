@@ -5,9 +5,9 @@ import fm.bae.app.playback.AudioFocus
 import io.crates.keyring.Keyring
 import uniffi.bae_bridge.BridgeAppDir
 import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
-import uniffi.bae_bridge.initKeyring
 import uniffi.bae_bridge.setTemporaryDirectory
 
 private const val TAG = "bae.BaeApp"
@@ -16,7 +16,7 @@ private val logger = BaeLogger(TAG)
 class BaeApp : Application() {
     /**
      * The process-lifetime telemetry sink, built at startup and held for the
-     * whole app run. `initKeyring` and every library open require it; the open
+     * whole app run. The host and every library open require it; the open
      * session reaches it via `applicationContext as BaeApp`.
      */
     lateinit var diagnostics: BridgeDiagnostics
@@ -77,19 +77,23 @@ class BaeApp : Application() {
         }
         // bae's directory lives under the app's private files dir: Android app
         // processes have no home directory of their own to put it under.
-        // Building it creates it. The host's one failure is the OS refusing its
-        // onboarding runtime's worker threads. SQLite finds no folder for its
-        // temporary tables on Android, so the app's cache folder is named
-        // before any library opens. Any of these failing stops the launch at
-        // the startup error, titled by the step that was running.
-        var step = FailedStep.STARTUP
+        // Building it creates it. The host opens the keystore every library's
+        // keys live in, and fails as a keyring error when it can't; its other
+        // failure is the OS refusing its onboarding runtime's worker threads.
+        // SQLite finds no folder for its temporary tables on Android, so the
+        // app's cache folder is named before any library opens. Any of these
+        // failing stops the launch at the startup error, titled by the step
+        // that failed.
         try {
             setTemporaryDirectory(cacheDir.absolutePath)
             audioFocus = AudioFocus(this)
             host = BridgeHost(diagnostics, BridgeAppDir(filesDir.absolutePath), audioFocus)
-            step = FailedStep.SECURE_STORAGE
-            initKeyring(diagnostics)
         } catch (error: BridgeException) {
+            val step =
+                when ((error as? BridgeException.Diagnostic)?.category) {
+                    is BridgeErrorCategory.Keyring -> FailedStep.SECURE_STORAGE
+                    else -> FailedStep.STARTUP
+                }
             startupError = StartupError(step, error)
             logger.error("Launch step $step failed", error)
             return

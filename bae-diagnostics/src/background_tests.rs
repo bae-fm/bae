@@ -12,8 +12,10 @@ fn reporting() -> (Diagnostics, Arc<RecordingBugReporter>) {
 #[test]
 fn bug_reports_a_panic_and_hands_it_back() {
     let (diagnostics, reports) = reporting();
-    let failed =
-        TaskFailed::Panicked { operation: "resize the cover", message: "zero width".to_string() };
+    let failed = TaskFailed::Panicked(Bug {
+        operation: "resize the cover",
+        message: "zero width".to_string(),
+    });
     assert_eq!(diagnostics.bug(failed.clone()), failed);
     assert_eq!(
         reports.reports(),
@@ -50,10 +52,7 @@ async fn spawn_reported_reports_a_panic_and_lets_its_owner_end_the_work() {
     task.ended().await;
     assert_eq!(
         ended_rx.await.expect("on_panic ran"),
-        TaskFailed::Panicked {
-            operation: "follow the queue",
-            message: "queue index out of range".to_string(),
-        }
+        Bug { operation: "follow the queue", message: "queue index out of range".to_string() }
     );
     assert_eq!(
         reports.reports(),
@@ -112,10 +111,7 @@ fn spawn_thread_reported_reports_a_panic_and_calls_on_panic_on_that_thread() {
     let (failed, thread_name) = ended_rx.recv().expect("on_panic ran");
     assert_eq!(
         failed,
-        TaskFailed::Panicked {
-            operation: "bae-decoder",
-            message: "packet larger than the frame".to_string(),
-        }
+        Bug { operation: "bae-decoder", message: "packet larger than the frame".to_string() }
     );
     assert_eq!(thread_name.as_deref(), Some("bae-decoder"));
     assert_eq!(reports.reports().len(), 1);

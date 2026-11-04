@@ -7,11 +7,6 @@
 //! be code-signed into that group to read them.
 
 fn main() {
-    if let Err(error) = bae_app_dir::register_keyring_service() {
-        eprintln!("initialize keyring failed: {error}");
-        std::process::exit(1);
-    }
-
     let Some(home) = dirs::home_dir() else {
         eprintln!("could not determine the home directory");
         std::process::exit(1);
@@ -20,6 +15,13 @@ fn main() {
         Ok(app_dir) => app_dir,
         Err(error) => {
             eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
+    let installation = match app_dir.coven() {
+        Ok(installation) => installation,
+        Err(error) => {
+            eprintln!("open the keychain failed: {error}");
             std::process::exit(1);
         }
     };
@@ -48,7 +50,7 @@ fn main() {
     };
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<String, String> = runtime.block_on(async {
-        let handle = bae_db::configure_store(coven::Coven::builder(app_dir.store_layout()))
+        let handle = bae_db::configure_store(installation.builder())
             .open(store_id, |_| ())
             .await
             .map_err(|e| format!("open store failed: {e}"))?;

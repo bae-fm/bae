@@ -1,6 +1,6 @@
 use super::*;
 
-use bae_util::task_failure::{caught, caught_sync, TaskFailed};
+use bae_util::task_failure::{caught, caught_sync, Bug};
 use bae_util::worker_thread::WorkerThread;
 use std::ops::ControlFlow;
 
@@ -700,8 +700,8 @@ impl PlaybackService {
                         let followed = caught_sync("follow a playback event", || {
                             follow_progress(&command_tx_for_completion, progress)
                         });
-                        if let Err(failed) = followed {
-                            follower_diagnostics.bug(failed);
+                        if let Err(bug) = followed {
+                            follower_diagnostics.panicked(bug);
                         }
                     }
                 });
@@ -837,8 +837,8 @@ impl PlaybackService {
     /// A panic stopped what the loop was serving: report it, and stop
     /// playback with an error. The pipeline it left can't be trusted, so its
     /// output goes first, before the stop reads anything from it.
-    async fn recover_from_panic(&mut self, failed: TaskFailed) {
-        let failed = self.diagnostics.bug(failed);
+    async fn recover_from_panic(&mut self, bug: Bug) {
+        let failed = self.diagnostics.panicked(bug);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PlaybackError {
@@ -847,7 +847,7 @@ impl PlaybackService {
         );
         self.discard_output();
         if let Err(again) = caught("stop playback after a panic", self.stop()).await {
-            self.diagnostics.bug(again);
+            self.diagnostics.panicked(again);
         }
     }
 }

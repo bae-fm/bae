@@ -82,8 +82,8 @@ fn optional_variable(name: &str) -> Result<Option<String>, String> {
 /// A library created for the run, open, with sync running.
 struct BenchLibrary {
     handle: coven::CovenHandle,
-    // The store's keychain and directory, kept until the store is closed.
-    _installation: coven::TestCoven,
+    // The store's installation and directory, kept until the store is closed.
+    _installation: coven::Coven,
     _directory: tempfile::TempDir,
 }
 
@@ -109,8 +109,8 @@ impl BenchLibrary {
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
         let app_dir =
             bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
-        let installation = coven::TestCoven::new();
-        let handle = bae_db::configure_store(installation.builder(app_dir.store_layout()))
+        let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+        let handle = bae_db::configure_store(installation.builder())
             .create_store(name)
             .await
             .map_err(|error| format!("creating the library failed: {error}"))?;

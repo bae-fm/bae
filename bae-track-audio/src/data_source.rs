@@ -211,7 +211,7 @@ fn spawn_fill(
             Ok(Ok(())) => return,
             Ok(Err(FillFailure::Read(error))) => return report_fill_failure(on_error, error),
             Ok(Err(FillFailure::Open(error))) => error,
-            Err(failed) => TrackReadError::task(fill_diagnostics.bug(failed)),
+            Err(bug) => TrackReadError::task(fill_diagnostics.panicked(bug)),
         };
         match buffer.upgrade() {
             Some(buffer) => fail_audio_read(on_error, &buffer, error),

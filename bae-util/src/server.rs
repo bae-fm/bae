@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::task_failure::{caught, TaskFailed};
+use crate::task_failure::{caught, Bug};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
@@ -66,7 +66,7 @@ impl<I, E: Clone> State<I, E> {
 /// config handling around it.
 /// How a server's owner reports a bug — its serve future panicking — and
 /// hands the failure back.
-pub type ReportBug = Arc<dyn Fn(TaskFailed) -> TaskFailed + Send + Sync>;
+pub type ReportBug = Arc<dyn Fn(Bug) -> Bug + Send + Sync>;
 
 #[derive(Clone)]
 pub struct ServerController<I, E> {

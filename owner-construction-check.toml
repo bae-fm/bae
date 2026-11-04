@@ -63,6 +63,9 @@ capability_types = [
     "CandidateRuntime",
     "CastController",
     "CoverUrlProvider",
+    # This app's stores on this device: the keychain and the network watch
+    # every store opens with.
+    "Coven",
     "CovenHandle",
     "Database",
     "Diagnostics",
@@ -102,7 +105,6 @@ capability_types = [
     "SessionCache",
     "SparseStreamingBuffer",
     "SrpClient",
-    "StoreDir",
     "SubsonicPasswordProvider",
     "SubsonicServerController",
     "SyncController",
@@ -153,6 +155,7 @@ external_types = [
     "AtomicUsize",
     "CancellationToken",
     "Condvar",
+    "Coven",
     "CovenHandle",
     "FileStream",
     "Handle",
@@ -170,7 +173,6 @@ external_types = [
     "Semaphore",
     "Sender",
     "ServiceDaemon",
-    "StoreDir",
     "UnboundedReceiver",
     "UnboundedSender",
     "Weak",

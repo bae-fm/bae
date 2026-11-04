@@ -135,13 +135,10 @@ pub(super) fn fresh_test_library(
         .enable_all()
         .build()
         .expect("test runtime");
-    let installation = coven::TestCoven::new();
     let app_dir = bae_app_dir::AppDir::under_home(&root).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = runtime
-        .block_on(
-            bae_db::configure_store(installation.builder(app_dir.store_layout()))
-                .create_store("Test Library"),
-        )
+        .block_on(bae_db::configure_store(installation.builder()).create_store("Test Library"))
         .expect("test store");
     let library = runtime.block_on(bae_library::test_libraries::test_library_from_handle(
         handle,

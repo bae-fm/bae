@@ -92,8 +92,8 @@ fn run_browse(
                 devices.publish(snapshot(&by_fullname));
             }
         });
-        if let Err(failed) = followed {
-            diagnostics.bug(failed);
+        if let Err(bug) = followed {
+            diagnostics.panicked(bug);
         }
     }
 }

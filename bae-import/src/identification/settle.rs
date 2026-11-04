@@ -72,7 +72,7 @@ pub(super) async fn settled_or_failed(
         identity,
         representative_key,
         run,
-        settled: Settled::WriteFailed { error: context.diagnostics.bug(failed).to_string() },
+        settled: Settled::WriteFailed { error: context.diagnostics.panicked(failed).to_string() },
     })
 }
 

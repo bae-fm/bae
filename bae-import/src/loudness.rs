@@ -47,7 +47,7 @@ enum TrackOutcome {
     Unreadable(bae_audio::sparse_buffer::SourceReadError),
     /// A read of the source panicked: a bug, already reported. What the
     /// decode got is not known, so the track is neither measured nor judged.
-    ReadPanicked(bae_util::task_failure::TaskFailed),
+    ReadPanicked(bae_util::task_failure::Bug),
 }
 
 /// Where one loudness pass reports its scan: the candidate row's phase percent,
@@ -348,9 +348,7 @@ fn measure_track(
     sink.finish_progress();
     match decoded {
         Err(DecodeStop::Unreadable(error)) => TrackOutcome::Unreadable(error),
-        Err(DecodeStop::ReadPanicked(failed)) => {
-            TrackOutcome::ReadPanicked(diagnostics.bug(failed))
-        }
+        Err(DecodeStop::ReadPanicked(bug)) => TrackOutcome::ReadPanicked(diagnostics.panicked(bug)),
         Err(DecodeStop::Failed(reason)) => {
             TrackOutcome::Decoded { measured: None, broken: Some(reason), scrub_points: Vec::new() }
         }
@@ -386,7 +384,7 @@ enum DecodeStop {
     /// A read of the source failed.
     Unreadable(bae_audio::sparse_buffer::SourceReadError),
     /// A read of the source panicked.
-    ReadPanicked(bae_util::task_failure::TaskFailed),
+    ReadPanicked(bae_util::task_failure::Bug),
     /// The decode itself failed, for the reason given.
     Failed(String),
 }
@@ -611,7 +609,9 @@ pub(super) async fn measure_loudness(
                     TrackOutcome::Unreadable(error) => {
                         Err(crate::ImportError::SourceRead { track: label, error })
                     }
-                    TrackOutcome::ReadPanicked(failed) => Err(failed.into()),
+                    TrackOutcome::ReadPanicked(bug) => {
+                        Err(bae_util::task_failure::TaskFailed::Panicked(bug).into())
+                    }
                     TrackOutcome::Decoded { measured, broken, scrub_points } => {
                         Ok((index, measured, broken, scrub_points))
                     }

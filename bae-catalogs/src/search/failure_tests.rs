@@ -68,9 +68,11 @@ fn bytes_that_are_not_an_image_are_unusable_data() {
 
 #[test]
 fn a_cache_task_that_did_not_finish_is_bae_s_failure() {
-    let error = RemoteImageError::CacheTask(bae_util::task_failure::TaskFailed::Panicked {
-        operation: "read the remote image cache",
-        message: "the cache task fails".to_string(),
-    });
+    let error = RemoteImageError::CacheTask(bae_util::task_failure::TaskFailed::Panicked(
+        bae_util::task_failure::Bug {
+            operation: "read the remote image cache",
+            message: "the cache task fails".to_string(),
+        },
+    ));
     assert_eq!(remote_image_failure(&error), None);
 }

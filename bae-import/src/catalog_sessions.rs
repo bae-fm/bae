@@ -150,8 +150,8 @@ impl CatalogSessions {
                         Ok(Err(error)) => {
                             diagnostics.report_bug("record a Discogs validation signal", &error)
                         }
-                        Err(failed) => {
-                            diagnostics.bug(failed);
+                        Err(bug) => {
+                            diagnostics.panicked(bug);
                         }
                     }
                 };

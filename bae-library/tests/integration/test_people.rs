@@ -184,7 +184,8 @@ impl Household {
     ) {
         use coven::Storage;
         let dir = tempfile::tempdir().unwrap();
-        let installation = coven::TestCoven::new();
+        let installation =
+            coven::Coven::in_memory(bae_app_dir::AppDir::at(dir.path()).unwrap().coven_app_dir());
         let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
         let storage = std::sync::Arc::new(
             coven::MemoryStorage::builder()
@@ -193,9 +194,7 @@ impl Household {
                 .build()
                 .unwrap(),
         );
-        let builder = installation
-            .builder(bae_app_dir::AppDir::at(dir.path()).unwrap().store_layout())
-            .storage_connector(storage.clone());
+        let builder = installation.builder().storage_connector(storage.clone());
         let builder = match sign_in {
             Some(sign_in) => sign_in.configure(builder),
             None => builder,
@@ -260,21 +259,15 @@ impl Household {
         Invited { code, member }
     }
 
-    /// A device of its own, with its own keychain, reaching the household's
+    /// A device of its own, `installation`, reaching the household's
     /// storage: with S3's key, or as the Dropbox guest's account.
-    fn device(
-        &self,
-        installation: &coven::TestCoven,
-        dir: &tempfile::TempDir,
-    ) -> coven::CovenBuilder {
+    fn device(&self, installation: &coven::Coven) -> coven::CovenBuilder {
         use coven::Storage;
         let storage = match self.storage.config().provider() {
             coven::CloudProvider::S3 => self.storage.for_device(),
             _ => coven::MemoryStorage::for_recipient(&self.storage, GUEST_ACCOUNT).unwrap(),
         };
-        installation
-            .builder(bae_app_dir::AppDir::at(dir.path()).unwrap().store_layout())
-            .storage_connector(std::sync::Arc::new(storage))
+        installation.builder().storage_connector(std::sync::Arc::new(storage))
     }
 
     /// A library over the owner's store, in `dir`.
@@ -294,12 +287,11 @@ impl Household {
     pub(super) async fn join(
         &self,
         code: &str,
-        installation: &coven::TestCoven,
-        dir: &tempfile::TempDir,
+        installation: &coven::Coven,
         control: &bae_library::JoinControl,
     ) -> Result<Option<bae_library::JoinedLibrary>, bae_library::RestoreFromCodeError> {
         bae_library::join_with_invite(
-            self.device(installation, dir),
+            self.device(installation),
             code,
             "Guest Device",
             self.clock.clone(),
@@ -417,10 +409,10 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let household = Household::new().await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
-        let guest = coven::TestCoven::new();
+        let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let joining = bae_library::join_with_invite(
-            household.device(&guest, &guest_dir),
+            household.device(&guest),
             &invite.code,
             "Guest Device",
             household.clock.clone(),
@@ -470,10 +462,10 @@ fn a_replacement_invite_writes_no_profile() {
         let household = Household::new().await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let first_dir = tempfile::tempdir().unwrap();
-        let first = coven::TestCoven::new();
+        let first = installation_in(&first_dir);
         let control = bae_library::JoinControl::new();
         let joining = bae_library::join_with_invite(
-            household.device(&first, &first_dir),
+            household.device(&first),
             &invite.code,
             "Guest Device",
             household.clock.clone(),
@@ -501,9 +493,9 @@ fn a_replacement_invite_writes_no_profile() {
             )
             .await;
         let second_dir = tempfile::tempdir().unwrap();
-        let second = coven::TestCoven::new();
+        let second = installation_in(&second_dir);
         let joining = bae_library::join_with_invite(
-            household.device(&second, &second_dir),
+            household.device(&second),
             &again.code,
             "Replacement Device",
             household.clock.clone(),
@@ -610,11 +602,11 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         let household = Household::new().await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
-        let guest = coven::TestCoven::new();
+        let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let (waiting, mut waits) = tokio::sync::watch::channel(false);
         let joining = bae_library::join_with_invite(
-            household.device(&guest, &guest_dir),
+            household.device(&guest),
             &invite.code,
             "Guest Device",
             household.clock.clone(),
@@ -633,7 +625,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         })
         .await
         .unwrap();
-        let builder = household.device(&guest, &guest_dir);
+        let builder = household.device(&guest);
         let [join] = &bae_library::unfinished_joins(&builder).await.unwrap()[..] else {
             panic!("one join under way");
         };
@@ -642,7 +634,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             ("Household", Some("Rowan"))
         );
         let resuming = bae_library::resume_join(
-            || household.device(&guest, &guest_dir),
+            || household.device(&guest),
             join,
             household.clock.clone(),
             |_| {},
@@ -708,7 +700,6 @@ impl DropboxSignIn {
                 coven::OAuthClients::new(
                     Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
                     None,
-                    std::sync::Arc::new(coven::SystemClock),
                 )
                 .with_token_endpoint(self.endpoint.clone()),
             )
@@ -752,20 +743,24 @@ impl coven::OAuthPresenter for CodePresenter {
     }
 }
 
+/// A device of its own whose stores live in `dir`, with its own keychain.
+pub(super) fn installation_in(dir: &tempfile::TempDir) -> coven::Coven {
+    coven::Coven::in_memory(bae_app_dir::AppDir::at(dir.path()).unwrap().coven_app_dir())
+}
+
 /// Start Rowan's join on the Dropbox household and stop it while it waits,
 /// as closing bae does. Joining signs Rowan in.
 async fn stopped_dropbox_join(
     household: &Household,
     sign_in: &DropboxSignIn,
-    guest: &coven::TestCoven,
-    guest_dir: &tempfile::TempDir,
+    guest: &coven::Coven,
     control: &bae_library::JoinControl,
 ) -> coven::InviteInfo {
     use std::time::Duration;
     let invite = household.invite(new_member("Rowan"), "").await;
     let (waiting, mut waits) = tokio::sync::watch::channel(false);
     let joining = bae_library::join_with_invite(
-        sign_in.configure(household.device(guest, guest_dir)),
+        sign_in.configure(household.device(guest)),
         &invite.code,
         "Guest Device",
         household.clock.clone(),
@@ -784,9 +779,7 @@ async fn stopped_dropbox_join(
     })
     .await
     .unwrap();
-    let [join] =
-        &bae_library::unfinished_joins(&household.device(guest, guest_dir)).await.unwrap()[..]
-    else {
+    let [join] = &bae_library::unfinished_joins(&household.device(guest)).await.unwrap()[..] else {
         panic!("one join under way");
     };
     join.clone()
@@ -802,12 +795,12 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
         let guest_dir = tempfile::tempdir().unwrap();
-        let guest = coven::TestCoven::new();
+        let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let join = stopped_dropbox_join(&household, &sign_in, &guest, &guest_dir, &control).await;
+        let join = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
         let presented = sign_in.presented();
         let resuming = bae_library::resume_join(
-            || sign_in.configure(household.device(&guest, &guest_dir)),
+            || sign_in.configure(household.device(&guest)),
             &join,
             household.clock.clone(),
             |_| {},
@@ -836,14 +829,14 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
         let guest_dir = tempfile::tempdir().unwrap();
-        let guest = coven::TestCoven::new();
+        let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let join = stopped_dropbox_join(&household, &sign_in, &guest, &guest_dir, &control).await;
+        let join = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
         // The owner's sign-in was the first; Rowan's join kept the second.
         household.storage.reject_access_token("access-1").await;
         let presented = sign_in.presented();
         let resuming = bae_library::resume_join(
-            || sign_in.configure(household.device(&guest, &guest_dir)),
+            || sign_in.configure(household.device(&guest)),
             &join,
             household.clock.clone(),
             |_| {},

@@ -155,7 +155,7 @@ pub(crate) fn log_streaming_decode_failure(
             debug!("{context} stopped on a source read failure the fill reported: {error}");
             None
         }
-        DecodeError::ReadPanicked(failed) => Some(diagnostics.bug(failed).to_string()),
+        DecodeError::ReadPanicked(bug) => Some(diagnostics.panicked(bug).to_string()),
         DecodeError::Decode(message) => {
             error!("{context} failed: {message}");
             Some(message)

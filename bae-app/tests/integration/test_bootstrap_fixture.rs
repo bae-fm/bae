@@ -5,7 +5,6 @@
 use bae_app::bootstrap_on_fixture;
 use bae_app_dir::AppDir;
 use bae_library::create_library;
-use coven::TestCoven;
 use tempfile::TempDir;
 
 struct TestApp {
@@ -26,14 +25,14 @@ impl TestApp {
 /// written beside it. Bind the `TempDir` for the whole test.
 fn library_with_fixture(
     json: serde_json::Value,
-) -> (TempDir, AppDir, String, std::path::PathBuf, TestCoven) {
+) -> (TempDir, AppDir, String, std::path::PathBuf, coven::Coven) {
     let dir = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(dir.path()).unwrap();
-    let installation = TestCoven::new();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let runtime = bae_library::test_libraries::multi_thread_runtime();
     let id = runtime.block_on(async {
         let handle = create_library(
-            installation.builder(app_dir.store_layout()),
+            installation.builder(),
             bae_db::EnteredName::parse("Fixture Library").unwrap(),
         )
         .await
@@ -51,9 +50,9 @@ fn open(
     app_dir: &AppDir,
     library_id: &str,
     fixture: std::path::PathBuf,
-    installation: &TestCoven,
+    installation: &coven::Coven,
 ) -> TestApp {
-    let builder = installation.builder(app_dir.store_layout());
+    let builder = installation.builder();
     bootstrap_on_fixture(
         fixture,
         app_dir.clone(),
@@ -136,7 +135,7 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
         true,
         bae_playback::AudioFocus::Unshared,
         bae_diagnostics::Diagnostics::noop(),
-        installation.builder(app_dir.store_layout()),
+        installation.builder(),
         |_| (),
         TestApp::start,
     );

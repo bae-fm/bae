@@ -85,7 +85,7 @@ pub enum RendererError {
     /// The session's own thread panicked: a bug in bae, reported where it
     /// was caught.
     #[error("{0}")]
-    Panicked(bae_util::task_failure::TaskFailed),
+    Panicked(bae_util::task_failure::Bug),
 }
 
 /// The operations the session performs against a connected renderer. Each call

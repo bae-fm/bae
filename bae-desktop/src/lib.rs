@@ -95,7 +95,7 @@ impl DesktopServices {
                             })
                             .await
                             {
-                                watcher_diagnostics.bug(failed);
+                                watcher_diagnostics.panicked(failed);
                             }
                         }
                         Err(bae_db::live_query::LiveQueryError::Query(error)) => {

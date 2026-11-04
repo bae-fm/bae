@@ -65,7 +65,7 @@ pub enum DecodeError {
     /// A read of the source panicked: a bug in bae's read path, not the
     /// source's or the audio's. The caller reports it.
     #[error("{0}")]
-    ReadPanicked(bae_util::task_failure::TaskFailed),
+    ReadPanicked(bae_util::task_failure::Bug),
     /// The bytes that arrived don't decode as audio.
     #[error("{0}")]
     Decode(String),

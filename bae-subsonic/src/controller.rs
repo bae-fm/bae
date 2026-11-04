@@ -78,10 +78,7 @@ impl SubsonicServerController {
         Self {
             services,
             password_provider,
-            server: ServerController::new(
-                "Subsonic",
-                Arc::new(move |failed| reporting.bug(failed)),
-            ),
+            server: ServerController::new("Subsonic", Arc::new(move |bug| reporting.panicked(bug))),
             diagnostics,
         }
     }

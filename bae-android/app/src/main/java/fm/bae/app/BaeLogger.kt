@@ -10,7 +10,7 @@ import uniffi.bae_bridge.configureDiagnostics
 object BaeDiagnostics {
     /**
      * Construct the process-lifetime telemetry sink and install the core's
-     * tracing subscriber. Call once at startup, before `initKeyring` and
+     * tracing subscriber. Call once at startup, before the host and
      * `initApp`. Infallible: the core falls back to the no-op sink (with a
      * local error log) rather than let telemetry setup block a launch.
      */

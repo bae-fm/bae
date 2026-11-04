@@ -173,7 +173,7 @@ async fn a_panicking_operation_marks_the_release_failed_with_the_panic() {
 async fn an_entry_that_panics_fails_and_the_next_one_runs() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)]).await.unwrap();
-    let bugs: Arc<Mutex<Vec<TaskFailed>>> = Arc::default();
+    let bugs: Arc<Mutex<Vec<bae_util::task_failure::Bug>>> = Arc::default();
     let done: Outcomes = Arc::default();
     let worker_queue = queue.clone();
     let (recorded, reports) = (done.clone(), bugs.clone());

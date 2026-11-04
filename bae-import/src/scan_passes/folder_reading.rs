@@ -21,6 +21,7 @@ use crate::folder_scanner::{
     FolderReleaseDecision, FolderReleaseDecisionAuthor, FolderReleaseDecisionKey,
 };
 use crate::CandidateKey;
+use bae_util::task_failure::TaskFailed;
 use std::ffi::{OsStr, OsString};
 
 /// Store `target` together with the candidates its folder reads as under
@@ -90,7 +91,9 @@ pub(super) async fn read_changed_folders(
             read_folder_again(root, folder, None, scan, cancellation),
         )
         .await
-        .unwrap_or_else(|failed| Err(scan.services.diagnostics.bug(failed).into()));
+        .unwrap_or_else(|bug| {
+            Err(TaskFailed::Panicked(scan.services.diagnostics.panicked(bug)).into())
+        });
         let Err(error) = read else {
             continue;
         };

@@ -30,8 +30,9 @@ pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Internal(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }
 
@@ -45,8 +46,9 @@ pub fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Crypto(_) | E::Other(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }
 
@@ -82,8 +84,9 @@ fn local_failure_category(failure: coven::LocalFailure) -> C {
         F::Database => C::Database,
         F::KeyCustody => C::Keyring,
         // A runtime shutting down dropped the work; the next process runs
-        // it again.
-        F::Disk | F::Crypto | F::Operation | F::Shutdown => C::Internal,
+        // it again. A bug in coven, retried under backoff, is nothing the
+        // person can change but report.
+        F::Disk | F::Crypto | F::Operation | F::Shutdown | F::Bug => C::Internal,
     }
 }
 
@@ -123,8 +126,9 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         | E::Damaged(_)
         | E::WrongStore { .. } => C::Internal,
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }
 
@@ -157,16 +161,13 @@ pub fn key_category(error: &coven::KeyError) -> C {
         | E::UnsupportedKeyringPlatform
         | E::Unsupported
         | E::RestoreCodeStoreId => C::Keyring,
-        // The custody's handle closed under the call, or the keyring service
-        // was registered wrong at startup: bae's own sequencing, not the
-        // keyring.
-        E::StoreClosed
-        | E::ServiceNotRegistered
-        | E::ServiceAlreadyRegistered
-        | E::InvalidServiceName => C::Internal,
+        // The custody's handle closed under the call, or bae named an
+        // invalid keyring service: bae's own code, not the keyring.
+        E::StoreClosed | E::InvalidServiceName => C::Internal,
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }
 
@@ -176,16 +177,18 @@ pub fn creation_category(error: &coven::StoreCreationError) -> C {
         E::Store(coven::CovenError::Key(error))
         | E::Identity(coven::IdentityError::Custody(error)) => key_category(error),
         // The platform refused coven's watch of the network: the app's
-        // packaging or the platform, which the person can't fix.
-        E::Store(coven::CovenError::NetworkWatch(_)) => C::Internal,
+        // packaging or the platform, which the person can't fix; or coven's
+        // work panicked, a bug.
+        E::Store(coven::CovenError::NetworkWatch(_) | coven::CovenError::Bug(_)) => C::Internal,
         E::Store(_) => C::Database,
         E::Identity(_) | E::Directory(_) => C::Internal,
         E::Sync(error) => sync_category(error),
         E::Cleanup { operation, .. } => creation_category(operation),
         E::PublishedButNotSynced { source, .. } => creation_category(source),
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }
 
@@ -197,8 +200,9 @@ pub fn deletion_category(error: &coven::StoreDeletionError) -> C {
         E::Lock(_) | E::Unsent(_) => C::Config,
         E::File(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }
 
@@ -210,8 +214,9 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::Code(_) | E::NoUnfinishedJoin(_) | E::JoinRequestSent => C::Config,
         E::Store(coven::CovenError::Key(error)) | E::SecureStorage(error) => key_category(error),
         // The platform refused coven's watch of the network: the app's
-        // packaging or the platform, which the person can't fix.
-        E::Store(coven::CovenError::NetworkWatch(_)) => C::Internal,
+        // packaging or the platform, which the person can't fix; or coven's
+        // work panicked, a bug.
+        E::Store(coven::CovenError::NetworkWatch(_) | coven::CovenError::Bug(_)) => C::Internal,
         E::Store(_) => C::Database,
         // Restoring as the member whose account holds the store, signed in
         // with another account.
@@ -222,8 +227,9 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::Published { source, .. } => bootstrap_category(source),
         E::Cancelled | E::Directory(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }
 
@@ -244,8 +250,9 @@ fn write_category(error: &coven::CovenError) -> C {
         | E::DeviceKeyMissing { .. }
         | E::MemberKeysMissing { .. } => C::Database,
         // The runtime is shutting down under the work: the process is
-        // ending it, which no line the person reads can help with.
-        E::Shutdown(_) => C::Internal,
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
         // Only opening watches the network, and a watch the platform
         // refuses is the app's packaging or the platform's fault.
         E::NetworkWatch(_) => C::Internal,

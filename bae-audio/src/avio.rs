@@ -6,7 +6,7 @@
 //! `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes directly.
 
 use crate::sparse_buffer::{BufferStop, SharedSparseBuffer, SourceReadError};
-use bae_util::task_failure::{caught_sync, TaskFailed};
+use bae_util::task_failure::{caught_sync, Bug};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
 use std::sync::{Arc, OnceLock};
@@ -63,7 +63,7 @@ pub(crate) enum ReadFailure {
     Source(SourceReadError),
     /// The read itself panicked: a bug in bae's read path, which the decode's
     /// caller reports.
-    Panicked(TaskFailed),
+    Panicked(Bug),
 }
 
 impl From<ReadFailure> for crate::DecodeError {

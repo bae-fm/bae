@@ -49,13 +49,6 @@ struct BaeApp: App {
         catch {
             return failed(.startup, error)
         }
-        do {
-            // No `setCaCertDir` on iOS — the TLS stack uses Apple's trust roots.
-            try initKeyring(diagnostics: diagnostics)
-        }
-        catch {
-            return failed(.secureStorage, error)
-        }
         return .ready(host)
     }
 

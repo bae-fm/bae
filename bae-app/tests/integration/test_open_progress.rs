@@ -15,13 +15,9 @@ use tempfile::TempDir;
 fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
     let directory = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(directory.path()).unwrap();
-    let installation = coven::TestCoven::new();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let store = bae_library::test_libraries::multi_thread_runtime()
-        .block_on(installation.create_closed_store(
-            &app_dir.store_layout(),
-            "Household",
-            Arc::new(coven::UuidIds),
-        ))
+        .block_on(installation.create_closed_store("Household", Arc::new(coven::UuidIds)))
         .unwrap()
         .id();
     let reported = Arc::new(Mutex::new(Vec::new()));
@@ -33,7 +29,7 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
         false,
         bae_playback::AudioFocus::Unshared,
         bae_diagnostics::Diagnostics::noop(),
-        installation.builder(app_dir.store_layout()),
+        installation.builder(),
         {
             let reported = reported.clone();
             move |progress| reported.lock().unwrap().push(progress)

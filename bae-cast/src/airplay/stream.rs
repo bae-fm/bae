@@ -21,7 +21,7 @@ use std::time::{Duration, Instant};
 
 use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_playback::airplay_output::{PcmSource, PCM_SAMPLE_RATE};
-use bae_util::task_failure::TaskFailed;
+use bae_util::task_failure::Bug;
 use tracing::{debug, warn};
 
 use super::crypto::RaopCipher;
@@ -285,7 +285,7 @@ impl RaopStreamControl {
 
     /// One of the stream's threads panicked, so the receiver gets no more
     /// audio, sync or timing answers from it: the stream has failed.
-    fn mark_panicked(&self, failed: TaskFailed) {
+    fn mark_panicked(&self, failed: Bug) {
         if self.failure.set(failed.to_string()).is_err() {
             debug!("airplay stream already failed before {failed}");
         }

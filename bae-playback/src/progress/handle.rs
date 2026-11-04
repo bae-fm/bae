@@ -127,8 +127,8 @@ impl PlaybackProgressHandle {
                                     }
                                 }
                             }
-                            Err(failed) => {
-                                diagnostics.bug(failed);
+                            Err(bug) => {
+                                diagnostics.panicked(bug);
                             }
                         }
                         let mut subs = subscriptions_clone.lock().unwrap();

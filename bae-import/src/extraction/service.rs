@@ -237,7 +237,7 @@ async fn run_extraction(
     )
     .await;
     if let Err(failed) = extracted {
-        let failure = InternalFailure::from(inner.diagnostics.bug(failed));
+        let failure = InternalFailure::from(inner.diagnostics.panicked(failed));
         emit_aborted_signals(
             &inner,
             &extraction,

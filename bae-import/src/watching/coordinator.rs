@@ -115,7 +115,7 @@ pub(super) fn start_watcher_with_starter(
                             )
                             .await
                             {
-                                coordinator.diagnostics.bug(failed);
+                                coordinator.diagnostics.panicked(failed);
                             }
                             if completion.send(()).is_err() {
                                 debug!("import handle dropped during folder scan shutdown");
@@ -144,7 +144,7 @@ pub(super) fn start_watcher_with_starter(
                 if let Err(failed) =
                     bae_util::task_failure::caught(operation, coordinator.take(event)).await
                 {
-                    coordinator.diagnostics.bug(failed);
+                    coordinator.diagnostics.panicked(failed);
                 }
             }
         });

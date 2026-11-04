@@ -3806,11 +3806,13 @@ the category's line and the detail, so a keychain that won't open never reads
 as a library that failed to open.
 
 What launch finds wrong without stopping the app is kept apart from those
-failures for the whole run: sign-in settings bae can't read, and on the Mac a
-keychain that won't start, which leaves its libraries listed but closed. It
-shows beside whatever opens or fails later, so a library that opens doesn't
-hide it and a later failure doesn't replace it. On phones a keychain that won't
-start stops the launch.
+failures for the whole run: sign-in settings bae can't read. It shows beside
+whatever opens or fails later, so a library that opens doesn't hide it and a
+later failure doesn't replace it. A keychain that won't open stops the launch:
+the host opens it as it starts, and listing, opening and removing libraries
+all go through it. On Apple's platforms only a wrong keychain service name,
+bae's own bug, keeps it from opening; on Linux it is the desktop's secret
+service, reached over D-Bus.
 
 ---
 

@@ -42,9 +42,7 @@ impl BridgeHost {
     /// store, on the caller's task.
     #[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
     pub(super) async fn saved_restore_codes_now(&self) -> Result<Vec<coven::StoreId>, BridgeError> {
-        Ok(self
-            .keychain
-            .saved_restore_codes(&self.app_dir)
+        Ok(bae_library::saved_restore_codes(&self.coven)
             .await
             .map_err(|error| {
                 BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
@@ -60,10 +58,16 @@ impl BridgeHost {
         &self,
         store: coven::StoreId,
     ) -> Result<(), BridgeError> {
-        self.keychain.forget_saved_restore_code(store).await.map_err(|error| {
-            BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
-        })
+        self.coven.forget_saved_restore_code(store).await.map_err(forget_failed)
     }
+}
+
+/// Why deleting a saved restore code failed, as the app shows it.
+fn forget_failed(error: coven::BootstrapError) -> BridgeError {
+    BridgeError::diagnostic(
+        BridgeErrorCategory::from_core(bae_diagnostics::bootstrap_category(&error)),
+        error,
+    )
 }
 
 struct CancelBootstrapOnDrop(Arc<BootstrapCancellation>);
@@ -81,8 +85,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.saved_restore_codes", move || async move {
-                self.keychain
-                    .saved_restore_codes(&self.app_dir)
+                bae_library::saved_restore_codes(&self.coven)
                     .await
                     .map(|codes| {
                         codes.into_iter().map(BridgeSavedRestoreEntry::from_core).collect()
@@ -108,9 +111,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.forget_saved_restore_code", move || async move {
-                self.keychain.forget_saved_restore_code(store).await.map_err(|error| {
-                    BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
-                })
+                self.coven.forget_saved_restore_code(store).await.map_err(forget_failed)
             })
             .await
     }

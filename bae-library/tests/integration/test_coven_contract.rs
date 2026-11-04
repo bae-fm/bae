@@ -3,13 +3,10 @@
 #[tokio::test]
 async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let directory = tempfile::tempdir().unwrap();
-    let installation = coven::TestCoven::new();
-    let handle = bae_db::configure_store(
-        installation.builder(bae_app_dir::AppDir::at(directory.path()).unwrap().store_layout()),
-    )
-    .create_store("Schema Test")
-    .await
-    .unwrap();
+    let installation =
+        coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
+    let handle =
+        bae_db::configure_store(installation.builder()).create_store("Schema Test").await.unwrap();
     let database = bae_db::Database::from_handle(
         handle.clone(),
         std::sync::Arc::new(coven::SystemClock),
@@ -69,13 +66,10 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
 #[tokio::test]
 async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let directory = tempfile::tempdir().unwrap();
-    let installation = coven::TestCoven::new();
-    let handle = bae_db::configure_store(
-        installation.builder(bae_app_dir::AppDir::at(directory.path()).unwrap().store_layout()),
-    )
-    .create_store("Upload Test")
-    .await
-    .unwrap();
+    let installation =
+        coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
+    let handle =
+        bae_db::configure_store(installation.builder()).create_store("Upload Test").await.unwrap();
     let library = bae_library::test_libraries::test_library_from_handle(
         handle.clone(),
         directory.path(),

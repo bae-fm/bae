@@ -9,7 +9,6 @@ pub mod dev_reset;
 mod file_transfers;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod followed;
-mod keychain;
 pub mod keys;
 pub mod library_name;
 mod library_status;
@@ -23,6 +22,7 @@ pub mod people;
 mod queue_upcoming;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
+mod saved_restore_codes;
 pub mod storage;
 pub mod sync;
 pub(crate) mod sync_controller;
@@ -44,7 +44,6 @@ pub use track_decode::TrackDecode;
 pub use bae_db::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
 pub use file_transfers::{FileTransferChange, FileTransfersWatch};
-pub use keychain::{ForgetSavedRestoreCodeError, Keychain, SavedRestoreCodesError};
 pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus};
 pub use live_read::{live_read_channel, SubscriptionReader};
 pub use live_read::{LiveRead, LiveReadError};
@@ -59,6 +58,7 @@ pub use outbox_watch::{
     ReleaseUploadTransfer, UploadTransfer,
 };
 pub use queue_upcoming::{subscribe_queue_upcoming, LiveQueueUpcoming, QueueUpcomingSnapshot};
+pub use saved_restore_codes::{saved_restore_codes, SavedRestoreCodesError};
 pub use upload_progress::{UploadBar, UploadState};
 
 pub use tokio_util::sync::CancellationToken;

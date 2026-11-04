@@ -176,7 +176,7 @@ impl LibraryManager {
                 }
             })
             .await
-            .unwrap_or_else(|failed| Err(manager.bug(failed).into()));
+            .unwrap_or_else(|bug| Err(manager.panicked(bug).into()));
             if let Err(operation) = result {
                 return match manager.database.unpin(&changed).await {
                     Ok(()) => Err(operation),

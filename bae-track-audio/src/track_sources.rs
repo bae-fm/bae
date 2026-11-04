@@ -149,8 +149,8 @@ where
             Ok(Err(error)) => {
                 failure.get_or_insert(error);
             }
-            Err(failed) => {
-                failure.get_or_insert(panicked(failed));
+            Err(bug) => {
+                failure.get_or_insert(panicked(TaskFailed::Panicked(bug)));
             }
         }
         for file in &files {

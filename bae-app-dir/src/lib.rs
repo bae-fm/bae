@@ -1,7 +1,8 @@
 //! bae's own directory and what it holds before any library's store opens:
 //! the libraries registered on this device, the one last opened, the
-//! installation id, the keyring namespace, and the transfer limits a library
-//! runs under before its preferences can be read.
+//! installation id, coven's installation of bae's stores under bae's keyring
+//! namespace, and the transfer limits a library runs under before its
+//! preferences can be read.
 
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::{Path, PathBuf};
@@ -112,9 +113,21 @@ impl AppDir {
         self.path.join("removals.lock")
     }
 
-    /// coven owns store directories under the app directory.
-    pub fn store_layout(&self) -> coven::StoreLayout {
-        coven::StoreLayout::new(self.path.clone())
+    /// This device's libraries as coven keeps them: each library's store in
+    /// its own directory under the app directory, their keys and secrets in
+    /// the OS keychain under bae's service. Built once at process start, so
+    /// a keychain coven can't reach fails the start, and held while the
+    /// process runs.
+    pub fn coven(&self) -> Result<coven::Coven, coven::KeyError> {
+        coven::Coven::new(self.path.clone(), KEYRING_SERVICE)
+    }
+
+    /// The app directory coven keeps this device's stores under, which a
+    /// test builds its own installation over (`coven::Coven::in_memory`, and
+    /// the person's other devices from it).
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn coven_app_dir(&self) -> PathBuf {
+        self.path.clone()
     }
 
     /// A bae-owned installation id shared by this installation's libraries.
@@ -149,16 +162,19 @@ impl AppDir {
     }
 
     /// The libraries registered on this device, the active one first, then by
-    /// name, each with whether it opens.
-    pub async fn discover_libraries(&self) -> Result<Vec<LibraryInfo>, AppDirError> {
+    /// name, each with whether it opens: the stores `coven`, this
+    /// directory's installation, lists.
+    pub async fn discover_libraries(
+        &self,
+        coven: &coven::Coven,
+    ) -> Result<Vec<LibraryInfo>, AppDirError> {
         let active_id = self.active_library_id()?;
-        let layout = self.store_layout();
         let mut libraries = Vec::new();
-        for store in layout.stores().await? {
+        for store in coven.stores().await? {
             let state = match store.unfinished_replacement {
                 // Whatever its settings say, only finishing the call opens it.
                 Some(by) => LibraryState::ReplacementUnfinished(by),
-                None => match coven::Coven::storage_config(&layout.store_dir(&store.id)).await {
+                None => match coven::Coven::storage_config(&coven.store_dir(&store.id)).await {
                     Ok(storage) => LibraryState::Openable(storage),
                     Err(error) => {
                         tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
@@ -269,12 +285,9 @@ pub fn usize_bound(n: NonZeroU32) -> NonZeroUsize {
     NonZeroUsize::new(n.get() as usize).expect("a NonZeroU32 widened to usize stays non-zero")
 }
 
-/// Register bae's keyring namespace and let coven install the platform store
-/// and policy it owns. Startup must not continue with an unusable credential
-/// store; the caller reports a failure.
-pub fn register_keyring_service() -> Result<(), coven::KeyError> {
-    coven::set_keyring_service("bae")
-}
+/// bae's keyring namespace: the OS keychain service every library's keys and
+/// secrets are kept under.
+const KEYRING_SERVICE: &str = "bae";
 
 /// Why bae's directory, or what it holds, could not be read or written.
 #[derive(Debug, thiserror::Error)]
@@ -286,13 +299,13 @@ pub enum AppDirError {
     #[error(transparent)]
     File(#[from] coven::FileError),
     #[error(transparent)]
-    Stores(#[from] coven::StoreLayoutError),
+    Stores(#[from] coven::StoreListError),
     #[error(transparent)]
     Storage(#[from] coven::StorageError),
 }
 
 impl AppDirError {
-    /// The class the person is shown: a file or a store layout that can't
+    /// The class the person is shown: a file or a store listing that can't
     /// be read or written is a configuration to fix.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         bae_diagnostics::UiErrorCategory::Config

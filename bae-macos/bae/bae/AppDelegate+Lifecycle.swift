@@ -45,9 +45,7 @@ extension AppDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         guard runtime.startsApplicationServices else { return }
-        var keyringReady = true
         var signInSettings: DisplayError?
-        var secureStorage: DisplayError?
         // Telemetry is already up (built at delegate construction, from
         // compiled-in values only), so every step from here on has a sink
         // for any failure it reports.
@@ -68,43 +66,19 @@ extension AppDelegate {
                 signInSettings = DisplayError(error)
             }
         #endif
-        do {
-            try initializeKeyring()
-        }
-        catch {
-            // Discovery reads coven's store list and each store's settings
-            // and needs no keychain, so a keyring failure must not cost the
-            // user the list of libraries on this Mac — returning here
-            // handed a first-run create/join
-            // wall to someone with libraries sitting right there. It does
-            // cost them the open, since every library's keys live in the
-            // keyring, so discovery runs and the welcome screen lists them
-            // under this error.
-            baeAppLogger.error(
-                "Keyring initialization failed: \(String(reflecting: error))"
-            )
-            secureStorage = DisplayError(error)
-            keyringReady = false
-        }
-        launchProblems = LaunchProblems(
-            signInSettings: signInSettings,
-            secureStorage: secureStorage
-        )
+        launchProblems = LaunchProblems(signInSettings: signInSettings)
         startWatchingForKeychainUnlock()
         #if BAE_DEV_RESET
             if let profilePath = AppRuntime.devResetProfilePath(
                 arguments: CommandLine.arguments
             ) {
-                runDevReset(
-                    profilePath: profilePath,
-                    keyringReady: keyringReady
-                )
+                runDevReset(profilePath: profilePath)
             }
             else {
-                loadInitialState(canOpenLibraries: keyringReady)
+                loadInitialState()
             }
         #else
-            loadInitialState(canOpenLibraries: keyringReady)
+            loadInitialState()
         #endif
         showMainWindow()
         #if !DEBUG
@@ -124,10 +98,6 @@ extension AppDelegate {
         }
         showMainWindow()
         return false
-    }
-
-    private func initializeKeyring() throws {
-        try initKeyring(diagnostics: requiredApplicationServices.diagnostics)
     }
 
     /// AppKit's deferred-terminate flow, replacing the old fire-and-forget

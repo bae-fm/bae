@@ -28,7 +28,7 @@ use bae_db::{
 };
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_types::release_storage::ReleaseStorageAction;
-use bae_util::task_failure::{blocking, caught, joined, TaskFailed};
+use bae_util::task_failure::{blocking, caught, joined, Bug, TaskFailed};
 use coven::ClockRef;
 use coven::IdSourceRef;
 
@@ -381,6 +381,12 @@ impl From<bae_transfers::DownloadProgressError> for LibraryError {
 impl From<TaskFailed> for LibraryError {
     fn from(failed: TaskFailed) -> Self {
         Self::Internal(failed.to_string())
+    }
+}
+
+impl From<Bug> for LibraryError {
+    fn from(bug: Bug) -> Self {
+        Self::Internal(bug.to_string())
     }
 }
 

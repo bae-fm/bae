@@ -9,7 +9,7 @@ pub mod tables;
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use bae_db::{Database, DbError};
-use bae_util::task_failure::{caught, caught_sync, TaskFailed};
+use bae_util::task_failure::{caught, caught_sync, Bug, TaskFailed};
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
@@ -302,13 +302,13 @@ where
     /// - An entry whose `start`, work or `on_done` panics is reported through
     ///   `bug` and fails as any failure does; the worker goes on to the next
     ///   entry.
-    pub async fn run_serial<Error, Start, StartFut, Fut, Done, StoreFailed, Bug>(
+    pub async fn run_serial<Error, Start, StartFut, Fut, Done, StoreFailed, ReportBug>(
         &self,
         label: &'static str,
         mut start: Start,
         mut on_done: Done,
         store_failed: StoreFailed,
-        bug: Bug,
+        bug: ReportBug,
     ) where
         Error: From<TaskFailed> + std::fmt::Display,
         Start: FnMut(ReleaseQueueEntry<Extra>) -> StartFut,
@@ -316,9 +316,9 @@ where
         Fut: Future<Output = Result<(), Error>>,
         Done: FnMut(&str, Result<(), &Error>),
         StoreFailed: Fn(&str, &DbError),
-        Bug: Fn(TaskFailed) -> TaskFailed,
+        ReportBug: Fn(Bug) -> Bug,
     {
-        let failed = |failed: TaskFailed| -> Error { bug(failed).into() };
+        let failed = |panic: Bug| -> Error { TaskFailed::Panicked(bug(panic)).into() };
         let mut done = |release_id: &str, result: Result<(), &Error>| {
             if let Err(panic) = caught_sync(label, || on_done(release_id, result)) {
                 bug(panic);

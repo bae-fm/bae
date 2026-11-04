@@ -364,11 +364,10 @@ async fn a_read_that_panics_is_reported_and_measures_nothing() {
 
     let outcome = measure_track(&track, &streams, progress(&event_tx, None), &diagnostics);
 
-    let TrackOutcome::ReadPanicked(failed) = outcome else {
+    let TrackOutcome::ReadPanicked(bug) = outcome else {
         panic!("the track is a read that panicked");
     };
-    assert!(failed.is_panic(), "{failed}");
-    assert_eq!(reports.reports(), vec![(failed.operation().to_string(), failed.to_string())]);
+    assert_eq!(reports.reports(), vec![(bug.operation.to_string(), bug.to_string())]);
 }
 
 /// A track whose audio format has no segments is skipped (nothing to

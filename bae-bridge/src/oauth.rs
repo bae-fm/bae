@@ -82,7 +82,7 @@ impl coven::OAuthPresenter for NativeOAuthPresenter {
         authorization_url: &str,
     ) -> Result<coven::SecretText, coven::OAuthError> {
         crate::host_calls::host_call_async(
-            |failed| self.diagnostics.bug(failed),
+            |bug| self.diagnostics.panicked(bug),
             "present a native sign-in",
             self.callback.present(authorization_url.to_owned()),
         )

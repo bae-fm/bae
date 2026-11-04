@@ -76,8 +76,8 @@ pub(crate) async fn report_panics(
     let uri = request.uri().clone();
     match bae_util::task_failure::caught("answer a Subsonic request", next.run(request)).await {
         Ok(response) => response,
-        Err(failed) => {
-            let error = SubError::generic(state.diagnostics.bug(failed).to_string());
+        Err(bug) => {
+            let error = SubError::generic(state.diagnostics.panicked(bug).to_string());
             let format = match Query::<HashMap<String, String>>::try_from_uri(&uri) {
                 Ok(Query(query)) => Params(query).format(),
                 Err(unreadable) => {

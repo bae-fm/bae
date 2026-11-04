@@ -7,21 +7,21 @@ use crate::LibraryManager;
 use bae_catalogs::providers::Providers;
 use coven::{MemoryStorage, Storage};
 
-/// Create a store with its own keychain and an injected provider, before setup.
+/// Create a store in its own installation, with an injected provider, before
+/// setup.
 pub async fn storage_library(
     directory: &std::path::Path,
     providers: Providers,
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
-    let installation = coven::TestCoven::new();
+    let app_dir = bae_app_dir::AppDir::under_home(directory).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage =
         Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
-    let handle = bae_db::configure_store(
-        installation.builder(bae_app_dir::AppDir::under_home(directory).unwrap().store_layout()),
-    )
-    .storage_connector(storage.clone())
-    .create_store("Test Library")
-    .await
-    .unwrap();
+    let handle = bae_db::configure_store(installation.builder())
+        .storage_connector(storage.clone())
+        .create_store("Test Library")
+        .await
+        .unwrap();
     let library = super::test_library_from_handle(handle, directory, providers).await;
     library.start().unwrap();
     (library, storage)

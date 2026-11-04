@@ -15,9 +15,7 @@
 
 use bae_app_dir::AppDir;
 use bae_library::{FixtureAlbum, LibraryFixture};
-use coven::{
-    Clock, CovenHandle, MemoryStorage, SecretText, Storage, SyncState, SyncStatus, TestCoven,
-};
+use coven::{Clock, Coven, CovenHandle, MemoryStorage, SecretText, Storage, SyncState, SyncStatus};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -97,8 +95,8 @@ async fn restore_cost(library: Library) {
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let owner_dir = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
-    let installation = TestCoven::new();
-    let handle = bae_db::configure_store(installation.builder(app_dir.store_layout()))
+    let installation = Coven::in_memory(app_dir.coven_app_dir());
+    let handle = bae_db::configure_store(installation.builder())
         .clock(clock.clone())
         .storage_connector(storage.clone())
         .create_store("Library")
@@ -166,8 +164,8 @@ async fn restore_cost(library: Library) {
     let (_cancelling, cancel) = tokio::sync::watch::channel(false);
     let restoring = Instant::now();
     let restored = bae_library::restore_from_code(
-        TestCoven::new()
-            .builder(device_app_dir.store_layout())
+        Coven::in_memory(device_app_dir.coven_app_dir())
+            .builder()
             .clock(clock.clone())
             .storage_connector(Arc::new(storage.for_device())),
         &code,

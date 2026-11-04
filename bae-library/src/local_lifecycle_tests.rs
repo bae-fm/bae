@@ -11,7 +11,7 @@ use tempfile::TempDir;
 struct Home {
     _temp: TempDir,
     app_dir: AppDir,
-    installation: Arc<coven::TestCoven>,
+    installation: coven::Coven,
     storage: Arc<coven::MemoryStorage>,
 }
 
@@ -21,8 +21,8 @@ impl Home {
         let app_dir = AppDir::under_home(temp.path()).unwrap();
         Self {
             _temp: temp,
+            installation: coven::Coven::in_memory(app_dir.coven_app_dir()),
             app_dir,
-            installation: Arc::new(coven::TestCoven::new()),
             storage: Arc::new(
                 coven::MemoryStorage::builder()
                     .clock(Arc::new(coven::SystemClock))
@@ -35,12 +35,11 @@ impl Home {
     /// A library with bae's own directory for it, as one this device has
     /// opened.
     async fn library(&self, name: &str) -> coven::CovenHandle {
-        let handle =
-            bae_db::configure_store(self.installation.builder(self.app_dir.store_layout()))
-                .storage_connector(self.storage.clone())
-                .create_store(name)
-                .await
-                .unwrap();
+        let handle = bae_db::configure_store(self.installation.builder())
+            .storage_connector(self.storage.clone())
+            .create_store(name)
+            .await
+            .unwrap();
         std::fs::create_dir_all(self.directory(handle.store_id()).join("cache")).unwrap();
         handle
     }
@@ -64,8 +63,7 @@ impl Home {
     /// The libraries whose saved restore codes this device offers, with the
     /// name each is offered under.
     async fn offered_codes(&self) -> Vec<(coven::StoreId, String)> {
-        self.keychain()
-            .saved_restore_codes(&self.app_dir)
+        crate::saved_restore_codes(&self.installation)
             .await
             .unwrap()
             .into_iter()
@@ -76,10 +74,6 @@ impl Home {
                 }
             })
             .collect()
-    }
-
-    fn keychain(&self) -> crate::Keychain {
-        crate::Keychain::InMemory(self.installation.clone())
     }
 
     fn directory(&self, id: coven::StoreId) -> std::path::PathBuf {
@@ -97,7 +91,7 @@ impl Home {
     /// What the person is shown when the app next lists its libraries, and
     /// whether it has files to finish deleting.
     async fn unfinished(&self) -> Option<(String, bool)> {
-        UnfinishedRemoval::find(&self.app_dir, &Diagnostics::noop())
+        UnfinishedRemoval::find(&self.app_dir, &self.installation, &Diagnostics::noop())
             .await
             .unwrap()
             .map(|removal| (removal.to_string(), removal.files_remain()))
@@ -135,7 +129,7 @@ impl Home {
     }
 
     async fn stores(&self) -> usize {
-        self.app_dir.store_layout().stores().await.unwrap().len()
+        self.installation.stores().await.unwrap().len()
     }
 }
 
@@ -264,9 +258,9 @@ async fn a_forgotten_restore_code_is_no_longer_offered() {
         vec![(forgotten_id, "Forgotten".to_string()), (kept_id, "Kept".to_string()),]
     );
 
-    home.keychain().forget_saved_restore_code(forgotten_id).await.unwrap();
+    home.installation.forget_saved_restore_code(forgotten_id).await.unwrap();
     assert_eq!(home.offered_codes().await, vec![(kept_id, "Kept".to_string())]);
-    home.keychain().forget_saved_restore_code(forgotten_id).await.unwrap();
+    home.installation.forget_saved_restore_code(forgotten_id).await.unwrap();
     assert_eq!(home.offered_codes().await, vec![(kept_id, "Kept".to_string())]);
 }
 
@@ -303,7 +297,9 @@ async fn a_removal_stopped_before_the_delete_reports_the_library_still_here() {
     assert!(!files_remain);
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
+    finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
+        .await
+        .unwrap();
     assert_eq!(home.stores().await, 1);
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(home.directory(id).exists());
@@ -329,7 +325,7 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
     assert!(files_remain);
     assert!(home.record(id).exists());
     let finished = std::sync::Mutex::new(Vec::new());
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|done, total| {
+    finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|done, total| {
         finished.lock().unwrap().push((done, total))
     })
     .await
@@ -343,7 +339,9 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
     assert!(!home.directory(id).exists());
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
+    finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
+        .await
+        .unwrap();
 }
 
 /// The pointer can't be read: the store is gone, the record keeps the removal
@@ -364,10 +362,14 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     assert!(home.record(id).exists());
     assert!(home.unfinished().await.unwrap().1);
 
-    assert!(finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.is_err());
+    assert!(finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
+        .await
+        .is_err());
     std::fs::remove_dir(home.app_dir.active_library_pointer()).unwrap();
     home.point_at(id);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
+    finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
+        .await
+        .unwrap();
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
     assert!(!home.record(id).exists());
@@ -394,7 +396,9 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
     assert!(home.unfinished().await.unwrap().1);
 
     set_writable(&home.app_dir.libraries(), true);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
+    finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
+        .await
+        .unwrap();
     assert!(!home.directory(id).exists());
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
@@ -417,7 +421,9 @@ async fn files_without_a_removal_record_are_left_alone() {
     let (shown, _) = home.unfinished().await.unwrap();
     assert!(shown.contains(&removed.store_id().to_string()), "{shown}");
     assert!(!shown.contains(&hidden.to_string()), "{shown}");
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
+    finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
+        .await
+        .unwrap();
     assert!(!home.directory(removed.store_id()).exists());
     assert!(home.directory(hidden).exists());
     assert_eq!(home.pointer(), Some(hidden.to_string()));
@@ -483,18 +489,10 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
     handle.close().await.unwrap();
     drop(handle);
 
-    let work = super::unsent_before_removal(
-        home.installation.builder(home.app_dir.store_layout()),
-        id,
-        |_| (),
-    )
-    .await
-    .unwrap();
+    let work = super::unsent_before_removal(home.installation.builder(), id, |_| ()).await.unwrap();
     assert!(work.is_empty(), "{work:?}");
-    let reopened = bae_db::configure_store(home.installation.builder(home.app_dir.store_layout()))
-        .open(id, |_| ())
-        .await
-        .unwrap();
+    let reopened =
+        bae_db::configure_store(home.installation.builder()).open(id, |_| ()).await.unwrap();
     assert_eq!(reopened.store_name().await.unwrap(), "Library");
 }
 
@@ -517,25 +515,21 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
         "{not settings",
     )
     .unwrap();
-    let listed = home.app_dir.discover_libraries().await.unwrap();
+    let listed = home.app_dir.discover_libraries(&home.installation).await.unwrap();
     assert!(
         listed.iter().any(|library| library.id == id.to_string()
             && matches!(library.state, bae_app_dir::LibraryState::Unreadable(_))),
         "{listed:?}"
     );
-    super::unsent_before_removal(
-        home.installation.builder(home.app_dir.store_layout()),
-        id,
-        |_| (),
-    )
-    .await
-    .expect_err("counting opens the library, and its settings can't be read");
+    super::unsent_before_removal(home.installation.builder(), id, |_| ())
+        .await
+        .expect_err("counting opens the library, and its settings can't be read");
 
     let steps = std::sync::Mutex::new(Vec::new());
     remove_unopenable_library(
         &home.app_dir,
+        &home.installation,
         &Diagnostics::noop(),
-        &crate::Keychain::InMemory(home.installation.clone()),
         id,
         &|step| steps.lock().unwrap().push(step),
     )
@@ -564,8 +558,8 @@ async fn an_unopenable_removal_coven_refuses_removes_nothing() {
     home.point_at(id);
     let error = remove_unopenable_library(
         &home.app_dir,
+        &home.installation,
         &Diagnostics::noop(),
-        &crate::Keychain::InMemory(home.installation.clone()),
         id,
         &|_| (),
     )

@@ -46,5 +46,5 @@ async fn a_serve_future_that_panics_is_reported_and_leaves_the_server_in_error()
     assert!(error.0.contains("the server broke its guarantee"), "{error:?}");
     let reported = reported.lock().unwrap().clone();
     assert_eq!(reported.len(), 1, "{reported:?}");
-    assert!(reported[0].is_panic());
+    assert_eq!(reported[0].operation, "Test");
 }

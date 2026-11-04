@@ -293,7 +293,7 @@ where
             Ok::<_, LibraryError>(())
         })
         .await
-        .unwrap_or_else(|failed| Err(transfer.library_manager.bug(failed).into()));
+        .unwrap_or_else(|bug| Err(transfer.library_manager.panicked(bug).into()));
         if let Err(error) = result {
             transfer.fail(&error);
             send_progress(

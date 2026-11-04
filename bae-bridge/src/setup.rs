@@ -53,11 +53,6 @@ impl BridgeLibrary {
     }
 }
 
-#[uniffi::export]
-pub fn init_keyring(diagnostics: Arc<crate::BridgeDiagnostics>) -> Result<(), BridgeError> {
-    diagnostics.init_keyring()
-}
-
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCodeMetadata {
     pub library_id: String,

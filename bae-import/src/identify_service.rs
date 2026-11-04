@@ -343,7 +343,7 @@ async fn run_driver(
         {
             Ok(state) => state,
             Err(failed) => {
-                let failure = driver.inner.diagnostics.bug(failed).into();
+                let failure = driver.inner.diagnostics.panicked(failed).into();
                 driver.advance(before, IdentifyEvent::Broke { failure }, &mut standing).await
             }
         };

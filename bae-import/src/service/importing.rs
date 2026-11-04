@@ -3,7 +3,7 @@ use super::cover_image::ImportCover;
 use super::*;
 use crate::import_cancel::{ImportRunEnd, ImportStop};
 use crate::types::{ImportStep, TrackAudio};
-use bae_util::task_failure::{blocking, caught};
+use bae_util::task_failure::{blocking, caught, TaskFailed};
 
 impl ImportService {
     pub(super) async fn do_import(&self, command: ImportCommand, expectation: ImportExpectation) {
@@ -23,9 +23,9 @@ impl ImportService {
         let run = self
             .import_cancels
             .run(&candidate_key, &import_id, async {
-                caught("an import", work)
-                    .await
-                    .unwrap_or_else(|failed| Err(self.diagnostics.bug(failed).into()))
+                caught("an import", work).await.unwrap_or_else(|bug| {
+                    Err(TaskFailed::Panicked(self.diagnostics.panicked(bug)).into())
+                })
             })
             .await;
         let result = match run {

@@ -15,8 +15,9 @@ path = "src/lib.rs"
 bae-diagnostics = { workspace = true }
 # The directory sync the installation id is published with.
 bae-util = { workspace = true }
-# The store layout, its stores and their storage settings, the keyring
-# namespace and the transfer limits coven's builder takes.
+# This device's installation of bae's stores (under bae's keyring
+# namespace), its stores and their storage settings, and the transfer limits
+# coven's builder takes.
 coven = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
@@ -26,7 +27,7 @@ uuid = { workspace = true }
 tempfile = { workspace = true }
 
 [dev-dependencies]
-# The in-memory keyring and the stores the discovery tests create.
+# The in-memory installation and the stores the discovery tests create.
 coven = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
 uuid = { workspace = true, features = ["v4"] }

@@ -6,14 +6,7 @@
         /// The loading screen shows each step core reports; a failure stops
         /// the reset where it happened and shows on the welcome screen;
         /// nothing after it runs.
-        func runDevReset(profilePath: String, keyringReady: Bool) {
-            guard keyringReady else {
-                baeAppLogger.error(
-                    "Dev reset needs the keyring, which didn't start"
-                )
-                screen = .home
-                return
-            }
+        func runDevReset(profilePath: String) {
             let services = requiredApplicationServices
             let steps = LibrarySetupSteps(host: services.host)
             setupSteps = steps

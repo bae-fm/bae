@@ -158,10 +158,7 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
         let handle =
-            bae_db::configure_store(manager.installation.builder(manager.app_dir.store_layout()))
-                .open(id, |_| ())
-                .await
-                .unwrap();
+            bae_db::configure_store(manager.installation.builder()).open(id, |_| ()).await.unwrap();
         let reopened = Database::from_handle(
             handle,
             manager.clock.clone(),

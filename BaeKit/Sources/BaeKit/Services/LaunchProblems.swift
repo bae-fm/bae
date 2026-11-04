@@ -1,24 +1,17 @@
 import SwiftUI
 
 /// What launch found wrong that no library opening or closing changes: the
-/// bundled Dropbox and OneDrive sign-in settings couldn't be read, or secure
-/// storage didn't start. Recorded once, when the app launches, and kept for
-/// the run, apart from any library's own failures, so neither hides the
-/// other.
+/// bundled Dropbox and OneDrive sign-in settings couldn't be read. Recorded
+/// once, when the app launches, and kept for the run, apart from any
+/// library's own failures, so neither hides the other.
 public struct LaunchProblems: Equatable, Sendable {
     /// Why this build can't sign in to Dropbox or OneDrive.
     public let signInSettings: DisplayError?
-    /// Why no library can open: the keychain didn't start.
-    public let secureStorage: DisplayError?
 
-    public static let none = LaunchProblems(
-        signInSettings: nil,
-        secureStorage: nil
-    )
+    public static let none = LaunchProblems(signInSettings: nil)
 
-    public init(signInSettings: DisplayError?, secureStorage: DisplayError?) {
+    public init(signInSettings: DisplayError?) {
         self.signInSettings = signInSettings
-        self.secureStorage = secureStorage
     }
 }
 
@@ -32,13 +25,6 @@ public struct LaunchProblemNotices: View {
     }
 
     public var body: some View {
-        if let error = problems.secureStorage {
-            LaunchProblemNotice(
-                title: "ui.load_error.secure_storage.title",
-                advice: "ui.load_error.secure_storage.advice",
-                error: error
-            )
-        }
         if let error = problems.signInSettings {
             LaunchProblemNotice(
                 title: "ui.load_error.sign_in_settings.title",

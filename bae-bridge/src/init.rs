@@ -78,17 +78,24 @@ pub enum BridgeScreen {
 
 /// The process-lifetime telemetry sink, built once at startup and held by the
 /// host for the whole app run. Wraps core's `Diagnostics`; it is the one
-/// host-facing telemetry object for host events. `init_keyring` and
-/// `BridgeHost` (which `init_app` requires) take it as a parameter so telemetry
-/// is guaranteed set up before anything that could fail.
+/// host-facing telemetry object for host events. `BridgeHost` (which
+/// `init_app` requires) takes it as a parameter so telemetry is guaranteed
+/// set up before anything that could fail.
 #[derive(uniffi::Object)]
 pub struct BridgeDiagnostics {
     inner: Diagnostics,
 }
 
 impl BridgeDiagnostics {
-    pub(crate) fn init_keyring(&self) -> Result<(), BridgeError> {
-        bae_app_dir::register_keyring_service().map_err(|error| {
+    /// This device's libraries as coven keeps them under `app_dir`, their
+    /// keys in the OS keychain, which building it opens. A keychain coven
+    /// can't reach ships `keyring_init_failed` through this sink and fails
+    /// as a keyring error.
+    pub(crate) fn installation(
+        &self,
+        app_dir: &bae_app_dir::AppDir,
+    ) -> Result<coven::Coven, BridgeError> {
+        app_dir.coven().map_err(|error| {
             self.inner.event(TelemetryEvent::KeyringInitFailed {});
             BridgeError::Diagnostic {
                 category: crate::types::BridgeErrorCategory::Keyring,
@@ -180,8 +187,9 @@ impl BridgeDiagnostics {
     pub(crate) async fn unfinished_removal(
         &self,
         app_dir: &bae_app_dir::AppDir,
+        coven: &coven::Coven,
     ) -> Result<Option<bae_library::UnfinishedRemoval>, bae_library::LibraryError> {
-        bae_library::UnfinishedRemoval::find(app_dir, &self.inner).await
+        bae_library::UnfinishedRemoval::find(app_dir, coven, &self.inner).await
     }
 
     /// Remove the library `store`, which can't open, without opening it,
@@ -190,11 +198,11 @@ impl BridgeDiagnostics {
     pub(crate) async fn remove_unopenable_library(
         &self,
         app_dir: &bae_app_dir::AppDir,
-        keychain: &bae_library::Keychain,
+        coven: &coven::Coven,
         store: coven::StoreId,
         steps: &(dyn Fn(bae_library::ClosingStep) + Send + Sync),
     ) -> Result<(), bae_library::LibraryRemovalError> {
-        bae_library::remove_unopenable_library(app_dir, &self.inner, keychain, store, steps).await
+        bae_library::remove_unopenable_library(app_dir, coven, &self.inner, store, steps).await
     }
 
     /// Complete every recorded removal, telling `finished` how many are done
@@ -203,9 +211,10 @@ impl BridgeDiagnostics {
     pub(crate) async fn finish_removals(
         &self,
         app_dir: &bae_app_dir::AppDir,
+        coven: &coven::Coven,
         finished: &(dyn Fn(u64, u64) + Send + Sync),
     ) -> Result<(), bae_library::LibraryError> {
-        bae_library::finish_removals(app_dir, &self.inner, finished).await
+        bae_library::finish_removals(app_dir, coven, &self.inner, finished).await
     }
 
     /// The handle a bootstrap built, or its failure shipped as
@@ -224,6 +233,13 @@ impl BridgeDiagnostics {
     /// own error.
     pub(crate) fn bug(&self, failed: TaskFailed) -> TaskFailed {
         self.inner.bug(failed)
+    }
+
+    /// Report `bug`, a host call that threw, and hand it back for the
+    /// caller's own error: a phone host's calls only.
+    #[cfg(any(test, not(desktop)))]
+    pub(crate) fn panicked(&self, bug: bae_util::task_failure::Bug) -> bae_util::task_failure::Bug {
+        self.inner.panicked(bug)
     }
 
     /// Report a failure of `operation` that no caller is left to hear as a
@@ -267,8 +283,8 @@ impl BridgeDiagnostics {
 }
 
 /// Build the telemetry sink and install the tracing subscriber. Called once at
-/// process start, before `init_keyring` / `BridgeHost` (both require the returned
-/// handle), so the sink exists for every launch step that could fail. The
+/// process start, before `BridgeHost` (which requires the returned handle),
+/// so the sink exists for every launch step that could fail. The
 /// sink reports the bugs core finds to `bug_reporter`, the platform's crash
 /// reporter. Local logs go to the platform's native log, and on the desktop
 /// also to stdout when it is a terminal.

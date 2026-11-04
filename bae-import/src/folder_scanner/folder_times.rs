@@ -13,7 +13,7 @@
 
 use super::scan::{ScanCancellation, FOLDERS_AT_ONCE};
 use super::FolderScanError;
-use bae_util::task_failure::{caught_sync, TaskFailed};
+use bae_util::task_failure::{caught_sync, Bug};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -156,7 +156,7 @@ fn read_each_at_once(
     // Cancelled with the pass, and by a read that panics, so the others stop
     // without the pass reading as cancelled.
     let stop = cancellation.child();
-    let panicked: std::sync::Mutex<Option<TaskFailed>> = std::sync::Mutex::new(None);
+    let panicked: std::sync::Mutex<Option<Bug>> = std::sync::Mutex::new(None);
     std::thread::scope(|threads| {
         for _ in 0..FOLDERS_AT_ONCE.min(indices.len()) {
             let (next, read, stop, panicked) = (&next, &read, &stop, &panicked);

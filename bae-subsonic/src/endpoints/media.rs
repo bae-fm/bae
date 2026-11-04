@@ -156,9 +156,9 @@ fn produce_body(
     let diagnostics = diagnostics.clone();
     let failing = tx.clone();
     drop(tokio::task::spawn_blocking(move || {
-        if let Err(failed) = caught_sync(operation, move || produce(tx)) {
-            let failed = diagnostics.bug(failed);
-            end_body(&failing, std::io::Error::other(failed));
+        if let Err(bug) = caught_sync(operation, move || produce(tx)) {
+            let bug = diagnostics.panicked(bug);
+            end_body(&failing, std::io::Error::other(bug));
         }
     }));
     rx

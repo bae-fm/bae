@@ -35,7 +35,7 @@ pub(super) struct TestManager {
     /// The catalog fakes the library asks, which a test seeds.
     pub(super) fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
     pub(super) storage: Arc<MemoryStorage>,
-    pub(super) installation: coven::TestCoven,
+    pub(super) installation: coven::Coven,
 }
 
 impl std::ops::Deref for TestManager {
@@ -61,9 +61,9 @@ pub(super) async fn setup_test_manager_with(
 ) -> (TestManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
-    let installation = coven::TestCoven::new();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let handle = bae_db::configure_store(installation.builder(app_dir.store_layout()))
+    let handle = bae_db::configure_store(installation.builder())
         .clock(clock.clone())
         .storage_connector(storage.clone())
         .create_store("Test Library")
@@ -636,7 +636,7 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
         (coven::SyncError::Storage(F::ClockSkew.into()).into(), C::Storage(F::ClockSkew)),
         (coven::SyncError::Storage(F::Conflict.into()).into(), C::Storage(F::Conflict)),
         (coven::KeyError::PassphraseAuthentication.into(), C::Keyring),
-        (coven::KeyError::ServiceNotRegistered.into(), C::Internal),
+        (coven::KeyError::InvalidServiceName.into(), C::Internal),
         (bae_preferences::PreferencesError::Invalid("invalid preference".into()).into(), C::Config),
         (coven::SyncError::SecureStorage(coven::KeyError::Unsupported).into(), C::Keyring),
         (coven::SyncError::Storage(F::Network.into()).into(), C::Storage(F::Network)),

@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::task_failure::TaskFailed;
 
 /// The blocking walk of a watched root, as its failure names it.
 const FOLDER_WALK: &str = "walk a watched folder";
@@ -58,8 +59,8 @@ pub(super) async fn cancel_and_join_folder_walk(
     // The walk was stopped, so its own error says only that, unless one
     // of its threads panicked first.
     match walked {
-        Err(crate::folder_scanner::FolderScanError::Panicked(failed)) => {
-            Err(diagnostics.bug(failed).into())
+        Err(crate::folder_scanner::FolderScanError::Panicked(bug)) => {
+            Err(TaskFailed::Panicked(diagnostics.panicked(bug)).into())
         }
         Ok(()) | Err(_) => Ok(()),
     }
@@ -105,7 +106,7 @@ pub(super) async fn rescan_and_reconcile(
         walk_and_reconcile(root, generation, volume, scan, cancellation),
     )
     .await
-    .unwrap_or_else(|failed| Err(services.diagnostics.bug(failed).into()));
+    .unwrap_or_else(|bug| Err(TaskFailed::Panicked(services.diagnostics.panicked(bug)).into()));
     let Err(error) = outcome else {
         return Ok(());
     };
@@ -342,8 +343,8 @@ async fn walk_and_reconcile(
     let (seen_directories, directory_mtimes) = match walked {
         (Ok(()), seen_directories, directory_mtimes) => (seen_directories, directory_mtimes),
         // One of the walk's threads panicked; the rest stopped with it.
-        (Err(crate::folder_scanner::FolderScanError::Panicked(failed)), _, _) => {
-            return Err(services.diagnostics.bug(failed).into())
+        (Err(crate::folder_scanner::FolderScanError::Panicked(bug)), _, _) => {
+            return Err(TaskFailed::Panicked(services.diagnostics.panicked(bug)).into())
         }
         (Err(e), _, _) => return Err(e.into()),
     };

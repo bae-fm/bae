@@ -100,6 +100,7 @@ impl UnfinishedRemoval {
     /// here and reported, and the library can be removed again.
     pub async fn find(
         app_dir: &AppDir,
+        coven: &coven::Coven,
         diagnostics: &Diagnostics,
     ) -> Result<Option<Self>, LibraryError> {
         let _lock = RemovalLock::acquire(app_dir, diagnostics).await?;
@@ -107,7 +108,7 @@ impl UnfinishedRemoval {
         if records.is_empty() {
             return Ok(None);
         }
-        let listed = listed_stores(app_dir).await?;
+        let listed = listed_stores(coven).await?;
         let (not_removed, files_remain): (Vec<_>, Vec<_>) =
             records.into_iter().partition(|id| listed.contains(id));
         for &id in &not_removed {
@@ -133,6 +134,7 @@ impl UnfinishedRemoval {
 /// of them once they are read, then each as it finishes.
 pub async fn finish_removals(
     app_dir: &AppDir,
+    coven: &coven::Coven,
     diagnostics: &Diagnostics,
     finished: &(dyn Fn(u64, u64) + Send + Sync),
 ) -> Result<(), LibraryError> {
@@ -143,7 +145,7 @@ pub async fn finish_removals(
     }
     let total = records.len() as u64;
     finished(0, total);
-    let listed = listed_stores(app_dir).await?;
+    let listed = listed_stores(coven).await?;
     for (done, id) in (1..).zip(records) {
         if !listed.contains(&id) {
             delete_library_files(app_dir, diagnostics, id).await?;
@@ -184,8 +186,8 @@ pub async fn remove_local_library(
 /// are told to `steps` as each starts.
 pub async fn remove_unopenable_library(
     app_dir: &AppDir,
+    coven: &coven::Coven,
     diagnostics: &Diagnostics,
-    keychain: &super::Keychain,
     store_id: coven::StoreId,
     steps: &(dyn Fn(super::ClosingStep) + Send + Sync),
 ) -> Result<(), LibraryRemovalError> {
@@ -193,7 +195,7 @@ pub async fn remove_unopenable_library(
         app_dir,
         diagnostics,
         store_id,
-        keychain.discard_store(&app_dir.store_layout().store_dir(&store_id)),
+        coven.discard_store(&coven.store_dir(&store_id)),
         steps,
     )
     .await
@@ -275,15 +277,8 @@ impl RemovalLock {
     }
 }
 
-async fn listed_stores(app_dir: &AppDir) -> Result<HashSet<coven::StoreId>, LibraryError> {
-    Ok(app_dir
-        .store_layout()
-        .stores()
-        .await
-        .map_err(AppDirError::from)?
-        .into_iter()
-        .map(|store| store.id)
-        .collect())
+async fn listed_stores(coven: &coven::Coven) -> Result<HashSet<coven::StoreId>, LibraryError> {
+    Ok(coven.stores().await.map_err(AppDirError::from)?.into_iter().map(|store| store.id).collect())
 }
 
 /// Write the record, synced along with the directories naming it.

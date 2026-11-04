@@ -77,8 +77,10 @@ internal static class NativeBae
 
     /// <summary>
     /// Build the process-lifetime host registrations around the telemetry sink
-    /// and bae's directory. Throws when the OS refuses the host runtime's worker
-    /// threads.
+    /// and bae's directory. Building it opens the OS keychain every library's
+    /// keys live in: the Windows Credential Manager, or on Linux the desktop's
+    /// secret service over D-Bus. Throws when that keychain can't be opened, or
+    /// when the OS refuses the host runtime's worker threads.
     /// </summary>
     internal static BridgeHost CreateHost(BridgeDiagnostics diagnostics, BridgeAppDir appDir) =>
         new BridgeHost(diagnostics, appDir);

@@ -1,25 +1,26 @@
 use super::*;
 use tempfile::TempDir;
 
-/// A store named `name`, created under `app_dir` and closed, as discovery
+/// A store named `name`, created in `installation` and closed, as discovery
 /// lists it.
-async fn store(installation: &coven::TestCoven, app_dir: &AppDir, name: &str) -> coven::StoreId {
-    installation
-        .create_closed_store(&app_dir.store_layout(), name, std::sync::Arc::new(coven::UuidIds))
-        .await
-        .unwrap()
-        .id()
+async fn store(installation: &coven::Coven, name: &str) -> coven::StoreId {
+    installation.create_closed_store(name, std::sync::Arc::new(coven::UuidIds)).await.unwrap().id()
+}
+
+/// An in-memory installation of the stores under `app_dir`.
+fn installation(app_dir: &AppDir) -> coven::Coven {
+    coven::Coven::in_memory(app_dir.coven_app_dir())
 }
 
 #[tokio::test]
 async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
-    let installation = coven::TestCoven::new();
-    let first_id = store(&installation, &app_dir, "First").await;
-    let second_id = store(&installation, &app_dir, "Second").await;
+    let installation = installation(&app_dir);
+    let first_id = store(&installation, "First").await;
+    let second_id = store(&installation, "Second").await;
     app_dir.save_active_library(second_id).unwrap();
-    let libraries = app_dir.discover_libraries().await.unwrap();
+    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
     assert_eq!(
         libraries.iter().map(|l| (l.id.as_str(), l.name.as_str(), l.is_active)).collect::<Vec<_>>(),
         vec![
@@ -35,9 +36,10 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
 async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
+    let installation = installation(&app_dir);
     let id = coven::StoreId(uuid::Uuid::new_v4());
-    app_dir.store_layout().create_store_dir(id, &coven::UuidIds).unwrap();
-    let error = app_dir.discover_libraries().await.unwrap_err();
+    installation.create_store_dir(id, &coven::UuidIds).unwrap();
+    let error = app_dir.discover_libraries(&installation).await.unwrap_err();
     assert!(error.to_string().contains(&id.to_string()), "{error}");
 }
 
@@ -47,10 +49,10 @@ async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
 async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
-    let installation = coven::TestCoven::new();
+    let installation = installation(&app_dir);
     let mut ids = Vec::new();
     for name in ["Openable", "Unreadable"] {
-        ids.push(store(&installation, &app_dir, name).await);
+        ids.push(store(&installation, name).await);
     }
     std::fs::write(
         tmp.path().join("stores").join(ids[1].to_string()).join("storage.json"),
@@ -58,7 +60,7 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     )
     .unwrap();
 
-    let libraries = app_dir.discover_libraries().await.unwrap();
+    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
     let state = |name: &str| {
         &libraries.iter().find(|library| library.name == name).expect("every store is listed").state
     };
@@ -74,11 +76,12 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
 async fn discovery_reports_invalid_or_unreadable_active_pointers() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
+    let installation = installation(&app_dir);
     std::fs::write(app_dir.active_library_pointer(), " \n").unwrap();
-    assert!(app_dir.discover_libraries().await.is_err());
+    assert!(app_dir.discover_libraries(&installation).await.is_err());
     std::fs::remove_file(app_dir.active_library_pointer()).unwrap();
     std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
-    assert!(app_dir.discover_libraries().await.is_err());
+    assert!(app_dir.discover_libraries(&installation).await.is_err());
 }
 
 #[test]
@@ -98,7 +101,7 @@ async fn an_app_dir_under_a_fresh_home_exists_and_holds_a_new_store() {
     let home = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(home.path()).unwrap();
     assert!(home.path().join(".bae").is_dir());
-    store(&coven::TestCoven::new(), &app_dir, "First").await;
+    store(&installation(&app_dir), "First").await;
 }
 
 #[test]

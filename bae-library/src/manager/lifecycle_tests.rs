@@ -30,7 +30,7 @@ async fn removal_releases_custody_and_preferences() {
     manager.remove_library(&|_| ()).await.unwrap();
     assert!(manager.get_mcp_token().await.is_err());
     assert!(!manager.app_dir.registered_library(&id).exists());
-    assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
+    assert!(manager.installation.stores().await.unwrap().is_empty());
     assert!(!manager.app_dir.active_library_pointer().exists());
 }
 
@@ -53,10 +53,10 @@ async fn removal_discards_the_unsent_work_it_reports() {
     let work = manager.unsent_before_removal().await.unwrap();
     assert!(work.writes > 0, "{work:?}");
     assert_eq!(work.files, 1);
-    assert_eq!(manager.app_dir.store_layout().stores().await.unwrap().len(), 1);
+    assert_eq!(manager.installation.stores().await.unwrap().len(), 1);
 
     manager.remove_library(&|_| ()).await.unwrap();
-    assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
+    assert!(manager.installation.stores().await.unwrap().is_empty());
     assert!(!manager.app_dir.registered_library(&id).exists());
 }
 

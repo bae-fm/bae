@@ -161,7 +161,12 @@ fn spawn_folder_reading(
                 change_folder_reading(&path, &target, &scan, &reading_cancellation),
             )
             .await
-            .unwrap_or_else(|failed| Err(scan.services.diagnostics.bug(failed).into()))
+            .unwrap_or_else(|bug| {
+                Err(bae_util::task_failure::TaskFailed::Panicked(
+                    scan.services.diagnostics.panicked(bug),
+                )
+                .into())
+            })
             // The caller wraps the detail as a watch failure itself.
             .map_err(|error| match error {
                 crate::ImportError::Watch { detail } => detail,

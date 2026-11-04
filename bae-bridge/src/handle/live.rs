@@ -22,7 +22,7 @@ impl AppHandle {
             if let Err(failed) =
                 bae_util::task_failure::caught("feed a stream", body(services)).await
             {
-                diagnostics.bug(failed);
+                diagnostics.panicked(failed);
             }
         };
         // A host feeds a stream only while the library is open.

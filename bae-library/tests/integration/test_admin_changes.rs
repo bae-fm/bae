@@ -1,7 +1,7 @@
 //! An admin change a library's manager asks for, listed from its journaled
 //! operation until the person dismisses it (§5.6).
 
-use super::test_people::{new_member, on_app_runtime, Household};
+use super::test_people::{installation_in, new_member, on_app_runtime, Household};
 use bae_db::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 
 /// Robin approves Rowan's request on her laptop. The approval is listed as
@@ -16,9 +16,9 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         let library = household.owners_library(dir.path()).await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
-        let guest = coven::TestCoven::new();
+        let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let joining = household.join(&invite.code, &guest, &guest_dir, &control);
+        let joining = household.join(&invite.code, &guest, &control);
         let approving = async {
             let mut invites =
                 bae_views::LibraryViews::new(library.database().clone()).subscribe_invites();

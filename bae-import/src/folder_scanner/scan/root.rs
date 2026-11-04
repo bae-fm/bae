@@ -10,7 +10,7 @@
 
 use super::*;
 use crate::folder_scanner::folder_times::newest_first;
-use bae_util::task_failure::{caught_sync, TaskFailed};
+use bae_util::task_failure::{caught_sync, Bug};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// What the walk of one folder under the root says to the calling thread.
@@ -23,7 +23,7 @@ enum Said {
     /// root's own release takes from it, or why it could not be read.
     Read { index: usize, lent: Result<Vec<FileEntry>, FolderScanError> },
     /// It panicked, and stopped the others.
-    Panicked(TaskFailed),
+    Panicked(Bug),
 }
 
 pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, D>(

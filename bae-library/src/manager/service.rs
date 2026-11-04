@@ -145,7 +145,7 @@ impl LibraryManager {
         &self,
         task_name: &'static str,
         task: F,
-        on_panic: impl FnOnce(TaskFailed) + Send + 'static,
+        on_panic: impl FnOnce(Bug) + Send + 'static,
     ) -> Result<(), LibraryError>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -177,7 +177,7 @@ impl LibraryManager {
         task_name: &'static str,
         stop: crate::CancellationToken,
         task: F,
-        on_panic: impl FnOnce(TaskFailed) + Send + 'static,
+        on_panic: impl FnOnce(Bug) + Send + 'static,
     ) -> Result<(), LibraryError>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -265,7 +265,7 @@ impl LibraryManager {
                 async move {
                     let result = match caught(name, work).await {
                         Ok(result) => result,
-                        Err(failed) => Err(manager.bug(failed).into()),
+                        Err(bug) => Err(manager.panicked(bug).into()),
                     };
                     if let Err(error) = &result {
                         tracing::error!(operation = name, %error, "file operation failed");
@@ -320,6 +320,12 @@ impl LibraryManager {
         failed: bae_util::task_failure::TaskFailed,
     ) -> bae_util::task_failure::TaskFailed {
         self.diagnostics.bug(failed)
+    }
+
+    /// Report `bug`, work that panicked, and hand it back for the caller's
+    /// own error, as [`Self::bug`] does for a join.
+    pub fn panicked(&self, bug: Bug) -> Bug {
+        self.diagnostics.panicked(bug)
     }
 
     /// Follow the sync status to log its failure and report a failed pass,

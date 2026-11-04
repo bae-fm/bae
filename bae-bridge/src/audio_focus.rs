@@ -40,7 +40,7 @@ impl PlatformAudioFocus {
 impl bae_playback::AudioFocusSystem for PlatformAudioFocus {
     fn request(&self) -> Result<(), bae_playback::AudioFocusRefused> {
         match crate::host_calls::host_call(
-            |failed| self.diagnostics.bug(failed),
+            |bug| self.diagnostics.panicked(bug),
             "request audio focus",
             || self.focus.request(),
         ) {
@@ -54,7 +54,7 @@ impl bae_playback::AudioFocusSystem for PlatformAudioFocus {
 
     fn release(&self) {
         if let Err(failed) = crate::host_calls::host_call(
-            |failed| self.diagnostics.bug(failed),
+            |bug| self.diagnostics.panicked(bug),
             "release audio focus",
             || self.focus.release(),
         ) {

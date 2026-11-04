@@ -22,14 +22,13 @@ fn owner_credentials() -> coven::S3Credentials {
     }
 }
 
-/// Create the library's store in `layout` as its first device does, set its
-/// storage up on `storage`, and wait until it has synced.
+/// Create the library's store in `installation` as its first device does,
+/// set its storage up on `storage`, and wait until it has synced.
 pub async fn create_first_store(
-    installation: &coven::TestCoven,
-    layout: coven::StoreLayout,
+    installation: &coven::Coven,
     storage: Arc<coven::MemoryStorage>,
 ) -> coven::CovenHandle {
-    let handle = crate::configure_store(installation.builder(layout))
+    let handle = crate::configure_store(installation.builder())
         .storage_connector(storage.clone())
         .create_store("Two Devices")
         .await
@@ -49,17 +48,16 @@ pub async fn create_first_store(
     handle
 }
 
-/// Restore another of the person's devices into `layout` from `code`, a
-/// restore code the first device showed, as the app restores one, over
+/// Restore another of the person's devices into `installation` from `code`,
+/// a restore code the first device showed, as the app restores one, over
 /// `storage`, that device's own connection to the library's storage.
 pub async fn restore_store(
-    installation: &coven::TestCoven,
-    layout: coven::StoreLayout,
+    installation: &coven::Coven,
     storage: Arc<coven::MemoryStorage>,
     code: &str,
     name: &str,
 ) -> coven::CovenHandle {
-    let builder = crate::configure_store(installation.builder(layout)).storage_connector(storage);
+    let builder = crate::configure_store(installation.builder()).storage_connector(storage);
     let (_sender, cancel) = tokio::sync::watch::channel(false);
     coven::restore_from_code(builder, code, Some(owner_credentials()), name, |_| {}, &cancel)
         .await
@@ -69,13 +67,12 @@ pub async fn restore_store(
 /// Open the device's store `store` again with `migrations` in place of
 /// bae's own, as an update of the app that brings a new schema does.
 pub async fn reopen_store(
-    installation: &coven::TestCoven,
-    layout: coven::StoreLayout,
+    installation: &coven::Coven,
     storage: Arc<coven::MemoryStorage>,
     store: coven::StoreId,
     migrations: Vec<coven::Migration>,
 ) -> coven::CovenHandle {
-    crate::configure_store(installation.builder(layout))
+    crate::configure_store(installation.builder())
         .migrations(migrations)
         .storage_connector(storage)
         .open(store, |_| ())
@@ -283,17 +280,13 @@ pub fn on_device_runtime(body: impl AsyncFnOnce() + Send + 'static) {
 struct StoreDevice {
     database: Database,
     cycles: SyncCycles,
-    _installation: coven::TestCoven,
+    _installation: coven::Coven,
     _dir: tempfile::TempDir,
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 impl StoreDevice {
-    fn new(
-        handle: coven::CovenHandle,
-        installation: coven::TestCoven,
-        dir: tempfile::TempDir,
-    ) -> Self {
+    fn new(handle: coven::CovenHandle, installation: coven::Coven, dir: tempfile::TempDir) -> Self {
         let database = device_database(handle);
         let cycles = SyncCycles::follow(&database);
         Self { database, cycles, _installation: installation, _dir: dir }
@@ -332,25 +325,14 @@ impl TwoStores {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(coven::MemoryStorage::builder().clock(clock).build().unwrap());
         let dir = tempfile::TempDir::new().unwrap();
-        let installation = coven::TestCoven::new();
-        let handle = create_first_store(
-            &installation,
-            coven::StoreLayout::new(dir.path().to_path_buf()),
-            storage.clone(),
-        )
-        .await;
+        let installation = coven::Coven::in_memory(dir.path().to_path_buf());
+        let handle = create_first_store(&installation, storage.clone()).await;
         let a = StoreDevice::new(handle, installation, dir);
         let code = a.database.generate_restore_code().await.unwrap();
         let dir = tempfile::TempDir::new().unwrap();
-        let installation = coven::TestCoven::new();
-        let handle = restore_store(
-            &installation,
-            coven::StoreLayout::new(dir.path().to_path_buf()),
-            Arc::new(storage.for_device()),
-            &code,
-            "Device B",
-        )
-        .await;
+        let installation = coven::Coven::in_memory(dir.path().to_path_buf());
+        let handle =
+            restore_store(&installation, Arc::new(storage.for_device()), &code, "Device B").await;
         let b = StoreDevice::new(handle, installation, dir);
         b.database.start_sync().await.unwrap();
         Self { a, b }

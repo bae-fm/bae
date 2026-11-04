@@ -8,20 +8,19 @@ use tempfile::TempDir;
 struct Home {
     _directory: TempDir,
     app_dir: AppDir,
-    layout: coven::StoreLayout,
-    installation: coven::TestCoven,
+    installation: coven::Coven,
 }
 
 impl Home {
     fn new() -> Self {
         let directory = TempDir::new().unwrap();
         let app_dir = AppDir::under_home(directory.path()).unwrap();
-        let layout = app_dir.store_layout();
-        Self { _directory: directory, app_dir, layout, installation: coven::TestCoven::new() }
+        let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+        Self { _directory: directory, app_dir, installation }
     }
 
     fn builder(&self) -> coven::CovenBuilder {
-        self.installation.builder(self.layout.clone())
+        self.installation.builder()
     }
 
     fn create(&self, name: &str) -> coven::StoreId {

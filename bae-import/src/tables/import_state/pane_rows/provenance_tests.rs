@@ -12,10 +12,10 @@ use std::sync::Arc;
 #[tokio::test]
 async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let tmp = tempfile::TempDir::new().unwrap();
-    let installation = coven::TestCoven::new();
-    let layout = bae_app_dir::AppDir::at(tmp.path()).unwrap().store_layout();
+    let installation =
+        coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
-    let handle = bae_db::configure_store(installation.builder(layout.clone()))
+    let handle = bae_db::configure_store(installation.builder())
         .clock(clock.clone())
         .create_store("Test Library")
         .await
@@ -59,7 +59,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     db.close().await.unwrap();
     drop(db);
 
-    let handle = bae_db::configure_store(installation.builder(layout))
+    let handle = bae_db::configure_store(installation.builder())
         .clock(clock.clone())
         .open(id, |_| ())
         .await

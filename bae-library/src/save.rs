@@ -111,7 +111,9 @@ impl From<String> for SaveError {
 impl From<bae_audio::DecodeError> for SaveError {
     fn from(error: bae_audio::DecodeError) -> Self {
         match error {
-            bae_audio::DecodeError::ReadPanicked(failed) => Self::Unfinished(failed),
+            bae_audio::DecodeError::ReadPanicked(bug) => {
+                Self::Unfinished(TaskFailed::Panicked(bug))
+            }
             error => Self::Failed(error.to_string()),
         }
     }

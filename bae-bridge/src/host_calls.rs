@@ -9,15 +9,15 @@
 //! as the host's bug; the caller answers with its own failure value, so a
 //! host throw never unwinds through core.
 
-use bae_util::task_failure::{caught_sync, TaskFailed};
+use bae_util::task_failure::{caught_sync, Bug};
 
 /// Make the host call `call`. A throw comes back as the failure of
 /// `operation`, handed to `bug` to report first.
 pub(crate) fn host_call<T>(
-    bug: impl FnOnce(TaskFailed) -> TaskFailed,
+    bug: impl FnOnce(Bug) -> Bug,
     operation: &'static str,
     call: impl FnOnce() -> T,
-) -> Result<T, TaskFailed> {
+) -> Result<T, Bug> {
     caught_sync(operation, call).map_err(bug)
 }
 
@@ -25,9 +25,9 @@ pub(crate) fn host_call<T>(
 /// sheet, which only a phone's host presents.
 #[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
 pub(crate) async fn host_call_async<T>(
-    bug: impl FnOnce(TaskFailed) -> TaskFailed,
+    bug: impl FnOnce(Bug) -> Bug,
     operation: &'static str,
     call: impl std::future::Future<Output = T>,
-) -> Result<T, TaskFailed> {
+) -> Result<T, Bug> {
     bae_util::task_failure::caught(operation, call).await.map_err(bug)
 }

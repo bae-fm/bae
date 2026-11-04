@@ -352,9 +352,9 @@ pub async fn setup_test_library_with_album_dir(
 pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
-    let installation = coven::TestCoven::new();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let library = runtime.block_on(async {
-        let handle = bae_db::configure_store(installation.builder(app_dir.store_layout()))
+        let handle = bae_db::configure_store(installation.builder())
             .create_store("Test Library")
             .await
             .expect("create fresh test store");

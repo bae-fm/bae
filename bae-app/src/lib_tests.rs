@@ -4,15 +4,14 @@ use bae_library::LibraryError;
 #[tokio::test]
 async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
     let temp = tempfile::tempdir().unwrap();
-    let installation = coven::TestCoven::new();
+    let installation =
+        coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
-    let failure = bae_db::configure_store(
-        installation.builder(bae_app_dir::AppDir::at(temp.path()).unwrap().store_layout()),
-    )
-    .create_store("Unavailable Keychain")
-    .await
-    .err()
-    .unwrap();
+    let failure = bae_db::configure_store(installation.builder())
+        .create_store("Unavailable Keychain")
+        .await
+        .err()
+        .unwrap();
     let coven::StoreCreationError::Store(coven::CovenError::Key(key)) = failure else {
         panic!("unexpected failure: {failure}")
     };
@@ -24,15 +23,14 @@ async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
 #[tokio::test]
 async fn opening_with_a_locked_keychain_remains_retryable() {
     let temp = tempfile::tempdir().unwrap();
-    let installation = coven::TestCoven::new();
+    let installation =
+        coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
-    let failure = bae_db::configure_store(
-        installation.builder(bae_app_dir::AppDir::at(temp.path()).unwrap().store_layout()),
-    )
-    .create_store("Keychain test")
-    .await
-    .err()
-    .unwrap();
+    let failure = bae_db::configure_store(installation.builder())
+        .create_store("Keychain test")
+        .await
+        .err()
+        .unwrap();
     let coven::StoreCreationError::Store(error) = failure else {
         panic!("unexpected failure: {failure}")
     };
@@ -75,12 +73,9 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
         .unwrap();
     let temp = tempfile::tempdir().unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp.path()).unwrap();
-    let installation = coven::TestCoven::new();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = runtime
-        .block_on(
-            bae_db::configure_store(installation.builder(app_dir.store_layout()))
-                .create_store("Failing Bootstrap"),
-        )
+        .block_on(bae_db::configure_store(installation.builder()).create_store("Failing Bootstrap"))
         .unwrap();
     let library_id = handle.store_id().to_string();
 

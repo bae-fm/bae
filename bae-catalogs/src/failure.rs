@@ -50,6 +50,13 @@ impl From<bae_util::task_failure::TaskFailed> for InternalFailure {
     }
 }
 
+/// Work that panicked, reported as a bug where it was caught.
+impl From<bae_util::task_failure::Bug> for InternalFailure {
+    fn from(bug: bae_util::task_failure::Bug) -> Self {
+        Self { detail: bug.to_string() }
+    }
+}
+
 /// Why a step that asks a catalog did not answer: the catalog could not, or
 /// bae broke on its way there or back.
 #[derive(Debug, Clone, PartialEq, Eq)]

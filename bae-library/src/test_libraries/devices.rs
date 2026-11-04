@@ -13,9 +13,9 @@ use bae_db::Database;
 
 pub struct TestDevice {
     library: RunningLibrary,
-    /// What opening the device's store again needs: its keychain, its app
-    /// directory and its connection to the shared storage.
-    installation: coven::TestCoven,
+    /// What opening the device's store again needs: its installation, its
+    /// app directory and its connection to the shared storage.
+    installation: coven::Coven,
     app: AppDir,
     storage: Arc<coven::MemoryStorage>,
     _dir: TempDir,
@@ -129,9 +129,8 @@ impl DeviceLibrary {
         let storage = Arc::new(coven::MemoryStorage::builder().clock(clock).build().unwrap());
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
-        let installation = coven::TestCoven::new();
-        let handle =
-            stores::create_first_store(&installation, app.store_layout(), storage.clone()).await;
+        let installation = coven::Coven::in_memory(app.coven_app_dir());
+        let handle = stores::create_first_store(&installation, storage.clone()).await;
         Self { first: device(dir, app, handle, installation, storage.clone()).await, storage }
     }
 
@@ -145,11 +144,9 @@ impl DeviceLibrary {
     pub async fn restore(&self, code: &str, name: &str) -> TestDevice {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
-        let installation = coven::TestCoven::new();
+        let installation = coven::Coven::in_memory(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
-        let handle =
-            stores::restore_store(&installation, app.store_layout(), storage.clone(), code, name)
-                .await;
+        let handle = stores::restore_store(&installation, storage.clone(), code, name).await;
         let device = device(dir, app, handle, installation, storage).await;
         device.database().start_sync().await.unwrap();
         device
@@ -220,7 +217,6 @@ impl TestDevice {
         self.close().await;
         let handle = stores::reopen_store(
             &self.installation,
-            self.app.store_layout(),
             self.storage.clone(),
             self.database().store_id(),
             migrations,
@@ -241,7 +237,7 @@ async fn device(
     dir: TempDir,
     app: AppDir,
     handle: coven::CovenHandle,
-    installation: coven::TestCoven,
+    installation: coven::Coven,
     storage: Arc<coven::MemoryStorage>,
 ) -> TestDevice {
     TestDevice {

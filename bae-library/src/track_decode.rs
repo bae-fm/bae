@@ -32,8 +32,8 @@ impl TrackDecode {
     ) -> Result<(), String> {
         self.decode.run_to_sink(self.sample_rate, self.channels, sink, cancel).map_err(|error| {
             match error {
-                bae_audio::DecodeError::ReadPanicked(failed) => {
-                    self.diagnostics.bug(failed).to_string()
+                bae_audio::DecodeError::ReadPanicked(bug) => {
+                    self.diagnostics.panicked(bug).to_string()
                 }
                 error => error.to_string(),
             }

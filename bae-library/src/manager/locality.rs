@@ -19,7 +19,7 @@ impl LibraryManager {
         self.begin_storage_action(release_id, action).await?;
         let outcome = caught("run a release's storage transition", work)
             .await
-            .unwrap_or_else(|failed| Err(self.bug(failed).into()));
+            .unwrap_or_else(|bug| Err(self.panicked(bug).into()));
         match outcome {
             Ok(done) => Ok(done),
             Err(error) => Err(self.end_failed_storage_action(release_id, error).await),

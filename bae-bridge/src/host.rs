@@ -8,7 +8,8 @@ const HOST_LOCK: &str = "host registrations lock";
 pub struct BridgeHost {
     diagnostics: Arc<BridgeDiagnostics>,
     app_dir: bae_app_dir::AppDir,
-    keychain: bae_library::Keychain,
+    /// This device's libraries as coven keeps them, under `app_dir`.
+    coven: coven::Coven,
     runtime: Option<tokio::runtime::Runtime>,
     /// Where the host's own calls run, on `runtime`.
     operations: crate::operation_runtime::OperationRuntime,
@@ -116,7 +117,7 @@ impl BridgeHost {
     ) -> Result<(), BridgeError> {
         Ok(self
             .diagnostics
-            .finish_removals(&self.app_dir, &|done, total| {
+            .finish_removals(&self.app_dir, &self.coven, &|done, total| {
                 steps.step(crate::types::BridgeSetupStep::FinishingRemovals, done, total)
             })
             .await?)
@@ -130,17 +131,15 @@ impl BridgeHost {
         steps: &crate::screens::ClosingSteps,
     ) -> Result<(), bae_library::LibraryRemovalError> {
         self.diagnostics
-            .remove_unopenable_library(&self.app_dir, &self.keychain, store, &|step| {
+            .remove_unopenable_library(&self.app_dir, &self.coven, store, &|step| {
                 steps.step(crate::types::BridgeClosingStep::from_core(step))
             })
             .await
     }
 
     fn builder(&self) -> coven::CovenBuilder {
-        let builder = self
-            .keychain
-            .store_builder(&self.app_dir)
-            .oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
+        let builder =
+            self.coven.builder().oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
         #[cfg(desktop)]
         {
             builder.oauth_presenter(Arc::new(coven::DesktopOAuthPresenter))
@@ -157,7 +156,7 @@ impl BridgeHost {
     fn start(
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
-        keychain: bae_library::Keychain,
+        coven: coven::Coven,
         audio_focus: bae_playback::AudioFocus,
     ) -> Result<Arc<Self>, BridgeError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -171,13 +170,9 @@ impl BridgeHost {
             diagnostics,
             operations,
             app_dir: app_dir.core().clone(),
-            keychain,
+            coven,
             runtime: Some(runtime),
-            oauth_clients: Mutex::new(coven::OAuthClients::new(
-                None,
-                None,
-                Arc::new(coven::SystemClock),
-            )),
+            oauth_clients: Mutex::new(coven::OAuthClients::new(None, None)),
             #[cfg(not(desktop))]
             presenter: Mutex::new(None),
             audio_focus,
@@ -197,12 +192,8 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
-        Self::start(
-            diagnostics,
-            app_dir,
-            bae_library::Keychain::in_memory(),
-            bae_playback::AudioFocus::Unshared,
-        )
+        let coven = coven::Coven::in_memory(app_dir.core().coven_app_dir());
+        Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -215,12 +206,8 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
-        Self::start(
-            diagnostics,
-            app_dir,
-            bae_library::Keychain::System,
-            bae_playback::AudioFocus::Unshared,
-        )
+        let coven = diagnostics.installation(app_dir.core())?;
+        Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -235,11 +222,12 @@ impl BridgeHost {
         app_dir: Arc<BridgeAppDir>,
         audio_focus: Box<dyn crate::BridgeAudioFocus>,
     ) -> Result<Arc<Self>, BridgeError> {
+        let coven = diagnostics.installation(app_dir.core())?;
         let audio_focus = crate::PlatformAudioFocus::new(audio_focus, diagnostics.clone());
         Self::start(
             diagnostics,
             app_dir,
-            bae_library::Keychain::System,
+            coven,
             bae_playback::AudioFocus::Shared(Arc::new(audio_focus)),
         )
     }
@@ -262,7 +250,7 @@ impl BridgeHost {
             .clone()
             .run("BridgeHost.list_libraries", move || async move {
                 self.app_dir
-                    .discover_libraries()
+                    .discover_libraries(&self.coven)
                     .await?
                     .into_iter()
                     .map(BridgeLibrary::from_core_info)
@@ -279,7 +267,9 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_removal", move || async move {
-                Ok(self.diagnostics.unfinished_removal(&self.app_dir).await?.map(|removal| {
+                let removal =
+                    self.diagnostics.unfinished_removal(&self.app_dir, &self.coven).await?;
+                Ok(removal.map(|removal| {
                     crate::BridgeUnfinishedRemoval::new(
                         removal.category(),
                         &removal,
@@ -386,7 +376,6 @@ impl BridgeHost {
         *self.oauth_clients.lock().expect(HOST_LOCK) = coven::OAuthClients::new(
             clients.dropbox_app_key.map(|app_key| coven::DropboxClients::FullDropbox { app_key }),
             clients.onedrive_client_id,
-            Arc::new(coven::SystemClock),
         );
     }
 }

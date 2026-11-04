@@ -71,7 +71,7 @@ impl McpServerController {
         Self {
             automation,
             token_provider,
-            server: ServerController::new("MCP", Arc::new(move |failed| reporting.bug(failed))),
+            server: ServerController::new("MCP", Arc::new(move |bug| reporting.panicked(bug))),
             diagnostics,
         }
     }
@@ -157,9 +157,8 @@ async fn report_panics(
 ) -> Response {
     match caught("answer an MCP request", next.run(request)).await {
         Ok(response) => response,
-        Err(failed) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, diagnostics.bug(failed).to_string()).into_response()
-        }
+        Err(bug) => (StatusCode::INTERNAL_SERVER_ERROR, diagnostics.panicked(bug).to_string())
+            .into_response(),
     }
 }
 

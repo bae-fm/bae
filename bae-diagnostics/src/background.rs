@@ -15,7 +15,7 @@
 use std::future::Future;
 use std::sync::{Mutex, MutexGuard};
 
-use bae_util::task_failure::{caught, caught_sync, TaskFailed};
+use bae_util::task_failure::{caught, caught_sync, Bug, TaskFailed};
 
 use super::Diagnostics;
 
@@ -23,17 +23,25 @@ impl Diagnostics {
     /// Report `failed` when it is a panic, and hand it back for the caller's
     /// own error type. A runtime shutting down under the work is not a bug.
     pub fn bug(&self, failed: TaskFailed) -> TaskFailed {
-        match &failed {
-            TaskFailed::Panicked { operation, .. } => self.report_bug(operation, &failed),
+        match failed {
+            TaskFailed::Panicked(bug) => TaskFailed::Panicked(self.panicked(bug)),
             TaskFailed::Shutdown(shutdown) => {
                 tracing::debug!(
                     operation = shutdown.operation,
                     outcome = %shutdown.outcome,
                     "work ended unfinished: its runtime is shutting down"
                 );
+                TaskFailed::Shutdown(shutdown)
             }
         }
-        failed
+    }
+
+    /// Report `bug`, work that panicked, and hand it back for the caller's
+    /// own error type: what `caught` and `caught_sync` fail with, and the
+    /// panics in coven's errors.
+    pub fn panicked(&self, bug: Bug) -> Bug {
+        self.report_bug(bug.operation, &bug);
+        bug
     }
 
     /// Run `task` on `runtime` with nobody awaiting it. On a panic, report it
@@ -45,13 +53,13 @@ impl Diagnostics {
         runtime: &tokio::runtime::Handle,
         name: &'static str,
         task: impl Future<Output = ()> + Send + 'static,
-        on_panic: impl FnOnce(TaskFailed) + Send + 'static,
+        on_panic: impl FnOnce(Bug) + Send + 'static,
     ) -> ReportedTask {
         let diagnostics = self.clone();
         ReportedTask {
             task: runtime.spawn(async move {
                 if let Err(failed) = caught(name, task).await {
-                    diagnostics.panicked(failed, on_panic);
+                    diagnostics.end_panicked(failed, on_panic);
                 }
             }),
         }
@@ -64,12 +72,12 @@ impl Diagnostics {
         &self,
         name: &'static str,
         body: impl FnOnce() + Send + 'static,
-        on_panic: impl FnOnce(TaskFailed) + Send + 'static,
+        on_panic: impl FnOnce(Bug) + Send + 'static,
     ) -> std::io::Result<ReportedThread> {
         let diagnostics = self.clone();
         let thread = std::thread::Builder::new().name(name.to_string()).spawn(move || {
             if let Err(failed) = caught_sync(name, body) {
-                diagnostics.panicked(failed, on_panic);
+                diagnostics.end_panicked(failed, on_panic);
             }
         })?;
         Ok(ReportedThread { name, thread })
@@ -78,10 +86,10 @@ impl Diagnostics {
     /// Report a panic, then let its owner end what the work served. A panic in
     /// `on_panic` itself is reported too, and goes no further: it runs where
     /// nothing above it catches.
-    fn panicked(&self, failed: TaskFailed, on_panic: impl FnOnce(TaskFailed)) {
-        let operation = failed.operation();
-        self.bug(failed.clone());
-        if let Err(again) = caught_sync(operation, || on_panic(failed)) {
+    fn end_panicked(&self, bug: Bug, on_panic: impl FnOnce(Bug)) {
+        let operation = bug.operation;
+        let bug = self.panicked(bug);
+        if let Err(again) = caught_sync(operation, || on_panic(bug)) {
             self.report_bug("end the work a panic stopped", &again);
         }
     }

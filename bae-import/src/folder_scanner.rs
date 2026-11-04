@@ -81,7 +81,7 @@ pub enum FolderScanError {
     /// One of the threads a pass reads folders on at once panicked; the
     /// others stopped with it. A bug, which the pass's caller reports.
     #[error("{0}")]
-    Panicked(bae_util::task_failure::TaskFailed),
+    Panicked(bae_util::task_failure::Bug),
 }
 
 impl FolderScanError {
