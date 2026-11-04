@@ -51,6 +51,10 @@ pub fn invite_shown(invite: &coven::Invite) -> InviteShown {
 /// profile's write.
 #[derive(Debug, thiserror::Error)]
 pub enum AvatarError {
+    /// The bytes handed for an avatar don't open as a JPEG. The apps convert
+    /// a picked photo to JPEG before handing it to core.
+    #[error("the avatar image is not a JPEG")]
+    NotJpeg,
     /// The image picked for an avatar cannot be decoded or resized.
     #[error("the avatar image failed: {detail}")]
     Image { detail: String },
@@ -67,7 +71,7 @@ impl AvatarError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
-            Self::Image { .. } => C::Config,
+            Self::NotJpeg | Self::Image { .. } => C::Config,
             Self::Unfinished(_) => C::Internal,
             Self::Profile(error) => error.category(),
         }

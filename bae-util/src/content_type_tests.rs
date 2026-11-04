@@ -102,3 +102,31 @@ fn admitted_audio_content_type_gates_unlisted_codecs() {
     assert!(!ContentType::Other("codec:AV_CODEC_ID_SPEEX".to_string()).is_supported_audio());
     assert!(!ContentType::Other("audio/x-ms-wma".to_string()).is_supported_audio());
 }
+
+#[test]
+fn each_image_header_opens_as_its_own_format_only() {
+    let headers: [(C, &[u8]); 5] = [
+        (C::Jpeg, &[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]),
+        (C::Png, &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]),
+        (C::Webp, b"RIFF\x00\x00\x00\x00WEBP"),
+        (C::Gif, b"GIF89a"),
+        (C::Bmp, b"BM\x00\x00"),
+    ];
+    for (format, _) in &headers {
+        for (opened, header) in &headers {
+            assert_eq!(format.opens_with(header), Some(format == opened), "{format:?} {opened:?}");
+        }
+    }
+}
+
+#[test]
+fn a_header_shorter_than_the_magic_opens_as_nothing() {
+    assert_eq!(C::Jpeg.opens_with(&[0xFF, 0xD8]), Some(false));
+    assert_eq!(C::Webp.opens_with(b"RIFF\x00\x00\x00\x00WEB"), Some(false));
+}
+
+#[test]
+fn a_type_with_no_magic_is_not_checked() {
+    assert_eq!(C::Svg.opens_with(b"<svg"), None);
+    assert_eq!(C::Flac.opens_with(b"fLaC"), None);
+}

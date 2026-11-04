@@ -164,6 +164,30 @@ impl ContentType {
         matches!(self, Self::Jpeg | Self::Png | Self::Gif | Self::Webp)
     }
 
+    /// The most bytes of a file's start [`Self::opens_with`] reads.
+    pub const IMAGE_HEADER_LEN: usize = 12;
+
+    /// Whether `header`, a file's first bytes, opens as this image format's
+    /// files do: its magic bytes, with no deeper parse. A header shorter than
+    /// the format's magic doesn't. `None` for a type bae knows no magic for:
+    /// SVG, which is text, and every type that is no raster image.
+    pub fn opens_with(&self, header: &[u8]) -> Option<bool> {
+        let magic: &[(usize, &[u8])] = match self {
+            Self::Jpeg => &[(0, &[0xFF, 0xD8, 0xFF])],
+            Self::Png => &[(0, &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A])],
+            Self::Webp => &[(0, b"RIFF"), (8, b"WEBP")],
+            // GIF87a and GIF89a share the prefix.
+            Self::Gif => &[(0, b"GIF8")],
+            Self::Bmp => &[(0, b"BM")],
+            _ => return None,
+        };
+        Some(
+            magic
+                .iter()
+                .all(|(offset, bytes)| header.get(*offset..offset + bytes.len()) == Some(*bytes)),
+        )
+    }
+
     /// Short human-readable name for UI display (e.g., "FLAC", "JPEG").
     pub fn display_name(&self) -> &str {
         match self {

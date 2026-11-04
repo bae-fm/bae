@@ -2274,9 +2274,12 @@ history setting.
   they are owner rows (§5.5), and the old identity has no device left to
   change them.
 - **An avatar is a file on the `people` row**, bae's own (§4.1): the app
-  hands bae the image the person picked, and bae stores it downscaled to at
-  most 600 pixels as JPEG, as it does a cover, or refuses an image it can't
-  decode. Other devices download it when it is first shown.
+  converts the photo the person picked to JPEG with the platform's decoder
+  (ImageIO on macOS, ImageDecoder on Android) and hands bae the JPEG. bae
+  refuses bytes that don't open as a JPEG, by their first bytes, before
+  decoding them, stores the image downscaled to at most 600 pixels as JPEG,
+  as it does a cover, and refuses one it can't decode. Other devices
+  download it when it is first shown.
 - **The people list joins coven's members with `people`** in one query:
   everyone in the library, in member-id order, each with their profile once
   they made one, and the person using this device read the same way. A
