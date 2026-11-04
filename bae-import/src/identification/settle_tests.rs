@@ -74,7 +74,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 
     let folders_own = crate::cover_art::PreparedCover::Local("cover.jpg".to_string());
     assert_eq!(
-        crate::preparation::stored_preparation(
+        crate::preparations::stored_preparation(
             &fixture.context.tables,
             &fixture.content_hash(&dir)
         )
@@ -90,7 +90,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     fixture.drain_automatic().await;
 
     assert_eq!(
-        crate::preparation::stored_preparation(
+        crate::preparations::stored_preparation(
             &fixture.context.tables,
             &fixture.content_hash(&dir)
         )
@@ -669,7 +669,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     };
     assert_eq!(*source, bae_catalogs::catalog::Catalog::MusicBrainz);
     assert!(image.url.ends_with("/release/mb-cover-1/front"), "{}", image.url);
-    let stored = crate::preparation::stored_preparation(
+    let stored = crate::preparations::stored_preparation(
         &fixture.context.tables,
         &fixture.content_hash(&dir),
     )

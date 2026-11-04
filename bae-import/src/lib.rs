@@ -79,8 +79,6 @@ pub mod mapping;
 #[cfg(desktop)]
 pub mod pane;
 #[cfg(desktop)]
-pub mod preparation;
-#[cfg(desktop)]
 pub mod preparations;
 #[cfg(desktop)]
 pub mod probe;
@@ -284,9 +282,9 @@ pub use mapping::{
     MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
 };
 #[cfg(desktop)]
-pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
-#[cfg(desktop)]
 pub use preparations::CandidatePreparations;
+#[cfg(desktop)]
+pub use preparations::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 #[cfg(desktop)]
 pub use release_reads::ReleaseReads;
 #[cfg(desktop)]

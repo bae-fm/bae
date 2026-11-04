@@ -528,7 +528,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
          so the one the person chose stands"
     );
     assert_eq!(
-        crate::preparation::stored_preparation(&tables, &hash)
+        crate::preparations::stored_preparation(&tables, &hash)
             .await
             .unwrap()
             .expect("the candidate is prepared")

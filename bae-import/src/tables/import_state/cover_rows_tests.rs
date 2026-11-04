@@ -110,7 +110,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
         .unwrap();
 
     assert_eq!(
-        crate::preparation::stored_preparation(&tables, &hash)
+        crate::preparations::stored_preparation(&tables, &hash)
             .await
             .unwrap()
             .expect("the candidate is prepared")
@@ -139,7 +139,7 @@ async fn a_remote_cover_stored_without_its_bytes_fails_its_read() {
         .unwrap();
     lose_remote_cover_bytes(&db, &hash).await;
 
-    let error = crate::preparation::stored_preparation(&tables, &hash)
+    let error = crate::preparations::stored_preparation(&tables, &hash)
         .await
         .expect_err("a remote cover without its bytes is a damaged row");
     assert!(error.to_string().contains("remote cover has no stored bytes"), "{error}");

@@ -165,7 +165,7 @@ pub(crate) async fn prepare_named_candidate(
     candidate_path: &crate::CandidateKey,
     album_title: &str,
 ) -> u64 {
-    let preparation = crate::preparation::stored_preparation(&service.tables, content_hash)
+    let preparation = crate::preparations::stored_preparation(&service.tables, content_hash)
         .await
         .unwrap()
         .expect("the scanned candidate has its initial preparation");

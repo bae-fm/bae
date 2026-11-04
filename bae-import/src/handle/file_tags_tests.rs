@@ -153,7 +153,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let stale = crate::preparation::stored_preparation(&handle.tables, &hash)
+    let stale = crate::preparations::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate starts prepared");

@@ -177,7 +177,7 @@ impl ImportServiceHandle {
             }
         }
         let content_hash = candidate.files.content_hash();
-        let preparation = crate::preparation::stored_preparation(&self.tables, &content_hash)
+        let preparation = crate::preparations::stored_preparation(&self.tables, &content_hash)
             .await?
             .filter(|preparation| preparation.file_edits.revision == candidate.file_edit_revision)
             .ok_or_else(|| crate::ImportError::Internal {
@@ -360,7 +360,7 @@ impl ImportServiceHandle {
             self.read_candidate_file_tags_write(command.candidate_key.clone()).await?;
         }
         if let Some(edit) = command.user_edit.clone() {
-            let preparation = crate::preparation::stored_preparation(&self.tables, &content_hash)
+            let preparation = crate::preparations::stored_preparation(&self.tables, &content_hash)
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: "test import has no candidate state".into(),

@@ -10,7 +10,7 @@ use bae_catalogs::catalog::LookupCatalog;
 
 fn save_expectation(
     candidate: &FolderCandidate,
-    preparation: &crate::preparation::CandidatePreparation,
+    preparation: &crate::preparations::CandidatePreparation,
 ) -> crate::tables::CandidateSaveExpectation {
     crate::tables::CandidateSaveExpectation {
         edit_revision: preparation.file_edits.revision,

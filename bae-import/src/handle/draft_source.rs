@@ -11,12 +11,12 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<
-        (crate::folder_scanner::FolderCandidate, crate::preparation::CandidatePreparation),
+        (crate::folder_scanner::FolderCandidate, crate::preparations::CandidatePreparation),
         crate::ImportError,
     > {
         let candidate = self.require_release_candidate(candidate_key).await?;
         let current =
-            crate::preparation::stored_preparation(&self.tables, &candidate.files.content_hash())
+            crate::preparations::stored_preparation(&self.tables, &candidate.files.content_hash())
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),

@@ -188,7 +188,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
         .await
         .unwrap();
 
-    let preparation = crate::preparation::stored_preparation(&handle.tables, &hash)
+    let preparation = crate::preparations::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the reshaped candidate remains prepared");
@@ -220,7 +220,7 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     ] {
         handle.set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
         let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
-        let preparation = crate::preparation::stored_preparation(&handle.tables, &hash)
+        let preparation = crate::preparations::stored_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .expect("the candidate remains prepared");
@@ -246,7 +246,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
-    let before = crate::preparation::stored_preparation(&fixture.tables(), &hash)
+    let before = crate::preparations::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
@@ -270,7 +270,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .await
         .unwrap();
 
-    let after = crate::preparation::stored_preparation(&fixture.tables(), &hash)
+    let after = crate::preparations::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
@@ -304,7 +304,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         )
         .await
         .unwrap();
-    let restored = crate::preparation::stored_preparation(&fixture.tables(), &hash)
+    let restored = crate::preparations::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
@@ -421,7 +421,7 @@ async fn a_cleared_sheet_can_be_bound_again() {
     // became the sheet's three entries plus the two loose files, each with a
     // mapping of its own.
     let preparation =
-        crate::preparation::stored_preparation(&fixture.tables(), &fixture.content_hash(&dir))
+        crate::preparations::stored_preparation(&fixture.tables(), &fixture.content_hash(&dir))
             .await
             .unwrap()
             .expect("the rebound candidate is prepared");
@@ -435,7 +435,7 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
     let key = crate::CandidateKey::folder(&dir);
-    let before = crate::preparation::stored_preparation(&fixture.tables(), &hash)
+    let before = crate::preparations::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()
@@ -450,7 +450,7 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
         )
         .await
         .unwrap();
-    let after = crate::preparation::stored_preparation(&fixture.tables(), &hash)
+    let after = crate::preparations::stored_preparation(&fixture.tables(), &hash)
         .await
         .unwrap()
         .unwrap()

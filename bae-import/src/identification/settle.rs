@@ -205,7 +205,7 @@ async fn lead_metadata(
     partners: Vec<bae_catalogs::source_release::SourceRelease>,
     pressing_year: Option<i32>,
 ) -> Result<Option<crate::CandidateMetadataDraft>, Settled> {
-    let current = match crate::preparation::stored_preparation(
+    let current = match crate::preparations::stored_preparation(
         &context.tables,
         &candidate.files.content_hash(),
     )

@@ -10,7 +10,7 @@
 use super::*;
 use crate::folder_scanner::CategorizedFiles;
 use crate::folder_scanner::FolderCandidate;
-use crate::preparation::CandidatePreparation;
+use crate::preparations::CandidatePreparation;
 
 /// The revisions a save was prepared against, and — for a write that must
 /// not land on a folder the scan has since re-read — where the scan lists it.

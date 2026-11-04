@@ -131,7 +131,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         .await
         .expect_err("revision zero is stale after the first selection");
 
-    let stored = crate::preparation::stored_preparation(&tables, &hash)
+    let stored = crate::preparations::stored_preparation(&tables, &hash)
         .await
         .unwrap()
         .expect("the candidate is prepared");

@@ -125,7 +125,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
-        crate::preparation::stored_preparation(&handle.tables, &hash)
+        crate::preparations::stored_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .expect("the picked candidate is prepared")

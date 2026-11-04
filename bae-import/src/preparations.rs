@@ -1,4 +1,5 @@
-//! The one writer of a candidate's stored state.
+//! A candidate's stored state, as one value ([`CandidatePreparation`]), and
+//! its one writer.
 //!
 //! Every change to what a candidate is — identification's conclusion, a
 //! source a person applied, a field they typed, a file decision — comes
@@ -8,16 +9,18 @@
 //! about when it may change.
 
 mod pane_edits;
+mod preparation;
+
+pub(crate) use preparation::{stored_preparation, CandidateWrite};
+pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 
 use crate::folder_scanner::CandidateFileEdits;
-use crate::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::tables::{
     CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
     ScannedCandidateKey,
 };
 use crate::tables::{DbCandidateIdentifyResult, NewImportCandidateVerdict};
 use crate::ImportError;
-use crate::MetadataAuthor;
 use bae_db::Database;
 
 /// The writer, over the database it writes through. The import service
@@ -40,7 +43,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
     ) -> Result<Option<CandidatePreparation>, ImportError> {
-        crate::preparation::stored_preparation(&self.tables, content_hash).await
+        stored_preparation(&self.tables, content_hash).await
     }
 
     /// Record one candidate's terminal verdict under its content hash, stamped

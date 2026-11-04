@@ -92,7 +92,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             "Cover Album",
         )
         .await;
-        let preparation = crate::preparation::stored_preparation(&test.service.tables, &hash)
+        let preparation = crate::preparations::stored_preparation(&test.service.tables, &hash)
             .await
             .unwrap()
             .unwrap();

@@ -205,7 +205,7 @@ async fn a_pick_leaves_the_person_s_choices_as_they_were() {
 /// Store settled signals for the fixture's candidate whose folder name,
 /// `printed`, is also its one catalog number.
 async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &str) {
-    let prep = crate::preparation::stored_preparation(&handle.tables, hash)
+    let prep = crate::preparations::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");

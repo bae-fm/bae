@@ -180,7 +180,7 @@ impl ImportService {
         let categorized = stored_candidate.files;
 
         let preparation =
-            crate::preparation::stored_preparation(&self.tables, &expected_content_hash)
+            crate::preparations::stored_preparation(&self.tables, &expected_content_hash)
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),

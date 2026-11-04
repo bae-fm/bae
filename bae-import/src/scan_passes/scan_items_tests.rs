@@ -300,7 +300,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         reading.candidate.files.content_hash(),
         "the release holds a new file"
     );
-    let preparation = crate::preparation::stored_preparation(
+    let preparation = crate::preparations::stored_preparation(
         test.tables(),
         &stored.candidate.files.content_hash(),
     )

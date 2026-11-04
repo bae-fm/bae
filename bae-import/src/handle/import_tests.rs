@@ -445,7 +445,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         )
         .await
         .unwrap();
-    let draft = crate::preparation::stored_preparation(&handle.tables, &hash)
+    let draft = crate::preparations::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .unwrap()

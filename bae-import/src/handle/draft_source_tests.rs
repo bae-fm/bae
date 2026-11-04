@@ -15,7 +15,7 @@ use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 
 /// Store a verdict that found nothing for the fixture's candidate.
 async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
-    let prep = crate::preparation::stored_preparation(&handle.tables, hash)
+    let prep = crate::preparations::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -304,7 +304,7 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
             .collect::<Vec<_>>()
     };
     let before = rows(
-        &crate::preparation::stored_preparation(&handle.tables, &hash)
+        &crate::preparations::stored_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -313,14 +313,14 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
     );
 
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let reapplied = crate::preparation::stored_preparation(&handle.tables, &hash)
+    let reapplied = crate::preparations::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the reapplied source remains prepared");
     assert_eq!(rows(&reapplied.metadata.draft), before);
 
     handle.clear_candidate_metadata(key).await.unwrap();
-    let cleared = crate::preparation::stored_preparation(&handle.tables, &hash)
+    let cleared = crate::preparations::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the cleared source remains prepared");

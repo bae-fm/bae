@@ -414,7 +414,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     let stored =
-        crate::preparation::stored_preparation(&handle.tables, &hash).await.unwrap().unwrap();
+        crate::preparations::stored_preparation(&handle.tables, &hash).await.unwrap().unwrap();
 
     let error = handle
         .set_candidate_track_edit(
@@ -430,7 +430,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
 
     assert!(error.to_string().contains("audio"), "{error}");
     assert_eq!(
-        crate::preparation::stored_preparation(&handle.tables, &hash)
+        crate::preparations::stored_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -481,7 +481,7 @@ async fn an_edited_track_row_redraws_alone() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let before = crate::preparation::stored_preparation(&handle.tables, &hash)
+    let before = crate::preparations::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate is prepared");
@@ -501,7 +501,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     })
     .await;
 
-    let after = crate::preparation::stored_preparation(&handle.tables, &hash)
+    let after = crate::preparations::stored_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate remains prepared");

@@ -177,7 +177,7 @@ pub(super) async fn stored_draft(
     handle: &ImportServiceHandle,
     hash: &str,
 ) -> crate::CandidateDraft {
-    crate::preparation::stored_preparation(&handle.tables, hash)
+    crate::preparations::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the candidate is prepared")
@@ -731,7 +731,7 @@ pub(super) async fn store_two_pressings(
 ) {
     seed_mb_release_with_catalog(fakes, "mb-pressing-1", "CAT-100");
     seed_mb_release_with_catalog(fakes, "mb-pressing-2", "CAT-200");
-    let prep = crate::preparation::stored_preparation(&handle.tables, hash)
+    let prep = crate::preparations::stored_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");

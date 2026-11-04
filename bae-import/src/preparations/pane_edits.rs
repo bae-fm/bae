@@ -3,7 +3,7 @@
 //! saves it whole under the next metadata revision.
 
 use super::CandidatePreparations;
-use crate::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
+use crate::preparations::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::tables::{
     CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
