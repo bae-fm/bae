@@ -45,6 +45,42 @@ internal class QueueOrder {
     /** The last value [apply] took, which an answer or the end of a drag shows again. */
     private var latest: QueueValue? = null
 
+    /**
+     * Move the row keyed [fromKey] to where the row keyed [toKey] shows, as a step of a drag does, and
+     * say what core is to be told. A step moves within one lane; one that spans the lanes, names no row
+     * (a section header matches no row key), or would drop a row just before one not read yet
+     * ([ContextLaneOrder.moveBefore]) moves nothing and answers null.
+     */
+    fun drop(
+        fromKey: String,
+        toKey: String,
+    ): LaneDrop? = manualDrop(fromKey, toKey) ?: contextDrop(fromKey, toKey)
+
+    /** [drop] within Up Next, which is read whole, so the row after the drop is always known. */
+    private fun manualDrop(
+        fromKey: String,
+        toKey: String,
+    ): LaneDrop? {
+        val from = manual.indexOfFirst { it.entryId == fromKey }
+        val to = manual.indexOfFirst { it.entryId == toKey }
+        if (from < 0 || to < 0) return null
+        val moved = manual.removeAt(from)
+        manual.add(to, moved)
+        val place = manual.getOrNull(to + 1)?.let { LanePlace.Before(it.entryId) } ?: LanePlace.End
+        return LaneDrop(OrderLane.MANUAL, moved.entryId, place)
+    }
+
+    /** [drop] within what's playing from. */
+    private fun contextDrop(
+        fromKey: String,
+        toKey: String,
+    ): LaneDrop? {
+        val from = context.indexOf(fromKey)
+        val to = context.indexOf(toKey)
+        val place = if (from != null && to != null) context.moveBefore(from, to) else null
+        return place?.let { LaneDrop(OrderLane.CONTEXT, fromKey, it) }
+    }
+
     /** A drag is reordering the lanes; values wait until it ends. */
     fun dragging() {
         dragging = true
@@ -206,13 +242,45 @@ internal class ContextLaneOrder {
         return read?.key
     }
 
-    /** Move the row shown at [from] to [to], as a drag does. */
-    fun move(
+    /**
+     * Move the row shown at [from] to [to], as a drag does, and say where it then sits for core: before
+     * the row shown after it, or at the lane's end when none is. A drop just before a row not read yet
+     * moves nothing and answers null: core places a row only before one the sheet names, and the sheet
+     * can't name a row it hasn't read.
+     */
+    fun moveBefore(
         from: Int,
         to: Int,
-    ) {
-        moves.add(LaneMove(from, to))
+    ): LanePlace? {
+        val move = LaneMove(from, to)
+        val place =
+            if (to + 1 >= size) {
+                LanePlace.End
+            } else {
+                val next = itemAt(move.sourceOf(to + 1)) ?: return null
+                LanePlace.Before(next.entryId)
+            }
+        moves.add(move)
+        return place
     }
+}
+
+/** A row a drag moved, in [lane], and where it then sits, as core is told it. */
+internal data class LaneDrop(
+    val lane: OrderLane,
+    val entryId: String,
+    val place: LanePlace,
+)
+
+/** Where a moved row sits in its lane, as core is told it. */
+internal sealed interface LanePlace {
+    /** Just before the row [entryId]. */
+    data class Before(
+        val entryId: String,
+    ) : LanePlace
+
+    /** At the lane's end. */
+    data object End : LanePlace
 }
 
 /** One row taken out at [from] and put back at [to], both positions in the lane as it was shown. */

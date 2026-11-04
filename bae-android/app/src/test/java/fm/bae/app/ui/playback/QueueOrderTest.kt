@@ -52,11 +52,11 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")), manualVersion = 1u, contextVersion = 1u)
         order.dragging()
-        order.context.move(from = 0, to = 2)
+        order.context.moveBefore(from = 0, to = 2)
         order.moveSent(OrderLane.CONTEXT)
         assertEquals(listOf("b", "c", "a", "d", null, null), order.context.shown())
         assertEquals(2, order.context.indexOf("a"))
-        order.context.move(from = 3, to = 1)
+        order.context.moveBefore(from = 3, to = 1)
         order.moveSent(OrderLane.CONTEXT)
         assertEquals(listOf("b", "d", "c", "a", null, null), order.context.shown())
         assertEquals(3, order.context.indexOf("a"))
@@ -76,7 +76,7 @@ class QueueOrderTest {
         order.apply(emptyList(), context(total = 6, read = rows("b", "d", "c", "a")), manualVersion = 1u, contextVersion = 3u)
         assertEquals(listOf("b", "d", "c", "a", null, null), order.context.shown())
         assertEquals("core's read shows the lane again", 3, order.context.indexOf("a"))
-        order.context.move(from = 0, to = 1)
+        order.context.moveBefore(from = 0, to = 1)
         order.apply(emptyList(), context(total = 6, read = rows("b", "d", "c", "a")), manualVersion = 1u, contextVersion = 4u)
         assertEquals("nothing holds the lane now", listOf("b", "d", "c", "a", null, null), order.context.shown())
     }
@@ -134,10 +134,47 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(listOf(entry("m")), context(total = 2, read = rows("a", "b")), manualVersion = 1u, contextVersion = 1u)
         order.dragging()
-        order.context.move(from = 0, to = 1)
+        order.context.moveBefore(from = 0, to = 1)
         order.moveSent(OrderLane.CONTEXT)
         order.apply(listOf(entry("n")), context(total = 2, read = rows("a", "b")), manualVersion = 2u, contextVersion = 1u)
         assertEquals(listOf("n"), order.manual.map { it.entryId })
         assertEquals("the context lane keeps its moves", listOf("b", "a"), order.context.shown())
+    }
+
+    @Test
+    fun aDropJustBeforeARowNotReadYetMovesNothing() {
+        val lane = ContextLaneOrder()
+        lane.seed(context(total = 5, read = rows("a", "b", "c")))
+        assertNull("core can't be told the unread row it sits before", lane.moveBefore(from = 0, to = 2))
+        assertEquals(listOf("a", "b", "c", null, null), lane.shown())
+
+        assertEquals(LanePlace.Before("c"), lane.moveBefore(from = 0, to = 1))
+        assertEquals(listOf("b", "a", "c", null, null), lane.shown())
+    }
+
+    @Test
+    fun aDropTellsCoreTheRowItNowSitsBeforeInItsLane() {
+        val order = QueueOrder()
+        order.apply(
+            listOf(entry("m"), entry("n")),
+            context(total = 4, read = rows("a", "b", "c")),
+            manualVersion = 1u,
+            contextVersion = 1u,
+        )
+        assertEquals(LaneDrop(OrderLane.MANUAL, "m", LanePlace.End), order.drop("m", "n"))
+        assertEquals(listOf("n", "m"), order.manual.map { it.entryId })
+        assertEquals(LaneDrop(OrderLane.CONTEXT, "a", LanePlace.Before("c")), order.drop("a", "b"))
+        assertEquals(listOf("b", "a", "c", null), order.context.shown())
+        assertNull("a drop just before an unread row moves nothing", order.drop("b", "c"))
+        assertEquals(listOf("b", "a", "c", null), order.context.shown())
+        assertNull("a step across the lanes moves nothing", order.drop("m", "a"))
+    }
+
+    @Test
+    fun aDropAfterTheLastRowSitsAtTheLanesEnd() {
+        val lane = ContextLaneOrder()
+        lane.seed(context(total = 3, read = rows("a", "b", "c")))
+        assertEquals(LanePlace.End, lane.moveBefore(from = 0, to = 2))
+        assertEquals(listOf("b", "c", "a"), lane.shown())
     }
 }

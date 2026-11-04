@@ -120,47 +120,21 @@ internal fun rememberReorderableQueue(
     val scope = rememberCoroutineScope()
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
-            // A reorder stays within one lane; section headers match no row key.
-            val fromKey = from.key as? String ?: ""
-            val toKey = to.key as? String ?: ""
-            val manualFrom = order.manual.indexOfFirst { it.entryId == fromKey }
-            val manualTo = order.manual.indexOfFirst { it.entryId == toKey }
-            val contextFrom = order.context.indexOf(fromKey)
-            val contextTo = order.context.indexOf(toKey)
-
             // Each move is held over its lane until core's read shows it; one core refused or that
             // failed shows its error and the lane's read at once.
-            fun send(
-                lane: OrderLane,
-                entryId: String,
-                beforeEntryId: String?,
-            ) {
-                order.moveSent(lane)
-                scope.launch {
-                    val version =
-                        failures.answer("reorderEntry $entryId before $beforeEntryId") {
-                            session.appHandle.reorderEntry(entryId, beforeEntryId)
-                        }
-                    if (version != null) order.moveAnswered(lane, version) else order.moveFailed(lane)
-                }
+            val drop = order.drop(from.key as? String ?: "", to.key as? String ?: "")
+            if (drop == null) {
+                logger.debug("reorder: nothing moved (from=${from.key}, to=${to.key})")
+                return@rememberReorderableLazyListState
             }
-            when {
-                manualFrom >= 0 && manualTo >= 0 -> {
-                    val moved = order.manual.removeAt(manualFrom)
-                    order.manual.add(manualTo, moved)
-                    // A null `before` means the lane's end.
-                    send(OrderLane.MANUAL, moved.entryId, order.manual.getOrNull(manualTo + 1)?.entryId)
-                }
-
-                contextFrom != null && contextTo != null -> {
-                    order.context.move(contextFrom, contextTo)
-                    // A null `before` means the lane's end.
-                    send(OrderLane.CONTEXT, fromKey, order.context.itemAt(contextTo + 1)?.entryId)
-                }
-
-                else -> {
-                    logger.debug("reorder: drag spans lanes or names no row (from=${from.key}, to=${to.key})")
-                }
+            val beforeEntryId = (drop.place as? LanePlace.Before)?.entryId
+            order.moveSent(drop.lane)
+            scope.launch {
+                val version =
+                    failures.answer("reorderEntry ${drop.entryId} before $beforeEntryId") {
+                        session.appHandle.reorderEntry(drop.entryId, beforeEntryId)
+                    }
+                if (version != null) order.moveAnswered(drop.lane, version) else order.moveFailed(drop.lane)
             }
         }
 

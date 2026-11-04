@@ -3172,7 +3172,9 @@ which the app shows ("The queue changed before the move, so nothing moved.").
 The queue screens read each part with its version: a row dragged to a new
 place stays there until the part's read reaches the version the move
 answered, so it never jumps back while the move is on its way, and a move
-that failed or moved nothing puts the part back to its read at once.
+that failed or moved nothing puts the part back to its read at once. A move
+names the entry it goes before, or the part's end, so a row dragged to just
+before a row the screen hasn't read yet stays where it was.
 
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
