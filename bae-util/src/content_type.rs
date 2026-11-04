@@ -125,19 +125,7 @@ impl ContentType {
     }
 
     pub fn is_audio(&self) -> bool {
-        matches!(
-            self,
-            Self::Flac
-                | Self::Mp3
-                | Self::Ape
-                | Self::Alac
-                | Self::Aac
-                | Self::Pcm
-                | Self::Opus
-                | Self::Vorbis
-                | Self::WavPack
-                | Self::Dsd
-        ) || matches!(self, Self::Other(s) if s.starts_with("audio/"))
+        self.is_supported_audio() || matches!(self, Self::Other(s) if s.starts_with("audio/"))
     }
 
     /// Whether bae has a concrete decoder-backed audio variant for this type.
