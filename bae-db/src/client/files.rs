@@ -170,7 +170,8 @@ pub fn image_version_sql(alias: &str) -> String {
 /// found by the covers' key; NULL when the release has no cover.
 pub fn cover_version_sql(release_id: &str) -> String {
     format!(
-        "(SELECT {version} FROM covers AS cover WHERE cover.id = {release_id})",
+        "(SELECT {version} FROM {table} AS cover WHERE cover.id = {release_id})",
+        table = image_table(&LibraryImageType::Cover),
         version = image_version_sql("cover")
     )
 }
@@ -179,8 +180,9 @@ pub fn cover_version_sql(release_id: &str) -> String {
 /// found by the artist images' key; NULL when the artist has no image.
 pub fn artist_image_version_sql(artist_id: &str) -> String {
     format!(
-        "(SELECT {version} FROM artist_images AS artist_image \
+        "(SELECT {version} FROM {table} AS artist_image \
           WHERE artist_image.id = {artist_id})",
+        table = image_table(&LibraryImageType::Artist),
         version = image_version_sql("artist_image")
     )
 }
