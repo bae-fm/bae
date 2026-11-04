@@ -311,7 +311,7 @@ where
     cancellation.check()?;
     on_directory(root.join(relative));
     let listing = walk.listing(relative)?;
-    let direct_audio = listing.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path));
+    let direct_audio = listing.holds_audio();
     let has_direct_files = !listing.files.is_empty();
     let wrapper_has_files = !direct_audio && !listing.files.is_empty();
     let mut all_files = listing.files.clone();
@@ -691,8 +691,7 @@ pub(super) fn read_file_subtree<R: DirectoryReader + ?Sized>(
     cancellation: &ScanCancellation,
 ) -> Result<(Vec<FileEntry>, bool), FolderScanError> {
     let listing = reader.read(root, relative, cancellation)?;
-    let mut contains_audio =
-        listing.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path));
+    let mut contains_audio = listing.holds_audio();
     let mut files = listing.files;
     for child in listing.directories {
         let (child_files, child_contains_audio) =

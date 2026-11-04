@@ -70,7 +70,7 @@ where
     let mut pending = vec![relative.to_path_buf()];
     while let Some(folder) = pending.pop() {
         let listing = walk.listing(&folder)?;
-        if listing.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path)) {
+        if listing.holds_audio() {
             found += 1;
         }
         pending.extend(listing.directories.iter().cloned());

@@ -55,8 +55,7 @@ where
     );
     on_directory(root.clone());
     let root_listing = walk.listing(Path::new(""))?;
-    let direct_audio =
-        root_listing.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path));
+    let direct_audio = root_listing.holds_audio();
     let mut direct_scope_files = root_listing.files;
     let walk_order =
         newest_first(&reader.folder_times(&root, &root_listing.directories, cancellation)?);

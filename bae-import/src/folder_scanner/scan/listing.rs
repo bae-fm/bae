@@ -11,6 +11,14 @@ pub(crate) struct DirectoryListing {
     pub(super) directories: Vec<PathBuf>,
 }
 
+impl DirectoryListing {
+    /// Whether audio lies directly in the directory: a file of an audio kind
+    /// that holds bytes.
+    pub(super) fn holds_audio(&self) -> bool {
+        self.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path))
+    }
+}
+
 pub(crate) trait DirectoryReader: Send + Sync {
     fn read(
         &self,
