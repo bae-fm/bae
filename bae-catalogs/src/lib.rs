@@ -59,6 +59,8 @@ mod serde_helpers;
 pub mod source_release;
 #[cfg(all(any(test, feature = "test-utils"), desktop))]
 pub mod test_documents;
+#[cfg(test)]
+mod test_fixtures;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_image_host;
 #[cfg(all(any(test, feature = "test-utils"), desktop))]

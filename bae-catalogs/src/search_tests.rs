@@ -4,6 +4,7 @@ use crate::discogs_mapper::parse_duration_to_ms;
 use crate::musicbrainz::{
     MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
 };
+use crate::test_fixtures::make_mb_track;
 use bae_types::pressing::{MediaCount, Medium, StatedMedia};
 
 /// The release a MusicBrainz document extracts to, read by itself.
@@ -39,22 +40,6 @@ fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     .into_iter()
     .map(|track| track.title)
     .collect()
-}
-
-fn make_mb_track(number: &str, title: &str) -> MbTrack {
-    MbTrack {
-        position: None,
-        number: Some(number.to_string()),
-        title: None,
-        length: None,
-        recording: Some(MbRecording {
-            id: None,
-            title: Some(title.to_string()),
-            artist_credit: vec![],
-            relations: vec![],
-        }),
-        artist_credit: vec![],
-    }
 }
 
 fn response_with_media(media: Vec<MbMedium>) -> MbReleaseResponse {

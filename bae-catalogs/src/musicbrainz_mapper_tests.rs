@@ -39,21 +39,7 @@ pub(super) fn own_credits(track: &TrackValues) -> &[SourceCredit] {
     }
 }
 
-pub(super) fn make_mb_track(number: &str, title: &str) -> MbTrack {
-    MbTrack {
-        position: None,
-        number: Some(number.to_string()),
-        title: None,
-        length: None,
-        recording: Some(MbRecording {
-            id: None,
-            title: Some(title.to_string()),
-            artist_credit: vec![],
-            relations: vec![],
-        }),
-        artist_credit: vec![],
-    }
-}
+pub(super) use crate::test_fixtures::make_mb_track;
 
 pub(super) fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
     MbReleaseResponse {
