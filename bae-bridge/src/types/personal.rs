@@ -53,18 +53,22 @@ pub struct BridgePersonProfile {
     pub name: String,
     pub private_circle: String,
     pub history_sharing: BridgeSharing,
-    pub avatar_id: Option<String>,
+    /// The version of the person's avatar, which an app caches the image
+    /// `AppHandle::avatar` reads under; it moves whenever the avatar's bytes
+    /// do, and when an avatar this device couldn't read becomes readable, as
+    /// a cover's does. `None` without an avatar.
+    pub avatar_version: Option<String>,
 }
 impl BridgePersonProfile {
     pub(crate) fn from_core(value: bae_db::people::PersonProfile) -> Self {
-        let bae_db::people::PersonProfile { id, name, private_circle, history_sharing, avatar_id } =
+        let bae_db::people::PersonProfile { id, name, private_circle, history_sharing, avatar } =
             value;
         Self {
             id: id.0.to_string(),
             name,
             private_circle: private_circle.0.to_string(),
             history_sharing: BridgeSharing::from_core(history_sharing),
-            avatar_id: avatar_id.map(|file| file.0.to_string()),
+            avatar_version: avatar.map(|avatar| avatar.version),
         }
     }
 }

@@ -442,7 +442,7 @@ object PreviewData {
                     name = "Person Name",
                     privateCircle = "circle-1",
                     historySharing = BridgeSharing.PRIVATE,
-                    avatarId = null,
+                    avatarVersion = null,
                 ),
             membership = member,
         )

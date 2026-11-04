@@ -57,23 +57,30 @@ async fn a_profile_names_each_new_avatar_at_once() {
     let first_jpeg = bae_util::stored_image::stored_jpeg(&first_source).unwrap();
     let second_jpeg = bae_util::stored_image::stored_jpeg(&second_source).unwrap();
     library.set_avatar(Some(first_source)).await.unwrap();
-    let first = database.profile(profile.id).await.unwrap().unwrap();
+    let avatar = async || database.profile(profile.id).await.unwrap().unwrap().avatar;
+    let first = avatar().await.expect("the first avatar");
     assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), first_jpeg);
     library.set_avatar(Some(second_source)).await.unwrap();
-    let second = database.profile(profile.id).await.unwrap().unwrap();
+    let second = avatar().await.expect("the second avatar");
     // The profile row references each new avatar's coven file from the write
     // that sets it; a new avatar is a new file.
-    assert!(first.avatar_id.is_some());
-    assert!(second.avatar_id.is_some());
-    assert_ne!(first.avatar_id, second.avatar_id);
+    assert_ne!(first.file, second.file);
+    // Its version is the file's, naming this device too while the file is on
+    // it only.
+    assert!(second.version.starts_with(&format!("{}@", second.file.0)), "{}", second.version);
     assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
     library.drain_uploads_for_test().await.unwrap();
-    let stored = database.profile(profile.id).await.unwrap().unwrap();
-    assert_eq!(stored.avatar_id, second.avatar_id, "the upload changes no row");
+    let stored = avatar().await.expect("the stored avatar");
+    assert_eq!(stored.file, second.file, "the upload changes no row");
+    assert_eq!(
+        stored.version,
+        second.file.0.to_string(),
+        "the version moves to the file's alone as the file is stored"
+    );
     assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
     library.set_avatar(None).await.unwrap();
     assert_eq!(library.avatar(profile.id).await.unwrap(), None);
-    assert_eq!(database.profile(profile.id).await.unwrap().unwrap().avatar_id, None);
+    assert_eq!(avatar().await, None);
     library.close().await.unwrap();
 }
 

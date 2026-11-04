@@ -1720,9 +1720,9 @@ behind it too, a rating made right after included, which is why a bound file
 must be small: coven refuses a write naming a file over 1.5 MiB. Every image
 bae stores is a JPEG at most 600 pixels across, which stays under that limit.
 
-The apps and Subsonic clients cache art by an image's version, which must move
-whenever its bytes do, and when an image a device couldn't read becomes
-readable. A coven file never changes its bytes, and a new image is a new file,
+The apps cache covers, artist images and avatars, and Subsonic clients cache
+art, by an image's version, which must move whenever its bytes do, and when an
+image a device couldn't read becomes readable. A coven file never changes its bytes, and a new image is a new file,
 so the version is the file's id: it moves on every device with the write that
 sets it. While the file is on one device only, the version also names that
 device, so it moves again when the file is stored, and an app that couldn't

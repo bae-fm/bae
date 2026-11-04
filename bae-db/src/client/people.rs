@@ -4,19 +4,24 @@ use super::profile_request::{
     ProfileRequestState,
 };
 use super::*;
-use crate::people::{Person, PersonProfile, ProfileError, Sharing};
+use crate::people::{Avatar, Person, PersonProfile, ProfileError, Sharing};
 
-/// The columns [`profile_row`] reads, of `people` or of its row `p`.
-macro_rules! profile_columns {
-    () => {
-        "id, name, private_circle, history_sharing, avatar_id"
-    };
-    (p) => {
-        "p.id, p.name, p.private_circle, p.history_sharing, p.avatar_id"
-    };
+/// The columns [`profile_row`] reads of the `people` row `p`: its own, and
+/// its avatar's version; [`PROFILE_COLUMN_COUNT`] of them.
+fn profile_columns() -> String {
+    format!(
+        "p.id, p.name, p.private_circle, p.history_sharing, p.avatar_id, {avatar_version}",
+        avatar_version = super::files::file_version_sql("p.avatar_id"),
+    )
 }
 
-const PROFILE_COLUMNS: &str = profile_columns!();
+/// How many columns [`profile_columns`] names.
+const PROFILE_COLUMN_COUNT: usize = 6;
+
+/// The profile of the person `?`.
+fn profile_sql() -> String {
+    format!("SELECT {} FROM people AS p WHERE p.id = ?", profile_columns())
+}
 
 impl Database {
     /// The member using this device, once its registration has applied.
@@ -27,7 +32,7 @@ impl Database {
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile once they made one.
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        Ok(self.read(|sql| Ok(people_on(&sql, OWN_PERSON_SQL)?)).await?.pop())
+        Ok(self.read(|sql| Ok(people_on(&sql, &own_person_sql())?)).await?.pop())
     }
 
     pub async fn profiles(&self) -> Result<Vec<PersonProfile>, DbError> {
@@ -37,7 +42,7 @@ impl Database {
     /// Everyone in the library, in member-id order: each member, with
     /// their profile once they made one.
     pub async fn people(&self) -> Result<Vec<Person>, DbError> {
-        self.read(|sql| Ok(people_on(&sql, PEOPLE_SQL)?)).await
+        self.read(|sql| Ok(people_on(&sql, &everyone_sql())?)).await
     }
 
     pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>> {
@@ -46,13 +51,7 @@ impl Database {
 
     pub async fn profile(&self, member: coven::MemberId) -> Result<Option<PersonProfile>, DbError> {
         self.read(move |sql| {
-            Ok(sql
-                .query_row(
-                    &format!("SELECT {PROFILE_COLUMNS} FROM people WHERE id = ?"),
-                    [member.to_string()],
-                    profile_row,
-                )
-                .optional()?)
+            Ok(sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?)
         })
         .await
     }
@@ -172,13 +171,8 @@ impl Database {
                 |row| row.get(0),
             )?;
             end_profile_request(sql, &request)?;
-            let existing = sql
-                .query_row(
-                    &format!("SELECT {PROFILE_COLUMNS} FROM people WHERE id = ?"),
-                    [member.to_string()],
-                    profile_row,
-                )
-                .optional()?;
+            let existing =
+                sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?;
             match existing {
                 Some(profile) => history::adopt_local_history(sql, &profile)?,
                 None => insert_profile(sql, &new_profile(member, request.name, request.circle))?,
@@ -263,10 +257,10 @@ impl Database {
     /// file their row references. `None` when the row references none.
     pub async fn avatar(&self, person: coven::MemberId) -> Result<Option<Vec<u8>>, ProfileError> {
         let profile = self.profile(person).await?.ok_or(ProfileError::Missing)?;
-        let Some(avatar) = profile.avatar_id else {
+        let Some(avatar) = profile.avatar else {
             return Ok(None);
         };
-        let file = self.coven_file(avatar).await?;
+        let file = self.coven_file(avatar.file).await?;
         Ok(Some(self.inner.handle.read_file(&file).await.map_err(DbError::from)?))
     }
 }
@@ -285,7 +279,7 @@ fn new_profile(member: coven::MemberId, name: String, circle: coven::CircleId) -
         name,
         private_circle: circle,
         history_sharing: Sharing::Private,
-        avatar_id: None,
+        avatar: None,
     }
 }
 
@@ -321,8 +315,23 @@ fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
         name: row.get(1)?,
         private_circle: coven::CircleId(uuid_column(row, 2)?),
         history_sharing: Sharing::from_sql(&row.get::<_, String>(3)?)?,
-        avatar_id: row.get(4)?,
+        avatar: avatar_columns(row, 4)?,
     })
+}
+
+/// The avatar the columns from `at` read: its file, then its version. The
+/// avatar's reference is bound, so a row naming a file finds it in
+/// `coven_files` and so has a version; one without is a broken store.
+fn avatar_columns(row: &Row<'_>, at: usize) -> rusqlite::Result<Option<Avatar>> {
+    match (row.get::<_, Option<coven::FileId>>(at)?, row.get::<_, Option<String>>(at + 1)?) {
+        (Some(file), Some(version)) => Ok(Some(Avatar { file, version })),
+        (None, None) => Ok(None),
+        (file, _) => Err(rusqlite::Error::FromSqlConversionFailure(
+            at,
+            rusqlite::types::Type::Null,
+            format!("the avatar file {file:?} has no record in coven_files").into(),
+        )),
+    }
 }
 
 /// The circles named `?1` this device's member is in, each with whether
@@ -332,28 +341,27 @@ const PRIVATE_CIRCLE_SQL: &str = "SELECT c.circle, \
           WHERE m.circle = c.circle) \
      FROM coven_circles AS c WHERE c.name = ?1";
 
-/// The library's current members in member-id order, `$where` narrowing
+/// The library's current members in member-id order, `narrowing` narrowing
 /// them, each with their profile's columns and then their member's.
-macro_rules! people_sql {
-    ($where:literal) => {
-        concat!(
-            "SELECT ",
-            profile_columns!(p),
-            ", ",
-            member_columns!(),
-            " FROM coven_members AS m LEFT JOIN people AS p ON p.id = m.member \
-             WHERE NOT m.removed",
-            $where,
-            " ORDER BY m.member"
-        )
-    };
+fn people_sql(narrowing: &str) -> String {
+    format!(
+        "SELECT {profile}, {member} \
+         FROM coven_members AS m LEFT JOIN people AS p ON p.id = m.member \
+         WHERE NOT m.removed{narrowing} ORDER BY m.member",
+        profile = profile_columns(),
+        member = member_columns!(),
+    )
 }
 
 /// Everyone in the library.
-const PEOPLE_SQL: &str = people_sql!("");
+fn everyone_sql() -> String {
+    people_sql("")
+}
 
 /// The person using this device.
-const OWN_PERSON_SQL: &str = people_sql!(" AND m.is_self");
+fn own_person_sql() -> String {
+    people_sql(" AND m.is_self")
+}
 
 /// The people `statement` reads, from [`people_sql`].
 fn people_on(sql: &SqlReadContext<'_>, statement: &str) -> rusqlite::Result<Vec<Person>> {
@@ -364,17 +372,18 @@ fn people_on(sql: &SqlReadContext<'_>, statement: &str) -> rusqlite::Result<Vec<
                 Some(_) => Some(profile_row(row)?),
                 None => None,
             },
-            membership: member_row(row, 5, self_is_admin)?,
+            membership: member_row(row, PROFILE_COLUMN_COUNT, self_is_admin)?,
         })
     })
 }
 
 /// Every profile, by name; `people_name` serves the order.
-pub(super) const PROFILES_SQL: &str =
-    concat!("SELECT ", profile_columns!(), " FROM people ORDER BY name, id");
+pub(super) fn profiles_sql() -> String {
+    format!("SELECT {} FROM people AS p ORDER BY p.name, p.id", profile_columns())
+}
 
 fn profile_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<PersonProfile>> {
-    sql.query(PROFILES_SQL, [], profile_row)
+    sql.query(&profiles_sql(), [], profile_row)
 }
 
 fn update_profile(

@@ -58,7 +58,7 @@
                     name: "Person A",
                     privateCircle: "circle-a",
                     historySharing: .private,
-                    avatarId: nil
+                    avatarVersion: nil
                 ),
                 membership: BridgeMember(
                     id: "4a1f2c3d-0000-4000-8000-000000000001",
@@ -93,7 +93,7 @@
                     name: "Person B",
                     privateCircle: "circle-b",
                     historySharing: .household,
-                    avatarId: nil
+                    avatarVersion: nil
                 ),
                 membership: BridgeMember(
                     id: "4a1f2c3d-0000-4000-8000-000000000002",

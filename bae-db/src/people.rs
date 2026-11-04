@@ -37,8 +37,17 @@ pub struct PersonProfile {
     pub name: String,
     pub private_circle: coven::CircleId,
     pub history_sharing: Sharing,
-    /// The coven file of the avatar the row references.
-    pub avatar_id: Option<coven::FileId>,
+    /// The avatar the row references, if any.
+    pub avatar: Option<Avatar>,
+}
+
+/// A person's avatar: the coven file the row references, and its version,
+/// which the apps cache the image by as they do covers
+/// ([`crate::client::files::file_version_sql`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Avatar {
+    pub file: coven::FileId,
+    pub version: String,
 }
 
 /// The profile this device's person asked for, until it is written: coven
