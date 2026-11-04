@@ -6,14 +6,14 @@ forward! { async this => {
         this.services
             .read_image_bytes(&image.into_core())
             .await
-            .map_err(BridgeError::database_query)
+            .map_err(BridgeError::from)
     }
 
     fn fetch_release_image_bytes(release_id: String, source: BridgeGallerySource) -> Vec<u8> {
         this.services
             .read_gallery_bytes(&release_id, &source.into_core())
             .await
-            .map_err(BridgeError::database_query)
+            .map_err(BridgeError::from)
     }
 } }
 

@@ -92,7 +92,7 @@ impl ReleaseEditSession {
                 self.services
                     .get_album_id_for_release(self.inner.release_id())
                     .await
-                    .map_err(BridgeError::database)
+                    .map_err(BridgeError::from)
             })
             .await
     }

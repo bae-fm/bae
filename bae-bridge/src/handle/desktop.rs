@@ -299,7 +299,7 @@ forward! {
                 .services
                 .cover_ref(&release_id)
                 .await
-                .map_err(BridgeError::database)?
+                .map_err(BridgeError::from)?
                 .map(crate::types::BridgeImageRef::from_core))
         }
 
@@ -456,7 +456,7 @@ forward! {
                 .services
                 .search_albums(&query)
                 .await
-                .map_err(crate::types::BridgeError::database)?
+                .map_err(crate::types::BridgeError::from)?
                 .into_iter()
                 .map(crate::types::BridgeAlbumChoice::from_core)
                 .collect())
@@ -634,7 +634,7 @@ forward! {
             this.services
                 .add_artist_credit_name(&artist_id, &name)
                 .await
-                .map_err(BridgeError::database)
+                .map_err(BridgeError::from)
         }
 
         /// Rename one of an artist's other printed names; every credit
@@ -643,7 +643,7 @@ forward! {
             this.services
                 .rename_artist_credit_name(&artist_id, &key, &name)
                 .await
-                .map_err(BridgeError::database)
+                .map_err(BridgeError::from)
         }
 
         /// Remove one of an artist's other printed names; every credit
@@ -652,7 +652,7 @@ forward! {
             this.services
                 .remove_artist_credit_name(&artist_id, &key)
                 .await
-                .map_err(BridgeError::database)
+                .map_err(BridgeError::from)
         }
 
         /// What the library holds, as it stands now, for every artist credit
@@ -732,7 +732,7 @@ forward! {
             this.services
                 .enqueue_export(&release_id, crate::path_bytes::path_from_app(target_dir)?)
                 .await
-                .map_err(BridgeError::export)
+                .map_err(BridgeError::from)
         }
 
         /// Enqueue a release-level save to `target_dir` under the preset named by
@@ -750,7 +750,7 @@ forward! {
                     &preset_id,
                 )
                 .await
-                .map_err(BridgeError::save)
+                .map_err(BridgeError::from)
         }
 
         /// Save one track to `output_path` under the preset named by `preset_id`
@@ -761,7 +761,7 @@ forward! {
             this.services
                 .save_track(&track_id, &output_path, &preset_id)
                 .await
-                .map_err(|e| BridgeError::save(format!("{e}")))
+                .map_err(BridgeError::from)
         }
 
         /// The default filename stem (no extension) a single-track "Save as…"
@@ -772,7 +772,7 @@ forward! {
             this.services
                 .save_track_suggested_name(&track_id, &preset_id)
                 .await
-                .map_err(|e| BridgeError::save(format!("{e}")))
+                .map_err(BridgeError::from)
         }
     }
 }

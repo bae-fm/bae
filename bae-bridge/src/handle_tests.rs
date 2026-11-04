@@ -755,3 +755,26 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     );
     reopened.close_library(None).unwrap();
 }
+
+/// A library refusal crosses in the class core gave it: a blank credit name
+/// is refused as the edit it is, not shown as a database failure.
+#[cfg(feature = "desktop")]
+#[test]
+fn a_library_refusal_crosses_in_the_class_core_gave_it() {
+    let (handle, _root) = fresh_bridge_handle("library-refusal-class");
+    let result = handle.runtime.block_on(async {
+        Arc::clone(&handle)
+            .add_artist_credit_name("missing-artist".to_string(), "   ".to_string())
+            .await
+    });
+    assert!(
+        matches!(
+            result,
+            Err(crate::types::BridgeError::Diagnostic {
+                category: crate::types::BridgeErrorCategory::Import,
+                ..
+            })
+        ),
+        "{result:?}"
+    );
+}

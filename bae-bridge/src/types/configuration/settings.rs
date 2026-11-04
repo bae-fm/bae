@@ -271,18 +271,6 @@ impl BridgeError {
     pub(crate) fn internal(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Internal, detail)
     }
-    /// Desktop-only with the output surface it reports on: iOS/Android compile
-    /// out the output queue and the track saver entirely.
-    #[cfg(desktop)]
-    pub(crate) fn export(detail: impl std::fmt::Display) -> Self {
-        Self::diagnostic(BridgeErrorCategory::Export, detail)
-    }
-    /// Desktop-only, like [`Self::export`]: reports a save (rendered-output)
-    /// failure.
-    #[cfg(desktop)]
-    pub(crate) fn save(detail: impl std::fmt::Display) -> Self {
-        Self::diagnostic(BridgeErrorCategory::Save, detail)
-    }
 }
 
 /// Why playback couldn't start or continue. The cases where this device can't
@@ -642,7 +630,7 @@ impl From<bae_library::LibraryError> for BridgeError {
         }
         BridgeError::Diagnostic {
             category: BridgeErrorCategory::from_core(error.category()),
-            detail: error.to_string(),
+            detail: error.database_fault(),
         }
     }
 }

@@ -66,7 +66,7 @@ forward! { async this => {
             .download_counts()
             .await
             .map(crate::types::BridgeDownloadCounts::from_core)
-            .map_err(BridgeError::database_query)
+            .map_err(BridgeError::from)
     }
 
     /// 0-based position of `album_id` under the given sort, or `None` if the
@@ -85,7 +85,7 @@ forward! { async this => {
         this.services
             .get_album_index(&sort, &album_id, group_by_artist)
             .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
+            .map_err(BridgeError::from)
     }
 
     /// The albums of `album_ids` the grid lists, each once, in the grid's
@@ -104,7 +104,7 @@ forward! { async this => {
             .services
             .albums_in_browse_order(&sort, album_ids, group_by_artist)
             .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?
+            .map_err(BridgeError::from)?
             .into_iter()
             .map(BridgeAlbum::from_core)
             .collect())
@@ -116,7 +116,7 @@ forward! { async this => {
         this.services
             .resolve_to_track_ids(&ids)
             .await
-            .map_err(BridgeError::database)
+            .map_err(BridgeError::from)
     }
 
     fn change_cover(release_id: String, selection: BridgeCoverSelection) -> () {
@@ -140,14 +140,14 @@ forward! { async this => {
         this.services
             .change_cover(&release_id, core_selection)
             .await
-            .map_err(|e| BridgeError::internal(format!("{e}")))
+            .map_err(BridgeError::from)
     }
 
     fn set_primary_release(album_id: String, release_id: String) -> () {
         this.services
             .set_album_primary_release(&album_id, &release_id)
             .await
-            .map_err(|e| BridgeError::internal(format!("{e}")))
+            .map_err(BridgeError::from)
     }
 
     fn unpin_release(release_id: String) -> () {
