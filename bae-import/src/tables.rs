@@ -24,14 +24,14 @@ pub(crate) mod import_state;
 mod label_identity_choice;
 #[cfg(desktop)]
 mod release_groupings;
-#[cfg(desktop)]
 mod skipped_candidates;
 #[cfg(desktop)]
 mod source_releases;
 mod watched_folders;
 
 /// Import's parts of the library's schema, in the order they run.
-pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[watched_folders::SCHEMA, import_list::SCHEMA];
+pub const SCHEMA_PARTS: &[bae_db::SchemaPart] =
+    &[watched_folders::SCHEMA, skipped_candidates::SCHEMA, import_list::SCHEMA];
 
 #[cfg(desktop)]
 pub use artist_identity_choice::ArtistIdentityConflictChoice;

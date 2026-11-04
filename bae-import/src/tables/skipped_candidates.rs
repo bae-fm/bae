@@ -1,14 +1,25 @@
 //! The candidates a person set aside, `skipped_import_candidates`: each by
 //! its folder on disk, under a watched folder. Setting one aside ends its
-//! identification in the same write.
+//! identification in the same write. Its table is `skipped_candidates.sql`,
+//! which every device's library holds.
 
+#[cfg(desktop)]
 use super::import_state::change_identification_on;
+#[cfg(desktop)]
 use super::watched_folders::require_watched;
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use crate::CandidateKey;
+#[cfg(desktop)]
 use std::path::Path;
 
+/// The skipped candidates' part of the library's schema.
+pub(super) const SCHEMA: bae_db::SchemaPart =
+    bae_db::SchemaPart::new(&[include_str!("skipped_candidates.sql")]);
+
 /// Forget every candidate set aside at or below `folders`.
+#[cfg(desktop)]
 pub(super) fn forget_at_or_below(
     sql: &CovenWrite<'_>,
     folders: &super::watched_folders::FoldersAtOrBelow,
@@ -23,6 +34,7 @@ pub(super) fn forget_at_or_below(
     Ok(())
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     /// Every skipped candidate under one root, by its path below the root:
     /// what the tests of skipping and of removing a watched folder read back.

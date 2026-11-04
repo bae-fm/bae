@@ -2798,12 +2798,6 @@ CREATE TABLE IF NOT EXISTS release_grouping_member (
     PRIMARY KEY (grouping_key, position)
 ) STRICT;
 
--- The candidates the user dismissed, by folder path, so a later scan does not
--- offer them again.
-CREATE TABLE IF NOT EXISTS skipped_import_candidates (
-    candidate_path BLOB PRIMARY KEY
-) STRICT;
-
 -- When the scans first saw each folder, the date the folder carries, and
 -- whether a scan has read it as a release or as broken: a valid release read
 -- where it has not is newly found. Only scans write it: a release built from

@@ -195,7 +195,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // each candidate's state while it is imported.
     "release_grouping",
     "release_grouping_member",
-    "skipped_import_candidates",
     "folder_discovery",
     "folder_scan_generation_sequence",
     "folder_scan_roots",
