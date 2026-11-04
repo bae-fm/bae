@@ -51,6 +51,31 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     assert_eq!(imported.summary.counts.done, 1);
 }
 
+/// The list's summary names the watched folders as every read of them does:
+/// stored rows that overlap, which the add refuses, are corrupt and fail the
+/// read rather than being listed.
+#[tokio::test]
+async fn overlapping_stored_roots_fail_the_list_read() {
+    let (db, _temp) = empty_db().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let outer = bae_db::watched_path::host_root("/music");
+    let inner = bae_db::watched_path::host_root("/music/artist");
+    tables.add_watched_import_folder(&outer).await.unwrap();
+    let request = list_request(&db, crate::TriageTab::Pending, [(0, 50)]).await;
+    tables.load_import_list(request.clone()).await.expect("one watched folder reads");
+    db.call(move |conn| {
+        conn.execute(
+            "INSERT INTO watched_import_folders (path, position) VALUES (?, 1)",
+            [coven::path_bytes(&inner)],
+        )?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let error = tables.load_import_list(request).await.unwrap_err();
+    assert!(error.to_string().contains("cannot overlap"), "{error}");
+}
+
 /// A release in the library that this device did not import — one another
 /// device imported from the same files and synced here — leaves the folder in
 /// Found like any other.
