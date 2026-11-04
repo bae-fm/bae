@@ -151,14 +151,9 @@ impl ImportServiceHandle {
         request: ImportRequest,
     ) -> Result<ImportStart, crate::ImportError> {
         let commit = self.folder_state_commit.lock("start an import").await;
-        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not a scanned folder candidate"),
-            });
-        };
         // Refused for every request kind: an import owns it, or this device
         // already imported its files, and one folder hash is one release here.
-        self.candidate_standing(candidate_key, &candidate).await?.editable()?;
+        let candidate = self.editable_candidate_for_commit(candidate_key).await?;
         if let Some(release_id) =
             self.tables.release_imported_from(&candidate.files.content_hash()).await?
         {

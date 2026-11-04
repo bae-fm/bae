@@ -33,7 +33,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         cover: crate::CoverSelection,
     ) -> Result<(), crate::ImportError> {
-        let candidate = self.editable_candidate(candidate_key).await?;
+        let candidate = self.require_release_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
         let revision = self
             .tables
@@ -88,7 +88,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            let candidate = this.editable_candidate(&candidate_key).await?;
+            let candidate = this.require_release_candidate(&candidate_key).await?;
             let hash = candidate.files.content_hash();
             let _commit = this
                 .commit_lock_for_revision(
@@ -122,7 +122,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         edit: crate::DraftFieldEdit,
     ) -> Result<(), crate::ImportError> {
-        let candidate = self.editable_candidate(candidate_key).await?;
+        let candidate = self.require_release_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
         let _commit = self
             .commit_lock_for_revision(
@@ -269,19 +269,6 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// The scanned candidate revision a pane edit is based on, or the refusal
-    /// for a key that names no editable folder.
-    async fn editable_candidate(
-        &self,
-        candidate_key: &crate::CandidateKey,
-    ) -> Result<crate::folder_scanner::FolderCandidate, crate::ImportError> {
-        self.get_release_candidate(candidate_key).await?.ok_or_else(|| {
-            crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable candidate"),
-            }
-        })
-    }
-
     /// The candidate at `candidate_key` as an edit of its draft reads it, or
     /// the refusal for one whose stored preparation is not of the files the
     /// scan lists.
@@ -289,7 +276,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<DraftEditBase, crate::ImportError> {
-        let candidate = self.editable_candidate(candidate_key).await?;
+        let candidate = self.require_release_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
         let preparation = crate::preparation::stored_preparation(&self.tables, &hash)
             .await?

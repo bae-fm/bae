@@ -12,10 +12,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<crate::folder_scanner::FolderCandidate, crate::ImportError> {
-        let candidate =
-            self.get_release_candidate(key).await?.ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{key} is not an actionable folder candidate"),
-            })?;
+        let candidate = self.require_release_candidate(key).await?;
         self.candidate_standing(key, &candidate).await?.editable()?;
         Ok(candidate)
     }

@@ -106,6 +106,17 @@ impl ImportServiceHandle {
             .map_err(|reason| crate::ImportError::GroupingBlocked { reason })
     }
 
+    /// [`Self::get_release_candidate`], refusing a key that names no stored
+    /// release.
+    pub(super) async fn require_release_candidate(
+        &self,
+        key: &crate::CandidateKey,
+    ) -> Result<crate::folder_scanner::FolderCandidate, crate::ImportError> {
+        self.get_release_candidate(key).await?.ok_or_else(|| crate::ImportError::Internal {
+            detail: format!("{key} is not a scanned candidate"),
+        })
+    }
+
     /// The handle over the started workers. Starts the live read of every
     /// candidate's runtime as one of the library's own tasks, which closing
     /// the library ends; refused once the library is closing.

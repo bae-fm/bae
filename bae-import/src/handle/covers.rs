@@ -42,11 +42,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<RemoteCoverGallery, crate::ImportError> {
-        let Some(candidate) = self.get_release_candidate(key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{key} is not a scanned candidate"),
-            });
-        };
+        let candidate = self.require_release_candidate(key).await?;
         let state =
             self.tables.load_import_candidate_state(&candidate.files.content_hash()).await?;
         let link = match state.and_then(|state| state.release_link) {

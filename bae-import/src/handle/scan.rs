@@ -34,11 +34,7 @@ impl ImportServiceHandle {
         skipped: bool,
     ) -> Result<(), crate::ImportError> {
         let _commit = self.folder_state_commit.lock("skip a candidate").await;
-        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
+        let candidate = self.require_release_candidate(&candidate_key).await?;
         if candidate.grouping.is_some() {
             if self.tables.set_grouping_skipped(&candidate_key, skipped).await? {
                 if skipped {
@@ -149,11 +145,7 @@ impl ImportServiceHandle {
         (crate::folder_scanner::FolderCandidate, crate::preparation::CandidatePreparation),
         crate::ImportError,
     > {
-        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
+        let candidate = self.require_release_candidate(candidate_key).await?;
         let current =
             crate::preparation::stored_preparation(&self.tables, &candidate.files.content_hash())
                 .await?
@@ -342,11 +334,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
+        let candidate = self.require_release_candidate(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
         let current = crate::preparation::stored_preparation(&self.tables, &content_hash)
             .await?
@@ -394,11 +382,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<u64, crate::ImportError> {
-        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
+        let candidate = self.require_release_candidate(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
         let current = crate::preparation::stored_preparation(&self.tables, &content_hash)
             .await?

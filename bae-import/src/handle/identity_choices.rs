@@ -16,12 +16,7 @@ impl ImportServiceHandle {
         let key = candidate_key.clone();
         self.committed(async move {
             let _commit = this.folder_state_commit.lock("choose an import artist").await;
-            let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| {
-                crate::ImportError::Internal {
-                    detail: format!("{key} is not a scanned folder candidate"),
-                }
-            })?;
-            this.candidate_standing(&key, &candidate).await?.editable()?;
+            let candidate = this.editable_candidate_for_commit(&key).await?;
             this.tables
                 .choose_import_artist_identity(
                     &candidate.files.content_hash(),
@@ -46,12 +41,7 @@ impl ImportServiceHandle {
         let key = candidate_key.clone();
         self.committed(async move {
             let _commit = this.folder_state_commit.lock("choose an import label").await;
-            let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| {
-                crate::ImportError::Internal {
-                    detail: format!("{key} is not a scanned folder candidate"),
-                }
-            })?;
-            this.candidate_standing(&key, &candidate).await?.editable()?;
+            let candidate = this.editable_candidate_for_commit(&key).await?;
             this.tables
                 .choose_import_label_identity(
                     &candidate.files.content_hash(),

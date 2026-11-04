@@ -45,11 +45,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         reader: std::sync::Arc<dyn crate::file_tag_snapshot::FileTagReader>,
     ) -> Result<FileTagSnapshotRead, crate::ImportError> {
-        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
+        let candidate = self.require_release_candidate(candidate_key).await?;
         let watched_folder_path = candidate.watched_folder_path.clone();
         let Some(stored) = self
             .tables
