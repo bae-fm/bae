@@ -35,7 +35,7 @@ pub struct ReleaseUploadTransfer {
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutboxTransfers {
     /// By release id.
-    pub releases: HashMap<String, ReleaseUploadTransfer>,
+    pub releases: BTreeMap<String, ReleaseUploadTransfer>,
     pub total: UploadTransfer,
 }
 
@@ -53,7 +53,7 @@ impl OutboxTransfers {
             *sum = sum.checked_add(value).expect("upload bytes overflow");
         };
         let bytes = |value: i64| u64::try_from(value).expect("a release's bytes");
-        let mut releases: HashMap<String, ReleaseUploadTransfer> = sending
+        let mut releases: BTreeMap<String, ReleaseUploadTransfer> = sending
             .releases
             .iter()
             .map(|release| {
@@ -98,21 +98,15 @@ impl OutboxTransfers {
     }
 }
 
-/// A change to one release's transfer, or every transfer.
+/// A change to the releases' transfers, or to the files being sent
+/// together.
 #[derive(Debug, Clone, PartialEq)]
 pub enum OutboxTransferChange {
-    Updated {
-        release_id: String,
-        transfer: ReleaseUploadTransfer,
-    },
-    /// The release has nothing being sent any more.
-    Removed {
-        release_id: String,
-    },
+    /// Every release's transfer, as a reader first reads them, then each one
+    /// that moved, and each release with nothing being sent any more.
+    Release(bae_transfers::ReleaseTransferChange<ReleaseUploadTransfer>),
     /// The files being sent together.
-    TotalUpdated(UploadTransfer),
-    /// Every transfer, as a reader first reads them.
-    Reset(OutboxTransfers),
+    Total(UploadTransfer),
 }
 
 /// The transfers each delivery of the files being sent, or each move of
@@ -189,11 +183,11 @@ impl OutboxTransfersWatch {
         Self { transfers: SendingTransfers::of(sending, watch, clock), told: None }
     }
 
-    /// Every transfer as one `Reset` on the first read; after that, wait for
-    /// transfers to change and name each one. A failed read is handed on,
-    /// and the next read that succeeds is a `Reset` again: a reader holds
-    /// nothing it knows to be current once a read failed. `None` once the
-    /// query has ended with its store.
+    /// Every release's transfer as one `Reset`, and the total, on the first
+    /// read; after that, wait for transfers to change and name each one. A
+    /// failed read is handed on, and the next read that succeeds is a first
+    /// read again: a reader holds nothing it knows to be current once a read
+    /// failed. `None` once the query has ended with its store.
     pub async fn next(&mut self) -> Option<coven::CovenResult<Vec<OutboxTransferChange>>> {
         loop {
             let next = match self.transfers.next().await? {
@@ -205,7 +199,12 @@ impl OutboxTransfersWatch {
             };
             let Some(told) = &self.told else {
                 self.told = Some(next.clone());
-                return Some(Ok(vec![OutboxTransferChange::Reset(next)]));
+                return Some(Ok(vec![
+                    OutboxTransferChange::Release(bae_transfers::ReleaseTransferChange::Reset(
+                        next.releases,
+                    )),
+                    OutboxTransferChange::Total(next.total),
+                ]));
             };
             let changes = changes_between(told, &next);
             self.told = Some(next);
@@ -258,23 +257,13 @@ impl OutboxTotalTransferWatch {
 
 /// What a reader told `told` must hear to hold `next`.
 fn changes_between(told: &OutboxTransfers, next: &OutboxTransfers) -> Vec<OutboxTransferChange> {
-    let mut changes: Vec<OutboxTransferChange> = told
-        .releases
-        .keys()
-        .filter(|release_id| !next.releases.contains_key(*release_id))
-        .map(|release_id| OutboxTransferChange::Removed { release_id: release_id.clone() })
-        .collect();
-    changes.extend(
-        next.releases
-            .iter()
-            .filter(|(release_id, transfer)| told.releases.get(*release_id) != Some(*transfer))
-            .map(|(release_id, transfer)| OutboxTransferChange::Updated {
-                release_id: release_id.clone(),
-                transfer: *transfer,
-            }),
-    );
+    let mut changes: Vec<OutboxTransferChange> =
+        bae_transfers::release_changes(&told.releases, &next.releases)
+            .into_iter()
+            .map(OutboxTransferChange::Release)
+            .collect();
     if told.total != next.total {
-        changes.push(OutboxTransferChange::TotalUpdated(next.total));
+        changes.push(OutboxTransferChange::Total(next.total));
     }
     changes
 }

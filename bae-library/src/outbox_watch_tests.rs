@@ -1,5 +1,6 @@
 use super::*;
 use bae_db::{DbSendingFile, DbSendingRelease};
+use bae_transfers::ReleaseTransferChange;
 
 fn file(n: u128) -> coven::FileId {
     coven::FileId(uuid::Uuid::from_u128(n))
@@ -47,10 +48,14 @@ fn a_reader_hears_each_release_that_moved_and_each_that_left() {
     let changes = changes_between(&told, &next);
 
     assert_eq!(changes.len(), 3, "{changes:?}");
-    assert!(changes.contains(&OutboxTransferChange::Removed { release_id: second }));
-    assert!(changes
-        .contains(&OutboxTransferChange::Updated { release_id: first, transfer: release(200, 8) }));
-    assert!(changes.contains(&OutboxTransferChange::TotalUpdated(total(40, 8))));
+    assert!(changes.contains(&OutboxTransferChange::Release(ReleaseTransferChange::Removed {
+        release_id: second
+    })));
+    assert!(changes.contains(&OutboxTransferChange::Release(ReleaseTransferChange::Updated {
+        release_id: first,
+        progress: release(200, 8)
+    })));
+    assert!(changes.contains(&OutboxTransferChange::Total(total(40, 8))));
 }
 
 #[test]

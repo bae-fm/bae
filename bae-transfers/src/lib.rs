@@ -33,7 +33,8 @@ pub use release_queue::{
 pub use release_state::{release_transfer_state_on, ReleaseTransferState};
 pub use release_storage_action::StoredTransition;
 pub use release_transfers::{
-    ReleaseTransferChange, ReleaseTransferReport, ReleaseTransfers, ReleaseTransfersWatch,
+    release_changes, ReleaseTransferChange, ReleaseTransferReport, ReleaseTransfers,
+    ReleaseTransfersWatch,
 };
 
 /// The pin queue: its table, and the bytes its active download has moved.

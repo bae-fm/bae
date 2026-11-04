@@ -114,26 +114,15 @@ pub(crate) fn release_upload_transfers(
                     continue;
                 }
             };
-            for change in changes {
-                match change {
-                    OutboxTransferChange::Updated { release_id, transfer } => {
-                        writer.set(release_id, upload(transfer))
-                    }
-                    OutboxTransferChange::Removed { release_id } => {
-                        writer.remove(release_id.as_bytes())
-                    }
+            let releases = changes
+                .into_iter()
+                .filter_map(|change| match change {
+                    OutboxTransferChange::Release(change) => Some(change),
                     // The total is its own stream.
-                    OutboxTransferChange::TotalUpdated(_) => {}
-                    OutboxTransferChange::Reset(all) => writer.reset(
-                        all.releases
-                            .into_iter()
-                            .map(|(release_id, transfer)| {
-                                (release_id.into_bytes(), upload(transfer))
-                            })
-                            .collect(),
-                    ),
-                }
-            }
+                    OutboxTransferChange::Total(_) => None,
+                })
+                .collect();
+            write_release_changes(&writer, releases, upload);
         }
     })
 }

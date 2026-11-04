@@ -515,16 +515,25 @@ fn apply_transfer_changes(
     changes: Vec<crate::OutboxTransferChange>,
 ) {
     use crate::OutboxTransferChange;
+    use bae_transfers::ReleaseTransferChange;
     for change in changes {
         match change {
-            OutboxTransferChange::Reset(transfers) => *held = Some(transfers),
-            OutboxTransferChange::Updated { release_id, transfer } => {
-                held.as_mut().expect("a reset comes first").releases.insert(release_id, transfer);
+            OutboxTransferChange::Release(ReleaseTransferChange::Reset(releases)) => {
+                *held = Some(crate::OutboxTransfers {
+                    releases,
+                    total: crate::UploadTransfer { bar: None, throughput_bps: 0 },
+                });
             }
-            OutboxTransferChange::Removed { release_id } => {
+            OutboxTransferChange::Release(ReleaseTransferChange::Updated {
+                release_id,
+                progress,
+            }) => {
+                held.as_mut().expect("a reset comes first").releases.insert(release_id, progress);
+            }
+            OutboxTransferChange::Release(ReleaseTransferChange::Removed { release_id }) => {
                 held.as_mut().expect("a reset comes first").releases.remove(&release_id);
             }
-            OutboxTransferChange::TotalUpdated(total) => {
+            OutboxTransferChange::Total(total) => {
                 held.as_mut().expect("a reset comes first").total = total;
             }
         }

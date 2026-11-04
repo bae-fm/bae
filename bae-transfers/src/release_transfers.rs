@@ -127,7 +127,7 @@ impl<Progress: Clone + PartialEq> ReleaseTransfersWatch<Progress> {
         loop {
             self.transfers.changed().await.ok()?;
             let next = self.transfers.borrow_and_update().clone();
-            let changes = changes_between(told, &next);
+            let changes = release_changes(told, &next);
             *told = next;
             if !changes.is_empty() {
                 return Some(changes);
@@ -152,8 +152,9 @@ impl<Progress: Clone + PartialEq> ReleaseTransfersWatch<Progress> {
     }
 }
 
-/// What a reader told `told` must hear to hold `next`.
-fn changes_between<Progress: Clone + PartialEq>(
+/// What a reader told each release's progress in `told` must hear to hold
+/// `next`: each release that left, then each that came or moved.
+pub fn release_changes<Progress: Clone + PartialEq>(
     told: &BTreeMap<String, Progress>,
     next: &BTreeMap<String, Progress>,
 ) -> Vec<ReleaseTransferChange<Progress>> {
