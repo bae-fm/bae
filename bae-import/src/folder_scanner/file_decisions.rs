@@ -1,7 +1,6 @@
 //! The person's decisions about a folder's files, which a scan applies over
 //! what it proposes: which audio each track sheet's `FILE` references
-//! describe, which disc each sheet's entries become, and the audio offered as
-//! a choice for a binding.
+//! describe and which disc each sheet's entries become.
 
 use super::*;
 
@@ -202,41 +201,4 @@ impl StoredCandidateEdits {
     pub fn take(mut self, content_hash: &str) -> CandidateFileEdits {
         self.0.remove(content_hash).unwrap_or_default()
     }
-}
-
-/// Whether one of the folder's audio files can back a sheet's binding, decided
-/// from its stored scan facts. Offering a file the commit would then reject is
-/// the failure the editable binding exists to remove, so the refusal and its
-/// reason are settled here rather than left for the commit to discover.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SheetBindingOffer {
-    /// The sheet can be bound to this audio.
-    Offered,
-    /// bae can't carve tracks out of this container: the codec doesn't back
-    /// CUE playback. Carries the probed codec so the picker says
-    /// which file and why.
-    RefusedCodec { codec: String },
-    /// The sheet names boundaries outside this file's measured duration.
-    RefusedTiming,
-    /// FFmpeg can't identify a playable stream in the file at all — a download
-    /// truncated after its header, or otherwise broken audio. Nothing can be
-    /// carved out of it either.
-    RefusedUnreadable,
-}
-
-/// One of the folder's audio files, as a choice for a sheet's binding.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SheetBindingOption {
-    /// The audio's [`ScannedFile::relative_path`] — the id the binding is set
-    /// by (`ImportServiceHandle::set_sheet_binding`).
-    pub file_id: String,
-    pub offer: SheetBindingOffer,
-}
-
-/// One CUE FILE reference, its current association, and available choices.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SheetReferenceOptions {
-    pub file_reference: String,
-    pub file_id: Option<String>,
-    pub options: Vec<SheetBindingOption>,
 }

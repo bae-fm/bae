@@ -44,8 +44,11 @@ pub(crate) use folder_times::FolderTimes;
 pub use release_decision::*;
 pub(crate) use scan::file_modified_at_ns;
 pub use scan::*;
-pub use sheet_bindings::DiscLayout;
 use sheet_bindings::*;
+pub use sheet_bindings::{
+    BoundTrackSheet, DiscLayout, SheetAudioFile, SheetBinding, SheetBindingOffer,
+    SheetBindingOption, SheetReferenceOptions, TrackSheetFile, UnreadableAudio,
+};
 use sheet_references::resolve_cue_audio_path;
 use sidecars::categorize_sidecar;
 

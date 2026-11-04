@@ -52,14 +52,6 @@ impl InvalidReason {
     }
 }
 
-/// A track sheet bound to audio that holds nothing bae can read: the error
-/// settling a release's sheet decisions over its files gives.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("a track sheet is bound to {path}, which holds no audio bae can read")]
-pub struct UnreadableAudio {
-    pub path: String,
-}
-
 /// Why one audio file can't be played.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AudioDamage {

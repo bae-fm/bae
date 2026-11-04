@@ -1,6 +1,6 @@
-//! The files a scan finds in a folder: each file and the role it plays, the
-//! track sheets bound to the audio they describe, and a release's files with
-//! the content hash they are known by.
+//! The files a scan finds in a folder: each file and the role it plays, and
+//! a release's files with the content hash they are known by. The audio a
+//! track sheet is bound to is settled in `sheet_bindings`.
 
 use super::*;
 
@@ -133,57 +133,6 @@ pub enum FileRole {
     Other,
 }
 
-/// One `FILE` reference of a track sheet and the folder audio it describes.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct SheetAudioFile {
-    /// The path as the sheet's `FILE` directive spells it.
-    pub file_reference: String,
-    /// The [`ScannedFile::relative_path`] of the audio it describes.
-    pub file_id: String,
-}
-
-/// What a track sheet's `FILE` directives resolved to. The scan settles it
-/// once, against the folder's audio, and every reader takes the settled
-/// pairing from here rather than resolving the directives again. A sheet that
-/// describes nothing is a question for the user, never a verdict on the
-/// folder.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum SheetBinding {
-    /// Every `FILE` reference resolved through the sheet itself, in the
-    /// sheet's reference order. Never empty.
-    Resolved { files: Vec<SheetAudioFile> },
-    /// The directive named audio that is not in this folder, named several and
-    /// only some resolved, or the sheet names none at all.
-    Unresolved { files: Vec<SheetAudioFile> },
-    /// Every `FILE` reference found its audio, but the sheet's boundaries do
-    /// not fit inside it: a track starts or ends past the audio's end, or
-    /// before the track ahead of it. The physical audio files import
-    /// independently.
-    RefusedTiming { files: Vec<SheetAudioFile> },
-    /// The directive resolved, but bae can't carve tracks out of that
-    /// audio: the codec doesn't back CUE playback. The physical audio files
-    /// still import independently.
-    RefusedCodec { codec: String },
-}
-
-impl SheetBinding {
-    /// The audio this sheet describes, one entry per `FILE` reference in the
-    /// sheet's order, or `None` when it describes nothing.
-    pub fn audio_files(&self) -> Option<&[SheetAudioFile]> {
-        match self {
-            Self::Resolved { files }
-            | Self::Unresolved { files }
-            | Self::RefusedTiming { files } => Some(files),
-            Self::RefusedCodec { .. } => None,
-        }
-    }
-
-    /// Whether this sheet describes playable audio.
-    pub fn is_resolved(&self) -> bool {
-        matches!(self, Self::Resolved { .. })
-    }
-}
-
 /// A file the scan found, and its role.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CandidateFile {
@@ -199,66 +148,6 @@ impl CandidateFile {
                 &self.file.path,
             ))
         .then(|| crate::CoverChoice::local(self.file.relative_path.clone(), self.file.version()))
-    }
-}
-
-/// A track sheet the scan parsed, with whatever its `FILE` directive resolved to.
-#[derive(Debug, Clone, Copy)]
-pub struct TrackSheetFile<'a> {
-    pub file: &'a ScannedFile,
-    pub sheet: &'a crate::cue_flac::CueSheet,
-    pub binding: &'a SheetBinding,
-    pub disc: SheetDisc,
-}
-
-/// A track sheet whose `FILE` directives resolved, paired with the audio it
-/// describes — the unit the track mapper and the disc-ID computer consume.
-#[derive(Debug, Clone)]
-pub struct BoundTrackSheet<'a> {
-    pub file: &'a ScannedFile,
-    pub sheet: &'a crate::cue_flac::CueSheet,
-    /// Every CUE `FILE` reference paired with the physical audio it resolved
-    /// to, in the sheet's reference order.
-    pub audio_files: Vec<(&'a str, &'a ScannedFile)>,
-    pub disc: SheetDisc,
-}
-
-/// The audio a sheet track plays from, among the sheet's `FILE` references
-/// resolved to scanned audio.
-pub(super) fn resolved_audio_for<'a>(
-    resolved: &[(&str, &'a ScannedFile)],
-    track: &crate::cue_flac::CueTrack,
-) -> Option<&'a ScannedFile> {
-    resolved
-        .iter()
-        .find(|(file_reference, _)| *file_reference == track.file_reference)
-        .map(|(_, audio)| *audio)
-}
-
-impl<'a> BoundTrackSheet<'a> {
-    /// The audio one of the sheet's tracks plays from.
-    pub fn audio_for(&self, track: &crate::cue_flac::CueTrack) -> &'a ScannedFile {
-        resolved_audio_for(&self.audio_files, track)
-            .expect("a bound sheet resolved every playable track's audio")
-    }
-
-    /// Whether this sheet carves the release's tracks out of its container.
-    ///
-    /// One rule, stated once, so "bound but ignored" and "assigned but unbound"
-    /// cannot mean two different things: a sheet speaks for its container only
-    /// when it is bound, assigned to a disc, and describes something. A sheet
-    /// that carves nothing leaves its container a track of its own.
-    pub fn carves(&self) -> bool {
-        self.disc_number().is_some() && self.sheet.playable_track_count() > 0
-    }
-
-    /// The disc this sheet's entries become, or `None` when it is out of the
-    /// tracklist.
-    pub fn disc_number(&self) -> Option<u32> {
-        match self.disc {
-            SheetDisc::Disc { number } => Some(number),
-            SheetDisc::Ignored => None,
-        }
     }
 }
 
@@ -463,90 +352,6 @@ impl CategorizedFiles {
     /// Changing an audio file's metadata changes it.
     pub fn file_metadata_identity(&self) -> String {
         content_hash_of(self.audio())
-    }
-
-    /// Every FILE reference with its association and the audio it can use.
-    pub fn sheet_binding_options(&self, sheet_file_id: &str) -> Vec<SheetReferenceOptions> {
-        let Some(sheet) =
-            self.track_sheets().find(|sheet| sheet.file.relative_path == sheet_file_id)
-        else {
-            return Vec::new();
-        };
-        sheet
-            .sheet
-            .audio_file_references()
-            .into_iter()
-            .map(|reference| {
-                let associated = sheet
-                    .binding
-                    .audio_files()
-                    .into_iter()
-                    .flatten()
-                    .find(|file| file.file_reference == reference);
-                SheetReferenceOptions {
-                    file_reference: reference.to_owned(),
-                    file_id: associated.map(|file| file.file_id.clone()),
-                    options: self
-                        .audio()
-                        .filter(|audio| {
-                            !sheet.binding.audio_files().into_iter().flatten().any(|file| {
-                                file.file_reference != reference
-                                    && file.file_id == audio.relative_path
-                            })
-                        })
-                        .map(|audio| SheetBindingOption {
-                            file_id: audio.relative_path.clone(),
-                            offer: match cue_pair_codec_label(audio) {
-                                CueCodecLabel::Supported
-                                    if sheet_reference_fits_audio(
-                                        sheet.sheet,
-                                        reference,
-                                        audio,
-                                    ) =>
-                                {
-                                    SheetBindingOffer::Offered
-                                }
-                                CueCodecLabel::Supported => SheetBindingOffer::RefusedTiming,
-                                CueCodecLabel::Unsupported(codec) => {
-                                    SheetBindingOffer::RefusedCodec { codec }
-                                }
-                                CueCodecLabel::Unprobeable => SheetBindingOffer::RefusedUnreadable,
-                            },
-                        })
-                        .collect(),
-                }
-            })
-            .collect()
-    }
-
-    /// Apply the user's sheet decisions over what the scan proposed, and
-    /// re-derive everything they decide: what each sheet ends up naming, the
-    /// probed codec that can refuse a binding, and which disc each sheet is.
-    ///
-    /// Disc assignments settle after bindings, because the position a sheet
-    /// with no stored decision takes is a position among the sheets that ended
-    /// up bound.
-    ///
-    /// Idempotent, and it only ever *overrides*: a file or sheet with no
-    /// decision keeps what it already has, which is what makes a cleared
-    /// binding stay cleared instead of springing back to the scan's guess.
-    pub fn apply_candidate_file_edits(
-        &mut self,
-        edits: &CandidateFileEdits,
-    ) -> Result<(), UnreadableAudio> {
-        match settle_sheet_bindings(
-            &mut self.files,
-            &edits.sheet_bindings,
-            &ScanCancellation::new(),
-        )
-        .expect("a fresh cancellation token cannot be cancelled")
-        {
-            SettledBindings::Settled => {
-                settle_sheet_discs(&mut self.files, &self.parts, &edits.sheet_discs);
-                Ok(())
-            }
-            SettledBindings::CorruptAudio { path } => Err(UnreadableAudio { path }),
-        }
     }
 }
 
