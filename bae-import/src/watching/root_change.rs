@@ -114,8 +114,7 @@ pub(super) fn root_change(
         };
         let names: Vec<&std::ffi::OsStr> =
             relative.components().map(|component| component.as_os_str()).collect();
-        // The encoded bytes are documented as safe to inspect for ASCII.
-        if names.iter().any(|name| name.as_encoded_bytes().first() == Some(&b'.')) {
+        if names.iter().any(|name| crate::folder_scanner::is_hidden_entry(name)) {
             continue;
         }
         let Some(first) = names.first() else {

@@ -37,6 +37,14 @@ pub(crate) fn is_cue_file(path: &Path) -> bool {
     has_extension(path, "cue")
 }
 
+/// Whether a directory entry is hidden, which the scan never lists: its name
+/// starts with a dot.
+pub(crate) fn is_hidden_entry(name: &std::ffi::OsStr) -> bool {
+    // The encoded bytes are documented as safe to inspect for ASCII, which a
+    // leading `.` is, whatever the rest of the name holds.
+    name.as_encoded_bytes().first() == Some(&b'.')
+}
+
 /// Check if a file is noise (.DS_Store, Thumbs.db, etc.)
 pub(super) fn is_noise_file(path: &Path) -> bool {
     path.file_name()

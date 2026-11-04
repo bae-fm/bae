@@ -49,9 +49,7 @@ impl DirectoryReader for OsDirectoryReader {
             let entry = entry.map_err(|source| FolderScanError::io(&absolute, source))?;
             let path = entry.path();
             let name = entry.file_name();
-            // The encoded bytes are documented as safe to inspect for ASCII,
-            // which a leading `.` is, whatever the rest of the name holds.
-            if name.as_encoded_bytes().first() == Some(&b'.') {
+            if is_hidden_entry(&name) {
                 debug!("ignoring hidden folder-scan entry {}", path.display());
                 continue;
             }

@@ -32,7 +32,9 @@ pub use candidates::*;
 pub use categorize::is_audio_file;
 pub use categorize::scanned_audio;
 use categorize::*;
-pub(crate) use categorize::{categorize_library_files, has_extension, is_cue_file};
+pub(crate) use categorize::{
+    categorize_library_files, has_extension, is_cue_file, is_hidden_entry,
+};
 pub use file_decisions::*;
 pub(crate) use file_reads::FileReads;
 use file_reads::Playability;
