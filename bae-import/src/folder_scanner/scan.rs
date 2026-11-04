@@ -7,7 +7,7 @@ mod listing;
 mod root;
 mod scanned_decision;
 pub(crate) use listing::{
-    file_modified_at_ns, DirectoryListing, DirectoryReader, OsDirectoryReader,
+    file_modified_at_ns, DirectoryListing, DirectoryReader, FileEntry, OsDirectoryReader,
 };
 pub(crate) use root::scan_for_candidates_with_reader_cancellable_and_directories;
 use scanned_decision::scanned_decision;

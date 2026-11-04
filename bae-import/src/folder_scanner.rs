@@ -52,29 +52,10 @@ pub use sheet_bindings::{
 use sheet_references::resolve_cue_audio_path;
 use sidecars::categorize_sidecar;
 
-/// The text files a folder carries beside its audio: track sheets, rip logs
-/// and the AccurateRip reports rippers write beside them, notes, playlists.
-const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "accurip", "txt", "m3u", "m3u8"];
-
-/// Extensions used by download clients and browsers to mark an
-/// in-progress download. Presence of any of these anywhere in a folder means
-/// the folder is mid-download and should not surface as an import candidate.
-const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "aria2", "partial"];
-
-/// A single file entry in a candidate's selected file set.
-#[derive(Debug, Clone)]
-pub struct FileEntry {
-    /// Path relative to the scan root
-    pub path: PathBuf,
-    /// File size in bytes
-    pub size: u64,
-    pub modified_at_ns: i64,
-}
-
 /// A pre-collected list of files for release candidate detection.
 ///
 /// Built by walking the filesystem once.
-pub struct CandidateFileIndex {
+pub(crate) struct CandidateFileIndex {
     files: Vec<FileEntry>,
     dirs: BTreeMap<PathBuf, DirEntry>,
 }
@@ -116,7 +97,7 @@ struct DirEntry {
 }
 
 impl CandidateFileIndex {
-    pub fn new(files: Vec<FileEntry>) -> Self {
+    pub(crate) fn new(files: Vec<FileEntry>) -> Self {
         let mut tree = Self { files, dirs: BTreeMap::new() };
         tree.rebuild_index();
         tree

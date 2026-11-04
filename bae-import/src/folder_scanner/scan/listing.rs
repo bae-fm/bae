@@ -3,7 +3,15 @@
 
 use super::*;
 
-// ── Progressive directory walker ───────────────────────────────────────────
+/// One file a directory listing found.
+#[derive(Debug, Clone)]
+pub(crate) struct FileEntry {
+    /// Its path relative to the root the listing reads under.
+    pub(crate) path: PathBuf,
+    /// Its size in bytes.
+    pub(crate) size: u64,
+    pub(crate) modified_at_ns: i64,
+}
 
 #[derive(Debug)]
 pub(crate) struct DirectoryListing {

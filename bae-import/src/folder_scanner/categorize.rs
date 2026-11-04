@@ -7,6 +7,15 @@ use play_order::lay_audio_in_play_order;
 
 // ── Extension-based classification (pure, no I/O) ──────────────────────────
 
+/// The text files a folder carries beside its audio: track sheets, rip logs
+/// and the AccurateRip reports rippers write beside them, notes, playlists.
+const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "accurip", "txt", "m3u", "m3u8"];
+
+/// Extensions used by download clients and browsers to mark an
+/// in-progress download. Presence of any of these anywhere in a folder means
+/// the folder is mid-download and should not surface as an import candidate.
+const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "aria2", "partial"];
+
 /// Check if a file is an audio file based on extension
 pub fn is_audio_file(path: &Path) -> bool {
     path.extension()
