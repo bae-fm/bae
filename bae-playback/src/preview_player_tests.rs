@@ -2,7 +2,7 @@ use super::*;
 use crate::audio_output::{
     audio_event_channel, AudioOutput, CaptureAudioDevice, FailingAudioDevice, FailingAudioOutput,
 };
-use bae_audio::test_samples::filled_sparse_buffer;
+use bae_audio::test_samples::{filled_sparse_buffer, samples_as_f32};
 use std::sync::Arc;
 
 /// A one-second stereo preview of `preview.wav` over `buffer` — the shape every
@@ -110,12 +110,7 @@ async fn preview_plays_only_the_requested_sample_window() {
     let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
-    let expected: Vec<f32> = reference
-        .samples
-        .iter()
-        .take(1_000)
-        .map(|sample| *sample as f32 / i32::MAX as f32)
-        .collect();
+    let expected: Vec<f32> = samples_as_f32(&reference).into_iter().take(1_000).collect();
     assert!(captured.len() >= expected.len());
     for (index, (actual, expected)) in captured.iter().zip(&expected).enumerate() {
         assert!(
@@ -157,13 +152,8 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
     let half_second = probe.sample_rate as usize * probe.channels as usize / 2;
-    let expected: Vec<f32> = reference
-        .samples
-        .iter()
-        .skip(half_second)
-        .take(1_000)
-        .map(|sample| *sample as f32 / i32::MAX as f32)
-        .collect();
+    let expected: Vec<f32> =
+        samples_as_f32(&reference).into_iter().skip(half_second).take(1_000).collect();
     assert!(captured.len() >= expected.len());
     for (index, (actual, expected)) in captured.iter().zip(&expected).enumerate() {
         assert!(
@@ -277,13 +267,8 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
     let played_samples = restarted_at.frames(probe.sample_rate) as usize * probe.channels as usize;
-    let expected: Vec<f32> = reference
-        .samples
-        .iter()
-        .skip(played_samples)
-        .take(1_000)
-        .map(|sample| *sample as f32 / i32::MAX as f32)
-        .collect();
+    let expected: Vec<f32> =
+        samples_as_f32(&reference).into_iter().skip(played_samples).take(1_000).collect();
     assert!(captured.len() >= expected.len());
     for (index, (actual, expected)) in captured.iter().zip(&expected).enumerate() {
         assert!(
