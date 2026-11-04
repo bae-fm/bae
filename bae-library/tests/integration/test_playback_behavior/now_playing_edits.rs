@@ -202,7 +202,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
             .expect("the playing value arrives")
             .expect("the playback values resolve")
             .expect("the library holds the playing track");
-        let PlaybackState::Playing { track } = value.playback.state else {
+        let PlaybackState::Playing { track } = &value.playback.state else {
             panic!("the first value shows the track playing, not {:?}", value.playback.state);
         };
         assert_eq!(track.track.track_id, track_id);
@@ -222,10 +222,18 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
             seen.windows(2).all(|pair| pair[0] < pair[1]),
             "the position moves forward: {seen:?}"
         );
-        assert!(
-            tokio::time::timeout(Duration::from_millis(500), values.next()).await.is_err(),
-            "no playback value follows the positions"
-        );
+        // A volume change commits after those positions, so its value comes
+        // after any value they would have sent: the next value must be it,
+        // the first value with only the volume changed.
+        fixture.playback_handle.set_volume(SENTINEL_VOLUME);
+        let next = tokio::time::timeout(HANG_GUARD, values.next())
+            .await
+            .expect("the volume's value arrives")
+            .expect("the playback values resolve")
+            .expect("the library holds the playing track");
+        let mut expected = value.clone();
+        expected.playback.volume = SENTINEL_VOLUME;
+        assert_eq!(next, expected, "no playback value follows the positions");
     })
     .await;
 }

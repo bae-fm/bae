@@ -362,12 +362,21 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
         "nothing downloads before the pin"
     );
 
-    // The memory provider holds each request's answer.
-    home.set_faults(coven::Faults {
-        delay: std::time::Duration::from_secs(2),
-        ..coven::Faults::none()
-    })
-    .await;
+    // The memory provider holds the read of the stored file until the test
+    // has seen it downloading.
+    let files_prefix = coven::ObjectPrefix::files(manager.database.store_id_for_test());
+    let stored = home
+        .request_trace()
+        .into_iter()
+        .rev()
+        .find_map(|request| match request {
+            coven::MemoryRequest::Create(path) if files_prefix.contains(&path) => Some(path),
+            _ => None,
+        })
+        .expect("the upload created the stored file");
+    let (observed, reading) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_read(stored, observed, resumed).await;
     let pin = tokio::spawn({
         let manager = manager.library.clone();
         let release_id = release_id.clone();
@@ -392,6 +401,8 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
         Some(bae_views::album_detail::FilePin::Downloading { file: fetched }),
         "the file reads as downloading by the file coven fetches"
     );
+    reading.await.unwrap();
+    resume.send(()).unwrap();
 
     pin.await.unwrap().unwrap();
     assert_eq!(

@@ -198,10 +198,13 @@ async fn a_storage_row_counts_the_file_being_sent() {
         windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
-    home.set_faults(coven::Faults {
-        delay: std::time::Duration::from_secs(2),
-        ..coven::Faults::none()
-    })
+    let (started, created) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_creation(
+        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        started,
+        resumed,
+    )
     .await;
     let drain = tokio::spawn({
         let manager = manager.library.clone();
@@ -222,6 +225,8 @@ async fn a_storage_row_counts_the_file_being_sent() {
     })
     .await
     .expect("the row counts the file being sent");
+    created.await.unwrap();
+    resume.send(()).unwrap();
     drain.await.unwrap().unwrap();
 }
 
@@ -240,11 +245,14 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     .await;
     let mut activity = views(&manager.library).subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.uploads, None);
-    // Held in flight long enough that its start is read while it runs.
-    home.set_faults(coven::Faults {
-        delay: std::time::Duration::from_secs(2),
-        ..coven::Faults::none()
-    })
+    // Held in flight until its start is read.
+    let (started, created) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_creation(
+        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        started,
+        resumed,
+    )
     .await;
     let drain = tokio::spawn({
         let manager = manager.library.clone();
@@ -257,6 +265,8 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         }
     };
     assert_eq!(sending, bae_views::UploadsInFlight { sending: 1, waiting: 0 });
+    created.await.unwrap();
+    resume.send(()).unwrap();
     while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}
     drain.await.unwrap().unwrap();
 }

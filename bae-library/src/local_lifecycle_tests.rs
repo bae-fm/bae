@@ -524,11 +524,17 @@ async fn a_lookup_during_a_removal_waits_for_it() {
     deleting.notified().await;
     assert!(home.record(id).exists());
 
+    let waiting = super::removal_lock_waits::when_waiting(home.app_dir.removal_lock());
     let lookup = tokio::spawn({
         let home = home.clone();
         async move { home.unfinished().await }
     });
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    // The lookup found the removal holding the lock and waits on it, which
+    // only the removal letting go ends.
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, waiting)
+        .await
+        .expect("the lookup reaches the removal's lock")
+        .unwrap();
     assert!(!lookup.is_finished(), "the lookup waits for the removal");
 
     delete_may_finish.notify_one();

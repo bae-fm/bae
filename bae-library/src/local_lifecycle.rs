@@ -273,7 +273,8 @@ struct RemovalLock {
 }
 
 impl RemovalLock {
-    /// Wait for the lock.
+    /// Wait for the lock: take it at once if no one holds it, else block
+    /// until its holder lets it go.
     async fn acquire(app_dir: &AppDir, diagnostics: &Diagnostics) -> Result<Self, LibraryError> {
         let path = app_dir.removal_lock();
         file_work(diagnostics, "take the removal lock", move || {
@@ -283,11 +284,52 @@ impl RemovalLock {
                 .write(true)
                 .open(&path)
                 .map_err(|error| io_at(&path, error))?;
+            let attempt = file.try_clone().map_err(|error| io_at(&path, error))?;
+            match coven::FileLock::try_lock(attempt, coven::LockMode::Exclusive) {
+                Ok(file) => return Ok(Self { _file: file }),
+                Err(std::fs::TryLockError::WouldBlock) => {
+                    #[cfg(test)]
+                    removal_lock_waits::waiting(&path);
+                }
+                Err(std::fs::TryLockError::Error(error)) => return Err(io_at(&path, error)),
+            }
             let file = coven::FileLock::lock(file, coven::LockMode::Exclusive)
                 .map_err(|error| io_at(&path, error))?;
             Ok(Self { _file: file })
         })
         .await
+    }
+}
+
+/// Where a test hears that a call found the removal lock held and is about
+/// to wait for it.
+#[cfg(test)]
+pub(crate) mod removal_lock_waits {
+    use std::path::{Path, PathBuf};
+    use std::sync::Mutex;
+
+    static WATCHED: Mutex<Vec<(PathBuf, tokio::sync::oneshot::Sender<()>)>> =
+        Mutex::new(Vec::new());
+
+    /// Told once a call finds the lock at `path` held.
+    pub(crate) fn when_waiting(path: PathBuf) -> tokio::sync::oneshot::Receiver<()> {
+        let (told, telling) = tokio::sync::oneshot::channel();
+        WATCHED.lock().unwrap().push((path, told));
+        telling
+    }
+
+    pub(super) fn waiting(path: &Path) {
+        let mut watched = WATCHED.lock().unwrap();
+        let (found, rest): (Vec<_>, Vec<_>) =
+            std::mem::take(&mut *watched).into_iter().partition(|(watched, _)| watched == path);
+        *watched = rest;
+        for (_, told) in found {
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "a test that stopped listening has no use for it"
+            )]
+            let _ = told.send(());
+        }
     }
 }
 

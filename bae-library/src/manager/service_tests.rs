@@ -244,13 +244,16 @@ async fn a_done_row_carries_its_release_upload() {
         ]
     );
 
-    // Held in flight long enough that its start is read while it runs.
+    // Held in flight until its start is read.
+    let (started, created) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
     manager
         .storage
-        .set_faults(coven::Faults {
-            delay: std::time::Duration::from_secs(2),
-            ..coven::Faults::none()
-        })
+        .hold_next_creation(
+            coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+            started,
+            resumed,
+        )
         .await;
     let drain = tokio::spawn({
         let manager = manager.library.clone();
@@ -265,6 +268,8 @@ async fn a_done_row_carries_its_release_upload() {
     })
     .await
     .expect("a row counts its file being sent");
+    created.await.unwrap();
+    resume.send(()).unwrap();
     drain.await.unwrap().unwrap();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while done_uploads(&subscription.next().await.unwrap().windows)
@@ -493,12 +498,10 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
     });
     admission.await.unwrap();
     let closing = manager.clone();
-    let mut close = tokio::spawn(async move { closing.close().await });
+    let close = tokio::spawn(async move { closing.close().await });
     reached.await.unwrap();
-    assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(50), &mut close).await.is_err(),
-        "close must wait for rollback before closing the database"
-    );
+    // Close waits for the rollback: the operation's read of the database
+    // after the release fails if close had closed it first.
     assert!(manager.run_file_operation("late operation", |_| async { Ok(()) }).await.is_err());
     release.send(()).unwrap();
     operation.await.unwrap().unwrap();
@@ -570,10 +573,13 @@ async fn the_transfers_name_only_the_files_being_sent() {
         "files that only wait have no transfer"
     );
 
-    home.set_faults(coven::Faults {
-        delay: std::time::Duration::from_secs(2),
-        ..coven::Faults::none()
-    })
+    let (started, created) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_creation(
+        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        started,
+        resumed,
+    )
     .await;
     let drain = tokio::spawn({
         let manager = manager.library.clone();
@@ -595,6 +601,8 @@ async fn the_transfers_name_only_the_files_being_sent() {
         "the release of the file being sent has its transfer: {sending:?}"
     );
 
+    created.await.unwrap();
+    resume.send(()).unwrap();
     drain.await.unwrap().unwrap();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
@@ -626,10 +634,13 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
     let idle = crate::UploadTransfer { bar: None, throughput_bps: 0 };
     assert_eq!(total.next().await.unwrap().unwrap(), idle);
 
-    home.set_faults(coven::Faults {
-        delay: std::time::Duration::from_secs(2),
-        ..coven::Faults::none()
-    })
+    let (started, created) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_creation(
+        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        started,
+        resumed,
+    )
     .await;
     let drain = tokio::spawn({
         let manager = manager.library.clone();
@@ -641,6 +652,8 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
         .unwrap()
         .unwrap();
     assert!(sending.bar.is_some(), "{sending:?}");
+    created.await.unwrap();
+    resume.send(()).unwrap();
     drain.await.unwrap().unwrap();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         let mut told = sending;
@@ -676,10 +689,13 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
 
     // The memory provider takes a request's bytes as it starts, then holds
     // the answer.
-    home.set_faults(coven::Faults {
-        delay: std::time::Duration::from_secs(2),
-        ..coven::Faults::none()
-    })
+    let (started, created) = tokio::sync::oneshot::channel();
+    let (resume, resumed) = tokio::sync::oneshot::channel();
+    home.hold_next_creation(
+        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        started,
+        resumed,
+    )
     .await;
     let drain = tokio::spawn({
         let manager = manager.library.clone();
@@ -723,6 +739,8 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     .await
     .expect("the file being sent is told by file");
     assert_eq!(fraction, 1.0);
+    created.await.unwrap();
+    resume.send(()).unwrap();
     drain.await.unwrap().unwrap();
 }
 
