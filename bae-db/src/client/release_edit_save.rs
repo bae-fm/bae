@@ -34,7 +34,7 @@ impl Database {
         write: ReleaseEditWrite,
         album_fields: AlbumFields,
     ) -> Result<(), IdentityWriteError> {
-        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
+        let now_dt = self.now_utc();
         let labels = self.label_parts(match &write {
             ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing.labels,
             ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing.labels,

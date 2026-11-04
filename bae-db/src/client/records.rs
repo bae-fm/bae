@@ -95,7 +95,7 @@ impl Database {
     /// `set_records_on`).
     #[cfg(all(desktop, any(test, feature = "test-utils")))]
     pub async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
+        let now = self.now_utc();
         self.call_sql(move |sql| set_records_on(&sql, &change, now)).await
     }
 

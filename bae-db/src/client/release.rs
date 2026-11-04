@@ -231,7 +231,7 @@ impl Database {
         metadata: ReleaseMetadataRows,
     ) -> Result<(), IdentityWriteError> {
         let labels = self.label_parts(&metadata.release.pressing.labels);
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
+        let now = self.now_utc().to_rfc3339();
         self.write_resolving_identities(move |sql| {
             write_release_metadata_on(
                 &sql,

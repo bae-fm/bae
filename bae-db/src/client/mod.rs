@@ -115,6 +115,11 @@ use query::*;
 use read::*;
 use write::*;
 
+/// `clock`'s time as a UTC date-time.
+pub fn utc_now(clock: &dyn coven::Clock) -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::<chrono::Utc>::from(clock.now())
+}
+
 struct DatabaseInner {
     /// The top-level coven handle owns the connection and exposes the host SQL
     /// path. Writes to synced tables are captured by coven's attached session.
@@ -257,6 +262,11 @@ impl Database {
     #[cfg(desktop)]
     pub fn now(&self) -> std::time::SystemTime {
         self.inner.clock.now()
+    }
+
+    /// Now, by the clock the store's writes stamp their rows with, as a UTC date-time.
+    pub fn now_utc(&self) -> chrono::DateTime<chrono::Utc> {
+        utc_now(self.inner.clock.as_ref())
     }
 
     /// Run one coven write, its future boxed to keep it off the caller's

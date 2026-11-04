@@ -19,8 +19,7 @@ impl LibraryManager {
     /// file count, and size from the library as it shows the row. Wakes the
     /// parked worker.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
-        let enqueued_at =
-            chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis();
+        let enqueued_at = bae_db::client::utc_now(self.clock.as_ref()).timestamp_millis();
         match self.downloads.enqueue_pinnable(release_ids, enqueued_at).await {
             Ok(true) => self.downloads.queued(),
             Ok(false) => debug!("enqueue_pins: nothing to pin"),

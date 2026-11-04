@@ -92,7 +92,7 @@ impl Database {
     pub fn label_parts(&self, labels: &[ReleaseLabel]) -> LabelParts {
         LabelParts {
             fresh_ids: labels.iter().map(|_| self.inner.ids.new_id().to_string()).collect(),
-            now: chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339(),
+            now: self.now_utc().to_rfc3339(),
         }
     }
 }

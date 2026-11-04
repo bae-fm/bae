@@ -147,7 +147,7 @@ impl Database {
         name: &crate::EnteredName,
     ) -> Result<(), DbError> {
         let (artist_id, name) = (artist_id.to_string(), name.as_str().to_string());
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
+        let now = self.now_utc().to_rfc3339();
         self.call_sql(move |sql| {
             settle_credit_name(&sql, &artist_id, Some(&CreditName::of(&name)), &now)?;
             Ok(())
@@ -168,7 +168,7 @@ impl Database {
     ) -> Result<(), DbError> {
         let (artist_id, key, name) =
             (artist_id.to_string(), key.to_string(), name.as_str().to_string());
-        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
+        let now = self.now_utc().to_rfc3339();
         self.call_sql(move |sql| {
             let renamed = CreditName::of(&name);
             if renamed.key == key {

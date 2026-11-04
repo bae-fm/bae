@@ -94,7 +94,7 @@ impl LibraryManager {
             )));
         }
 
-        let now = chrono::DateTime::<chrono::Utc>::from(self.clock.now());
+        let now = bae_db::client::utc_now(self.clock.as_ref());
         let mut credits: Vec<DbArtist> = Vec::new();
         let mut picked: Vec<String> = Vec::new();
         let mut credit_of = |assignment: &bae_import::ArtistAssignment| {

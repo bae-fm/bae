@@ -210,7 +210,7 @@ impl LibraryManager {
                             reason: bae_import::ImportFailureReason {
                                 detail: FIXTURE_IMPORT_FAILURE.to_string(),
                             },
-                            failed_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
+                            failed_at: bae_db::client::utc_now(self.clock.as_ref()),
                             identity_conflict: None,
                         },
                     )
