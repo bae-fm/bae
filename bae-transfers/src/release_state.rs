@@ -2,7 +2,7 @@
 //! as its detail shows it beside the library's rows.
 
 use crate::queued_releases::tables::download_phase_on;
-use crate::release_storage_action::{transfer_action_column, transfer_action_sql};
+use crate::release_storage_action::release_transfer_action_on;
 use crate::DownloadPhase;
 use bae_db::DbError;
 use bae_types::release_storage::ReleaseStorageAction;
@@ -24,10 +24,8 @@ pub fn release_transfer_state_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<ReleaseTransferState, DbError> {
-    let action = sql.query_row(
-        &format!("SELECT {} AS transfer_action", transfer_action_sql("?1")),
-        [release_id],
-        |row| transfer_action_column(row, "transfer_action"),
-    )?;
-    Ok(ReleaseTransferState { download: download_phase_on(sql, release_id)?, action })
+    Ok(ReleaseTransferState {
+        download: download_phase_on(sql, release_id)?,
+        action: release_transfer_action_on(sql, release_id)?,
+    })
 }

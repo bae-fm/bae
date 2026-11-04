@@ -4,7 +4,7 @@
 
 use bae_db::{Database, DbError};
 use bae_types::release_storage::ReleaseStorageAction;
-use coven::CovenWrite;
+use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, Row};
 
 /// Ends the storage transition of the release `?1`, whatever it is.
@@ -120,21 +120,25 @@ pub async fn end_release_storage_action(
 }
 
 /// The transition `release_id` is in now, as its reads show it.
+pub fn release_transfer_action_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Option<ReleaseStorageAction>, DbError> {
+    Ok(sql.query_row(
+        &format!("SELECT {} AS transfer_action", transfer_action_sql("?1")),
+        [release_id],
+        |row| transfer_action_column(row, "transfer_action"),
+    )?)
+}
+
+/// [`release_transfer_action_on`] on its own read.
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn release_transfer_action(
     database: &Database,
     release_id: &str,
 ) -> Result<Option<ReleaseStorageAction>, DbError> {
     let release_id = release_id.to_string();
-    database
-        .read(move |sql| {
-            Ok(sql.query_row(
-                &format!("SELECT {} AS transfer_action", transfer_action_sql("?1")),
-                [release_id],
-                |row| transfer_action_column(row, "transfer_action"),
-            )?)
-        })
-        .await
+    database.read(move |sql| release_transfer_action_on(&sql, &release_id)).await
 }
 
 /// Move every file of a release on this device only to the cloud, as one
