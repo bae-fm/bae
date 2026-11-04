@@ -20,6 +20,8 @@ mod airplay;
 mod cast;
 mod dlna;
 pub mod renderer;
+#[cfg(test)]
+mod test_support;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};

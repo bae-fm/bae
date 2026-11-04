@@ -1,15 +1,12 @@
 //! Cast discovery: mDNS record → [`RendererDevice`] mapping. The session and
 //! channel logic is tested generically in `crate::renderer`.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv6Addr};
 
 use super::discovery::{instance_name, map_device};
 use crate::renderer::{RendererConnection, RendererDevice};
+use crate::test_support::v4;
 use bae_playback::renderer::RendererKind;
-
-fn v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
-    IpAddr::V4(Ipv4Addr::new(a, b, c, d))
-}
 
 /// The Cast connection's address and port, for asserting on a mapped device.
 fn cast_addr(device: &RendererDevice) -> (IpAddr, u16) {

@@ -1,8 +1,5 @@
 use super::*;
-
-fn txt(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-    pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
-}
+use crate::test_support::txt;
 
 #[test]
 fn features_low_word_only() {

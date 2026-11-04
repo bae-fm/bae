@@ -1,12 +1,5 @@
 use super::*;
-
-fn txt(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-    pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
-}
-
-fn v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
-    IpAddr::from([a, b, c, d])
-}
+use crate::test_support::{txt, v4};
 
 /// A features string with bit 48 (CoreUtils pairing/encryption) set — the
 /// AirPlay 2 marker. Bit 48 is bit 16 of the high word: `0xLOW,0xHIGH` =
