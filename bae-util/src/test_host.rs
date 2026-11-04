@@ -3,13 +3,14 @@
 //! recorded, and a test can hold requests until it lets them through.
 
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 /// The local host. Requests reach it through [`crate::http::Http::serve`]
 /// pointed at [`FakeHost::base_url`].
 pub struct FakeHost {
     base_url: String,
     state: Arc<Mutex<FakeState>>,
+    /// How many requests have arrived, told as each is recorded.
+    arrivals: Arc<tokio::sync::watch::Sender<usize>>,
 }
 
 #[derive(Default)]
@@ -27,17 +28,20 @@ impl FakeHost {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("fake host binds");
         let base_url = format!("http://{}", listener.local_addr().unwrap());
         let state = Arc::new(Mutex::new(FakeState::default()));
+        let arrivals = Arc::new(tokio::sync::watch::channel(0).0);
         let accept_state = state.clone();
+        let accept_arrivals = arrivals.clone();
         tokio::spawn(async move {
             loop {
                 let Ok((stream, _)) = listener.accept().await else {
                     return;
                 };
                 let state = accept_state.clone();
-                tokio::spawn(async move { serve_one(stream, state).await });
+                let arrivals = accept_arrivals.clone();
+                tokio::spawn(async move { serve_one(stream, state, &arrivals).await });
             }
         });
-        FakeHost { base_url, state }
+        FakeHost { base_url, state, arrivals }
     }
 
     /// The origin this host answers on.
@@ -108,13 +112,13 @@ impl FakeHost {
     }
 
     /// Wait until `count` requests containing `needle` have arrived, failing
-    /// the test after ten seconds.
+    /// the test if they never do.
     pub async fn wait_for_request(&self, needle: &str, count: usize) {
-        if tokio::time::timeout(Duration::from_secs(10), async {
-            while self.count_containing(needle) < count {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
+        let mut arrivals = self.arrivals.subscribe();
+        if tokio::time::timeout(
+            crate::test_channels::HANG_GUARD,
+            arrivals.wait_for(|_| self.count_containing(needle) >= count),
+        )
         .await
         .is_err()
         {
@@ -127,7 +131,11 @@ impl FakeHost {
     }
 }
 
-async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState>>) {
+async fn serve_one(
+    mut stream: tokio::net::TcpStream,
+    state: Arc<Mutex<FakeState>>,
+    arrivals: &tokio::sync::watch::Sender<usize>,
+) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let mut buffer = Vec::new();
@@ -160,6 +168,7 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
             .map(|(_, gate)| gate.clone());
         (status, body, gate)
     };
+    arrivals.send_modify(|arrived| *arrived += 1);
     if let Some(gate) = gate {
         // The hold ends by closing the semaphore, which ends every wait, so
         // no release can be missed; a permit lets one request through and is
