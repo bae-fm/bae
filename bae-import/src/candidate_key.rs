@@ -57,20 +57,6 @@ impl CandidateKey {
     }
 }
 
-/// The key whose bytes an app holds.
-impl From<Vec<u8>> for CandidateKey {
-    fn from(bytes: Vec<u8>) -> Self {
-        Self::from_bytes(bytes)
-    }
-}
-
-/// The key's bytes, as an app holds them.
-impl From<CandidateKey> for Vec<u8> {
-    fn from(key: CandidateKey) -> Self {
-        key.into_bytes()
-    }
-}
-
 /// The key as text: a folder's escaped path, or a grouping's or re-identified
 /// release's key, whose bytes are its text.
 impl fmt::Display for CandidateKey {
