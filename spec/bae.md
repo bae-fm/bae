@@ -62,8 +62,10 @@ Ben's MP3s are the same album.
 bae solves this in four steps:
 
 - **It plays the household's own music.** bae is a music library and player for
-  a household, on macOS, iOS, Android, Windows and Linux. It plays the files
-  the household already has; it sells and streams nothing.
+  a household, for macOS, iOS, Android, Windows and Linux; macOS and Android
+  have their apps, and the others hold start-up and release machinery only
+  (§1.1). It plays the files the household already has; it sells and streams
+  nothing.
 - **It looks folders up.** bae can look up a folder of audio files on
   MusicBrainz and Discogs. A match links the album, its edition and its artists
   to their entries there. Those entries link on to other linked data, such as
@@ -682,7 +684,7 @@ files again.
 A rescan, such as the one every desktop launch makes of each watched folder,
 takes what the last scan of the folder stored for each file whose path, size
 and modification time are unchanged (§2.7): a track's stream and tags, whether
-an image decodes, what a CUE sheet parses to, and what a broken folder's tags
+an image is damaged, what a CUE sheet parses to, and what a broken folder's tags
 call it. It opens only the files that are new or changed, so a rescan of a
 folder nothing in has changed opens none. A release's draft takes each
 unchanged track's tags, and the picture they embed, from the reading stored
@@ -719,8 +721,9 @@ two different things about one file fails the scan.
   takes in, is listed as skipped, its reason naming the name. So is a release
   read from several folders two of whose names show the same, such as a
   Latin-1 `Café` and a folder spelled `Caf\xE9`, each holding `01.flac`.
-- **A damaged image** — zero bytes, or bytes that don't decode as the picture
-  its name says — doesn't skip the folder: the release is its audio. The image
+- **A damaged image** — zero bytes, or a file whose first bytes are not those
+  of the format its extension names (JPEG, PNG, WebP, GIF or BMP; an image
+  with any other extension passes) — doesn't skip the folder: the release is its audio. The image
   is never artwork, so it is never the cover, and it imports as plain bytes the
   library never shows as a picture. It is still carried, so it comes back on
   export.
@@ -837,7 +840,7 @@ Done offers no re-import. A second copy comes from importing another folder,
 such as a copy whose modification times changed.
 
 **Skipped.** A broken folder's row looks like a Found row: the folder's own
-cover when an image in it decodes, the album title and artist its tags state
+cover when an image in it is undamaged, the album title and artist its tags state
 or else the folder's name, and under them why it can't be imported, such as
 "2 audio files are damaged" or "More than one file is named Caf\xE9.flac".
 Selecting it opens it the way a Found release opens, read-only: its images,
@@ -964,8 +967,10 @@ left unhashed: a Disc ID of a vinyl rip names no disc.
 
 ### 3.4 Looking up
 
-bae looks the clues up on MusicBrainz and Discogs. Each catalog answers for
-itself and at its own pace:
+bae looks the clues up on MusicBrainz and Discogs. Each clue is asked once of
+every catalog that answers its kind, and each catalog answers for itself: one
+that fails leaves the matches of the other, and the run pools the answers once
+everything it asked has answered.
 
 | Clue | Asked of |
 |---|---|
@@ -973,7 +978,7 @@ itself and at its own pace:
 | ISRCs | MusicBrainz |
 | barcodes | both |
 | catalog numbers | both: a number the person picked as it stands; one a found release carries as it stands on MusicBrainz, under the offered releases' artists on Discogs |
-| album and artist title | both, only when every clue above came back empty |
+| album and artist title | both, only when no Disc ID, barcode or catalog number returned anything and the draft has a title; ISRC matches don't count, since a recording is on every compilation that reissued it |
 
 Discogs needs an API key; without one it is not asked. Saving a key, or
 checking a stored one again, asks Discogs whether it works, and the key's
