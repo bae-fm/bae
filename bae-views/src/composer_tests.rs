@@ -86,6 +86,31 @@ async fn search_library_returns_artist_hits() {
     assert!(composer.artists.is_empty());
 }
 
+/// Library search finds an artist, and a composer, by any other name its
+/// credits print, as it finds their albums.
+#[tokio::test]
+async fn search_library_finds_an_artist_by_another_printed_name() {
+    let (db, _tmp) = seeded_db().await;
+    for (artist, name) in [(ARTIST_ALBUM, "Printed Alias"), (ARTIST_COMPOSER, "Composer Alias")] {
+        db.add_artist_credit_name(artist, &bae_db::EnteredName::parse(name).unwrap())
+            .await
+            .unwrap();
+    }
+
+    let artist =
+        crate::LibraryViews::new(db.clone()).search_rows("printed alias", 10).await.unwrap();
+    assert_eq!(
+        artist.artists.iter().map(|found| found.artist.id.as_str()).collect::<Vec<_>>(),
+        [ARTIST_ALBUM]
+    );
+    let composer =
+        crate::LibraryViews::new(db.clone()).search_rows("composer alias", 10).await.unwrap();
+    assert_eq!(
+        composer.composers.iter().map(|found| found.artist.id.as_str()).collect::<Vec<_>>(),
+        [ARTIST_COMPOSER]
+    );
+}
+
 #[tokio::test]
 async fn search_library_matches_composer_and_work_sort_names() {
     let (db, _tmp) = seeded_db().await;

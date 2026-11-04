@@ -300,7 +300,10 @@ one artist twice keeps both credits. Every reader takes the whole list:
 
 - An album's line names every credit in order (see "Credit lines" below).
 - Library search finds an album by its title or by any of its credits' names
-  (an artist's own name or the other name the credit prints). A query matches
+  (an artist's own name or the other name the credit prints), and an artist
+  or a composer by its name, its sort name or any other name its credits
+  print. An editor's artist search finds artists the same way, and by their
+  library, MusicBrainz or Discogs id. A query matches
   anywhere inside a title or a name, ignoring case by Unicode's lowercase
   (accents still count: `ecrin` doesn't find `Écrin`), and each kind of result
   comes in title or name order, ties going by id.

@@ -1,6 +1,22 @@
-//! What library search finds of albums (§2.3), as SQL conditions on an
-//! album: read from the search tables' indexes for the albums a pattern
-//! finds, or tested on one album's own text in those tables.
+//! What library search finds of albums and artists (§2.3), as SQL
+//! conditions: read from the search tables' indexes for the albums or
+//! artists a pattern finds, or tested on one album's own text in those
+//! tables.
+
+/// The ids of the artists library search finds (§2.3) for the search
+/// pattern the parameter `pattern` binds (see
+/// [`bae_db::schema::search_pattern`]): those whose name or sort name holds
+/// it, and the artist each other printed name holding it shows as. Each part
+/// reads its search table's index; the artist picker finds by these too.
+pub(crate) fn artists_found_sql(pattern: &str) -> String {
+    format!(
+        "SELECT artist_id FROM artist_search WHERE name GLOB {pattern} \
+         UNION SELECT artist_id FROM artist_search WHERE sort_name GLOB {pattern} \
+         UNION SELECT shown.shown_artist_id FROM artist_credit_search matched_credit \
+             JOIN artist_shown_as shown ON shown.artist_id = matched_credit.artist_id \
+             WHERE matched_credit.name GLOB {pattern}"
+    )
+}
 
 /// The albums whose credits library search finds (§2.3) for the search
 /// pattern the parameter `pattern` binds (see

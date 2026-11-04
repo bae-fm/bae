@@ -393,11 +393,6 @@ fn resolve_album_detail(
     }
 }
 
-/// The ids of the artists whose name or sort name holds the search pattern
-/// `?1` (`artist_search`).
-const SEARCH_MATCHED_ARTISTS: &str = "SELECT artist_id FROM artist_search WHERE name GLOB ?1 \
-     UNION SELECT artist_id FROM artist_search WHERE sort_name GLOB ?1";
-
 /// The library rows holding the search `pattern` (see [`search_pattern`]),
 /// each kind's first `limit` in its order, ties going by id. Each kind finds
 /// its rows through its search table, then reads what it shows for those
@@ -473,7 +468,7 @@ fn search_library_on(
     let artists = sql.query(
         &artist_listing_query(
             None,
-            Some(&format!("WHERE ar.id IN ({SEARCH_MATCHED_ARTISTS})")),
+            Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
             Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
         ),
         params![pattern, limit],
@@ -482,7 +477,7 @@ fn search_library_on(
     let composers = sql.query(
         &composer_listing_query(
             None,
-            Some(&format!("WHERE composer.id IN ({SEARCH_MATCHED_ARTISTS})")),
+            Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
             Some("ORDER BY listing.name, listing.artist_id LIMIT ?2"),
         ),
         params![pattern, limit],

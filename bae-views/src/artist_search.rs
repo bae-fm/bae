@@ -176,24 +176,20 @@ pub fn resolve_artist_search(
     }
 }
 
-/// The artists `?1` finds: by library or provider id, or by a name, sort name
-/// or other printed name holding it. Merged-away artists are never found; a
-/// credit name finds the artist it shows as.
-fn artist_search_filter() -> String {
+/// The artists the text `?1` finds: by library or provider id, or as
+/// library search finds artists, by the search pattern `pattern` binds
+/// ([`artists_found_sql`]). Merged-away artists are never found.
+fn artist_search_filter(pattern: &str) -> String {
     format!(
         r#"
         {shown}
           AND (id = ?1
            OR discogs_artist_id = ?1
            OR musicbrainz_artist_id = ?1
-           OR instr(lower(name), lower(?1)) > 0
-           OR instr(lower(COALESCE(sort_name, '')), lower(?1)) > 0
-           OR id IN (
-               SELECT {credit_artist} FROM artist_credits credit_name
-               WHERE instr(lower(credit_name.name), lower(?1)) > 0))
+           OR id IN ({found}))
         "#,
         shown = artist_is_shown("artists"),
-        credit_artist = shown_artist_id("credit_name.artist_id"),
+        found = artists_found_sql(pattern),
     )
 }
 
@@ -202,8 +198,11 @@ fn artist_search_count_on(
     query: &crate::LibrarySearchQuery,
 ) -> Result<u64, DbError> {
     sql.query_row(
-        &format!("SELECT COUNT(*) FROM artists WHERE {filter}", filter = artist_search_filter()),
-        params![query.as_str()],
+        &format!(
+            "SELECT COUNT(*) FROM artists WHERE {filter}",
+            filter = artist_search_filter("?2")
+        ),
+        params![query.as_str(), search_pattern(query.as_str())],
         |row| row.get::<_, i64>(0),
     )
     .map(|count| count as u64)
@@ -231,21 +230,28 @@ fn artist_search_rows_on(
                     WHEN id = ?1
                       OR discogs_artist_id = ?1
                       OR musicbrainz_artist_id = ?1
-                      OR lower(name) = lower(?1)
-                      OR lower(COALESCE(sort_name, '')) = lower(?1) THEN 0
-                    WHEN substr(lower(name), 1, length(?1)) = lower(?1)
-                      OR substr(lower(COALESCE(sort_name, '')), 1, length(?1)) = lower(?1) THEN 1
+                      OR bae_fold_case(name) = bae_fold_case(?1)
+                      OR bae_fold_case(sort_name) = bae_fold_case(?1) THEN 0
+                    WHEN substr(bae_fold_case(name), 1, length(bae_fold_case(?1)))
+                           = bae_fold_case(?1)
+                      OR substr(bae_fold_case(sort_name), 1, length(bae_fold_case(?1)))
+                           = bae_fold_case(?1) THEN 1
                     ELSE 2
                 END,
                 name COLLATE NOCASE,
                 id
             LIMIT ?2 OFFSET ?3
             "#,
-            filter = artist_search_filter(),
+            filter = artist_search_filter("?4"),
             image = artist_image_version_sql("artists.id"),
             credit_names = credit_names_json_sql("artists.id"),
         ),
-        params![query.as_str(), window.limit as i64, window.offset as i64],
+        params![
+            query.as_str(),
+            window.limit as i64,
+            window.offset as i64,
+            search_pattern(query.as_str())
+        ],
         |row| {
             Ok(DbArtistSearchRow {
                 artist: row_to_artist(row)?,

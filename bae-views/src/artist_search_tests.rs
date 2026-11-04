@@ -153,3 +153,31 @@ async fn a_found_artist_reads_its_image_and_names_in_its_row() {
         ["Alpha Alias", "Zed Alias"]
     );
 }
+
+/// The picker folds case as library search does, past ASCII: a lowercase
+/// accented letter finds the name printing it in capitals, and an exact
+/// match ranks first.
+#[tokio::test]
+async fn the_picker_folds_case_past_ascii() {
+    let (db, _tmp) = seeded().await;
+    exec_batch(
+        &db,
+        "INSERT INTO artists (id, name, name_key, created_at) VALUES
+         ('6fc16ea8-bc5d-4e98-8fa7-5b8e8f4e5f06', 'Émile Artist Name', 'emile artist name',
+          '2026-01-01T00:00:00Z'),
+         ('7ad27fb9-cd6e-4fa9-9ab8-6c9f9a5f6a07', 'ÉMILE', 'emile', '2026-01-01T00:00:00Z');",
+    )
+    .await;
+
+    let found = LibraryViews::new(db.clone())
+        .subscribe_artist_search(view("émile", &[window(0, 10)]))
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(
+        ids(&found.windows[0]),
+        vec!["7ad27fb9-cd6e-4fa9-9ab8-6c9f9a5f6a07", "6fc16ea8-bc5d-4e98-8fa7-5b8e8f4e5f06"]
+    );
+}
