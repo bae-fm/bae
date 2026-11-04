@@ -5,6 +5,8 @@
 //! album aggregate. Progress ticks ride the import event channel passed in by
 //! the service, so the analyzer needs no reference back to it.
 
+pub mod meter;
+
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
@@ -131,14 +133,14 @@ impl LoudnessProgress {
 /// decode probes the format. Held as one `Option` so "no format yet" is a single
 /// absence, not several fields each separately nullable.
 struct MeterState {
-    meter: crate::loudness_meter::LoudnessMeter,
+    meter: meter::LoudnessMeter,
     channels: u32,
     /// Emit a progress tick once this many frames have been measured since the
     /// last one (~0.1s of audio), so the bar creeps without an event per frame.
     emit_every_frames: u64,
 }
 
-/// Streams one track's decode into a [`crate::loudness_meter::LoudnessMeter`], reporting
+/// Streams one track's decode into a [`meter::LoudnessMeter`], reporting
 /// the pass's progress as it advances, throttled to ~0.1s of audio per report.
 /// A failed `add_chunk` is recorded and the meter dropped (later chunks are
 /// ignored); `into_result` surfaces the failure to the caller.
@@ -246,9 +248,7 @@ impl LoudnessProgressSink {
     }
 
     /// Finish the meter, surfacing any stored decode/measure failure.
-    fn into_result(
-        self,
-    ) -> Result<(ebur128::EbuR128, Option<crate::loudness_meter::TrackLoudness>), String> {
+    fn into_result(self) -> Result<(ebur128::EbuR128, Option<meter::TrackLoudness>), String> {
         if let Some(e) = self.error {
             return Err(e);
         }
@@ -263,7 +263,7 @@ fn progress_fraction(frames_done: u64, total_frames: Option<u64>) -> Option<f32>
 
 impl bae_audio::DecodedSink for LoudnessProgressSink {
     fn on_format(&mut self, sample_rate: u32, channels: u32) {
-        match crate::loudness_meter::LoudnessMeter::new(channels, sample_rate) {
+        match meter::LoudnessMeter::new(channels, sample_rate) {
             Ok(meter) => {
                 self.state = Some(MeterState {
                     meter,
@@ -648,8 +648,8 @@ pub(super) async fn measure_loudness(
         return Err(crate::ImportError::DecodeVerification { broken: broken_tracks });
     }
 
-    let album_loudness = crate::loudness_meter::album_loudness(&meters);
-    let album_peak = crate::loudness_meter::album_peak(&track_peaks);
+    let album_loudness = meter::album_loudness(&meters);
+    let album_peak = meter::album_peak(&track_peaks);
     Ok(LoudnessResult {
         album_loudness_lufs: album_loudness,
         album_peak_linear: album_peak,

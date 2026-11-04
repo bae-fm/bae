@@ -84,7 +84,7 @@ async fn import_image(
 /// The loudness of `samples` as the import's meter reads it.
 fn loudness_of(samples: &[i32]) -> f64 {
     let mut meter =
-        bae_import::loudness_meter::LoudnessMeter::new(2, SAMPLE_RATE).expect("a meter");
+        bae_import::loudness::meter::LoudnessMeter::new(2, SAMPLE_RATE).expect("a meter");
     meter.add_chunk(samples).expect("meter the samples");
     meter.finish().expect("finish the meter").1.expect("an audible track").loudness_lufs
 }

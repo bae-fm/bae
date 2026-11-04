@@ -108,5 +108,5 @@ pub fn album_peak(track_peaks: &[f64]) -> Option<f64> {
 }
 
 #[cfg(test)]
-#[path = "loudness_meter_tests.rs"]
+#[path = "meter_tests.rs"]
 mod tests;

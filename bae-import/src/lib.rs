@@ -69,9 +69,7 @@ mod import_failure;
 #[cfg(desktop)]
 pub mod list;
 #[cfg(desktop)]
-mod loudness;
-#[cfg(desktop)]
-pub mod loudness_meter;
+pub mod loudness;
 #[cfg(desktop)]
 pub mod mapping;
 #[cfg(desktop)]
