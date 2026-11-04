@@ -12,6 +12,7 @@
 //! and the LOAD metadata (which reports the served MIME type) consult, so the
 //! URL and the declared content type never disagree.
 
+use bae_audio::StreamEncodeFormat;
 use bae_db::ResolvedTrackAudio;
 use bae_preferences::CastTranscodeFormat;
 use bae_util::content_type::ContentType;
@@ -37,8 +38,8 @@ impl RendererStreamFormat {
     pub fn content_type_str(self, source: &ContentType) -> String {
         match self {
             RendererStreamFormat::Raw => source.as_str().to_string(),
-            RendererStreamFormat::TranscodeMp3 => "audio/mpeg".to_string(),
-            RendererStreamFormat::TranscodeWav => "audio/wav".to_string(),
+            RendererStreamFormat::TranscodeMp3 => StreamEncodeFormat::MP3_CONTENT_TYPE.to_string(),
+            RendererStreamFormat::TranscodeWav => StreamEncodeFormat::WAV_CONTENT_TYPE.to_string(),
         }
     }
 }

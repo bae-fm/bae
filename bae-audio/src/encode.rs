@@ -328,12 +328,17 @@ pub enum StreamEncodeFormat {
 }
 
 impl StreamEncodeFormat {
+    /// The MIME type of an encoded [`Self::Mp3`] stream.
+    pub const MP3_CONTENT_TYPE: &'static str = "audio/mpeg";
+    /// The MIME type of an encoded [`Self::PcmWav`] stream.
+    pub const WAV_CONTENT_TYPE: &'static str = "audio/wav";
+
     /// The MIME type of the encoded stream.
     pub fn content_type(self) -> &'static str {
         match self {
-            Self::Mp3 { .. } => "audio/mpeg",
+            Self::Mp3 { .. } => Self::MP3_CONTENT_TYPE,
             Self::OpusOgg { .. } => "audio/ogg",
-            Self::PcmWav { .. } => "audio/wav",
+            Self::PcmWav { .. } => Self::WAV_CONTENT_TYPE,
         }
     }
 
