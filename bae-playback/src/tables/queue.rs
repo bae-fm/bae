@@ -229,10 +229,10 @@ impl PlaybackQueueTables {
                     // The lane's last row takes what it played from with it,
                     // as a deleted track does (`tracks_leave_playback_queue`).
                     sql.execute(
-                        "UPDATE playback_queue \
-                         SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, \
-                             cursor = NULL \
-                         WHERE NOT EXISTS (SELECT 1 FROM playback_context)",
+                        &format!(
+                            "{CONTEXT_SOURCE_CLEARED} WHERE source_kind IS NOT NULL \
+                             AND NOT EXISTS (SELECT 1 FROM playback_context)"
+                        ),
                         [],
                     )?;
                 }
@@ -388,16 +388,19 @@ fn set_cursor_on(sql: &CovenWrite<'_>, position: i64) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// What the context lane plays from cleared: its source, its shuffle and
+/// its cursor, which the schema keeps NULL together exactly while the lane is
+/// empty. The schema's `tracks_leave_playback_queue` trigger writes the same
+/// clear when a deleted track was the lane's last.
+const CONTEXT_SOURCE_CLEARED: &str = "UPDATE playback_queue \
+     SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, cursor = NULL";
+
 /// Empty the context lane and clear what it played from, in the same write.
 fn clear_context_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
     if sql.execute("DELETE FROM playback_context", [])? > 0 {
         sql.execute(CONTEXT_CHANGED, [])?;
     }
-    sql.execute(
-        "UPDATE playback_queue \
-         SET source_kind = NULL, source_release_id = NULL, shuffled = NULL, cursor = NULL",
-        [],
-    )?;
+    sql.execute(CONTEXT_SOURCE_CLEARED, [])?;
     Ok(())
 }
 
