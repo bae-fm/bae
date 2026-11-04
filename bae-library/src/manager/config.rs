@@ -267,6 +267,25 @@ impl LibraryManager {
         Ok(self.preferences().await?.save_presets)
     }
 
+    /// The save preset `preset_id` names, where it is offered for saves of
+    /// `level`.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn save_preset_for(
+        &self,
+        preset_id: &str,
+        level: bae_preferences::SaveLevel,
+    ) -> Result<bae_preferences::SavePreset, LibraryError> {
+        self.save_presets()
+            .await?
+            .into_iter()
+            .find(|preset| preset.id == preset_id && preset.applies_to(level))
+            .ok_or_else(|| {
+                LibraryError::Save(format!(
+                    "save preset {preset_id} is not available for {level} save"
+                ))
+            })
+    }
+
     pub async fn set_save_presets(
         &self,
         presets: Vec<bae_preferences::SavePreset>,
@@ -286,11 +305,15 @@ impl LibraryManager {
         // the last preset applicable to a level) is refused rather than
         // leaving a dangling default.
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(&prefs.default_track_save_preset, &presets, true)?;
+            Self::validate_default_save_preset(
+                &prefs.default_track_save_preset,
+                &presets,
+                bae_preferences::SaveLevel::Track,
+            )?;
             Self::validate_default_save_preset(
                 &prefs.default_release_save_preset,
                 &presets,
-                false,
+                bae_preferences::SaveLevel::Release,
             )?;
             prefs.save_presets = presets;
             Ok(())
@@ -303,7 +326,11 @@ impl LibraryManager {
         preset_id: String,
     ) -> Result<(), bae_preferences::PreferencesError> {
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(&preset_id, &prefs.save_presets, true)?;
+            Self::validate_default_save_preset(
+                &preset_id,
+                &prefs.save_presets,
+                bae_preferences::SaveLevel::Track,
+            )?;
             prefs.default_track_save_preset = preset_id;
             Ok(())
         })
@@ -315,7 +342,11 @@ impl LibraryManager {
         preset_id: String,
     ) -> Result<(), bae_preferences::PreferencesError> {
         self.update_preferences(move |prefs| {
-            Self::validate_default_save_preset(&preset_id, &prefs.save_presets, false)?;
+            Self::validate_default_save_preset(
+                &preset_id,
+                &prefs.save_presets,
+                bae_preferences::SaveLevel::Release,
+            )?;
             prefs.default_release_save_preset = preset_id;
             Ok(())
         })
@@ -328,19 +359,18 @@ impl LibraryManager {
     fn validate_default_save_preset(
         preset_id: &str,
         presets: &[bae_preferences::SavePreset],
-        track_level: bool,
+        level: bae_preferences::SaveLevel,
     ) -> Result<(), bae_preferences::PreferencesError> {
         let Some(preset) = presets.iter().find(|preset| preset.id == *preset_id) else {
             return Err(bae_preferences::PreferencesError::Invalid(format!(
                 "unknown export preset {preset_id}"
             )));
         };
-        let allowed = if track_level { preset.applies_to_track } else { preset.applies_to_release };
-        if allowed {
+        if preset.applies_to(level) {
             Ok(())
         } else {
             Err(bae_preferences::PreferencesError::Invalid(format!(
-                "export preset {preset_id} does not apply to this export level"
+                "export preset {preset_id} does not apply to {level} saves"
             )))
         }
     }

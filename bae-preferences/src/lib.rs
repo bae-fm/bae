@@ -24,7 +24,8 @@ pub use import_storage::ImportStoragePreferences;
 pub use presentation::LookupCatalogSetting;
 pub use row::{edit_preferences, preferences, subscribe_preferences};
 pub use save::{
-    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFormat, SavePregapPlacement, SavePreset,
+    SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFormat, SaveLevel, SavePregapPlacement,
+    SavePreset,
 };
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,

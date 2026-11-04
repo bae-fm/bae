@@ -39,16 +39,7 @@ impl LibraryManager {
         target_dir: std::path::PathBuf,
         preset_id: &str,
     ) -> Result<(), LibraryError> {
-        let preset = self
-            .save_presets()
-            .await?
-            .into_iter()
-            .find(|preset| preset.id == preset_id && preset.applies_to_release)
-            .ok_or_else(|| {
-                LibraryError::Save(format!(
-                    "save preset {preset_id} is not available for release save"
-                ))
-            })?;
+        let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Release).await?;
         self.enqueue_output(release_id, target_dir, bae_transfers::OutputKind::Save { preset })
             .await
     }

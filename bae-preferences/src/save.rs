@@ -164,7 +164,31 @@ pub struct SavePreset {
     pub embed_cover: bool,
 }
 
+/// What a save writes: one track, or a whole release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SaveLevel {
+    Track,
+    Release,
+}
+
+impl std::fmt::Display for SaveLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Track => "track",
+            Self::Release => "release",
+        })
+    }
+}
+
 impl SavePreset {
+    /// Whether the preset is offered for saves of `level`.
+    pub fn applies_to(&self, level: SaveLevel) -> bool {
+        match level {
+            SaveLevel::Track => self.applies_to_track,
+            SaveLevel::Release => self.applies_to_release,
+        }
+    }
+
     /// The preset a person adds to their list: FLAC at its starting codec,
     /// named for the format, the default filename pattern, pregaps appended
     /// to the track before except the hidden first-track audio, offered for

@@ -130,16 +130,7 @@ impl LibraryManager {
         track_id: &str,
         preset_id: &str,
     ) -> Result<String, LibraryError> {
-        let preset = self
-            .save_presets()
-            .await?
-            .into_iter()
-            .find(|preset| preset.id == preset_id && preset.applies_to_track)
-            .ok_or_else(|| {
-                LibraryError::Save(format!(
-                    "export preset {preset_id} is not available for track save"
-                ))
-            })?;
+        let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Track).await?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
         let stem = crate::save::render_save_filename(&preset.filename_tokens, &resolved);
@@ -162,16 +153,7 @@ impl LibraryManager {
         output_path: &Path,
         preset_id: &str,
     ) -> Result<(), LibraryError> {
-        let preset = self
-            .save_presets()
-            .await?
-            .into_iter()
-            .find(|preset| preset.id == preset_id && preset.applies_to_track)
-            .ok_or_else(|| {
-                LibraryError::Save(format!(
-                    "export preset {preset_id} is not available for track save"
-                ))
-            })?;
+        let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Track).await?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let neighbors = self.database.track_neighbors(&meta.track.id).await?.ok_or_else(|| {
             LibraryError::Save(format!(
