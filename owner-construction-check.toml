@@ -410,6 +410,10 @@ ImageHold = "RemoteImageHost"
     "TestLibrary::start_playback",
     "TestLibrary::start_playback_on",
 ]
+# Starts a worker's thread: it opens the worker's channel and moves the
+# receiving end into the thread it starts, so the sender the worker keeps
+# is always the one paired with that thread. Its handle stops the thread.
+"bae-util/src/worker_thread.rs" = ["WorkerThread::spawn"]
 # Starts the playback service's task; its handle stops it.
 "bae-playback/src/service/runtime.rs" = [
     "PlaybackService::start",

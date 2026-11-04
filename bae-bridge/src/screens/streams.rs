@@ -18,9 +18,10 @@ use crate::types::{BridgeError, BridgeFastValue};
 /// The key of a stream that holds one value.
 const ONLY_KEY: &[u8] = b"";
 
-/// What a feed does to write its stream, given the library's services.
+/// What a feed does to write its stream: from the library's services, lent
+/// for the call, the watch it follows, and the writing that follows it.
 pub(crate) type Writes =
-    Box<dyn FnOnce(AppServices) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send>;
+    Box<dyn FnOnce(&AppServices) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send>;
 
 /// Where a feed's writes run: as the library's work, until the token it is
 /// handed is cancelled, as cancelling or dropping the stream does.
@@ -32,7 +33,7 @@ impl<F: FnOnce(CancellationToken, Writes)> RunFeed for F {}
 fn feed<Fut>(
     runtime: OperationRuntime,
     run: impl RunFeed,
-    writes: impl FnOnce(AppServices, StreamWriter) -> Fut + Send + 'static,
+    writes: impl FnOnce(&AppServices, StreamWriter) -> Fut + Send + 'static,
 ) -> Arc<KeyedValueStream>
 where
     Fut: Future<Output = ()> + Send + 'static,
@@ -100,29 +101,31 @@ pub(crate) fn release_upload_transfers(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
-        use bae_library::OutboxTransferChange;
-        let upload = |transfer| BridgeFastValue::ReleaseUpload {
-            transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
-        };
+    feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_outbox_transfers();
-        while let Some(changes) = transfers.next().await {
-            let changes = match changes {
-                Ok(changes) => changes,
-                Err(error) => {
-                    writer.fail(BridgeError::database_query(error));
-                    continue;
-                }
+        async move {
+            use bae_library::OutboxTransferChange;
+            let upload = |transfer| BridgeFastValue::ReleaseUpload {
+                transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
             };
-            let releases = changes
-                .into_iter()
-                .filter_map(|change| match change {
-                    OutboxTransferChange::Release(change) => Some(change),
-                    // The total is its own stream.
-                    OutboxTransferChange::Total(_) => None,
-                })
-                .collect();
-            write_release_changes(&writer, releases, upload);
+            while let Some(changes) = transfers.next().await {
+                let changes = match changes {
+                    Ok(changes) => changes,
+                    Err(error) => {
+                        writer.fail(BridgeError::database_query(error));
+                        continue;
+                    }
+                };
+                let releases = changes
+                    .into_iter()
+                    .filter_map(|change| match change {
+                        OutboxTransferChange::Release(change) => Some(change),
+                        // The total is its own stream.
+                        OutboxTransferChange::Total(_) => None,
+                    })
+                    .collect();
+                write_release_changes(&writer, releases, upload);
+            }
         }
     })
 }
@@ -132,13 +135,15 @@ pub(crate) fn upload_total_transfer(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut total = services.watch_outbox_total_transfer();
-        while let Some(transfer) = total.next().await {
-            match transfer.map(upload_total) {
-                Ok(Some(total)) => writer.set(ONLY_KEY, total),
-                Ok(None) => writer.remove(ONLY_KEY),
-                Err(error) => writer.fail(BridgeError::database_query(error)),
+        async move {
+            while let Some(transfer) = total.next().await {
+                match transfer.map(upload_total) {
+                    Ok(Some(total)) => writer.set(ONLY_KEY, total),
+                    Ok(None) => writer.remove(ONLY_KEY),
+                    Err(error) => writer.fail(BridgeError::database_query(error)),
+                }
             }
         }
     })
@@ -149,10 +154,12 @@ pub(crate) fn upload_file_shares(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut files = services.watch_upload_file_transfers();
-        while let Some(changes) = files.next().await {
-            write_file_changes(&writer, changes);
+        async move {
+            while let Some(changes) = files.next().await {
+                write_file_changes(&writer, changes);
+            }
         }
     })
 }
@@ -162,10 +169,12 @@ pub(crate) fn pin_file_shares(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut files = services.watch_pin_file_transfers();
-        while let Some(changes) = files.next().await {
-            write_file_changes(&writer, changes);
+        async move {
+            while let Some(changes) = files.next().await {
+                write_file_changes(&writer, changes);
+            }
         }
     })
 }
@@ -175,12 +184,14 @@ pub(crate) fn download_transfers(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_download_transfers();
-        while let Some(changes) = transfers.next().await {
-            write_release_changes(&writer, changes, |progress| BridgeFastValue::Download {
-                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-            });
+        async move {
+            while let Some(changes) = transfers.next().await {
+                write_release_changes(&writer, changes, |progress| BridgeFastValue::Download {
+                    progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
+                });
+            }
         }
     })
 }
@@ -191,12 +202,14 @@ pub(crate) fn make_local_transfers(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_make_local_transfers();
-        while let Some(changes) = transfers.next().await {
-            write_release_changes(&writer, changes, |progress| BridgeFastValue::MakeLocal {
-                progress: crate::types::BridgeMakeLocalProgress::from_core(progress),
-            });
+        async move {
+            while let Some(changes) = transfers.next().await {
+                write_release_changes(&writer, changes, |progress| BridgeFastValue::MakeLocal {
+                    progress: crate::types::BridgeMakeLocalProgress::from_core(progress),
+                });
+            }
         }
     })
 }
@@ -206,13 +219,15 @@ pub(crate) fn playback_positions(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut positions = services.subscribe_playback_positions();
-        loop {
-            let held = track_positions(&positions.positions());
-            writer.reset(held);
-            if positions.changed().await.is_err() {
-                return;
+        async move {
+            loop {
+                let held = track_positions(&positions.positions());
+                writer.reset(held);
+                if positions.changed().await.is_err() {
+                    return;
+                }
             }
         }
     })
@@ -223,10 +238,12 @@ pub(crate) fn track_buffered(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut buffered = services.follow_track_buffered();
-        while let Some(held) = buffered.next().await {
-            writer.reset(track_buffered_held(held));
+        async move {
+            while let Some(held) = buffered.next().await {
+                writer.reset(track_buffered_held(held));
+            }
         }
     })
 }
@@ -236,13 +253,15 @@ pub(crate) fn track_storage_waits(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut waits = services.subscribe_storage_waits();
-        loop {
-            let held = track_storage_wait(waits.waiting());
-            writer.reset(held);
-            if waits.changed().await.is_err() {
-                return;
+        async move {
+            loop {
+                let held = track_storage_wait(waits.waiting());
+                writer.reset(held);
+                if waits.changed().await.is_err() {
+                    return;
+                }
             }
         }
     })
@@ -254,21 +273,23 @@ pub(crate) fn preview_position(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut positions = services.subscribe_playback_positions();
-        loop {
-            let preview = positions.positions().preview;
-            match preview {
-                Some(position) => writer.set(
-                    ONLY_KEY,
-                    BridgeFastValue::PreviewPosition {
-                        position: crate::types::BridgePreviewPosition::from_core(position),
-                    },
-                ),
-                None => writer.remove(ONLY_KEY),
-            }
-            if positions.changed().await.is_err() {
-                return;
+        async move {
+            loop {
+                let preview = positions.positions().preview;
+                match preview {
+                    Some(position) => writer.set(
+                        ONLY_KEY,
+                        BridgeFastValue::PreviewPosition {
+                            position: crate::types::BridgePreviewPosition::from_core(position),
+                        },
+                    ),
+                    None => writer.remove(ONLY_KEY),
+                }
+                if positions.changed().await.is_err() {
+                    return;
+                }
             }
         }
     })
@@ -280,19 +301,24 @@ pub(crate) fn import_percents(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut percents = services.watch_import_percents();
-        loop {
-            let held: HashMap<Vec<u8>, BridgeFastValue> = percents
-                .percents()
-                .iter()
-                .map(|(key, percent)| {
-                    (key.as_bytes().to_vec(), BridgeFastValue::ImportPercent { percent: *percent })
-                })
-                .collect();
-            writer.reset(held);
-            if percents.changed().await.is_err() {
-                return;
+        async move {
+            loop {
+                let held: HashMap<Vec<u8>, BridgeFastValue> = percents
+                    .percents()
+                    .iter()
+                    .map(|(key, percent)| {
+                        (
+                            key.as_bytes().to_vec(),
+                            BridgeFastValue::ImportPercent { percent: *percent },
+                        )
+                    })
+                    .collect();
+                writer.reset(held);
+                if percents.changed().await.is_err() {
+                    return;
+                }
             }
         }
     })
@@ -306,12 +332,14 @@ pub(crate) fn export_percents(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| async move {
+    feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_output_transfers();
-        while let Some(changes) = transfers.next().await {
-            write_release_changes(&writer, changes, |percent| BridgeFastValue::ExportPercent {
-                percent,
-            });
+        async move {
+            while let Some(changes) = transfers.next().await {
+                write_release_changes(&writer, changes, |percent| BridgeFastValue::ExportPercent {
+                    percent,
+                });
+            }
         }
     })
 }

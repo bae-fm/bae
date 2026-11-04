@@ -118,12 +118,9 @@ async fn assert_nothing_held(devices: &TwoDevices) {
 async fn releases_on_both(devices: &TwoDevices, release_ids: &[&str]) {
     let wanted = release_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
     devices
-        .settle("every release on both devices", move |_, database| {
-            let wanted = wanted.clone();
-            async move {
-                let present = texts(&database, "SELECT id FROM releases").await;
-                wanted.iter().all(|id| present.contains(id))
-            }
+        .settle("every release on both devices", async |_, database| {
+            let present = texts(database, "SELECT id FROM releases").await;
+            wanted.iter().all(|id| present.contains(id))
         })
         .await;
 }
@@ -333,9 +330,8 @@ fn the_same_record_set_on_two_devices_merges() {
             format!("SELECT catalog FROM release_records WHERE release_id = '{release_id}'");
         let first = records_of.clone();
         devices
-            .settle("the first record on both devices", move |_, database| {
-                let first = first.clone();
-                async move { texts(&database, &first).await.len() == 1 }
+            .settle("the first record on both devices", async |_, database| {
+                texts(database, &first).await.len() == 1
             })
             .await;
 

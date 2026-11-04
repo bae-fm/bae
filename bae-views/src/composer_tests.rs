@@ -903,7 +903,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
                 ('{OTHER_COMPOSER_LINK_ID}', '{OTHER_COMPOSER_WORK_ID}', '{OTHER_COMPOSER_ID}', 0, 'file_tags', '2026-01-01T00:00:00Z');"
         )).await;
         devices
-            .settle("the remote work credits", |_, db| async move {
+            .settle("the remote work credits", async |_, db| {
                 crate::LibraryViews::new(db.clone())
                     .find_composer_detail(OTHER_COMPOSER_ID)
                     .await
@@ -921,7 +921,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
         )
         .await;
         devices
-            .settle("the remote merge", |_, db| async move {
+            .settle("the remote merge", async |_, db| {
                 crate::LibraryViews::new(db.clone())
                     .find_composer_detail(OTHER_COMPOSER_ID)
                     .await

@@ -184,14 +184,9 @@ impl TwoDevices {
     /// Run cycles on both devices until `settled` holds for both and neither
     /// holds anything back, or fail with what each device's last cycle
     /// reported.
-    pub async fn settle<F, Fut>(&self, what: &str, settled: F)
-    where
-        F: Fn(&'static str, Database) -> Fut,
-        Fut: std::future::Future<Output = bool>,
-    {
+    pub async fn settle(&self, what: &str, settled: impl AsyncFn(&'static str, &Database) -> bool) {
         stores::settle(synced(self.a()), synced(&self.b), what, || async {
-            settled("A", self.a().database().clone()).await
-                && settled("B", self.b.database().clone()).await
+            settled("A", self.a().database()).await && settled("B", self.b.database()).await
         })
         .await;
     }

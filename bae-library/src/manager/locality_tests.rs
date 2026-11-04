@@ -210,20 +210,17 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
 
         devices.a().manager().upload_release(&release.id, false).await.unwrap();
         devices
-            .settle("the release in the cloud", |_, database| {
-                let release_id = release.id.clone();
-                async move {
-                    matches!(
-                        bae_views::LibraryViews::new(database.clone())
-                            .find_release_detail(&release_id)
-                            .await
-                            .unwrap()
-                            .expect("the release exists")
-                            .summary
-                            .storage_state,
-                        bae_views::album_detail::ReleaseStorageState::InStorage { .. }
-                    )
-                }
+            .settle("the release in the cloud", async |_, database| {
+                matches!(
+                    bae_views::LibraryViews::new(database.clone())
+                        .find_release_detail(&release.id)
+                        .await
+                        .unwrap()
+                        .expect("the release exists")
+                        .summary
+                        .storage_state,
+                    bae_views::album_detail::ReleaseStorageState::InStorage { .. }
+                )
             })
             .await;
 

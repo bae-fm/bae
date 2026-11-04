@@ -366,7 +366,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
              INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
         )).await;
         devices
-            .settle("the remote album", |_, db| async move {
+            .settle("the remote album", async |_, db| {
                 db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
             })
             .await;
@@ -396,7 +396,7 @@ fn library_search_finds_rows_applied_from_another_device() {
              INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{RELEASE_ID}', '{ALBUM_ID}', '2026-01-01T00:00:00Z', 0);"
         )).await;
         devices
-            .settle("the remote album", |_, db| async move {
+            .settle("the remote album", async |_, db| {
                 db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
             })
             .await;
@@ -410,7 +410,7 @@ fn library_search_finds_rows_applied_from_another_device() {
         exec(writer, "UPDATE albums SET title = 'Renamed Album Title' WHERE id = ?1", &[ALBUM_ID])
             .await;
         devices
-            .settle("the remote rename", |_, db| async move {
+            .settle("the remote rename", async |_, db| {
                 db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap().title == "Renamed Album Title"
             })
             .await;

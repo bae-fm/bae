@@ -243,15 +243,15 @@ impl LibraryManager {
     /// A file operation owns its rollback even when its caller disappears. A
     /// panic in it is reported as a bug and fails it as something that went
     /// wrong; an operation whose rollback must run on a panic catches it
-    /// before the rollback, as a pin does.
-    pub(super) async fn run_file_operation<T, F, Fut>(
+    /// before the rollback, as a pin does. `begin` starts the operation,
+    /// handed a token of its own that closing the library cancels.
+    pub(super) async fn run_file_operation<T, Fut>(
         &self,
         name: &'static str,
-        operation: F,
+        begin: impl FnOnce(crate::CancellationToken) -> Fut,
     ) -> Result<T, LibraryError>
     where
         T: Send + 'static,
-        F: FnOnce(crate::CancellationToken) -> Fut,
         Fut: Future<Output = Result<T, LibraryError>> + Send + 'static,
     {
         let task = {
@@ -259,11 +259,22 @@ impl LibraryManager {
             if *closed {
                 return Err(LibraryError::Closed(name));
             }
-            let work = operation(self.tasks.closing.clone());
+            let stop = crate::CancellationToken::new();
+            let work = begin(stop.clone());
             let manager = self.clone();
             self.tasks.tracker.spawn_on(
                 async move {
-                    let result = match caught(name, work).await {
+                    let work = caught(name, work);
+                    tokio::pin!(work);
+                    let caught = tokio::select! {
+                        biased;
+                        caught = &mut work => caught,
+                        () = manager.tasks.closing.cancelled() => {
+                            stop.cancel();
+                            work.await
+                        }
+                    };
+                    let result = match caught {
                         Ok(result) => result,
                         Err(bug) => Err(manager.panicked(bug).into()),
                     };

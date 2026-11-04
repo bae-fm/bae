@@ -369,18 +369,13 @@ impl TwoStores {
 
     /// Run sync on both until `settled` holds on each, named by its letter,
     /// and neither holds anything back.
-    pub async fn settle<F, Fut>(&self, what: &str, settled: F)
-    where
-        F: Fn(&'static str, Database) -> Fut,
-        Fut: std::future::Future<Output = bool>,
-    {
+    pub async fn settle(&self, what: &str, settled: impl AsyncFn(&'static str, &Database) -> bool) {
         settle(
             (&self.a.database, &self.a.cycles),
             (&self.b.database, &self.b.cycles),
             what,
             || async {
-                settled("A", self.a.database.clone()).await
-                    && settled("B", self.b.database.clone()).await
+                settled("A", &self.a.database).await && settled("B", &self.b.database).await
             },
         )
         .await;
