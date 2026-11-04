@@ -23,6 +23,20 @@ pub(crate) struct FileObservation {
     pub modified_at_ns: i64,
 }
 
+impl FileObservation {
+    /// `file` as it stands on disk now: the size and modification time a stat
+    /// reads.
+    pub(crate) fn of(file: &ScannedFile) -> Result<Self, crate::folder_scanner::FolderScanError> {
+        let metadata = std::fs::metadata(&file.path)
+            .map_err(|source| crate::folder_scanner::FolderScanError::io(&file.path, source))?;
+        Ok(Self {
+            relative_path: file.relative_path.clone(),
+            size: metadata.len(),
+            modified_at_ns: crate::folder_scanner::file_modified_at_ns(&file.path, &metadata)?,
+        })
+    }
+}
+
 /// One audio file's tags, beside the file as they were read from it.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FileTagFact {
@@ -530,18 +544,15 @@ pub(crate) fn embedded_cover_of(
         .then(|| super::cover_art::PreparedCover::Embedded(source_relative_path.to_string()))
 }
 
+/// `file` as it stands now, refused when its size is no longer the scanned
+/// one.
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
-    let metadata = std::fs::metadata(&file.path)
-        .map_err(|error| ImportError::file_tags("stat", &file.path, error))?;
-    if metadata.len() != file.size {
+    let observation = FileObservation::of(file)
+        .map_err(|error| ImportError::FileTags { detail: error.to_string() })?;
+    if observation.size != file.size {
         return Err(changed_file_error(file));
     }
-    Ok(FileObservation {
-        relative_path: file.relative_path.clone(),
-        modified_at_ns: crate::folder_scanner::file_modified_at_ns(&file.path, &metadata)
-            .map_err(|error| ImportError::FileTags { detail: error.to_string() })?,
-        size: metadata.len(),
-    })
+    Ok(observation)
 }
 
 fn changed_file_error(file: &ScannedFile) -> ImportError {

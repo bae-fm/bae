@@ -17,20 +17,12 @@ pub(super) fn validate_scanned_file_identities(
 fn validate_scanned_file_metadata(
     file: &ScannedFile,
 ) -> Result<crate::file_tag_snapshot::FileObservation, crate::ImportError> {
-    let metadata =
-        std::fs::metadata(&file.path).map_err(|error| crate::ImportError::UnusableFile {
-            detail: format!("failed to stat {}: {error}", file.path.display()),
-        })?;
-    let modified_at_ns = crate::folder_scanner::file_modified_at_ns(&file.path, &metadata)
+    let observation = crate::file_tag_snapshot::FileObservation::of(file)
         .map_err(|error| crate::ImportError::UnusableFile { detail: error.to_string() })?;
-    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
+    if observation.size != file.size || observation.modified_at_ns != file.modified_at_ns {
         return Err(changed_after_scan(file));
     }
-    Ok(crate::file_tag_snapshot::FileObservation {
-        relative_path: file.relative_path.clone(),
-        size: metadata.len(),
-        modified_at_ns,
-    })
+    Ok(observation)
 }
 
 /// Refuse an original whose size or modification time, as coven found them
