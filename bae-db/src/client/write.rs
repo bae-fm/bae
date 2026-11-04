@@ -100,24 +100,14 @@ pub(super) fn insert_album_artist_row(
 ) -> Result<(), DbError> {
     let created_at = aa.created_at.to_rfc3339();
     let credit_key = settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), &created_at)?;
-    conn.execute(
-        r#"
-        INSERT INTO album_artists
-            (id, album_id, artist_id, position, credit_key, join_phrase, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            aa.id(),
-            aa.album_id,
-            aa.artist_id,
-            aa.position,
-            credit_key,
-            aa.join_phrase,
-            created_at
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    let credit = Credit {
+        id: aa.id(),
+        artist_id: &aa.artist_id,
+        position: aa.position,
+        credit_key,
+        join_phrase: aa.join_phrase.as_deref(),
+    };
+    insert_credit_row(conn, "album_artists", "album_id", &aa.album_id, &credit, &created_at)
 }
 
 /// `source_folder_name` names the folder an export writes under the user's
@@ -321,24 +311,14 @@ pub fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), Db
 pub fn insert_track_artist_row(conn: &CovenWrite<'_>, ta: &DbTrackArtist) -> Result<(), DbError> {
     let created_at = ta.created_at.to_rfc3339();
     let credit_key = settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), &created_at)?;
-    conn.execute(
-        r#"
-        INSERT INTO track_artists
-            (id, track_id, artist_id, position, credit_key, join_phrase, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            ta.id(),
-            ta.track_id,
-            ta.artist_id,
-            ta.position,
-            credit_key,
-            ta.join_phrase,
-            created_at
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    let credit = Credit {
+        id: ta.id(),
+        artist_id: &ta.artist_id,
+        position: ta.position,
+        credit_key,
+        join_phrase: ta.join_phrase.as_deref(),
+    };
+    insert_credit_row(conn, "track_artists", "track_id", &ta.track_id, &credit, &created_at)
 }
 
 #[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
@@ -753,6 +733,35 @@ struct Credit<'a> {
     join_phrase: Option<&'a str>,
 }
 
+/// Insert `credit` as a place of `owner_id`'s list in `table`.
+fn insert_credit_row(
+    conn: &CovenWrite<'_>,
+    table: &'static str,
+    owner_column: &'static str,
+    owner_id: &str,
+    credit: &Credit<'_>,
+    created_at: &str,
+) -> Result<(), DbError> {
+    conn.execute(
+        &format!(
+            "INSERT INTO {table} \
+                 (id, {owner_column}, artist_id, position, credit_key, join_phrase, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ),
+        params![
+            credit.id,
+            owner_id,
+            credit.artist_id,
+            credit.position,
+            credit.credit_key,
+            credit.join_phrase,
+            created_at
+        ],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
 /// What one stored place says: its artist, credit name and join.
 type StoredCredit = (String, Option<String>, Option<String>);
 
@@ -798,24 +807,7 @@ fn write_credits(
                     params![credit.artist_id, credit.credit_key, credit.join_phrase, credit.id],
                 )?;
             }
-            None => {
-                conn.execute(
-                    &format!(
-                        "INSERT INTO {table} \
-                             (id, {owner_column}, artist_id, position, credit_key, join_phrase, created_at) \
-                         VALUES (?, ?, ?, ?, ?, ?, ?)"
-                    ),
-                    params![
-                        credit.id,
-                        owner_id,
-                        credit.artist_id,
-                        credit.position,
-                        credit.credit_key,
-                        credit.join_phrase,
-                        now
-                    ],
-                )?;
-            }
+            None => insert_credit_row(conn, table, owner_column, owner_id, credit, now)?,
         }
     }
     Ok(())
