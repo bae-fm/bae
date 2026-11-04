@@ -58,10 +58,7 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
     );
     for accent in &theme.accents {
         writeln!(out, "        case .{}:", accent.name)?;
-        let roles: Roles = [("light", accent.light), ("dark", accent.dark), ("fill", accent.fill)]
-            .into_iter()
-            .map(|(name, colour)| (name.to_string(), colour))
-            .collect();
+        let roles = accent.roles();
         roles_value(out, "AccentColors", &roles, 12)?;
     }
     out.push_str("        }\n    }\n}\n");

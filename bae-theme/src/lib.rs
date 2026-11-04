@@ -56,6 +56,16 @@ pub struct Accent {
     pub fill: Argb,
 }
 
+impl Accent {
+    /// The accent's colours by role name.
+    pub fn roles(&self) -> Roles {
+        [("light", self.light), ("dark", self.dark), ("fill", self.fill)]
+            .into_iter()
+            .map(|(name, colour)| (name.to_string(), colour))
+            .collect()
+    }
+}
+
 /// The validated theme. Every tone has the same surface roles, and the
 /// semantic colours have the same roles in both appearances.
 #[derive(Debug)]

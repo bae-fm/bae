@@ -93,10 +93,7 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
     out.push_str("\nval AccentChoice.colors: AccentColors\n    get() =\n        when (this) {\n");
     for accent in &theme.accents {
         writeln!(out, "            AccentChoice.{} ->", accent.name.to_uppercase())?;
-        let roles: Roles = [("light", accent.light), ("dark", accent.dark), ("fill", accent.fill)]
-            .into_iter()
-            .map(|(name, colour)| (name.to_string(), colour))
-            .collect();
+        let roles = accent.roles();
         roles_value(out, "AccentColors", &roles, 16)?;
     }
     out.push_str("        }\n");
