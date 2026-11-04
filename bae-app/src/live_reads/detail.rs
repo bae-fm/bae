@@ -30,46 +30,18 @@ pub fn subscribe_release_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
 ) -> bae_library::LiveDetail<bae_views::album_detail::ReleaseDetail> {
-    let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
-    let (tx, rx) = bae_library::live_read_channel();
-    let manager = library.clone();
     let views = library_views.clone();
-    let task = bae_library::CancellationToken::new();
-    library.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
-        let mut id = ids.borrow_and_update().clone();
-        let mut query = reconfigurable_live_query_events(
-            &manager,
-            views.subscribe_release_detail(id.clone()),
-            tx.clone(),
-        );
-        let resolve = |id: &Option<String>, projection| {
-            Ok(id.as_ref().and_then(|release_id| {
+    follow_request(
+        library,
+        "detail",
+        move |id| views.subscribe_release_detail(id),
+        |id, projection| bae_library::DetailSnapshot {
+            id: id.clone(),
+            value: id.as_ref().and_then(|release_id| {
                 bae_views::release::resolve_release_detail_projection(release_id, projection)
-            }))
-        };
-        loop {
-            let value = tokio::select! {
-                event = query.recv() => match event {
-                    None => return,
-                    Some(Ok(projection)) => {
-                        resolve(&id, projection)
-                    }
-                    Some(Err(error)) => Err(error),
-                },
-                changed = ids.changed() => {
-                    if changed.is_err() { return; }
-                    id = ids.borrow_and_update().clone();
-                    query.set(id.clone());
-                    continue;
-                }
-            };
-            let value = value.map(|value| bae_library::DetailSnapshot { id: id.clone(), value });
-            if tx.send(value).is_err() {
-                return;
-            }
-        }
-    });
-    bae_library::LiveDetail::new(id_tx, rx, task)
+            }),
+        },
+    )
 }
 
 /// The artist detail view's artist as it changes; another artist is a
@@ -130,39 +102,8 @@ where
     Value: Send + 'static,
     Id: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
 {
-    let (id_tx, mut ids) = tokio::sync::watch::channel(None::<Id>);
-    let (tx, rx) = bae_library::live_read_channel();
-    let task = bae_library::CancellationToken::new();
-    manager.clone().spawn_stoppable_subscription_task(
-        "detail",
-        task.clone(),
-        tx.clone(),
-        async move {
-            let mut id = ids.borrow_and_update().clone();
-            let mut query =
-                reconfigurable_live_query_events(&manager, open(id.clone()), tx.clone());
-            loop {
-                tokio::select! {
-                    event = query.recv() => {
-                        let Some(result) = event else { return };
-                        let value = result.map(|projection| bae_library::DetailSnapshot {
-                            id: id.clone(),
-                            value: resolve(projection),
-                        });
-                        if tx.send(value).is_err() {
-                            return;
-                        }
-                    }
-                    changed = ids.changed() => {
-                        if changed.is_err() {
-                            return;
-                        }
-                        id = ids.borrow_and_update().clone();
-                        query.set(id.clone());
-                    }
-                }
-            }
-        },
-    );
-    bae_library::LiveDetail::new(id_tx, rx, task)
+    follow_request(&manager, "detail", open, move |id, projection| bae_library::DetailSnapshot {
+        id: id.clone(),
+        value: resolve(projection),
+    })
 }

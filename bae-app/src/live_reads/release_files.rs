@@ -2,7 +2,7 @@
 
 use super::LiveReleaseFiles;
 use super::*;
-use bae_views::{ReleaseFilesRequest, ReleaseFilesSnapshot};
+use bae_views::ReleaseFilesSnapshot;
 
 /// The files of the release the subscription is set to, in the order it
 /// asks for, as they change: each value answers the request set last.
@@ -11,45 +11,16 @@ pub fn subscribe_release_files(
     library: &LibraryManager,
     library_views: &LibraryViews,
 ) -> LiveReleaseFiles {
-    let (request_tx, mut requests) = tokio::sync::watch::channel(None::<ReleaseFilesRequest>);
-    let (tx, rx) = bae_library::live_read_channel();
-    let manager = library.clone();
     let views = library_views.clone();
-    let task = bae_library::CancellationToken::new();
-    library.spawn_stoppable_subscription_task(
+    follow_request(
+        library,
         "release files",
-        task.clone(),
-        tx.clone(),
-        async move {
-            let mut request = None;
-            let mut query = reconfigurable_live_query_events(
-                &manager,
-                views.subscribe_release_files(None),
-                tx.clone(),
-            );
-            loop {
-                tokio::select! {
-                    changed = requests.changed() => {
-                        if changed.is_err() { return; }
-                        request = requests.borrow_and_update().clone();
-                        query.set(request.clone());
-                    }
-                    value = query.recv() => {
-                        let Some(value) = value else { return };
-                        let snapshot = value.map(|files| ReleaseFilesSnapshot {
-                            request: request.clone(),
-                            files: files.map(|files| {
-                                files
-                                    .into_iter()
-                                    .map(bae_views::album_detail::FileDetail::from_raw)
-                                    .collect()
-                            }),
-                        });
-                        if tx.send(snapshot).is_err() { return; }
-                    }
-                }
-            }
+        move |request| views.subscribe_release_files(request),
+        |request, files| ReleaseFilesSnapshot {
+            request: request.clone(),
+            files: files.map(|files| {
+                files.into_iter().map(bae_views::album_detail::FileDetail::from_raw).collect()
+            }),
         },
-    );
-    LiveReleaseFiles::new(request_tx, rx, task)
+    )
 }
