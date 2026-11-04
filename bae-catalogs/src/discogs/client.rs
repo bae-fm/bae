@@ -203,13 +203,7 @@ fn classify_discogs_response(
 fn repeat_discogs(error: &DiscogsError) -> Repeat {
     match error {
         DiscogsError::Transport(_) => Repeat::AfterBackoff,
-        DiscogsError::Provider { status, told_wait } => {
-            if bae_util::retry::is_transient_status(*status) {
-                Repeat::transient(*told_wait)
-            } else {
-                Repeat::Never
-            }
-        }
+        DiscogsError::Provider { status, told_wait } => Repeat::for_status(*status, *told_wait),
         DiscogsError::InvalidApiKey | DiscogsError::NotFound | DiscogsError::Serialization(_) => {
             Repeat::Never
         }

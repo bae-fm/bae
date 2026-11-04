@@ -166,3 +166,18 @@ async fn a_told_wait_past_the_longest_ends_the_lookup() {
     assert_eq!(result, Err("down"));
     assert_eq!(attempts.load(Ordering::SeqCst), 1);
 }
+
+#[test]
+fn for_status_repeats_transient_statuses_after_the_told_wait() {
+    use reqwest::StatusCode;
+    let told = Some(Duration::from_secs(7));
+    assert_eq!(
+        Repeat::for_status(StatusCode::SERVICE_UNAVAILABLE, told),
+        Repeat::AfterToldWait(Duration::from_secs(7)),
+    );
+    assert_eq!(Repeat::for_status(StatusCode::TOO_MANY_REQUESTS, None), Repeat::AfterBackoff);
+    assert_eq!(Repeat::for_status(StatusCode::FORBIDDEN, told), Repeat::Never);
+    assert_eq!(Repeat::for_recorded_status(None, None), Repeat::AfterBackoff);
+    assert_eq!(Repeat::for_recorded_status(Some(404), None), Repeat::Never);
+    assert_eq!(Repeat::for_recorded_status(Some(502), None), Repeat::AfterBackoff);
+}

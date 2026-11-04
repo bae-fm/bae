@@ -131,3 +131,9 @@ fn a_told_wait_is_read_off_the_headers() {
     headers.insert(reqwest::header::RETRY_AFTER, reqwest::header::HeaderValue::from_static("7"));
     assert_eq!(told_wait(&headers), Some(Duration::from_secs(7)));
 }
+
+#[tokio::test]
+async fn transport_failure_names_how_a_request_failed() {
+    assert_eq!(TransportFailure::of(&unbuildable_request_error()), TransportFailure::Unmakeable,);
+    assert_eq!(TransportFailure::of(&refused_request_error().await), TransportFailure::Network);
+}

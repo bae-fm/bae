@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use crate::rate_limiter::{CallPriority, RateAnswer, RateLimiter};
 use bae_util::error_text::CauseChain;
-use bae_util::http::{is_cacheable, CachedResponse, Http};
+use bae_util::http::{is_cacheable, CachedResponse, Http, TransportFailure};
 use bae_util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 use thiserror::Error;
 use tracing::{debug, warn};
@@ -109,11 +109,9 @@ fn mb_body(
     response: CachedResponse,
     told_wait: Option<Duration>,
 ) -> Result<String, MusicBrainzError> {
-    if response.is_success() {
-        Ok(response.body)
-    } else {
-        Err(MusicBrainzError::Provider { status: Some(response.status), told_wait })
-    }
+    response
+        .into_body()
+        .map_err(|status| MusicBrainzError::Provider { status: Some(status), told_wait })
 }
 
 /// A MusicBrainz lookup failure, keeping the wire-level distinction the caller
@@ -156,14 +154,13 @@ impl MusicBrainzError {
     /// Keep a request bae could not make apart from transport, timeout and
     /// HTTP status failures, each holding reqwest's error as its cause.
     fn from_reqwest(e: reqwest::Error) -> Self {
-        if e.is_builder() || e.is_redirect() {
-            MusicBrainzError::Request(e)
-        } else if e.is_timeout() {
-            MusicBrainzError::Timeout
-        } else if let Some(status) = e.status() {
-            MusicBrainzError::Provider { status: Some(status.as_u16()), told_wait: None }
-        } else {
-            MusicBrainzError::Network(e)
+        match TransportFailure::of(&e) {
+            TransportFailure::Unmakeable => MusicBrainzError::Request(e),
+            TransportFailure::Timeout => MusicBrainzError::Timeout,
+            TransportFailure::Status(status) => {
+                MusicBrainzError::Provider { status: Some(status), told_wait: None }
+            }
+            TransportFailure::Network => MusicBrainzError::Network(e),
         }
     }
 }

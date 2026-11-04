@@ -34,18 +34,8 @@ pub(super) const RATE_WINDOW: Duration = Duration::from_secs(2);
 pub(super) fn repeat_mb(error: &MusicBrainzError) -> Repeat {
     match error {
         MusicBrainzError::Network(_) | MusicBrainzError::Timeout => Repeat::AfterBackoff,
-        // No readable status means reqwest classified a send error as carrying
-        // one it couldn't produce — repeat it like any transport failure.
         MusicBrainzError::Provider { status, told_wait } => {
-            let transient = status.is_none_or(|status| {
-                reqwest::StatusCode::from_u16(status)
-                    .is_ok_and(bae_util::retry::is_transient_status)
-            });
-            if transient {
-                Repeat::transient(*told_wait)
-            } else {
-                Repeat::Never
-            }
+            Repeat::for_recorded_status(*status, *told_wait)
         }
         MusicBrainzError::NotFound(_)
         | MusicBrainzError::Request(_)

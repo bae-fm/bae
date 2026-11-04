@@ -7,6 +7,7 @@ use crate::musicbrainz;
 use crate::remote_image::RemoteImageError;
 use crate::CatalogError;
 use crate::{Failure, InternalFailure, LookupFailure};
+use bae_util::http::TransportFailure;
 use tracing::warn;
 
 /// The failure MusicBrainz answered with, or `None` for one bae met reading
@@ -28,14 +29,11 @@ fn mb_provider_failure(e: &musicbrainz::MusicBrainzError) -> Option<LookupFailur
 /// The failure a request that got no usable answer is, or `None` for one bae
 /// could not make: a URL reqwest would not build, a redirect loop.
 fn transport_failure(error: &reqwest::Error) -> Option<LookupFailure> {
-    if error.is_builder() || error.is_redirect() {
-        None
-    } else if error.is_timeout() {
-        Some(LookupFailure::Timeout)
-    } else if let Some(status) = error.status() {
-        Some(LookupFailure::Provider { status: Some(status.as_u16()) })
-    } else {
-        Some(LookupFailure::Network)
+    match TransportFailure::of(error) {
+        TransportFailure::Unmakeable => None,
+        TransportFailure::Timeout => Some(LookupFailure::Timeout),
+        TransportFailure::Status(status) => Some(LookupFailure::Provider { status: Some(status) }),
+        TransportFailure::Network => Some(LookupFailure::Network),
     }
 }
 

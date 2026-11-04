@@ -5,9 +5,7 @@
 use crate::catalog::{Catalog, LookupCatalog};
 use bae_util::content_type::ContentType;
 use bae_util::http::Http;
-use bae_util::retry::{
-    is_transient_status, retry_classified, ClassifiedAttempt, Repeat, RetryPolicy,
-};
+use bae_util::retry::{retry_classified, ClassifiedAttempt, Repeat, RetryPolicy};
 use bae_util::task_failure::{blocking, TaskFailed};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -719,11 +717,7 @@ async fn send_artwork_request(
         if status == reqwest::StatusCode::NOT_FOUND {
             return ClassifiedAttempt::Done(None);
         }
-        let repeat = if is_transient_status(status) {
-            Repeat::transient(bae_util::http::told_wait(response.headers()))
-        } else {
-            Repeat::Never
-        };
+        let repeat = Repeat::for_status(status, bae_util::http::told_wait(response.headers()));
         ClassifiedAttempt::Failed(
             RemoteImageError::Status {
                 status: status.as_u16(),
@@ -739,7 +733,7 @@ async fn send_artwork_request(
 /// failure, or a redirect loop bottoming out. Network, timeout, and connection
 /// errors remain retryable.
 fn is_permanent_request_error(error: &reqwest::Error) -> bool {
-    error.is_builder() || error.is_redirect()
+    bae_util::http::TransportFailure::of(error) == bae_util::http::TransportFailure::Unmakeable
 }
 
 fn artwork_body_error(

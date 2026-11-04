@@ -103,6 +103,15 @@ impl CachedResponse {
     pub fn is_success(&self) -> bool {
         is_success(self.status)
     }
+
+    /// The body on a success, and the status otherwise.
+    pub fn into_body(self) -> Result<String, u16> {
+        if self.is_success() {
+            Ok(self.body)
+        } else {
+            Err(self.status)
+        }
+    }
 }
 
 #[cfg(desktop)]
@@ -297,6 +306,35 @@ pub async fn refused_request_error() -> reqwest::Error {
 #[cfg(any(test, feature = "test-utils"))]
 pub fn unbuildable_request_error() -> reqwest::Error {
     reqwest::Client::new().get("not a URL").build().expect_err("a relative URL does not build")
+}
+
+/// What a request that got no usable answer failed as.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransportFailure {
+    /// The request could not be made: a URL reqwest would not build, or a
+    /// redirect loop. Asking again fails the same way.
+    Unmakeable,
+    /// The request timed out before a response arrived.
+    Timeout,
+    /// The error carries an HTTP status.
+    Status(u16),
+    /// No response arrived: connection, DNS, TLS, a dropped body.
+    Network,
+}
+
+impl TransportFailure {
+    /// How `error`, from a build, a send or a body read, failed.
+    pub fn of(error: &reqwest::Error) -> Self {
+        if error.is_builder() || error.is_redirect() {
+            Self::Unmakeable
+        } else if error.is_timeout() {
+            Self::Timeout
+        } else if let Some(status) = error.status() {
+            Self::Status(status.as_u16())
+        } else {
+            Self::Network
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

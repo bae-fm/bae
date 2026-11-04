@@ -20,7 +20,7 @@ use tracing::{debug, warn};
 use crate::catalog::{Catalog, CatalogPage};
 use crate::rate_limiter::{CallPriority, RateLimiter};
 use bae_util::error_text::CauseChain;
-use bae_util::http::{is_cacheable, CachedResponse, Http};
+use bae_util::http::{is_cacheable, CachedResponse, Http, TransportFailure};
 use bae_util::retry::{Repeat, RetryPolicy};
 use bae_util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 
@@ -88,14 +88,13 @@ impl WikidataError {
     /// variant; an error carrying an HTTP status is a `Provider` response;
     /// everything else (connection, DNS, dropped body) is transport `Network`.
     fn from_reqwest(e: reqwest::Error) -> Self {
-        if e.is_builder() || e.is_redirect() {
-            WikidataError::Request(e)
-        } else if e.is_timeout() {
-            WikidataError::Timeout
-        } else if let Some(status) = e.status() {
-            WikidataError::Provider { status: Some(status.as_u16()), told_wait: None }
-        } else {
-            WikidataError::Network(e)
+        match TransportFailure::of(&e) {
+            TransportFailure::Unmakeable => WikidataError::Request(e),
+            TransportFailure::Timeout => WikidataError::Timeout,
+            TransportFailure::Status(status) => {
+                WikidataError::Provider { status: Some(status), told_wait: None }
+            }
+            TransportFailure::Network => WikidataError::Network(e),
         }
     }
 }
@@ -109,18 +108,8 @@ impl WikidataError {
 fn repeat(error: &WikidataError) -> Repeat {
     match error {
         WikidataError::Network(_) | WikidataError::Timeout => Repeat::AfterBackoff,
-        // No readable status means reqwest classified a send error as carrying
-        // one it couldn't produce — repeat it like any transport failure.
         WikidataError::Provider { status, told_wait } => {
-            let transient = status.is_none_or(|status| {
-                reqwest::StatusCode::from_u16(status)
-                    .is_ok_and(bae_util::retry::is_transient_status)
-            });
-            if transient {
-                Repeat::transient(*told_wait)
-            } else {
-                Repeat::Never
-            }
+            Repeat::for_recorded_status(*status, *told_wait)
         }
         WikidataError::NotFound(_) | WikidataError::Request(_) | WikidataError::Other(_) => {
             Repeat::Never
@@ -151,11 +140,9 @@ fn wikidata_body(
     response: CachedResponse,
     told_wait: Option<Duration>,
 ) -> Result<String, WikidataError> {
-    if response.is_success() {
-        Ok(response.body)
-    } else {
-        Err(WikidataError::Provider { status: Some(response.status), told_wait })
-    }
+    response
+        .into_body()
+        .map_err(|status| WikidataError::Provider { status: Some(status), told_wait })
 }
 
 impl Wikidata {

@@ -120,6 +120,28 @@ impl Repeat {
     pub fn transient(told_wait: Option<Duration>) -> Self {
         told_wait.map_or(Self::AfterBackoff, Self::AfterToldWait)
     }
+
+    /// The repeat an HTTP error response calls for: a transient status is
+    /// repeated after `told_wait` when the response stated one, any other is
+    /// the provider's answer.
+    pub fn for_status(status: reqwest::StatusCode, told_wait: Option<Duration>) -> Self {
+        if is_transient_status(status) {
+            Self::transient(told_wait)
+        } else {
+            Self::Never
+        }
+    }
+
+    /// [`Self::for_status`] for a status that may not have been read. With no
+    /// readable status reqwest classified a send error as carrying one it
+    /// couldn't produce, which repeats like any transport failure.
+    pub fn for_recorded_status(status: Option<u16>, told_wait: Option<Duration>) -> Self {
+        match status {
+            None => Self::transient(told_wait),
+            Some(status) => reqwest::StatusCode::from_u16(status)
+                .map_or(Self::Never, |status| Self::for_status(status, told_wait)),
+        }
+    }
 }
 
 /// The longest a provider may ask bae to wait before a repeat. A failing
