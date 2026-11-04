@@ -14,17 +14,14 @@ pub struct WatchedFolder {
 
 impl WatchedFolder {
     pub(crate) fn from_path(path: PathBuf) -> Self {
-        let name = match path.file_name() {
-            Some(name) => coven::path_text(Path::new(name)),
-            None => {
-                warn!(
-                    "watched folder {} has no final path component; \
-                     using the full path as its group name",
-                    coven::path_text(&path)
-                );
+        if path.file_name().is_none() {
+            warn!(
+                "watched folder {} has no final path component; \
+                 using the full path as its group name",
                 coven::path_text(&path)
-            }
-        };
+            );
+        }
+        let name = bae_util::path_text::name_text(&path);
         Self { path, name }
     }
 }

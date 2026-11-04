@@ -167,7 +167,7 @@ pub(crate) fn relative_path_string(path: &Path) -> String {
 
 pub(super) fn directory_name(root: &Path, relative: &Path) -> String {
     let path = if relative.as_os_str().is_empty() { root } else { relative };
-    coven::path_text(path.file_name().map_or(path, Path::new))
+    bae_util::path_text::name_text(path)
 }
 
 pub(super) fn categorize_selected_files(

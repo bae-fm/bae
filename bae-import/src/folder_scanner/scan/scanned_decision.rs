@@ -23,12 +23,8 @@ pub(super) fn scanned_decision<R>(
 where
     R: DirectoryReader + ?Sized,
 {
-    let names: Vec<String> = directories
-        .iter()
-        .map(|directory| {
-            coven::path_text(directory.file_name().map_or(directory.as_path(), Path::new))
-        })
-        .collect();
+    let names: Vec<String> =
+        directories.iter().map(|directory| bae_util::path_text::name_text(directory)).collect();
     let mut releases = usize::from(holds_audio_directly);
     if names_could_number_one_release(holds_audio_directly, &names) {
         let mut parts = Vec::with_capacity(directories.len());

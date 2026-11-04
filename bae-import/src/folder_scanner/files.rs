@@ -287,7 +287,7 @@ pub struct ReleasePart {
 impl ReleasePart {
     /// The folder's own name, as the release's source list shows it.
     pub fn name(&self) -> String {
-        coven::path_text(self.folder.file_name().map_or(&self.folder, Path::new))
+        bae_util::path_text::name_text(&self.folder)
     }
 }
 

@@ -405,7 +405,7 @@ fn parent_files_on(
     let Some(sidecar) = folder_scans::load_sidecar(sql, folder)? else {
         return Ok(Ok(ParentFiles::None));
     };
-    let named = coven::path_text(folder.file_name().map_or(folder, Path::new));
+    let named = bae_util::path_text::name_text(folder);
     if !reading {
         let reader: Option<String> = sql
             .query_row(PARENT_FILES_READER, params![coven::path_bytes(folder), key], |row| {

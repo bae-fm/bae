@@ -13,6 +13,7 @@ pub mod logging;
 pub mod open_file_limit;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod open_files_peak;
+pub mod path_text;
 pub mod retry;
 pub mod sample_time;
 pub mod server;
