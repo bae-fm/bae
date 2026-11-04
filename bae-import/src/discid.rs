@@ -2,6 +2,8 @@
 //! read off a rip log's table of contents, or laid out by a track sheet over
 //! the measured lengths of the audio it names.
 
+mod hash;
+
 use crate::cue_flac::CueSheet;
 use std::collections::HashMap;
 use tracing::{debug, trace, warn};
@@ -133,7 +135,7 @@ fn discid_from_raw_offsets(
         offsets
     );
 
-    let mb_discid_str = super::discid_hash::musicbrainz_discid(&offsets)
+    let mb_discid_str = hash::musicbrainz_discid(&offsets)
         .map_err(|e| invalid_discid_data(format!("Failed to calculate DiscID: {e}")))?;
     debug!("MusicBrainz DiscID calculated: {}", mb_discid_str);
     Ok(mb_discid_str)

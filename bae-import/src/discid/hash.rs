@@ -114,5 +114,5 @@ fn base64_musicbrainz(digest: &[u8]) -> String {
 }
 
 #[cfg(test)]
-#[path = "discid_hash_tests.rs"]
+#[path = "hash_tests.rs"]
 mod tests;

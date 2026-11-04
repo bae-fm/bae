@@ -29,8 +29,6 @@ pub mod cover_art;
 pub mod cue_flac;
 #[cfg(desktop)]
 pub mod discid;
-#[cfg(desktop)]
-mod discid_hash;
 mod error;
 #[cfg(desktop)]
 mod event_bus;
