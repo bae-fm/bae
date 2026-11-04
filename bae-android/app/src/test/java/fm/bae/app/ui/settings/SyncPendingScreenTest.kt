@@ -73,7 +73,7 @@ class SyncPendingScreenTest {
             }
         }
 
-        compose.onNodeWithText("Sign In").performClick()
+        compose.onNodeWithText("Sign in").performClick()
 
         compose
             .onNodeWithText("This library is stored in an S3-compatible bucket. Enter the access key you use for it.")

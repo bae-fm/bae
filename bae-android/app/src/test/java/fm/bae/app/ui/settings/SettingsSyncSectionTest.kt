@@ -72,7 +72,7 @@ class SettingsSyncSectionTest {
             }
         }
 
-        compose.onNodeWithText("Sign In").assertExists()
+        compose.onNodeWithText("Sign in").assertExists()
         // NoErrorDisplays words every failure "failed", with the error's diagnostic as its details.
         compose.onNodeWithText("failed").assertExists()
         compose.onNodeWithText("Reconnect").assertDoesNotExist()
