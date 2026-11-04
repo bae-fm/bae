@@ -4187,8 +4187,8 @@ code. bae-library assembles it from bae-db's part,
 `bae-db/migrations/001_initial.sql`, which holds every table no other part
 does, and bae-import's, under `bae-import/src/tables/`: the watched folders'
 (`watched_folders.sql`), the skipped candidates' (`skipped_candidates.sql`),
-the folder scans' (`folder_scans.sql`) and the import list's
-(`import_list/`). A part runs
+the folder scans' (`folder_scans.sql`), the release groupings'
+(`release_groupings.sql`) and the import list's (`import_list/`). A part runs
 after the parts creating the tables its triggers fire on. Every table is
 `STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
 stays on the device.

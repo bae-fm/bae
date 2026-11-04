@@ -9,23 +9,37 @@
 //! When those releases all sit directly in one folder, the grouping's release
 //! also reads that folder's sidecar files
 //! (`crate::grouping::shared_parent`); at most one grouping reads a
-//! folder's files (see `parent_files_on`).
+//! folder's files (see `parent_files_on`). Their tables are
+//! `release_groupings.sql`, which every device's library holds.
 
+/// The release groupings' part of the library's schema.
+pub(super) const SCHEMA: bae_db::SchemaPart =
+    bae_db::SchemaPart::new(&[include_str!("release_groupings.sql")]);
+
+#[cfg(desktop)]
 use super::folder_scans::{self, EntrySource, RowSources};
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use crate::folder_scanner::{
     AudioDamage, CandidateFile, FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey,
     InvalidCandidate, ProposedRole, ScanItem, SidecarFiles, SkippedFile,
 };
+#[cfg(desktop)]
 use crate::grouping::GroupingBlock;
+#[cfg(desktop)]
 use crate::CandidateKey;
+#[cfg(desktop)]
 pub(super) use folder_readings::{store_folder_reading, validate_decision_key_ownership};
+#[cfg(desktop)]
 use std::path::{Path, PathBuf};
 
+#[cfg(desktop)]
 pub(super) mod folder_readings;
 
 /// A stored release, whether it may be worked on, and why not when it is a
 /// grouping's release that is blocked.
+#[cfg(desktop)]
 pub(super) struct StoredReleaseCandidate {
     pub candidate: FolderCandidate,
     pub generation: u64,
@@ -35,6 +49,7 @@ pub(super) struct StoredReleaseCandidate {
 }
 
 /// What rebuilding groupings changed.
+#[cfg(desktop)]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct GroupingChanges {
     pub written: Vec<ScanItem>,
@@ -43,6 +58,7 @@ pub struct GroupingChanges {
     pub removed: Vec<CandidateKey>,
 }
 
+#[cfg(desktop)]
 impl GroupingChanges {
     fn extend(&mut self, other: GroupingChanges) {
         self.written.extend(other.written);
@@ -52,6 +68,7 @@ impl GroupingChanges {
 }
 
 /// How a grouping reads, as the actions on its release need it.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GroupingFacts {
     /// A folder's reading: the folder, and whether its releases are one.
@@ -60,6 +77,7 @@ pub(crate) enum GroupingFacts {
     Picked { members: Vec<CandidateKey> },
 }
 
+#[cfg(desktop)]
 pub(super) fn load_candidate_on(
     sql: &(impl QueryOne + QueryRows),
     key: &CandidateKey,
@@ -95,6 +113,7 @@ pub(super) fn load_candidate_on(
 /// Forget every grouping anchored at or taking a release from a folder at or
 /// below `folders`. Returns the keys of the grouping releases that were listed
 /// and went with them.
+#[cfg(desktop)]
 pub(super) fn forget_at_or_below(
     sql: &CovenWrite<'_>,
     folders: &super::watched_folders::FoldersAtOrBelow,
@@ -125,6 +144,7 @@ pub(super) fn forget_at_or_below(
     Ok(removed)
 }
 
+#[cfg(desktop)]
 pub(super) fn skipped_on(
     sql: &(impl QueryOne + QueryRows),
     candidate: &FolderCandidate,
@@ -147,6 +167,7 @@ pub(super) fn skipped_on(
 /// Rebuild the release of every grouping with no anchor that takes in one of
 /// `touched` (releases just written or removed) or sits in one of `sidecars`
 /// (folders whose sidecar was just written or removed).
+#[cfg(desktop)]
 pub(super) fn rebuild_groupings(
     sql: &CovenWrite<'_>,
     touched: &[CandidateKey],
@@ -172,6 +193,7 @@ pub(super) fn rebuild_groupings(
 /// Build and store the release of the grouping `key` from the releases it
 /// takes in, or record on the grouping why it cannot be built and leave its
 /// release as last built.
+#[cfg(desktop)]
 fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<GroupingChanges, DbError> {
     let member_keys: Vec<CandidateKey> = sql.query(
         "SELECT member_key FROM release_grouping_member WHERE grouping_key = ? ORDER BY position",
@@ -348,6 +370,7 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
 
 /// The release `candidate` names, as one that cannot be imported, holding
 /// `files`. Its tags are not read: a grouping is built from stored rows.
+#[cfg(desktop)]
 fn invalid(candidate: FolderCandidate, files: Vec<SkippedFile>) -> ScanItem {
     ScanItem::Invalid(InvalidCandidate {
         path: candidate.path,
@@ -361,6 +384,7 @@ fn invalid(candidate: FolderCandidate, files: Vec<SkippedFile>) -> ScanItem {
 }
 
 /// The files of the folder a grouping sits in, as its release reads them.
+#[cfg(desktop)]
 enum ParentFiles {
     /// It sits in no one folder, or that folder has no sidecar.
     None,
@@ -370,6 +394,7 @@ enum ParentFiles {
     Invalid(Vec<SkippedFile>),
 }
 
+#[cfg(desktop)]
 impl ParentFiles {
     fn valid(&self) -> &[CandidateFile] {
         match self {
@@ -381,6 +406,7 @@ impl ParentFiles {
 
 /// The other release reading the files of the folder a grouping sits in, by
 /// its name, found by the index of each folder's one reader.
+#[cfg(desktop)]
 pub(super) const PARENT_FILES_READER: &str =
     "SELECT COALESCE(candidate.name, coven_path_text(other.key)) \
      FROM release_grouping AS other \
@@ -393,6 +419,7 @@ pub(super) const PARENT_FILES_READER: &str =
 /// At most one release reads a folder's files: while another grouping sits in
 /// a folder with a sidecar, only the one already reading it may. Files still
 /// downloading are read by no release until the download ends.
+#[cfg(desktop)]
 fn parent_files_on(
     sql: &(impl QueryOne + QueryRows),
     key: &CandidateKey,
@@ -433,6 +460,7 @@ fn parent_files_on(
 
 /// Rebuild each grouping but `key` sitting in `folder` that is blocked, now
 /// that `key` no longer stands in the way of reading the folder's files.
+#[cfg(desktop)]
 fn rebuild_blocked_in(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
@@ -452,6 +480,7 @@ fn rebuild_blocked_in(
 }
 
 /// Say why grouping `key`'s release cannot be worked on as it stands.
+#[cfg(desktop)]
 fn blocked(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
@@ -479,6 +508,7 @@ fn blocked(
 
 /// The folder a grouping is anchored at, addressed below the watched folder
 /// covering it.
+#[cfg(desktop)]
 fn anchored_at(
     sql: &(impl QueryOne + QueryRows),
     anchor: &Path,
@@ -494,6 +524,7 @@ fn anchored_at(
 }
 
 /// Why grouping `key`'s release cannot be worked on, when something says so.
+#[cfg(desktop)]
 pub(super) fn load_block_on(
     sql: &(impl QueryOne + QueryRows),
     key: &CandidateKey,
@@ -512,6 +543,7 @@ pub(super) fn load_block_on(
 }
 
 /// A grouping's block from the columns [`blocked`] writes.
+#[cfg(desktop)]
 pub(super) fn block_of(
     kind: Option<String>,
     subject: Option<String>,
@@ -542,6 +574,7 @@ pub(super) fn block_of(
     }))
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     pub(crate) async fn set_grouping_skipped(
         &self,

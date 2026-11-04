@@ -15,7 +15,6 @@ mod import_list;
 mod import_origin;
 #[cfg(desktop)]
 pub(crate) mod import_state;
-#[cfg(desktop)]
 mod release_groupings;
 mod skipped_candidates;
 #[cfg(desktop)]
@@ -27,6 +26,7 @@ pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[
     watched_folders::SCHEMA,
     skipped_candidates::SCHEMA,
     folder_scans::SCHEMA,
+    release_groupings::SCHEMA,
     import_list::SCHEMA,
 ];
 

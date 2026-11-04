@@ -191,10 +191,7 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     "work_search_entry",
     "artist_search_entry",
     "artist_credit_search_entry",
-    // Import: the releases read from several folders, and each candidate's
-    // state while it is imported.
-    "release_grouping",
-    "release_grouping_member",
+    // Import: each candidate's state while it is imported.
     "import_candidate_state",
     "import_candidate_folder",
     "import_candidate_edit",
