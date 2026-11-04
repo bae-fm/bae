@@ -353,6 +353,27 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
     manager.close().await.unwrap();
 }
 
+/// A start that gets under way ends the failed start before it even when its
+/// pass ends the way the last one did: here the last pass synced on a clock
+/// that never moves, so the next one syncs at the same time again and
+/// changes none of how passes ended.
+#[tokio::test]
+async fn a_start_whose_pass_ends_as_the_last_did_ends_the_failed_start() {
+    let (manager, _temp, _clock) = library_on_a_stopped_clock().await;
+    manager.forget_encryption_key().await.unwrap();
+    manager.attach_and_start_sync_at_startup().await;
+    assert!(
+        manager.sync_status().await.unwrap().error.is_some(),
+        "the start without the store keys failed"
+    );
+
+    manager.unlock_store_key().await.unwrap();
+    manager.attach_and_start_sync().await.unwrap();
+    let status = manager.sync_status().await.unwrap();
+    assert!(status.error.is_none(), "a start under way shows the failed one: {status:?}");
+    manager.close().await.unwrap();
+}
+
 // Retry now as the activity list offers it, against coven's own retry: each
 // failure it is offered for runs a pass when retried; each failure only the
 // person can clear, and a provider's cooldown, offers none, since coven would

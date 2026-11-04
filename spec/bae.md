@@ -2873,10 +2873,11 @@ its control says so in core's words for that transfer.
   failed is a row of this device's (`sync_start_failure`), kept until a
   start gets under way, whether a reconnect's or that of a storage setup such
   as signing in again, and emptied as the library opens, since no attempt
-  outlives the process that made it. coven's write to its sync status row as a
-  pass moves a slot or ends, or as a setup, join or restore finishes,
-  deletes the row, so the line never shows a failed start beside sync that
-  runs. The row holds the failure's class, and
+  outlives the process that made it. coven counts each start of sync in its
+  sync status row, a setup's among them, and that count deletes the row in
+  the transaction that starts sync, so the line never shows a failed start
+  beside sync that runs, even when the new start's passes end the way the
+  last one's did. The row holds the failure's class, and
   for a storage failure coven's reason with what that reason names (the
   access a sign-in lacks, a size and its limit), each in a column of its own,
   so the line words it as it words the same failure from a pass. A start

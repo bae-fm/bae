@@ -7,10 +7,10 @@
 //! library's rows (the pending records it names, why a start failed, the
 //! queues' counts) are read in one read of their own.
 //!
-//! The rows are never older than the state they are put with. A write that
-//! changes coven's sync state also ends a failed start in the same
-//! transaction (the `sync_start_failure_ended` trigger), so rows read before
-//! that state would show the failed start beside the state that ended it.
+//! The rows are never older than the state they are put with. A start of
+//! sync ends a failed start in the transaction that starts it (the
+//! `sync_start_failure_ended` trigger), so rows read before the state that
+//! start brings would show the failed start beside it.
 //! Each value's rows are therefore read after the state it carries arrived;
 //! rows newer than the state are as they should be, such as a pending record
 //! listed before the state names it.

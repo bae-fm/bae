@@ -6729,17 +6729,14 @@ CREATE TABLE IF NOT EXISTS sync_start_failure (
 ) STRICT;
 
 -- A start that got under way ends the failed start before it, in the
--- transaction that writes coven's sync status row: a pass that moves a slot
--- or ends, and a setup, join or restore that finishes, each write it as
--- the loop runs; opening and a change of credentials write only whether
--- storage is set up. A setup starts sync inside coven, so no start of
--- bae's returns to clear the row, and a status that says sync runs never
--- shows beside a start that failed before.
+-- transaction that starts it: coven counts every start of sync in its sync
+-- status row, a setup's among them, even one whose passes end the way the
+-- last one did. A setup starts sync inside coven, so no start of bae's
+-- returns to clear the row, and a status that says sync runs never shows
+-- beside a start that failed before.
 CREATE TRIGGER IF NOT EXISTS sync_start_failure_ended
-AFTER UPDATE OF moving, last_pass, last_synced ON coven_sync_status
-WHEN NEW.moving = 1
-    OR NEW.last_pass IS NOT OLD.last_pass
-    OR NEW.last_synced IS NOT OLD.last_synced
+AFTER UPDATE OF starts ON coven_sync_status
+WHEN NEW.starts IS NOT OLD.starts
 BEGIN
     DELETE FROM sync_start_failure;
 END;
