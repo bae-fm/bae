@@ -5,14 +5,11 @@
 //! the harness a test runs on holds each device and passes its parts in.
 
 use std::sync::Arc;
-use std::time::Duration;
 
+use bae_util::test_channels::HANG_GUARD;
 use coven::Storage;
 
 use crate::Database;
-
-/// How long a test waits for sync to reach a state before failing.
-const SETTLE: Duration = Duration::from_secs(20);
 
 /// The S3 key the library's storage is reached with on every device.
 fn owner_credentials() -> coven::S3Credentials {
@@ -108,18 +105,11 @@ pub async fn stop_sync(database: &Database) {
     database.stop_sync().await.unwrap();
 }
 
-/// What a device's completed sync cycles reported: how many have completed,
-/// and what the latest one held back from the library.
-#[derive(Default)]
-struct Cycles {
-    completed: u64,
-    last: String,
-}
-
-/// The record of every sync cycle a device's store completes, for as long
-/// as the record lives.
+/// What the latest sync cycle a device's store completed reported, for as
+/// long as the record lives: what a test that never got where it waited for
+/// names.
 pub struct SyncCycles {
-    cycles: Arc<std::sync::Mutex<Cycles>>,
+    last: Arc<std::sync::Mutex<String>>,
     _watcher: tokio::task::JoinHandle<()>,
 }
 
@@ -127,9 +117,9 @@ impl SyncCycles {
     /// Record the cycles `database` completes from now on: the last pass as
     /// it stands is no cycle.
     pub fn follow(database: &Database) -> Self {
-        let cycles = Arc::new(std::sync::Mutex::new(Cycles::default()));
+        let last = Arc::new(std::sync::Mutex::new(String::new()));
         let mut ends = pass_ends(database);
-        let recorded = cycles.clone();
+        let recorded = last.clone();
         let watcher = tokio::spawn(async move {
             let mut previous = match ends.next().await {
                 Some(Ok(end)) => end,
@@ -145,53 +135,52 @@ impl SyncCycles {
                     (Some(coven::LastPass::Failed { error, .. }), _) => format!("failed: {error}"),
                     _ => continue,
                 };
-                let mut cycles = recorded.lock().expect("cycle record");
-                cycles.completed += 1;
-                cycles.last = last;
+                *recorded.lock().expect("cycle record") = last;
             }
         });
-        Self { cycles, _watcher: watcher }
-    }
-
-    /// How many cycles have completed.
-    pub fn completed(&self) -> u64 {
-        self.cycles.lock().expect("cycle record").completed
+        Self { last, _watcher: watcher }
     }
 
     /// What the latest completed cycle reported.
     pub fn last(&self) -> String {
-        self.cycles.lock().expect("cycle record").last.clone()
+        self.last.lock().expect("cycle record").clone()
     }
 }
 
-/// Run `database`'s cycles until `condition` holds, or fail naming `what`.
-/// It requests passes of this device only, so another device runs only the
+/// Ask `database` for a pass and wait for the pass that answers it: one that
+/// began after the asking, so it read what storage held then.
+async fn pass(database: &Database) {
+    let answer = database.retry_now().await.expect("a device's sync takes a retry");
+    // A failed pass is one more cycle; the caller's condition is the verdict.
+    answer.await;
+}
+
+/// Run `database`'s passes until `condition` holds, or fail naming `what`.
+/// It runs passes of this device only, so another device runs only the
 /// passes its own work starts.
 pub async fn wait_until<F, Fut>(database: &Database, cycles: &SyncCycles, what: &str, condition: F)
 where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = bool>,
 {
-    let deadline = tokio::time::Instant::now() + SETTLE;
-    loop {
-        database.sync_now();
-        if condition().await {
-            return;
+    let reached = tokio::time::timeout(HANG_GUARD, async {
+        while !condition().await {
+            pass(database).await;
         }
-        if tokio::time::Instant::now() >= deadline {
-            panic!("{what} never came. The last cycle: {}", cycles.last());
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
+    })
+    .await;
+    if reached.is_err() {
+        panic!("{what} never came. The last cycle: {}", cycles.last());
     }
 }
 
 /// Wait until `condition` holds and neither device has a write left to
-/// send, then for two more completed cycles on each device — so the verdict
-/// is a cycle that began after every write either device made was in
-/// storage — and require all of it still holds and nothing is held back. A
-/// device's write leaves its queue only once its slot is in storage, so a
-/// condition can hold on one device while the other's write that changes the
-/// outcome is still on its way out.
+/// send, then for two more passes on each device — so the verdict is a pass
+/// that began after every write either device made was in storage — and
+/// require all of it still holds and nothing is held back. A device's write
+/// leaves its queue only once its slot is in storage, so a condition can
+/// hold on one device while the other's write that changes the outcome is
+/// still on its way out.
 pub async fn settle<F, Fut>(
     (a, a_cycles): (&Database, &SyncCycles),
     (b, b_cycles): (&Database, &SyncCycles),
@@ -201,45 +190,42 @@ pub async fn settle<F, Fut>(
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = bool>,
 {
-    let deadline = tokio::time::Instant::now() + SETTLE;
-    let mut settling: Option<(u64, u64)> = None;
-    loop {
-        a.sync_now();
-        b.sync_now();
-        let quiet = a.unsent_writes_for_test().await.unwrap() == 0
+    let quiet = || async {
+        a.unsent_writes_for_test().await.unwrap() == 0
             && b.unsent_writes_for_test().await.unwrap() == 0
-            && condition().await;
-        let (completed_a, completed_b) = (a_cycles.completed(), b_cycles.completed());
-        if !quiet {
-            settling = None;
-        } else {
-            match settling {
-                None => settling = Some((completed_a, completed_b)),
-                Some((from_a, from_b))
-                    if completed_a >= from_a + 2 && completed_b >= from_b + 2 =>
-                {
-                    if a.pending().await.unwrap().is_empty()
-                        && b.pending().await.unwrap().is_empty()
-                    {
-                        return;
-                    }
+            && condition().await
+    };
+    let settled = tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            if quiet().await {
+                for _ in 0..2 {
+                    pass(a).await;
+                    pass(b).await;
                 }
-                Some(_) => {}
+                if quiet().await
+                    && a.pending().await.unwrap().is_empty()
+                    && b.pending().await.unwrap().is_empty()
+                {
+                    return;
+                }
+            } else {
+                pass(a).await;
+                pass(b).await;
             }
         }
-        if tokio::time::Instant::now() >= deadline {
-            panic!(
-                "{what} never settled.\nA held {:?} with {} unsent writes after {}\n\
-                 B held {:?} with {} unsent writes after {}",
-                a.pending().await.unwrap(),
-                a.unsent_writes_for_test().await.unwrap(),
-                a_cycles.last(),
-                b.pending().await.unwrap(),
-                b.unsent_writes_for_test().await.unwrap(),
-                b_cycles.last(),
-            );
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
+    })
+    .await;
+    if settled.is_err() {
+        panic!(
+            "{what} never settled.\nA held {:?} with {} unsent writes after {}\n\
+             B held {:?} with {} unsent writes after {}",
+            a.pending().await.unwrap(),
+            a.unsent_writes_for_test().await.unwrap(),
+            a_cycles.last(),
+            b.pending().await.unwrap(),
+            b.unsent_writes_for_test().await.unwrap(),
+            b_cycles.last(),
+        );
     }
 }
 
