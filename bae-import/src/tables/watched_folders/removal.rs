@@ -48,11 +48,7 @@ impl ImportTables {
         }
         self.database
             .call(move |sql| {
-                let watched: Vec<PathBuf> = sql.query(
-                    "SELECT path FROM watched_import_folders ORDER BY position",
-                    [],
-                    |row| path_column::get(row, 0),
-                )?;
+                let watched = super::watched_roots_on(sql)?;
                 if let Some(root) = roots.iter().find(|root| !is_among(&watched, root)) {
                     return Err(DbError::Message(format!(
                         "{} is not a watched folder",
@@ -91,11 +87,7 @@ impl ImportTables {
                 for key in &removed {
                     super::import_state::end_file_work_unless_of_on(sql, key, None)?;
                 }
-                let watched = super::watched_folders_of(sql.query(
-                    "SELECT path FROM watched_import_folders ORDER BY position",
-                    [],
-                    |row| path_column::get(row, 0),
-                )?)?;
+                let watched = super::watched_folders_on(sql)?;
                 Ok(Some(WatchedFoldersRemoved { removed_keys: removed, watched }))
             })
             .await

@@ -72,6 +72,21 @@ pub(super) fn watched_folder_among_on<'a>(
         .optional()?)
 }
 
+/// Every watched root, as stored, in the order they were added.
+pub(super) fn watched_roots_on(sql: &impl QueryRows) -> Result<Vec<PathBuf>, DbError> {
+    Ok(sql.query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
+        path_column::get(row, 0)
+    })?)
+}
+
+/// Every watched folder, in the order they were added. A stored root that
+/// is not canonical, or overlaps another, fails the read.
+pub(super) fn watched_folders_on(
+    sql: &impl QueryRows,
+) -> Result<Vec<crate::WatchedFolder>, DbError> {
+    watched_folders_of(watched_roots_on(sql)?)
+}
+
 /// The watched folders `roots`, as stored in the order they were added. A
 /// root that is not canonical, or overlaps another, fails the read.
 fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, DbError> {
@@ -95,7 +110,7 @@ impl ImportTables {
     /// Every watched folder, in the order they were added. A stored root that
     /// is not canonical, or overlaps another, fails the read.
     pub async fn load_watched_import_folders(&self) -> Result<Vec<crate::WatchedFolder>, DbError> {
-        watched_folders_of(self.watched_import_roots().await?)
+        self.database.read(move |sql| watched_folders_on(&sql)).await
     }
 
     /// Whether `path`, spelled as the store keys it, is a watched folder,
@@ -141,15 +156,7 @@ impl ImportTables {
 
     /// Every watched root, in the order they were added.
     async fn watched_import_roots(&self) -> Result<Vec<PathBuf>, DbError> {
-        self.database
-            .read(move |sql| {
-                Ok(sql.query(
-                    "SELECT path FROM watched_import_folders ORDER BY position",
-                    [],
-                    |row| path_column::get(row, 0),
-                )?)
-            })
-            .await
+        self.database.read(move |sql| watched_roots_on(&sql)).await
     }
 
     /// Watch the folder `path` names, keyed by its canonical spelling, and
@@ -170,11 +177,7 @@ impl ImportTables {
         }
         self.database
             .call(move |sql| {
-                let roots: Vec<PathBuf> = sql.query(
-                    "SELECT path FROM watched_import_folders ORDER BY position",
-                    [],
-                    |row| path_column::get(row, 0),
-                )?;
+                let roots = watched_roots_on(sql)?;
                 if roots.iter().any(|root| root.as_os_str() == path.as_os_str()) {
                     return Err(DbError::Message(format!(
                         "watched folder {} was added while this add was deciding",
@@ -199,12 +202,7 @@ impl ImportTables {
                     "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
                     params![coven::path_bytes(&path), position],
                 )?;
-                let watched = watched_folders_of(sql.query(
-                    "SELECT path FROM watched_import_folders ORDER BY position",
-                    [],
-                    |row| path_column::get(row, 0),
-                )?)?;
-                Ok(Some(watched))
+                Ok(Some(watched_folders_on(sql)?))
             })
             .await
     }

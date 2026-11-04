@@ -9,7 +9,6 @@ use crate::list::{
     ImportListNarrowing, ImportListProjection, ImportListRequest, ImportListWindow,
     ImportQueueSummary,
 };
-use crate::watched_folder::WatchedFolder;
 
 #[derive(Clone, PartialEq)]
 struct ImportListRows {
@@ -68,13 +67,7 @@ fn load_import_list_on(
         .collect::<Result<Vec<_>, DbError>>()?;
     found.headers = known.headers;
     places.keep(standing, found);
-    let watched_folders = sql
-        .query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
-            path_column::get(row, 0)
-        })?
-        .into_iter()
-        .map(WatchedFolder::from_path)
-        .collect();
+    let watched_folders = super::watched_folders::watched_folders_on(sql)?;
     let selection = selection::selection(sql, list.id)?;
     Ok(ImportListRows {
         windows,
