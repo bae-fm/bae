@@ -15,7 +15,7 @@ const PAGE_CACHE_KIB: u32 = 16 * 1024;
 /// bae's store as every handle opens it: its page cache size, its synced
 /// tables, its schema, and the collation and SQL functions the schema names.
 pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
-    builder
+    let builder = builder
         .sqlite_settings(coven::SqliteSettings {
             cache_size: Some(coven::CacheSize::Kibibytes(PAGE_CACHE_KIB)),
             ..Default::default()
@@ -27,37 +27,51 @@ pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
             super::migrations::NATURAL_ORDER,
             super::migrations::NATURAL_ORDER_VERSION,
             super::migrations::natural_order,
-        )
-        .function(
-            "bae_fold_case",
-            1,
-            coven::Determinism::Deterministic { version: 1 },
-            |arguments| Ok(fold_case_value(arguments.get(0)?)),
-        )
-        .function(
-            "bae_search_pattern",
-            1,
-            coven::Determinism::Deterministic { version: 1 },
-            |arguments| Ok(search_pattern_value(arguments.get(0)?)),
-        )
-        .function(
-            "bae_catalog_rank",
-            1,
-            coven::Determinism::Deterministic { version: 1 },
-            |arguments| catalog_rank_value(arguments.get(0)?),
-        )
-        .function(
-            "bae_folder_below",
-            2,
-            coven::Determinism::Deterministic { version: 2 },
-            |arguments| folder_below_value(arguments.get(0)?, arguments.get(1)?),
-        )
-        .function(
-            "bae_folder_relative",
-            2,
-            coven::Determinism::Deterministic { version: 2 },
-            |arguments| folder_relative_value(arguments.get(0)?, arguments.get(1)?),
-        )
+        );
+    register_functions(builder)
+}
+
+/// Declares the SQL functions the schema names once, as the registration on
+/// coven's builder (which every handle opens with) and as the registration
+/// on a bare connection (`bare_library_connection`): `name, arguments,
+/// version, |args| body`, where `body` reads its arguments with `args.get(n)`.
+macro_rules! schema_functions {
+    ($($name:literal, $arguments:literal, $version:literal, |$args:ident| $body:expr;)*) => {
+        fn register_functions(builder: coven::CovenBuilder) -> coven::CovenBuilder {
+            builder$(.function(
+                $name,
+                $arguments,
+                coven::Determinism::Deterministic { version: $version },
+                |$args| $body,
+            ))*
+        }
+
+        #[cfg(any(test, feature = "test-utils"))]
+        fn register_functions_on(conn: &rusqlite::Connection) {
+            use rusqlite::functions::FunctionFlags;
+            $(
+                conn.create_scalar_function(
+                    $name,
+                    $arguments,
+                    FunctionFlags::SQLITE_UTF8
+                        | FunctionFlags::SQLITE_DETERMINISTIC
+                        | FunctionFlags::SQLITE_INNOCUOUS,
+                    |$args| $body,
+                )
+                .expect(concat!($name, " registers"));
+            )*
+        }
+    };
+}
+
+schema_functions! {
+    "bae_fold_case", 1, 1, |arguments| Ok(fold_case_value(arguments.get(0)?));
+    "bae_search_pattern", 1, 1, |arguments| Ok(search_pattern_value(arguments.get(0)?));
+    "bae_catalog_rank", 1, 1, |arguments| catalog_rank_value(arguments.get(0)?);
+    "bae_folder_below", 2, 2, |arguments| folder_below_value(arguments.get(0)?, arguments.get(1)?);
+    "bae_folder_relative", 2, 2, |arguments| {
+        folder_relative_value(arguments.get(0)?, arguments.get(1)?)
+    };
 }
 
 /// `bae_fold_case`: a text folded as library search folds it; NULL stays NULL.
@@ -118,39 +132,10 @@ fn folder_relative_value(root: Vec<u8>, folder: Vec<u8>) -> rusqlite::Result<Opt
 pub fn bare_library_connection() -> rusqlite::Connection {
     use rusqlite::functions::FunctionFlags;
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    conn.create_scalar_function(
-        "bae_fold_case",
-        1,
-        FunctionFlags::SQLITE_UTF8
-            | FunctionFlags::SQLITE_DETERMINISTIC
-            | FunctionFlags::SQLITE_INNOCUOUS,
-        |context| Ok(fold_case_value(context.get(0)?)),
-    )
-    .expect("bae_fold_case registers");
-    conn.create_scalar_function(
-        "bae_search_pattern",
-        1,
-        FunctionFlags::SQLITE_UTF8
-            | FunctionFlags::SQLITE_DETERMINISTIC
-            | FunctionFlags::SQLITE_INNOCUOUS,
-        |context| Ok(search_pattern_value(context.get(0)?)),
-    )
-    .expect("bae_search_pattern registers");
+    register_functions_on(&conn);
     let deterministic = FunctionFlags::SQLITE_UTF8
         | FunctionFlags::SQLITE_DETERMINISTIC
         | FunctionFlags::SQLITE_INNOCUOUS;
-    conn.create_scalar_function("bae_catalog_rank", 1, deterministic, |context| {
-        catalog_rank_value(context.get(0)?)
-    })
-    .expect("bae_catalog_rank registers");
-    conn.create_scalar_function("bae_folder_below", 2, deterministic, |context| {
-        folder_below_value(context.get(0)?, context.get(1)?)
-    })
-    .expect("bae_folder_below registers");
-    conn.create_scalar_function("bae_folder_relative", 2, deterministic, |context| {
-        folder_relative_value(context.get(0)?, context.get(1)?)
-    })
-    .expect("bae_folder_relative registers");
     // coven registers `coven_path_text` on every connection it opens; this one
     // shows a path's bytes the same way, through coven's exports.
     conn.create_scalar_function("coven_path_text", 1, deterministic, |context| {
