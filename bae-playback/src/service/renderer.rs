@@ -453,12 +453,7 @@ impl PlaybackService {
             let timeline = cur.prepared.timeline;
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::PositionUpdate {
-                    position_ms: timeline.track_time(position).as_millis(),
-                    duration_ms: timeline.duration_ms(),
-                    track_id: track_id.clone(),
-                    progress: timeline.progress(position),
-                },
+                PlaybackProgress::position_update(timeline, track_id.clone(), position),
             );
         }
 

@@ -1,6 +1,7 @@
 pub mod handle;
 pub mod timeline;
 use crate::service::PlaybackState;
+use crate::timeline::{StreamPosition, TrackTimeline};
 pub use handle::{PlaybackPositionsWatch, PlaybackProgressFeed, PlaybackProgressHandle};
 pub use timeline::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -354,6 +355,45 @@ pub enum PlaybackProgress {
         position_ms: u64,
         progress: f64,
     },
+}
+
+impl PlaybackProgress {
+    /// The playing tick at `position` of a track on `timeline`.
+    pub(crate) fn position_update(
+        timeline: TrackTimeline,
+        track_id: String,
+        position: StreamPosition,
+    ) -> Self {
+        Self::PositionUpdate {
+            position_ms: timeline.track_time(position).as_millis(),
+            duration_ms: timeline.duration_ms(),
+            track_id,
+            progress: timeline.progress(position),
+        }
+    }
+
+    /// The display moved to `position` of a track on `timeline` without a
+    /// state change.
+    pub(crate) fn seeked(
+        timeline: TrackTimeline,
+        track_id: String,
+        position: StreamPosition,
+    ) -> Self {
+        Self::Seeked {
+            position_ms: timeline.track_time(position).as_millis(),
+            duration_ms: timeline.duration_ms(),
+            track_id,
+            progress: timeline.progress(position),
+        }
+    }
+
+    /// The preview tick at `position` of a preview on `timeline`.
+    pub(crate) fn preview_position(timeline: TrackTimeline, position: StreamPosition) -> Self {
+        Self::PreviewPositionUpdate {
+            position_ms: position.as_millis(),
+            progress: timeline.progress(position),
+        }
+    }
 }
 
 /// Emit a progress event to subscribers. Logs at warn-level if no subscribers

@@ -304,10 +304,7 @@ impl PreviewPlayer {
         if was_paused {
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::PreviewPositionUpdate {
-                    position_ms: position.as_millis(),
-                    progress: timeline.progress(position),
-                },
+                PlaybackProgress::preview_position(timeline, position),
             );
         }
     }
@@ -573,10 +570,7 @@ async fn listen_to_preview(
                 AudioEvent::Position((fmt, position)) => {
                     emit_progress(
                         &progress_tx,
-                        PlaybackProgress::PreviewPositionUpdate {
-                            position_ms: position.as_millis(),
-                            progress: fmt.timeline.progress(position),
-                        },
+                        PlaybackProgress::preview_position(fmt.timeline, position),
                     );
                 }
                 AudioEvent::Completion(_) => {
