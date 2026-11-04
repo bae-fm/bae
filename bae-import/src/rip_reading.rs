@@ -5,12 +5,11 @@
 
 use crate::cue_flac::CueSheet;
 use crate::discid::{calculate_mb_discid_from_cue, discid_from_log_text, SheetAudioDuration};
-use crate::folder_scanner::resolve_cue_audio_paths;
 use bae_catalogs::rip::rate_ruling_out_cd;
 use bae_catalogs::{AudioOrigin, AudioSource, CdProof};
 use bae_identify::signals::{ComputedDiscId, DiscIdSignal};
 use bae_types::audio_format::AudioFormat;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tracing::{debug, trace, warn};
 
 /// A document's text, decoded whatever its encoding (an EAC log is UTF-16).
@@ -225,66 +224,6 @@ fn keep_disc(discs: &mut Vec<ComputedDiscId>, disc_id: String, file: Option<&str
     discs.push(ComputedDiscId { disc_id, source_file: file.map(str::to_string) });
 }
 
-/// One of a library release's audio files: where it is, how long it plays,
-/// and its format.
-pub struct ReleaseAudioFile {
-    pub path: PathBuf,
-    pub duration_ms: u64,
-    pub format: AudioFormat,
-}
-
-/// Read a library release's rip artifacts from their resolved paths:
-/// `documents` its logs and AccurateRip reports, `cue_paths` its sheets, which
-/// are parsed here and matched to `audio` by the names their `FILE`
-/// directives give.
-pub fn read_rip_artifacts_from_paths(
-    documents: &[PathBuf],
-    cue_paths: &[PathBuf],
-    audio: &[ReleaseAudioFile],
-) -> RipReading {
-    let audio_paths = audio.iter().map(|file| file.path.clone()).collect::<Vec<_>>();
-    let parsed: Vec<(&PathBuf, CueSheet)> = cue_paths
-        .iter()
-        .filter_map(|cue_path| match crate::cue_flac::parse_cue_sheet(cue_path) {
-            Ok(sheet) => Some((cue_path, sheet)),
-            Err(e) => {
-                debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);
-                None
-            }
-        })
-        .collect();
-    let sheets = parsed
-        .iter()
-        .filter_map(|(cue_path, sheet)| {
-            let Some(resolved) = resolve_cue_audio_paths(cue_path, sheet, &audio_paths) else {
-                debug!("Skipping CUE with no matching audio file: {:?}", cue_path);
-                return None;
-            };
-            let audio = resolved
-                .into_iter()
-                .map(|(file_reference, audio_path)| SheetAudioDuration {
-                    file_reference,
-                    duration_ms: audio
-                        .iter()
-                        .find(|file| &file.path == audio_path)
-                        .expect("a matched CUE audio path came from the release's audio")
-                        .duration_ms,
-                })
-                .collect();
-            Some(RipSheet { sheet, audio, path: cue_path.as_path(), file: None })
-        })
-        .collect();
-    read(RipArtifacts {
-        documents: documents
-            .iter()
-            .filter(|path| is_rip_document(path))
-            .map(|path| RipDocument { path, file: None })
-            .collect(),
-        sheets,
-        audio: audio.iter().map(|file| &file.format).collect(),
-    })
-}
-
 /// A MusicBrainz DiscID from an already-parsed CUE sheet and the lengths the
 /// authoritative scan retained for the audio it names.
 fn discid_from_cue_audio(
@@ -306,12 +245,30 @@ fn discid_from_cue_audio(
 /// parsed — no re-read, no re-parse. Only the sheets that carve are read: one
 /// the person took out of the tracklist describes a disc this folder is no
 /// longer presenting. A folder whose sheet is unbound can still identify
-/// itself from its log.
+/// itself from its log. Each disc and proof names the file it was read off.
 pub fn read_rip_artifacts(categorized: &crate::folder_scanner::CategorizedFiles) -> RipReading {
+    read_categorized(categorized, |file| Some(&file.relative_path))
+}
+
+/// Read a library release's files as [`read_rip_artifacts`] reads a folder's
+/// (see [`crate::folder_scanner::categorize_library_files`]). A library
+/// release's signals name none of its files.
+pub(crate) fn read_library_rip_artifacts(
+    categorized: &crate::folder_scanner::CategorizedFiles,
+) -> RipReading {
+    read_categorized(categorized, |_| None)
+}
+
+/// Read `categorized`'s rip files, `named` giving the name each disc and
+/// proof carries of the file it was read off.
+fn read_categorized(
+    categorized: &crate::folder_scanner::CategorizedFiles,
+    named: fn(&crate::folder_scanner::ScannedFile) -> Option<&str>,
+) -> RipReading {
     let documents = categorized
         .documents()
         .filter(|doc| is_rip_document(&doc.path))
-        .map(|doc| RipDocument { path: &doc.path, file: Some(&doc.relative_path) })
+        .map(|doc| RipDocument { path: &doc.path, file: named(doc) })
         .collect();
     let carving = categorized.carving_sheets();
     let sheets = carving
@@ -331,7 +288,7 @@ pub fn read_rip_artifacts(categorized: &crate::folder_scanner::CategorizedFiles)
                 })
                 .collect(),
             path: &bound.file.path,
-            file: Some(&bound.file.relative_path),
+            file: named(bound.file),
         })
         .collect();
     read(RipArtifacts {

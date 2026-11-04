@@ -29,6 +29,7 @@ mod sheet_bindings;
 mod sheet_references;
 mod sidecars;
 pub use candidates::*;
+pub(crate) use categorize::categorize_library_files;
 pub use categorize::is_audio_file;
 pub use categorize::scanned_audio;
 use categorize::*;
@@ -44,7 +45,6 @@ pub use scan::*;
 pub use sheet_bindings::DiscLayout;
 use sheet_bindings::*;
 use sheet_references::resolve_cue_audio_path;
-pub(crate) use sheet_references::resolve_cue_audio_paths;
 use sidecars::categorize_sidecar;
 
 /// The text files a folder carries beside its audio: track sheets, rip logs

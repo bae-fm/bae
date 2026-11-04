@@ -1541,8 +1541,11 @@ reported and stops for the session, as it does when the library closes.
   decide again.
 - **Identifying a library release again.** A release already in the library
   can be identified again from its own files; its Disc IDs come from the rip
-  logs and CUE sheets this device holds of it, and its track lengths from its
-  stored tracks. The person searches from the release editor (§3.8) and picks
+  logs and CUE sheets this device holds of it, each sheet bound to its audio
+  and given its disc by the rules a folder's scan applies, so it hashes the
+  discs its folder did. A binding the person made in the import pane stays
+  with the candidate, so a sheet only they bound is read unbound. Its track
+  lengths come from its stored tracks. The person searches from the release editor (§3.8) and picks
   its pressing, which is applied to the release's edit session at once, with
   no confirm step, and the editor shows what it gave. A pressing whose tracks
   don't lay out on the stored ones is refused with both counts, and one

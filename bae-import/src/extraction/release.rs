@@ -41,12 +41,12 @@ impl ReleaseIdentity {
     }
 }
 
-/// Read the release's local files, pick out its rip documents, track sheets
-/// and audio, and read them the way a folder's are read (see
-/// [`crate::rip_reading::read_rip_artifacts_from_paths`]). The track count
-/// and lengths come from the release's track rows, not the files — those rows
-/// are the user's truth. A panic reading the files is reported to
-/// `diagnostics`.
+/// Read the release's local files the way a folder's scan reads its rip files
+/// (`folder_scanner::categorize_library_files`), so a sheet is
+/// bound to the audio the scan would bind it to and the release hashes the
+/// discs its folder did. The track count and lengths come from the release's
+/// track rows, not the files — those rows are the user's truth. A panic
+/// reading the files is reported to `diagnostics`.
 ///
 /// A cloud-only release with no local copy has no files to read, so its
 /// reading proves nothing and computes no disc ID.
@@ -64,49 +64,64 @@ pub async fn resolve_release_identity(
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
-    // Original paths are the ones this device recorded at import.
-    // A release imported elsewhere has no originals here, so yields no paths or
-    // disc ID.
-    let mut documents = Vec::new();
-    let mut cue_paths = Vec::new();
-    let mut audio_files = Vec::new();
-    for (f, original) in files {
-        if let Some(path) = original {
-            if !path.exists() {
-                continue;
-            }
-            if crate::rip_reading::is_rip_document(&path) {
-                documents.push(path.clone());
-            } else if path
-                .extension()
-                .and_then(|extension| extension.to_str())
-                .is_some_and(|extension| extension.eq_ignore_ascii_case("cue"))
-            {
-                cue_paths.push(path.clone());
-            }
-            if let Some(source_audio) = &f.source_audio {
-                let duration_ms = source_audio.duration_ms;
-                audio_files.push(crate::rip_reading::ReleaseAudioFile {
-                    path,
-                    duration_ms,
-                    format: source_audio.format.clone(),
-                });
-            }
-        }
-    }
-
-    let audio = bae_identify::signals::AudioFacts::of(
-        tracks.len() as u32,
-        track_lengths_ms,
-        audio_files.iter().map(|file| &file.format),
-    );
-    let rip = bae_util::task_failure::blocking("read a release's rip files", move || {
-        crate::rip_reading::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
-    })
-    .await
-    .map_err(|failed| diagnostics.bug(failed))?;
+    let (rip, formats) =
+        bae_util::task_failure::blocking("read a release's rip files", move || {
+            let categorized = crate::folder_scanner::categorize_library_files(
+                files.into_iter().filter_map(|(file, original)| local_file(file, original?)),
+            );
+            let formats: Vec<bae_types::audio_format::AudioFormat> = categorized
+                .audio()
+                .filter_map(|file| file.source_audio.as_ref())
+                .map(|audio| audio.format.clone())
+                .collect();
+            (crate::rip_reading::read_library_rip_artifacts(&categorized), formats)
+        })
+        .await
+        .map_err(|failed| diagnostics.bug(failed))?;
+    let audio =
+        bae_identify::signals::AudioFacts::of(tracks.len() as u32, track_lengths_ms, &formats);
 
     Ok(ReleaseIdentity { rip, audio })
+}
+
+/// A release file as the file at `original`, the path this device recorded
+/// at import, with the audio facts the import stored; `None` when nothing is
+/// there now. A release imported elsewhere records no originals here, so it
+/// has no such files. Blocking: it reads the file's metadata.
+fn local_file(
+    file: bae_db::DbFile,
+    original: PathBuf,
+) -> Option<crate::folder_scanner::ScannedFile> {
+    let metadata = match std::fs::metadata(&original) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            debug!("release file {} is not at {}: {error}", file.id, original.display());
+            return None;
+        }
+    };
+    let modified_at_ns = match crate::folder_scanner::file_modified_at_ns(&original, &metadata) {
+        Ok(modified_at_ns) => modified_at_ns,
+        Err(error) => {
+            warn!(
+                "release file {} at {} has no usable modification time: {error}",
+                file.id,
+                original.display()
+            );
+            return None;
+        }
+    };
+    let mut scanned = crate::folder_scanner::ScannedFile::new(
+        original,
+        file.original_filename,
+        metadata.len(),
+        modified_at_ns,
+    );
+    scanned.source_audio = file.source_audio.map(|audio| crate::folder_scanner::ScannedAudio {
+        content_type: audio.content_type,
+        duration_ms: audio.duration_ms,
+        format: audio.format,
+    });
+    Some(scanned)
 }
 
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every

@@ -305,19 +305,11 @@ pub(super) fn categorize_files_from_tree(
     for (index, (file, proposed_role)) in proposed.into_iter().enumerate() {
         let role = match proposed_role {
             ProposedRole::Audio => FileRole::Audio,
-            ProposedRole::Cue => FileRole::TrackSheet {
-                sheet: sheets
+            ProposedRole::Cue => unsettled_sheet(
+                sheets
                     .remove(&index)
                     .expect("a file keeps the CUE role only when its sheet parsed"),
-                // The scan proposes neither a binding nor a disc here: the
-                // user's decisions below come first, so `settle_sheet_bindings`
-                // binds every parsed sheet once those have landed; and a cue
-                // filename says nothing about which disc it holds, so
-                // `settle_sheet_discs` assigns every parsed sheet against the
-                // bindings that end up in force.
-                binding: SheetBinding::Unresolved { files: Vec::new() },
-                disc: SheetDisc::Disc { number: 1 },
-            },
+            ),
             ProposedRole::Image => FileRole::Artwork,
             ProposedRole::DamagedImage => FileRole::DamagedImage,
             ProposedRole::Document => FileRole::Document,
@@ -351,6 +343,61 @@ pub(super) fn categorize_files_from_tree(
     settle_sheet_discs(&mut files, parts, &stored.sheet_discs);
 
     Ok(CategorizeOutcome::Valid(CategorizedFiles { files, parts: parts.to_vec() }))
+}
+
+/// A parsed sheet before its binding and disc settle. Neither is proposed
+/// here: a person's decisions come first, so `settle_sheet_bindings` binds
+/// every parsed sheet once those have landed; and a cue filename says nothing
+/// about which disc it holds, so `settle_sheet_discs` assigns every parsed
+/// sheet against the bindings that end up in force.
+fn unsettled_sheet(sheet: crate::cue_flac::CueSheet) -> FileRole {
+    FileRole::TrackSheet {
+        sheet,
+        binding: SheetBinding::Unresolved { files: Vec::new() },
+        disc: SheetDisc::Disc { number: 1 },
+    }
+}
+
+/// A library release's files on this device, read the way a folder's scan
+/// reads its rip files: audio by the facts its import stored, every CUE that
+/// parses a track sheet bound to that audio and given its disc by the scan's
+/// own rules, and the documents beside them, in name order. A person's
+/// decisions about a folder's sheets are kept with the candidate, not the
+/// release, so the sheets settle as the scan proposes them. Holds only what a
+/// rip reading reads: artwork and other files are left out.
+pub(crate) fn categorize_library_files(
+    files: impl IntoIterator<Item = ScannedFile>,
+) -> CategorizedFiles {
+    let mut files: Vec<CandidateFile> = files
+        .into_iter()
+        .filter_map(|file| {
+            let role = if file.source_audio.is_some() {
+                FileRole::Audio
+            } else if is_cue_file(&file.path) {
+                match parse_cue_sheet(&file.path) {
+                    Ok(sheet) => unsettled_sheet(sheet),
+                    Err(error) => {
+                        info!(
+                            "CUE {:?} does not parse, so it stays a document: {error}",
+                            file.path
+                        );
+                        FileRole::Document
+                    }
+                }
+            } else if is_document_file(&file.path) {
+                FileRole::Document
+            } else {
+                return None;
+            };
+            Some(CandidateFile { file, role })
+        })
+        .collect();
+    files.sort_by(|a, b| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path));
+    let mut categorized = CategorizedFiles { files, parts: Vec::new() };
+    categorized
+        .apply_candidate_file_edits(&CandidateFileEdits::default())
+        .expect("every audio file holds the facts its import stored");
+    categorized
 }
 
 /// What a file's audio is, as `probe` read it: `None` for audio bae does

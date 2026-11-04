@@ -3,33 +3,6 @@
 
 use super::*;
 
-// ── Candidate file index ────────────────────────────────────────────────────
-
-/// Resolve every audio path a CUE names. Each `FILE` uses the same rule
-/// ([`resolve_cue_audio_path`]), and every reference must resolve to a
-/// different file.
-pub(crate) fn resolve_cue_audio_paths<'sheet, 'audio>(
-    cue_path: &Path,
-    sheet: &'sheet CueSheet,
-    audio_files: &'audio [PathBuf],
-) -> Option<Vec<(&'sheet str, &'audio PathBuf)>> {
-    let references = sheet.audio_file_references();
-    if references.is_empty() {
-        return None;
-    }
-    let mut resolved = Vec::with_capacity(references.len());
-    let mut used = BTreeSet::new();
-    for reference in references {
-        let audio = resolve_cue_audio_path(cue_path, reference, audio_files)?;
-        if !used.insert(audio.as_path()) {
-            debug!("CUE {:?} resolves more than one FILE reference to {:?}", cue_path, audio);
-            return None;
-        }
-        resolved.push((reference, audio));
-    }
-    Some(resolved)
-}
-
 /// The audio one `FILE` reference names, as far as the folder can say.
 ///
 /// A sheet's reference is the path the ripper wrote, which is the path on the
