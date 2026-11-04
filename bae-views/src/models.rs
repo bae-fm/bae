@@ -15,8 +15,8 @@ pub struct DbLibrarySearchResults {
     pub works: Vec<DbWorkSummary>,
 }
 
-/// Raw album search-result row; `artist_name` is the album's credits,
-/// comma-joined.
+/// Raw album search-result row; `artist_name` is the album's credit line,
+/// each name followed by the join its source prints.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSearchResult {
     pub id: String,

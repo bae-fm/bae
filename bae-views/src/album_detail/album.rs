@@ -15,7 +15,8 @@ pub struct AlbumDetail {
     /// The album's credits in list order, each the artist it shows after
     /// merges.
     pub artists: Vec<bae_db::credits::LibraryCredit>,
-    /// Comma-joined artist names for display.
+    /// The album's credit line: each credit's printed name, then the join its
+    /// source prints after it (", " where it states none).
     pub artist_names: String,
     pub releases: Vec<ReleaseDetail>,
     /// The album's lowest-ordered release: the one whose cover it shows and

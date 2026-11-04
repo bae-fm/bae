@@ -238,7 +238,8 @@ pub struct BridgeAlbum {
     pub title: String,
     pub year: Option<i32>,
     pub is_compilation: bool,
-    /// Comma-joined artist names for display
+    /// The album's credit line for display: each credit's printed name, then
+    /// the join its source prints after it (", " where it states none)
     pub artist_names: String,
     /// All release IDs for this album, in album order
     pub release_ids: Vec<String>,
@@ -500,7 +501,7 @@ pub struct BridgeTrack {
     /// conversion so a track row reads a field instead of an FFI call; the UI
     /// formats the fields for its locale.
     pub duration_clock: BridgeDurationClock,
-    /// Effective comma-joined artist names for display (the track's own
+    /// Effective credit line for display, joined as for `BridgeAlbum` (the track's own
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
     pub artist_names: String,
