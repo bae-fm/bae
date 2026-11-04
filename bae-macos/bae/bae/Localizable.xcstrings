@@ -75198,7 +75198,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eşzamanlamayı kur"
+            "value" : "Eşitlemeyi kur"
           }
         },
         "uk" : {
@@ -75371,7 +75371,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eşzamanlamayı kur…"
+            "value" : "Eşitlemeyi kur…"
           }
         },
         "uk" : {
@@ -81940,7 +81940,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eşzamanlama"
+            "value" : "Eşitleme"
           }
         },
         "uk" : {
@@ -82113,7 +82113,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Şimdi Eşzamanla"
+            "value" : "Şimdi Eşitle"
           }
         },
         "uk" : {
@@ -82286,7 +82286,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dropbox ile eşzamanla"
+            "value" : "Dropbox ile eşitle"
           }
         },
         "uk" : {
@@ -82459,7 +82459,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Microsoft OneDrive ile eşzamanla"
+            "value" : "Microsoft OneDrive ile eşitle"
           }
         },
         "uk" : {
@@ -82632,7 +82632,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud hesabınız üzerinden eşzamanla"
+            "value" : "iCloud hesabınız üzerinden eşitle"
           }
         },
         "uk" : {
@@ -88167,7 +88167,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eşzamanlama için iCloud kullanır. Sistem Ayarları'nda iCloud'un etkin olmasını gerektirir."
+            "value" : "Eşitleme için iCloud kullanır. Sistem Ayarları'nda iCloud'un etkin olmasını gerektirir."
           }
         },
         "uk" : {

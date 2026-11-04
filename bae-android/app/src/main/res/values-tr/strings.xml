@@ -94,7 +94,7 @@
     <string name="image_load_failed">Görüntü yüklenemedi</string>
     <string name="gallery_loading_image">Görsel yükleniyor…</string>
     <string name="settings_library">Kitaplık</string>
-    <string name="settings_sync">Eşzamanlama</string>
+    <string name="settings_sync">Eşitleme</string>
     <string name="settings_local_only">Yalnızca yerel</string>
     <string name="settings_sync_checking">Eşitleme denetleniyor…</string>
     <string name="settings_sync_unreadable">Eşitleme durumu okunamadı</string>
@@ -237,8 +237,8 @@
     <string name="onboarding_next_check">Sonraki denetim %1$s sonra</string>
     <string name="onboarding_check_now">Şimdi denetle</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
-    <string name="storage_setup_title">Eşzamanlamayı kur</string>
-    <string name="settings_set_up_sync_explanation">Bu kitaplık yalnızca bu cihazda depolanıyor. Eşzamanlama onu depolamada tutar; diğer cihazlarınız ve hane halkınız onu oradan kullanabilir.</string>
+    <string name="storage_setup_title">Eşitlemeyi kur</string>
+    <string name="settings_set_up_sync_explanation">Bu kitaplık yalnızca bu cihazda depolanıyor. Eşitleme onu depolamada tutar; diğer cihazlarınız ve hane halkınız onu oradan kullanabilir.</string>
     <string name="storage_setup_choose">Bu kitaplık nerede depolansın?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3 için boş bırakın.</string>
     <string name="storage_s3_advanced">Gelişmiş</string>
@@ -261,7 +261,7 @@
     <string name="storage_onedrive_folder_name">Klasör adı</string>
     <string name="storage_onedrive_create">Oluştur</string>
     <string name="storage_onedrive_use_folder">Bu klasörü kullan</string>
-    <string name="storage_setup_done">Eşzamanlama kuruldu. Kurtarma kodunuzu gizli bir yerde saklayın: tüm cihazlarınızı kaybederseniz kitaplığınızı onunla geri alırsınız.</string>
+    <string name="storage_setup_done">Eşitleme kuruldu. Kurtarma kodunuzu gizli bir yerde saklayın: tüm cihazlarınızı kaybederseniz kitaplığınızı onunla geri alırsınız.</string>
     <string name="done">Bitti</string>
     <string name="recovery_code_title">Kurtarma kodunuz</string>
     <string name="recovery_code_explanation">Tüm cihazlarınızı kaybederseniz kitaplığınızı geri almak için bu kodu yeni bir cihaza girin. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir, bu yüzden kodu gizli bir yerde saklayın.</string>
