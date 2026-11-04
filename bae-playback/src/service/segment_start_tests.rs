@@ -205,6 +205,49 @@ mod scrub_points {
         check_worst_scrub(&flac, track, &points, 2);
     }
 
+    /// A track that starts inside a single-file FLAC with no seektable starts
+    /// by jumping to the byte import recorded for it: it reads the file's head
+    /// and the window from that byte, never the file's end that FFmpeg's
+    /// binary search, its only seek in such a file, reads first (#226).
+    #[test]
+    fn a_track_start_in_a_file_without_a_seektable_jumps_to_its_byte() {
+        bae_audio::init();
+        let flac = noise_flac(30);
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("album.flac");
+        std::fs::write(&path, &flac).unwrap();
+        let start_sample = 12 * u64::from(SAMPLE_RATE) + 1_234;
+        let start_byte = bae_audio::seek_landing_bytes(&path, &[start_sample])
+            .expect("the track's landing byte")[0];
+        let end = start_sample + u64::from(SAMPLE_RATE);
+        let track = SegmentSpan {
+            start_sample,
+            end_sample: Some(end),
+            start_byte: Some(start_byte),
+            end_byte: None,
+        };
+        let buffer = filled_sparse_buffer(&flac);
+        let mut prepared = test_prepared_track("track", buffer.clone());
+        prepared.sample_rate = SAMPLE_RATE;
+        prepared.segments[0].span = track;
+        prepared.segments[0].scrub_points =
+            ScrubPoints::new(import_scrub_points(&flac, SegmentSpan { end_sample: None, ..track }));
+
+        let played = play(prepared.decode_params(0, false));
+
+        assert_eq!(played.len(), (end - start_sample) as usize * CHANNELS as usize);
+        let reads = buffer.read_log();
+        let in_head = |at: u64| at + AVIO_BUFFER_SIZE as u64 <= FILL_WINDOW_SIZE;
+        let in_jump = |at: u64| {
+            at >= start_byte && at + AVIO_BUFFER_SIZE as u64 <= start_byte + FILL_WINDOW_SIZE
+        };
+        assert!(
+            reads.iter().all(|&at| in_head(at) || in_jump(at)),
+            "reads {reads:?} leave the head window and the window from byte {start_byte} of {}",
+            flac.len()
+        );
+    }
+
     /// Seconds of quiet 24-bit stereo tone at 96 kHz, encoded as a FLAC with no
     /// seektable, `frames` samples per channel long. It compresses well, so ten
     /// seconds fit in one fill window and time alone spaces the points.
