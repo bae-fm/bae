@@ -69,12 +69,7 @@ impl ReleaseReads {
         priority: CallPriority,
     ) -> Result<PreparedRelease, ImportError> {
         let read = async {
-            Ok(self
-                .catalogs
-                .release_read_session(answered.release())
-                .await?
-                .read_disc_id_release(answered, priority)
-                .await?)
+            Ok(self.catalogs.session().await?.read_disc_id_release(answered, priority).await?)
         };
         self.prepare(
             answered.release(),
@@ -122,12 +117,7 @@ impl ReleaseReads {
         depth: ReadDepth,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, ImportError> {
-        Ok(self
-            .catalogs
-            .release_read_session(release)
-            .await?
-            .fetch_payloads(release, depth, priority)
-            .await?)
+        Ok(self.catalogs.session().await?.fetch_payloads(release, depth, priority).await?)
     }
 
     /// `release_ref` from storage, unless reading it again at `depth` could
@@ -152,3 +142,7 @@ impl ReleaseReads {
         Ok(self.tables.prepared_release(payloads.extract()?).await?)
     }
 }
+
+#[cfg(test)]
+#[path = "release_reads_tests.rs"]
+mod tests;

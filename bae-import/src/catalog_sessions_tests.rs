@@ -3,7 +3,7 @@ use tempfile::TempDir;
 
 /// Sessions over a fresh library whose keyring is in memory, asking
 /// providers that reach nothing.
-async fn test_sessions() -> (CatalogSessions, Database, TempDir) {
+pub(crate) async fn test_sessions() -> (CatalogSessions, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let database = Database::new_test(
         temp_dir.path().join("test.db").to_str().unwrap(),

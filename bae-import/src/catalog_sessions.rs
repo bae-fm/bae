@@ -20,7 +20,7 @@ use bae_preferences::DiscogsValidation;
 use bae_util::task_failure::blocking;
 use std::future::Future;
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// The name the stored Discogs key is kept under through coven's host
 /// secrets.
@@ -203,26 +203,6 @@ impl CatalogSessions {
         CatalogSession::new(None, vec![LookupCatalog::MusicBrainz], self.providers.clone())
     }
 
-    /// The session a read of `release` asks with. A MusicBrainz release
-    /// whose Discogs session cannot be had is read without its Discogs
-    /// cross-reference, as it is without a key.
-    pub(crate) async fn release_read_session(
-        &self,
-        release: &bae_catalogs::records::LookupRef,
-    ) -> Result<CatalogSession, CatalogSessionError> {
-        match self.session().await {
-            Ok(session) => Ok(session),
-            Err(error) if release.catalog == LookupCatalog::MusicBrainz => {
-                warn!(
-                    release_id = %release.key,
-                    "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
-                );
-                Ok(self.musicbrainz())
-            }
-            Err(error) => Err(error),
-        }
-    }
-
     /// Ask Discogs whether it accepts `key`, which this library does not
     /// store: how a key is tried before it is saved.
     pub(crate) async fn try_discogs_key(
@@ -398,4 +378,4 @@ async fn record_discogs_validation_signal(
 
 #[cfg(test)]
 #[path = "catalog_sessions_tests.rs"]
-mod tests;
+pub(crate) mod tests;

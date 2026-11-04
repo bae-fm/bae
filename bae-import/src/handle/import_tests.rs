@@ -88,7 +88,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     );
     let payloads = handle
         .catalogs
-        .release_read_session(&edited)
+        .session()
         .await
         .unwrap()
         .fetch_payloads(
