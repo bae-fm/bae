@@ -2,9 +2,23 @@
 //! provider images it draws them from.
 
 use super::*;
-use crate::cover_art::RemoteCoverGallery;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_catalogs::remote_image::RemoteCover;
+
+/// The persisted owner whose external identities supply a cover gallery.
+pub enum CoverTarget {
+    Release(String),
+    Candidate(crate::CandidateKey),
+}
+
+/// Whether an owner names an external release, and the artwork it offers.
+/// An empty linked gallery is not an unidentified release.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RemoteCoverGallery {
+    Unlinked,
+    Linked(Vec<RemoteCover>),
+}
 
 impl ImportServiceHandle {
     /// Bytes of provider art for a slot `pixels` wide on its longer side: the
@@ -30,11 +44,11 @@ impl ImportServiceHandle {
     /// records, never interchangeable string identifiers.
     pub async fn fetch_remote_covers(
         &self,
-        target: crate::cover_art::CoverTarget,
+        target: CoverTarget,
     ) -> Result<RemoteCoverGallery, crate::ImportError> {
         match target {
-            crate::cover_art::CoverTarget::Release(id) => self.release_covers(&id).await,
-            crate::cover_art::CoverTarget::Candidate(key) => self.candidate_covers(&key).await,
+            CoverTarget::Release(id) => self.release_covers(&id).await,
+            CoverTarget::Candidate(key) => self.candidate_covers(&key).await,
         }
     }
 

@@ -6,7 +6,7 @@ pub enum BridgeCoverTarget {
 }
 
 mirror_enum! {
-    BridgeCoverTarget = bae_import::cover_art::CoverTarget,
+    BridgeCoverTarget = bae_import::CoverTarget,
     into_core: pub(crate) fn,
     variants: { Release(release_id), Candidate(candidate_key: (into)) },
 }
@@ -19,7 +19,7 @@ pub enum BridgeRemoteCoverGallery {
 }
 
 mirror_enum! {
-    BridgeRemoteCoverGallery = bae_import::cover_art::RemoteCoverGallery,
+    BridgeRemoteCoverGallery = bae_import::RemoteCoverGallery,
     from_core: pub(crate) fn,
     variants: {
         Unlinked,

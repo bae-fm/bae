@@ -35,6 +35,7 @@ mod verdict_write;
 mod watch;
 
 pub use commit::CandidateStanding;
+pub use covers::{CoverTarget, RemoteCoverGallery};
 pub use import::ImportStart;
 pub(crate) use picks::external_metadata_with_cover;
 pub use runtime::ImportCandidateSnapshot;

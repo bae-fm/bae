@@ -1,26 +1,12 @@
-//! The cover a candidate is committed with, the rules that pick it from the
-//! folder's images and its files' embedded artwork, and the gallery its
-//! picker offers. What catalogs serve — the covers, their image sets, the
-//! cache that reads them — is [`bae_catalogs::remote_image`].
+//! The cover a candidate is committed with, and the rules that pick it from
+//! the folder's images and its files' embedded artwork. What catalogs serve
+//! — the covers, their image sets, the cache that reads them — is
+//! [`bae_catalogs::remote_image`].
 
 use crate::folder_scanner::ScannedFile;
 use bae_catalogs::catalog::Catalog;
-use bae_catalogs::remote_image::{RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::RemoteImageSet;
 use bae_util::content_type_hint::ContentTypeHint;
-
-/// The persisted owner whose external identities supply a cover gallery.
-pub enum CoverTarget {
-    Release(String),
-    Candidate(crate::CandidateKey),
-}
-
-/// Whether an owner names an external release, and the artwork it offers.
-/// An empty linked gallery is not an unidentified release.
-#[derive(Debug, Clone, PartialEq)]
-pub enum RemoteCoverGallery {
-    Unlinked,
-    Linked(Vec<RemoteCover>),
-}
 
 /// Where a cover's bytes are read from — a remote address, a file the folder
 /// holds, the candidate's stored file-tag snapshot, or the library. Every

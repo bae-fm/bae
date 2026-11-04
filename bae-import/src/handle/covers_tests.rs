@@ -121,19 +121,17 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_candidate_without_metadata() {
     let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
-    let gallery =
-        handle.fetch_remote_covers(crate::cover_art::CoverTarget::Candidate(key)).await.unwrap();
+    let gallery = handle.fetch_remote_covers(CoverTarget::Candidate(key)).await.unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::cover_art::RemoteCoverGallery::Unlinked);
+    assert_eq!(gallery, RemoteCoverGallery::Unlinked);
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_file_tags() {
     let (handle, _tmp, key, _) = pane_fixture().await;
-    let gallery =
-        handle.fetch_remote_covers(crate::cover_art::CoverTarget::Candidate(key)).await.unwrap();
+    let gallery = handle.fetch_remote_covers(CoverTarget::Candidate(key)).await.unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::cover_art::RemoteCoverGallery::Unlinked);
+    assert_eq!(gallery, RemoteCoverGallery::Unlinked);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -143,12 +141,9 @@ async fn unlinked_cover_gallery_for_library_release() {
     database.insert_artist(&artist).await.unwrap();
     let (_album, release) = insert_library_release(&database, &artist.id, "Album Title").await;
     let handle = parts.start().await.unwrap();
-    let gallery = handle
-        .fetch_remote_covers(crate::cover_art::CoverTarget::Release(release.id))
-        .await
-        .unwrap();
+    let gallery = handle.fetch_remote_covers(CoverTarget::Release(release.id)).await.unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::cover_art::RemoteCoverGallery::Unlinked);
+    assert_eq!(gallery, RemoteCoverGallery::Unlinked);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -171,8 +166,7 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
         .await
         .unwrap();
     let handle = parts.start().await.unwrap();
-    let result =
-        handle.fetch_remote_covers(crate::cover_art::CoverTarget::Release(release.id)).await;
+    let result = handle.fetch_remote_covers(CoverTarget::Release(release.id)).await;
     shut_down(handle).await;
     assert!(matches!(
         result,
@@ -205,8 +199,7 @@ async fn linked_cover_gallery_can_be_empty() {
         )
         .await
         .unwrap();
-    let gallery =
-        handle.fetch_remote_covers(crate::cover_art::CoverTarget::Candidate(key)).await.unwrap();
+    let gallery = handle.fetch_remote_covers(CoverTarget::Candidate(key)).await.unwrap();
     shut_down(handle).await;
-    assert_eq!(gallery, crate::cover_art::RemoteCoverGallery::Linked(vec![]));
+    assert_eq!(gallery, RemoteCoverGallery::Linked(vec![]));
 }

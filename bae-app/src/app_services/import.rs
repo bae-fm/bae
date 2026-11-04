@@ -50,7 +50,7 @@ impl AppServices {
     delegate_async!(import, import_sheet_binding_options => sheet_binding_options(candidate_key: bae_import::CandidateKey, sheet_file_id: String) -> Result<Vec<bae_import::folder_scanner::SheetReferenceOptions>, bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_binding => set_sheet_binding(candidate_key: bae_import::CandidateKey, sheet_file_id: String, file_reference: String, audio_file_id: Option<String>) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: bae_import::CandidateKey, sheet_file_id: String, disc: bae_import::folder_scanner::SheetDisc) -> Result<(), bae_import::ImportError>);
-    delegate_async!(import, import_fetch_remote_covers => fetch_remote_covers(target: bae_import::cover_art::CoverTarget) -> Result<bae_import::cover_art::RemoteCoverGallery, bae_import::ImportError>);
+    delegate_async!(import, import_fetch_remote_covers => fetch_remote_covers(target: bae_import::CoverTarget) -> Result<bae_import::RemoteCoverGallery, bae_import::ImportError>);
     delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: bae_catalogs::remote_image::RemoteImageSet, pixels: Option<u32>) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &bae_import::CandidateKey, cover: bae_import::CoverSelection) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_read_candidate_document => read_candidate_document(candidate_key: &bae_import::CandidateKey, file_id: &str) -> Result<String, bae_import::ImportError>);
