@@ -124,7 +124,7 @@ impl ImportExpectation {
         &self,
         candidate_key: &crate::CandidateKey,
         source: &crate::release_candidate::CandidateSource,
-        current: Option<&crate::preparation::CommittingCandidate>,
+        current: Option<&crate::tables::CommittingCandidate>,
     ) -> Result<(), String> {
         let Some(current) = current else {
             return Err(format!("{candidate_key} is no longer a valid import candidate"));

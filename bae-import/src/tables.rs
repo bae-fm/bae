@@ -27,8 +27,8 @@ pub(crate) use folder_scans::{
 pub use import_list::SelectionWrite;
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, ImportClaim, ImportCommitGuard, ImportRows, NewArtistImages, RunVerdictSaved,
-    ScannedCandidateKey,
+    CandidateSaved, CommittingCandidate, ImportClaim, ImportCommitGuard, ImportRows,
+    NewArtistImages, RunVerdictSaved, ScannedCandidateKey,
 };
 pub use import_state::{
     DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState, ImportCommitError,

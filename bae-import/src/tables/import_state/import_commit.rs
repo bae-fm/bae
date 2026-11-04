@@ -4,7 +4,6 @@
 //! are one.
 
 use super::*;
-use crate::preparation::CommittingCandidate;
 use crate::tables::artist_identity_choice::resolve_for_import_on;
 use crate::tables::label_identity_choice::label_answers_on;
 use bae_db::client::artist_resolution::{
@@ -170,6 +169,20 @@ fn delete_what_the_import_spent_on(
         #[cfg(test)]
         ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
     }
+}
+
+/// The stored candidate as a library import finds it at commit time: what
+/// the scan lists at the key, and the revisions its preparation is at.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct CommittingCandidate {
+    pub actionable: bool,
+    pub source: crate::release_candidate::CandidateSource,
+    pub content_hash: String,
+    pub file_edit_revision: u64,
+    /// The state row's file and metadata revisions, or `None` when no row
+    /// is stored under the content hash the import was prepared from.
+    pub prepared_revisions: Option<(u64, u64)>,
+    pub file_tag_snapshot: Option<crate::file_tag_snapshot::FileTagSnapshot>,
 }
 
 /// The stored candidate at `candidate_key` as the commit sees it, or `None`
