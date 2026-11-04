@@ -132,7 +132,7 @@ FILE "Album.flac" WAVE
 "#;
     let err = parse_cue_content(cue_content).unwrap_err();
     assert!(
-        matches!(&err, CueFlacError::CueParsing(msg) if msg.contains("INDEX 01")),
+        matches!(&err, CueSheetError::CueParsing(msg) if msg.contains("INDEX 01")),
         "expected an INDEX 01 parse error when a track body lacks INDEX 01, got {err:?}",
     );
 }
@@ -150,7 +150,7 @@ TITLE "Album Title"
 "#;
     let err = parse_cue_content(cue_content).unwrap_err();
     assert!(
-        matches!(&err, CueFlacError::CueParsing(msg) if msg.contains("FILE")),
+        matches!(&err, CueSheetError::CueParsing(msg) if msg.contains("FILE")),
         "expected a FILE parse error for TRACK before FILE, got {err:?}",
     );
 }
@@ -728,7 +728,7 @@ fn test_cue_parser_stops_at_data_track() {
     ));
 }
 
-pub(crate) fn audio_cue_track(number: u32, file_reference: &str) -> crate::cue_flac::CueTrack {
+pub(crate) fn audio_cue_track(number: u32, file_reference: &str) -> crate::cue_sheet::CueTrack {
     audio_cue_track_at(number, file_reference, 0)
 }
 
@@ -736,8 +736,8 @@ pub(crate) fn audio_cue_track_at(
     number: u32,
     file_reference: &str,
     start_cue_frames: u64,
-) -> crate::cue_flac::CueTrack {
-    use crate::cue_flac::{CueIndex, CueTrack, CueTrackMode};
+) -> crate::cue_sheet::CueTrack {
+    use crate::cue_sheet::{CueIndex, CueTrack, CueTrackMode};
     CueTrack {
         number,
         mode: CueTrackMode::Audio,
@@ -756,15 +756,15 @@ pub(crate) fn audio_cue_track_at(
 }
 
 /// An audio track of `image.flac`, starting the file, titled `title`.
-pub(crate) fn titled_cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
-    crate::cue_flac::CueTrack {
+pub(crate) fn titled_cue_track(number: u32, title: &str) -> crate::cue_sheet::CueTrack {
+    crate::cue_sheet::CueTrack {
         title: Some(title.to_string()),
         ..audio_cue_track(number, "image.flac")
     }
 }
 
 /// A sheet titled `title`, by Artist Name, holding `tracks`.
-pub(crate) fn cue_sheet(title: &str, tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
+pub(crate) fn cue_sheet(title: &str, tracks: Vec<crate::cue_sheet::CueTrack>) -> CueSheet {
     CueSheet {
         title: Some(title.to_string()),
         performer: Some("Artist Name".to_string()),

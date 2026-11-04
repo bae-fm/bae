@@ -171,7 +171,7 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
 
 /// `folder` with a sheet carving its `01.flac` into one track.
 fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandidate {
-    use crate::cue_flac::{CueSheet, CueTrack, CueTrackMode};
+    use crate::cue_sheet::{CueSheet, CueTrack, CueTrackMode};
     use crate::folder_scanner::SheetAudioFile;
 
     let sheet_name = "01.flac.cue".to_string();

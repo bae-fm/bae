@@ -1,5 +1,5 @@
 use super::*;
-use crate::cue_flac::tests::*;
+use crate::cue_sheet::tests::*;
 use crate::tests::fixture;
 use std::path::Path;
 
@@ -75,7 +75,7 @@ fn test_discid_from_log_text() {
 /// wrappers produce the same disc ID.
 #[test]
 fn test_cue_duration_discid_matches_across_codecs() {
-    use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
+    use crate::cue_sheet::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 
     // Three tracks, 75 CUE frames/sec → minute 0, minute 3, minute 6.
     let sheet = CueSheet {
@@ -149,7 +149,7 @@ fn test_cue_duration_discid_matches_across_codecs() {
 
 #[test]
 fn cue_duration_discid_ignores_non_audio_tracks() {
-    use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
+    use crate::cue_sheet::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 
     fn track(number: u32, mode: CueTrackMode, start_cue_frames: u64) -> CueTrack {
         CueTrack {
@@ -288,7 +288,7 @@ fn audio_pregap_in_the_previous_file_is_already_laid() {
     let mut second = audio_cue_track(2, "02.flac");
     second.indexes.insert(
         0,
-        crate::cue_flac::CueIndex {
+        crate::cue_sheet::CueIndex {
             number: 0,
             frames: 3 * 60 * 75 - 150,
             file_reference: "01.flac".to_string(),
@@ -325,7 +325,7 @@ fn a_file_without_a_measured_length_is_an_error() {
 
 #[test]
 fn test_cue_duration_discid_empty_tracks_is_error() {
-    use crate::cue_flac::CueSheet;
+    use crate::cue_sheet::CueSheet;
 
     let sheet = CueSheet {
         title: None,

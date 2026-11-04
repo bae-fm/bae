@@ -300,7 +300,7 @@ pub(super) fn categorize_files_from_tree(
 
     // Parse every CUE exactly once. A sheet that will not parse is not a sheet;
     // it stays a document, and the folder imports without it.
-    let mut sheets: HashMap<usize, crate::cue_flac::CueSheet> = HashMap::new();
+    let mut sheets: HashMap<usize, crate::cue_sheet::CueSheet> = HashMap::new();
     for (index, (file, role)) in proposed.iter_mut().enumerate() {
         if *role != ProposedRole::Cue {
             continue;
@@ -365,7 +365,7 @@ pub(super) fn categorize_files_from_tree(
 /// every parsed sheet once those have landed; and a cue filename says nothing
 /// about which disc it holds, so `settle_sheet_discs` assigns every parsed
 /// sheet against the bindings that end up in force.
-fn unsettled_sheet(sheet: crate::cue_flac::CueSheet) -> FileRole {
+fn unsettled_sheet(sheet: crate::cue_sheet::CueSheet) -> FileRole {
     FileRole::TrackSheet {
         sheet,
         binding: SheetBinding::Unresolved { files: Vec::new() },

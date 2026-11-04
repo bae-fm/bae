@@ -7,7 +7,7 @@
 //! of the folders directly under the watched root at once, newest first by the
 //! latest date each has, each a directory at a time, and reports candidates as
 //! they become available.
-use crate::cue_flac::{parse_cue_sheet, CueSheet};
+use crate::cue_sheet::{parse_cue_sheet, CueSheet};
 use bae_util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap};

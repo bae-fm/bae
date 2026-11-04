@@ -10,7 +10,7 @@
 
 use super::columns::*;
 use super::*;
-use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
+use crate::cue_sheet::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 use crate::folder_scanner::{
     CandidateFile, CategorizedFiles, Coverage, FileRole, FileVersion, FolderCandidate,
     InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,

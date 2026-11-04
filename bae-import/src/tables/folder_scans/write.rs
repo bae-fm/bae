@@ -6,7 +6,7 @@
 
 use super::columns::*;
 use super::*;
-use crate::cue_flac::CueSheet;
+use crate::cue_sheet::CueSheet;
 use crate::folder_scanner::{CandidateFile, FileRole, FolderCandidate, InvalidCandidate, ScanItem};
 use crate::CandidateKey;
 
@@ -426,8 +426,8 @@ fn insert_cue_sheet(
     for (position, track) in sheet.tracks.iter().enumerate() {
         let position = to_i64(position as u64, "a cue track's position")?;
         let (mode, mode_other) = match &track.mode {
-            crate::cue_flac::CueTrackMode::Audio => ("audio", None),
-            crate::cue_flac::CueTrackMode::Other(other) => ("other", Some(other.as_str())),
+            crate::cue_sheet::CueTrackMode::Audio => ("audio", None),
+            crate::cue_sheet::CueTrackMode::Other(other) => ("other", Some(other.as_str())),
         };
         sql.execute(
             "INSERT INTO scan_cue_track \

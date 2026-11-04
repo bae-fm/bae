@@ -3,7 +3,7 @@
 //! they all give, else the first one's in play order, its title without a
 //! trailing disc marker.
 
-use crate::cue_flac::CueSheet;
+use crate::cue_sheet::CueSheet;
 use crate::file_tag_reader::{non_empty, years_in_date};
 use crate::file_tag_snapshot::FileTags;
 use bae_identify::row_facts::StatedYears;

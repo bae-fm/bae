@@ -123,7 +123,7 @@ INDEX 01 00:00:00
 "#,
     )
     .expect("write cue");
-    let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
     let cue_pair = CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
@@ -164,7 +164,7 @@ INDEX 01 00:00:00
 "#,
     )
     .expect("write cue");
-    let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
     let cue_pair = CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {

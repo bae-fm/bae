@@ -112,7 +112,7 @@ pub enum FileRole {
     /// A track sheet (CUE) that parsed, carrying its parsed sheet, what its
     /// `FILE` directive resolved to, and which disc of the release its entries
     /// become.
-    TrackSheet { sheet: crate::cue_flac::CueSheet, binding: SheetBinding, disc: SheetDisc },
+    TrackSheet { sheet: crate::cue_sheet::CueSheet, binding: SheetBinding, disc: SheetDisc },
     /// An image the folder carries. Which one leads the release is not a
     /// property of the file: it is the cover choice, answered by the stored
     /// row, then the picked release's own art, then these ranked by name.

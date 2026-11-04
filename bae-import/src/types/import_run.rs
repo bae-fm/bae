@@ -2,7 +2,7 @@
 //! its files go, and the tracks it works from, each with the audio that
 //! supplies its samples.
 
-use crate::cue_flac::CueSheet;
+use crate::cue_sheet::CueSheet;
 use bae_audio::ProbeResult;
 use bae_db::DbTrack;
 use std::{path::PathBuf, sync::Arc};

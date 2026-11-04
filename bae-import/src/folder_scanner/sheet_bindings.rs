@@ -54,7 +54,7 @@ pub(super) fn sheet_reference_fits_audio(
         .all(|track| track_fits_audio(track, audio))
 }
 
-fn track_fits_audio(track: &crate::cue_flac::CueTrack, audio: &ScannedFile) -> bool {
+fn track_fits_audio(track: &crate::cue_sheet::CueTrack, audio: &ScannedFile) -> bool {
     audio.source_audio.as_ref().is_some_and(|source_audio| {
         track.duration_ms_with_file_duration(source_audio.duration_ms).is_ok()
     })
@@ -435,7 +435,7 @@ impl SheetBinding {
 #[derive(Debug, Clone, Copy)]
 pub struct TrackSheetFile<'a> {
     pub file: &'a ScannedFile,
-    pub sheet: &'a crate::cue_flac::CueSheet,
+    pub sheet: &'a crate::cue_sheet::CueSheet,
     pub binding: &'a SheetBinding,
     pub disc: SheetDisc,
 }
@@ -445,7 +445,7 @@ pub struct TrackSheetFile<'a> {
 #[derive(Debug, Clone)]
 pub struct BoundTrackSheet<'a> {
     pub file: &'a ScannedFile,
-    pub sheet: &'a crate::cue_flac::CueSheet,
+    pub sheet: &'a crate::cue_sheet::CueSheet,
     /// Every CUE `FILE` reference paired with the physical audio it resolved
     /// to, in the sheet's reference order.
     pub audio_files: Vec<(&'a str, &'a ScannedFile)>,
@@ -456,7 +456,7 @@ pub struct BoundTrackSheet<'a> {
 /// resolved to scanned audio.
 fn resolved_audio_for<'a>(
     resolved: &[(&str, &'a ScannedFile)],
-    track: &crate::cue_flac::CueTrack,
+    track: &crate::cue_sheet::CueTrack,
 ) -> Option<&'a ScannedFile> {
     resolved
         .iter()
@@ -466,7 +466,7 @@ fn resolved_audio_for<'a>(
 
 impl<'a> BoundTrackSheet<'a> {
     /// The audio one of the sheet's tracks plays from.
-    pub fn audio_for(&self, track: &crate::cue_flac::CueTrack) -> &'a ScannedFile {
+    pub fn audio_for(&self, track: &crate::cue_sheet::CueTrack) -> &'a ScannedFile {
         resolved_audio_for(&self.audio_files, track)
             .expect("a bound sheet resolved every playable track's audio")
     }

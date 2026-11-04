@@ -26,7 +26,7 @@ mod catalog_sessions;
 pub mod cover_art;
 #[doc(hidden)]
 #[cfg(desktop)]
-pub mod cue_flac;
+pub mod cue_sheet;
 #[cfg(desktop)]
 pub mod discid;
 mod error;

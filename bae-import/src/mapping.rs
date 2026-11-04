@@ -449,10 +449,10 @@ impl RowBuilder<'_> {
                     .expect("a scanned audio file has a non-negative sample rate");
                 let preview_target = bae_track_audio::PreviewTarget::sample_range(
                     audio.path.clone(),
-                    crate::cue_flac::cue_frames_to_samples(track.start_cue_frames, sample_rate),
+                    crate::cue_sheet::cue_frames_to_samples(track.start_cue_frames, sample_rate),
                     track
                         .end_cue_frames
-                        .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate)),
+                        .map(|frames| crate::cue_sheet::cue_frames_to_samples(frames, sample_rate)),
                 );
                 self.row(
                     &unit,

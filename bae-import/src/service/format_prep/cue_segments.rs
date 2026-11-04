@@ -40,9 +40,9 @@ pub(super) fn cue_audio_pregap(
     let probe = &audio.probe;
     ensure_probe_audio_format(&audio.path, probe)?;
     let sample_rate = u64::from(probe.sample_rate);
-    let start_sample = crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate);
+    let start_sample = crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate);
     let end_sample = if index.file_reference == cue_track.file_reference {
-        crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate)
+        crate::cue_sheet::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate)
     } else {
         probe_duration_samples(probe)?
     };
@@ -76,7 +76,7 @@ pub(super) fn cue_audio_pregap(
 /// An error saying why they couldn't is a bug, which the caller reports.
 pub(super) fn cue_file_landing_bytes(
     file: &crate::types::CueAnalyzedAudioFile,
-    cue_sheet: &crate::cue_flac::CueSheet,
+    cue_sheet: &crate::cue_sheet::CueSheet,
 ) -> Result<HashMap<u64, u64>, String> {
     ensure_probe_audio_format(&file.path, &file.probe).map_err(|error| error.to_string())?;
     let sample_rate = file.probe.sample_rate;
@@ -85,7 +85,7 @@ pub(super) fn cue_file_landing_bytes(
         .flat_map(|track| track.indexes.iter())
         .filter(|index| index.file_reference == file.file_reference)
         .filter(|index| matches!(index.number, 0 | 1))
-        .map(|index| crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate as u64))
+        .map(|index| crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate as u64))
         .collect();
     let landings = bae_audio::seek_landing_bytes(&file.path, &start_samples)?;
     Ok(start_samples.into_iter().zip(landings).collect())
@@ -152,12 +152,12 @@ impl ImportService {
             detail: format!("No DbFile registered for CUE source {main_path:?}"),
         })?;
         let start_sample =
-            crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
+            crate::cue_sheet::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
         // Where the sheet's slice ends — the same boundary its length and its
         // audition window read.
         let end_sample = cue_track
             .end_cue_frames
-            .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate));
+            .map(|frames| crate::cue_sheet::cue_frames_to_samples(frames, sample_rate));
         let start_byte = Self::cue_segment_byte(byte_landings_by_file, main_path, start_sample);
         let end_byte = end_sample
             .and_then(|sample| Self::cue_segment_byte(byte_landings_by_file, main_path, sample));

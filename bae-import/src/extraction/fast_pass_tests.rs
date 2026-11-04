@@ -24,7 +24,7 @@ fn enumerate_filename_inputs_skips_all_audio_and_cue() {
             CandidateFile {
                 file: cue.clone(),
                 role: FileRole::TrackSheet {
-                    sheet: crate::cue_flac::CueSheet {
+                    sheet: crate::cue_sheet::CueSheet {
                         title: None,
                         performer: None,
                         catalog: None,

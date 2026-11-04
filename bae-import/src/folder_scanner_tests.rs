@@ -259,7 +259,7 @@ pub(super) fn make_cue_content_n_tracks(
     title: &str,
     n_tracks: usize,
 ) -> String {
-    crate::cue_flac::tests::cue_text(
+    crate::cue_sheet::tests::cue_text(
         Some(("Test Artist", title)),
         &format!("\"{audio_filename}\""),
         frame_apart_tracks(n_tracks),
@@ -279,7 +279,7 @@ pub(super) fn make_cue_content_unquoted(
     title: &str,
     n_tracks: usize,
 ) -> String {
-    crate::cue_flac::tests::cue_text(
+    crate::cue_sheet::tests::cue_text(
         Some(("Test Artist", title)),
         audio_filename,
         frame_apart_tracks(n_tracks),
@@ -289,7 +289,7 @@ pub(super) fn make_cue_content_unquoted(
 /// CUE sheet without PERFORMER / TITLE. The unified CUE parser is lenient
 /// enough to accept it — both fields land as `None`.
 pub(super) fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
-    crate::cue_flac::tests::cue_text(
+    crate::cue_sheet::tests::cue_text(
         None,
         &format!("\"{audio_filename}\""),
         frame_apart_tracks(n_tracks).map(|(_title, start)| (None, start)),
@@ -660,7 +660,7 @@ pub(super) fn run_scenario(entries: Vec<FixtureEntry>) -> ScenarioResult {
 
 /// Creates a minimal CUE file content that references the given FLAC filename
 pub(super) fn make_cue_content(flac_filename: &str, title: &str) -> String {
-    crate::cue_flac::tests::cue_text(
+    crate::cue_sheet::tests::cue_text(
         Some(("Test Artist", title)),
         &format!("\"{flac_filename}\""),
         [

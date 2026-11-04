@@ -3,7 +3,7 @@
 //! of its audio that rules a CD out — and the discs its logs and sheets hash
 //! to, read as one, since the first decides whether the second is asked.
 
-use crate::cue_flac::CueSheet;
+use crate::cue_sheet::CueSheet;
 use crate::discid::{calculate_mb_discid_from_cue, discid_from_log_text, SheetAudioDuration};
 use crate::folder_scanner::has_extension;
 use bae_catalogs::rip::rate_ruling_out_cd;

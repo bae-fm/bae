@@ -3,8 +3,8 @@
 //! the tags leave out.
 
 use super::*;
-use crate::cue_flac::tests::{cue_sheet, titled_cue_track};
-use crate::cue_flac::CueSheet;
+use crate::cue_sheet::tests::{cue_sheet, titled_cue_track};
+use crate::cue_sheet::CueSheet;
 use lofty::config::WriteOptions;
 use lofty::prelude::*;
 use lofty::tag::items::Timestamp;

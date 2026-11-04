@@ -2,7 +2,7 @@
 //! title, artists and years they agree on, else the first one's.
 
 use super::*;
-use crate::cue_flac::tests::{cue_sheet, titled_cue_track};
+use crate::cue_sheet::tests::{cue_sheet, titled_cue_track};
 use crate::file_tag_mapper::read_file_tags;
 use crate::file_tag_mapper::tests::*;
 use bae_catalogs::release_values::{ReleaseValues, TrackCredits};

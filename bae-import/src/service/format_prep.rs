@@ -78,7 +78,7 @@ struct BuiltAudioFormat {
 fn cue_track_by_playable_index(
     cue_pair: &CueFlacAnalysis,
     cue_index: usize,
-) -> Result<&crate::cue_flac::CueTrack, ImportError> {
+) -> Result<&crate::cue_sheet::CueTrack, ImportError> {
     cue_pair.cue_sheet.playable_tracks().nth(cue_index).ok_or_else(|| ImportError::Internal {
         detail: format!("CUE playable track index {cue_index} out of bounds"),
     })
@@ -112,10 +112,10 @@ fn cue_backed_audio_format(
         .as_ref()
         .map(|pregap| pregap.end_sample - pregap.start_sample)
         .filter(|&samples| samples > 0);
-    let generated_pregap_samples = cue_track
-        .generated_pregap_frames
-        .filter(|&frames| frames > 0)
-        .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, u64::from(probe.sample_rate)));
+    let generated_pregap_samples =
+        cue_track.generated_pregap_frames.filter(|&frames| frames > 0).map(|frames| {
+            crate::cue_sheet::cue_frames_to_samples(frames, u64::from(probe.sample_rate))
+        });
 
     Ok(DbAudioFormat::new(
         db_track_id,

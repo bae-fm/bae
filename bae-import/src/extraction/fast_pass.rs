@@ -256,7 +256,7 @@ fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<PathBuf> {
 }
 
 /// A sheet's album- and track-level PERFORMER / TITLE values, deduped.
-fn cue_sheet_names(sheet: &crate::cue_flac::CueSheet) -> Vec<String> {
+fn cue_sheet_names(sheet: &crate::cue_sheet::CueSheet) -> Vec<String> {
     let mut out = Vec::new();
     let mut seen = HashSet::new();
     let mut push = |value: &Option<String>| {

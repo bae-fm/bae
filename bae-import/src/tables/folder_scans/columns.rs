@@ -3,7 +3,7 @@
 //! the reader that accepts it cannot drift apart.
 
 use super::*;
-use crate::cue_flac::CdRipper;
+use crate::cue_sheet::CdRipper;
 use crate::folder_scanner::{
     AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
 };

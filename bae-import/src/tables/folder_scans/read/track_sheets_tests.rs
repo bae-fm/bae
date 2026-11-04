@@ -61,7 +61,7 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
         panic!("the persisted candidate keeps its valid variant");
     };
     let sheets: Vec<_> = restored.files.track_sheets().map(|sheet| sheet.sheet.ripper).collect();
-    assert_eq!(sheets, vec![Some(crate::cue_flac::CdRipper::ExactAudioCopy)]);
+    assert_eq!(sheets, vec![Some(crate::cue_sheet::CdRipper::ExactAudioCopy)]);
 }
 
 /// A sheet whose boundaries run past its audio reads back refused for its

@@ -7,7 +7,7 @@
 
 use bae_audio::{decode_audio, probe_audio_from_path};
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_import::cue_flac::parse_cue_sheet;
+use bae_import::cue_sheet::parse_cue_sheet;
 use bae_import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions, FolderEntry,
     FolderReleaseDecisions, ScanItem, StoredCandidateEdits, WalkItem,

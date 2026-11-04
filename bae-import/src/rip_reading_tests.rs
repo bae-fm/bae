@@ -2,7 +2,7 @@
 //! track sheet is hashed into a disc ID because of it.
 
 use super::*;
-use crate::cue_flac::{CdRipper, CueIndex, CueTrack, CueTrackMode};
+use crate::cue_sheet::{CdRipper, CueIndex, CueTrack, CueTrackMode};
 use crate::tests::fixture;
 
 fn track(number: u32, start_cue_frames: u64) -> CueTrack {

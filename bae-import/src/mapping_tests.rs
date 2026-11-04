@@ -43,7 +43,7 @@ fn write_flac(path: &Path) {
 /// A sheet naming one container for the whole disc, its entries a fifth of
 /// a second apart so every entry but the last has a length of its own.
 fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
-    crate::cue_flac::tests::cue_text(
+    crate::cue_sheet::tests::cue_text(
         Some(("Artist Name", "Album Title")),
         &format!("\"{audio_file_name}\""),
         (0..count).map(|index| {

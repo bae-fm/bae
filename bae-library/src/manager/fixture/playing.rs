@@ -38,7 +38,7 @@ impl LibraryManager {
                 playing.cue_sheet.display()
             ))
         };
-        let sheet = bae_import::cue_flac::parse_cue_sheet(&playing.cue_sheet)
+        let sheet = bae_import::cue_sheet::parse_cue_sheet(&playing.cue_sheet)
             .map_err(|error| invalid(error.to_string()))?;
         let folder =
             playing.cue_sheet.parent().ok_or_else(|| invalid("names no folder".to_string()))?;

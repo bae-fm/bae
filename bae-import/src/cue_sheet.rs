@@ -1,4 +1,4 @@
-//! Reading a CUE sheet and the FLAC it describes.
+//! Reading a CUE sheet: its tracks, their indexes and the files they name.
 
 use std::path::Path;
 use thiserror::Error;
@@ -11,7 +11,7 @@ pub fn cue_frames_to_samples(frames: u64, sample_rate: u64) -> u64 {
         .expect("CUE sample position exceeds u64")
 }
 #[derive(Debug, Error)]
-pub enum CueFlacError {
+pub enum CueSheetError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("CUE parsing error: {0}")]
@@ -82,11 +82,11 @@ impl CueTrack {
     pub fn duration_ms_with_file_duration(
         &self,
         file_duration_ms: u64,
-    ) -> Result<u64, CueFlacError> {
+    ) -> Result<u64, CueSheetError> {
         let start_ms =
             self.start_cue_frames.checked_mul(1_000).map(|frames_ms| frames_ms / 75).ok_or_else(
                 || {
-                    CueFlacError::CueTiming(format!(
+                    CueSheetError::CueTiming(format!(
                         "track {} start is too large to represent",
                         self.number
                     ))
@@ -95,7 +95,7 @@ impl CueTrack {
         let end_ms = match self.end_cue_frames {
             Some(end_frames) => {
                 end_frames.checked_mul(1_000).map(|frames_ms| frames_ms / 75).ok_or_else(|| {
-                    CueFlacError::CueTiming(format!(
+                    CueSheetError::CueTiming(format!(
                         "track {} end is too large to represent",
                         self.number
                     ))
@@ -104,13 +104,13 @@ impl CueTrack {
             None => file_duration_ms,
         };
         if end_ms > file_duration_ms {
-            return Err(CueFlacError::CueTiming(format!(
+            return Err(CueSheetError::CueTiming(format!(
                 "track {} ends at {end_ms} ms, after its audio ends at {file_duration_ms} ms",
                 self.number
             )));
         }
         end_ms.checked_sub(start_ms).ok_or_else(|| {
-            CueFlacError::CueTiming(format!(
+            CueSheetError::CueTiming(format!(
                 "track {} starts at {start_ms} ms, after it ends at {end_ms} ms",
                 self.number
             ))
@@ -201,12 +201,12 @@ impl PendingCueTrack {
         }
     }
 
-    fn finish(self) -> Result<CueTrack, CueFlacError> {
+    fn finish(self) -> Result<CueTrack, CueSheetError> {
         let (start_cue_frames, file_reference) = match self.start {
             Some(start) => start,
             None if !self.mode.is_audio() => (0, self.file_reference.clone()),
             None => {
-                return Err(CueFlacError::CueParsing(format!(
+                return Err(CueSheetError::CueParsing(format!(
                     "TRACK {} has no INDEX 01",
                     self.number
                 )));
@@ -215,7 +215,7 @@ impl PendingCueTrack {
         if self.generated_pregap_frames.is_some()
             && self.indexes.iter().any(|index| index.number == 0)
         {
-            return Err(CueFlacError::CueParsing(format!(
+            return Err(CueSheetError::CueParsing(format!(
                 "TRACK {} has both INDEX 00 and PREGAP",
                 self.number
             )));
@@ -234,7 +234,7 @@ impl PendingCueTrack {
     }
 }
 /// Read and parse the sheet at `cue_path`, whatever its text encoding.
-pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
+pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueSheetError> {
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::CueParse, cue_path);
     parse_cue_content(&bae_util::text_encoding::read_text_file(cue_path)?.text)
@@ -255,7 +255,7 @@ pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
 /// we would actually play.
 ///
 /// A TRACK before any FILE, or a TRACK body without INDEX 01, is a parse error.
-fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
+fn parse_cue_content(input: &str) -> Result<CueSheet, CueSheetError> {
     let mut header = CueSheet {
         title: None,
         performer: None,
@@ -280,7 +280,7 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
                 tracks.push(track.finish()?);
             }
             let Some(file_reference) = current_file.clone() else {
-                return Err(CueFlacError::CueParsing(format!("TRACK before any FILE: {line:?}")));
+                return Err(CueSheetError::CueParsing(format!("TRACK before any FILE: {line:?}")));
             };
             current_track = Some(PendingCueTrack::new(number, mode, file_reference));
             continue;
@@ -309,7 +309,7 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
         tracks.push(track.finish()?);
     }
     if tracks.is_empty() {
-        return Err(CueFlacError::CueParsing("CUE sheet contains no tracks".into()));
+        return Err(CueSheetError::CueParsing("CUE sheet contains no tracks".into()));
     }
 
     // Some rippers write a bogus INDEX 00 that sits before the previous track's
@@ -369,7 +369,7 @@ fn apply_track_line(
     line: &str,
     track: &mut PendingCueTrack,
     current_file: &str,
-) -> Result<(), CueFlacError> {
+) -> Result<(), CueSheetError> {
     match keyword_and_rest(line) {
         Some(("REM", _)) => {}
         Some(("TITLE", rest)) => {
@@ -402,7 +402,7 @@ fn apply_track_line(
     Ok(())
 }
 
-fn parse_track_directive(line: &str) -> Result<Option<(u32, CueTrackMode)>, CueFlacError> {
+fn parse_track_directive(line: &str) -> Result<Option<(u32, CueTrackMode)>, CueSheetError> {
     let Some(("TRACK", rest)) = keyword_and_rest(line) else {
         return Ok(None);
     };
@@ -410,35 +410,35 @@ fn parse_track_directive(line: &str) -> Result<Option<(u32, CueTrackMode)>, CueF
     let number = parse_u32_token(line, parts.next())?;
     let mode = parts
         .next()
-        .ok_or_else(|| CueFlacError::CueParsing(format!("TRACK line has no mode: {line:?}")))?;
+        .ok_or_else(|| CueSheetError::CueParsing(format!("TRACK line has no mode: {line:?}")))?;
     let mode =
         if mode == "AUDIO" { CueTrackMode::Audio } else { CueTrackMode::Other(mode.to_string()) };
     Ok(Some((number, mode)))
 }
 
-fn parse_file_directive(line: &str) -> Result<Option<String>, CueFlacError> {
+fn parse_file_directive(line: &str) -> Result<Option<String>, CueSheetError> {
     let Some(("FILE", rest)) = keyword_and_rest(line) else {
         return Ok(None);
     };
     Ok(Some(parse_file_name_value(line, rest)?))
 }
 
-fn parse_index_values(line: &str, rest: &str) -> Result<(u32, u64), CueFlacError> {
+fn parse_index_values(line: &str, rest: &str) -> Result<(u32, u64), CueSheetError> {
     let mut parts = rest.split_whitespace();
     let index_number = parse_u32_token(line, parts.next())?;
     let time = parts
         .next()
-        .ok_or_else(|| CueFlacError::CueParsing(format!("malformed INDEX line: {line:?}")))?;
+        .ok_or_else(|| CueSheetError::CueParsing(format!("malformed INDEX line: {line:?}")))?;
     let cue_frames = parse_time(time)?;
     Ok((index_number, cue_frames))
 }
 
-fn parse_u32_token(line: &str, token: Option<&str>) -> Result<u32, CueFlacError> {
+fn parse_u32_token(line: &str, token: Option<&str>) -> Result<u32, CueSheetError> {
     token
-        .ok_or_else(|| CueFlacError::CueParsing(format!("missing number in line: {line:?}")))?
+        .ok_or_else(|| CueSheetError::CueParsing(format!("missing number in line: {line:?}")))?
         .parse::<u32>()
         .map_err(|error| {
-            CueFlacError::CueParsing(format!("invalid number in line: {line:?}: {error}"))
+            CueSheetError::CueParsing(format!("invalid number in line: {line:?}: {error}"))
         })
 }
 
@@ -507,7 +507,7 @@ fn strip_optional_quotes(input: &str) -> &str {
     }
 }
 
-fn parse_file_name_value(line: &str, rest: &str) -> Result<String, CueFlacError> {
+fn parse_file_name_value(line: &str, rest: &str) -> Result<String, CueSheetError> {
     let rest = rest.trim_start();
     if let Some(value) = quoted_value(rest) {
         return Ok(value.trim().to_string());
@@ -515,36 +515,36 @@ fn parse_file_name_value(line: &str, rest: &str) -> Result<String, CueFlacError>
     let name = rest
         .split_whitespace()
         .next()
-        .ok_or_else(|| CueFlacError::CueParsing(format!("FILE line has no name: {line:?}")))?;
+        .ok_or_else(|| CueSheetError::CueParsing(format!("FILE line has no name: {line:?}")))?;
     Ok(name.to_string())
 }
 
 /// MM:SS:FF to total CUE frames (1/75th second). The frames field takes its
 /// leading ASCII digits and ignores any trailer.
-fn parse_time(input: &str) -> Result<u64, CueFlacError> {
+fn parse_time(input: &str) -> Result<u64, CueSheetError> {
     let mut parts = input.splitn(3, ':');
     let minutes = parse_u64_time_field(input, parts.next())?;
     let seconds = parse_u64_time_field(input, parts.next())?;
     let frames_and_rest = parts
         .next()
-        .ok_or_else(|| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?;
+        .ok_or_else(|| CueSheetError::CueParsing(format!("invalid CUE time {input:?}")))?;
     let frame_end =
         frames_and_rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(frames_and_rest.len());
     if frame_end == 0 {
-        return Err(CueFlacError::CueParsing(format!("invalid CUE time {input:?}")));
+        return Err(CueSheetError::CueParsing(format!("invalid CUE time {input:?}")));
     }
     let frames = frames_and_rest[..frame_end].parse::<u64>().map_err(|error| {
-        CueFlacError::CueParsing(format!("invalid CUE time {input:?}: {error}"))
+        CueSheetError::CueParsing(format!("invalid CUE time {input:?}: {error}"))
     })?;
     Ok((minutes * 60 + seconds) * 75 + frames)
 }
 
-fn parse_u64_time_field(input: &str, token: Option<&str>) -> Result<u64, CueFlacError> {
+fn parse_u64_time_field(input: &str, token: Option<&str>) -> Result<u64, CueSheetError> {
     token
-        .ok_or_else(|| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?
+        .ok_or_else(|| CueSheetError::CueParsing(format!("invalid CUE time {input:?}")))?
         .parse::<u64>()
-        .map_err(|error| CueFlacError::CueParsing(format!("invalid CUE time {input:?}: {error}")))
+        .map_err(|error| CueSheetError::CueParsing(format!("invalid CUE time {input:?}: {error}")))
 }
 #[cfg(test)]
-#[path = "cue_flac_tests.rs"]
+#[path = "cue_sheet_tests.rs"]
 pub(crate) mod tests;

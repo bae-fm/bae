@@ -4,7 +4,7 @@
 
 mod hash;
 
-use crate::cue_flac::CueSheet;
+use crate::cue_sheet::CueSheet;
 use std::collections::HashMap;
 use tracing::{debug, trace, warn};
 

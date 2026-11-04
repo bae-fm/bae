@@ -271,7 +271,7 @@ pub(crate) fn file_metadata_values(
     Ok(file_tag_release_values(album, tracks))
 }
 
-fn cue_track(track: &crate::cue_flac::CueTrack, disc: u32) -> TagTrack {
+fn cue_track(track: &crate::cue_sheet::CueTrack, disc: u32) -> TagTrack {
     TagTrack {
         title: non_empty(track.title.clone()).unwrap_or_default(),
         disc: Some(disc),
