@@ -3,12 +3,10 @@
 //! identification in the same write.
 
 use super::import_state::change_identification_on;
-use super::watched_folders::{relative_below, require_watched};
+use super::watched_folders::require_watched;
 use super::*;
 use crate::CandidateKey;
-use bae_db::RelativeFolder;
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Forget every candidate set aside at or below `folders`.
 pub(super) fn forget_at_or_below(
@@ -33,7 +31,11 @@ impl ImportTables {
     pub async fn load_skipped_import_candidates(
         &self,
         watched_folder_path: &Path,
-    ) -> Result<HashSet<RelativeFolder>, DbError> {
+    ) -> Result<std::collections::HashSet<bae_db::RelativeFolder>, DbError> {
+        use super::watched_folders::relative_below;
+        use std::collections::HashSet;
+        use std::path::PathBuf;
+
         let (below_first, below_past) = bae_db::watched_path::paths_below(watched_folder_path);
         let paths: Vec<PathBuf> = self
             .database

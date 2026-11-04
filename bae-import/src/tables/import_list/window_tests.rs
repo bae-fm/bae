@@ -16,7 +16,6 @@ use crate::{MetadataProvenance, TriageTab};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_db::test_fixtures::live_query::{live_db, ALBUM_ID, RELEASE_ID};
 use bae_db::test_fixtures::{exec, write_cover};
-use std::path::PathBuf;
 use std::time::Duration;
 
 /// Each header's group name and whether it offers to combine, in order.
@@ -587,6 +586,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
 async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
     use crate::folder_scanner::{InvalidCandidate, InvalidReason, ProposedRole, SkippedFile};
     use std::os::unix::ffi::OsStrExt;
+    use std::path::PathBuf;
 
     let (db, _tmp, root) = watched_root().await;
     let tables = crate::tables::ImportTables::new(db.clone());

@@ -3,7 +3,6 @@
 //! supplies its samples.
 
 use crate::cue_flac::CueSheet;
-use crate::{CoverSelection, ReleaseUserEdit};
 use bae_audio::ProbeResult;
 use bae_db::DbTrack;
 use std::{path::PathBuf, sync::Arc};
@@ -20,7 +19,7 @@ pub struct ImportCommand {
     pub candidate_key: crate::CandidateKey,
     pub source: crate::release_candidate::CandidateSource,
     #[cfg(any(test, feature = "test-utils"))]
-    pub selected_cover: Option<CoverSelection>,
+    pub selected_cover: Option<crate::CoverSelection>,
     pub destination: ImportDestination,
     /// The release a test import picks for the candidate first.
     #[cfg(any(test, feature = "test-utils"))]
@@ -29,7 +28,7 @@ pub struct ImportCommand {
     #[cfg(any(test, feature = "test-utils"))]
     pub read_file_tags: bool,
     #[cfg(any(test, feature = "test-utils"))]
-    pub user_edit: Option<ReleaseUserEdit>,
+    pub user_edit: Option<crate::ReleaseUserEdit>,
 }
 
 /// Whether an import attaches its files for background upload. Every release's
