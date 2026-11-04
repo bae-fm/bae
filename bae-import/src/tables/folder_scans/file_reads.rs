@@ -3,12 +3,10 @@
 //! [`FileReads`]).
 
 use super::read::{load_items, RowSources};
-use super::tag_snapshot::{StoredFileTags, FILE_TAG_COLUMNS};
+use super::tag_snapshot::load_root_file_tags;
 use super::*;
 use crate::file_tag_reader::FileTagReader;
-use crate::file_tag_snapshot::{FileTagSnapshot, FileTags};
-use crate::folder_scanner::{Coverage, FileReads, FileVersion};
-use crate::CandidateKey;
+use crate::folder_scanner::{Coverage, FileReads};
 use std::sync::Arc;
 
 impl ImportTables {
@@ -42,41 +40,6 @@ impl ImportTables {
             .await
     }
 
-    /// The tag reading stored for the release at `candidate_path` under
-    /// `watched_folder_path`, when the release stored there reads its files
-    /// from `file_root`: each of its facts is then of the file at the same
-    /// path below that folder.
-    pub(crate) async fn load_stored_file_tag_reading(
-        &self,
-        watched_folder_path: &Path,
-        candidate_path: &CandidateKey,
-        file_root: &Path,
-    ) -> Result<Option<FileTagSnapshot>, DbError> {
-        let watched_folder_path = watched_folder_path.to_path_buf();
-        let candidate_path = candidate_path.clone();
-        let file_root = coven::path_bytes(file_root);
-        self.database
-            .read(move |sql| {
-                let stored_root: Option<Vec<u8>> = sql
-                    .query_row(
-                        "SELECT file_root FROM scan_candidate \
-                     WHERE watched_folder_path = ? AND path = ?",
-                        params![coven::path_bytes(&watched_folder_path), candidate_path],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                if stored_root.as_ref() != Some(&file_root) {
-                    return Ok(None);
-                }
-                super::tag_snapshot::load_file_tag_snapshot(
-                    &sql,
-                    &watched_folder_path,
-                    &candidate_path,
-                )
-            })
-            .await
-    }
-
     /// Whether a settled entry the scans stored under `watched_folder_path`
     /// reads any of the files `coverage` reads.
     pub(crate) async fn settled_entry_reads(
@@ -98,41 +61,4 @@ impl ImportTables {
             })
             .await
     }
-}
-
-/// Every tag reading stored for a scanned release under the root, by the
-/// version of the track it was read from.
-fn load_root_file_tags(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &Path,
-) -> Result<Vec<(FileVersion, FileTags)>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT files.absolute_path, {FILE_TAG_COLUMNS} \
-             FROM scan_candidate_file_tag AS tags \
-             INNER JOIN scan_candidate_file AS files \
-                 ON files.watched_folder_path = tags.watched_folder_path \
-                AND files.candidate_path = tags.candidate_path \
-                AND files.relative_path = tags.relative_path \
-             INNER JOIN scan_candidate AS candidate \
-                 ON candidate.watched_folder_path = tags.watched_folder_path \
-                AND candidate.path = tags.candidate_path \
-             WHERE tags.watched_folder_path = ? AND candidate.source_kind = 'folder'"
-        ),
-        [coven::path_bytes(watched_folder_path)],
-        |row| Ok((row.get::<_, Vec<u8>>(0)?, StoredFileTags::of_row(row, 1)?)),
-    )?;
-    rows.into_iter()
-        .map(|(absolute_path, stored)| {
-            let fact = stored.fact()?;
-            Ok((
-                FileVersion {
-                    path: path_column::decode(absolute_path)?,
-                    size: fact.observation.size,
-                    modified_at_ns: fact.observation.modified_at_ns,
-                },
-                fact.tags,
-            ))
-        })
-        .collect()
 }

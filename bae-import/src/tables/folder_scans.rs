@@ -34,8 +34,8 @@ pub(super) use self::read::{load_item_by_key, require_current_candidate, RowSour
 #[cfg(test)]
 pub(crate) use self::reading::FolderReadingStamp;
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
-pub(super) use self::tag_snapshot::load_candidate_file_tag_snapshot;
 pub(crate) use self::tag_snapshot::DbCandidateFileTagSnapshot;
+pub(super) use self::tag_snapshot::{load_candidate_file_tag_snapshot, stored_embedded_cover};
 
 pub(super) use self::dates::forget_discovery_at_or_below;
 pub(super) use self::file_decisions::settle_candidate_files;
