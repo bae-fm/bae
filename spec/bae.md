@@ -1088,7 +1088,8 @@ positions:
 - `CD2-5`, `CD-5` and `BD-1` sit on a disc of the carrier the prefix names
   (CD, DVD, BD for Blu-ray, SACD, VHS, LD for LaserDisc): disc 2 of the CDs,
   or that carrier's only disc.
-- `A3` is on side A of a record or cassette. A record holds two sides, the
+- `A`, `A3` and a sub-track's `A3a` are on side A of a record or cassette.
+  A record holds two sides, the
   second the letter after the first, so a third side, or a letter that doesn't
   follow, starts the next record: a box whose every record restarts at A
   splits per record.
@@ -1271,8 +1272,9 @@ track's place, and nothing edits them afterwards: the pane and the library
 editor show a track's position and edit only its title and artists.
 
 - A MusicBrainz release gives each medium it reads its format; a record or
-  cassette has as many sides as its positions name letters, counted from its
-  lowest, and one naming none is one side. A track's number is its position's
+  cassette has as many sides as its positions name letters, read as a Discogs
+  position's side letter (§3.4), counted from its lowest, and one naming none
+  is one side. A track's number is its position's
   digits (`A3` and `3` are 3).
 - A Discogs release gives the mediums its tracklist splits into, each with its
   carrier (§3.4); a track's number is the digits after its side letter or

@@ -358,31 +358,23 @@ fn covered_layout(
                 .expect("a processed Discogs track is read from a covered row")
         })
         .collect();
-    let letters: Vec<Option<u8>> = processed
-        .iter()
-        .map(|pt| {
-            let letter = *pt.position.as_bytes().first()?;
-            (letter.is_ascii_alphabetic()
-                && pt.position[1..].bytes().next().is_some_and(|byte| byte.is_ascii_digit()))
-            .then(|| letter.to_ascii_uppercase())
-        })
-        .collect();
+    let letters: Vec<Option<u8>> =
+        processed.iter().map(|pt| crate::release_values::side_letter(&pt.position)).collect();
     let mut mediums = Vec::with_capacity(covered.len());
     let mut sides = vec![std::num::NonZeroU8::MIN; processed.len()];
     for (index, medium) in covered.iter().enumerate() {
         let on_medium: Vec<usize> =
             (0..processed.len()).filter(|track| track_mediums[*track] == index).collect();
         let sided = medium.medium.is_some_and(Medium::is_sided);
-        let base = on_medium.iter().filter_map(|track| letters[*track]).min();
+        let medium_letters: Vec<Option<u8>> =
+            on_medium.iter().map(|track| letters[*track]).collect();
         let mut count = std::num::NonZeroU8::MIN;
-        if let (true, Some(base)) = (sided, base) {
-            let mut current = std::num::NonZeroU8::MIN;
-            for track in &on_medium {
-                if let Some(letter) = letters[*track] {
-                    current = bae_types::mediums::side_number(usize::from(letter - base));
-                }
-                sides[*track] = current;
-                count = count.max(current);
+        if let (true, Some(medium_sides)) =
+            (sided, crate::release_values::sides_by_letter(&medium_letters))
+        {
+            for (track, side) in on_medium.iter().zip(medium_sides) {
+                sides[*track] = side;
+                count = count.max(side);
             }
         }
         mediums.push(bae_types::mediums::ReleaseMedium { carrier: medium.medium, sides: count });

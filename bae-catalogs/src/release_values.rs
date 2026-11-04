@@ -68,6 +68,44 @@ pub(crate) fn position_number(position: &str) -> Option<std::num::NonZeroU32> {
     number.parse().ok()
 }
 
+/// The side a position on a record or a cassette names: one letter, alone or
+/// before a track number (`A`, `A1`, `b2`, `A1a`, `B1ii`), uppercased. Two
+/// letters (`AA1`, `CD1`) name no side.
+pub(crate) fn side_letter(position: &str) -> Option<u8> {
+    let (&letter, rest) = position.as_bytes().split_first()?;
+    (letter.is_ascii_alphabetic() && (rest.is_empty() || is_track_number(&position[1..])))
+        .then(|| letter.to_ascii_uppercase())
+}
+
+/// A track number, with the sub-track letters a source may print after it
+/// (`7`, `10a`, `1ii`).
+pub(crate) fn is_track_number(text: &str) -> bool {
+    let digits_end = text.find(|c: char| !c.is_ascii_digit()).unwrap_or(text.len());
+    digits_end > 0 && text[digits_end..].bytes().all(|byte| byte.is_ascii_alphabetic())
+}
+
+/// The side each of one medium's tracks is on, from the [`side_letter`]
+/// each one's position names, in track order: counted from the medium's
+/// lowest letter, so a second record lettered C/D has sides 1 and 2 of its
+/// own, and a track naming none on the side of the track before it (the
+/// first side for one leading the medium). `None` when no track names a
+/// letter.
+pub(crate) fn sides_by_letter(letters: &[Option<u8>]) -> Option<Vec<std::num::NonZeroU8>> {
+    let base = letters.iter().flatten().copied().min()?;
+    let mut current = std::num::NonZeroU8::MIN;
+    Some(
+        letters
+            .iter()
+            .map(|letter| {
+                if let Some(letter) = letter {
+                    current = bae_types::mediums::side_number(usize::from(letter - base));
+                }
+                current
+            })
+            .collect(),
+    )
+}
+
 /// Builds a [`WorkGraph`] from the works a release's recordings perform.
 /// Every reference to a MusicBrainz work carries its whole sub-graph; each
 /// work is held once and its relations read once, however many tracks or

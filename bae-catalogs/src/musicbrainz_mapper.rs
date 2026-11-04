@@ -123,25 +123,11 @@ pub(crate) fn medium_sides(
     let letters: Vec<Option<u8>> = medium
         .entries
         .iter()
-        .map(|track| {
-            let position = track.position.as_deref()?;
-            let letter = *position.as_bytes().first()?;
-            (letter.is_ascii_alphabetic()
-                && position[1..].bytes().all(|byte| byte.is_ascii_digit()))
-            .then(|| letter.to_ascii_uppercase())
-        })
+        .map(|track| track.position.as_deref().and_then(crate::release_values::side_letter))
         .collect();
-    let Some(base) = letters.iter().flatten().copied().min() else {
+    let Some(sides) = crate::release_values::sides_by_letter(&letters) else {
         return Ok(one_side());
     };
-    let mut sides = Vec::with_capacity(letters.len());
-    let mut current = NonZeroU8::MIN;
-    for letter in letters {
-        if let Some(letter) = letter {
-            current = bae_types::mediums::side_number(usize::from(letter - base));
-        }
-        sides.push(current);
-    }
     let count = *sides.iter().max().expect("a medium with tracks has a side");
     Ok(MediumSides { sides, count })
 }

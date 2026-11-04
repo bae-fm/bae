@@ -684,3 +684,15 @@ fn every_label_and_its_catalog_number_is_read() {
     assert_eq!(release.labels, expected);
     assert_eq!(pressing(&release).0.labels, expected);
 }
+
+/// A position that is a side letter alone names that side.
+#[test]
+fn a_side_letter_alone_names_its_side() {
+    let release =
+        make_release(vec![make_track("A", "Side A Track"), make_track("B", "Side B Track")]);
+
+    let release = with_formats(release, &[("Vinyl", "1")]);
+    let parsed = map(&release).unwrap();
+    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(parsed.mediums[0].sides.get(), 2);
+}

@@ -19,6 +19,7 @@
 //! after the last such row with the last medium.
 
 use crate::discogs::DiscogsTrack;
+use crate::release_values::{is_track_number, side_letter};
 use bae_types::pressing::{Medium, StatedMedia};
 use tracing::debug;
 
@@ -181,8 +182,7 @@ fn place(position: &str) -> Option<Place> {
             }
             disc_number(disc).map(Place::Disc)
         }
-        1 => (rest.is_empty() || is_track_number(rest))
-            .then(|| Place::Side(letters.as_bytes()[0].to_ascii_uppercase() - b'A')),
+        1 => side_letter(position).map(|letter| Place::Side(letter - b'A')),
         _ => {
             let medium = PREFIXES
                 .iter()
@@ -204,12 +204,6 @@ fn disc_number(text: &str) -> Option<u32> {
         .then(|| text.parse::<u32>().ok())
         .flatten()
         .filter(|disc| *disc > 0)
-}
-
-/// A track number, with the sub-track letters Discogs may print after it.
-fn is_track_number(text: &str) -> bool {
-    let digits_end = text.find(|c: char| !c.is_ascii_digit()).unwrap_or(text.len());
-    digits_end > 0 && text[digits_end..].bytes().all(|byte| byte.is_ascii_alphabetic())
 }
 
 /// Each run's carrier, from the release's format entries.

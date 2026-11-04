@@ -589,3 +589,22 @@ fn missing_mb_sort_names_remain_absent() {
     assert_eq!(release_artist.credit.sort_name, None);
     assert_eq!(composer.sort_name, None);
 }
+
+/// A side letter before a sub-track's number names its side, as it does
+/// before a track's.
+#[test]
+fn vinyl_sub_track_position_names_its_side() {
+    let response = make_response(vec![MbMedium {
+        discs: vec![],
+        format: Some("12\" Vinyl".to_string()),
+        tracks: vec![
+            make_mb_track("A1a", "Track A1a"),
+            make_mb_track("A1b", "Track A1b"),
+            make_mb_track("B1", "Track B1"),
+        ],
+    }]);
+
+    let parsed = map(&response, vec![]).unwrap();
+    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "A2", "B1"]);
+    assert_eq!(parsed.mediums[0].sides.get(), 2);
+}
