@@ -1,6 +1,9 @@
 //! How a failure is told to the person: a category the UI shows one
 //! localized line for, and the untranslated detail behind it.
 
+mod class;
+pub use class::UiErrorClass;
+
 /// The kind of diagnostic failure. The UI shows one generic localized line per
 /// category; the paired `detail` is the underlying Rust error chain — logged and
 /// offered in a copyable disclosure, never translated. Mirrors

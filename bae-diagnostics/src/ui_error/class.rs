@@ -1,0 +1,223 @@
+//! A failure's class apart from the reason or counts it carries, and the name
+//! a stored failure goes by: one name per class, so every table that keeps a
+//! failure spells it the same way.
+
+use super::UiErrorCategory;
+
+/// The class of a [`UiErrorCategory`], without what the category carries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiErrorClass {
+    Database,
+    Config,
+    Internal,
+    SyncUpdateRequired,
+    DeviceResetRequired,
+    DeviceRemoved,
+    Import,
+    ImportData,
+    CandidateImportInProgress,
+    CandidateBeingIdentified,
+    FilesAlreadyImported,
+    MetadataTrackCount,
+    TiedMediums,
+    ReleaseChangedSinceOpened,
+    GroupingBlocked,
+    Export,
+    Save,
+    Storage,
+    StorageCheck,
+    S3VersioningUnknown,
+    S3VersioningUnsupported,
+    StorageLocationChangeUnsupported,
+    S3Prefix,
+    DeviceIdentityMissing,
+    Credentials,
+    Network,
+    Keyring,
+    KeyringLocked,
+    KeychainEntitlementMissing,
+    SavedRestoreCodesFull,
+    SavedRestoreCodeTooLarge,
+    Membership,
+    InviteJoining,
+    StoreOwnerAccount,
+    Renderer,
+}
+
+impl UiErrorClass {
+    /// Every class, each once.
+    const ALL: [Self; 35] = [
+        Self::Database,
+        Self::Config,
+        Self::Internal,
+        Self::SyncUpdateRequired,
+        Self::DeviceResetRequired,
+        Self::DeviceRemoved,
+        Self::Import,
+        Self::ImportData,
+        Self::CandidateImportInProgress,
+        Self::CandidateBeingIdentified,
+        Self::FilesAlreadyImported,
+        Self::MetadataTrackCount,
+        Self::TiedMediums,
+        Self::ReleaseChangedSinceOpened,
+        Self::GroupingBlocked,
+        Self::Export,
+        Self::Save,
+        Self::Storage,
+        Self::StorageCheck,
+        Self::S3VersioningUnknown,
+        Self::S3VersioningUnsupported,
+        Self::StorageLocationChangeUnsupported,
+        Self::S3Prefix,
+        Self::DeviceIdentityMissing,
+        Self::Credentials,
+        Self::Network,
+        Self::Keyring,
+        Self::KeyringLocked,
+        Self::KeychainEntitlementMissing,
+        Self::SavedRestoreCodesFull,
+        Self::SavedRestoreCodeTooLarge,
+        Self::Membership,
+        Self::InviteJoining,
+        Self::StoreOwnerAccount,
+        Self::Renderer,
+    ];
+
+    /// The name a stored failure of this class goes by.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Database => "database",
+            Self::Config => "config",
+            Self::Internal => "internal",
+            Self::SyncUpdateRequired => "sync_update_required",
+            Self::DeviceResetRequired => "device_reset_required",
+            Self::DeviceRemoved => "device_removed",
+            Self::Import => "import",
+            Self::ImportData => "import_data",
+            Self::CandidateImportInProgress => "candidate_import_in_progress",
+            Self::CandidateBeingIdentified => "candidate_being_identified",
+            Self::FilesAlreadyImported => "files_already_imported",
+            Self::MetadataTrackCount => "metadata_track_count",
+            Self::TiedMediums => "tied_mediums",
+            Self::ReleaseChangedSinceOpened => "release_changed_since_opened",
+            Self::GroupingBlocked => "grouping_blocked",
+            Self::Export => "export",
+            Self::Save => "save",
+            Self::Storage => "storage",
+            Self::StorageCheck => "storage_check",
+            Self::S3VersioningUnknown => "versioning_unknown",
+            Self::S3VersioningUnsupported => "versioning_unsupported",
+            Self::StorageLocationChangeUnsupported => "storage_location_change",
+            Self::S3Prefix => "s3_prefix",
+            Self::DeviceIdentityMissing => "device_identity_missing",
+            Self::Credentials => "credentials",
+            Self::Network => "network",
+            Self::Keyring => "keyring",
+            Self::KeyringLocked => "keyring_locked",
+            Self::KeychainEntitlementMissing => "keychain_entitlement_missing",
+            Self::SavedRestoreCodesFull => "saved_restore_codes_full",
+            Self::SavedRestoreCodeTooLarge => "saved_restore_code_too_large",
+            Self::Membership => "membership",
+            Self::InviteJoining => "invite_joining",
+            Self::StoreOwnerAccount => "store_owner_account",
+            Self::Renderer => "renderer",
+        }
+    }
+
+    /// The class `name` names, or `None` for a name no class goes by.
+    pub fn named(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|class| class.name() == name)
+    }
+}
+
+impl UiErrorCategory {
+    /// This category's class.
+    pub fn class(&self) -> UiErrorClass {
+        use UiErrorClass as K;
+        match self {
+            Self::Database => K::Database,
+            Self::Config => K::Config,
+            Self::Internal => K::Internal,
+            Self::SyncUpdateRequired => K::SyncUpdateRequired,
+            Self::DeviceResetRequired => K::DeviceResetRequired,
+            Self::DeviceRemoved => K::DeviceRemoved,
+            Self::Import => K::Import,
+            Self::ImportData => K::ImportData,
+            Self::CandidateImportInProgress => K::CandidateImportInProgress,
+            Self::CandidateBeingIdentified => K::CandidateBeingIdentified,
+            Self::FilesAlreadyImported => K::FilesAlreadyImported,
+            Self::MetadataTrackCount { .. } => K::MetadataTrackCount,
+            Self::TiedMediums { .. } => K::TiedMediums,
+            Self::ReleaseChangedSinceOpened => K::ReleaseChangedSinceOpened,
+            Self::GroupingBlocked(_) => K::GroupingBlocked,
+            Self::Export => K::Export,
+            Self::Save => K::Save,
+            Self::Storage(_) => K::Storage,
+            Self::StorageCheck { .. } => K::StorageCheck,
+            Self::S3VersioningUnknown(_) => K::S3VersioningUnknown,
+            Self::S3VersioningUnsupported(_) => K::S3VersioningUnsupported,
+            Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
+            Self::S3Prefix(_) => K::S3Prefix,
+            Self::DeviceIdentityMissing => K::DeviceIdentityMissing,
+            Self::Credentials => K::Credentials,
+            Self::Network => K::Network,
+            Self::Keyring => K::Keyring,
+            Self::KeyringLocked => K::KeyringLocked,
+            Self::KeychainEntitlementMissing => K::KeychainEntitlementMissing,
+            Self::SavedRestoreCodesFull => K::SavedRestoreCodesFull,
+            Self::SavedRestoreCodeTooLarge => K::SavedRestoreCodeTooLarge,
+            Self::Membership => K::Membership,
+            Self::InviteJoining => K::InviteJoining,
+            Self::StoreOwnerAccount => K::StoreOwnerAccount,
+            Self::Renderer => K::Renderer,
+        }
+    }
+
+    /// The category of `class` when the class carries nothing more, or
+    /// `None` for a class that carries a reason or counts.
+    pub fn plain(class: UiErrorClass) -> Option<Self> {
+        use UiErrorClass as K;
+        Some(match class {
+            K::Database => Self::Database,
+            K::Config => Self::Config,
+            K::Internal => Self::Internal,
+            K::SyncUpdateRequired => Self::SyncUpdateRequired,
+            K::DeviceResetRequired => Self::DeviceResetRequired,
+            K::DeviceRemoved => Self::DeviceRemoved,
+            K::Import => Self::Import,
+            K::ImportData => Self::ImportData,
+            K::CandidateImportInProgress => Self::CandidateImportInProgress,
+            K::CandidateBeingIdentified => Self::CandidateBeingIdentified,
+            K::FilesAlreadyImported => Self::FilesAlreadyImported,
+            K::ReleaseChangedSinceOpened => Self::ReleaseChangedSinceOpened,
+            K::Export => Self::Export,
+            K::Save => Self::Save,
+            K::StorageLocationChangeUnsupported => Self::StorageLocationChangeUnsupported,
+            K::DeviceIdentityMissing => Self::DeviceIdentityMissing,
+            K::Credentials => Self::Credentials,
+            K::Network => Self::Network,
+            K::Keyring => Self::Keyring,
+            K::KeyringLocked => Self::KeyringLocked,
+            K::KeychainEntitlementMissing => Self::KeychainEntitlementMissing,
+            K::SavedRestoreCodesFull => Self::SavedRestoreCodesFull,
+            K::SavedRestoreCodeTooLarge => Self::SavedRestoreCodeTooLarge,
+            K::Membership => Self::Membership,
+            K::InviteJoining => Self::InviteJoining,
+            K::StoreOwnerAccount => Self::StoreOwnerAccount,
+            K::Renderer => Self::Renderer,
+            K::MetadataTrackCount
+            | K::TiedMediums
+            | K::GroupingBlocked
+            | K::Storage
+            | K::StorageCheck
+            | K::S3VersioningUnknown
+            | K::S3VersioningUnsupported
+            | K::S3Prefix => return None,
+        })
+    }
+}
+
+#[cfg(test)]
+#[path = "class_tests.rs"]
+mod tests;

@@ -34,7 +34,7 @@ pub use error_category::{
     pending_reason_category, sync_category,
 };
 pub use telemetry::*;
-pub use ui_error::{GroupingBlockReason, UiError, UiErrorCategory};
+pub use ui_error::{GroupingBlockReason, UiError, UiErrorCategory, UiErrorClass};
 
 use std::{collections::VecDeque, fmt, sync::Arc, time::Duration};
 

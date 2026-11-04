@@ -100,63 +100,32 @@ fn block_column(reason: GroupingBlockReason) -> &'static str {
 /// reason or counts, each after a dot.
 fn category_column(category: UiErrorCategory) -> String {
     use UiErrorCategory as C;
+    let class = category.class().name();
     match category {
-        C::Database => "database".to_string(),
-        C::Config => "config".to_string(),
-        C::Internal => "internal".to_string(),
-        C::DeviceResetRequired => "device_reset_required".into(),
-        C::DeviceRemoved => "device_removed".into(),
-        C::SyncUpdateRequired => "sync_update_required".to_string(),
-        C::Import => "import".to_string(),
-        C::ImportData => "import_data".to_string(),
-        C::CandidateImportInProgress => "candidate_import_in_progress".to_string(),
-        C::CandidateBeingIdentified => "candidate_being_identified".to_string(),
-        C::FilesAlreadyImported => "files_already_imported".to_string(),
         C::MetadataTrackCount { folder_tracks, release_tracks } => {
-            format!("metadata_track_count.{folder_tracks}.{release_tracks}")
+            format!("{class}.{folder_tracks}.{release_tracks}")
         }
-        C::TiedMediums { mediums } => format!(
-            "tied_mediums.{}",
-            mediums.iter().map(u32::to_string).collect::<Vec<_>>().join(".")
-        ),
-        C::ReleaseChangedSinceOpened => "release_changed_since_opened".to_string(),
-        C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
-        C::Export => "export".to_string(),
-        C::Save => "save".to_string(),
-        C::Storage(failure) => format!(
-            "storage.{}",
-            serde_json::to_string(&failure).expect("storage failure serializes")
-        ),
-        C::StorageCheck { check, failure } => format!(
-            "storage_check.{}.{}",
-            check_column(check),
-            serde_json::to_string(&failure).expect("storage failure serializes")
-        ),
-        C::S3VersioningUnknown(failure) => format!(
-            "versioning_unknown.{}",
-            serde_json::to_string(&failure).expect("storage failure serializes")
-        ),
-        C::S3VersioningUnsupported(state) => {
-            format!("versioning_unsupported.{}", versioning_column(state))
+        C::TiedMediums { mediums } => {
+            format!("{class}.{}", mediums.iter().map(u32::to_string).collect::<Vec<_>>().join("."))
         }
-        C::StorageLocationChangeUnsupported => "storage_location_change".into(),
+        C::GroupingBlocked(reason) => format!("{class}.{}", block_column(reason)),
+        C::Storage(failure) | C::S3VersioningUnknown(failure) => {
+            format!("{class}.{}", storage_failure_json(&failure))
+        }
+        C::StorageCheck { check, failure } => {
+            format!("{class}.{}.{}", check_column(check), storage_failure_json(&failure))
+        }
+        C::S3VersioningUnsupported(state) => format!("{class}.{}", versioning_column(state)),
         C::S3Prefix(error) => format!(
-            "s3_prefix.{}",
+            "{class}.{}",
             serde_json::to_string(&error).expect("S3 prefix error serializes")
         ),
-        C::DeviceIdentityMissing => "device_identity_missing".to_string(),
-        C::Credentials => "credentials".to_string(),
-        C::Network => "network".to_string(),
-        C::Keyring => "keyring".to_string(),
-        C::KeyringLocked => "keyring_locked".to_string(),
-        C::KeychainEntitlementMissing => "keychain_entitlement_missing".to_string(),
-        C::SavedRestoreCodesFull => "saved_restore_codes_full".to_string(),
-        C::SavedRestoreCodeTooLarge => "saved_restore_code_too_large".to_string(),
-        C::Membership => "membership".to_string(),
-        C::InviteJoining => "invite_joining".to_string(),
-        C::StoreOwnerAccount => "store_owner_account".to_string(),
-        C::Renderer => "renderer".to_string(),
+        _ => class.to_string(),
     }
+}
+
+fn storage_failure_json(failure: &coven::StorageFailure) -> String {
+    serde_json::to_string(failure).expect("storage failure serializes")
 }
 
 fn check_column(value: coven::StorageCheck) -> &'static str {
@@ -207,14 +176,23 @@ fn versioning_of(value: &str) -> Option<coven::S3BucketVersioning> {
 }
 
 fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
+    use bae_diagnostics::UiErrorClass as K;
     use GroupingBlockReason as B;
     use UiErrorCategory as C;
-    let unreadable = || DbError::Message(format!("unreadable failure class {column:?}"));
-    let unreadable_because = |error: &dyn std::fmt::Display| {
-        DbError::Message(format!("unreadable failure class {column:?}: {error}"))
+    const WHAT: &str = "import_candidate_session.error_category";
+    let unreadable = || DbError::unreadable(WHAT, column);
+    let unreadable_because =
+        |error: &dyn std::fmt::Display| DbError::unreadable(WHAT, format!("{column}: {error}"));
+    let (name, stored) = match column.split_once('.') {
+        Some((name, stored)) => (name, Some(stored)),
+        None => (column, None),
     };
-    Ok(match column.split_once('.') {
-        Some(("grouping_blocked", stored)) => C::GroupingBlocked(
+    let class = bae_diagnostics::UiErrorClass::named(name).ok_or_else(unreadable)?;
+    let Some(stored) = stored else {
+        return UiErrorCategory::plain(class).ok_or_else(unreadable);
+    };
+    Ok(match class {
+        K::GroupingBlocked => C::GroupingBlocked(
             [
                 B::SourceChanged,
                 B::SourceGone,
@@ -226,10 +204,10 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             .find(|reason| block_column(*reason) == stored)
             .ok_or_else(unreadable)?,
         ),
-        Some(("storage", stored)) => {
+        K::Storage => {
             C::Storage(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
         }
-        Some(("storage_check", stored)) => {
+        K::StorageCheck => {
             let (check, failure) = stored.split_once('.').ok_or_else(unreadable)?;
             C::StorageCheck {
                 check: check_of(check).ok_or_else(unreadable)?,
@@ -237,22 +215,22 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
                     .map_err(|error| unreadable_because(&error))?,
             }
         }
-        Some(("versioning_unknown", stored)) => C::S3VersioningUnknown(
+        K::S3VersioningUnknown => C::S3VersioningUnknown(
             serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?,
         ),
-        Some(("s3_prefix", stored)) => {
+        K::S3Prefix => {
             C::S3Prefix(serde_json::from_str(stored).map_err(|error| unreadable_because(&error))?)
         }
-        Some(("versioning_unsupported", stored)) => {
+        K::S3VersioningUnsupported => {
             C::S3VersioningUnsupported(versioning_of(stored).ok_or_else(unreadable)?)
         }
-        Some(("tied_mediums", stored)) => C::TiedMediums {
+        K::TiedMediums => C::TiedMediums {
             mediums: stored
                 .split('.')
                 .map(|medium| medium.parse().map_err(|error| unreadable_because(&error)))
                 .collect::<Result<_, _>>()?,
         },
-        Some(("metadata_track_count", stored)) => {
+        K::MetadataTrackCount => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
             C::MetadataTrackCount {
                 folder_tracks: folder_tracks.parse().map_err(|error| unreadable_because(&error))?,
@@ -261,37 +239,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
                     .map_err(|error| unreadable_because(&error))?,
             }
         }
-        Some(_) => return Err(unreadable()),
-        None => match column {
-            "database" => C::Database,
-            "config" => C::Config,
-            "internal" => C::Internal,
-            "device_reset_required" => C::DeviceResetRequired,
-            "device_removed" => C::DeviceRemoved,
-            "sync_update_required" => C::SyncUpdateRequired,
-            "import" => C::Import,
-            "import_data" => C::ImportData,
-            "candidate_import_in_progress" => C::CandidateImportInProgress,
-            "candidate_being_identified" => C::CandidateBeingIdentified,
-            "files_already_imported" => C::FilesAlreadyImported,
-            "release_changed_since_opened" => C::ReleaseChangedSinceOpened,
-            "export" => C::Export,
-            "save" => C::Save,
-            "storage_location_change" => C::StorageLocationChangeUnsupported,
-            "device_identity_missing" => C::DeviceIdentityMissing,
-            "credentials" => C::Credentials,
-            "network" => C::Network,
-            "keyring" => C::Keyring,
-            "keyring_locked" => C::KeyringLocked,
-            "keychain_entitlement_missing" => C::KeychainEntitlementMissing,
-            "saved_restore_codes_full" => C::SavedRestoreCodesFull,
-            "saved_restore_code_too_large" => C::SavedRestoreCodeTooLarge,
-            "membership" => C::Membership,
-            "invite_joining" => C::InviteJoining,
-            "store_owner_account" => C::StoreOwnerAccount,
-            "renderer" => C::Renderer,
-            _ => return Err(unreadable()),
-        },
+        _ => return Err(unreadable()),
     })
 }
 

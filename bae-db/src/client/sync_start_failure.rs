@@ -3,7 +3,7 @@
 //! storage failure coven's reason with what that reason names.
 
 use super::*;
-use bae_diagnostics::{UiError, UiErrorCategory};
+use bae_diagnostics::{UiError, UiErrorCategory, UiErrorClass};
 use coven::{DropboxAccess, OAuthAccess, OwnBucketReason, StorageFailure};
 
 /// A failed start's class in `sync_start_failure`'s columns.
@@ -33,51 +33,55 @@ impl FailureColumns {
     /// `SyncError` maps to, or as a panic (`Internal`); any other is a bug
     /// in the caller, refused rather than kept.
     fn of(category: &UiErrorCategory) -> Result<Self, DbError> {
-        use UiErrorCategory as C;
-        Ok(match category {
-            C::Database => Self::plain("database"),
-            C::Config => Self::plain("config"),
-            C::Internal => Self::plain("internal"),
-            C::SyncUpdateRequired => Self::plain("sync_update_required"),
-            C::DeviceResetRequired => Self::plain("device_reset_required"),
-            C::DeviceRemoved => Self::plain("device_removed"),
-            C::Membership => Self::plain("membership"),
-            C::Keyring => Self::plain("keyring"),
-            C::KeyringLocked => Self::plain("keyring_locked"),
-            C::KeychainEntitlementMissing => Self::plain("keychain_entitlement_missing"),
-            C::SavedRestoreCodesFull => Self::plain("saved_restore_codes_full"),
-            C::SavedRestoreCodeTooLarge => Self::plain("saved_restore_code_too_large"),
-            C::Storage(failure) => Self::storage(*failure)?,
-            C::Import
-            | C::ImportData
-            | C::CandidateImportInProgress
-            | C::CandidateBeingIdentified
-            | C::FilesAlreadyImported
-            | C::MetadataTrackCount { .. }
-            | C::TiedMediums { .. }
-            | C::ReleaseChangedSinceOpened
-            | C::GroupingBlocked(_)
-            | C::Export
-            | C::Save
-            | C::StorageCheck { .. }
-            | C::S3VersioningUnknown(_)
-            | C::S3VersioningUnsupported(_)
-            | C::StorageLocationChangeUnsupported
-            | C::S3Prefix(_)
-            | C::DeviceIdentityMissing
-            | C::Credentials
-            | C::Network
-            | C::InviteJoining
-            | C::StoreOwnerAccount
-            | C::Renderer => {
-                return Err(DbError::Message(format!("a sync start can't fail as {category:?}")));
+        use UiErrorClass as K;
+        if let UiErrorCategory::Storage(failure) = category {
+            return Self::storage(*failure);
+        }
+        let class = category.class();
+        match class {
+            K::Database
+            | K::Config
+            | K::Internal
+            | K::SyncUpdateRequired
+            | K::DeviceResetRequired
+            | K::DeviceRemoved
+            | K::Membership
+            | K::Keyring
+            | K::KeyringLocked
+            | K::KeychainEntitlementMissing
+            | K::SavedRestoreCodesFull
+            | K::SavedRestoreCodeTooLarge => Ok(Self::plain(class.name())),
+            K::Storage
+            | K::Import
+            | K::ImportData
+            | K::CandidateImportInProgress
+            | K::CandidateBeingIdentified
+            | K::FilesAlreadyImported
+            | K::MetadataTrackCount
+            | K::TiedMediums
+            | K::ReleaseChangedSinceOpened
+            | K::GroupingBlocked
+            | K::Export
+            | K::Save
+            | K::StorageCheck
+            | K::S3VersioningUnknown
+            | K::S3VersioningUnsupported
+            | K::StorageLocationChangeUnsupported
+            | K::S3Prefix
+            | K::DeviceIdentityMissing
+            | K::Credentials
+            | K::Network
+            | K::InviteJoining
+            | K::StoreOwnerAccount
+            | K::Renderer => {
+                Err(DbError::Message(format!("a sync start can't fail as {category:?}")))
             }
-        })
+        }
     }
 
     fn storage(failure: StorageFailure) -> Result<Self, DbError> {
         use StorageFailure as F;
-        let mut columns = Self::plain("storage");
+        let mut columns = Self::plain(UiErrorClass::Storage.name());
         let name = match failure {
             F::ProviderUnavailable => "provider_unavailable",
             F::AccessNotRegistered { required } => {
@@ -171,23 +175,12 @@ struct StoredColumns {
 
 impl StoredColumns {
     fn category(&self) -> Result<UiErrorCategory, DbError> {
-        use UiErrorCategory as C;
-        Ok(match self.category.as_str() {
-            "database" => C::Database,
-            "config" => C::Config,
-            "internal" => C::Internal,
-            "sync_update_required" => C::SyncUpdateRequired,
-            "device_reset_required" => C::DeviceResetRequired,
-            "device_removed" => C::DeviceRemoved,
-            "membership" => C::Membership,
-            "keyring" => C::Keyring,
-            "keyring_locked" => C::KeyringLocked,
-            "keychain_entitlement_missing" => C::KeychainEntitlementMissing,
-            "saved_restore_codes_full" => C::SavedRestoreCodesFull,
-            "saved_restore_code_too_large" => C::SavedRestoreCodeTooLarge,
-            "storage" => C::Storage(self.storage_failure()?),
-            other => return Err(unnamed("category", other)),
-        })
+        let unnamed_class = || unnamed("category", &self.category);
+        let class = UiErrorClass::named(&self.category).ok_or_else(unnamed_class)?;
+        if class == UiErrorClass::Storage {
+            return Ok(UiErrorCategory::Storage(self.storage_failure()?));
+        }
+        UiErrorCategory::plain(class).ok_or_else(unnamed_class)
     }
 
     fn storage_failure(&self) -> Result<StorageFailure, DbError> {
