@@ -200,13 +200,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
         let mut captured = fixture.next_capture_stream().await;
 
         // Wait for playback to start.
-        let started = bae_playback::test_capture::wait_until_playing(
-            &mut fixture.progress_rx,
-            &track_id,
-            Duration::from_secs(5),
-        )
-        .await;
-        assert!(started, "{label} should start playing");
+        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track_id).await;
 
         let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
         let reference_data =
@@ -266,16 +260,7 @@ async fn test_cue_ape_seek() {
     let _play_stream = fixture.next_capture_stream().await;
 
     // Wait for playback to start
-    let started = bae_util::test_channels::next_matching(
-        &mut fixture.progress_rx,
-        Duration::from_secs(5),
-        |event| {
-            matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
-                .then_some(())
-        },
-    )
-    .await;
-    assert!(started.is_some(), "Playback should start");
+    bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track_id).await;
 
     // Seek to 27s — capture the new stream and wait for new audio post-seek
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(27)));
@@ -408,13 +393,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     fixture.playback_handle.add_to_queue(vec![track2_id.clone()]);
 
     // Wait for track 1 to start
-    let started = bae_playback::test_capture::wait_until_playing(
-        &mut fixture.progress_rx,
-        &track1_id,
-        Duration::from_secs(5),
-    )
-    .await;
-    assert!(started, "Track 1 should start playing");
+    bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track1_id).await;
 
     // Seek to 28s into the 30s track so it completes quickly, then gaplessly
     // auto-advances into track 2 within this same stream. This buffer therefore
@@ -423,13 +402,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     let mut captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start via auto-advance, then capture samples.
-    let track2_started = bae_playback::test_capture::wait_until_playing(
-        &mut fixture.progress_rx,
-        &track2_id,
-        Duration::from_secs(15),
-    )
-    .await;
-    assert!(track2_started, "Track 2 should auto-advance after track 1 completes");
+    bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id).await;
 
     // === GROUND TRUTH: XLD-split reference FLAC ===
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();

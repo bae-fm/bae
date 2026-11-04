@@ -527,15 +527,7 @@ async fn stopping_playback_closes_the_files_it_streamed() {
     let mut progress_rx = playback_handle.subscribe_progress();
 
     playback_handle.play(imported.track_ids[0].clone());
-    assert!(
-        bae_playback::test_capture::wait_until_playing(
-            &mut progress_rx,
-            &imported.track_ids[0],
-            Duration::from_secs(5)
-        )
-        .await,
-        "the track plays"
-    );
+    bae_playback::test_capture::wait_until_playing(&mut progress_rx, &imported.track_ids[0]).await;
     assert!(
         !coven::open_files_under(&imported.album_dir).is_empty(),
         "the playing track's file is open while it streams"

@@ -14,7 +14,7 @@ use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::test_imports::wait_for_import_complete;
 use bae_import::{ImportCommand, ImportDestination};
 use bae_library::LibraryManager;
-use bae_playback::{PlaybackProgress, PlaybackState};
+use bae_playback::PlaybackProgress;
 use bae_types::track_time::TrackTime;
 use bae_util::content_type::ContentType;
 use std::path::Path;

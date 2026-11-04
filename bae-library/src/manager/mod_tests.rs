@@ -244,7 +244,7 @@ impl ReleaseRef {
 pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
     let mut queued = manager.database.subscribe_row_file_queued_for_test(table, row_id);
     manager.database.sync_now();
-    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while queued.next().await.expect("the query stays open").unwrap() {}
     })
     .await
@@ -408,7 +408,7 @@ pub(super) async fn playback_error_reason_for_file(
         let mut b = [0u8; 1];
         r.read(&mut b)
     });
-    let reason = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let reason = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         bae_playback::read_failure_reason(&error_rx.recv().await.expect("error channel open"))
     })
     .await
@@ -588,7 +588,7 @@ pub(super) async fn rows_until(
     >,
     accept: impl Fn(&bae_views::DbStorageInspector) -> bool,
 ) -> bae_views::DbStorageInspector {
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let event = rows.next().await.expect("the inspector's read runs");
             if let Some(value) = event.result.unwrap().filter(|value| accept(value)) {

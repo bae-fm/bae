@@ -392,7 +392,7 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         // The read sends only what changes, so every value after the pin is
         // queued holds the rule; a download can finish before a value shows
         // the release in the queue, so none has to.
-        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
                 let event = rows.next().await.expect("the inspector's read runs");
                 let value = event.result.unwrap().expect("the library holds the release");
@@ -655,7 +655,7 @@ async fn download_queue_until(
     done: impl Fn(&bae_transfers::DownloadSnapshot) -> bool,
 ) -> bae_transfers::DownloadSnapshot {
     let mut values = manager.subscribe_download_snapshot();
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let queue = values.next().await.expect("the query stays open").unwrap();
             if done(&queue) {

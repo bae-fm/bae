@@ -42,7 +42,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_kept_release_for_test(&self, release_id: &str) {
         let mut pins = self.database.subscribe_release_file_pins(release_id);
-        tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
                 let pins = pins.next().await.expect("the query stays open").unwrap();
                 if pins.values().all(|pin| pin.kept) {

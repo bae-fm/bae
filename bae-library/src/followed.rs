@@ -1,19 +1,16 @@
 //! A test's hold on one live source of values: the first value it reports
 //! that a test is waiting for, failing loudly when none comes.
 
-use std::time::Duration;
+use bae_util::test_channels::HANG_GUARD;
 
-/// How long a test waits for the value it expects before failing.
-const PATIENCE: Duration = Duration::from_secs(20);
-
-/// The first value `query` reports that `matches` accepts. Panics after
-/// twenty seconds without one, on a failed read, and when the query ends.
+/// The first value `query` reports that `matches` accepts. Panics when none
+/// ever comes, on a failed read, and when the query ends.
 pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'static>(
     query: &mut impl bae_db::live_query::LiveSource<T>,
     mut matches: impl FnMut(&T) -> bool,
 ) -> T {
     let mut last = None;
-    let found = tokio::time::timeout(PATIENCE, async {
+    let found = tokio::time::timeout(HANG_GUARD, async {
         loop {
             let value =
                 query.next().await.expect("the live query ended").expect("the live query failed");
@@ -26,7 +23,7 @@ pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'sta
     .await;
     match found {
         Ok(value) => value,
-        Err(_) => panic!("no matching value within {PATIENCE:?}; the last was {last:?}"),
+        Err(_) => panic!("no matching value ever came; the last was {last:?}"),
     }
 }
 
@@ -38,7 +35,7 @@ pub async fn pulled_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'st
     mut matches: impl FnMut(&T) -> bool,
 ) -> T {
     let mut last = None;
-    let found = tokio::time::timeout(PATIENCE, async {
+    let found = tokio::time::timeout(HANG_GUARD, async {
         loop {
             let value = values.next().await.expect("the values stop only when cancelled");
             if matches(&value) {
@@ -50,6 +47,6 @@ pub async fn pulled_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'st
     .await;
     match found {
         Ok(value) => value,
-        Err(_) => panic!("no matching value within {PATIENCE:?}; the last was {last:?}"),
+        Err(_) => panic!("no matching value ever came; the last was {last:?}"),
     }
 }

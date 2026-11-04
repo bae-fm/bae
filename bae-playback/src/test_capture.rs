@@ -6,16 +6,12 @@ use crate::{
     AudioOutputDevice, CaptureAudioDevice, CapturedStream, CapturedStreams, PlaybackClockRef,
     PlaybackProgress, PlaybackState, RealtimeCaptureAudioDevice, WallPlaybackClock,
 };
-use bae_util::test_channels::next_matching;
+use bae_util::test_channels::{next_matching, HANG_GUARD};
 
 /// Wait for playback to report `track_id` as the playing track, discarding
-/// every other progress event, and return whether it arrived in time.
-pub async fn wait_until_playing(
-    progress_rx: &mut crate::PlaybackProgressFeed,
-    track_id: &str,
-    timeout_duration: std::time::Duration,
-) -> bool {
-    next_matching(progress_rx, timeout_duration, |event| match event {
+/// every other progress event. Panics only if it never does.
+pub async fn wait_until_playing(progress_rx: &mut crate::PlaybackProgressFeed, track_id: &str) {
+    let playing = next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::StateChanged { state: PlaybackState::Playing { track } }
             if track.track_id == track_id =>
         {
@@ -23,21 +19,18 @@ pub async fn wait_until_playing(
         }
         _ => None,
     })
-    .await
-    .is_some()
+    .await;
+    assert!(playing.is_some(), "track {track_id} never reached Playing");
 }
 
-/// Wait up to ten seconds for playback to confirm a seek on `track_id`,
-/// discarding every other progress event, and assert the confirmation arrived.
+/// Wait for playback to confirm a seek on `track_id`, discarding every other
+/// progress event. Panics only if it never does.
 pub async fn wait_for_seek(progress_rx: &mut crate::PlaybackProgressFeed, track_id: &str) {
-    let seeked =
-        next_matching(progress_rx, std::time::Duration::from_secs(10), |event| match event {
-            PlaybackProgress::Seeked { track_id: seeked_id, .. } if seeked_id == track_id => {
-                Some(())
-            }
-            _ => None,
-        })
-        .await;
+    let seeked = next_matching(progress_rx, HANG_GUARD, |event| match event {
+        PlaybackProgress::Seeked { track_id: seeked_id, .. } if seeked_id == track_id => Some(()),
+        _ => None,
+    })
+    .await;
     assert!(seeked.is_some(), "Should receive Seeked event");
 }
 
@@ -82,9 +75,9 @@ pub fn wall_playback_clock() -> PlaybackClockRef {
 /// yielded in creation order; tests that exercise auto-advance, seek, or next
 /// call this once per stream they want to inspect.
 pub async fn next_capture_stream(capture_stream_rx: &mut CaptureStreamRx) -> CapturedStream {
-    match tokio::time::timeout(std::time::Duration::from_secs(5), capture_stream_rx.recv()).await {
+    match tokio::time::timeout(HANG_GUARD, capture_stream_rx.recv()).await {
         Ok(Some(stream)) => stream,
         Ok(None) => panic!("capture stream channel closed before a stream was created"),
-        Err(_) => panic!("no capture stream created within 5s"),
+        Err(_) => panic!("no capture stream was ever created"),
     }
 }

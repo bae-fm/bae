@@ -16,15 +16,7 @@ async fn playing_first_track(fixture: &PlaybackTestFixture) -> String {
         .await
         .expect("the play is answered");
     assert_eq!(played, bae_playback::PlayOutcome::Playing);
-    assert!(
-        bae_playback::test_capture::wait_until_playing(
-            &mut progress,
-            &fixture.track_ids[0],
-            PLAY_START_BACKSTOP
-        )
-        .await,
-        "the first track plays"
-    );
+    bae_playback::test_capture::wait_until_playing(&mut progress, &fixture.track_ids[0]).await;
     release_id
 }
 

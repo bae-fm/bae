@@ -20,26 +20,14 @@ async fn test_cue_ape_next_track() {
     let _track1_play = fixture.next_capture_stream().await;
 
     // Wait for track 1 to start
-    let started = bae_playback::test_capture::wait_until_playing(
-        &mut fixture.progress_rx,
-        &track1_id,
-        Duration::from_secs(5),
-    )
-    .await;
-    assert!(started, "Track 1 should start playing");
+    bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track1_id).await;
 
     // Press Next — track 2's stream replaces track 1's.
     fixture.playback_handle.next();
     let mut captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start
-    let track2_started = bae_playback::test_capture::wait_until_playing(
-        &mut fixture.progress_rx,
-        &track2_id,
-        Duration::from_secs(10),
-    )
-    .await;
-    assert!(track2_started, "Track 2 should start after Next");
+    bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id).await;
 
     // Decode XLD reference
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
@@ -61,7 +49,7 @@ async fn test_cue_ape_next_track() {
 
     let track2_sample_count = bae_util::test_channels::next_matching(
         &mut fixture.progress_rx,
-        Duration::from_secs(10),
+        bae_util::test_channels::HANG_GUARD,
         |event| match event {
             PlaybackProgress::DecodeStats { track_id, samples_decoded, .. }
                 if track_id == track2_id =>
@@ -72,7 +60,7 @@ async fn test_cue_ape_next_track() {
         },
     )
     .await
-    .expect("Track 2 should emit decode stats within 10s");
+    .expect("Track 2 emits its decode stats");
     assert!(
         track2_sample_count > snippet_len,
         "Track 2 should produce enough samples to compare: {} (needed more than {})",

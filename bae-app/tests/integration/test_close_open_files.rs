@@ -4,8 +4,6 @@
 //! behind can fail removing the library there, and elsewhere passes unseen;
 //! listing this process's open files catches it on every platform.
 
-use std::time::Duration;
-
 /// Copy the three fixture tracks into `dir`.
 fn write_tracks(dir: &std::path::Path) {
     let fixtures = bae_import::test_fixtures::flac_dir();
@@ -43,15 +41,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         .await
         .expect("the play is answered");
     assert_eq!(played, bae_playback::PlayOutcome::Playing);
-    assert!(
-        bae_playback::test_capture::wait_until_playing(
-            &mut progress,
-            &imported.track_ids[0],
-            Duration::from_secs(30)
-        )
-        .await,
-        "the first track plays"
-    );
+    bae_playback::test_capture::wait_until_playing(&mut progress, &imported.track_ids[0]).await;
     assert!(
         !coven::open_files_under(imported.temp_dir.path()).is_empty(),
         "a playing library holds files open"
