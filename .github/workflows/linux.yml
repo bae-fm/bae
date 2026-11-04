@@ -181,10 +181,10 @@ jobs:
         # Translations still carrying the English, glued morphology, or mismatched
         # placeholders, in all three catalogs.
         python3 scripts/loc-english-skeleton.py || status=1
-        # Title case outside the macOS menu bar, and sentence case in it
-        # (spec/words.md "Capitalization").
-        python3 scripts/loc-sentence-case.py || status=1
-        python3 scripts/tests/loc-sentence-case-test.py || status=1
+        # spec/words.md: title case outside the macOS menu bar, sentence case
+        # in it, and "cloud" on screen.
+        python3 scripts/loc-words.py || status=1
+        python3 scripts/tests/loc-words-test.py || status=1
         exit $status
 
     - name: Check Rust documentation

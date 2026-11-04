@@ -7,7 +7,7 @@ enum LibraryRemovalConfirmation {
         String(localized: "Removing the library from this Mac discards them.")
     }
 
-    /// A synced library's cloud copy survives, and this Mac leaves its members
+    /// A synced library stays in storage, and this Mac leaves its members
     /// first, which needs storage. A never-synced library's catalog is gone,
     /// while indexed audio files stay in the user's folders.
     static func message(hasCloudHome: Bool) -> String {
@@ -19,7 +19,7 @@ enum LibraryRemovalConfirmation {
         }
         return String(
             localized:
-                "This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage; your library in the cloud is untouched."
+                "This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. The library will remain in storage and on your other devices."
         )
     }
 
@@ -44,7 +44,7 @@ enum LibraryRemovalConfirmation {
         case .uncounted:
             return String(
                 localized:
-                    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; any copy in the cloud is untouched."
+                    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in storage, it stays there."
             )
         }
     }

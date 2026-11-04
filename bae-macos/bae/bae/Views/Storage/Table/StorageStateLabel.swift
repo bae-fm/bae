@@ -24,7 +24,7 @@ struct StorageStateLabel: View {
         case .pinned:
             StatusChip("Pinned", symbol: "pin.fill")
         case .cloud:
-            StatusChip("Cloud", symbol: "cloud")
+            StatusChip("In storage", symbol: "cloud")
         }
     }
 }

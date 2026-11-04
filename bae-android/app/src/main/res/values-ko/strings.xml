@@ -109,9 +109,9 @@
     <string name="copy">복사</string>
     <string name="hide">가리기</string>
     <string name="settings_remove_library">이 기기에서 이 라이브러리 제거</string>
-    <string name="settings_remove_library_explanation">이 기기에서 라이브러리를 제거합니다. 기기가 라이브러리에서 나간 다음 복사본과 다운로드한 파일이 삭제됩니다. 클라우드 저장 위치의 라이브러리는 그대로입니다.</string>
+    <string name="settings_remove_library_explanation">이 기기에서 라이브러리를 제거합니다. 기기가 라이브러리에서 나간 다음 복사본과 다운로드한 파일이 삭제됩니다. 라이브러리는 스토리지와 다른 기기에 그대로 남습니다.</string>
     <string name="settings_remove_library_confirm_title">이 기기에서 이 라이브러리를 제거할까요?</string>
-    <string name="settings_remove_library_confirm_body">먼저 이 기기가 라이브러리에서 나가며, 이때 연결이 필요합니다. 클라우드 저장 위치의 라이브러리는 그대로입니다.</string>
+    <string name="settings_remove_library_confirm_body">먼저 이 기기가 라이브러리에서 나가며, 이때 연결이 필요합니다. 라이브러리는 스토리지와 다른 기기에 그대로 남습니다.</string>
     <string name="unsent_edits_body">이 기기에서 라이브러리를 제거하면 이 변경 사항은 삭제됩니다.</string>
     <string name="settings_remove">제거</string>
     <string name="settings_provider">제공자</string>
@@ -132,7 +132,7 @@
     <string name="onboarding_add_device">기기 추가</string>
     <string name="onboarding_icon_description">bae 아이콘</string>
     <string name="onboarding_camera_permission_required">QR 코드를 스캔하려면 카메라 권한이 필요합니다</string>
-    <string name="oauth_unconfigured">이 라이브러리는 클라우드 로그인이 필요하지만 이 빌드에는 설정되어 있지 않습니다.</string>
+    <string name="oauth_unconfigured">이 라이브러리의 스토리지 로그인이 이 빌드에는 설정되어 있지 않습니다.</string>
     <string name="signing_in">로그인 중…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -234,8 +234,8 @@
     <string name="onboarding_next_check">다음 확인까지 %1$s</string>
     <string name="onboarding_check_now">지금 확인</string>
     <string name="pending_update_no_store">이 기기에는 bae를 업데이트할 수 있는 앱 스토어가 없습니다.</string>
-    <string name="storage_setup_title">클라우드 저장 위치 설정</string>
-    <string name="settings_set_up_cloud_home_explanation">이 라이브러리는 이 기기에만 저장되어 있습니다. 클라우드 저장 위치를 설정하면 다른 기기와 가족도 사용할 수 있습니다.</string>
+    <string name="storage_setup_title">동기화 설정</string>
+    <string name="settings_set_up_sync_explanation">이 라이브러리는 이 기기에만 저장되어 있습니다. 동기화하면 라이브러리가 스토리지에 보관되어 다른 기기와 가족도 사용할 수 있습니다.</string>
     <string name="storage_setup_choose">이 라이브러리를 어디에 저장할까요?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3는 비워 두세요.</string>
     <string name="storage_s3_advanced">고급</string>
@@ -258,7 +258,7 @@
     <string name="storage_onedrive_folder_name">폴더 이름</string>
     <string name="storage_onedrive_create">만들기</string>
     <string name="storage_onedrive_use_folder">이 폴더 사용</string>
-    <string name="storage_setup_done">이 라이브러리의 클라우드 저장 위치가 설정되었습니다. 복구 코드를 다른 사람이 볼 수 없는 곳에 보관하세요. 모든 기기를 잃어버려도 이 코드로 라이브러리를 되찾을 수 있습니다.</string>
+    <string name="storage_setup_done">동기화가 설정되었습니다. 복구 코드를 다른 사람이 볼 수 없는 곳에 보관하세요. 모든 기기를 잃어버려도 이 코드로 라이브러리를 되찾을 수 있습니다.</string>
     <string name="done">완료</string>
     <string name="recovery_code_title">내 복구 코드</string>
     <string name="recovery_code_explanation">모든 기기를 잃어버린 경우 새 기기에서 이 코드를 입력하면 라이브러리를 되찾을 수 있습니다. 이 코드와 스토리지 접근 권한이 있으면 누구나 라이브러리를 열 수 있으니 다른 사람이 볼 수 없는 곳에 보관하세요.</string>

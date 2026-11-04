@@ -145,9 +145,9 @@
     <string name="copy">Copy</string>
     <string name="hide">Hide</string>
     <string name="settings_remove_library">Remove this library from this device</string>
-    <string name="settings_remove_library_explanation">Removes this library from this device: this device leaves the library, then its copy and downloaded files are deleted. The library in its cloud home is untouched.</string>
+    <string name="settings_remove_library_explanation">Removes this library from this device: this device leaves the library, then its copy and downloaded files are deleted. The library will remain in storage and on your other devices.</string>
     <string name="settings_remove_library_confirm_title">Remove this library from this device?</string>
-    <string name="settings_remove_library_confirm_body">This device leaves the library first, which needs a connection. The library in its cloud home is untouched.</string>
+    <string name="settings_remove_library_confirm_body">This device leaves the library first, which needs a connection. The library will remain in storage and on your other devices.</string>
     <string name="unsent_edits_body">Removing the library from this device discards them.</string>
     <string name="settings_remove">Remove</string>
     <string name="settings_provider">Provider</string>
@@ -174,7 +174,7 @@
     <!-- The quoted label is members_add_device, the People button on another of the person's devices -->
     <string name="onboarding_icon_description">bae icon</string>
     <string name="onboarding_camera_permission_required">Camera permission is required to scan QR codes</string>
-    <string name="oauth_unconfigured">This library needs cloud sign-in, which isn\'t configured on this build.</string>
+    <string name="oauth_unconfigured">Signing in to this library\'s storage isn\'t configured on this build.</string>
 
     <string name="signing_in">Signing in…</string>
     <!-- Cloud provider names -->
@@ -289,8 +289,8 @@
     <string name="onboarding_next_check">Next check in %1$s</string>
     <string name="onboarding_check_now">Check now</string>
     <string name="pending_update_no_store">No app store on this device can update bae.</string>
-    <string name="storage_setup_title">Set up a cloud home</string>
-    <string name="settings_set_up_cloud_home_explanation">This library is stored on this device only. A cloud home lets your other devices and your household use it.</string>
+    <string name="storage_setup_title">Set up sync</string>
+    <string name="settings_set_up_sync_explanation">This library is stored on this device only. Sync keeps it in storage, where your other devices and your household can use it.</string>
     <string name="storage_setup_choose">Where should this library be stored?</string>
     <string name="storage_s3_endpoint_hint">Leave empty for Amazon S3.</string>
     <string name="storage_s3_advanced">Advanced</string>
@@ -313,7 +313,7 @@
     <string name="storage_onedrive_folder_name">Folder name</string>
     <string name="storage_onedrive_create">Create</string>
     <string name="storage_onedrive_use_folder">Use this folder</string>
-    <string name="storage_setup_done">This library’s cloud home is set up. Keep your recovery code somewhere private: if you lose all your devices, it gets your library back.</string>
+    <string name="storage_setup_done">Sync is set up. Keep your recovery code somewhere private: if you lose all your devices, it gets your library back.</string>
     <string name="done">Done</string>
     <string name="recovery_code_title">Your recovery code</string>
     <string name="recovery_code_explanation">If you lose all your devices, enter this code on a new one to get your library back. Anyone who has it and access to your storage can open the library, so keep it somewhere private.</string>

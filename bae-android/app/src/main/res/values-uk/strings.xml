@@ -112,9 +112,9 @@
     <string name="copy">Копіювати</string>
     <string name="hide">Сховати</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
-    <string name="settings_remove_library_explanation">Вилучає цю бібліотеку з цього пристрою: пристрій виходить із бібліотеки, а потім його копію та завантажені файли видаляють. Бібліотека в хмарі залишається незмінною.</string>
+    <string name="settings_remove_library_explanation">Вилучає цю бібліотеку з цього пристрою: пристрій виходить із бібліотеки, а потім його копію та завантажені файли видаляють. Бібліотека залишиться у сховищі та на інших ваших пристроях.</string>
     <string name="settings_remove_library_confirm_title">Вилучити цю бібліотеку з цього пристрою?</string>
-    <string name="settings_remove_library_confirm_body">Спершу пристрій виходить із бібліотеки, для чого потрібне з’єднання. Бібліотека в хмарі залишається незмінною.</string>
+    <string name="settings_remove_library_confirm_body">Спершу пристрій виходить із бібліотеки, для чого потрібне з’єднання. Бібліотека залишиться у сховищі та на інших ваших пристроях.</string>
     <string name="unsent_edits_body">Вилучення бібліотеки з цього пристрою відкине їх.</string>
     <string name="settings_remove">Видалити</string>
     <string name="settings_provider">Постачальник</string>
@@ -135,7 +135,7 @@
     <string name="onboarding_add_device">Додати пристрій</string>
     <string name="onboarding_icon_description">значок bae</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
-    <string name="oauth_unconfigured">Для цієї бібліотеки потрібен хмарний вхід, який не налаштовано в цій збірці.</string>
+    <string name="oauth_unconfigured">Вхід до сховища цієї бібліотеки не налаштовано в цій збірці.</string>
     <string name="signing_in">Вхід…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -243,8 +243,8 @@
     <string name="onboarding_next_check">Наступна перевірка через %1$s</string>
     <string name="onboarding_check_now">Перевірити зараз</string>
     <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
-    <string name="storage_setup_title">Налаштувати місце в хмарі</string>
-    <string name="settings_set_up_cloud_home_explanation">Ця бібліотека зберігається лише на цьому пристрої. Місце в хмарі дасть змогу користуватися нею вашим іншим пристроям і домівці.</string>
+    <string name="storage_setup_title">Налаштувати синхронізацію</string>
+    <string name="settings_set_up_sync_explanation">Ця бібліотека зберігається лише на цьому пристрої. Синхронізація тримає її у сховищі, де нею можуть користуватися інші ваші пристрої та домівка.</string>
     <string name="storage_setup_choose">Де зберігати цю бібліотеку?</string>
     <string name="storage_s3_endpoint_hint">Залиште порожнім для Amazon S3.</string>
     <string name="storage_s3_advanced">Додатково</string>
@@ -267,7 +267,7 @@
     <string name="storage_onedrive_folder_name">Назва папки</string>
     <string name="storage_onedrive_create">Створити</string>
     <string name="storage_onedrive_use_folder">Використати цю папку</string>
-    <string name="storage_setup_done">Місце в хмарі для цієї бібліотеки налаштовано. Зберігайте свій код відновлення в приватному місці: якщо ви втратите всі свої пристрої, з ним ви повернете свою бібліотеку.</string>
+    <string name="storage_setup_done">Синхронізацію налаштовано. Зберігайте свій код відновлення в приватному місці: якщо ви втратите всі свої пристрої, з ним ви повернете свою бібліотеку.</string>
     <string name="done">Готово</string>
     <string name="recovery_code_title">Ваш код відновлення</string>
     <string name="recovery_code_explanation">Якщо ви втратите всі свої пристрої, введіть цей код на новому, щоб повернути свою бібліотеку. Будь-хто, хто його має і має доступ до вашого сховища, може відкрити бібліотеку, тож зберігайте його в приватному місці.</string>

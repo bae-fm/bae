@@ -110,9 +110,9 @@
     <string name="copy">Kopiëren</string>
     <string name="hide">Verbergen</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
-    <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek van dit apparaat: het apparaat verlaat de bibliotheek, daarna worden de kopie en de gedownloade bestanden verwijderd. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
+    <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek van dit apparaat: het apparaat verlaat de bibliotheek, daarna worden de kopie en de gedownloade bestanden verwijderd. De bibliotheek blijft in de opslag en op je andere apparaten.</string>
     <string name="settings_remove_library_confirm_title">Deze bibliotheek van dit apparaat verwijderen?</string>
-    <string name="settings_remove_library_confirm_body">Dit apparaat verlaat eerst de bibliotheek, waarvoor een verbinding nodig is. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
+    <string name="settings_remove_library_confirm_body">Dit apparaat verlaat eerst de bibliotheek, waarvoor een verbinding nodig is. De bibliotheek blijft in de opslag en op je andere apparaten.</string>
     <string name="unsent_edits_body">Als je de bibliotheek van dit apparaat verwijdert, worden ze weggegooid.</string>
     <string name="settings_remove">Verwijderen</string>
     <string name="settings_provider">Provider</string>
@@ -133,7 +133,7 @@
     <string name="onboarding_add_device">Apparaat toevoegen</string>
     <string name="onboarding_icon_description">bae-pictogram</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
-    <string name="oauth_unconfigured">Deze bibliotheek heeft cloudaanmelding nodig, die niet is geconfigureerd in deze build.</string>
+    <string name="oauth_unconfigured">Aanmelden bij de opslag van deze bibliotheek is niet geconfigureerd in deze build.</string>
     <string name="signing_in">Aanmelden…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -237,8 +237,8 @@
     <string name="onboarding_next_check">Volgende controle over %1$s</string>
     <string name="onboarding_check_now">Nu controleren</string>
     <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
-    <string name="storage_setup_title">Een cloudlocatie instellen</string>
-    <string name="settings_set_up_cloud_home_explanation">Deze bibliotheek staat alleen op dit apparaat. Met een cloudlocatie kunnen je andere apparaten en je huishouden hem gebruiken.</string>
+    <string name="storage_setup_title">Synchronisatie instellen</string>
+    <string name="settings_set_up_sync_explanation">Deze bibliotheek staat alleen op dit apparaat. Synchronisatie houdt hem in de opslag, waar je andere apparaten en je huishouden hem kunnen gebruiken.</string>
     <string name="storage_setup_choose">Waar moet deze bibliotheek worden opgeslagen?</string>
     <string name="storage_s3_endpoint_hint">Laat leeg voor Amazon S3.</string>
     <string name="storage_s3_advanced">Geavanceerd</string>
@@ -261,7 +261,7 @@
     <string name="storage_onedrive_folder_name">Mapnaam</string>
     <string name="storage_onedrive_create">Maken</string>
     <string name="storage_onedrive_use_folder">Deze map gebruiken</string>
-    <string name="storage_setup_done">De cloudlocatie van deze bibliotheek is ingesteld. Bewaar je herstelcode op een privéplek: als je al je apparaten kwijtraakt, krijg je er je bibliotheek mee terug.</string>
+    <string name="storage_setup_done">Synchronisatie is ingesteld. Bewaar je herstelcode op een privéplek: als je al je apparaten kwijtraakt, krijg je er je bibliotheek mee terug.</string>
     <string name="done">Klaar</string>
     <string name="recovery_code_title">Je herstelcode</string>
     <string name="recovery_code_explanation">Als je al je apparaten kwijtraakt, voer je deze code in op een nieuw apparaat om je bibliotheek terug te krijgen. Iedereen met deze code en toegang tot je opslag kan de bibliotheek openen, dus bewaar hem op een privéplek.</string>

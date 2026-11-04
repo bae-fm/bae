@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Refuse title case outside the macOS menu bar (spec/words.md "Capitalization").
+"""Refuse on-screen words spec/words.md rules out.
 
-Every string bae puts on screen is in sentence case: the first word of each
-sentence and proper names are capitalized, nothing else. The macOS menu bar's
-menus and items are the one exception, in title case as every Mac app's are.
+Capitalization: every string bae puts on screen is in sentence case: the
+first word of each sentence and proper names are capitalized, nothing else.
+The macOS menu bar's menus and items are the one exception, in title case as
+every Mac app's are.
+
+Storage: where a synced library is kept is "storage" on screen, never "the
+cloud" (spec/words.md "The library and where it lives").
 
 Checks, over the macOS String Catalog, Android's strings.xml and core's
 catalog (bae-bridge/loc/catalog.toml):
@@ -23,6 +27,11 @@ catalog (bae-bridge/loc/catalog.toml):
     word capitalized, past names (with their endings: "Finderissa"), acronyms
     and abbreviations ("No."), is title case copied from English. German is
     left to its own grammar.
+  - Every language, English included: no word for a cloud. English "cloud"
+    is refused in every locale, as many keep it as a loanword, past the names
+    that hold it ("iCloud", "Cloudflare"); each other language's own word
+    (CLOUD_WORDS) is refused at a word's start, after Hebrew's and Arabic's
+    attached prefixes.
 
 Exits non-zero on any hit, printing each.
 """
@@ -84,6 +93,52 @@ TITLE_SMALL_WORDS = {
     "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into",
     "nor", "of", "on", "or", "the", "to", "via", "with",
 }
+
+# English "cloud" at a word's start, but in "Cloudflare"; "iCloud" has a
+# letter before it.
+CLOUD = re.compile(r"(?<![^\W\d_])cloud(?!flare)", re.IGNORECASE)
+# Each language's own word for a cloud, at a word's start (and in German
+# compounds anywhere): Danish and Norwegian "sky" only as the noun and the
+# compounds made from it, as "skyld" and "skygge" are other words.
+CLOUD_WORDS = {
+    "ar": r"(?<!\w)(?:[وفبلك]?ال|لل|[وفبلك])?سحاب",
+    "bg": r"\bоблак|\bоблач",
+    "cs": r"\boblak|\boblac",
+    "da": r"\bsky(?:en|er|erne)?\b|\bsky(?=lag|tjen|plac|login|konto)",
+    "de": r"wolke",
+    "el": r"\bνέφ|\bσύννεφ",
+    "es": r"\bnube",
+    "fi": r"\bpilv",
+    "fr": r"\bnuage",
+    "he": r"(?<!\w)[ובכלמהש]{0,3}ענן",
+    "hr": r"\boblak|\boblač",
+    "hu": r"\bfelhő",
+    "it": r"\bnuvol",
+    "ja": r"クラウド",
+    "ko": r"클라우드",
+    "nb": r"\bsky(?:en|er|ene)?\b|\bsky(?=lag|tjen|plass|pålog|legit|konto)",
+    "nl": r"\bwolk",
+    "pl": r"\bchmur",
+    "pt-BR": r"\bnuve(?:m|ns)\b",
+    "pt-PT": r"\bnuve(?:m|ns)\b",
+    "ro": r"\bnor(?:ul|ului|i|ii)?\b",
+    "sk": r"\boblak|\boblač",
+    "sv": r"\bmoln",
+    "tr": r"\bbulut",
+    "uk": r"\bхмар",
+    "zh-Hans": r"云",
+    "zh-Hant": r"雲",
+}
+CLOUD_WORDS = {locale: re.compile(p, re.IGNORECASE) for locale, p in CLOUD_WORDS.items()}
+
+
+def cloud_words(text, locale="en"):
+    """The words of `text` that call storage a cloud, in `locale`."""
+    found = [m.group(0) for m in CLOUD.finditer(text)]
+    if locale in CLOUD_WORDS:
+        found += [m.group(0) for m in CLOUD_WORDS[locale].finditer(text)]
+    return found
+
 
 # Languages without letter case: nothing to check.
 UNCASED = {"ar", "he", "ja", "ko", "zh-Hans", "zh-Hant"}
@@ -264,6 +319,19 @@ def main():
         if missed:
             hits.append(f"menu bar: {title!r} is not title case ({', '.join(missed)})")
 
+    clouds = []
+    for where, key, value in english:
+        words = cloud_words(value)
+        if words:
+            clouds.append(f"{where}: {key!r} is {value!r}: {', '.join(words)}")
+    for locale, values in sorted(translated.items()):
+        for where, key, value in values:
+            words = cloud_words(value, locale)
+            if words:
+                clouds.append(
+                    f"{where} {locale}: {key!r} is {value!r}: {', '.join(words)}"
+                )
+
     labels = command_labels(v for _, _, v in english)
     for where, key, value in english:
         words = mid_sentence_capitals(value, labels - {value})
@@ -279,7 +347,7 @@ def main():
             if title_case_copy(value):
                 hits.append(f"{where} {locale}: {key!r} is {value!r}")
 
-    for hit in hits:
+    for hit in hits + clouds:
         print(hit)
     if hits:
         print(
@@ -287,8 +355,13 @@ def main():
             "sentence case everywhere but the macOS menu bar, title case there.",
             file=sys.stderr,
         )
-        return 1
-    return 0
+    if clouds:
+        print(
+            f"\n{len(clouds)} strings break spec/words.md \"Storage\": where a "
+            "synced library is kept is storage on screen, never the cloud.",
+            file=sys.stderr,
+        )
+    return 1 if hits or clouds else 0
 
 
 if __name__ == "__main__":

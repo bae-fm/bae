@@ -118,9 +118,9 @@
     <string name="copy">Kopírovať</string>
     <string name="hide">Skryť</string>
     <string name="settings_remove_library">Odstrániť túto knižnicu z tohto zariadenia</string>
-    <string name="settings_remove_library_explanation">Odstráni túto knižnicu z tohto zariadenia: zariadenie knižnicu opustí a potom sa odstráni jeho kópia a stiahnuté súbory. Knižnica v cloudovom úložisku zostane nedotknutá.</string>
+    <string name="settings_remove_library_explanation">Odstráni túto knižnicu z tohto zariadenia: zariadenie knižnicu opustí a potom sa odstráni jeho kópia a stiahnuté súbory. Knižnica zostane v úložisku a na tvojich ďalších zariadeniach.</string>
     <string name="settings_remove_library_confirm_title">Odstrániť túto knižnicu z tohto zariadenia?</string>
-    <string name="settings_remove_library_confirm_body">Zariadenie najprv knižnicu opustí, na čo je potrebné pripojenie. Knižnica v cloudovom úložisku zostane nedotknutá.</string>
+    <string name="settings_remove_library_confirm_body">Zariadenie najprv knižnicu opustí, na čo je potrebné pripojenie. Knižnica zostane v úložisku a na tvojich ďalších zariadeniach.</string>
     <string name="unsent_edits_body">Odstránením knižnice z tohto zariadenia sa zahodia.</string>
     <string name="settings_remove">Odstrániť</string>
     <string name="settings_provider">Poskytovateľ</string>
@@ -141,7 +141,7 @@
     <string name="onboarding_add_device">Pridať zariadenie</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
-    <string name="oauth_unconfigured">Táto knižnica vyžaduje cloudové prihlásenie, ktoré v tomto zostavení nie je nastavené.</string>
+    <string name="oauth_unconfigured">Prihlásenie do úložiska tejto knižnice nie je v tomto zostavení nastavené.</string>
     <string name="signing_in">Prihlasuje sa…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -242,8 +242,8 @@
     <string name="onboarding_next_check">Ďalšia kontrola o %1$s</string>
     <string name="onboarding_check_now">Skontrolovať teraz</string>
     <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
-    <string name="storage_setup_title">Nastaviť cloudové úložisko</string>
-    <string name="settings_set_up_cloud_home_explanation">Táto knižnica je uložená len v tomto zariadení. Cloudové úložisko umožní používať ju aj tvojim ďalším zariadeniam a domácnosti.</string>
+    <string name="storage_setup_title">Nastaviť synchronizáciu</string>
+    <string name="settings_set_up_sync_explanation">Táto knižnica je uložená len v tomto zariadení. Synchronizácia ju udržiava v úložisku, kde ju môžu používať aj tvoje ďalšie zariadenia a domácnosť.</string>
     <string name="storage_setup_choose">Kde má byť táto knižnica uložená?</string>
     <string name="storage_s3_endpoint_hint">Pre Amazon S3 nechaj prázdne.</string>
     <string name="storage_s3_advanced">Rozšírené</string>
@@ -266,7 +266,7 @@
     <string name="storage_onedrive_folder_name">Názov priečinka</string>
     <string name="storage_onedrive_create">Vytvoriť</string>
     <string name="storage_onedrive_use_folder">Použiť tento priečinok</string>
-    <string name="storage_setup_done">Cloudové úložisko tejto knižnice je nastavené. Uchovávaj kód na obnovenie na súkromnom mieste: ak prídeš o všetky svoje zariadenia, získaš s ním knižnicu späť.</string>
+    <string name="storage_setup_done">Synchronizácia je nastavená. Uchovávaj kód na obnovenie na súkromnom mieste: ak prídeš o všetky svoje zariadenia, získaš s ním knižnicu späť.</string>
     <string name="done">Hotovo</string>
     <string name="recovery_code_title">Tvoj kód na obnovenie</string>
     <string name="recovery_code_explanation">Ak prídeš o všetky svoje zariadenia, zadaj tento kód na novom zariadení a získaš knižnicu späť. Ktokoľvek, kto ho má a má prístup k tvojmu úložisku, môže knižnicu otvoriť, preto ho uchovávaj na súkromnom mieste.</string>

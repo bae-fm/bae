@@ -109,9 +109,9 @@
     <string name="copy">複製</string>
     <string name="hide">隱藏</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
-    <string name="settings_remove_library_explanation">從此裝置移除此資料庫：此裝置先退出資料庫，然後刪除它的副本和已下載的檔案。雲端儲存位置中的資料庫不受影響。</string>
+    <string name="settings_remove_library_explanation">從此裝置移除此資料庫：此裝置先退出資料庫，然後刪除它的副本和已下載的檔案。資料庫會保留在儲存空間和你的其他裝置上。</string>
     <string name="settings_remove_library_confirm_title">要從此裝置移除此資料庫嗎？</string>
-    <string name="settings_remove_library_confirm_body">此裝置會先退出資料庫，這需要連線。雲端儲存位置中的資料庫不受影響。</string>
+    <string name="settings_remove_library_confirm_body">此裝置會先退出資料庫，這需要連線。資料庫會保留在儲存空間和你的其他裝置上。</string>
     <string name="unsent_edits_body">從此裝置移除該資料庫會捨棄這些變更。</string>
     <string name="settings_remove">移除</string>
     <string name="settings_provider">提供者</string>
@@ -132,7 +132,7 @@
     <string name="onboarding_add_device">新增裝置</string>
     <string name="onboarding_icon_description">bae 圖示</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>
-    <string name="oauth_unconfigured">此資料庫需要雲端登入，但此建置尚未設定。</string>
+    <string name="oauth_unconfigured">此建置尚未設定登入此資料庫的儲存空間。</string>
     <string name="signing_in">正在登入…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -234,8 +234,8 @@
     <string name="onboarding_next_check">%1$s 後再次檢查</string>
     <string name="onboarding_check_now">立即檢查</string>
     <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
-    <string name="storage_setup_title">設定雲端儲存位置</string>
-    <string name="settings_set_up_cloud_home_explanation">此資料庫只儲存在這台裝置上。設定雲端儲存位置後，你的其他裝置和家人也能使用它。</string>
+    <string name="storage_setup_title">設定同步</string>
+    <string name="settings_set_up_sync_explanation">此資料庫只儲存在這台裝置上。同步會將它保存在儲存空間中，你的其他裝置和家人都能在那裡使用它。</string>
     <string name="storage_setup_choose">此資料庫要儲存在哪裡？</string>
     <string name="storage_s3_endpoint_hint">使用 Amazon S3 時請留空。</string>
     <string name="storage_s3_advanced">進階</string>
@@ -258,7 +258,7 @@
     <string name="storage_onedrive_folder_name">資料夾名稱</string>
     <string name="storage_onedrive_create">建立</string>
     <string name="storage_onedrive_use_folder">使用此資料夾</string>
-    <string name="storage_setup_done">此資料庫的雲端儲存位置已設定。請將你的復原碼保存在私密的地方：如果你遺失了所有裝置，可以用它找回你的資料庫。</string>
+    <string name="storage_setup_done">同步已設定。請將你的復原碼保存在私密的地方：如果你遺失了所有裝置，可以用它找回你的資料庫。</string>
     <string name="done">完成</string>
     <string name="recovery_code_title">你的復原碼</string>
     <string name="recovery_code_explanation">如果你遺失了所有裝置，可在新裝置上輸入此代碼找回你的資料庫。任何擁有此代碼並能存取你的儲存空間的人都能打開該資料庫，因此請將它保存在私密的地方。</string>

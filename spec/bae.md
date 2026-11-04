@@ -1374,11 +1374,11 @@ Ana clicks Import. bae:
    again fetches it again. While it fetches, the import's progress says
    "Fetching artist pictures…"; an import that creates no Discogs artist
    fetches nothing and its progress never says so.
-3. **Reads each file** whole where it sits, for a local import as for a
-   cloud one: coven records its path, size and modification time and hashes
+3. **Reads each file** whole where it sits, for a local import as for an
+   import to storage: coven records its path, size and modification time and hashes
    its bytes, its content and each chunk, and the import's progress counts
-   the bytes read. A cloud import's upload checks what it sends against those
-   hashes, and so does a local release's later move to the cloud (§4.2),
+   the bytes read. The upload of an import to storage checks what it sends against
+   those hashes, and so does a local release's later move to storage (§4.2),
    which reads nothing again. A file whose size or modification time is no
    longer what the scan recorded fails the import before any row is
    written.
@@ -1471,11 +1471,11 @@ drafts are never imported, so a pick or an edit fetches none and the import
 fetches them (step 2). Every stored image is downscaled to at most 600 pixels
 on a side and stored as JPEG.
 
-**Where it goes.** Each import lands on this device or goes to the cloud, as
-the person last chose (§4.2), and a cloud import stays whole here too once
+**Where it goes.** Each import lands on this device or goes to storage, as
+the person last chose (§4.2), and an import to storage stays whole here too once
 stored when the Pinned choice is on. Either import stages its files with
 coven in the same transaction as its rows: on this device only for a local
-import, and for the cloud for a cloud import, which queues their upload, so
+import, and for storage for an import to storage, which queues their upload, so
 the choice is never lost, and needs no connection to record it.
 
 **Automatic identification and import.** By default, each release a scan finds
@@ -1679,7 +1679,7 @@ A release is *local*, or *uploaded* so other devices can play it.
 Ana imports her CD rip to her laptop only. The release is local: its files are
 her own, at their path on her laptop. Its rows sync like any release's, so
 Ben's phone shows the album, its tracks and its cover, but can't play it. Ana
-moves it to the cloud. coven uploads each file from where it sits; once every
+moves it to storage. coven uploads each file from where it sits; once every
 file is in storage every device can play it. Ana's files stay where they are,
 untouched.
 
@@ -1700,28 +1700,28 @@ never leave the device. Every device reads every release file through coven:
 - the file is on this device only: from its original, which coven checks
   still has its recorded size and modification time;
 - the file is on another device only: it isn't here. Another device has it,
-  keeping it local or still moving it to the cloud.
+  keeping it local or still moving it to storage.
 
 A release whose audio is on another device only names that device in the
 album and release views: "On Ana's Mac". The name is the device's
 registration in coven's `coven_devices`, joined to coven's record of each file
 in the query that reads the release, so the line goes as soon as the switch
-to the cloud arrives, and changes when the device is removed. A device removed
+to storage arrives, and changes when the device is removed. A device removed
 from the library, or whose person was, reads "On Ana's Mac, a removed device",
 and one replaced when it was reset reads "On Ana's Mac, a replaced device":
-its files stay on it, and no device can move them to the cloud any more. Such
-a release offers nothing here, neither moving it to the cloud, which uploads
+its files stay on it, and no device can move them to storage any more. Such
+a release offers nothing here, neither moving it to storage, which uploads
 the originals, nor pinning it (§4.3). Playing it fails with the same line,
 naming the device as the read finds it in coven's records then.
 
 Whether this device can play a release, and whether it offers moving it to
-the cloud, comes from these records alone; bae doesn't ask the disk whether
+storage, comes from these records alone; bae doesn't ask the disk whether
 an original is still there. An original gone or changed since import fails
 what reads it, when it reads it: playing a track says its original files are
-missing or changed, moving the release to the cloud fails as it reads the
+missing or changed, moving the release to storage fails as it reads the
 file (one already moving waits or fails as below), and an export fails.
 
-A release is *uploaded* once every one of its files is stored in the cloud.
+A release is *uploaded* once every one of its files is in storage.
 Until then it is local, on every device. The rows sync anyway, so every
 device knows what the household owns, and a rating or playlist entry pointing
 at a local release's track points at a row every device can read
@@ -1740,12 +1740,12 @@ release reads as local everywhere, and nothing about it reads as uploading.
 Waiting files draw no progress bar; a bar appears only while a file's bytes
 are moving.
 
-**Moving to the cloud.** Moving a release to the cloud records one move of
+**Moving to storage.** Moving a release to storage records one move of
 all its files in one write, reading none of them
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 No row of bae's changes. coven uploads each file, checking every chunk it
 sends against the hashes the import's read recorded, and once the last is
-stored one write of coven's switches them all to the cloud. So other devices
+stored one write of coven's switches them all to storage. So other devices
 see the release local until its last file lands, and never half uploaded.
 Until then coven reads each file from its original, so this device keeps
 playing the release while it uploads, and the upload list shows it
@@ -1772,10 +1772,10 @@ it; coven then deletes it
 ([coven §17.10](https://github.com/bae-fm/coven/blob/main/spec/coven.md#1710-deleting-stored-files)).
 Other devices go on showing the release without playing it.
 
-- **A cloud import** (§3.7) stages its files for the cloud in the same write as
+- **An import to storage** (§3.7) stages its files for storage in the same write as
   its rows, each read whole once and compared with the scan as a local
   import's are, kept here once stored when the Pinned choice says so. Its
-  files are one move, as a release moved to the cloud is: other devices see
+  files are one move, as a release moved to storage is: other devices see
   them on the importing device until all are stored, and cancelling its upload
   leaves it a local release on that device.
 - **Deleting a release** deletes its files' coven records with its rows, and
@@ -1798,8 +1798,8 @@ the shown list's count and total size, and says there are no matches when the
 text narrows it to none. It sorts by album title (ignoring ASCII
 case), artist (§2.3), media (a release stating none last), file count, size,
 storage — uploading, then pinning: files coming to this device, waiting
-or downloading in the download queue (§4.3), then local, pinned, and in the
-cloud only — or when the release was added, either way, ties going by album
+or downloading in the download queue (§4.3), then local, pinned, and in
+storage only — or when the release was added, either way, ties going by album
 title, then when the release was added, then id. On macOS the list is a table
 with a column for each of these; a column can be dragged wider or narrower or
 to another place, sized to its header and the rows in view by double-clicking
@@ -1814,7 +1814,7 @@ view's own query follows a pin as it lands. coven lists a pin only once its
 whole copy is kept, whether the download queue pinned the file or coven keeps
 it here after a move. Whether a release is uploaded is kept the same way, from
 coven's `coven_files`, in the transaction that records a file, switches it to
-the cloud or deletes it, on this device or as another device's write applies.
+storage or deletes it, on this device or as another device's write applies.
 How many of a release's files
 wait in the upload queue, and the place of the first, are counts bae keeps
 the same way from
@@ -1845,9 +1845,9 @@ rate for each release, its files being sent together, and for every file
 being sent together; no screen shows one file's rate, so none is sent. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a transfer runs,
 the release offers no storage action but cancelling, which would race it
-otherwise; moving a release to the cloud shows that transfer until its files
+otherwise; moving a release to storage shows that transfer until its files
 are queued. Which transition a release is in is a device-local row: written
-in the write that admits a move to the cloud, an unpin or making the release
+in the write that admits a move to storage, an unpin or making the release
 local, which a release already in one refuses, and deleted as the transition
 ends, however it ends: a move's in the write that queues its files, an
 unpin's in the write that releases its pins, a make-local's in the write that
@@ -1864,7 +1864,7 @@ Each row's storage state is the place it sorts by, which core reads with the
 row: Uploading, its chip filled as far as its bytes have come while any file
 is being sent; Pinning, filled as far as its download has come once it
 starts; making local, filled as far as its copies have downloaded (§4.4);
-Local, Pinned or Cloud at rest, or, while another transition this process
+Local, Pinned or In storage at rest, or, while another transition this process
 runs leaves the files where they are, that transition's words. No rate shows
 beside it.
 
@@ -1882,10 +1882,10 @@ rows; how fast and how far arrive apart, keyed by that release.
 An uploaded release can be pinned to stay on a device; otherwise its files are
 cached as they play.
 
-Pin shows only for a release whose files are all in the cloud. coven refuses
+Pin shows only for a release whose files are all in storage. coven refuses
 to pin a file on one device only, on every device, the one it is on included
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
-so a local release offers no pin anywhere, and one moving to the cloud offers
+so a local release offers no pin anywhere, and one moving to storage offers
 it once its last file is stored.
 
 Ben's phone holds little. When he plays Ana's album, the chunks he plays are
@@ -1946,7 +1946,7 @@ queued; the person sees the error and the failure is reported as a bug.
 Making an uploaded release local again brings its files into a folder the
 person picks, and leaves them on this device only.
 
-Carol wants her box set off the cloud. She picks a folder on her drive. bae
+Carol wants her box set out of storage. She picks a folder on her drive. bae
 hands coven the folder and each file's path below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 coven downloads every file, checking its content hash as every download does,
@@ -2045,7 +2045,7 @@ from wherever they are: the person's own path, the cache, or storage.
 
 - **Deleting a release or an album** deletes their rows and coven's copies of
   their files. The person's own files are never deleted.
-- **A device with no cloud home** has only local releases; moving to the cloud
+- **A device with no cloud home** has only local releases; moving to storage
   needs one.
 
 ---
@@ -2521,7 +2521,7 @@ that wants it. A transfer limit fits one machine's link.
 A local release's rows sync like any release's, and so do coven's records of
 its files, each naming the device it is on; only its audio, and the paths coven
 records for its originals, stay on that device until the person moves it to
-the cloud (§4.2).
+storage (§4.2).
 
 ### 6.2 Cloud homes
 
@@ -2642,7 +2642,7 @@ survives, and of two edits to one column the later wins
 ### 6.4 When sync stops
 
 Sync runs in the background. A library opens and plays from its own copy
-whether or not the cloud is reachable.
+whether or not storage is reachable.
 
 **The activity indicator.** Sync takes one small control in the window's
 title bar on macOS and in the library's top bar on Android, never a
@@ -2758,10 +2758,10 @@ waits.
 **Files another device hasn't uploaded.** A row references its coven file from
 the write that stages it
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
-Ana's Mac imports an album to the cloud and uploads its files over the next
+Ana's Mac imports an album to storage and uploads its files over the next
 hour; her phone shows the album at once, each row referencing its file, which
 coven records on the Mac only until the last of the album's files is stored
-and one write switches them all to the cloud. Until then the phone can't read
+and one write switches them all to storage. Until then the phone can't read
 the files, and can't tell an upload still running on the Mac from a release
 the Mac keeps local: either way the release reads as on Ana's Mac (§4.2), and
 a picture whose file isn't readable here shows a plain tile in its place, as
@@ -2779,7 +2779,7 @@ form Settings shows a device that lost its key, and connects the bucket again
 with it. For the second it
 offers to restore the file: put it back where it was imported from, and coven
 retries the upload. A file that changed instead stops its release's move to
-the cloud, and its record offers *Cancel upload*, which ends the move and
+storage, and its record offers *Cancel upload*, which ends the move and
 leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
 in its place or the release anew if it left the queue (§4.3); a file coven
@@ -2946,7 +2946,7 @@ from one lists it on its first screen (§5.6).
 
 **Removing a library from a device.** Dan stops using his old laptop. Removing
 Household from it first removes the laptop from the library, then deletes its
-directory and the secrets the laptop keeps for it; the cloud copy stays. Leaving
+directory and the secrets the laptop keeps for it; the library stays in storage. Leaving
 is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
 never come back. A library with no cloud home has no members to leave, and is
@@ -3017,7 +3017,7 @@ deleted at once.
 Playing a record well means more than decoding files. An album should play
 without gaps where it has none, stop where the record has to be turned over,
 keep its hidden pregaps, and sound as loud as the next one. And a device should
-play from its own disk, the cache or the cloud without the listener knowing.
+play from its own disk, the cache or storage without the listener knowing.
 This section covers the queue (§7.1–§7.2), how tracks join (§7.3–§7.4),
 loudness (§7.5), where the audio comes from and goes to (§7.6–§7.7), and what a
 device remembers (§7.8).
@@ -3175,7 +3175,7 @@ The default is off.
 Playback plays files on this device, or streams them from storage.
 
 A track's file is read through coven: from the original on this device for a
-local release, imported here or made local again (§4.4), moving to the cloud
+local release, imported here or made local again (§4.4), moving to storage
 or not, from the cache or a pin for an uploaded one, and otherwise fetched from
 storage a range at a time
 ([coven §17.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#177-reading-a-file)).
@@ -3729,7 +3729,7 @@ the queue's strip — shows where they dropped it meanwhile.
 
 ### 9.5 Storage and sync
 
-Through `AppServices`: move releases to the cloud and make them local again,
+Through `AppServices`: move releases to storage and make them local again,
 pin and unpin, cancel a transition, export and save; set up a cloud home,
 reconnect, pause, read the pending list and act on its records; list people
 and their devices, watch for a device of this person's that joins after the
@@ -4335,7 +4335,7 @@ write commits, so the release and the row naming it land in either order.
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
-| `release_storage_action` | release in a storage transition this process runs while its files rest where they are: a move to the cloud being admitted, an unpin, or making it local (§4.2) |
+| `release_storage_action` | release in a storage transition this process runs while its files rest where they are: a move to storage being admitted, an unpin, or making it local (§4.2) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |
 
 No transfer outlives the process that ran it, so the library opens with every
@@ -4387,7 +4387,7 @@ the transfer queues (A.9) are not declared, so they never sync.
 | `track_works` | independent | store | | |
 | `release_artist_roles` | independent | store | | |
 | `track_artist_roles` | independent | store | | |
-| `release_files` | independent | store | | `file`, trailing, in `release_files`: the person's own; set by the import; on the importing device only until moved to the cloud; read on first use |
+| `release_files` | independent | store | | `file`, trailing, in `release_files`: the person's own; set by the import; on the importing device only until moved to storage; read on first use |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
 | `audio_segment_scrub_points` | independent: its segment | store | | |
@@ -4501,7 +4501,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_start` | import a candidate as stored, or once the pick its run is reading is stored |
 | `release_detail_get` | read a library release |
 | `release_export` | queue an export of a release's files |
-| `release_storage_action` | move to the cloud, pin, unpin, make local, or cancel |
+| `release_storage_action` | move to storage, pin, unpin, make local, or cancel |
 | `output_status` | read the export queue |
 | `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value in an edit session of its own and save it, records and album with it, into the album its records name or a library album given over them |
 | `release_album_set` | move a release into a library album, which keeps its own title and artists, as the editor's album picker does |
@@ -4563,7 +4563,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `StoreOwnerAccount` | signs in with the account that holds the library's storage: setting up its storage again or restoring it as the person whose account holds it, under another account, is refused, since their access can't move to another account ([coven §20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)) |
 | `S3Prefix` | changes the key prefix: it has two slashes in a row, or the folder the line names holds a character other than a–z, A–Z, a digit, `-` or `_`, or runs over 255 characters |
 | `DeviceIdentityMissing` | creates, joins or restores |
-| `Credentials` | fixes the cloud settings |
+| `Credentials` | fixes the storage settings |
 | `Network` | retries |
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
 | `KeychainEntitlementMissing` | installs a build of bae signed with its keychain entitlement; retrying or unlocking doesn't help |

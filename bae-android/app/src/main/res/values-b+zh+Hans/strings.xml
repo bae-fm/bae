@@ -109,9 +109,9 @@
     <string name="copy">复制</string>
     <string name="hide">隐藏</string>
     <string name="settings_remove_library">从此设备移除此库</string>
-    <string name="settings_remove_library_explanation">从此设备移除此库：此设备先退出库，然后删除它的副本和已下载的文件。云端存储中的库不受影响。</string>
+    <string name="settings_remove_library_explanation">从此设备移除此库：此设备先退出库，然后删除它的副本和已下载的文件。库会保留在存储中和你的其他设备上。</string>
     <string name="settings_remove_library_confirm_title">从此设备移除此库？</string>
-    <string name="settings_remove_library_confirm_body">此设备会先退出库，这需要联网。云端存储中的库不受影响。</string>
+    <string name="settings_remove_library_confirm_body">此设备会先退出库，这需要联网。库会保留在存储中和你的其他设备上。</string>
     <string name="unsent_edits_body">从此设备移除该库会丢弃这些更改。</string>
     <string name="settings_remove">移除</string>
     <string name="settings_provider">提供商</string>
@@ -132,7 +132,7 @@
     <string name="onboarding_add_device">添加设备</string>
     <string name="onboarding_icon_description">bae 图标</string>
     <string name="onboarding_camera_permission_required">扫描二维码需要相机权限</string>
-    <string name="oauth_unconfigured">此库需要云登录，但此版本未配置。</string>
+    <string name="oauth_unconfigured">此版本未配置登录此库的存储。</string>
     <string name="signing_in">正在登录…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -234,8 +234,8 @@
     <string name="onboarding_next_check">%1$s 后再次检查</string>
     <string name="onboarding_check_now">立即检查</string>
     <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
-    <string name="storage_setup_title">设置云端存储</string>
-    <string name="settings_set_up_cloud_home_explanation">此库只存储在这台设备上。设置云端存储后，你的其他设备和家人也能使用它。</string>
+    <string name="storage_setup_title">设置同步</string>
+    <string name="settings_set_up_sync_explanation">此库只存储在这台设备上。同步会将它保存在存储中，你的其他设备和家人都能在那里使用它。</string>
     <string name="storage_setup_choose">此库应存储在哪里？</string>
     <string name="storage_s3_endpoint_hint">使用 Amazon S3 时请留空。</string>
     <string name="storage_s3_advanced">高级</string>
@@ -258,7 +258,7 @@
     <string name="storage_onedrive_folder_name">文件夹名称</string>
     <string name="storage_onedrive_create">创建</string>
     <string name="storage_onedrive_use_folder">使用此文件夹</string>
-    <string name="storage_setup_done">此库的云端存储已设置。请将你的恢复码保存在私密的地方：如果你丢失了所有设备，可以用它找回你的库。</string>
+    <string name="storage_setup_done">同步已设置。请将你的恢复码保存在私密的地方：如果你丢失了所有设备，可以用它找回你的库。</string>
     <string name="done">完成</string>
     <string name="recovery_code_title">你的恢复码</string>
     <string name="recovery_code_explanation">如果你丢失了所有设备，可在新设备上输入此代码找回你的资料库。任何拥有此代码并能访问你的存储的人都能打开该资料库，因此请将它保存在私密的地方。</string>

@@ -164,7 +164,7 @@ struct LibrarySettingsTab: View {
         if configStore.hasCloudHome {
             return String(
                 localized:
-                    "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. Your library in the cloud is untouched. Removing needs a connection to your storage."
+                    "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. The library will remain in storage and on your other devices. Removing needs a connection to your storage."
             )
         }
         return String(

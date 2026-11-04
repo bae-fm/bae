@@ -239,7 +239,7 @@ struct ImportReleaseHeader: View {
                 if configStore.hasCloudHome {
                     HStack(spacing: ThemeSpace.related) {
                         ImportCheckboxToggle(
-                            "Cloud",
+                            "In storage",
                             isOn: commit.storageCloud
                         )
                         if commit.storageCloud.wrappedValue {

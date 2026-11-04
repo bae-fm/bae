@@ -31225,175 +31225,175 @@
         }
       }
     },
-    "Cloud" : {
-      "comment" : "Storage state: release stored cloud-only",
+    "In storage" : {
+      "comment" : "Storage state: release kept in storage, not on this Mac",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "السحابة"
+            "value" : "في التخزين"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Облак"
+            "value" : "В хранилището"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "V úložišti"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sky"
+            "value" : "I lageret"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "In storage"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "Im Speicher"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "Στον χώρο αποθήκευσης"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nube"
+            "value" : "En el almacenamiento"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pilvi"
+            "value" : "Tallennustilassa"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "Dans le stockage"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ענן"
+            "value" : "באחסון"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oblak"
+            "value" : "U pohrani"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Felhő"
+            "value" : "Tárhelyen"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "In archivio"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "クラウド"
+            "value" : "ストレージ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "클라우드"
+            "value" : "스토리지"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sky"
+            "value" : "I lagringen"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "In opslag"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chmura"
+            "value" : "W magazynie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nuvem"
+            "value" : "No armazenamento"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nuvem"
+            "value" : "No armazenamento"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "În stocare"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cloud"
+            "value" : "V úložisku"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moln"
+            "value" : "I lagringen"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bulut"
+            "value" : "Depolamada"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Хмара"
+            "value" : "У сховищі"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "云端"
+            "value" : "在存储中"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "雲端"
+            "value" : "在儲存空間中"
           }
         }
       }
@@ -48001,174 +48001,174 @@
         }
       }
     },
-    "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned." : {
+    "How many files upload to storage at once after an import, and how many download at once when a release is pinned." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "عدد الملفات التي تُرفع إلى التخزين السحابي في آن واحد بعد الاستيراد، وعدد الملفات التي تُنزَّل في آن واحد عند تثبيت إصدار."
+            "value" : "عدد الملفات التي تُرفع إلى التخزين في آن واحد بعد الاستيراد، وعدد الملفات التي تُنزَّل في آن واحد عند تثبيت إصدار."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Колко файла се качват в облачното хранилище едновременно след импортиране и колко се изтеглят едновременно при закачане на издание."
+            "value" : "Колко файла се качват в хранилището едновременно след импортиране и колко се изтеглят едновременно при закачане на издание."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kolik souborů se po importu nahrává do cloudového úložiště najednou a kolik se jich stahuje najednou při připnutí vydání."
+            "value" : "Kolik souborů se po importu nahrává do úložiště najednou a kolik se jich stahuje najednou při připnutí vydání."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvor mange filer der uploades til skylagringen ad gangen efter en import, og hvor mange der hentes ad gangen, når en udgivelse fastgøres."
+            "value" : "Hvor mange filer der uploades til lageret ad gangen efter en import, og hvor mange der hentes ad gangen, når en udgivelse fastgøres."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned."
+            "value" : "How many files upload to storage at once after an import, and how many download at once when a release is pinned."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie viele Dateien nach einem Import gleichzeitig in den Cloud-Speicher hochgeladen werden und wie viele beim Anheften einer Veröffentlichung gleichzeitig heruntergeladen werden."
+            "value" : "Wie viele Dateien nach einem Import gleichzeitig in den Speicher hochgeladen werden und wie viele beim Anheften einer Veröffentlichung gleichzeitig heruntergeladen werden."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Πόσα αρχεία μεταφορτώνονται ταυτόχρονα στον αποθηκευτικό χώρο cloud μετά από μια εισαγωγή και πόσα λαμβάνονται ταυτόχρονα όταν καρφιτσώνεται μια κυκλοφορία."
+            "value" : "Πόσα αρχεία μεταφορτώνονται ταυτόχρονα στον χώρο αποθήκευσης μετά από μια εισαγωγή και πόσα λαμβάνονται ταυτόχρονα όταν καρφιτσώνεται μια κυκλοφορία."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cuántos archivos se suben al almacenamiento en la nube a la vez tras una importación, y cuántos se descargan a la vez al fijar un lanzamiento."
+            "value" : "Cuántos archivos se suben al almacenamiento a la vez tras una importación, y cuántos se descargan a la vez al fijar un lanzamiento."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kuinka monta tiedostoa lähetetään pilvitallennustilaan kerralla tuonnin jälkeen ja kuinka monta ladataan kerralla, kun julkaisu kiinnitetään."
+            "value" : "Kuinka monta tiedostoa lähetetään tallennustilaan kerralla tuonnin jälkeen ja kuinka monta ladataan kerralla, kun julkaisu kiinnitetään."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Combien de fichiers sont envoyés en même temps vers le stockage cloud après un import, et combien sont téléchargés en même temps lorsqu’une sortie est épinglée."
+            "value" : "Combien de fichiers sont envoyés en même temps vers le stockage après un import, et combien sont téléchargés en même temps lorsqu’une sortie est épinglée."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כמה קבצים מועלים לאחסון הענן בו‑זמנית לאחר ייבוא, וכמה מורדים בו‑זמנית כאשר מצמידים הוצאה."
+            "value" : "כמה קבצים מועלים לאחסון בו‑זמנית לאחר ייבוא, וכמה מורדים בו‑זמנית כאשר מצמידים הוצאה."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Koliko se datoteka nakon uvoza istodobno prenosi u oblak i koliko se istodobno preuzima kad se izdanje prikvači."
+            "value" : "Koliko se datoteka nakon uvoza istodobno prenosi u pohranu i koliko se istodobno preuzima kad se izdanje prikvači."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hány fájl töltődjön fel egyszerre a felhőtárhelyre importálás után, és hány töltődjön le egyszerre, amikor egy kiadást rögzítesz."
+            "value" : "Hány fájl töltődjön fel egyszerre a tárhelyre importálás után, és hány töltődjön le egyszerre, amikor egy kiadást rögzítesz."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quanti file vengono caricati contemporaneamente nell’archivio cloud dopo un’importazione, e quanti vengono scaricati contemporaneamente quando una pubblicazione viene fissata."
+            "value" : "Quanti file vengono caricati contemporaneamente nello spazio di archiviazione dopo un’importazione, e quanti vengono scaricati contemporaneamente quando una pubblicazione viene fissata."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "インポート後に一度にクラウドストレージへアップロードするファイル数と、リリースをピン留めしたときに一度にダウンロードするファイル数。"
+            "value" : "インポート後に一度にストレージへアップロードするファイル数と、リリースをピン留めしたときに一度にダウンロードするファイル数。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "가져오기 후 한 번에 클라우드 저장소로 업로드할 파일 수와, 릴리스를 고정할 때 한 번에 다운로드할 파일 수입니다."
+            "value" : "가져오기 후 한 번에 스토리지로 업로드할 파일 수와, 릴리스를 고정할 때 한 번에 다운로드할 파일 수입니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvor mange filer som lastes opp til skylagringen samtidig etter en import, og hvor mange som lastes ned samtidig når en utgivelse festes."
+            "value" : "Hvor mange filer som lastes opp til lagringen samtidig etter en import, og hvor mange som lastes ned samtidig når en utgivelse festes."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hoeveel bestanden na een import tegelijk naar de cloudopslag worden geüpload, en hoeveel er tegelijk worden gedownload wanneer een release wordt vastgezet."
+            "value" : "Hoeveel bestanden na een import tegelijk naar de opslag worden geüpload, en hoeveel er tegelijk worden gedownload wanneer een release wordt vastgezet."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ile plików jest przesyłanych jednocześnie do magazynu w chmurze po imporcie i ile jest pobieranych jednocześnie po przypięciu wydania."
+            "value" : "Ile plików jest przesyłanych jednocześnie do magazynu po imporcie i ile jest pobieranych jednocześnie po przypięciu wydania."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantos arquivos são enviados ao armazenamento na nuvem de uma vez após uma importação, e quantos são baixados de uma vez quando um lançamento é fixado."
+            "value" : "Quantos arquivos são enviados ao armazenamento de uma vez após uma importação, e quantos são baixados de uma vez quando um lançamento é fixado."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quantos ficheiros são enviados de uma vez para o armazenamento na nuvem depois de uma importação e quantos são transferidos de uma vez quando fixa uma edição."
+            "value" : "Quantos ficheiros são enviados de uma vez para o armazenamento depois de uma importação e quantos são transferidos de uma vez quando fixa uma edição."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Câte fișiere se încarcă simultan în stocarea cloud după un import și câte se descarcă simultan când o ediție este fixată."
+            "value" : "Câte fișiere se încarcă simultan în stocare după un import și câte se descarcă simultan când o ediție este fixată."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Koľko súborov sa po importe naraz odosiela do cloudového úložiska a koľko sa ich naraz sťahuje pri pripnutí vydania."
+            "value" : "Koľko súborov sa po importe naraz odosiela do úložiska a koľko sa ich naraz sťahuje pri pripnutí vydania."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hur många filer som skickas upp till molnlagringen samtidigt efter en import, och hur många som hämtas samtidigt när en utgåva fästs."
+            "value" : "Hur många filer som skickas upp till lagringen samtidigt efter en import, och hur många som hämtas samtidigt när en utgåva fästs."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İçe aktarmadan sonra bulut depolamaya aynı anda kaç dosyanın yükleneceği ve bir yayın sabitlendiğinde aynı anda kaç dosyanın indirileceği."
+            "value" : "İçe aktarmadan sonra depolamaya aynı anda kaç dosyanın yükleneceği ve bir yayın sabitlendiğinde aynı anda kaç dosyanın indirileceği."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скільки файлів одночасно вивантажується до хмарного сховища після імпорту і скільки одночасно завантажується, коли видання закріплено."
+            "value" : "Скільки файлів одночасно вивантажується до сховища після імпорту і скільки одночасно завантажується, коли видання закріплено."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导入后同时上传到云存储的文件数，以及固定某个发行版时同时下载的文件数。"
+            "value" : "导入后同时上传到存储的文件数，以及固定某个发行版时同时下载的文件数。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匯入後同時上傳至雲端儲存的檔案數，以及釘選某個發行版時同時下載的檔案數。"
+            "value" : "匯入後同時上傳至儲存空間的檔案數，以及釘選某個發行版時同時下載的檔案數。"
           }
         }
       }
@@ -54228,175 +54228,175 @@
         }
       }
     },
-    "Move to cloud" : {
-      "comment" : "Storage action: move a local release to cloud storage",
+    "Move to storage" : {
+      "comment" : "Storage action: move a local release to storage",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "نقل إلى السحابة"
+            "value" : "نقل إلى التخزين"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Премести в облака"
+            "value" : "Премести в хранилището"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přesunout do cloudu"
+            "value" : "Přesunout do úložiště"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Flyt til skyen"
+            "value" : "Flyt til lageret"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Move to cloud"
+            "value" : "Move to storage"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In die Cloud verschieben"
+            "value" : "In den Speicher verschieben"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Μετακίνηση στο cloud"
+            "value" : "Μετακίνηση στον χώρο αποθήκευσης"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover a la nube"
+            "value" : "Mover al almacenamiento"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Siirrä pilveen"
+            "value" : "Siirrä tallennustilaan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déplacer vers le cloud"
+            "value" : "Déplacer vers le stockage"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "העבר לענן"
+            "value" : "העבר לאחסון"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premjesti u oblak"
+            "value" : "Premjesti u pohranu"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Áthelyezés a felhőbe"
+            "value" : "Áthelyezés a tárhelyre"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sposta nel cloud"
+            "value" : "Sposta in archivio"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "クラウドに移動"
+            "value" : "ストレージに移動"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "클라우드로 이동"
+            "value" : "스토리지로 이동"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Flytt til skyen"
+            "value" : "Flytt til lagringen"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naar de cloud verplaatsen"
+            "value" : "Naar opslag verplaatsen"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przenieś do chmury"
+            "value" : "Przenieś do magazynu"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover para a nuvem"
+            "value" : "Mover para o armazenamento"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover para a nuvem"
+            "value" : "Mover para o armazenamento"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mută în cloud"
+            "value" : "Mută în stocare"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Presunúť do cloudu"
+            "value" : "Presunúť do úložiska"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Flytta till molnet"
+            "value" : "Flytta till lagringen"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buluta taşı"
+            "value" : "Depolamaya taşı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перемістити в хмару"
+            "value" : "Перемістити до сховища"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移至云端"
+            "value" : "移至存储"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移至雲端"
+            "value" : "移至儲存空間"
           }
         }
       }
@@ -105555,168 +105555,168 @@
         }
       }
     },
-    "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. Your library in the cloud is untouched. Removing needs a connection to your storage." : {
+    "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. The library will remain in storage and on your other devices. Removing needs a connection to your storage." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يزيل هذا الـ Mac من أعضاء المكتبة، ثم يحذف المكتبة وملفاتها التي تم تنزيلها من هذا الـ Mac. تبقى مكتبتك في السحابة دون تغيير. تتطلب الإزالة اتصالًا بالتخزين."
+            "value" : "يزيل هذا الـ Mac من أعضاء المكتبة، ثم يحذف المكتبة وملفاتها التي تم تنزيلها من هذا الـ Mac. تبقى المكتبة في التخزين وعلى أجهزتك الأخرى. تتطلب الإزالة اتصالًا بالتخزين."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Премахва този Mac от членовете на библиотеката, след което изтрива от него библиотеката и изтеглените ѝ файлове. Библиотеката ви в облака остава незасегната. Премахването изисква връзка с хранилището ви."
+            "value" : "Премахва този Mac от членовете на библиотеката, след което изтрива от него библиотеката и изтеглените ѝ файлове. Библиотеката остава в хранилището и на другите ви устройства. Премахването изисква връзка с хранилището ви."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odebere tento Mac ze členů knihovny a pak z něj smaže knihovnu a její stažené soubory. Vaše knihovna v cloudu zůstane nedotčená. Odebrání vyžaduje připojení k vašemu úložišti."
+            "value" : "Odebere tento Mac ze členů knihovny a pak z něj smaže knihovnu a její stažené soubory. Knihovna zůstane v úložišti a na vašich dalších zařízeních. Odebrání vyžaduje připojení k vašemu úložišti."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fjerner denne Mac fra bibliotekets medlemmer og sletter derefter biblioteket og dets hentede filer fra den. Dit bibliotek i skyen forbliver uberørt. Fjernelsen kræver forbindelse til dit lager."
+            "value" : "Fjerner denne Mac fra bibliotekets medlemmer og sletter derefter biblioteket og dets hentede filer fra den. Biblioteket forbliver i lageret og på dine andre enheder. Fjernelsen kræver forbindelse til dit lager."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Entfernt diesen Mac aus den Mitgliedern der Bibliothek und löscht dann die Bibliothek und ihre geladenen Dateien von diesem Mac. Deine Bibliothek in der Cloud bleibt unverändert. Zum Entfernen ist eine Verbindung zu deinem Speicher nötig."
+            "value" : "Entfernt diesen Mac aus den Mitgliedern der Bibliothek und löscht dann die Bibliothek und ihre geladenen Dateien von diesem Mac. Die Bibliothek bleibt im Speicher und auf deinen anderen Geräten erhalten. Zum Entfernen ist eine Verbindung zu deinem Speicher nötig."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αφαιρεί αυτό το Mac από τα μέλη της βιβλιοθήκης και μετά διαγράφει από αυτό τη βιβλιοθήκη και τα ληφθέντα αρχεία της. Η βιβλιοθήκη σας στο cloud μένει ανέπαφη. Η αφαίρεση χρειάζεται σύνδεση με τον χώρο αποθήκευσής σας."
+            "value" : "Αφαιρεί αυτό το Mac από τα μέλη της βιβλιοθήκης και μετά διαγράφει από αυτό τη βιβλιοθήκη και τα ληφθέντα αρχεία της. Η βιβλιοθήκη παραμένει στον χώρο αποθήκευσης και στις άλλες συσκευές σας. Η αφαίρεση χρειάζεται σύνδεση με τον χώρο αποθήκευσής σας."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quita este Mac de los miembros de la biblioteca y luego elimina la biblioteca y sus archivos descargados de este Mac. Tu biblioteca en la nube no se modifica. Para quitarla se necesita conexión con tu almacenamiento."
+            "value" : "Quita este Mac de los miembros de la biblioteca y luego elimina la biblioteca y sus archivos descargados de este Mac. La biblioteca seguirá en el almacenamiento y en tus otros dispositivos. Para quitarla se necesita conexión con tu almacenamiento."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poistaa tämän Macin kirjaston jäsenistä ja poistaa sitten siltä kirjaston ja sen ladatut tiedostot. Pilvessä oleva kirjastosi säilyy ennallaan. Poistaminen vaatii yhteyden tallennustilaasi."
+            "value" : "Poistaa tämän Macin kirjaston jäsenistä ja poistaa sitten siltä kirjaston ja sen ladatut tiedostot. Kirjasto säilyy tallennustilassa ja muilla laitteillasi. Poistaminen vaatii yhteyden tallennustilaasi."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retire ce Mac des membres de la bibliothèque, puis supprime la bibliothèque et ses fichiers téléchargés de ce Mac. Votre bibliothèque dans le cloud reste intacte. Le retrait nécessite une connexion à votre stockage."
+            "value" : "Retire ce Mac des membres de la bibliothèque, puis supprime la bibliothèque et ses fichiers téléchargés de ce Mac. La bibliothèque reste dans le stockage et sur vos autres appareils. Le retrait nécessite une connexion à votre stockage."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מסיר את ה‑Mac הזה מחברי הספרייה ואז מוחק ממנו את הספרייה ואת הקבצים שהורדו. הספרייה שלכם בענן לא נפגעת. ההסרה דורשת חיבור לאחסון שלכם."
+            "value" : "מסיר את ה‑Mac הזה מחברי הספרייה ואז מוחק ממנו את הספרייה ואת הקבצים שהורדו. הספרייה תישאר באחסון ובמכשירים האחרים שלכם. ההסרה דורשת חיבור לאחסון שלכם."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uklanja ovaj Mac iz članova fonoteke, a zatim s njega briše fonoteku i njezine preuzete datoteke. Vaša fonoteka u oblaku ostaje netaknuta. Za uklanjanje je potrebna veza s vašom pohranom."
+            "value" : "Uklanja ovaj Mac iz članova fonoteke, a zatim s njega briše fonoteku i njezine preuzete datoteke. Fonoteka ostaje u pohrani i na vašim drugim uređajima. Za uklanjanje je potrebna veza s vašom pohranom."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eltávolítja ezt a Macet a könyvtár tagjai közül, majd törli róla a könyvtárat és a letöltött fájljait. A felhőben lévő könyvtárad érintetlen marad. Az eltávolításhoz kapcsolat kell a tárhelyeddel."
+            "value" : "Eltávolítja ezt a Macet a könyvtár tagjai közül, majd törli róla a könyvtárat és a letöltött fájljait. A könyvtár megmarad a tárhelyen és a többi eszközödön. Az eltávolításhoz kapcsolat kell a tárhelyeddel."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuove questo Mac dai membri della libreria, poi elimina la libreria e i suoi file scaricati da questo Mac. La tua libreria nel cloud resta intatta. La rimozione richiede una connessione al tuo spazio di archiviazione."
+            "value" : "Rimuove questo Mac dai membri della libreria, poi elimina la libreria e i suoi file scaricati da questo Mac. La libreria resta nello spazio di archiviazione e sugli altri tuoi dispositivi. La rimozione richiede una connessione al tuo spazio di archiviazione."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "この Mac をライブラリのメンバーから外してから、この Mac からライブラリとダウンロード済みファイルを削除します。クラウド上のライブラリはそのままです。削除にはストレージへの接続が必要です。"
+            "value" : "この Mac をライブラリのメンバーから外してから、この Mac からライブラリとダウンロード済みファイルを削除します。ライブラリはストレージとほかのデバイスに残ります。削除にはストレージへの接続が必要です。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 Mac을 라이브러리 멤버에서 제외한 다음 이 Mac에서 라이브러리와 다운로드된 파일을 삭제합니다. 클라우드의 라이브러리는 그대로 유지됩니다. 제거하려면 스토리지에 연결되어 있어야 합니다."
+            "value" : "이 Mac을 라이브러리 멤버에서 제외한 다음 이 Mac에서 라이브러리와 다운로드된 파일을 삭제합니다. 라이브러리는 스토리지와 다른 기기에 그대로 남습니다. 제거하려면 스토리지에 연결되어 있어야 합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fjerner denne Macen fra bibliotekets medlemmer og sletter deretter biblioteket og de nedlastede filene fra den. Biblioteket ditt i skyen forblir urørt. Fjerningen krever tilkobling til lagringen din."
+            "value" : "Fjerner denne Macen fra bibliotekets medlemmer og sletter deretter biblioteket og de nedlastede filene fra den. Biblioteket blir værende i lagringen og på de andre enhetene dine. Fjerningen krever tilkobling til lagringen din."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verwijdert deze Mac uit de leden van de bibliotheek en verwijdert daarna de bibliotheek en de gedownloade bestanden van deze Mac. Je bibliotheek in de cloud blijft onaangeroerd. Voor verwijderen is een verbinding met je opslag nodig."
+            "value" : "Verwijdert deze Mac uit de leden van de bibliotheek en verwijdert daarna de bibliotheek en de gedownloade bestanden van deze Mac. De bibliotheek blijft in de opslag en op je andere apparaten. Voor verwijderen is een verbinding met je opslag nodig."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usuwa tego Maca z członków biblioteki, a następnie usuwa bibliotekę i jej pobrane pliki z tego Maca. Twoja biblioteka w chmurze pozostaje nietknięta. Usunięcie wymaga połączenia z magazynem."
+            "value" : "Usuwa tego Maca z członków biblioteki, a następnie usuwa bibliotekę i jej pobrane pliki z tego Maca. Biblioteka pozostanie w magazynie i na Twoich innych urządzeniach. Usunięcie wymaga połączenia z magazynem."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove este Mac dos membros da biblioteca e depois exclui a biblioteca e os arquivos baixados deste Mac. Sua biblioteca na nuvem não é alterada. Remover requer conexão com o seu armazenamento."
+            "value" : "Remove este Mac dos membros da biblioteca e depois exclui a biblioteca e os arquivos baixados deste Mac. A biblioteca continua no armazenamento e nos seus outros dispositivos. Remover requer conexão com o seu armazenamento."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove este Mac dos membros da biblioteca e depois elimina a biblioteca e os ficheiros transferidos deste Mac. A sua biblioteca na nuvem não é alterada. Remover requer ligação ao seu armazenamento."
+            "value" : "Remove este Mac dos membros da biblioteca e depois elimina a biblioteca e os ficheiros transferidos deste Mac. A biblioteca continua no armazenamento e nos seus outros dispositivos. Remover requer ligação ao seu armazenamento."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimină acest Mac dintre membrii bibliotecii, apoi șterge biblioteca și fișierele ei descărcate de pe acest Mac. Biblioteca ta din cloud rămâne neatinsă. Eliminarea necesită o conexiune la stocarea ta."
+            "value" : "Elimină acest Mac dintre membrii bibliotecii, apoi șterge biblioteca și fișierele ei descărcate de pe acest Mac. Biblioteca rămâne în stocare și pe celelalte dispozitive ale tale. Eliminarea necesită o conexiune la stocarea ta."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odstráni tento Mac z členov knižnice a potom z neho vymaže knižnicu a jej stiahnuté súbory. Vaša knižnica v cloude zostane nedotknutá. Odstránenie vyžaduje pripojenie k vášmu úložisku."
+            "value" : "Odstráni tento Mac z členov knižnice a potom z neho vymaže knižnicu a jej stiahnuté súbory. Knižnica zostane v úložisku a na vašich ďalších zariadeniach. Odstránenie vyžaduje pripojenie k vášmu úložisku."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tar bort den här Macen från bibliotekets medlemmar och raderar sedan biblioteket och dess hämtade filer från den. Ditt bibliotek i molnet påverkas inte. Borttagningen kräver anslutning till din lagring."
+            "value" : "Tar bort den här Macen från bibliotekets medlemmar och raderar sedan biblioteket och dess hämtade filer från den. Biblioteket finns kvar i lagringen och på dina andra enheter. Borttagningen kräver anslutning till din lagring."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Mac'i kitaplığın üyelerinden çıkarır, ardından kitaplığı ve indirilen dosyalarını bu Mac'ten siler. Buluttaki kitaplığınıza dokunulmaz. Kaldırmak için depolamanıza bağlantı gerekir."
+            "value" : "Bu Mac'i kitaplığın üyelerinden çıkarır, ardından kitaplığı ve indirilen dosyalarını bu Mac'ten siler. Kitaplık depolamada ve diğer cihazlarınızda kalır. Kaldırmak için depolamanıza bağlantı gerekir."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вилучає цей Mac з учасників бібліотеки, а потім видаляє з нього бібліотеку та її завантажені файли. Ваша бібліотека в хмарі залишається недоторканою. Для вилучення потрібне з’єднання з вашим сховищем."
+            "value" : "Вилучає цей Mac з учасників бібліотеки, а потім видаляє з нього бібліотеку та її завантажені файли. Бібліотека залишиться у сховищі та на інших ваших пристроях. Для вилучення потрібне з’єднання з вашим сховищем."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将此 Mac 从库的成员中移除，然后从此 Mac 删除该库及其已下载的文件。云端的库不受影响。移除需要连接到你的存储。"
+            "value" : "将此 Mac 从库的成员中移除，然后从此 Mac 删除该库及其已下载的文件。库会保留在存储中和你的其他设备上。移除需要连接到你的存储。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將此 Mac 從資料庫的成員中移除，然後從此 Mac 刪除該資料庫及其已下載的檔案。雲端的資料庫不受影響。移除需要連線到你的儲存空間。"
+            "value" : "將此 Mac 從資料庫的成員中移除，然後從此 Mac 刪除該資料庫及其已下載的檔案。資料庫會保留在儲存空間和你的其他裝置上。移除需要連線到你的儲存空間。"
           }
         }
       }
@@ -108728,168 +108728,168 @@
         }
       }
     },
-    "This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage; your library in the cloud is untouched." : {
+    "This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. The library will remain in storage and on your other devices." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يغادر هذا الـ Mac المكتبة، ثم تُحذف نسخته. تتطلب الإزالة اتصالًا بالتخزين؛ تبقى مكتبتك في السحابة دون تغيير."
+            "value" : "يغادر هذا الـ Mac المكتبة، ثم تُحذف نسخته. تتطلب الإزالة اتصالًا بالتخزين. تبقى المكتبة في التخزين وعلى أجهزتك الأخرى."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Този Mac напуска библиотеката, след което копието му се изтрива. Премахването изисква връзка с хранилището ви; библиотеката ви в облака остава незасегната."
+            "value" : "Този Mac напуска библиотеката, след което копието му се изтрива. Премахването изисква връзка с хранилището ви. Библиотеката остава в хранилището и на другите ви устройства."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tento Mac opustí knihovnu a pak se jeho kopie smaže. Odebrání vyžaduje připojení k vašemu úložišti; vaše knihovna v cloudu zůstane nedotčená."
+            "value" : "Tento Mac opustí knihovnu a pak se jeho kopie smaže. Odebrání vyžaduje připojení k vašemu úložišti. Knihovna zůstane v úložišti a na vašich dalších zařízeních."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Denne Mac forlader biblioteket, og derefter slettes dens kopi. Fjernelsen kræver forbindelse til dit lager; dit bibliotek i skyen forbliver uberørt."
+            "value" : "Denne Mac forlader biblioteket, og derefter slettes dens kopi. Fjernelsen kræver forbindelse til dit lager. Biblioteket forbliver i lageret og på dine andre enheder."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Mac verlässt die Bibliothek, dann wird seine Kopie gelöscht. Zum Entfernen ist eine Verbindung zu deinem Speicher nötig; deine Bibliothek in der Cloud bleibt unverändert."
+            "value" : "Dieser Mac verlässt die Bibliothek, dann wird seine Kopie gelöscht. Zum Entfernen ist eine Verbindung zu deinem Speicher nötig. Die Bibliothek bleibt im Speicher und auf deinen anderen Geräten erhalten."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αυτό το Mac αποχωρεί από τη βιβλιοθήκη και μετά διαγράφεται το αντίγραφό του. Η αφαίρεση χρειάζεται σύνδεση με τον χώρο αποθήκευσής σας· η βιβλιοθήκη σας στο cloud μένει ανέπαφη."
+            "value" : "Αυτό το Mac αποχωρεί από τη βιβλιοθήκη και μετά διαγράφεται το αντίγραφό του. Η αφαίρεση χρειάζεται σύνδεση με τον χώρο αποθήκευσής σας. Η βιβλιοθήκη παραμένει στον χώρο αποθήκευσης και στις άλλες συσκευές σας."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este Mac abandona la biblioteca y luego se elimina su copia. Para quitarla se necesita conexión con tu almacenamiento; tu biblioteca en la nube no se modifica."
+            "value" : "Este Mac abandona la biblioteca y luego se elimina su copia. Para quitarla se necesita conexión con tu almacenamiento. La biblioteca seguirá en el almacenamiento y en tus otros dispositivos."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tämä Mac poistuu kirjastosta, ja sitten sen kopio poistetaan. Poistaminen vaatii yhteyden tallennustilaasi; pilvessä oleva kirjastosi säilyy ennallaan."
+            "value" : "Tämä Mac poistuu kirjastosta, ja sitten sen kopio poistetaan. Poistaminen vaatii yhteyden tallennustilaasi. Kirjasto säilyy tallennustilassa ja muilla laitteillasi."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce Mac quitte la bibliothèque, puis sa copie est supprimée. Le retrait nécessite une connexion à votre stockage ; votre bibliothèque dans le cloud reste intacte."
+            "value" : "Ce Mac quitte la bibliothèque, puis sa copie est supprimée. Le retrait nécessite une connexion à votre stockage. La bibliothèque reste dans le stockage et sur vos autres appareils."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ה‑Mac הזה עוזב את הספרייה ואז העותק שלו נמחק. ההסרה דורשת חיבור לאחסון שלכם; הספרייה שלכם בענן לא נפגעת."
+            "value" : "ה‑Mac הזה עוזב את הספרייה ואז העותק שלו נמחק. ההסרה דורשת חיבור לאחסון שלכם. הספרייה תישאר באחסון ובמכשירים האחרים שלכם."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ovaj Mac napušta fonoteku, a zatim se njegova kopija briše. Za uklanjanje je potrebna veza s vašom pohranom; vaša fonoteka u oblaku ostaje netaknuta."
+            "value" : "Ovaj Mac napušta fonoteku, a zatim se njegova kopija briše. Za uklanjanje je potrebna veza s vašom pohranom. Fonoteka ostaje u pohrani i na vašim drugim uređajima."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ez a Mac kilép a könyvtárból, majd a másolata törlődik. Az eltávolításhoz kapcsolat kell a tárhelyeddel; a felhőben lévő könyvtárad érintetlen marad."
+            "value" : "Ez a Mac kilép a könyvtárból, majd a másolata törlődik. Az eltávolításhoz kapcsolat kell a tárhelyeddel. A könyvtár megmarad a tárhelyen és a többi eszközödön."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo Mac lascia la libreria, poi la sua copia viene eliminata. La rimozione richiede una connessione al tuo spazio di archiviazione; la tua libreria nel cloud resta intatta."
+            "value" : "Questo Mac lascia la libreria, poi la sua copia viene eliminata. La rimozione richiede una connessione al tuo spazio di archiviazione. La libreria resta nello spazio di archiviazione e sugli altri tuoi dispositivi."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "この Mac はライブラリから抜け、そのあとコピーが削除されます。削除にはストレージへの接続が必要です。クラウド上のライブラリはそのままです。"
+            "value" : "この Mac はライブラリから抜け、そのあとコピーが削除されます。削除にはストレージへの接続が必要です。ライブラリはストレージとほかのデバイスに残ります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 Mac이 라이브러리에서 나간 다음 사본이 삭제됩니다. 제거하려면 스토리지에 연결되어 있어야 하며, 클라우드의 라이브러리는 그대로 유지됩니다."
+            "value" : "이 Mac이 라이브러리에서 나간 다음 사본이 삭제됩니다. 제거하려면 스토리지에 연결되어 있어야 합니다. 라이브러리는 스토리지와 다른 기기에 그대로 남습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Denne Macen forlater biblioteket, og deretter slettes kopien. Fjerningen krever tilkobling til lagringen din; biblioteket ditt i skyen forblir urørt."
+            "value" : "Denne Macen forlater biblioteket, og deretter slettes kopien. Fjerningen krever tilkobling til lagringen din. Biblioteket blir værende i lagringen og på de andre enhetene dine."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deze Mac verlaat de bibliotheek en daarna wordt de kopie verwijderd. Voor verwijderen is een verbinding met je opslag nodig; je bibliotheek in de cloud blijft onaangeroerd."
+            "value" : "Deze Mac verlaat de bibliotheek en daarna wordt de kopie verwijderd. Voor verwijderen is een verbinding met je opslag nodig. De bibliotheek blijft in de opslag en op je andere apparaten."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ten Mac opuści bibliotekę, a potem jego kopia zostanie usunięta. Usunięcie wymaga połączenia z magazynem; Twoja biblioteka w chmurze pozostaje nietknięta."
+            "value" : "Ten Mac opuści bibliotekę, a potem jego kopia zostanie usunięta. Usunięcie wymaga połączenia z magazynem. Biblioteka pozostanie w magazynie i na Twoich innych urządzeniach."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este Mac sai da biblioteca e depois a cópia dele é excluída. Remover requer conexão com o seu armazenamento; sua biblioteca na nuvem não é alterada."
+            "value" : "Este Mac sai da biblioteca e depois a cópia dele é excluída. Remover requer conexão com o seu armazenamento. A biblioteca continua no armazenamento e nos seus outros dispositivos."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este Mac sai da biblioteca e depois a sua cópia é eliminada. Remover requer ligação ao seu armazenamento; a sua biblioteca na nuvem não é alterada."
+            "value" : "Este Mac sai da biblioteca e depois a sua cópia é eliminada. Remover requer ligação ao seu armazenamento. A biblioteca continua no armazenamento e nos seus outros dispositivos."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Acest Mac părăsește biblioteca, apoi copia lui este ștearsă. Eliminarea necesită o conexiune la stocarea ta; biblioteca ta din cloud rămâne neatinsă."
+            "value" : "Acest Mac părăsește biblioteca, apoi copia lui este ștearsă. Eliminarea necesită o conexiune la stocarea ta. Biblioteca rămâne în stocare și pe celelalte dispozitive ale tale."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tento Mac opustí knižnicu a potom sa jeho kópia vymaže. Odstránenie vyžaduje pripojenie k vášmu úložisku; vaša knižnica v cloude zostane nedotknutá."
+            "value" : "Tento Mac opustí knižnicu a potom sa jeho kópia vymaže. Odstránenie vyžaduje pripojenie k vášmu úložisku. Knižnica zostane v úložisku a na vašich ďalších zariadeniach."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Den här Macen lämnar biblioteket och sedan raderas dess kopia. Borttagningen kräver anslutning till din lagring; ditt bibliotek i molnet påverkas inte."
+            "value" : "Den här Macen lämnar biblioteket och sedan raderas dess kopia. Borttagningen kräver anslutning till din lagring. Biblioteket finns kvar i lagringen och på dina andra enheter."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu Mac kitaplıktan ayrılır, ardından kopyası silinir. Kaldırmak için depolamanıza bağlantı gerekir; buluttaki kitaplığınıza dokunulmaz."
+            "value" : "Bu Mac kitaplıktan ayrılır, ardından kopyası silinir. Kaldırmak için depolamanıza bağlantı gerekir. Kitaplık depolamada ve diğer cihazlarınızda kalır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Цей Mac залишає бібліотеку, а потім його копію буде видалено. Для вилучення потрібне з’єднання з вашим сховищем; ваша бібліотека в хмарі залишається недоторканою."
+            "value" : "Цей Mac залишає бібліотеку, а потім його копію буде видалено. Для вилучення потрібне з’єднання з вашим сховищем. Бібліотека залишиться у сховищі та на інших ваших пристроях."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此 Mac 将退出该库，然后删除其副本。移除需要连接到你的存储；云端的库不受影响。"
+            "value" : "此 Mac 将退出该库，然后删除其副本。移除需要连接到你的存储。库会保留在存储中和你的其他设备上。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此 Mac 將退出該資料庫，然後刪除其副本。移除需要連線到你的儲存空間；雲端的資料庫不受影響。"
+            "value" : "此 Mac 將退出該資料庫，然後刪除其副本。移除需要連線到你的儲存空間。資料庫會保留在儲存空間和你的其他裝置上。"
           }
         }
       }
@@ -112434,176 +112434,176 @@
         }
       }
     },
-    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; any copy in the cloud is untouched." : {
+    "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in storage, it stays there." : {
       "comment" : "Remove-library confirmation for a library that can't open: what it hasn't sent can't be counted and is lost, and only this Mac's copy is deleted.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الـ Mac لم تُرسل. تُحذف نسختها على هذا الـ Mac؛ وتبقى أي نسخة في السحابة دون تغيير."
+            "value" : "لا يمكن فتح هذه المكتبة، لذا تُفقد أي تغييرات على هذا الـ Mac لم تُرسل. تُحذف نسختها على هذا الـ Mac؛ وإن كانت المكتبة محفوظة في التخزين فهي تبقى هناك."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тази библиотека не може да бъде отворена, затова всички промени на този Mac, които не са изпратени, се губят. Копието ѝ на този Mac се изтрива; копие в облака, ако има такова, остава незасегнато."
+            "value" : "Тази библиотека не може да бъде отворена, затова всички промени на този Mac, които не са изпратени, се губят. Копието ѝ на този Mac се изтрива; ако библиотеката се пази в хранилище, тя остава там."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tuto knihovnu nelze otevřít, takže všechny změny na tomto Macu, které nebyly odeslány, budou ztraceny. Její kopie na tomto Macu se smaže; případná kopie v cloudu zůstane nedotčená."
+            "value" : "Tuto knihovnu nelze otevřít, takže všechny změny na tomto Macu, které nebyly odeslány, budou ztraceny. Její kopie na tomto Macu se smaže; pokud je knihovna uložena v úložišti, zůstane tam."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dette bibliotek kan ikke åbnes, så alle ændringer på denne Mac, der ikke er sendt, går tabt. Dets kopi på denne Mac slettes; en eventuel kopi i skyen forbliver uberørt."
+            "value" : "Dette bibliotek kan ikke åbnes, så alle ændringer på denne Mac, der ikke er sendt, går tabt. Dets kopi på denne Mac slettes; hvis biblioteket ligger i lageret, bliver det der."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Mac verloren. Ihre Kopie auf diesem Mac wird gelöscht; eine Kopie in der Cloud bleibt unverändert."
+            "value" : "Diese Bibliothek lässt sich nicht öffnen, daher gehen alle nicht gesendeten Änderungen auf diesem Mac verloren. Ihre Kopie auf diesem Mac wird gelöscht; liegt die Bibliothek im Speicher, bleibt sie dort."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αυτή η βιβλιοθήκη δεν μπορεί να ανοίξει, οπότε όσες αλλαγές σε αυτόν τον Mac δεν στάλθηκαν χάνονται. Το αντίγραφό της σε αυτόν τον Mac διαγράφεται· τυχόν αντίγραφο στο cloud μένει ανέπαφο."
+            "value" : "Αυτή η βιβλιοθήκη δεν μπορεί να ανοίξει, οπότε όσες αλλαγές σε αυτόν τον Mac δεν στάλθηκαν χάνονται. Το αντίγραφό της σε αυτόν τον Mac διαγράφεται· αν η βιβλιοθήκη φυλάσσεται στον χώρο αποθήκευσης, παραμένει εκεί."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; any copy in the cloud is untouched."
+            "value" : "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in storage, it stays there."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta biblioteca no se puede abrir, así que se pierden los cambios de este Mac que no se enviaron. Se elimina su copia en este Mac; cualquier copia en la nube no se modifica."
+            "value" : "Esta biblioteca no se puede abrir, así que se pierden los cambios de este Mac que no se enviaron. Se elimina su copia en este Mac; si la biblioteca se guarda en el almacenamiento, sigue ahí."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tätä kirjastoa ei voi avata, joten kaikki tämän Macin muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä Macilta; mahdollinen kopio pilvessä säilyy ennallaan."
+            "value" : "Tätä kirjastoa ei voi avata, joten kaikki tämän Macin muutokset, joita ei ole lähetetty, menetetään. Sen kopio poistetaan tältä Macilta; jos kirjasto on tallennustilassa, se säilyy siellä."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette bibliothèque ne peut pas être ouverte : les modifications de ce Mac qui n’ont pas été envoyées sont donc perdues. Sa copie sur ce Mac est supprimée ; toute copie dans le cloud reste intacte."
+            "value" : "Cette bibliothèque ne peut pas être ouverte : les modifications de ce Mac qui n’ont pas été envoyées sont donc perdues. Sa copie sur ce Mac est supprimée ; si la bibliothèque est conservée dans le stockage, elle y reste."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן לפתוח את הספרייה הזו, ולכן שינויים ב‑Mac הזה שלא נשלחו יאבדו. העותק שלה ב‑Mac הזה יימחק; עותק בענן, אם יש, לא נפגע."
+            "value" : "לא ניתן לפתוח את הספרייה הזו, ולכן שינויים ב‑Mac הזה שלא נשלחו יאבדו. העותק שלה ב‑Mac הזה יימחק; אם הספרייה שמורה באחסון, היא נשארת שם."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ova se fonoteka ne može otvoriti pa se gube sve promjene na ovom Macu koje nisu poslane. Njezina se kopija na ovom Macu briše; eventualna kopija u oblaku ostaje netaknuta."
+            "value" : "Ova se fonoteka ne može otvoriti pa se gube sve promjene na ovom Macu koje nisu poslane. Njezina se kopija na ovom Macu briše; ako je fonoteka u pohrani, tamo i ostaje."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ez a könyvtár nem nyitható meg, ezért a Mac gépen lévő, el nem küldött módosítások elvesznek. A könyvtár másolata törlődik erről a Mac gépről; a felhőben lévő esetleges másolat érintetlen marad."
+            "value" : "Ez a könyvtár nem nyitható meg, ezért a Mac gépen lévő, el nem küldött módosítások elvesznek. A könyvtár másolata törlődik erről a Mac gépről; ha a könyvtár tárhelyen van, ott is marad."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa libreria non può essere aperta, quindi le modifiche su questo Mac non inviate vanno perse. La sua copia su questo Mac viene eliminata; un’eventuale copia nel cloud resta intatta."
+            "value" : "Questa libreria non può essere aperta, quindi le modifiche su questo Mac non inviate vanno perse. La sua copia su questo Mac viene eliminata; se la libreria è nello spazio di archiviazione, resta lì."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このライブラリは開けないため、この Mac 上で送信されていない変更はすべて失われます。この Mac 上のコピーは削除されます。クラウド上のコピーはそのままです。"
+            "value" : "このライブラリは開けないため、この Mac 上で送信されていない変更はすべて失われます。この Mac 上のコピーは削除されます。ライブラリがストレージにある場合は、そのまま残ります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 라이브러리를 열 수 없으므로 이 Mac에서 전송되지 않은 변경 사항은 모두 사라집니다. 이 Mac의 사본은 삭제되며, 클라우드의 사본은 그대로 유지됩니다."
+            "value" : "이 라이브러리를 열 수 없으므로 이 Mac에서 전송되지 않은 변경 사항은 모두 사라집니다. 이 Mac의 사본은 삭제되며, 라이브러리가 스토리지에 있다면 그대로 남습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dette biblioteket kan ikke åpnes, så endringer på denne Macen som ikke er sendt, går tapt. Kopien på denne Macen slettes; en eventuell kopi i skyen forblir urørt."
+            "value" : "Dette biblioteket kan ikke åpnes, så endringer på denne Macen som ikke er sendt, går tapt. Kopien på denne Macen slettes; hvis biblioteket ligger i lagringen, blir det værende der."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deze bibliotheek kan niet worden geopend, dus wijzigingen op deze Mac die niet zijn verzonden, gaan verloren. De kopie op deze Mac wordt verwijderd; een eventuele kopie in de cloud blijft onaangeroerd."
+            "value" : "Deze bibliotheek kan niet worden geopend, dus wijzigingen op deze Mac die niet zijn verzonden, gaan verloren. De kopie op deze Mac wordt verwijderd; staat de bibliotheek in de opslag, dan blijft die daar."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie można otworzyć tej biblioteki, więc wszystkie niewysłane zmiany na tym Macu zostaną utracone. Jej kopia na tym Macu zostanie usunięta; ewentualna kopia w chmurze pozostanie nietknięta."
+            "value" : "Nie można otworzyć tej biblioteki, więc wszystkie niewysłane zmiany na tym Macu zostaną utracone. Jej kopia na tym Macu zostanie usunięta; jeśli biblioteka jest w magazynie, tam pozostanie."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta biblioteca não pode ser aberta, então as alterações deste Mac que não foram enviadas são perdidas. A cópia dela neste Mac é excluída; qualquer cópia na nuvem não é alterada."
+            "value" : "Esta biblioteca não pode ser aberta, então as alterações deste Mac que não foram enviadas são perdidas. A cópia dela neste Mac é excluída; se a biblioteca é mantida no armazenamento, ela continua lá."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta biblioteca não pode ser aberta, por isso as alterações deste Mac que não foram enviadas perdem-se. A sua cópia neste Mac é eliminada; qualquer cópia na nuvem não é alterada."
+            "value" : "Esta biblioteca não pode ser aberta, por isso as alterações deste Mac que não foram enviadas perdem-se. A sua cópia neste Mac é eliminada; se a biblioteca for guardada no armazenamento, continua lá."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest Mac care nu au fost trimise se pierd. Copia ei de pe acest Mac este ștearsă; o eventuală copie din cloud rămâne neatinsă."
+            "value" : "Această bibliotecă nu poate fi deschisă, așa că modificările de pe acest Mac care nu au fost trimise se pierd. Copia ei de pe acest Mac este ștearsă; dacă biblioteca este păstrată în stocare, rămâne acolo."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Túto knižnicu nemožno otvoriť, takže všetky zmeny na tomto Macu, ktoré neboli odoslané, sa stratia. Jej kópia na tomto Macu sa vymaže; prípadná kópia v cloude zostane nedotknutá."
+            "value" : "Túto knižnicu nemožno otvoriť, takže všetky zmeny na tomto Macu, ktoré neboli odoslané, sa stratia. Jej kópia na tomto Macu sa vymaže; ak je knižnica uložená v úložisku, zostane tam."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Det här biblioteket kan inte öppnas, så ändringar på den här Macen som inte har skickats går förlorade. Dess kopia på den här Macen raderas; en eventuell kopia i molnet påverkas inte."
+            "value" : "Det här biblioteket kan inte öppnas, så ändringar på den här Macen som inte har skickats går förlorade. Dess kopia på den här Macen raderas; om biblioteket finns i lagringen ligger det kvar där."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplık açılamıyor, bu nedenle bu Mac'te gönderilmemiş tüm değişiklikler kaybolur. Bu Mac'teki kopyası silinir; buluttaki olası bir kopyaya dokunulmaz."
+            "value" : "Bu kitaplık açılamıyor, bu nedenle bu Mac'te gönderilmemiş tüm değişiklikler kaybolur. Bu Mac'teki kopyası silinir; kitaplık depolamada tutuluyorsa orada kalır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому Mac буде втрачено. Її копію на цьому Mac буде видалено; можлива копія в хмарі залишається недоторканою."
+            "value" : "Цю бібліотеку не вдається відкрити, тому всі не надіслані зміни на цьому Mac буде втрачено. Її копію на цьому Mac буде видалено; якщо бібліотека зберігається у сховищі, вона там і залишиться."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此库无法打开，因此此 Mac 上尚未发送的更改都会丢失。此 Mac 上的副本将被删除；云端的副本（如有）不受影响。"
+            "value" : "此库无法打开，因此此 Mac 上尚未发送的更改都会丢失。此 Mac 上的副本将被删除；如果该库保存在存储中，它会保留在那里。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此資料庫無法開啟，因此此 Mac 上尚未傳送的變更都會遺失。此 Mac 上的副本將被刪除；雲端的副本（如有）不受影響。"
+            "value" : "此資料庫無法開啟，因此此 Mac 上尚未傳送的變更都會遺失。此 Mac 上的副本將被刪除；如果該資料庫保存在儲存空間中，它會留在那裡。"
           }
         }
       }

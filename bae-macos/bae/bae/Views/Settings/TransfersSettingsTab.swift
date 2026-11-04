@@ -27,7 +27,7 @@ struct TransfersSettingsTab: View {
                 )
             } footer: {
                 Text(
-                    "How many files upload to cloud storage at once after an import, and how many download at once when a release is pinned."
+                    "How many files upload to storage at once after an import, and how many download at once when a release is pinned."
                 )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)

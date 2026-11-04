@@ -114,9 +114,9 @@
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette bibliotek fra denne enhed</string>
-    <string name="settings_remove_library_explanation">Fjerner dette bibliotek fra denne enhed: enheden forlader biblioteket, og derefter slettes dens kopi og downloadede filer. Biblioteket på skyplaceringen er urørt.</string>
+    <string name="settings_remove_library_explanation">Fjerner dette bibliotek fra denne enhed: enheden forlader biblioteket, og derefter slettes dens kopi og downloadede filer. Biblioteket forbliver i lageret og på dine andre enheder.</string>
     <string name="settings_remove_library_confirm_title">Vil du fjerne dette bibliotek fra denne enhed?</string>
-    <string name="settings_remove_library_confirm_body">Enheden forlader først biblioteket, hvilket kræver forbindelse. Biblioteket på skyplaceringen er urørt.</string>
+    <string name="settings_remove_library_confirm_body">Enheden forlader først biblioteket, hvilket kræver forbindelse. Biblioteket forbliver i lageret og på dine andre enheder.</string>
     <string name="unsent_edits_body">Hvis biblioteket fjernes fra denne enhed, kasseres de.</string>
     <string name="settings_remove">Fjern</string>
     <string name="settings_provider">Udbyder</string>
@@ -137,7 +137,7 @@
     <string name="onboarding_add_device">Tilføj enhed</string>
     <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Der kræves kameratilladelse for at scanne QR-koder</string>
-    <string name="oauth_unconfigured">Dette bibliotek kræver skylogin, som ikke er konfigureret i denne version.</string>
+    <string name="oauth_unconfigured">Login til bibliotekets lager er ikke konfigureret i denne version.</string>
     <string name="signing_in">Logger ind…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -236,8 +236,8 @@
     <string name="onboarding_next_check">Næste kontrol om %1$s</string>
     <string name="onboarding_check_now">Kontrollér nu</string>
     <string name="pending_update_no_store">Ingen appbutik på denne enhed kan opdatere bae.</string>
-    <string name="storage_setup_title">Opsæt en skyplacering</string>
-    <string name="settings_set_up_cloud_home_explanation">Dette bibliotek ligger kun på denne enhed. En skyplacering lader dine andre enheder og din husstand bruge det.</string>
+    <string name="storage_setup_title">Konfigurer synkronisering</string>
+    <string name="settings_set_up_sync_explanation">Dette bibliotek ligger kun på denne enhed. Synkronisering holder det i lageret, hvor dine andre enheder og din husstand kan bruge det.</string>
     <string name="storage_setup_choose">Hvor skal dette bibliotek gemmes?</string>
     <string name="storage_s3_endpoint_hint">Lad stå tomt for Amazon S3.</string>
     <string name="storage_s3_advanced">Avanceret</string>
@@ -260,7 +260,7 @@
     <string name="storage_onedrive_folder_name">Mappenavn</string>
     <string name="storage_onedrive_create">Opret</string>
     <string name="storage_onedrive_use_folder">Brug denne mappe</string>
-    <string name="storage_setup_done">Bibliotekets skyplacering er sat op. Opbevar din gendannelseskode et privat sted: hvis du mister alle dine enheder, får du dit bibliotek tilbage med den.</string>
+    <string name="storage_setup_done">Synkronisering er sat op. Opbevar din gendannelseskode et privat sted: hvis du mister alle dine enheder, får du dit bibliotek tilbage med den.</string>
     <string name="done">Færdig</string>
     <string name="recovery_code_title">Din gendannelseskode</string>
     <string name="recovery_code_explanation">Hvis du mister alle dine enheder, kan du indtaste denne kode på en ny enhed for at få dit bibliotek tilbage. Alle, der har koden og adgang til dit lager, kan åbne biblioteket, så opbevar den et privat sted.</string>

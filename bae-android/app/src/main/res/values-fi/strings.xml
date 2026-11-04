@@ -114,9 +114,9 @@
     <string name="copy">Kopioi</string>
     <string name="hide">Piilota</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
-    <string name="settings_remove_library_explanation">Poistaa tämän kirjaston tästä laitteesta: laite eroaa kirjastosta, minkä jälkeen sen kopio ja ladatut tiedostot poistetaan. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
+    <string name="settings_remove_library_explanation">Poistaa tämän kirjaston tästä laitteesta: laite eroaa kirjastosta, minkä jälkeen sen kopio ja ladatut tiedostot poistetaan. Kirjasto säilyy tallennustilassa ja muilla laitteillasi.</string>
     <string name="settings_remove_library_confirm_title">Poistetaanko tämä kirjasto tältä laitteelta?</string>
-    <string name="settings_remove_library_confirm_body">Laite eroaa ensin kirjastosta, mihin tarvitaan yhteys. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
+    <string name="settings_remove_library_confirm_body">Laite eroaa ensin kirjastosta, mihin tarvitaan yhteys. Kirjasto säilyy tallennustilassa ja muilla laitteillasi.</string>
     <string name="unsent_edits_body">Kirjaston poistaminen tältä laitteelta hylkää ne.</string>
     <string name="settings_remove">Poista</string>
     <string name="settings_provider">Palveluntarjoaja</string>
@@ -137,7 +137,7 @@
     <string name="onboarding_add_device">Lisää laite</string>
     <string name="onboarding_icon_description">baen kuvake</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
-    <string name="oauth_unconfigured">Tämä kirjasto vaatii pilvikirjautumisen, jota ei ole määritetty tässä versiossa.</string>
+    <string name="oauth_unconfigured">Kirjautumista tämän kirjaston tallennustilaan ei ole määritetty tässä versiossa.</string>
     <string name="signing_in">Kirjaudutaan sisään…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -236,8 +236,8 @@
     <string name="onboarding_next_check">Seuraava tarkistus %1$s kuluttua</string>
     <string name="onboarding_check_now">Tarkista nyt</string>
     <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
-    <string name="storage_setup_title">Määritä pilvisijainti</string>
-    <string name="settings_set_up_cloud_home_explanation">Tämä kirjasto on vain tässä laitteessa. Pilvisijainnin avulla muut laitteesi ja kotitaloutesi voivat käyttää sitä.</string>
+    <string name="storage_setup_title">Ota synkronointi käyttöön</string>
+    <string name="settings_set_up_sync_explanation">Tämä kirjasto on vain tässä laitteessa. Synkronointi pitää sen tallennustilassa, jossa muut laitteesi ja kotitaloutesi voivat käyttää sitä.</string>
     <string name="storage_setup_choose">Mihin tämä kirjasto tallennetaan?</string>
     <string name="storage_s3_endpoint_hint">Jätä tyhjäksi, jos käytät Amazon S3:a.</string>
     <string name="storage_s3_advanced">Lisäasetukset</string>
@@ -260,7 +260,7 @@
     <string name="storage_onedrive_folder_name">Kansion nimi</string>
     <string name="storage_onedrive_create">Luo</string>
     <string name="storage_onedrive_use_folder">Käytä tätä kansiota</string>
-    <string name="storage_setup_done">Tämän kirjaston pilvisijainti on määritetty. Säilytä palautuskoodisi yksityisessä paikassa: jos menetät kaikki laitteesi, saat sillä kirjastosi takaisin.</string>
+    <string name="storage_setup_done">Synkronointi on otettu käyttöön. Säilytä palautuskoodisi yksityisessä paikassa: jos menetät kaikki laitteesi, saat sillä kirjastosi takaisin.</string>
     <string name="done">Valmis</string>
     <string name="recovery_code_title">Palautuskoodisi</string>
     <string name="recovery_code_explanation">Jos menetät kaikki laitteesi, syötä tämä koodi uudella laitteella, niin saat kirjastosi takaisin. Kuka tahansa, jolla on koodi ja pääsy tallennustilaasi, voi avata kirjaston, joten säilytä se yksityisessä paikassa.</string>

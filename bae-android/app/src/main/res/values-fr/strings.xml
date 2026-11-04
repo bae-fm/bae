@@ -111,9 +111,9 @@
     <string name="copy">Copier</string>
     <string name="hide">Masquer</string>
     <string name="settings_remove_library">Supprimer cette bibliothèque de cet appareil</string>
-    <string name="settings_remove_library_explanation">Retire cette bibliothèque de cet appareil : l’appareil quitte la bibliothèque, puis sa copie et les fichiers téléchargés sont supprimés. La bibliothèque dans son emplacement cloud n’est pas touchée.</string>
+    <string name="settings_remove_library_explanation">Retire cette bibliothèque de cet appareil : l’appareil quitte la bibliothèque, puis sa copie et les fichiers téléchargés sont supprimés. La bibliothèque reste dans le stockage et sur vos autres appareils.</string>
     <string name="settings_remove_library_confirm_title">Supprimer cette bibliothèque de cet appareil ?</string>
-    <string name="settings_remove_library_confirm_body">Cet appareil quitte d’abord la bibliothèque, ce qui nécessite une connexion. La bibliothèque dans son emplacement cloud n’est pas touchée.</string>
+    <string name="settings_remove_library_confirm_body">Cet appareil quitte d’abord la bibliothèque, ce qui nécessite une connexion. La bibliothèque reste dans le stockage et sur vos autres appareils.</string>
     <string name="unsent_edits_body">Supprimer la bibliothèque de cet appareil les efface.</string>
     <string name="settings_remove">Supprimer</string>
     <string name="settings_provider">Fournisseur</string>
@@ -134,7 +134,7 @@
     <string name="onboarding_add_device">Ajouter un appareil</string>
     <string name="onboarding_icon_description">icône bae</string>
     <string name="onboarding_camera_permission_required">L\'autorisation de la caméra est requise pour scanner des codes QR</string>
-    <string name="oauth_unconfigured">Cette bibliothèque nécessite une connexion au cloud, qui n\'est pas configurée sur cette version.</string>
+    <string name="oauth_unconfigured">La connexion au stockage de cette bibliothèque n’est pas configurée sur cette version.</string>
     <string name="signing_in">Connexion…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -239,8 +239,8 @@
     <string name="onboarding_next_check">Prochaine vérification dans %1$s</string>
     <string name="onboarding_check_now">Vérifier maintenant</string>
     <string name="pending_update_no_store">Aucune boutique d’applications sur cet appareil ne peut mettre à jour bae.</string>
-    <string name="storage_setup_title">Configurer un emplacement cloud</string>
-    <string name="settings_set_up_cloud_home_explanation">Cette bibliothèque n’est stockée que sur cet appareil. Un emplacement cloud permet à vos autres appareils et à votre foyer de l’utiliser.</string>
+    <string name="storage_setup_title">Configurer la synchronisation</string>
+    <string name="settings_set_up_sync_explanation">Cette bibliothèque n’est stockée que sur cet appareil. La synchronisation la conserve dans le stockage, où vos autres appareils et votre foyer peuvent l’utiliser.</string>
     <string name="storage_setup_choose">Où stocker cette bibliothèque ?</string>
     <string name="storage_s3_endpoint_hint">Laissez vide pour Amazon S3.</string>
     <string name="storage_s3_advanced">Avancé</string>
@@ -263,7 +263,7 @@
     <string name="storage_onedrive_folder_name">Nom du dossier</string>
     <string name="storage_onedrive_create">Créer</string>
     <string name="storage_onedrive_use_folder">Utiliser ce dossier</string>
-    <string name="storage_setup_done">L’emplacement cloud de cette bibliothèque est configuré. Conservez votre code de récupération dans un endroit privé : si vous perdez tous vos appareils, il vous permet de récupérer votre bibliothèque.</string>
+    <string name="storage_setup_done">La synchronisation est configurée. Conservez votre code de récupération dans un endroit privé : si vous perdez tous vos appareils, il vous permet de récupérer votre bibliothèque.</string>
     <string name="done">Terminé</string>
     <string name="recovery_code_title">Votre code de récupération</string>
     <string name="recovery_code_explanation">Si vous perdez tous vos appareils, saisissez ce code sur un nouvel appareil pour récupérer votre bibliothèque. Toute personne qui le possède et a accès à votre stockage peut ouvrir la bibliothèque : conservez-le donc dans un endroit privé.</string>

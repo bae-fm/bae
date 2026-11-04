@@ -114,9 +114,9 @@
     <string name="copy">Másolás</string>
     <string name="hide">Elrejtés</string>
     <string name="settings_remove_library">Könyvtár eltávolítása erről az eszközről</string>
-    <string name="settings_remove_library_explanation">Eltávolítja ezt a könyvtárat erről az eszközről: az eszköz kilép a könyvtárból, majd törlődik a másolata és a letöltött fájlok. A felhőbeli tárhelyen lévő könyvtár érintetlen marad.</string>
+    <string name="settings_remove_library_explanation">Eltávolítja ezt a könyvtárat erről az eszközről: az eszköz kilép a könyvtárból, majd törlődik a másolata és a letöltött fájlok. A könyvtár megmarad a tárhelyen és a többi eszközödön.</string>
     <string name="settings_remove_library_confirm_title">Eltávolítod ezt a könyvtárat erről az eszközről?</string>
-    <string name="settings_remove_library_confirm_body">Az eszköz előbb kilép a könyvtárból, ehhez kapcsolat kell. A felhőbeli tárhelyen lévő könyvtár érintetlen marad.</string>
+    <string name="settings_remove_library_confirm_body">Az eszköz előbb kilép a könyvtárból, ehhez kapcsolat kell. A könyvtár megmarad a tárhelyen és a többi eszközödön.</string>
     <string name="unsent_edits_body">Ha eltávolítod a könyvtárat erről az eszközről, elvesznek.</string>
     <string name="settings_remove">Eltávolítás</string>
     <string name="settings_provider">Szolgáltató</string>
@@ -137,7 +137,7 @@
     <string name="onboarding_add_device">Eszköz hozzáadása</string>
     <string name="onboarding_icon_description">bae ikon</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
-    <string name="oauth_unconfigured">Ehhez a könyvtárhoz felhős bejelentkezés kell, ami ebben a buildben nincs beállítva.</string>
+    <string name="oauth_unconfigured">A könyvtár tárhelyére való bejelentkezés ebben a buildben nincs beállítva.</string>
     <string name="signing_in">Bejelentkezés…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -236,8 +236,8 @@
     <string name="onboarding_next_check">Következő ellenőrzés: %1$s múlva</string>
     <string name="onboarding_check_now">Ellenőrzés most</string>
     <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
-    <string name="storage_setup_title">Felhőbeli tárhely beállítása</string>
-    <string name="settings_set_up_cloud_home_explanation">Ez a könyvtár csak ezen az eszközön van. Egy felhőbeli tárhellyel a többi eszközöd és a háztartásod is használhatja.</string>
+    <string name="storage_setup_title">Szinkronizálás beállítása</string>
+    <string name="settings_set_up_sync_explanation">Ez a könyvtár csak ezen az eszközön van. A szinkronizálás a tárhelyen tartja, ahol a többi eszközöd és a háztartásod is használhatja.</string>
     <string name="storage_setup_choose">Hol tárolódjon ez a könyvtár?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3 esetén hagyd üresen.</string>
     <string name="storage_s3_advanced">Speciális</string>
@@ -260,7 +260,7 @@
     <string name="storage_onedrive_folder_name">Mappa neve</string>
     <string name="storage_onedrive_create">Létrehozás</string>
     <string name="storage_onedrive_use_folder">Ennek a mappának a használata</string>
-    <string name="storage_setup_done">A könyvtár felhőbeli tárhelye be van állítva. Őrizd a helyreállítási kódodat privát helyen: ha az összes eszközödet elveszíted, ezzel kapod vissza a könyvtáradat.</string>
+    <string name="storage_setup_done">A szinkronizálás be van állítva. Őrizd a helyreállítási kódodat privát helyen: ha az összes eszközödet elveszíted, ezzel kapod vissza a könyvtáradat.</string>
     <string name="done">Kész</string>
     <string name="recovery_code_title">A helyreállítási kódod</string>
     <string name="recovery_code_explanation">Ha az összes eszközödet elveszíted, írd be ezt a kódot egy új eszközön, és visszakapod a könyvtáradat. Bárki, akinél megvan, és hozzáfér a tárhelyedhez, megnyithatja a könyvtárat, ezért tartsd privát helyen.</string>

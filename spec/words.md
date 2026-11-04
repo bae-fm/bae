@@ -15,7 +15,7 @@ bar's menus and items, which use title case as every Mac app's do ("Rename
 Library…", "Open Library"). "bae" itself is always lowercase. Each
 translation follows its own language's capitalization: German keeps its
 capitalized nouns, and no language copies English title case.
-scripts/loc-sentence-case.py refuses a capitalized word past a sentence's
+scripts/loc-words.py refuses a capitalized word past a sentence's
 start that is no name, acronym or other label named in the sentence, in the
 macOS, Android and core catalogs, a translation whose every word is
 capitalized, and a menu bar title not in title case.
@@ -40,7 +40,11 @@ catalogs, source and every locale.
 - **Storage.** Where a synced library is kept: the Dropbox or OneDrive
   folder, the iCloud container, or the S3-compatible bucket it syncs through.
   Always "storage" on screen, never "the cloud" or "cloud home". "The library
-  will remain in storage and on your other devices."
+  will remain in storage and on your other devices." A release whose files are
+  all in storage is "In storage" beside "Local" and "Pinned", and moving a
+  local release there is "Move to storage". scripts/loc-words.py refuses
+  "cloud" (past "iCloud" and "Cloudflare") in every catalog and locale, and
+  each language's own word for a cloud in its translations.
 - **This device's copy.** What the library has on this phone or Mac: its
   catalog and the files downloaded here. Removing the library from this device
   deletes this copy; the library itself is untouched.

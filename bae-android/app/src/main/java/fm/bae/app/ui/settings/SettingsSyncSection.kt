@@ -67,7 +67,7 @@ internal fun SettingsSyncSection(
             CloudHome.None -> {
                 Text(stringResource(R.string.settings_local_only))
                 Text(
-                    text = stringResource(R.string.settings_set_up_cloud_home_explanation),
+                    text = stringResource(R.string.settings_set_up_sync_explanation),
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

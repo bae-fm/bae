@@ -114,9 +114,9 @@
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
-    <string name="settings_remove_library_explanation">Remove esta biblioteca deste dispositivo: o dispositivo sai da biblioteca e depois a respetiva cópia e os ficheiros transferidos são eliminados. A biblioteca no local na nuvem fica intacta.</string>
+    <string name="settings_remove_library_explanation">Remove esta biblioteca deste dispositivo: o dispositivo sai da biblioteca e depois a respetiva cópia e os ficheiros transferidos são eliminados. A biblioteca continua no armazenamento e nos seus outros dispositivos.</string>
     <string name="settings_remove_library_confirm_title">Remover esta biblioteca deste dispositivo?</string>
-    <string name="settings_remove_library_confirm_body">Primeiro, este dispositivo sai da biblioteca, o que requer ligação. A biblioteca no local na nuvem fica intacta.</string>
+    <string name="settings_remove_library_confirm_body">Primeiro, este dispositivo sai da biblioteca, o que requer ligação. A biblioteca continua no armazenamento e nos seus outros dispositivos.</string>
     <string name="unsent_edits_body">Remover a biblioteca deste dispositivo elimina-as.</string>
     <string name="settings_remove">Remover</string>
     <string name="settings_provider">Fornecedor</string>
@@ -137,7 +137,7 @@
     <string name="onboarding_add_device">Adicionar dispositivo</string>
     <string name="onboarding_icon_description">ícone do bae</string>
     <string name="onboarding_camera_permission_required">É necessária permissão de câmara para digitalizar códigos QR</string>
-    <string name="oauth_unconfigured">Esta biblioteca precisa de início de sessão na nuvem, que não está configurado nesta versão.</string>
+    <string name="oauth_unconfigured">O início de sessão no armazenamento desta biblioteca não está configurado nesta versão.</string>
     <string name="signing_in">A iniciar sessão…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -236,8 +236,8 @@
     <string name="onboarding_next_check">Próxima verificação dentro de %1$s</string>
     <string name="onboarding_check_now">Verificar agora</string>
     <string name="pending_update_no_store">Nenhuma loja de aplicações neste dispositivo pode atualizar o bae.</string>
-    <string name="storage_setup_title">Configurar um local na nuvem</string>
-    <string name="settings_set_up_cloud_home_explanation">Esta biblioteca está guardada apenas neste dispositivo. Um local na nuvem permite que os seus outros dispositivos e a sua casa a usem.</string>
+    <string name="storage_setup_title">Configurar sincronização</string>
+    <string name="settings_set_up_sync_explanation">Esta biblioteca está guardada apenas neste dispositivo. A sincronização mantém-na no armazenamento, onde os seus outros dispositivos e a sua casa a podem usar.</string>
     <string name="storage_setup_choose">Onde deve ficar guardada esta biblioteca?</string>
     <string name="storage_s3_endpoint_hint">Deixe vazio para o Amazon S3.</string>
     <string name="storage_s3_advanced">Avançado</string>
@@ -260,7 +260,7 @@
     <string name="storage_onedrive_folder_name">Nome da pasta</string>
     <string name="storage_onedrive_create">Criar</string>
     <string name="storage_onedrive_use_folder">Usar esta pasta</string>
-    <string name="storage_setup_done">O local na nuvem desta biblioteca está configurado. Guarde o seu código de recuperação num local privado: se perder todos os seus dispositivos, é com ele que recupera a sua biblioteca.</string>
+    <string name="storage_setup_done">A sincronização está configurada. Guarde o seu código de recuperação num local privado: se perder todos os seus dispositivos, é com ele que recupera a sua biblioteca.</string>
     <string name="done">Concluído</string>
     <string name="recovery_code_title">O seu código de recuperação</string>
     <string name="recovery_code_explanation">Se perder todos os seus dispositivos, introduza este código num novo para recuperar a sua biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca, por isso guarde-o num local privado.</string>

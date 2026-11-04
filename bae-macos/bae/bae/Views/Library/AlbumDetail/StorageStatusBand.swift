@@ -107,7 +107,7 @@ struct StorageStatusBand: View {
                 }
                 else {
                     Image(systemName: "cloud")
-                    Text("Cloud")
+                    Text("In storage")
                 }
             }
         }

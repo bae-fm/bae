@@ -114,9 +114,9 @@
     <string name="copy">نسخ</string>
     <string name="hide">إخفاء</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
-    <string name="settings_remove_library_explanation">يزيل هذه المكتبة من هذا الجهاز: يغادر الجهاز المكتبة، ثم تُحذف نسخته والملفات التي نزّلها. لا تتأثر المكتبة في مكانها في السحابة.</string>
+    <string name="settings_remove_library_explanation">يزيل هذه المكتبة من هذا الجهاز: يغادر الجهاز المكتبة، ثم تُحذف نسخته والملفات التي نزّلها. تبقى المكتبة في التخزين وعلى أجهزتك الأخرى.</string>
     <string name="settings_remove_library_confirm_title">إزالة هذه المكتبة من هذا الجهاز؟</string>
-    <string name="settings_remove_library_confirm_body">يغادر هذا الجهاز المكتبة أولًا، وهذا يتطلب اتصالًا. لا تتأثر المكتبة في مكانها في السحابة.</string>
+    <string name="settings_remove_library_confirm_body">يغادر هذا الجهاز المكتبة أولًا، وهذا يتطلب اتصالًا. تبقى المكتبة في التخزين وعلى أجهزتك الأخرى.</string>
     <string name="unsent_edits_body">تؤدي إزالة المكتبة من هذا الجهاز إلى تجاهلها.</string>
     <string name="settings_remove">إزالة</string>
     <string name="settings_provider">المزوّد</string>
@@ -137,7 +137,7 @@
     <string name="onboarding_add_device">إضافة جهاز</string>
     <string name="onboarding_icon_description">أيقونة bae</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
-    <string name="oauth_unconfigured">تحتاج هذه المكتبة إلى تسجيل دخول سحابي، وهو غير مُعدّ في هذه النسخة.</string>
+    <string name="oauth_unconfigured">تسجيل الدخول إلى تخزين هذه المكتبة غير مُعدّ في هذه النسخة.</string>
     <string name="signing_in">جارٍ تسجيل الدخول…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -249,8 +249,8 @@
     <string name="onboarding_next_check">التحقق التالي بعد %1$s</string>
     <string name="onboarding_check_now">التحقق الآن</string>
     <string name="pending_update_no_store">لا يوجد متجر تطبيقات على هذا الجهاز يمكنه تحديث bae.</string>
-    <string name="storage_setup_title">إعداد مكان في السحابة</string>
-    <string name="settings_set_up_cloud_home_explanation">هذه المكتبة مخزّنة على هذا الجهاز فقط. يتيح المكان في السحابة لأجهزتك الأخرى ولأهل بيتك استخدامها.</string>
+    <string name="storage_setup_title">إعداد المزامنة</string>
+    <string name="settings_set_up_sync_explanation">هذه المكتبة مخزّنة على هذا الجهاز فقط. تحفظها المزامنة في التخزين، حيث يمكن لأجهزتك الأخرى ولأهل بيتك استخدامها.</string>
     <string name="storage_setup_choose">أين تريد تخزين هذه المكتبة؟</string>
     <string name="storage_s3_endpoint_hint">اتركه فارغًا لـ Amazon S3.</string>
     <string name="storage_s3_advanced">خيارات متقدمة</string>
@@ -273,7 +273,7 @@
     <string name="storage_onedrive_folder_name">اسم المجلد</string>
     <string name="storage_onedrive_create">إنشاء</string>
     <string name="storage_onedrive_use_folder">استخدام هذا المجلد</string>
-    <string name="storage_setup_done">تم إعداد مكان هذه المكتبة في السحابة. احتفظ برمز الاسترداد في مكان خاص: إذا فقدت جميع أجهزتك، فهو يعيد إليك مكتبتك.</string>
+    <string name="storage_setup_done">تم إعداد المزامنة. احتفظ برمز الاسترداد في مكان خاص: إذا فقدت جميع أجهزتك، فهو يعيد إليك مكتبتك.</string>
     <string name="done">تم</string>
     <string name="recovery_code_title">رمز الاسترداد الخاص بك</string>
     <string name="recovery_code_explanation">إذا فقدت جميع أجهزتك، فأدخل هذا الرمز على جهاز جديد لاستعادة مكتبتك. يمكن لأي شخص لديه الرمز وإمكانية الوصول إلى التخزين فتح المكتبة، لذا احتفظ به في مكان خاص.</string>

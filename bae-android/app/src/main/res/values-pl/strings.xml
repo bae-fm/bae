@@ -112,9 +112,9 @@
     <string name="copy">Kopiuj</string>
     <string name="hide">Ukryj</string>
     <string name="settings_remove_library">Usuń tę bibliotekę z tego urządzenia</string>
-    <string name="settings_remove_library_explanation">Usuwa tę bibliotekę z tego urządzenia: urządzenie opuszcza bibliotekę, a potem jego kopia i pobrane pliki są usuwane. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
+    <string name="settings_remove_library_explanation">Usuwa tę bibliotekę z tego urządzenia: urządzenie opuszcza bibliotekę, a potem jego kopia i pobrane pliki są usuwane. Biblioteka pozostanie w magazynie i na twoich innych urządzeniach.</string>
     <string name="settings_remove_library_confirm_title">Usunąć tę bibliotekę z tego urządzenia?</string>
-    <string name="settings_remove_library_confirm_body">Najpierw to urządzenie opuszcza bibliotekę, co wymaga połączenia. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
+    <string name="settings_remove_library_confirm_body">Najpierw to urządzenie opuszcza bibliotekę, co wymaga połączenia. Biblioteka pozostanie w magazynie i na twoich innych urządzeniach.</string>
     <string name="unsent_edits_body">Usunięcie biblioteki z tego urządzenia spowoduje ich odrzucenie.</string>
     <string name="settings_remove">Usuń</string>
     <string name="settings_provider">Dostawca</string>
@@ -135,7 +135,7 @@
     <string name="onboarding_add_device">Dodaj urządzenie</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Do skanowania kodów QR wymagane jest pozwolenie na dostęp do aparatu</string>
-    <string name="oauth_unconfigured">Ta biblioteka wymaga logowania do chmury, które nie jest skonfigurowane w tej wersji.</string>
+    <string name="oauth_unconfigured">Logowanie do magazynu tej biblioteki nie jest skonfigurowane w tej wersji.</string>
     <string name="signing_in">Logowanie…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -243,8 +243,8 @@
     <string name="onboarding_next_check">Następne sprawdzenie za %1$s</string>
     <string name="onboarding_check_now">Sprawdź teraz</string>
     <string name="pending_update_no_store">Żaden sklep z aplikacjami na tym urządzeniu nie może zaktualizować bae.</string>
-    <string name="storage_setup_title">Skonfiguruj miejsce w chmurze</string>
-    <string name="settings_set_up_cloud_home_explanation">Ta biblioteka jest przechowywana tylko na tym urządzeniu. Miejsce w chmurze pozwoli korzystać z niej twoim innym urządzeniom i domownikom.</string>
+    <string name="storage_setup_title">Skonfiguruj synchronizację</string>
+    <string name="settings_set_up_sync_explanation">Ta biblioteka jest przechowywana tylko na tym urządzeniu. Synchronizacja trzyma ją w magazynie, gdzie mogą z niej korzystać twoje inne urządzenia i domownicy.</string>
     <string name="storage_setup_choose">Gdzie przechowywać tę bibliotekę?</string>
     <string name="storage_s3_endpoint_hint">Pozostaw puste dla Amazon S3.</string>
     <string name="storage_s3_advanced">Zaawansowane</string>
@@ -267,7 +267,7 @@
     <string name="storage_onedrive_folder_name">Nazwa folderu</string>
     <string name="storage_onedrive_create">Utwórz</string>
     <string name="storage_onedrive_use_folder">Użyj tego folderu</string>
-    <string name="storage_setup_done">Miejsce w chmurze dla tej biblioteki zostało skonfigurowane. Przechowuj kod odzyskiwania w prywatnym miejscu: jeśli stracisz wszystkie swoje urządzenia, odzyskasz dzięki niemu bibliotekę.</string>
+    <string name="storage_setup_done">Synchronizacja jest skonfigurowana. Przechowuj kod odzyskiwania w prywatnym miejscu: jeśli stracisz wszystkie swoje urządzenia, odzyskasz dzięki niemu bibliotekę.</string>
     <string name="done">Gotowe</string>
     <string name="recovery_code_title">Twój kod odzyskiwania</string>
     <string name="recovery_code_explanation">Jeśli stracisz wszystkie swoje urządzenia, wpisz ten kod na nowym urządzeniu, aby odzyskać bibliotekę. Każdy, kto go ma i ma dostęp do Twojego magazynu, może otworzyć bibliotekę, więc przechowuj go w prywatnym miejscu.</string>

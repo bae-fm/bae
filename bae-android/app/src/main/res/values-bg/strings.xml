@@ -110,9 +110,9 @@
     <string name="copy">Копиране</string>
     <string name="hide">Скриване</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
-    <string name="settings_remove_library_explanation">Премахва тази библиотека от това устройство: устройството напуска библиотеката, след което копието му и изтеглените файлове се изтриват. Библиотеката в облачното хранилище остава непокътната.</string>
+    <string name="settings_remove_library_explanation">Премахва тази библиотека от това устройство: устройството напуска библиотеката, след което копието му и изтеглените файлове се изтриват. Библиотеката остава в хранилището и на другите ви устройства.</string>
     <string name="settings_remove_library_confirm_title">Премахване на тази библиотека от това устройство?</string>
-    <string name="settings_remove_library_confirm_body">Първо устройството напуска библиотеката, за което е нужна връзка. Библиотеката в облачното хранилище остава непокътната.</string>
+    <string name="settings_remove_library_confirm_body">Първо устройството напуска библиотеката, за което е нужна връзка. Библиотеката остава в хранилището и на другите ви устройства.</string>
     <string name="unsent_edits_body">Премахването на библиотеката от това устройство ги отхвърля.</string>
     <string name="settings_remove">Премахване</string>
     <string name="settings_provider">Доставчик</string>
@@ -133,7 +133,7 @@
     <string name="onboarding_add_device">Добавяне на устройство</string>
     <string name="onboarding_icon_description">икона на bae</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
-    <string name="oauth_unconfigured">Тази библиотека изисква влизане в облака, което не е конфигурирано в тази версия.</string>
+    <string name="oauth_unconfigured">Влизането в хранилището на тази библиотека не е конфигурирано в тази версия.</string>
     <string name="signing_in">Влизане…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -237,8 +237,8 @@
     <string name="onboarding_next_check">Следваща проверка след %1$s</string>
     <string name="onboarding_check_now">Провери сега</string>
     <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
-    <string name="storage_setup_title">Настройване на облачно хранилище</string>
-    <string name="settings_set_up_cloud_home_explanation">Тази библиотека се съхранява само на това устройство. Облачното хранилище позволява на другите ви устройства и на домакинството ви да я използват.</string>
+    <string name="storage_setup_title">Настройка на синхронизирането</string>
+    <string name="settings_set_up_sync_explanation">Тази библиотека се съхранява само на това устройство. Синхронизирането я пази в хранилището, където другите ви устройства и домакинството ви могат да я използват.</string>
     <string name="storage_setup_choose">Къде да се съхранява тази библиотека?</string>
     <string name="storage_s3_endpoint_hint">Оставете празно за Amazon S3.</string>
     <string name="storage_s3_advanced">Разширени</string>
@@ -261,7 +261,7 @@
     <string name="storage_onedrive_folder_name">Име на папката</string>
     <string name="storage_onedrive_create">Създаване</string>
     <string name="storage_onedrive_use_folder">Използване на тази папка</string>
-    <string name="storage_setup_done">Облачното хранилище на тази библиотека е настроено. Пазете кода си за възстановяване на поверително място: ако загубите всичките си устройства, с него си връщате библиотеката.</string>
+    <string name="storage_setup_done">Синхронизирането е настроено. Пазете кода си за възстановяване на поверително място: ако загубите всичките си устройства, с него си връщате библиотеката.</string>
     <string name="done">Готово</string>
     <string name="recovery_code_title">Вашият код за възстановяване</string>
     <string name="recovery_code_explanation">Ако загубите всичките си устройства, въведете този код на ново устройство, за да си върнете библиотеката. Всеки, който го има и има достъп до хранилището ви, може да отвори библиотеката, затова го пазете на поверително място.</string>

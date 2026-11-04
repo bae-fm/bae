@@ -385,8 +385,8 @@ run_check "localization English-skeleton check" \
     exit 1
 }
 
-run_check "localization sentence-case check" \
-    sh -c 'python3 scripts/loc-sentence-case.py && python3 scripts/tests/loc-sentence-case-test.py' || {
+run_check "localization words check" \
+    sh -c 'python3 scripts/loc-words.py && python3 scripts/tests/loc-words-test.py' || {
     exit 1
 }
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Tests for scripts/loc-sentence-case.py's reading of a string's case."""
+"""Tests for scripts/loc-words.py's reading of a string's case and words."""
 
 import importlib.util
 import unittest
 from pathlib import Path
 
-CHECK = Path(__file__).resolve().parent.parent / "loc-sentence-case.py"
-spec = importlib.util.spec_from_file_location("loc_sentence_case", CHECK)
+CHECK = Path(__file__).resolve().parent.parent / "loc-words.py"
+spec = importlib.util.spec_from_file_location("loc_words", CHECK)
 check = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check)
 
@@ -62,6 +62,26 @@ class LocaleTest(unittest.TestCase):
         self.assertFalse(check.title_case_copy("Näytä Finderissa"))
         self.assertFalse(check.title_case_copy("Katalog No."))
         self.assertFalse(check.title_case_copy("iCloud kullan"))
+
+
+class CloudTest(unittest.TestCase):
+    def test_cloud_is_refused_in_every_language(self):
+        self.assertEqual(check.cloud_words("Move to cloud"), ["cloud"])
+        self.assertEqual(check.cloud_words("In die Cloud verschieben", "de"), ["Cloud"])
+        self.assertEqual(check.cloud_words("Flyt til skyen", "da"), ["skyen"])
+        self.assertEqual(check.cloud_words("Mover a la nube", "es"), ["nube"])
+        self.assertEqual(check.cloud_words("העבר לענן", "he"), ["לענן"])
+        self.assertEqual(check.cloud_words("نقل إلى السحابة", "ar"), ["السحاب"])
+        self.assertEqual(check.cloud_words("クラウドに移動", "ja"), ["クラウド"])
+
+    def test_storage_and_names_pass(self):
+        self.assertEqual(check.cloud_words("Move to storage"), [])
+        self.assertEqual(check.cloud_words("Restore from iCloud Keychain"), [])
+        self.assertEqual(check.cloud_words("Backblaze, Cloudflare R2"), [])
+        self.assertEqual(check.cloud_words("Kopibeskyttet", "da"), [])
+        self.assertEqual(check.cloud_words("רענן", "he"), [])
+        self.assertEqual(check.cloud_words("Felhasználónév", "hu"), [])
+        self.assertEqual(check.cloud_words("America de Nord", "ro"), [])
 
 
 class MenuBarTest(unittest.TestCase):

@@ -17,7 +17,6 @@ it	Account
 it	Album
 it	Audio
 it	Bucket
-it	Cloud
 it	Disc ID
 it	Endpoint
 it	File
@@ -38,7 +37,6 @@ nl	barcode
 nl	%lld barcodes	one
 nl	%lld barcodes	other
 nl	Bucket
-nl	Cloud
 nl	Credits
 nl	Details
 nl	Disc

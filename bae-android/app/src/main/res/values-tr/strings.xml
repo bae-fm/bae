@@ -110,9 +110,9 @@
     <string name="copy">Kopyala</string>
     <string name="hide">Gizle</string>
     <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
-    <string name="settings_remove_library_explanation">Bu kitaplığı bu cihazdan kaldırır: cihaz önce kitaplıktan ayrılır, ardından kopyası ve indirilen dosyalar silinir. Bulut konumundaki kitaplığa dokunulmaz.</string>
+    <string name="settings_remove_library_explanation">Bu kitaplığı bu cihazdan kaldırır: cihaz önce kitaplıktan ayrılır, ardından kopyası ve indirilen dosyalar silinir. Kitaplık depolamada ve diğer cihazlarınızda kalır.</string>
     <string name="settings_remove_library_confirm_title">Bu kitaplık bu cihazdan kaldırılsın mı?</string>
-    <string name="settings_remove_library_confirm_body">Bu cihaz önce kitaplıktan ayrılır; bunun için bağlantı gerekir. Bulut konumundaki kitaplığa dokunulmaz.</string>
+    <string name="settings_remove_library_confirm_body">Bu cihaz önce kitaplıktan ayrılır; bunun için bağlantı gerekir. Kitaplık depolamada ve diğer cihazlarınızda kalır.</string>
     <string name="unsent_edits_body">Kitaplığı bu cihazdan kaldırmak bunları siler.</string>
     <string name="settings_remove">Kaldır</string>
     <string name="settings_provider">Sağlayıcı</string>
@@ -133,7 +133,7 @@
     <string name="onboarding_add_device">Cihaz ekle</string>
     <string name="onboarding_icon_description">bae simgesi</string>
     <string name="onboarding_camera_permission_required">QR kodlarını taramak için kamera izni gerekli</string>
-    <string name="oauth_unconfigured">Bu kitaplık, bu derlemede yapılandırılmamış bir bulut oturumu gerektirir.</string>
+    <string name="oauth_unconfigured">Bu kitaplığın depolamasında oturum açma bu derlemede yapılandırılmamış.</string>
     <string name="signing_in">Oturum açılıyor…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -237,8 +237,8 @@
     <string name="onboarding_next_check">Sonraki denetim %1$s sonra</string>
     <string name="onboarding_check_now">Şimdi denetle</string>
     <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
-    <string name="storage_setup_title">Bulut konumu ayarla</string>
-    <string name="settings_set_up_cloud_home_explanation">Bu kitaplık yalnızca bu cihazda depolanıyor. Bir bulut konumu, diğer cihazlarınızın ve hane halkınızın da kullanmasını sağlar.</string>
+    <string name="storage_setup_title">Eşzamanlamayı kur</string>
+    <string name="settings_set_up_sync_explanation">Bu kitaplık yalnızca bu cihazda depolanıyor. Eşzamanlama onu depolamada tutar; diğer cihazlarınız ve hane halkınız onu oradan kullanabilir.</string>
     <string name="storage_setup_choose">Bu kitaplık nerede depolansın?</string>
     <string name="storage_s3_endpoint_hint">Amazon S3 için boş bırakın.</string>
     <string name="storage_s3_advanced">Gelişmiş</string>
@@ -261,7 +261,7 @@
     <string name="storage_onedrive_folder_name">Klasör adı</string>
     <string name="storage_onedrive_create">Oluştur</string>
     <string name="storage_onedrive_use_folder">Bu klasörü kullan</string>
-    <string name="storage_setup_done">Bu kitaplığın bulut konumu ayarlandı. Kurtarma kodunuzu gizli bir yerde saklayın: tüm cihazlarınızı kaybederseniz kitaplığınızı onunla geri alırsınız.</string>
+    <string name="storage_setup_done">Eşzamanlama kuruldu. Kurtarma kodunuzu gizli bir yerde saklayın: tüm cihazlarınızı kaybederseniz kitaplığınızı onunla geri alırsınız.</string>
     <string name="done">Bitti</string>
     <string name="recovery_code_title">Kurtarma kodunuz</string>
     <string name="recovery_code_explanation">Tüm cihazlarınızı kaybederseniz kitaplığınızı geri almak için bu kodu yeni bir cihaza girin. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir, bu yüzden kodu gizli bir yerde saklayın.</string>

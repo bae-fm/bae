@@ -111,9 +111,9 @@
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
-    <string name="settings_remove_library_explanation">Remove esta biblioteca deste dispositivo: o dispositivo sai da biblioteca e depois a cópia dele e os arquivos baixados são excluídos. A biblioteca no local na nuvem não é afetada.</string>
+    <string name="settings_remove_library_explanation">Remove esta biblioteca deste dispositivo: o dispositivo sai da biblioteca e depois a cópia dele e os arquivos baixados são excluídos. A biblioteca continua no armazenamento e nos seus outros dispositivos.</string>
     <string name="settings_remove_library_confirm_title">Remover esta biblioteca deste dispositivo?</string>
-    <string name="settings_remove_library_confirm_body">Primeiro este dispositivo sai da biblioteca, o que exige conexão. A biblioteca no local na nuvem não é afetada.</string>
+    <string name="settings_remove_library_confirm_body">Primeiro este dispositivo sai da biblioteca, o que exige conexão. A biblioteca continua no armazenamento e nos seus outros dispositivos.</string>
     <string name="unsent_edits_body">Remover a biblioteca deste dispositivo as descarta.</string>
     <string name="settings_remove">Remover</string>
     <string name="settings_provider">Provedor</string>
@@ -134,7 +134,7 @@
     <string name="onboarding_add_device">Adicionar dispositivo</string>
     <string name="onboarding_icon_description">ícone do bae</string>
     <string name="onboarding_camera_permission_required">É necessária permissão de câmera para escanear QR codes</string>
-    <string name="oauth_unconfigured">Esta biblioteca precisa de login na nuvem, que não está configurado nesta versão.</string>
+    <string name="oauth_unconfigured">O login no armazenamento desta biblioteca não está configurado nesta versão.</string>
     <string name="signing_in">Iniciando sessão…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -239,8 +239,8 @@
     <string name="onboarding_next_check">Próxima verificação em %1$s</string>
     <string name="onboarding_check_now">Verificar agora</string>
     <string name="pending_update_no_store">Nenhuma loja de apps neste dispositivo pode atualizar o bae.</string>
-    <string name="storage_setup_title">Configurar um local na nuvem</string>
-    <string name="settings_set_up_cloud_home_explanation">Esta biblioteca está só neste dispositivo. Um local na nuvem permite que seus outros dispositivos e sua casa a usem.</string>
+    <string name="storage_setup_title">Configurar sincronização</string>
+    <string name="settings_set_up_sync_explanation">Esta biblioteca está só neste dispositivo. A sincronização a mantém no armazenamento, onde seus outros dispositivos e sua casa podem usá-la.</string>
     <string name="storage_setup_choose">Onde esta biblioteca deve ficar?</string>
     <string name="storage_s3_endpoint_hint">Deixe vazio para o Amazon S3.</string>
     <string name="storage_s3_advanced">Avançado</string>
@@ -263,7 +263,7 @@
     <string name="storage_onedrive_folder_name">Nome da pasta</string>
     <string name="storage_onedrive_create">Criar</string>
     <string name="storage_onedrive_use_folder">Usar esta pasta</string>
-    <string name="storage_setup_done">O local na nuvem desta biblioteca está configurado. Guarde seu código de recuperação em um lugar privado: se você perder todos os seus dispositivos, é com ele que recupera sua biblioteca.</string>
+    <string name="storage_setup_done">A sincronização está configurada. Guarde seu código de recuperação em um lugar privado: se você perder todos os seus dispositivos, é com ele que recupera sua biblioteca.</string>
     <string name="done">Concluído</string>
     <string name="recovery_code_title">Seu código de recuperação</string>
     <string name="recovery_code_explanation">Se você perder todos os seus dispositivos, digite este código em um novo para recuperar sua biblioteca. Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca, então guarde-o em um lugar privado.</string>

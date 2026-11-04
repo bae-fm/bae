@@ -257,7 +257,7 @@ struct LibraryRemovalConfirmationTests {
             text
                 == String(
                     localized:
-                        "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; any copy in the cloud is untouched."
+                        "This library can't be opened, so any changes on this Mac that weren't sent are lost. Its copy on this Mac is deleted; if the library is kept in storage, it stays there."
                 )
         )
     }

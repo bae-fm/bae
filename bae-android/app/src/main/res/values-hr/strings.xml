@@ -111,9 +111,9 @@
     <string name="copy">Kopiraj</string>
     <string name="hide">Sakrij</string>
     <string name="settings_remove_library">Ukloni ovu fonoteku s ovog uređaja</string>
-    <string name="settings_remove_library_explanation">Uklanja ovu fonoteku s ovog uređaja: uređaj napušta fonoteku, a zatim se brišu njegova kopija i preuzete datoteke. Fonoteka u pohrani u oblaku ostaje netaknuta.</string>
+    <string name="settings_remove_library_explanation">Uklanja ovu fonoteku s ovog uređaja: uređaj napušta fonoteku, a zatim se brišu njegova kopija i preuzete datoteke. Fonoteka ostaje u pohrani i na vašim drugim uređajima.</string>
     <string name="settings_remove_library_confirm_title">Ukloniti ovu fonoteku s ovog uređaja?</string>
-    <string name="settings_remove_library_confirm_body">Ovaj uređaj najprije napušta fonoteku, za što je potrebna veza. Fonoteka u pohrani u oblaku ostaje netaknuta.</string>
+    <string name="settings_remove_library_confirm_body">Ovaj uređaj najprije napušta fonoteku, za što je potrebna veza. Fonoteka ostaje u pohrani i na vašim drugim uređajima.</string>
     <string name="unsent_edits_body">Uklanjanjem fonoteke s ovog uređaja one se odbacuju.</string>
     <string name="settings_remove">Ukloni</string>
     <string name="settings_provider">Pružatelj usluge</string>
@@ -134,7 +134,7 @@
     <string name="onboarding_add_device">Dodaj uređaj</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Za skeniranje QR kodova potrebna je dozvola za kameru</string>
-    <string name="oauth_unconfigured">Ova fonoteka zahtijeva prijavu u oblak, koja nije konfigurirana u ovoj verziji.</string>
+    <string name="oauth_unconfigured">Prijava u pohranu ove fonoteke nije konfigurirana u ovoj verziji.</string>
     <string name="signing_in">Prijava…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -240,8 +240,8 @@
     <string name="onboarding_next_check">Sljedeća provjera za %1$s</string>
     <string name="onboarding_check_now">Provjeri sada</string>
     <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
-    <string name="storage_setup_title">Postavi pohranu u oblaku</string>
-    <string name="settings_set_up_cloud_home_explanation">Ova je fonoteka pohranjena samo na ovom uređaju. Pohrana u oblaku omogućuje vašim drugim uređajima i kućanstvu da je koriste.</string>
+    <string name="storage_setup_title">Postavi sinkronizaciju</string>
+    <string name="settings_set_up_sync_explanation">Ova je fonoteka pohranjena samo na ovom uređaju. Sinkronizacija je drži u pohrani, gdje je mogu koristiti vaši drugi uređaji i kućanstvo.</string>
     <string name="storage_setup_choose">Gdje pohraniti ovu fonoteku?</string>
     <string name="storage_s3_endpoint_hint">Ostavite prazno za Amazon S3.</string>
     <string name="storage_s3_advanced">Napredno</string>
@@ -264,7 +264,7 @@
     <string name="storage_onedrive_folder_name">Naziv mape</string>
     <string name="storage_onedrive_create">Stvori</string>
     <string name="storage_onedrive_use_folder">Koristi ovu mapu</string>
-    <string name="storage_setup_done">Pohrana u oblaku za ovu fonoteku je postavljena. Čuvajte svoj kod za oporavak na privatnom mjestu: ako izgubite sve svoje uređaje, njime vraćate svoju fonoteku.</string>
+    <string name="storage_setup_done">Sinkronizacija je postavljena. Čuvajte svoj kod za oporavak na privatnom mjestu: ako izgubite sve svoje uređaje, njime vraćate svoju fonoteku.</string>
     <string name="done">Gotovo</string>
     <string name="recovery_code_title">Vaš kod za oporavak</string>
     <string name="recovery_code_explanation">Ako izgubite sve svoje uređaje, unesite ovaj kod na novom uređaju da biste vratili svoju fonoteku. Svatko tko ga ima i pristup vašoj pohrani može otvoriti fonoteku, zato ga čuvajte na privatnom mjestu.</string>

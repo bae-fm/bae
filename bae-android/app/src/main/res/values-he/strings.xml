@@ -111,9 +111,9 @@
     <string name="copy">העתקה</string>
     <string name="hide">הסתרה</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
-    <string name="settings_remove_library_explanation">מסיר את הספרייה הזו מהמכשיר הזה: המכשיר עוזב את הספרייה, ואז העותק שלו והקבצים שהורדו נמחקים. הספרייה במיקום שלה בענן לא תיפגע.</string>
+    <string name="settings_remove_library_explanation">מסיר את הספרייה הזו מהמכשיר הזה: המכשיר עוזב את הספרייה, ואז העותק שלו והקבצים שהורדו נמחקים. הספרייה תישאר באחסון ובמכשירים האחרים שלכם.</string>
     <string name="settings_remove_library_confirm_title">להסיר ספרייה זו מהמכשיר הזה?</string>
-    <string name="settings_remove_library_confirm_body">המכשיר הזה עוזב קודם את הספרייה, ולשם כך נדרש חיבור. הספרייה במיקום שלה בענן לא תיפגע.</string>
+    <string name="settings_remove_library_confirm_body">המכשיר הזה עוזב קודם את הספרייה, ולשם כך נדרש חיבור. הספרייה תישאר באחסון ובמכשירים האחרים שלכם.</string>
     <string name="unsent_edits_body">הסרת הספרייה מהמכשיר הזה תמחק אותם.</string>
     <string name="settings_remove">הסר</string>
     <string name="settings_provider">ספק</string>
@@ -134,7 +134,7 @@
     <string name="onboarding_add_device">הוספת מכשיר</string>
     <string name="onboarding_icon_description">סמל bae</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
-    <string name="oauth_unconfigured">ספרייה זו דורשת כניסה לענן, שאינה מוגדרת בגרסה זו.</string>
+    <string name="oauth_unconfigured">הכניסה לאחסון של ספרייה זו אינה מוגדרת בגרסה זו.</string>
     <string name="signing_in">מתחבר…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -240,8 +240,8 @@
     <string name="onboarding_next_check">הבדיקה הבאה בעוד %1$s</string>
     <string name="onboarding_check_now">בדיקה עכשיו</string>
     <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
-    <string name="storage_setup_title">הגדרת מיקום בענן</string>
-    <string name="settings_set_up_cloud_home_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. מיקום בענן מאפשר למכשירים האחרים שלכם ולבני הבית להשתמש בה.</string>
+    <string name="storage_setup_title">הגדר סנכרון</string>
+    <string name="settings_set_up_sync_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. הסנכרון שומר אותה באחסון, שם המכשירים האחרים שלכם ובני הבית יכולים להשתמש בה.</string>
     <string name="storage_setup_choose">היכן לאחסן את הספרייה הזו?</string>
     <string name="storage_s3_endpoint_hint">השאירו ריק עבור Amazon S3.</string>
     <string name="storage_s3_advanced">מתקדם</string>
@@ -264,7 +264,7 @@
     <string name="storage_onedrive_folder_name">שם התיקייה</string>
     <string name="storage_onedrive_create">יצירה</string>
     <string name="storage_onedrive_use_folder">שימוש בתיקייה הזו</string>
-    <string name="storage_setup_done">המיקום בענן של הספרייה הזו הוגדר. שמרו את קוד השחזור שלכם במקום פרטי: אם תאבדו את כל המכשירים שלכם, הוא מחזיר לכם את הספרייה.</string>
+    <string name="storage_setup_done">הסנכרון הוגדר. שמרו את קוד השחזור שלכם במקום פרטי: אם תאבדו את כל המכשירים שלכם, הוא מחזיר לכם את הספרייה.</string>
     <string name="done">סיום</string>
     <string name="recovery_code_title">קוד השחזור שלכם</string>
     <string name="recovery_code_explanation">אם תאבדו את כל המכשירים שלכם, הזינו את הקוד הזה במכשיר חדש כדי לקבל את הספרייה בחזרה. כל מי שיש לו את הקוד וגישה לאחסון שלכם יכול לפתוח את הספרייה, לכן שמרו אותו במקום פרטי.</string>

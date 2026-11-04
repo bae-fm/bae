@@ -114,9 +114,9 @@
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
     <string name="settings_remove_library">Fjern dette biblioteket fra denne enheten</string>
-    <string name="settings_remove_library_explanation">Fjerner dette biblioteket fra denne enheten: enheten forlater biblioteket, og deretter slettes kopien og de nedlastede filene. Biblioteket på skyplasseringen er urørt.</string>
+    <string name="settings_remove_library_explanation">Fjerner dette biblioteket fra denne enheten: enheten forlater biblioteket, og deretter slettes kopien og de nedlastede filene. Biblioteket blir værende i lagringen og på de andre enhetene dine.</string>
     <string name="settings_remove_library_confirm_title">Fjerne dette biblioteket fra denne enheten?</string>
-    <string name="settings_remove_library_confirm_body">Enheten forlater først biblioteket, og det krever tilkobling. Biblioteket på skyplasseringen er urørt.</string>
+    <string name="settings_remove_library_confirm_body">Enheten forlater først biblioteket, og det krever tilkobling. Biblioteket blir værende i lagringen og på de andre enhetene dine.</string>
     <string name="unsent_edits_body">Hvis du fjerner biblioteket fra denne enheten, forkastes de.</string>
     <string name="settings_remove">Fjern</string>
     <string name="settings_provider">Leverandør</string>
@@ -137,7 +137,7 @@
     <string name="onboarding_add_device">Legg til enhet</string>
     <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Kameratillatelse kreves for å skanne QR-koder</string>
-    <string name="oauth_unconfigured">Dette biblioteket krever skypålogging, som ikke er satt opp i denne versjonen.</string>
+    <string name="oauth_unconfigured">Pålogging til bibliotekets lagring er ikke satt opp i denne versjonen.</string>
     <string name="signing_in">Logger på…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
@@ -236,8 +236,8 @@
     <string name="onboarding_next_check">Neste sjekk om %1$s</string>
     <string name="onboarding_check_now">Sjekk nå</string>
     <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
-    <string name="storage_setup_title">Konfigurer en skyplassering</string>
-    <string name="settings_set_up_cloud_home_explanation">Dette biblioteket ligger bare på denne enheten. En skyplassering lar de andre enhetene dine og husstanden din bruke det.</string>
+    <string name="storage_setup_title">Sett opp synkronisering</string>
+    <string name="settings_set_up_sync_explanation">Dette biblioteket ligger bare på denne enheten. Synkronisering holder det i lagringen, der de andre enhetene dine og husstanden din kan bruke det.</string>
     <string name="storage_setup_choose">Hvor skal dette biblioteket lagres?</string>
     <string name="storage_s3_endpoint_hint">La stå tomt for Amazon S3.</string>
     <string name="storage_s3_advanced">Avansert</string>
@@ -260,7 +260,7 @@
     <string name="storage_onedrive_folder_name">Mappenavn</string>
     <string name="storage_onedrive_create">Opprett</string>
     <string name="storage_onedrive_use_folder">Bruk denne mappen</string>
-    <string name="storage_setup_done">Bibliotekets skyplassering er konfigurert. Oppbevar gjenopprettingskoden din et privat sted: Hvis du mister alle enhetene dine, får du biblioteket tilbake med den.</string>
+    <string name="storage_setup_done">Synkroniseringen er konfigurert. Oppbevar gjenopprettingskoden din et privat sted: Hvis du mister alle enhetene dine, får du biblioteket tilbake med den.</string>
     <string name="done">Ferdig</string>
     <string name="recovery_code_title">Gjenopprettingskoden din</string>
     <string name="recovery_code_explanation">Hvis du mister alle enhetene dine, skriver du inn denne koden på en ny enhet for å få biblioteket tilbake. Alle som har koden og tilgang til lagringen din, kan åpne biblioteket, så oppbevar den et privat sted.</string>
