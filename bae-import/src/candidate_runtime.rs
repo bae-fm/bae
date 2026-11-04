@@ -33,8 +33,8 @@
 
 use super::candidate_key::CandidateKey;
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
-use super::handle::{ImportEvent, ScanEvent};
 use super::types::ImportProgress;
+use crate::{ImportEvent, ScanEvent};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

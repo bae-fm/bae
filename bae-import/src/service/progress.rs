@@ -22,7 +22,7 @@ impl ImportService {
     }
 
     pub(super) fn emit_phase_progress_on(
-        event_tx: &crate::handle::ImportEventBus,
+        event_tx: &crate::ImportEventBus,
         run: super::ImportRun<'_>,
         id: &str,
         percent: Option<u8>,
@@ -37,8 +37,8 @@ impl ImportService {
         id: &str,
         percent: Option<u8>,
         phase: ImportPhase,
-    ) -> crate::handle::ImportEvent {
-        crate::handle::ImportEvent::ImportProgress {
+    ) -> crate::ImportEvent {
+        crate::ImportEvent::ImportProgress {
             candidate_key: run.candidate_key.clone(),
             progress: ImportProgress::Progress {
                 id: id.to_string(),

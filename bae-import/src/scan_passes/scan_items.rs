@@ -137,7 +137,7 @@ pub(super) async fn announce_scan_write(
     }
     let event_tx = &services.event_tx;
     for candidate_key in write.superseded_keys() {
-        event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        event_tx.send(crate::ImportEvent::Scan(ScanEvent::CandidateRemoved {
             candidate_key: candidate_key.clone(),
         }));
     }
@@ -156,7 +156,7 @@ pub(super) async fn announce_regrouped(
     services: &crate::ImportServices,
 ) -> Result<(), crate::ImportError> {
     for candidate_key in &regrouped.removed {
-        services.event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        services.event_tx.send(crate::ImportEvent::Scan(ScanEvent::CandidateRemoved {
             candidate_key: candidate_key.clone(),
         }));
     }
@@ -183,14 +183,14 @@ async fn announce_item(
         && bae_preferences::preferences(&services.database).await?.identification.automatic;
     match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
-            event_tx.send(crate::handle::ImportEvent::Scan(if actionable {
+            event_tx.send(crate::ImportEvent::Scan(if actionable {
                 ScanEvent::FolderCandidate { candidate, found_while_automatic: automatic }
             } else {
                 ScanEvent::CandidateDiscovered { candidate }
             }));
         }
         ScanItem::Invalid(candidate) => {
-            event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)));
+            event_tx.send(crate::ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)));
         }
     }
     Ok(())

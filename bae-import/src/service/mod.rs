@@ -160,7 +160,7 @@ impl ImportExpectation {
 
 pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
-    event_tx: crate::handle::ImportEventBus,
+    event_tx: crate::ImportEventBus,
     /// What the bus's events have said about every candidate, held here for
     /// the standing a commit ends.
     runtime: CandidateRuntime,

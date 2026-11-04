@@ -33,6 +33,8 @@ pub mod discid;
 mod discid_hash;
 mod error;
 #[cfg(desktop)]
+mod event_bus;
+#[cfg(desktop)]
 pub mod extraction;
 #[cfg(desktop)]
 mod file_evidence;
@@ -135,7 +137,7 @@ pub use volume::VolumeKind;
 #[cfg(desktop)]
 #[derive(Clone)]
 pub(crate) struct ImportServices {
-    event_tx: handle::ImportEventBus,
+    event_tx: ImportEventBus,
     /// The library's store, which import reads and writes directly.
     database: bae_db::Database,
     /// Import's own tables in that store.
@@ -171,7 +173,7 @@ pub(crate) struct ImportServices {
 #[cfg(desktop)]
 impl ImportServices {
     pub(crate) fn new(
-        event_tx: handle::ImportEventBus,
+        event_tx: ImportEventBus,
         database: bae_db::Database,
         catalogs: CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -237,6 +239,10 @@ pub use cover_art::{CoverChoice, CoverImageSource};
 pub use error::ImportError;
 pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityConflictChoice};
 #[cfg(desktop)]
+pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use event_bus::{ImportProgressFeed, ScanEvents};
+#[cfg(desktop)]
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(desktop)]
 pub use folder_scan_status::{
@@ -256,11 +262,9 @@ pub use grouping::GroupingBlock;
 pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
-    CandidateStanding, GroupedSearchResults, ImportCandidateSnapshot, ImportEvent, ImportEventBus,
-    ImportEvents, ImportServiceHandle, ImportStart, ScanEvent,
+    CandidateStanding, GroupedSearchResults, ImportCandidateSnapshot, ImportServiceHandle,
+    ImportStart,
 };
-#[cfg(all(desktop, any(test, feature = "test-utils")))]
-pub use handle::{ImportProgressFeed, ScanEvents};
 #[cfg(desktop)]
 pub use identification::IdentificationHandle;
 #[cfg(desktop)]

@@ -572,10 +572,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         .is_some());
 
     while let Ok(event) = events.try_recv() {
-        if let crate::handle::ImportEvent::Scan(crate::ScanEvent::FolderCandidate {
-            candidate,
-            ..
-        }) = event
+        if let crate::ImportEvent::Scan(crate::ScanEvent::FolderCandidate { candidate, .. }) = event
         {
             assert_eq!(candidate.path, album);
             return;

@@ -54,7 +54,7 @@ impl ImportService {
         tables.clear_candidate_standings().await?;
         tables.close_import_lists().await?;
         let runtime = CandidateRuntime::new(tables, diagnostics.clone());
-        let event_tx = crate::handle::ImportEventBus::new(runtime.clone());
+        let event_tx = crate::ImportEventBus::new(runtime.clone());
         let services = crate::ImportServices::new(
             event_tx,
             database,

@@ -8,7 +8,7 @@ use super::*;
 use crate::handle::tests::{
     await_import_outcome, make_artist, picked_stored_candidate_with, shut_down, StoredCandidate,
 };
-use crate::handle::{ImportEvent, ImportServiceHandle};
+use crate::{ImportEvent, ImportServiceHandle};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_util::test_channels::HANG_GUARD;
 use tempfile::TempDir;

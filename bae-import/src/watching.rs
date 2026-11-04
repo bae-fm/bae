@@ -3,11 +3,11 @@
 //! reports, and the periodic check of folders on network volumes), starting
 //! each pass over a root (`crate::scan_passes`) or its removal.
 
-use crate::handle::ScanEvent;
 use crate::scan_passes::{
     spawn_root_pass, RootScanCompletion, RootScanStarter, RootScanTask, ScanServices,
 };
 use crate::volume::{volume_kind, VolumeKind};
+use crate::ScanEvent;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

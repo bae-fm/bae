@@ -608,7 +608,7 @@ async fn assert_reading_progress(destination: ImportDestination) {
     let mut reading_percents = Vec::new();
     loop {
         match events.try_recv() {
-            Ok(crate::handle::ImportEvent::ImportProgress {
+            Ok(crate::ImportEvent::ImportProgress {
                 progress:
                     ImportProgress::Progress {
                         percent: Some(percent),

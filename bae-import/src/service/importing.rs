@@ -44,7 +44,7 @@ impl ImportService {
                         &error,
                     );
                 }
-                self.event_tx.send(crate::handle::ImportEvent::ImportProgress {
+                self.event_tx.send(crate::ImportEvent::ImportProgress {
                     candidate_key,
                     progress: ImportProgress::Cancelled { import_id },
                 });
@@ -85,7 +85,7 @@ impl ImportService {
                 );
             }
 
-            self.event_tx.send(crate::handle::ImportEvent::ImportProgress {
+            self.event_tx.send(crate::ImportEvent::ImportProgress {
                 candidate_key,
                 progress: ImportProgress::Failed { error, import_id },
             });
@@ -129,7 +129,7 @@ impl ImportService {
         let import_start = std::time::Instant::now();
         self.event_tx
             .send_once_written(
-                crate::handle::ImportEvent::ImportProgress {
+                crate::ImportEvent::ImportProgress {
                     candidate_key: candidate_key.clone(),
                     progress: ImportProgress::Preparing {
                         import_id: import_id.clone(),
@@ -245,7 +245,7 @@ impl ImportService {
         if !new_artists.is_empty() {
             self.event_tx
                 .send_once_written(
-                    crate::handle::ImportEvent::ImportProgress {
+                    crate::ImportEvent::ImportProgress {
                         candidate_key: candidate_key.clone(),
                         progress: ImportProgress::Preparing {
                             import_id: import_id.clone(),
@@ -622,7 +622,7 @@ impl ImportService {
                 album_id: album_id.to_string(),
             },
         };
-        self.event_tx.send(crate::handle::ImportEvent::ImportProgress {
+        self.event_tx.send(crate::ImportEvent::ImportProgress {
             candidate_key: candidate_key.clone(),
             progress,
         });

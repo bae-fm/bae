@@ -34,7 +34,7 @@ pub(super) async fn announce_scan_failure(
 ) {
     let on_network_volume = volume_kind(root, &services.diagnostics).await == VolumeKind::Network;
     let watched_folder = crate::WatchedFolder::from_path(root.to_path_buf());
-    services.event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+    services.event_tx.send(crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
         status: crate::WatchedFolderScanStatus {
             watched_folder_path: watched_folder.path,
             watched_folder_name: watched_folder.name,
@@ -140,7 +140,7 @@ async fn begin_scan(
     let _commit = services.folder_state_commit.lock("begin a scan").await;
     let generation = services.tables.begin_folder_scan(root, volume).await?;
     let watched_folder = crate::WatchedFolder::from_path(root.to_path_buf());
-    event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+    event_tx.send(crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
         status: crate::WatchedFolderScanStatus {
             watched_folder_path: watched_folder.path,
             watched_folder_name: watched_folder.name,
@@ -373,11 +373,10 @@ async fn walk_and_reconcile(
         pruned
     );
     for candidate_key in pruned {
-        event_tx
-            .send(crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
+        event_tx.send(crate::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
     }
     let watched_folder = crate::WatchedFolder::from_path(root.to_path_buf());
-    event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+    event_tx.send(crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
         status: crate::WatchedFolderScanStatus {
             watched_folder_path: watched_folder.path,
             watched_folder_name: watched_folder.name,
@@ -386,7 +385,7 @@ async fn walk_and_reconcile(
         },
     }));
 
-    event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::Finished));
+    event_tx.send(crate::ImportEvent::Scan(ScanEvent::Finished));
     drop(commit);
     Ok(())
 }

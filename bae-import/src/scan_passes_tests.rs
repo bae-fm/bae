@@ -11,7 +11,7 @@ use bae_util::test_channels::HANG_GUARD;
 /// commit lock of their own.
 pub(crate) fn test_scan_services(
     test: &TestService,
-    event_tx: crate::handle::ImportEventBus,
+    event_tx: crate::ImportEventBus,
     folder_watcher: Arc<FolderWatcher>,
     file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
     directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
@@ -245,11 +245,11 @@ pub(crate) fn announced_candidates(events: &mut crate::ImportEvents) -> Vec<Stri
     let mut announced = Vec::new();
     while let Ok(event) = events.try_recv() {
         match event {
-            crate::handle::ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. })
-            | crate::handle::ImportEvent::Scan(ScanEvent::CandidateDiscovered {
-                candidate, ..
-            }) => announced.push(candidate.relative_folder.text()),
-            crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+            crate::ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. })
+            | crate::ImportEvent::Scan(ScanEvent::CandidateDiscovered { candidate, .. }) => {
+                announced.push(candidate.relative_folder.text())
+            }
+            crate::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
                 announced.push(format!("removed {candidate_key}"))
             }
             _ => {}

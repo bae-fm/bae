@@ -7,7 +7,6 @@ use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
 mod cancel;
@@ -17,7 +16,7 @@ mod covers;
 mod discogs_key;
 mod draft_source;
 mod edits;
-mod event_bus;
+mod events;
 mod file_decisions;
 mod file_tags;
 mod identification;
@@ -35,9 +34,6 @@ mod verdict_write;
 mod watch;
 
 pub use commit::CandidateStanding;
-pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
-#[cfg(any(test, feature = "test-utils"))]
-pub use event_bus::{ImportProgressFeed, ScanEvents};
 pub use import::ImportStart;
 pub(crate) use picks::external_metadata_with_cover;
 pub use runtime::ImportCandidateSnapshot;
@@ -45,9 +41,11 @@ pub use search::GroupedSearchResults;
 pub(crate) use verdict_write::VerdictWrite;
 
 use super::candidate_runtime::CandidateRuntime;
-use crate::folder_scan_status::WatchedFolderScanStatus;
 use crate::watching::WatcherCommand;
 use crate::CandidateRuntimeSnapshot;
+use crate::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
+#[cfg(any(test, feature = "test-utils"))]
+use crate::{ImportProgressFeed, ScanEvents};
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]

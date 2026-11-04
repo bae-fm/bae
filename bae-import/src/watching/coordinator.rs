@@ -195,7 +195,7 @@ pub(super) struct Coordinator {
     /// loop, since it can take seconds, and one runs per root at a time.
     checking: HashSet<PathBuf>,
     checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
-    event_tx: crate::handle::ImportEventBus,
+    event_tx: crate::ImportEventBus,
     tables: crate::tables::ImportTables,
     diagnostics: bae_diagnostics::Diagnostics,
 }
@@ -206,7 +206,7 @@ impl Coordinator {
     /// to [`Self::take`].
     pub(super) fn new(
         active_roots: ActiveRoots,
-        event_tx: crate::handle::ImportEventBus,
+        event_tx: crate::ImportEventBus,
         tables: crate::tables::ImportTables,
         diagnostics: bae_diagnostics::Diagnostics,
         checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
@@ -337,13 +337,12 @@ impl Coordinator {
                 let crate::tables::WatchedFoldersRemoved { removed_keys, watched: folders } =
                     removed;
                 for candidate_key in removed_keys {
-                    self.event_tx.send(crate::handle::ImportEvent::Scan(
-                        ScanEvent::CandidateRemoved { candidate_key },
-                    ));
+                    self.event_tx.send(crate::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                        candidate_key,
+                    }));
                 }
-                self.event_tx.send(crate::handle::ImportEvent::Scan(
-                    ScanEvent::WatchedFoldersChanged { folders },
-                ));
+                self.event_tx
+                    .send(crate::ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }));
                 for (path, waiter) in scan_waiters {
                     if waiter.send(Err(format!("{} is no longer watched", path.display()))).is_err()
                     {

@@ -280,7 +280,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
             reader.first.lock().unwrap().clone().expect("a folder was read before the held one");
         let announced = tokio::time::timeout(HANG_GUARD, async {
             loop {
-                if let crate::handle::ImportEvent::Scan(
+                if let crate::ImportEvent::Scan(
                     ScanEvent::FolderCandidate { candidate, .. }
                     | ScanEvent::CandidateDiscovered { candidate, .. },
                 ) = events.recv().await.expect("the scan is still announcing")
@@ -358,14 +358,14 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
 
     let failed = loop {
         match events.try_recv().expect("the failed pass announced its failure") {
-            crate::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+            crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
                     crate::WatchedFolderScanStatus {
                         status: crate::FolderScanStatus::Failed { error },
                         ..
                     },
             }) => break error,
-            crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+            crate::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
                 panic!("missing root removed {candidate_key}")
             }
             _ => {}
@@ -389,7 +389,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
 
     loop {
         match events.try_recv().expect("the failed pass announced its failure") {
-            crate::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+            crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
                     crate::WatchedFolderScanStatus {
                         status: crate::FolderScanStatus::Failed { error },
@@ -399,7 +399,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
                 assert!(error.to_lowercase().contains("not a directory"), "got: {error}");
                 break;
             }
-            crate::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged { .. }) => {}
+            crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged { .. }) => {}
             event => panic!("expected scan status, got {event:?}"),
         }
     }

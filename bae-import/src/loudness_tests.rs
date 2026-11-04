@@ -1,7 +1,7 @@
 use super::*;
 use bae_audio::sparse_buffer::create_sparse_buffer;
 
-fn progress(event_tx: &crate::handle::ImportEventBus, total: Option<u64>) -> LoudnessProgress {
+fn progress(event_tx: &crate::ImportEventBus, total: Option<u64>) -> LoudnessProgress {
     LoudnessProgress::new(
         event_tx,
         &crate::CandidateKey::test("test"),
@@ -39,7 +39,7 @@ async fn measured_frames_control_progress_value_and_determinacy() {
     let mut percents = Vec::new();
     while let Ok(event) = rx.try_recv() {
         match event {
-            crate::handle::ImportEvent::ImportProgress {
+            crate::ImportEvent::ImportProgress {
                 progress: crate::types::ImportProgress::Progress { percent, phase, .. },
                 ..
             } => {
@@ -217,7 +217,7 @@ fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
 fn loudness_percents(rx: &mut crate::ImportEvents) -> Vec<u8> {
     let mut percents = Vec::new();
     while let Ok(event) = rx.try_recv() {
-        if let crate::handle::ImportEvent::ImportProgress {
+        if let crate::ImportEvent::ImportProgress {
             progress: crate::types::ImportProgress::Progress { percent, phase, .. },
             ..
         } = event
@@ -233,7 +233,7 @@ fn loudness_percents(rx: &mut crate::ImportEvents) -> Vec<u8> {
 /// none of them varies the candidate key, release id, or import id, and none
 /// asserts on one.
 async fn measure(
-    event_tx: &crate::handle::ImportEventBus,
+    event_tx: &crate::ImportEventBus,
     audio_formats: &mut [bae_db::DbAudioFormat],
     audio_segments: &[bae_db::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,

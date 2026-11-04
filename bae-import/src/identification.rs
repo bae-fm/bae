@@ -26,11 +26,11 @@
 //! read the release.
 
 use super::folder_scanner::FolderCandidate;
-use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use crate::extraction::ExtractionSource;
 use crate::tables::NewImportCandidateVerdict;
 use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles};
+use crate::{ImportEvent, ImportServiceHandle, ScanEvent};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_identify::LookupChoices;
 use bae_identify::{IdentifyState, TerminalVerdict, TitleSearch};

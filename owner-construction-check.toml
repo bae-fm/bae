@@ -309,13 +309,13 @@ HeldRangesWatch = "SparseStreamingBuffer"
 TrackBufferedFollow = "PlaybackHandle"
 # A watch on one discovery's device list.
 DeviceListWatch = "PublishedDevices"
-# Import events off the bus; one import's progress and the scan events,
-# which the import service handle forwards from the bus; the percents of the
-# running imports, and a test's feeds of the runtime's changes and counts;
-# and the snapshots of the extraction feeding one identify run.
+# Import events off the bus, and one import's progress and the scan events
+# the bus filters from them; the percents of the running imports, and a
+# test's feeds of the runtime's changes and counts; and the snapshots of the
+# extraction feeding one identify run.
 ImportEvents = "ImportEventBus"
-ImportProgressFeed = "ImportServiceHandle"
-ScanEvents = "ImportServiceHandle"
+ImportProgressFeed = "ImportEventBus"
+ScanEvents = "ImportEventBus"
 ImportPercentsWatch = "CandidateRuntime"
 CandidateRuntimeChanges = "CandidateRuntime"
 IdentificationCounts = "CandidateRuntime"

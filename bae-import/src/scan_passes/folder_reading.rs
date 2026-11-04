@@ -298,7 +298,7 @@ async fn read_folder_again(
         announce_scan_write(entry, &write, services).await?;
     }
     for candidate_key in &pruned {
-        services.event_tx.send(crate::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        services.event_tx.send(crate::ImportEvent::Scan(ScanEvent::CandidateRemoved {
             candidate_key: candidate_key.clone(),
         }));
     }

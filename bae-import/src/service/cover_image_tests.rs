@@ -157,7 +157,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             result.expect("automatic artwork should skip unsupported snapshot data");
             let release_id = loop {
                 match events.try_recv() {
-                    Ok(crate::handle::ImportEvent::ImportProgress {
+                    Ok(crate::ImportEvent::ImportProgress {
                         progress: ImportProgress::Complete { id, .. },
                         ..
                     }) => break id,

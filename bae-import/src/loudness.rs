@@ -58,7 +58,7 @@ enum TrackOutcome {
 /// call, and never moves backward when tracks finish out of order.
 #[derive(Clone)]
 struct LoudnessProgress {
-    event_tx: crate::handle::ImportEventBus,
+    event_tx: crate::ImportEventBus,
     candidate_key: crate::CandidateKey,
     release_id: String,
     import_id: String,
@@ -74,7 +74,7 @@ struct LoudnessProgress {
 
 impl LoudnessProgress {
     fn new(
-        event_tx: &crate::handle::ImportEventBus,
+        event_tx: &crate::ImportEventBus,
         candidate_key: &crate::CandidateKey,
         release_id: &str,
         import_id: &str,
@@ -115,7 +115,7 @@ impl LoudnessProgress {
     }
 
     fn send(&self, percent: Option<u8>) {
-        self.event_tx.send(crate::handle::ImportEvent::ImportProgress {
+        self.event_tx.send(crate::ImportEvent::ImportProgress {
             candidate_key: self.candidate_key.clone(),
             progress: crate::types::ImportProgress::Progress {
                 id: self.release_id.clone(),
@@ -479,7 +479,7 @@ fn decode_track(
 /// `diagnostics`: what the panicking code got wrong is not known, so nothing
 /// it measured is committed.
 pub(super) async fn measure_loudness(
-    event_tx: &crate::handle::ImportEventBus,
+    event_tx: &crate::ImportEventBus,
     parallelism: NonZeroUsize,
     audio_formats: &mut [bae_db::DbAudioFormat],
     audio_segments: &[bae_db::DbAudioSegment],

@@ -4,9 +4,9 @@
 //! a person decided; each stores what it read and announces what changed.
 
 use crate::folder_scanner::{FolderEntry, ScanItem};
-use crate::handle::ScanEvent;
 use crate::volume::{directory_modified_at, volume_kind, VolumeKind};
 use crate::watching::{FolderReadingRequest, FolderWatcher, RootPass};
+use crate::ScanEvent;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

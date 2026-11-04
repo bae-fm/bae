@@ -1,8 +1,13 @@
 //! The import event channel: the events the import service emits, each
-//! recorded in the candidate runtime, then handed to every reader, and the
-//! readers the handle gives out.
+//! recorded in the candidate runtime, then handed to every reader.
 
-use super::*;
+use crate::candidate_runtime::CandidateRuntime;
+use crate::folder_scan_status::WatchedFolderScanStatus;
+use crate::folder_scanner::{FolderCandidate, InvalidCandidate};
+use crate::types::ImportProgress;
+use crate::watched_folder::WatchedFolder;
+use std::sync::Arc;
+use tokio::sync::mpsc;
 
 /// Every event the import service emits, on one channel.
 #[derive(Debug, Clone)]
@@ -263,6 +268,49 @@ impl EventDelivery {
 }
 
 impl ImportEventBus {
+    /// Every `ImportProgress` of `import_id` from its start, none dropped,
+    /// read on `runtime`.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn import_progress_feed(
+        &self,
+        import_id: String,
+        runtime: &tokio::runtime::Handle,
+    ) -> ImportProgressFeed {
+        let mut events = self.every_event_from_start();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        runtime.spawn(async move {
+            while let Some(event) = events.recv().await {
+                if tx.is_closed() {
+                    break;
+                }
+                if let ImportEvent::ImportProgress { progress, .. } = event {
+                    if progress.import_id() == import_id && tx.send(progress).is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+        ImportProgressFeed(rx)
+    }
+
+    /// Every scan event from now on, none dropped, read on `runtime`, for a
+    /// test to wait on.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn scan_events(&self, runtime: &tokio::runtime::Handle) -> ScanEvents {
+        let mut events = self.every_event();
+        let (reader, scan_events) = mpsc::unbounded_channel();
+        runtime.spawn(async move {
+            while let Some(event) = events.recv().await {
+                if let ImportEvent::Scan(event) = event {
+                    if reader.send(event).is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+        ScanEvents(scan_events)
+    }
+
     /// A bus recording into `runtime`.
     pub fn new(runtime: CandidateRuntime) -> Self {
         Self {
@@ -391,84 +439,6 @@ impl ImportEventBus {
             .changed
             .wait_while(state, |state| matches!(state, HoldState::Held))
             .unwrap();
-    }
-}
-
-impl ImportServiceHandle {
-    /// Every `ImportProgress` of `import_id` from its start, none dropped.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_import(&self, import_id: String) -> ImportProgressFeed {
-        let mut events = self.event_tx.every_event_from_start();
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        self.runtime_handle.spawn(async move {
-            while let Some(event) = events.recv().await {
-                if tx.is_closed() {
-                    break;
-                }
-                if let ImportEvent::ImportProgress { progress, .. } = event {
-                    if progress.import_id() == import_id && tx.send(progress).is_err() {
-                        break;
-                    }
-                }
-            }
-        });
-        ImportProgressFeed(rx)
-    }
-
-    /// Every import event since the service started, for the one
-    /// identification queue that takes it (see
-    /// [`super::ImportEventBus::take_feed`]).
-    pub(crate) fn take_event_feed(&self) -> Option<ImportEvents> {
-        self.event_tx.take_feed()
-    }
-
-    /// Every import event from now on, none dropped, for a test to wait on.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_event(&self) -> ImportEvents {
-        self.event_tx.every_event()
-    }
-
-    /// Every scan event from now on, none dropped, for a test to wait on.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_scan_event_for_test(&self) -> ScanEvents {
-        let mut events = self.event_tx.every_event();
-        let (reader, scan_events) = mpsc::unbounded_channel();
-        self.runtime_handle.spawn(async move {
-            while let Some(event) = events.recv().await {
-                if let ImportEvent::Scan(event) = event {
-                    if reader.send(event).is_err() {
-                        break;
-                    }
-                }
-            }
-        });
-        ScanEvents(scan_events)
-    }
-
-    /// Stop the first thread that reports a measured percent of `phase` of
-    /// an import before the report is recorded or delivered, until
-    /// [`Self::release_progress`], for a test that acts while an import is
-    /// partway through.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn hold_progress_at(&self, phase: crate::ImportPhase) {
-        self.event_tx.hold_progress_at(phase);
-    }
-
-    /// Wait until a thread is stopped where [`Self::hold_progress_at`] said.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn progress_held(&self) {
-        self.event_tx.send_held().await;
-    }
-
-    /// Let the stopped thread go on.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn release_progress(&self) {
-        self.event_tx.release_send();
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn emit_event_for_test(&self, event: ImportEvent) {
-        self.event_tx.send(event);
     }
 }
 
