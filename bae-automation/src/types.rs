@@ -144,11 +144,10 @@ pub struct AutomationCandidateCommon {
     pub is_added: bool,
 }
 
-/// A candidate's identify state, badges, signals and import status.
+/// A candidate's identify state, signals and import status.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCandidateRuntime {
     pub identify_state: AutomationIdentifyState,
-    pub toolbar: Vec<AutomationToolbarSignal>,
     pub signals: Option<AutomationSignals>,
     pub import_status: Option<AutomationImportStatus>,
 }
@@ -260,52 +259,6 @@ pub struct AutomationSignals {
     pub text: AutomationTextSignal,
     pub isrcs: Vec<String>,
     pub track_titles: Vec<String>,
-}
-
-/// Mirrors bae-library's `identify::SignalKind`.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationSignalKind {
-    DiscId,
-    Barcode,
-    Catalog,
-    Isrc,
-}
-
-/// Mirrors bae-library's `identify::SignalState`.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationSignalState {
-    LookingUp,
-    Found {
-        count: u32,
-    },
-    NoMatch,
-    Skipped,
-    /// The signal holds a value and nobody was asked about it, for `reason`.
-    NotAsked {
-        reason: AutomationNotAskedReason,
-    },
-    Failed {
-        failure: AutomationLookupFailure,
-    },
-}
-
-/// Mirrors bae-library's `identify::SignalOption`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationSignalOption {
-    pub value: String,
-    pub chosen: bool,
-}
-
-/// Mirrors bae-library's `identify::ToolbarSignal`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationToolbarSignal {
-    pub kind: AutomationSignalKind,
-    pub shown: Option<String>,
-    pub state: AutomationSignalState,
-    pub excluded: bool,
-    pub options: Vec<AutomationSignalOption>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

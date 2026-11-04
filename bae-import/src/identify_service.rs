@@ -408,8 +408,6 @@ impl Driver {
 
         // Every state `step` returns is sent, including one identical to the
         // last (a stale response the reducer's `for_barcode` guard dropped).
-        // The signals toolbar is a projection of the state, so a consumer
-        // that draws the badge row derives it from this same value.
         self.inner.event_tx.send(ImportEvent::IdentifyStateChanged {
             candidate_key: self.key.clone(),
             run: self.run,

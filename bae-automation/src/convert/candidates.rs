@@ -23,16 +23,12 @@ pub(crate) async fn automation_candidate_from_folder(
     let candidate = &folder.candidate;
     let draft = folder.draft();
     let live = runtime.get(&candidate.key());
-    let (toolbar, view) = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
-        Some(bae_import::IdentificationInFlight::Run(published)) => {
-            (published.toolbar(), published.view())
+    let view = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
+        Some(bae_import::IdentificationInFlight::Run(published)) => published.view(),
+        Some(bae_import::IdentificationInFlight::Queued) | None => {
+            bae_identify::IdentifyStateView::from(folder.resumed_identify_state.clone())
         }
-        Some(bae_import::IdentificationInFlight::Queued) | None => (
-            folder.resumed_identify_state.toolbar(),
-            bae_identify::IdentifyStateView::from(folder.resumed_identify_state.clone()),
-        ),
     };
-    let toolbar = toolbar.into_iter().map(AutomationToolbarSignal::from_core).collect();
     // Whether each release the state names is in the library is read now,
     // live: the state itself carries no snapshot of it.
     let library_statuses = services
@@ -55,7 +51,6 @@ pub(crate) async fn automation_candidate_from_folder(
             .map(AutomationSourceAudioSummary::from_core),
         content_hash: candidate.files.content_hash(),
         runtime: AutomationCandidateRuntime {
-            toolbar,
             identify_state: automation_identify_state(view, library_statuses),
             signals: folder.signals.clone().map(AutomationSignals::from_core),
             import_status: automation_import_status(

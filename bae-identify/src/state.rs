@@ -666,7 +666,6 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     IdentifyState::Found { findings, track_count, ledger, context }
 }
 
-mod badges;
 mod context;
 mod numbers;
 mod pressings;

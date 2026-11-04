@@ -29,7 +29,6 @@ pub mod row_facts;
 pub mod shared_album;
 pub mod signals;
 pub mod state;
-pub mod toolbar;
 pub mod verdict;
 pub mod verdict_summary;
 pub mod view;
@@ -47,7 +46,6 @@ pub use state::{
     IdentifyState, IsrcProgress, LookupOutcome, LookupResults, LookupState, ProviderLookup,
     SearchProgress, TitleSearch, ValueLookup,
 };
-pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use verdict_summary::{FolderCheck, VerdictKind, VerdictSummary};
 pub use view::{

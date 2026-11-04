@@ -216,7 +216,6 @@ fn signals_that_share_no_result_store_as_one_match_list() {
         barcode: BarcodeEvidence {
             had_source: true,
             results: vec![mk_result("rel-b")],
-            matched: Some("012345".to_string()),
             ..Default::default()
         },
         ..mk_context(9)

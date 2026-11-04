@@ -626,7 +626,6 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     let shared = printing_the_folder_s_code(result(MB, "mb-shared"));
     context.disc.answers = vec![vec![shared.clone(), result(MB, "mb-only"), other_album.clone()]];
     context.barcode.results = vec![shared];
-    context.barcode.matched = Some("A".to_string());
 
     let disc_answers = context.disc.answers[0].clone();
     let mut state = crate::state::re_derive_for_tests(context);
@@ -671,7 +670,6 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     };
     context.disc.answers = vec![vec![result(MB, "mb-disc")]];
     context.barcode.results = vec![result(MB, "mb-barcode")];
-    context.barcode.matched = Some("A".to_string());
 
     let IdentifyStateView::Found { groups, narrowed_out_count, .. } =
         IdentifyStateView::from(crate::state::re_derive_for_tests(context))

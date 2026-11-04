@@ -232,14 +232,6 @@ impl BarcodeProgress {
             | BarcodeProgress::Skipped => &[],
         }
     }
-
-    /// The earliest code any provider found something for.
-    pub fn matched_barcode(&self) -> Option<String> {
-        self.lookups()
-            .iter()
-            .find(|lookup| !lookup.results().is_empty())
-            .map(|lookup| lookup.value.clone())
-    }
 }
 
 /// Every provider's lookup of one value: a barcode or a chosen catalog number.

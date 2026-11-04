@@ -5,7 +5,6 @@ use super::*;
 use crate::state::tests::step;
 use crate::state::tests::*;
 use crate::state::*;
-use crate::toolbar::{SignalKind, SignalState};
 use crate::IdentifyFailure;
 use crate::{IdentifyStateView, IsrcStepView, LookupView, NotAskedReason};
 
@@ -79,7 +78,7 @@ fn a_failed_isrc_search_fails_the_run() {
     assert_eq!(run.isrc, IsrcStepView::Absent);
 }
 
-/// A disc ID left out is never asked about, its badge says so, and the answer
+/// A disc ID left out is never asked about, its ledger says so, and the answer
 /// is the barcode's alone.
 #[test]
 fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
@@ -94,9 +93,11 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
     );
     assert!(effects.contains(&lookup_barcode(MB, "BAR")));
 
-    let disc = badge(&state, SignalKind::DiscId);
-    assert!(disc.excluded, "the disc badge reads as left out");
-    assert_eq!(disc.state, SignalState::NotAsked { reason: crate::NotAskedReason::LeftOut });
+    assert_eq!(
+        disc_lookups(&state),
+        [LookupView::NotAsked { reason: NotAskedReason::LeftOut }],
+        "the ledger shows the disc ID left out"
+    );
 
     let (state, _) = step(
         state,
@@ -123,9 +124,9 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
     );
     assert!(effects.iter().any(|effect| matches!(effect, Effect::LookupDiscid { .. })));
 
-    let barcode = badge(&state, SignalKind::Barcode);
-    assert!(barcode.excluded, "the barcode badge reads as left out");
-    assert_eq!(barcode.state, SignalState::NotAsked { reason: crate::NotAskedReason::LeftOut });
+    let rows = barcode_rows(&state);
+    assert_eq!(left_out(&rows), [("BAR", true)], "the ledger shows the barcode left out");
+    assert_eq!(cell(&rows[0], MB), &LookupView::NotAsked { reason: NotAskedReason::LeftOut });
 
     let (state, _) = step(
         state,
@@ -185,8 +186,8 @@ fn an_answer_from_a_source_the_run_never_asked_lands_nowhere() {
     assert_eq!(after, state, "the unasked source's answer changed nothing");
 }
 
-/// Leaving one of two codes out asks only about the other, and the badge's
-/// options say which.
+/// Leaving one of two codes out asks only about the other, and the ledger
+/// says which.
 #[test]
 fn leaving_one_of_two_codes_out_asks_only_about_the_other() {
     let (state, _) = started_with_choices(vec![MB], excluding(false, &["BOXSET"]));
@@ -200,19 +201,10 @@ fn leaving_one_of_two_codes_out_asks_only_about_the_other() {
         "only the code the run still asks about is asked: {effects:?}"
     );
 
-    let barcode = badge(&state, SignalKind::Barcode);
-    assert!(!barcode.excluded, "one code left out of two is not the signal left out");
-    assert_eq!(
-        barcode
-            .options
-            .iter()
-            .map(|option| (option.value.as_str(), option.chosen))
-            .collect::<Vec<_>>(),
-        vec![("BOXSET", false), ("DISC", true)]
-    );
+    assert_eq!(left_out(&barcode_rows(&state)), [("BOXSET", true), ("DISC", false)]);
 }
 
-/// Leaving every code out asks about none, keeps the codes, and the badge says
+/// Leaving every code out asks about none, keeps the codes, and the ledger says
 /// they were left out.
 #[test]
 fn leaving_every_code_out_asks_about_none_of_them() {
@@ -233,10 +225,7 @@ fn leaving_every_code_out_asks_about_none_of_them() {
         other => panic!("expected the barcode pipe settled unasked, got {other:?}"),
     }
 
-    let barcode = badge(&state, SignalKind::Barcode);
-    assert!(barcode.excluded, "no code is asked about, so the badge says so");
-    assert_eq!(barcode.state, SignalState::NotAsked { reason: crate::NotAskedReason::LeftOut });
-    assert!(barcode.options.iter().all(|option| !option.chosen));
+    assert_eq!(left_out(&barcode_rows(&state)), [("BOXSET", true), ("DISC", true)]);
 }
 
 /// A folder of two discs asks about each disc's ID, settles once both have
@@ -381,15 +370,13 @@ fn every_code_is_asked_of_every_provider() {
     let (state, _) = step(state, barcode_missed(DG, "B"));
     // The last answer settles the lookups.
     let (state, _) = step(state, barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]));
-    let IdentifyState::Found { context, findings: Findings { matches, .. }, .. } = state else {
+    let IdentifyState::Found { findings: Findings { matches, .. }, .. } = state else {
         panic!("expected Found");
     };
     // Both codes' answers compete in the one ranking.
     let mut found: Vec<&str> = matches.iter().map(|m| m.release_id.as_str()).collect();
     found.sort_unstable();
     assert_eq!(found, vec!["dg-a", "mb-b"]);
-    // The badge names the earliest code anything was found for.
-    assert_eq!(context.barcode.matched.as_deref(), Some("A"));
 }
 
 /// A second answer from the same provider about the same code changes nothing.
@@ -455,7 +442,7 @@ fn a_failed_provider_does_not_hide_the_other_s_answer() {
     let (state, _) = step(state, barcode_missed(MB, "A"));
     let (state, _) = step(state, barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]));
     match state {
-        IdentifyState::Failed { failures, context, findings: Findings { matches, .. }, .. } => {
+        IdentifyState::Failed { failures, findings: Findings { matches, .. }, .. } => {
             assert_eq!(
                 failures,
                 vec![crate::IdentifyFailure::Barcode(SourceFailure {
@@ -464,7 +451,6 @@ fn a_failed_provider_does_not_hide_the_other_s_answer() {
                 })]
             );
             assert_eq!(matches.len(), 1, "MusicBrainz's match still stands");
-            assert_eq!(context.barcode.matched.as_deref(), Some("B"));
         }
         other => panic!("expected Failed with the surviving match, got {other:?}"),
     }
@@ -494,8 +480,172 @@ fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
             if discs.iter().all(|disc| disc.lookup
                 == crate::LookupView::NotAsked { reason: no_catalog })
     ));
-    assert_eq!(
-        badge(&next, SignalKind::DiscId).state,
-        SignalState::NotAsked { reason: no_catalog }
+}
+
+// What the ledger shows of each lookup while the run is out and once it has
+// settled.
+
+/// A run in flight lays out each signal: the disc ID and the barcode asked,
+/// the catalog number offered and asked of nobody, and no ISRC to ask.
+#[test]
+fn a_run_in_flight_lays_out_each_signal() {
+    let (state, _) = update(
+        started(),
+        signals(
+            disc("disc-hash"),
+            BarcodeSignal::Settled { codes: artwork_codes(&["012345678905"]) },
+            &["LBL-001"],
+        ),
     );
+    let ledger = ledger_of(&state);
+
+    assert_eq!(disc_lookups(&state), [LookupView::LookingUp]);
+    let barcodes = barcode_rows(&state);
+    assert_eq!(left_out(&barcodes), [("012345678905", false)]);
+    assert_eq!(cell(&barcodes[0], MB), &LookupView::LookingUp);
+    let (numbers, offered) = catalog_rows(&state);
+    assert!(numbers.is_empty(), "no number is in effect: {numbers:?}");
+    assert_eq!(offered, ["LBL-001"]);
+    assert_eq!(ledger.isrc, IsrcStepView::Absent);
+}
+
+/// Every catalog number extraction finds is offered.
+#[test]
+fn every_extracted_catalog_number_is_offered() {
+    let (state, _) = update(
+        started(),
+        signals_with_catalogs(
+            disc("disc-hash"),
+            BarcodeSignal::Absent,
+            vec!["LBL 001".to_string(), "LBL 999".to_string()],
+        ),
+    );
+    assert_eq!(catalog_rows(&state).1, ["LBL 001", "LBL 999"]);
+}
+
+/// A failed disc-ID lookup reads as failed while the barcode is still out.
+#[test]
+fn a_failed_disc_id_lookup_reads_failed_while_the_run_is_out() {
+    let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
+    let failure = LookupFailure::Provider { status: Some(503) };
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Err(failure.clone()),
+        },
+    );
+    assert!(matches!(state, IdentifyState::Triangulating { .. }), "got {state:?}");
+    assert_eq!(disc_lookups(&state), [LookupView::Failed { failure }]);
+}
+
+/// A failed barcode lookup reads as failed.
+#[test]
+fn a_failed_barcode_lookup_reads_failed() {
+    let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
+    let failure = LookupFailure::Provider { status: Some(500) };
+    let (state, _) = step(state, barcode_failed(MB, "012345678905", failure.clone()));
+    assert_eq!(cell(&barcode_rows(&state)[0], MB), &LookupView::Failed { failure });
+}
+
+/// A failed barcode lookup still reads as failed once the run settles.
+#[test]
+fn a_failed_barcode_lookup_reads_failed_once_settled() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Absent,
+            BarcodeSignal::Settled { codes: artwork_codes(&["012345678905"]) },
+            &[],
+        ),
+    );
+    let failure = LookupFailure::Provider { status: Some(500) };
+    let (state, _) = step(state, barcode_failed(MB, "012345678905", failure.clone()));
+    assert!(matches!(state, IdentifyState::Failed { .. }), "got {state:?}");
+    assert_eq!(cell(&barcode_rows(&state)[0], MB), &LookupView::Failed { failure });
+}
+
+/// A failed disc-ID lookup still reads as failed once settled, not as a
+/// no-match.
+#[test]
+fn a_failed_disc_id_lookup_reads_failed_once_settled() {
+    let (state, _) = update(started(), signals(disc("disc-hash"), BarcodeSignal::Absent, &[]));
+    let failure = LookupFailure::Provider { status: Some(503) };
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Err(failure.clone()),
+        },
+    );
+    assert!(matches!(state, IdentifyState::Failed { .. }), "got {state:?}");
+    assert_eq!(disc_lookups(&state), [LookupView::Failed { failure }]);
+}
+
+/// A folder with neither a disc ID nor a barcode source asks nothing of
+/// either.
+#[test]
+fn a_folder_with_no_disc_id_or_barcode_asks_neither() {
+    let (state, _) = update(started(), signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[]));
+    assert!(matches!(state, IdentifyState::ManualOnly { .. }), "got {state:?}");
+    let context = state.context().expect("a settled run keeps its context");
+    assert_eq!(context.disc.signal, DiscIdSignal::Absent);
+    assert!(!context.barcode.had_source);
+}
+
+/// A barcode failure while the disc ID is still out waits for it, then settles
+/// as failed, and the ledger still shows it.
+#[test]
+fn barcode_failure_before_disc_settles_is_retained_through_combine() {
+    let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
+
+    let failure = LookupFailure::Provider { status: Some(500) };
+    let source_failure = SourceFailure { source: MB.catalog(), failure: failure.clone() };
+    let (state, _) = step(state, barcode_failed(MB, "BAR", failure.clone()));
+    // Disc-ID hasn't settled yet — the barcode failure alone can't terminate.
+    assert!(
+        matches!(state, IdentifyState::Triangulating { .. }),
+        "barcode failure while disc still looking up stays Triangulating, got {state:?}"
+    );
+
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("g-x"),
+            )])),
+        },
+    );
+
+    assert!(matches!(
+        &state,
+        IdentifyState::Failed { failures, .. }
+            if failures == &vec![IdentifyFailure::Barcode(source_failure.clone())]
+    ));
+    assert_eq!(cell(&barcode_rows(&state)[0], MB), &LookupView::Failed { failure });
+}
+
+/// The barcode lookup settles only once every provider has answered.
+#[test]
+fn the_barcode_lookup_waits_for_every_provider() {
+    let (state, _) = update(
+        started_with(vec![MB, DG]),
+        signals(
+            DiscIdSignal::Absent,
+            BarcodeSignal::Settled { codes: artwork_codes(&["012345678905"]) },
+            &[],
+        ),
+    );
+    let (state, _) =
+        step(state, barcode_matched(DG, "012345678905", vec![discogs_pair("dg-1", Some("g-x"))]));
+    assert!(matches!(state, IdentifyState::Triangulating { .. }), "got {state:?}");
+    let row = &barcode_rows(&state)[0];
+    assert_eq!(cell(row, MB), &LookupView::LookingUp);
+    assert!(matches!(cell(row, DG), LookupView::Found { count: 1, .. }));
+
+    let (state, _) = step(state, barcode_missed(MB, "012345678905"));
+    assert!(matches!(state, IdentifyState::Found { .. }), "got {state:?}");
+    assert_eq!(cell(&barcode_rows(&state)[0], MB), &LookupView::NoMatch);
 }

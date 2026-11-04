@@ -6,7 +6,6 @@ use super::*;
 use crate::documents::{ReleaseDocument, ReleaseReading};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 use crate::state::PressingKey;
-use crate::toolbar::{SignalKind, SignalState, ToolbarSignal};
 use crate::LookupChoices;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::LookupCatalog;
@@ -144,13 +143,47 @@ pub(super) fn choosing(catalogs: &[&str]) -> LookupChoices {
     }
 }
 
-/// The toolbar badge for one signal.
-pub(super) fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
-    state
-        .toolbar()
-        .into_iter()
-        .find(|signal| signal.kind == kind)
-        .unwrap_or_else(|| panic!("the toolbar carries a {kind:?} badge"))
+/// Each disc ID's lookup, as the run's ledger lays it out.
+pub(super) fn disc_lookups(state: &IdentifyState) -> Vec<crate::LookupView> {
+    match ledger_of(state).disc_id {
+        crate::DiscIdStepView::Read { discs } => {
+            discs.into_iter().map(|disc| disc.lookup).collect()
+        }
+        other => panic!("expected the disc IDs read, got {other:?}"),
+    }
+}
+
+/// The barcode rows of the run's ledger.
+pub(super) fn barcode_rows(state: &IdentifyState) -> Vec<crate::SignalValueRow> {
+    match ledger_of(state).barcode {
+        crate::BarcodeStepView::Rows { rows, .. } => rows,
+        other => panic!("expected the barcodes laid out, got {other:?}"),
+    }
+}
+
+/// The catalog numbers of the run's ledger: the rows in effect or struck out,
+/// and the numbers only offered.
+pub(super) fn catalog_rows(state: &IdentifyState) -> (Vec<crate::SignalValueRow>, Vec<String>) {
+    match ledger_of(state).catalog {
+        crate::CatalogStepView::Numbers { rows, candidates, .. } => {
+            (rows, candidates.into_iter().map(|candidate| candidate.value).collect())
+        }
+        other => panic!("expected the catalog numbers laid out, got {other:?}"),
+    }
+}
+
+/// What `source` answered for `row`.
+pub(super) fn cell(row: &crate::SignalValueRow, source: LookupCatalog) -> &crate::LookupView {
+    &row.cells
+        .iter()
+        .find(|cell| cell.source == source)
+        .unwrap_or_else(|| panic!("{} has a {source:?} cell", row.value))
+        .lookup
+}
+
+/// Each row's value and whether the person left it out.
+pub(super) fn left_out(rows: &[crate::SignalValueRow]) -> Vec<(&str, bool)> {
+    rows.iter().map(|row| (row.value.as_str(), row.excluded)).collect()
 }
 
 /// The audio every run in these tests is over: five tracks.
@@ -420,14 +453,15 @@ fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
     };
 
     let absent = settle(BarcodeSignal::Absent);
-    assert_eq!(absent.toolbar()[1].state, SignalState::Skipped);
+    assert!(!absent.context().expect("a settled run keeps its context").barcode.had_source);
     match absent {
         IdentifyState::ManualOnly { track_count, .. } => assert_eq!(track_count, 5),
         other => panic!("expected ManualOnly for an absent barcode source, got {other:?}"),
     }
 
     let scanned = settle(BarcodeSignal::Settled { codes: Vec::new() });
-    assert_eq!(scanned.toolbar()[1].state, SignalState::NoMatch);
+    let barcode = &scanned.context().expect("a settled run keeps its context").barcode;
+    assert!(barcode.had_source && barcode.codes.is_empty(), "read, and holding no code");
     assert!(
         matches!(scanned, IdentifyState::NotFoundAnywhere { .. }),
         "scanned-and-empty is a no-match, not a skip",
@@ -508,7 +542,6 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
             assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
             assert_eq!(context.disc.results().len(), 1);
             assert_eq!(context.barcode.results.len(), 1);
-            assert_eq!(context.barcode.matched.as_deref(), Some("BAR"));
         }
         other => panic!("expected Found, got {other:?}"),
     }

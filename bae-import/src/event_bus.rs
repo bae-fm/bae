@@ -17,8 +17,7 @@ pub enum ImportEvent {
         candidate_key: crate::CandidateKey,
         progress: ImportProgress,
     },
-    /// An identify run's new state, in full; the signals toolbar shows a
-    /// projection of it.
+    /// An identify run's new state, in full.
     IdentifyStateChanged {
         candidate_key: crate::CandidateKey,
         /// The run this state belongs to. A settled run keeps reporting, so

@@ -190,25 +190,3 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
     assert_eq!(json["storage_state"], serde_json::json!({"place": "on_one_device"}));
     assert_eq!(json["transfer_action"], serde_json::Value::Null);
 }
-
-#[cfg(desktop)]
-#[test]
-fn toolbar_signal_maps_snake_case_and_structured_failure() {
-    use bae_catalogs::LookupFailure;
-    use bae_identify::{SignalKind, SignalState, ToolbarSignal};
-
-    let signal = ToolbarSignal {
-        kind: SignalKind::DiscId,
-        shown: Some("disc-hash".to_string()),
-        state: SignalState::Failed { failure: LookupFailure::Provider { status: Some(503) } },
-        excluded: false,
-        options: Vec::new(),
-    };
-
-    let json = serde_json::to_value(AutomationToolbarSignal::from_core(signal)).unwrap();
-    assert_eq!(json["kind"], "disc_id");
-    assert_eq!(json["shown"], "disc-hash");
-    assert_eq!(json["state"]["kind"], "failed");
-    assert_eq!(json["state"]["failure"]["kind"], "provider");
-    assert_eq!(json["state"]["failure"]["status"], 503);
-}

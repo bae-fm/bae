@@ -116,8 +116,6 @@ pub struct BarcodeEvidence {
     pub results: Vec<MetadataResult>,
     /// The providers that failed; others may still have answered.
     pub failures: Vec<SourceFailure>,
-    /// Which barcode produced `results`. `None` until matched.
-    pub matched: Option<String>,
     /// Why nobody was asked about any of the codes, where nobody was.
     pub not_asked: Option<NotAskedReason>,
 }
@@ -133,7 +131,6 @@ impl BarcodeEvidence {
     fn record(&mut self, progress: &BarcodeProgress) {
         self.results = progress.results();
         self.failures = progress.failures();
-        self.matched = progress.matched_barcode();
         self.not_asked = match progress {
             BarcodeProgress::NotAsked { reason, .. } => Some(*reason),
             _ => None,

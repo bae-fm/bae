@@ -534,47 +534,6 @@ pub(super) fn cover_selection(selection: AutomationCoverSelection) -> CoverSelec
 }
 
 mirror_enum! {
-    #[cfg(desktop)]
-    AutomationSignalKind = bae_identify::SignalKind,
-    from_core: pub(crate) fn,
-    variants: { DiscId, Barcode, Catalog, Isrc },
-}
-
-mirror_enum! {
-    #[cfg(desktop)]
-    AutomationSignalState = bae_identify::SignalState,
-    from_core: pub(crate) fn,
-    variants: {
-        LookingUp,
-        Found { count },
-        NoMatch,
-        Skipped,
-        NotAsked { reason: (AutomationNotAskedReason) },
-        Failed { failure: (AutomationLookupFailure) },
-    },
-}
-
-mirror_struct! {
-    #[cfg(desktop)]
-    AutomationSignalOption = bae_identify::SignalOption,
-    from_core: pub(crate) fn,
-    fields: { value, chosen },
-}
-
-mirror_struct! {
-    #[cfg(desktop)]
-    AutomationToolbarSignal = bae_identify::ToolbarSignal,
-    from_core: pub(crate) fn,
-    fields: {
-        kind: (AutomationSignalKind),
-        shown,
-        state: (AutomationSignalState),
-        excluded,
-        options: (each AutomationSignalOption),
-    },
-}
-
-mirror_enum! {
     AutomationPrepareStep = PrepareStep,
     from_core: pub(crate) fn,
     variants: { Queued, ValidatingSourceFiles, FetchingArtistPictures },

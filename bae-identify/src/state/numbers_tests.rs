@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::documents::ReleaseDocument;
+use crate::signals::DiscIdSignal;
 use crate::state::tests::step;
 use crate::state::tests::*;
 use crate::state::*;
@@ -479,4 +480,208 @@ fn an_unchosen_catalog_number_narrows_nothing() {
         }
         other => panic!("expected Found, got {other:?}"),
     }
+}
+
+// A number the person picked, as the ledger shows its search.
+
+/// A run whose disc ID found two releases of one group, settled `Found` with
+/// "LBL 001" offered but not chosen.
+fn state_with_catalog_offered(providers: Vec<LookupCatalog>) -> IdentifyState {
+    let (state, _) = update(
+        started_with(providers),
+        signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Ok(DiscIdAnswer::for_test(vec![
+                pair("rel-a", Some("g-x")),
+                pair("rel-b", Some("g-x")),
+            ])),
+        },
+    );
+    state
+}
+
+/// The same run started with "LBL 001" chosen, with the effects it dispatched.
+fn run_with_catalog_chosen(providers: Vec<LookupCatalog>) -> (IdentifyState, Vec<Effect>) {
+    let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
+    let mut folder = signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]);
+    folder.text_pool = vec![crate::signals::TextLine {
+        text: "Album [LBL 001]".to_string(),
+        origin: crate::signals::TextOrigin::FolderName,
+    }];
+    let (state, _) = update(state, folder);
+    // rel-b carries the chosen number, which the folder's text prints.
+    let mut numbered = pair("rel-b", Some("g-x"));
+    numbered.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("LBL 001"))];
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "disc-hash".into(),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair("rel-a", Some("g-x")), numbered])),
+        },
+    );
+    (state, chosen_effects)
+}
+
+/// The ledger row of the number `value`.
+fn number_row(state: &IdentifyState, value: &str) -> crate::SignalValueRow {
+    catalog_rows(state)
+        .0
+        .into_iter()
+        .find(|row| row.value == value)
+        .unwrap_or_else(|| panic!("the ledger lays out {value}"))
+}
+
+/// A chosen number is looked up from the start, and the release carrying
+/// it, which the text prints, leads.
+#[test]
+fn a_chosen_catalog_number_is_looked_up_from_the_start() {
+    let (state, effects) = run_with_catalog_chosen(vec![MB]);
+    assert_eq!(
+        effects,
+        vec![Effect::LookupCatalog { source: MB, catalog: "LBL 001".to_string(), artist: None }]
+    );
+    assert_eq!(cell(&number_row(&state, "LBL 001"), MB), &crate::LookupView::LookingUp);
+
+    let (state, _) = step(
+        state,
+        IdentifyEvent::CatalogLookupAnswered {
+            source: MB,
+            for_catalog: "LBL 001".to_string(),
+            artist: None,
+            outcome: Ok(vec![pair("rel-b", Some("g-x"))]),
+        },
+    );
+    match state {
+        IdentifyState::Found { findings: Findings { ref matches, .. }, ref ledger, .. } => {
+            assert_eq!(
+                matches.iter().map(|m| m.release_id.as_str()).collect::<Vec<_>>(),
+                vec!["rel-b"]
+            );
+            assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
+        }
+        ref other => panic!("expected Found, got {other:?}"),
+    }
+    let row = number_row(&state, "LBL 001");
+    assert!(!row.excluded);
+    assert!(matches!(cell(&row, MB), crate::LookupView::Found { count: 1, .. }));
+}
+
+/// With no number chosen, none is asked about and the catalog takes no part.
+#[test]
+fn a_run_with_no_chosen_number_asks_about_none_of_them() {
+    let state = state_with_catalog_offered(vec![MB]);
+    assert!(matches!(state, IdentifyState::Found { .. }));
+    let (numbers, offered) = catalog_rows(&state);
+    assert!(numbers.is_empty(), "no number is in effect: {numbers:?}");
+    assert_eq!(offered, ["LBL 001"]);
+}
+
+/// A chosen number the settled snapshot no longer offers leaves the run.
+#[test]
+fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
+    let (state, effects) = started_with_choices(vec![MB], choosing(&["GONE 001"]));
+    assert_eq!(
+        effects,
+        vec![Effect::LookupCatalog { source: MB, catalog: "GONE 001".to_string(), artist: None }]
+    );
+    let (state, _) =
+        update(state, signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &["LBL 001"]));
+    // Nothing is left in flight to wait on.
+    assert!(!matches!(state, IdentifyState::Triangulating { .. }), "got {state:?}");
+    let (numbers, offered) = catalog_rows(&state);
+    assert!(numbers.is_empty(), "no number is in effect: {numbers:?}");
+    assert_eq!(offered, ["LBL 001"]);
+}
+
+/// A chosen number is not dropped against a snapshot still being read.
+#[test]
+fn a_chosen_number_survives_a_snapshot_still_being_read() {
+    let (state, _) = started_with_choices(vec![MB], choosing(&["LBL 001"]));
+    let (state, _) = step(
+        state,
+        IdentifyEvent::SignalsUpdated {
+            signals: Signals {
+                origin: bae_catalogs::AudioOrigin::default(),
+                disc_id: DiscIdSignal::Absent,
+                barcode: BarcodeSignal::Scanning { codes: Vec::new() },
+                text: crate::signals::TextSignal::Scanning {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
+                isrcs: Vec::new(),
+                track_titles: Vec::new(),
+            },
+            audio: crate::signals::AudioFacts::default(),
+            artwork: crate::signals::ArtworkScan::Absent,
+        },
+    );
+    assert_eq!(
+        cell(&number_row(&state, "LBL 001"), MB),
+        &crate::LookupView::LookingUp,
+        "the chosen number's lookup is still out"
+    );
+}
+
+/// One provider failing a catalog lookup leaves the other's results standing.
+#[test]
+fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
+    let (state, effects) = run_with_catalog_chosen(vec![MB, DG]);
+    assert_eq!(
+        effects,
+        vec![
+            Effect::LookupCatalog { source: MB, catalog: "LBL 001".to_string(), artist: None },
+            Effect::LookupCatalog { source: DG, catalog: "LBL 001".to_string(), artist: None },
+        ]
+    );
+
+    let timeout = bae_catalogs::LookupFailure::Timeout;
+    let (state, _) = step(
+        state,
+        IdentifyEvent::CatalogLookupAnswered {
+            source: DG,
+            for_catalog: "LBL 001".to_string(),
+            artist: None,
+            outcome: Err(timeout.clone()),
+        },
+    );
+    // MusicBrainz is still out, so nothing settles.
+    assert!(matches!(state, IdentifyState::Triangulating { .. }));
+    let row = number_row(&state, "LBL 001");
+    assert_eq!(cell(&row, DG), &crate::LookupView::Failed { failure: timeout.clone() });
+    assert_eq!(cell(&row, MB), &crate::LookupView::LookingUp);
+
+    let (state, _) = step(
+        state,
+        IdentifyEvent::CatalogLookupAnswered {
+            source: MB,
+            for_catalog: "LBL 001".to_string(),
+            artist: None,
+            outcome: Ok(vec![pair("rel-b", Some("g-x"))]),
+        },
+    );
+    match &state {
+        IdentifyState::Failed { failures, findings: Findings { matches, .. }, .. } => {
+            assert_eq!(
+                failures,
+                &vec![crate::IdentifyFailure::Catalog(SourceFailure {
+                    source: DG.catalog(),
+                    failure: timeout,
+                })]
+            );
+            assert_eq!(
+                matches.iter().map(|m| m.release_id.as_str()).collect::<Vec<_>>(),
+                vec!["rel-b"]
+            );
+        }
+        other => panic!("expected Failed with the surviving intersection, got {other:?}"),
+    }
+    assert!(matches!(
+        cell(&number_row(&state, "LBL 001"), MB),
+        crate::LookupView::Found { count: 1, .. }
+    ));
 }
