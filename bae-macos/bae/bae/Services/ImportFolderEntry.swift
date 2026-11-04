@@ -87,7 +87,7 @@ struct ImportFolderEntry {
     /// `DisplayError` is nil when core says the failure has no line — a
     /// cancellation — and there is then no alert to raise. Passing the typed
     /// failure rather than a formatted `String` is what keeps the fault line
-    /// and Copy Details in the alert; `addingContext` puts the operation in
+    /// and Copy details in the alert; `addingContext` puts the operation in
     /// front of core's line without discarding either.
     private func report(_ error: any Error) {
         guard let displayed = DisplayError(error) else { return }

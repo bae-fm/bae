@@ -80,7 +80,7 @@ struct ReleaseEditorSheet: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text("Edit Release")
+                Text("Edit release")
                     .themeText(.heading)
                 Text(displayName)
                     .themeText(.detail)
@@ -96,7 +96,7 @@ struct ReleaseEditorSheet: View {
 }
 
 #if DEBUG
-    #Preview("Edit Release") {
+    #Preview("Edit release") {
         let library = PreviewReleaseLibrary(
             seed: PreviewData.releaseEditSeed(trackCount: 6)
         )

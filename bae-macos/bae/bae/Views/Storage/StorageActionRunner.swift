@@ -33,7 +33,7 @@ final class StorageActionRunner {
     private let uiStore: UiStore
     private let storageManagerStore: StorageManagerStore
 
-    /// Releases awaiting the "Move to Cloud" confirm sheet. Non-nil while
+    /// Releases awaiting the "Move to cloud" confirm sheet. Non-nil while
     /// the sheet is up; the view binds its presentation to this.
     var pendingMoveToCloud: [String]?
 
@@ -184,7 +184,7 @@ final class StorageActionRunner {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = String(localized: "Move Here")
+        panel.prompt = String(localized: "Move here")
         guard panel.runModal() == .OK, let url = panel.url else {
             return nil
         }

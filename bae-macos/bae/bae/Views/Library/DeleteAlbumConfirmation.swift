@@ -11,7 +11,7 @@ struct DeleteAlbumConfirmation: ViewModifier {
 
     func body(content: Content) -> some View {
         content.alert(
-            "Delete Album",
+            "Delete album",
             isPresented: Binding(
                 get: { albumId != nil },
                 set: { presented in

@@ -127,7 +127,7 @@ struct StorageStatusBand: View {
                 Label("Export…", systemImage: "square.and.arrow.up")
             }
             Button(action: { onSaveAs() }) {
-                Label("Save As…", systemImage: "square.and.arrow.down")
+                Label("Save as…", systemImage: "square.and.arrow.down")
             }
         }
     }

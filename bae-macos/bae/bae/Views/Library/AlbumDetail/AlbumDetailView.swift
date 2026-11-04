@@ -139,10 +139,10 @@ struct AlbumDetailView: View {
             exportTask?.cancel()
             storageTask?.cancel()
         }
-        .errorAlert("Transfer Failed", error: $transferError)
-        .errorAlert("Export Failed", error: $exportError)
-        .errorAlert("Delete Failed", error: $deleteError)
-        .alert("Delete Release", isPresented: $showingDeleteConfirmation) {
+        .errorAlert("Transfer failed", error: $transferError)
+        .errorAlert("Export failed", error: $exportError)
+        .errorAlert("Delete failed", error: $deleteError)
+        .alert("Delete release", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 guard let releaseId = releaseIdPendingDelete else { return }
                 releaseIdPendingDelete = nil
@@ -500,7 +500,7 @@ extension AlbumDetailView {
             catch {
                 // No line means a cancellation, which raises no alert. The
                 // typed failure carries through so the alert can still show the
-                // fault and offer Copy Details.
+                // fault and offer Copy details.
                 guard let displayed = DisplayError(error) else { return }
                 uiStore.showError(
                     displayed.addingContext(

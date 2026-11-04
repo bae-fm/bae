@@ -21715,7 +21715,7 @@
         }
       }
     },
-    "Choose Album…" : {
+    "Choose album…" : {
       "comment" : "Import pane: button opening the picker of a library album for the import to join",
       "localizations" : {
         "ar" : {
@@ -21745,7 +21745,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose Album…"
+            "value" : "Choose album…"
           }
         },
         "de" : {
@@ -22061,7 +22061,7 @@
         }
       }
     },
-    "Use the Release's Album" : {
+    "Use the release's album" : {
       "comment" : "Import pane: album picker's link that drops the picked album, so the import joins the album its release names",
       "localizations" : {
         "ar" : {
@@ -22091,7 +22091,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use the Release's Album"
+            "value" : "Use the release's album"
           }
         },
         "de" : {
@@ -32435,179 +32435,6 @@
         }
       }
     },
-    "Copy Details" : {
-      "comment" : "Error alert: copy the diagnostic detail to the clipboard",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "نسخ التفاصيل"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Копиране на детайлите"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopírovat podrobnosti"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopier detaljer"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy Details"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Details kopieren"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αντιγραφή λεπτομερειών"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar detalles"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopioi tiedot"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier les détails"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "העתק פרטים"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopiraj pojedinosti"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Részletek másolása"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copia dettagli"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "詳細をコピー"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "세부 정보 복사"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopier detaljer"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Details kopiëren"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopiuj szczegóły"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar detalhes"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar detalhes"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiază detaliile"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopírovať podrobnosti"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopiera detaljer"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ayrıntıları Kopyala"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скопіювати деталі"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制详情"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "複製詳細資料"
-          }
-        }
-      }
-    },
     "Copy Library ID" : {
       "comment" : "File menu: copy the library ID to the clipboard",
       "localizations" : {
@@ -39180,7 +39007,7 @@
         }
       }
     },
-    "Delete Failed" : {
+    "Delete failed" : {
       "comment" : "Album detail: alert title when deleting a release failed",
       "localizations" : {
         "ar" : {
@@ -39210,7 +39037,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete Failed"
+            "value" : "Delete failed"
           }
         },
         "de" : {
@@ -39526,7 +39353,7 @@
         }
       }
     },
-    "Delete Release" : {
+    "Delete release" : {
       "comment" : "Album detail: confirmation alert title / destructive menu item to delete a release",
       "localizations" : {
         "ar" : {
@@ -39556,7 +39383,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete Release"
+            "value" : "Delete release"
           }
         },
         "de" : {
@@ -39676,7 +39503,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayını Sil"
+            "value" : "Yayını sil"
           }
         },
         "uk" : {
@@ -43678,7 +43505,7 @@
         }
       }
     },
-    "Export Failed" : {
+    "Export failed" : {
       "comment" : "Album detail: alert title when exporting a track fails",
       "localizations" : {
         "ar" : {
@@ -43708,7 +43535,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Export Failed"
+            "value" : "Export failed"
           }
         },
         "de" : {
@@ -43828,7 +43655,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dışa Aktarım Başarısız"
+            "value" : "Dışa aktarım başarısız"
           }
         },
         "uk" : {
@@ -43851,7 +43678,7 @@
         }
       }
     },
-    "Export Here" : {
+    "Export here" : {
       "comment" : "Folder picker prompt: choose the export destination",
       "localizations" : {
         "ar" : {
@@ -43881,7 +43708,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Export Here"
+            "value" : "Export here"
           }
         },
         "de" : {
@@ -44001,7 +43828,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buraya Dışa Aktar"
+            "value" : "Buraya dışa aktar"
           }
         },
         "uk" : {
@@ -46790,7 +46617,7 @@
         }
       }
     },
-    "Formats appear in Save As… on tracks and releases." : {
+    "Formats appear in Save as… on tracks and releases." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -46819,7 +46646,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formats appear in Save As… on tracks and releases."
+            "value" : "Formats appear in Save as… on tracks and releases."
           }
         },
         "de" : {
@@ -46939,7 +46766,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biçimler, parçalarda ve yayınlarda \"Farklı Kaydet…\" içinde görünür."
+            "value" : "Biçimler, parçalarda ve yayınlarda \"Farklı kaydet…\" içinde görünür."
           }
         },
         "uk" : {
@@ -53190,7 +53017,7 @@
         }
       }
     },
-    "Make Local…" : {
+    "Make local…" : {
       "comment" : "Storage action: choose a folder and make a cloud release local",
       "localizations" : {
         "ar" : {
@@ -53220,7 +53047,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Make Local…"
+            "value" : "Make local…"
           }
         },
         "de" : {
@@ -54055,7 +53882,7 @@
         }
       }
     },
-    "Move Here" : {
+    "Move here" : {
       "comment" : "Open/save panel button: confirm moving release files to the chosen folder",
       "localizations" : {
         "ar" : {
@@ -54085,7 +53912,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Move Here"
+            "value" : "Move here"
           }
         },
         "de" : {
@@ -54205,7 +54032,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buraya Taşı"
+            "value" : "Buraya taşı"
           }
         },
         "uk" : {
@@ -54228,7 +54055,7 @@
         }
       }
     },
-    "Move to Cloud" : {
+    "Move to cloud" : {
       "comment" : "Storage action: move a local release to cloud storage",
       "localizations" : {
         "ar" : {
@@ -54258,7 +54085,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Move to Cloud"
+            "value" : "Move to cloud"
           }
         },
         "de" : {
@@ -72453,7 +72280,7 @@
         }
       }
     },
-    "Save As…" : {
+    "Save as…" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -72482,7 +72309,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Save As…"
+            "value" : "Save as…"
           }
         },
         "de" : {
@@ -72602,7 +72429,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Farklı Kaydet…"
+            "value" : "Farklı kaydet…"
           }
         },
         "uk" : {
@@ -74528,7 +74355,7 @@
         }
       }
     },
-    "Set as Primary Release" : {
+    "Set as primary release" : {
       "comment" : "Album detail menu: make this release the album's primary",
       "localizations" : {
         "ar" : {
@@ -74558,7 +74385,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Set as Primary Release"
+            "value" : "Set as primary release"
           }
         },
         "de" : {
@@ -74678,7 +74505,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Birincil Yayın Olarak Ayarla"
+            "value" : "Birincil yayın olarak ayarla"
           }
         },
         "uk" : {
@@ -75220,7 +75047,7 @@
         }
       }
     },
-    "Show in Save As… for" : {
+    "Show in Save as… for" : {
       "comment" : "Format editor: label before the Track/Release toggles",
       "localizations" : {
         "ar" : {
@@ -75250,7 +75077,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show in Save As… for"
+            "value" : "Show in Save as… for"
           }
         },
         "de" : {
@@ -75370,7 +75197,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Şunun için \"Farklı Kaydet…\" içinde göster:"
+            "value" : "Şunun için \"Farklı kaydet…\" içinde göster:"
           }
         },
         "uk" : {
@@ -79195,7 +79022,7 @@
         }
       }
     },
-    "Sort Ascending" : {
+    "Sort ascending" : {
       "comment" : "Album sort pill / composer direction control: switch to ascending order",
       "localizations" : {
         "ar" : {
@@ -79225,7 +79052,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sort Ascending"
+            "value" : "Sort ascending"
           }
         },
         "de" : {
@@ -79345,7 +79172,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Artan Sırala"
+            "value" : "Artan sırala"
           }
         },
         "uk" : {
@@ -79368,7 +79195,7 @@
         }
       }
     },
-    "Sort Descending" : {
+    "Sort descending" : {
       "comment" : "Album sort pill / composer direction control: switch to descending order",
       "localizations" : {
         "ar" : {
@@ -79398,7 +79225,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sort Descending"
+            "value" : "Sort descending"
           }
         },
         "de" : {
@@ -79518,7 +79345,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Azalan Sırala"
+            "value" : "Azalan sırala"
           }
         },
         "uk" : {
@@ -80383,6 +80210,179 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Depolama Yöneticisi"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Менеджер сховища"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储管理器"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存空間管理器"
+          }
+        }
+      }
+    },
+    "Storage manager" : {
+      "comment" : "Menu / window title: the Storage Manager",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مدير التخزين"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управление на хранилището"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Správce úložiště"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagringsstyring"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage manager"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speicherverwaltung"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Διαχείριση αποθήκευσης"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestor de almacenamiento"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tallennustilan hallinta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionnaire de stockage"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מנהל האחסון"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upravitelj pohrane"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tárhelykezelő"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestione archiviazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストレージマネージャ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장소 관리자"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagringsbehandling"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opslagbeheer"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menedżer magazynu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerenciador de armazenamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestor de armazenamento"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manager de stocare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Správca úložiska"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagringshanterare"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depolama yöneticisi"
           }
         },
         "uk" : {
@@ -82135,7 +82135,7 @@
         }
       }
     },
-    "The format Save As… starts with." : {
+    "The format Save as… starts with." : {
       "comment" : "Formats settings: caption under the Defaults section",
       "localizations" : {
         "ar" : {
@@ -82165,7 +82165,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The format Save As… starts with."
+            "value" : "The format Save as… starts with."
           }
         },
         "de" : {
@@ -82285,7 +82285,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"Farklı Kaydet…\" işleminin başladığı biçim."
+            "value" : "\"Farklı kaydet…\" işleminin başladığı biçim."
           }
         },
         "uk" : {
@@ -85249,7 +85249,7 @@
         }
       }
     },
-    "Transfer Failed" : {
+    "Transfer failed" : {
       "comment" : "Album detail: alert title when a storage transfer (pin/unpin/manage) fails",
       "localizations" : {
         "ar" : {
@@ -85279,7 +85279,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transfer Failed"
+            "value" : "Transfer failed"
           }
         },
         "de" : {
@@ -85399,7 +85399,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aktarım Başarısız"
+            "value" : "Aktarım başarısız"
           }
         },
         "uk" : {
@@ -124255,7 +124255,7 @@
         }
       }
     },
-    "Edit Release" : {
+    "Edit release" : {
       "comment" : "Release editor sheet title",
       "localizations" : {
         "ar" : {
@@ -124297,7 +124297,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Edit Release"
+            "value" : "Edit release"
           }
         },
         "es" : {
@@ -124405,7 +124405,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayını Düzenle"
+            "value" : "Yayını düzenle"
           }
         },
         "uk" : {
@@ -129277,7 +129277,7 @@
         }
       }
     },
-    "Date Added" : {
+    "Date added" : {
       "comment" : "Storage Manager column header: when the release was added to the library / library sort field",
       "localizations" : {
         "ar" : {
@@ -129307,7 +129307,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Date Added"
+            "value" : "Date added"
           }
         },
         "de" : {
@@ -129450,7 +129450,7 @@
         }
       }
     },
-    "Delete Album…" : {
+    "Delete album…" : {
       "comment" : "Album grid card menu and album detail menu: delete the album, asking first",
       "localizations" : {
         "ar" : {
@@ -129492,7 +129492,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete Album…"
+            "value" : "Delete album…"
           }
         },
         "es" : {
@@ -129600,7 +129600,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Albümü Sil…"
+            "value" : "Albümü sil…"
           }
         },
         "uk" : {
@@ -129623,7 +129623,7 @@
         }
       }
     },
-    "Delete Album" : {
+    "Delete album" : {
       "comment" : "Album grid and album detail: title of the alert asking before an album is deleted",
       "localizations" : {
         "ar" : {
@@ -129665,7 +129665,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete Album"
+            "value" : "Delete album"
           }
         },
         "es" : {
@@ -129773,7 +129773,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Albümü Sil"
+            "value" : "Albümü sil"
           }
         },
         "uk" : {

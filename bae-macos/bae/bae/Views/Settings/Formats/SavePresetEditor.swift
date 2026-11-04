@@ -207,7 +207,7 @@ struct SavePresetEditor: View {
     }
 
     private var scopeRow: some View {
-        LabeledContent("Show in Save As… for") {
+        LabeledContent("Show in Save as… for") {
             HStack(spacing: ThemeSpace.edge) {
                 Toggle("Track", isOn: appliesToTrackBinding)
                 Toggle("Release", isOn: appliesToReleaseBinding)

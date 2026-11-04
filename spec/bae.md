@@ -168,7 +168,7 @@ first in that order, ties broken by release id. So every album with a release
 has exactly one primary on every device, and two devices that each made a
 different release primary agree on one after they sync. A release joining an
 album goes after the album's others, so an album's first release stays its
-primary. "Set as Primary Release" moves a release before the album's others,
+primary. "Set as primary release" moves a release before the album's others,
 and is refused for a release of another album. Moving or deleting a release
 writes nothing else: the next release in the order is then the primary.
 
@@ -180,9 +180,9 @@ left with no release is never deleted itself: another device may have added a
 release to it while apart. It is inert, since every listing shows only albums
 holding a release, and a release that lands in it later fills it again. Both
 deletes ask first, saying what goes and that it can't be undone. On macOS the
-album detail's menu offers *Delete Release* and *Delete Album…*, and a grid
-card's menu offers *Delete Album…* when it acts on one album; on Android the
-album page's menu offers *Delete Album…*.
+album detail's menu offers *Delete release* and *Delete album…*, and a grid
+card's menu offers *Delete album…* when it acts on one album; on Android the
+album page's menu offers *Delete album…*.
 
 An album credited to the various-artists artist alone is a *compilation*, and
 its tracks show their own artists. The flag is decided from the album's
@@ -320,7 +320,7 @@ join is never printed, and is not kept. One builder makes every line from
 those values: the album page and its track rows, the grid, the queue and now
 playing (and what AirPlay and DLNA devices are sent), search results, the
 import list and catalog picker rows, the identification title search,
-Subsonic's `artist`, and Save As's ARTIST (the track's line) and ALBUMARTIST
+Subsonic's `artist`, and Save as's ARTIST (the track's line) and ALBUMARTIST
 (the album's). A track's line is its own credits, else its album's. Each
 credit still names its artist, so the artist's page lists the album and
 Subsonic lists every credited artist in `artists` (its one `artistId` is the
@@ -746,7 +746,7 @@ The import list shows every candidate in one of three tabs:
 
 Done runs the releases coven still has files of in its upload queue first,
 the first queued first, and then the rest in the list's order. Only a
-release's own files count, as the Storage Manager counts them (§4.2); the
+release's own files count, as the Storage manager counts them (§4.2); the
 list reads the queue as coven's state view `coven_uploads`
 holds it, so it is never waiting on it and never out of step with it.
 
@@ -818,13 +818,13 @@ upload: the tab says it is done. Its pane is that release, to edit as the
 library editor edits it (§3.8), with the folder's images and other files as
 its scan read them: the folder holds no draft once imported. While files of the release wait in this device's
 upload queue, the line under its title names the upload's phase, as the
-Storage Manager does (§4.2): Uploading while any file is being sent, beside a
+Storage manager does (§4.2): Uploading while any file is being sent, beside a
 bar of the bytes of the release's whole size stored or sent, or Queued with no
 bar while its files only wait. The row reads how many of the release's files
 wait and how many are being sent in the list's own read, from the counts the
-Storage Manager reads, so the row changes as each file starts and lands; the
+Storage manager reads, so the row changes as each file starts and lands; the
 bar's bytes arrive apart, in the release's value of the upload transfer stream
-the Storage Manager's chip reads. It names the one release imported from those
+the Storage manager's chip reads. It names the one release imported from those
 files, which Show in Library and a double-click on the row open.
 
 A folder this device didn't import is in Found like any other, whatever another
@@ -1787,7 +1787,7 @@ Other devices go on showing the release without playing it.
   artist image or avatar is part of sending a write, and goes on uploading,
   up to the same number at a time, counted apart from the release files.
 
-**The Storage Manager** lists every release with its album's title and
+**The Storage manager** lists every release with its album's title and
 credits, its media, its files' count and total size, whether it is uploaded,
 whether this device keeps all its files pinned (§4.3), and when it was
 added. It shows every
@@ -1838,7 +1838,7 @@ whether the file goes in parts or in one request. A release's bytes are its
 stored files' sizes and, of each file being sent, that share of its size,
 beside the stored bytes a live query of the files being sent reads; the
 files being sent together count their objects' bytes. Each file's share is
-told by file too, for the Storage Manager's rings. How fast they go is
+told by file too, for the Storage manager's rings. How fast they go is
 measured beside the database from the same watch's bytes, file by file, as
 each step of them goes, so a file sent in one request has a rate too: a
 rate for each release, its files being sent together, and for every file
@@ -1951,7 +1951,7 @@ hands coven the folder and each file's path below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 coven downloads every file, checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
-is whole and synced. While it downloads, the release's Storage Manager row and
+is whole and synced. While it downloads, the release's Storage manager row and
 its storage band show how far: a bar and the bytes of the whole release, and
 the bytes of the file being downloaded. coven reports both as each file's
 bytes arrive, a few times a second; they are kept only in memory, keyed by
@@ -2022,11 +2022,11 @@ Two ways put a release back on disk, from desktop:
   pregaps go, and whether to embed the cover. A file's name is its pattern's
   text, with runs of spaces made one and no leading `.`, written as a
   copy-out writes a name (§4.4), so a title `Some/Weird:Title` saves as
-  `Some／Weird：Title.flac`; a single track's Save As suggests the same name.
+  `Some／Weird：Title.flac`; a single track's Save as suggests the same name.
   A release save creates each track's file new, like export, so two names a
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single
-  track's Save As replaces a file only when the person confirms it.
+  track's Save as replaces a file only when the person confirms it.
   Each file's track number is the track's number on its side, and its disc
   number the track's medium's position, written only for a release of several
   mediums. A lossless preset writes the 16, 24 or 32 bits it names, whatever
@@ -2814,7 +2814,7 @@ has been read the line says it is checking rather than claim the library is
 synced. A screen's first read of the library's own database lands at once,
 so nothing stands in for it, neither a spinner nor a line, until its rows
 arrive, and a failed read shows why in its place: the library's lists and
-detail pages, search, downloads, the Storage Manager and its inspector, an
+detail pages, search, downloads, the Storage manager and its inspector, an
 import folder's draft and imported release, what is waiting, what sync is
 doing, and who is in the library. A local action that ends at once shows no
 spinner either, its control only disabled while it runs: deleting a saved
@@ -3586,7 +3586,7 @@ Reads come two ways:
   the middle of the list reaches, is read by its offset, past every row before
   it. The playback queue's upcoming tracks are read by offset alone: the
   offset passes over the context lane's positions before any track is read,
-  so a deep window costs little. The Storage Manager's search counts what it
+  so a deep window costs little. The Storage manager's search counts what it
   finds first: from library search's indexes when its text is in fewer
   album titles than about a fifth of the listed releases, else by taking the
   releases it doesn't find off the counts kept beside the listing, found in
@@ -3602,7 +3602,7 @@ Reads come two ways:
   search reads every
   artist its text finds and sorts them, so each window of it is read by its
   offset.
-  The Storage Manager's list is also told
+  The Storage manager's list is also told
   which releases are selected in it, and each of its values carries the row
   of each one the list holds, on screen or not, and the storage actions every
   one of those allows: a selection is offered only those. Its inspector
@@ -3908,7 +3908,7 @@ release's or track's id as UTF-8, or a candidate's key.
   apart from where a restore or join stands, which changes now and then and
   which the screen reads ten times a second while the call runs.
 - **Pulled subscriptions** — the browse and download lists, the searches,
-  the import list and its counts, the detail views, the Storage Manager's
+  the import list and its counts, the detail views, the Storage manager's
   list, a release's files, the queue's upcoming tail, and the reads of which
   selected albums are gone and which
   offered releases the library holds — are objects the app asks for each
@@ -3979,7 +3979,7 @@ bindings export none of their symbols.
 |---|---|
 | bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it, and the live reads the screens pull over the library and its views |
 | bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives |
-| bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage Manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in |
+| bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in |
 | bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
@@ -4176,9 +4176,9 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage Manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
+| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
-| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, `download_queue`, `output_queue`, for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`, and `library_search` for what library search finds of albums, which the Storage Manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
+| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, `download_queue`, `output_queue`, for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 

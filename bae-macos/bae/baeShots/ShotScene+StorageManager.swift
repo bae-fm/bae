@@ -152,7 +152,7 @@ extension ShotScene {
         ShotScene(
             id: "storage-manager-no-matches",
             size: CGSize(width: 1_040, height: 654),
-            frame: .window(title: String(localized: "Storage Manager"))
+            frame: .window(title: String(localized: "Storage manager"))
         ) {
             AnyView(
                 StorageManagerPreviewScene(rows: [], search: "Album Title")
@@ -163,7 +163,7 @@ extension ShotScene {
         ShotScene(
             id: "storage-manager-window",
             size: CGSize(width: 1_040, height: 654),
-            frame: .window(title: String(localized: "Storage Manager"))
+            frame: .window(title: String(localized: "Storage manager"))
         ) {
             AnyView(
                 StorageManagerPreviewScene(

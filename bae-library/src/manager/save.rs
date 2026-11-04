@@ -118,7 +118,7 @@ impl LibraryManager {
             .collect()
     }
 
-    /// The default filename (stem, no extension) a single-track "Save As…"
+    /// The default filename (stem, no extension) a single-track "Save as…"
     /// suggests for `track_id` under the preset named by `preset_id` (must exist
     /// and apply to track saves), rendered from that preset's token pattern and
     /// the track's tag data, and written as a release save writes it

@@ -14492,7 +14492,7 @@ nb = "Synkronisering kjører ikke, så ingenting ble oppdatert."
 fi = "Synkronointi ei ole käynnissä, joten mitään ei päivitetty."
 
 [messages."core.transfer.action.upload"]
-value = "Attaching Audio…"
+value = "Attaching audio…"
 
 [messages."core.transfer.action.upload".translations]
 es = "Adjuntando audio…"
@@ -14524,7 +14524,7 @@ nb = "Legger ved lyd…"
 fi = "Liitetään ääntä…"
 
 [messages."core.transfer.action.detach_audio"]
-value = "Detaching Audio…"
+value = "Detaching audio…"
 
 [messages."core.transfer.action.detach_audio".translations]
 es = "Separando audio…"

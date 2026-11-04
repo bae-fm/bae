@@ -22,7 +22,7 @@ struct DisplayErrorTests {
         // The whole point: the raw dump never reaches the user.
         #expect(!displayed.line.contains("BridgeError"))
         #expect(!displayed.line.contains("no such table"))
-        // …but it is still there for "Copy Details".
+        // …but it is still there for "Copy details".
         #expect(displayed.detail == "no such table: albums")
     }
 

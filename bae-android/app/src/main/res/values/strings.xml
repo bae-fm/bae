@@ -33,7 +33,7 @@
     <string name="sort_title">Title</string>
     <string name="sort_artist">Artist</string>
     <string name="sort_year">Year</string>
-    <string name="sort_date_added">Date Added</string>
+    <string name="sort_date_added">Date added</string>
     <string name="sort_ascending">Ascending</string>
     <string name="sort_descending">Descending</string>
     <string name="sort_by">Sort by</string>
@@ -52,7 +52,7 @@
     <string name="add_to_queue">Add to queue</string>
     <string name="track_options">Track options</string>
     <string name="album_options">Album options</string>
-    <string name="delete_album">Delete Album…</string>
+    <string name="delete_album">Delete album…</string>
     <string name="delete_album_confirm_title">Delete this album?</string>
     <string name="delete_album_confirm_body">Every release of this album is deleted from the library, along with the copies of their files that bae keeps on this device and in your storage. Files in your own folders aren\'t deleted. This can\'t be undone.</string>
     <string name="delete_album_confirm">Delete</string>
@@ -189,7 +189,7 @@
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
     <string name="download">Download</string>
-    <string name="download_remove">Remove Download</string>
+    <string name="download_remove">Remove download</string>
     <string name="download_downloaded">Downloaded</string>
     <string name="download_waiting">Waiting to download</string>
     <string name="resume">Resume</string>

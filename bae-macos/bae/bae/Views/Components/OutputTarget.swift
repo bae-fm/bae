@@ -154,7 +154,7 @@ enum OutputTarget {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = String(localized: "Export Here")
+        panel.prompt = String(localized: "Export here")
         if let last = UserDefaults.standard.string(forKey: lastOutputFolderKey),
             !last.isEmpty
         {
@@ -166,7 +166,7 @@ enum OutputTarget {
     @MainActor
     private static func showDefaultFormatUnavailableAlert() {
         let alert = NSAlert()
-        alert.messageText = String(localized: "Export Failed")
+        alert.messageText = String(localized: "Export failed")
         alert.informativeText = String(localized: "Default format")
         alert.addButton(withTitle: String(localized: "OK"))
         alert.runModal()

@@ -83,8 +83,8 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
 
     private var directionAction: String {
         criterion.direction == .ascending
-            ? String(localized: "Sort Descending")
-            : String(localized: "Sort Ascending")
+            ? String(localized: "Sort descending")
+            : String(localized: "Sort ascending")
     }
 }
 

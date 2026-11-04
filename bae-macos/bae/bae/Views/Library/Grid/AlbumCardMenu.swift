@@ -33,6 +33,6 @@ struct AlbumCardMenu {
     }
 
     var deleteLabel: String {
-        String(localized: "Delete Album…")
+        String(localized: "Delete album…")
     }
 }

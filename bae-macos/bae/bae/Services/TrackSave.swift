@@ -2,7 +2,7 @@ import BaeKit
 import Foundation
 
 /// Single-track save to a chosen output path under a preset. Used by the
-/// release-detail "Save As…" affordance.
+/// release-detail "Save as…" affordance.
 final class TrackSave: Sendable, Observable {
     let saveTrack:
         @Sendable (

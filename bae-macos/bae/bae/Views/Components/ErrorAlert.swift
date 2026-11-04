@@ -4,12 +4,12 @@ import SwiftUI
 extension View {
     /// The shared "Error" alert driven by `uiStore.lastError`. Presents while an
     /// error is set, names the concrete fault under core's category line, offers
-    /// a "Copy Details" button for the whole chain, and clears the error on
+    /// a "Copy details" button for the whole chain, and clears the error on
     /// dismiss. Used by every scene that surfaces `UiStore` errors (the main
     /// window and the Storage Manager window own separate alerts on the same
     /// store).
     ///
-    /// The fault is in the message, not only behind "Copy Details": the category
+    /// The fault is in the message, not only behind "Copy details": the category
     /// line alone ("Something went wrong.") names nothing, and an error a reader
     /// has to paste somewhere to identify has not been reported to them.
     func errorAlert(_ uiStore: UiStore) -> some View {
@@ -37,7 +37,7 @@ extension View {
             )
         ) {
             if let detail = error.wrappedValue?.detail {
-                Button("Copy Details") {
+                Button("Copy details") {
                     SystemActions.copyToPasteboard(detail)
                 }
             }

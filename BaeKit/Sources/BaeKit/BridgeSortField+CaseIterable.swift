@@ -12,7 +12,7 @@ extension BridgeSortField: CaseIterable {
         case .title: "Title"
         case .artist: "Artist"
         case .year: "Year"
-        case .dateAdded: "Date Added"
+        case .dateAdded: "Date added"
         }
     }
 }

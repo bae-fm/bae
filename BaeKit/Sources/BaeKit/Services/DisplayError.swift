@@ -74,13 +74,13 @@ public struct DisplayError: Equatable, Sendable {
     }
 
     /// Put the operation or object that failed before the existing localized
-    /// line without discarding the opaque diagnostic offered by "Copy Details".
+    /// line without discarding the opaque diagnostic offered by "Copy details".
     public func addingContext(_ context: String) -> DisplayError {
         DisplayError(line: "\(context): \(line)", detail: detail)
     }
 
     /// The same failure under a line the caller words around this one —
-    /// "Save failed: <line>" — keeping the diagnostic for "Copy Details".
+    /// "Save failed: <line>" — keeping the diagnostic for "Copy details".
     public func rewording(_ reword: (String) -> String) -> DisplayError {
         DisplayError(line: reword(line), detail: detail)
     }

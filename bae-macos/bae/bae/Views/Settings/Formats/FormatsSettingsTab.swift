@@ -52,7 +52,7 @@ struct FormatsSettingsTab: View {
         } header: {
             Text("Defaults")
         } footer: {
-            Text("The format Save As… starts with.")
+            Text("The format Save as… starts with.")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -77,7 +77,7 @@ struct FormatsSettingsTab: View {
         } header: {
             Text("Formats")
         } footer: {
-            Text("Formats appear in Save As… on tracks and releases.")
+            Text("Formats appear in Save as… on tracks and releases.")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -160,7 +160,7 @@ struct FormatsSettingsTab: View {
 }
 
 /// One format in the settings list: the summary opens the edit sheet, the
-/// Track/Release toggles set its Save As… scopes, and the minus deletes it.
+/// Track/Release toggles set its Save as… scopes, and the minus deletes it.
 private struct PresetRow: View {
     let preset: BridgeSavePreset
     let edit: () -> Void

@@ -71,7 +71,7 @@ enum StorageTableColumn: String, CaseIterable, Codable {
             )
         case .dateAdded:
             Spec(
-                title: String(localized: "Date Added"),
+                title: String(localized: "Date added"),
                 width: 120,
                 minWidth: 80,
                 sortField: .dateAdded

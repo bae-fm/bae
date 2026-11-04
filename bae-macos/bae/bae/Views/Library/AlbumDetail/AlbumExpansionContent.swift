@@ -134,18 +134,18 @@ struct AlbumExpansionContent: View {
             Button("Edit…") { onEdit() }
             Button("Storage…") { onOpenStorage() }
             Button("Export…") { onExportRelease() }
-            Button("Save As…") { onSaveReleaseAs() }
+            Button("Save as…") { onSaveReleaseAs() }
             if releaseCursor.canCycle, canSetAsPrimaryRelease {
                 Divider()
-                Button("Set as Primary Release") { onSetPrimaryRelease() }
+                Button("Set as primary release") { onSetPrimaryRelease() }
             }
             Divider()
             Button(
-                "Delete Release",
+                "Delete release",
                 role: .destructive,
                 action: onDeleteRelease
             )
-            Button("Delete Album…", role: .destructive, action: onDeleteAlbum)
+            Button("Delete album…", role: .destructive, action: onDeleteAlbum)
         } label: {
             Image(systemName: "ellipsis")
                 .themeIcon(.medium)

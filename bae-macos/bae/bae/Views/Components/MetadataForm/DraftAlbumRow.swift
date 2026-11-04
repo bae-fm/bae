@@ -36,7 +36,7 @@ struct DraftAlbumRow: View {
             value
             Spacer(minLength: 0)
             if canEdit {
-                Button(String(localized: "Choose Album…")) {
+                Button(String(localized: "Choose album…")) {
                     isPresented = true
                 }
                 .controlSize(.small)
@@ -67,7 +67,7 @@ struct DraftAlbumRow: View {
     private var picker: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             if case .picked = album {
-                Button(String(localized: "Use the Release's Album")) {
+                Button(String(localized: "Use the release's album")) {
                     actions.pick(nil)
                     isPresented = false
                 }

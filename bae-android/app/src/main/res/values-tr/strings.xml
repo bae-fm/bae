@@ -18,7 +18,7 @@
     <string name="sort_title">Başlık</string>
     <string name="sort_artist">Sanatçı</string>
     <string name="sort_year">Yıl</string>
-    <string name="sort_date_added">Eklenme Tarihi</string>
+    <string name="sort_date_added">Eklenme tarihi</string>
     <string name="sort_ascending">Artan</string>
     <string name="sort_descending">Azalan</string>
     <string name="sort_by">Sıralama ölçütü</string>
@@ -34,7 +34,7 @@
     <string name="add_to_queue">Kuyruğa ekle</string>
     <string name="track_options">Parça seçenekleri</string>
     <string name="album_options">Albüm seçenekleri</string>
-    <string name="delete_album">Albümü Sil…</string>
+    <string name="delete_album">Albümü sil…</string>
     <string name="delete_album_confirm_title">Bu albüm silinsin mi?</string>
     <string name="delete_album_confirm_body">Bu albümün tüm yayınları, bae\'nin bu cihazda ve depolama alanınızda tuttuğu dosya kopyalarıyla birlikte kitaplıktan silinir. Kendi klasörlerinizdeki dosyalar silinmez. Bu işlem geri alınamaz.</string>
     <string name="delete_album_confirm">Sil</string>

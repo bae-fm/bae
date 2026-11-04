@@ -127,7 +127,7 @@ struct TrackRowView: View {
             Button("Play next") { onAddNext(track.id) }
             Button("Add to queue") { onAddToQueue(track.id) }
             Divider()
-            Button("Save As…") { onExportTrack(track.id) }
+            Button("Save as…") { onExportTrack(track.id) }
         }
         .draggable(track.id)
     }

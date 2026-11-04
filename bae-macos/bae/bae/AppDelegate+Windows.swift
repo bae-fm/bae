@@ -54,7 +54,7 @@ extension AppDelegate {
                 bridging: .toolbars,
                 onClose: { [weak self] in self?.storageManagerWindow = nil }
             )
-        controller.window?.title = String(localized: "Storage Manager")
+        controller.window?.title = String(localized: "Storage manager")
         storageManagerWindow = controller
         controller.showWindow(nil)
     }

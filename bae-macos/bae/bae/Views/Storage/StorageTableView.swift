@@ -578,7 +578,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         )
         addMenuItem(
             to: menu,
-            title: String(localized: "Save As…"),
+            title: String(localized: "Save as…"),
             action: #selector(runSaveAsAction(_:)),
             symbol: "square.and.arrow.down",
             representedObject: targets.map(\.id)
