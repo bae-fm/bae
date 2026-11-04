@@ -20,20 +20,21 @@ pub(super) fn is_image_file(path: &Path) -> bool {
     ContentTypeHint::path_is_raster_image(path)
 }
 
-/// Check if a file is a document file (see `DOCUMENT_EXTENSIONS`)
-pub(super) fn is_document_file(path: &Path) -> bool {
+/// Whether `path`'s extension is `expected`, in any case.
+pub(crate) fn has_extension(path: &Path, expected: &str) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
-        .map(|ext| DOCUMENT_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
-        .unwrap_or(false)
+        .is_some_and(|ext| ext.eq_ignore_ascii_case(expected))
 }
 
-/// Check if a file is a CUE file
-pub(super) fn is_cue_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_lowercase() == "cue")
-        .unwrap_or(false)
+/// Check if a file is a document file (see `DOCUMENT_EXTENSIONS`)
+pub(super) fn is_document_file(path: &Path) -> bool {
+    DOCUMENT_EXTENSIONS.iter().any(|extension| has_extension(path, extension))
+}
+
+/// Whether a file is a CUE sheet.
+pub(crate) fn is_cue_file(path: &Path) -> bool {
+    has_extension(path, "cue")
 }
 
 /// Check if a file is noise (.DS_Store, Thumbs.db, etc.)
@@ -47,10 +48,7 @@ pub(super) fn is_noise_file(path: &Path) -> bool {
 /// True when `path`'s extension matches a known in-progress-download marker
 /// (e.g. `01.flac.part`, `02.flac.crdownload`, `03.aria2`). Match is case-insensitive.
 pub(super) fn is_partial_marker_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| PARTIAL_MARKER_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
-        .unwrap_or(false)
+    PARTIAL_MARKER_EXTENSIONS.iter().any(|extension| has_extension(path, extension))
 }
 
 // ── File categorization ─────────────────────────────────────────────────────

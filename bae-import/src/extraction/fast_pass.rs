@@ -280,14 +280,11 @@ fn cue_sheet_names(sheet: &crate::cue_flac::CueSheet) -> Vec<String> {
 
 /// `.txt` documents only; logs hold no names and sheets are read parsed.
 fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
-    categorized.documents().filter(|f| has_ext(&f.path, "txt")).map(|f| f.path.clone()).collect()
-}
-
-fn has_ext(path: &Path, expected: &str) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.eq_ignore_ascii_case(expected))
-        .unwrap_or(false)
+    categorized
+        .documents()
+        .filter(|f| crate::folder_scanner::has_extension(&f.path, "txt"))
+        .map(|f| f.path.clone())
+        .collect()
 }
 
 /// Read a text file, capped and decoded whatever its encoding; `None` only on
@@ -328,7 +325,8 @@ fn download_proof(
         return Some(DownloadProof::Store { marker, file });
     }
     let read_off_a_disc = categorized.files.iter().any(|entry| {
-        crate::rip_reading::is_rip_document(&entry.file.path) || has_ext(&entry.file.path, "cue")
+        crate::rip_reading::is_rip_document(&entry.file.path)
+            || crate::folder_scanner::is_cue_file(&entry.file.path)
     });
     let delivered = !files.is_empty()
         && files.iter().all(|file| {

@@ -5,6 +5,7 @@
 
 use crate::cue_flac::CueSheet;
 use crate::discid::{calculate_mb_discid_from_cue, discid_from_log_text, SheetAudioDuration};
+use crate::folder_scanner::has_extension;
 use bae_catalogs::rip::rate_ruling_out_cd;
 use bae_catalogs::{AudioOrigin, AudioSource, CdProof};
 use bae_identify::signals::{ComputedDiscId, DiscIdSignal};
@@ -117,10 +118,6 @@ struct RipArtifacts<'a> {
     sheets: Vec<RipSheet<'a>>,
     /// The format of every one of the candidate's audio files.
     audio: Vec<&'a AudioFormat>,
-}
-
-fn has_extension(path: &Path, expected: &str) -> bool {
-    path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case(expected))
 }
 
 /// Whether a document is one a rip reading reads: a rip log, or an
