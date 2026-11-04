@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::Notify;
 use tracing::{debug, error};
 
@@ -294,14 +294,14 @@ impl SparseStreamingBuffer {
     /// blocked reader. Panics after 10s.
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn wait_until_parked(&self, count: usize) {
-        let deadline = Instant::now() + Duration::from_secs(10);
+        let deadline = Instant::now() + std::time::Duration::from_secs(10);
         loop {
             let parked = self.state().parked_reads;
             if parked >= count {
                 return;
             }
             assert!(Instant::now() < deadline, "{count} reads never parked; {parked} did");
-            std::thread::sleep(Duration::from_millis(1));
+            std::thread::sleep(std::time::Duration::from_millis(1));
         }
     }
 
