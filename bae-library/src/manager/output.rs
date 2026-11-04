@@ -59,9 +59,9 @@ impl LibraryManager {
             debug!("enqueue_output: {release_id} already queued, skipping");
             return Ok(());
         }
-        self.get_release_by_id(release_id).await?.ok_or_else(|| {
-            LibraryError::Export(format!("cannot export release {release_id}: not found"))
-        })?;
+        self.get_release_by_id(release_id)
+            .await?
+            .ok_or_else(|| LibraryError::release_missing(release_id, output_work(&kind)))?;
 
         let entry = bae_transfers::OutputEntry {
             release_id: release_id.to_string(),
@@ -184,7 +184,7 @@ impl LibraryManager {
         let release = self
             .get_release_by_id(release_id)
             .await?
-            .ok_or_else(|| LibraryError::Export(format!("release not found: {release_id}")))?;
+            .ok_or_else(|| LibraryError::release_missing(release_id, output_work(&request.kind)))?;
         let folder = release.source_folder_name.clone().ok_or_else(|| {
             LibraryError::Export(format!(
                 "release {release_id} has no source folder name; cannot reconstruct its folder"
@@ -381,6 +381,14 @@ impl Drop for StagingDir {
                 warn!("failed to remove export staging dir {}: {e}", self.path.display());
             }
         }
+    }
+}
+
+/// What an output of `kind` is, as a refusal of it is shown.
+fn output_work(kind: &bae_transfers::OutputKind) -> super::ReleaseWork {
+    match kind {
+        bae_transfers::OutputKind::Export => super::ReleaseWork::Export,
+        bae_transfers::OutputKind::Save { .. } => super::ReleaseWork::Save,
     }
 }
 

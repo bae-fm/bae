@@ -167,11 +167,10 @@ impl LibraryManager {
     }
 
     pub async fn get_album_id_for_release(&self, release_id: &str) -> Result<String, LibraryError> {
-        let album_id = self
-            .database
-            .find_album_id_for_release(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::TrackMapping("Release not found".to_string()))?;
+        let album_id =
+            self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
+                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
+            })?;
         Ok(album_id)
     }
 
@@ -193,7 +192,7 @@ impl LibraryManager {
         self.database
             .find_release_by_id(release_id)
             .await?
-            .ok_or_else(|| LibraryError::Refused(format!("Release not found: {release_id}")))?;
+            .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
 
         // The queue's rows leave in the delete's own transaction, and the
         // player, following the tracks it holds, moves off a deleted one.

@@ -13,11 +13,11 @@ impl LibraryManager {
     ) -> Result<(String, DbRelease, DbAlbum, Vec<DbTrack>), LibraryError> {
         let album_id =
             self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
-                LibraryError::Refused(format!("Release '{release_id}' not found"))
+                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         let release =
             self.database.find_release_by_id(release_id).await?.ok_or_else(|| {
-                LibraryError::Refused(format!("Release '{release_id}' not found"))
+                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         let album = self
             .database

@@ -86,7 +86,10 @@ async fn delete_release_refuses_a_release_the_library_does_not_hold() {
 
     for release_id in [release.id.as_str(), "not-a-release"] {
         let error = manager.delete_release(release_id).await.unwrap_err();
-        assert!(matches!(error, LibraryError::Refused(_)), "{release_id}: {error}");
+        assert!(
+            matches!(error, LibraryError::ReleaseMissing { work: ReleaseWork::Edit, .. }),
+            "{release_id}: {error}"
+        );
     }
 }
 

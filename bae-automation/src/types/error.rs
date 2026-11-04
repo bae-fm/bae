@@ -70,6 +70,7 @@ impl From<LibraryError> for AutomationError {
             // An import step's failure crosses as any import error does.
             LibraryError::Import(error) => Self::from(*error),
             LibraryError::Refused(e) => Self::Import(e),
+            error @ LibraryError::ReleaseMissing { .. } => Self::NotFound(error.to_string()),
             LibraryError::ArtistIdentityConflict(e) => Self::Import(e.to_string()),
             LibraryError::LabelIdentityConflict(e) => Self::Import(e.to_string()),
             LibraryError::Export(e) | LibraryError::Save(e) => Self::Unavailable(e),

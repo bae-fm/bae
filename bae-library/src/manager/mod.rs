@@ -101,6 +101,24 @@ struct RecordsTargetAlbum {
     new_album: Option<DbAlbum>,
 }
 
+/// What asked for a release: an edit of it (its records, its metadata, its
+/// deletion), an export, a save, or a transfer of its files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReleaseWork {
+    Edit,
+    Export,
+    Save,
+    Transfer,
+}
+
+impl LibraryError {
+    /// The refusal of `work` asked of `release_id`, which the library no
+    /// longer holds.
+    pub fn release_missing(release_id: &str, work: ReleaseWork) -> Self {
+        Self::ReleaseMissing { release_id: release_id.to_string(), work }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum LibraryError {
     #[error("Database error: {0}")]
@@ -120,6 +138,11 @@ pub enum LibraryError {
     /// as text. Shown as the generic import line.
     #[error("{0}")]
     Refused(String),
+    /// A release an operation names is not in the library: it was deleted,
+    /// here or on another device, before the operation read it. `work` is
+    /// what asked for it, whose line the refusal shows under.
+    #[error("release {release_id} is not in the library")]
+    ReleaseMissing { release_id: String, work: ReleaseWork },
     #[error("Import error: {0}")]
     ArtistIdentityConflict(#[source] Box<bae_db::ArtistIdentityConflict>),
     #[error("Import error: {0}")]
@@ -304,6 +327,14 @@ impl LibraryError {
             LibraryError::RetryBlockedOperation(_) => C::Membership,
             LibraryError::Import(error) => error.category(),
             LibraryError::Refused(_) | LibraryError::Edit(_) => C::Import,
+            LibraryError::ReleaseMissing { work, .. } => match work {
+                ReleaseWork::Edit => C::Import,
+                ReleaseWork::Export => C::Export,
+                ReleaseWork::Save => C::Save,
+                // A transfer has no line of its own, so its refusal shows
+                // the internal one.
+                ReleaseWork::Transfer => C::Internal,
+            },
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
             LibraryError::ArtistIdentityConflict(_) | LibraryError::LabelIdentityConflict(_) => {
                 C::Import

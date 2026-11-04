@@ -187,7 +187,7 @@ impl ReleaseTransfer {
     /// the completion can report it.
     pub(crate) async fn start(&self) -> Result<u32, LibraryError> {
         self.library_manager.get_release_by_id(&self.release_id).await?.ok_or_else(|| {
-            LibraryError::TrackMapping(format!("Release not found: {}", self.release_id))
+            LibraryError::release_missing(&self.release_id, crate::manager::ReleaseWork::Transfer)
         })?;
         if matches!(self.action, ReleaseStorageAction::Upload)
             && !self.library_manager.is_sync_configured().await?

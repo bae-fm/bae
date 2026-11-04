@@ -63,7 +63,7 @@ impl LibraryManager {
     ) -> Result<bae_db::RecordsChange, LibraryError> {
         let current_album_id =
             self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
-                LibraryError::Refused(format!("Release '{release_id}' not found"))
+                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         let target =
             self.resolve_records_target_album(release_id, &current_album_id, &new_records).await?;

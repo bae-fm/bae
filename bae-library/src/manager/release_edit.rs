@@ -132,7 +132,7 @@ impl LibraryManager {
         let ReleaseEditContext { detail, album_artists, tracks: edit_tracks } = self
             .find_release_edit_context(release_id)
             .await?
-            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
+            .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
         let release = &detail.release;
         let album = self.database.find_album_by_id(&release.album_id).await?.ok_or_else(|| {
             LibraryError::Refused(format!("Album '{}' not found", release.album_id))
