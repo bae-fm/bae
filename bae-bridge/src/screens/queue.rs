@@ -39,11 +39,7 @@ impl QueueUpcomingSubscription {
         &self,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<(), BridgeError> {
-        self.inner
-            .set(
-                windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect(),
-            )
-            .map_err(live_read_error)
+        self.inner.set(super::core_windows(windows)).map_err(live_read_error)
     }
 }
 

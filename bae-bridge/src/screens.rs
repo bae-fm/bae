@@ -165,6 +165,33 @@ macro_rules! pulled_read_calls {
     };
 }
 
+/// One requested window of a list, with the rows that landed in it, named
+/// for its row.
+macro_rules! browse_window {
+    ($(#[$meta:meta])* window: $window:ident, row: $core_row:ty => $bridge_row:ty,) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, uniffi::Record)]
+        pub struct $window {
+            pub window: crate::types::BridgeLibraryPageWindow,
+            pub rows: Vec<$bridge_row>,
+        }
+
+        impl $window {
+            fn from_core(window: bae_db::LibraryBrowseWindow<$core_row>) -> Self {
+                Self {
+                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
+                    rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
+                }
+            }
+        }
+    };
+}
+
+/// The windows a screen asks a list for, as core reads them.
+fn core_windows(windows: Vec<crate::types::BridgeLibraryPageWindow>) -> bae_db::LibraryPageWindows {
+    windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect()
+}
+
 // The submodules come after the macros above, which they use.
 #[cfg(feature = "desktop")]
 mod applying;

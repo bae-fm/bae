@@ -4,11 +4,10 @@
 use super::detail::live_read_error;
 use crate::types::{BridgeError, BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort};
 
-/// One requested window of the Storage Manager list, with its rows.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeStorageBrowseWindow {
-    pub window: crate::types::BridgeLibraryPageWindow,
-    pub rows: Vec<BridgeStorageRow>,
+browse_window! {
+    /// One requested window of the Storage Manager list, with its rows.
+    window: BridgeStorageBrowseWindow,
+    row: bae_views::album_detail::StorageRow => BridgeStorageRow,
 }
 
 /// Every requested window of the Storage Manager list under the sort, filter
@@ -81,10 +80,7 @@ impl BridgeStorageBrowseSnapshot {
             windows: snapshot
                 .windows
                 .into_iter()
-                .map(|window| BridgeStorageBrowseWindow {
-                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                    rows: window.rows.into_iter().map(BridgeStorageRow::from_core).collect(),
-                })
+                .map(BridgeStorageBrowseWindow::from_core)
                 .collect(),
             total_count: snapshot.total_count,
             total_size: snapshot.total_size,
@@ -128,10 +124,7 @@ impl StorageBrowseSubscription {
                 sort: sort.into_core(),
                 filter: filter.into_core(),
                 search,
-                windows: windows
-                    .into_iter()
-                    .map(crate::types::BridgeLibraryPageWindow::into_core)
-                    .collect(),
+                windows: super::core_windows(windows),
                 selected: selected.into_iter().collect(),
             })
             .map_err(live_read_error)

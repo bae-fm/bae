@@ -1,8 +1,6 @@
 //! The import tab's list as it pulls it, with the selection the list owns
 //! and the bulk actions over it.
 
-use std::collections::BTreeSet;
-
 use crate::types::BridgeError;
 
 /// The import tab's list, reconfigurable by view and by window, and the
@@ -134,11 +132,7 @@ impl ImportListSubscription {
         &self,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<(), BridgeError> {
-        let windows: BTreeSet<bae_db::LibraryPageWindow> = windows
-            .into_iter()
-            .map(|window| bae_db::LibraryPageWindow { offset: window.offset, limit: window.limit })
-            .collect();
-        self.inner.set_windows(windows).map_err(list_error)
+        self.inner.set_windows(super::core_windows(windows)).map_err(list_error)
     }
 
     /// Apply a change a person made by pointing at rows of the list, and

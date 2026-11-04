@@ -43,12 +43,11 @@ impl LibrarySearchSubscription {
     }
 }
 
-/// One requested window of an artist search, with the artists that landed in
-/// it.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeArtistSearchWindow {
-    pub window: crate::types::BridgeLibraryPageWindow,
-    pub rows: Vec<crate::types::BridgeArtistSearchResult>,
+browse_window! {
+    /// One requested window of an artist search, with the artists that
+    /// landed in it.
+    window: BridgeArtistSearchWindow,
+    row: bae_views::album_detail::ArtistSearchResult => crate::types::BridgeArtistSearchResult,
 }
 
 /// Every requested window of an artist search as of one read, how many
@@ -67,14 +66,7 @@ impl BridgeArtistSearchSnapshot {
             windows: snapshot
                 .windows
                 .into_iter()
-                .map(|window| BridgeArtistSearchWindow {
-                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                    rows: window
-                        .rows
-                        .into_iter()
-                        .map(crate::types::BridgeArtistSearchResult::from_core)
-                        .collect(),
-                })
+                .map(BridgeArtistSearchWindow::from_core)
                 .collect(),
             total_count: snapshot.total_count,
             request_revision: snapshot.request_revision,
@@ -101,12 +93,7 @@ impl ArtistSearchSubscription {
         query: String,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<u64, BridgeError> {
-        self.inner
-            .set_view(
-                &query,
-                windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect(),
-            )
-            .map_err(BridgeError::from)
+        self.inner.set_view(&query, super::core_windows(windows)).map_err(BridgeError::from)
     }
 }
 

@@ -4,8 +4,6 @@
 //! Each is one live query for as long as its screen is open, whose windows
 //! or ids move in place.
 
-use std::collections::BTreeSet;
-
 use crate::types::BridgeError;
 
 /// Every windowed list is one subscription object over its own snapshot. A
@@ -32,29 +30,7 @@ macro_rules! browse_subscription {
                 &self,
                 windows: Vec<crate::types::BridgeLibraryPageWindow>,
             ) -> Result<(), BridgeError> {
-                self.inner.set_windows(core_windows(windows)).map_err(BridgeError::from)
-            }
-        }
-    };
-}
-
-/// One requested window of a list, with the rows that landed in it, named
-/// for its row.
-macro_rules! browse_window {
-    ($(#[$meta:meta])* window: $window:ident, row: $core_row:ty => $bridge_row:ty,) => {
-        $(#[$meta])*
-        #[derive(Debug, Clone, uniffi::Record)]
-        pub struct $window {
-            pub window: crate::types::BridgeLibraryPageWindow,
-            pub rows: Vec<$bridge_row>,
-        }
-
-        impl $window {
-            fn from_core(window: bae_db::LibraryBrowseWindow<$core_row>) -> Self {
-                Self {
-                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                    rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
-                }
+                self.inner.set_windows(super::core_windows(windows)).map_err(BridgeError::from)
             }
         }
     };
@@ -179,12 +155,6 @@ browse_subscription! {
     inner: bae_views::LiveComposerDetailRows,
     built by composer_detail_rows,
     snapshot: BridgeComposerDetailRowsSnapshot,
-}
-
-fn core_windows(
-    windows: Vec<crate::types::BridgeLibraryPageWindow>,
-) -> BTreeSet<bae_db::LibraryPageWindow> {
-    windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect()
 }
 
 impl crate::types::BridgeLibraryPageWindow {
