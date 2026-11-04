@@ -388,7 +388,7 @@ fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseS
 /// `composer_listing` serves each one-field sort. Mirrors `album_order`'s
 /// `album_id` tie-break.
 pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
-    let mut terms = sort
+    let terms = sort
         .iter()
         .map(|c| {
             let field = match c.field {
@@ -399,11 +399,8 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
             SortTerm::running(field, c.direction)
         })
         .collect::<Vec<_>>();
-    if !sort.iter().any(|c| c.field == ComposerSortField::Name) {
-        terms.push(SortTerm::ascending("listing.name"));
-    }
-    terms.push(SortTerm::ascending("listing.artist_id"));
-    ListOrder::new(terms)
+    let ordered_by_name = sort.iter().any(|c| c.field == ComposerSortField::Name);
+    ListOrder::named(terms, ordered_by_name, "listing.name", "listing.artist_id")
 }
 
 #[derive(Debug, Clone, PartialEq)]

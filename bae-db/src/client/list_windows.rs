@@ -81,6 +81,19 @@ pub struct ListOrder {
     terms: Vec<SortTerm>,
 }
 
+impl ListOrder {
+    /// The order of a list of named rows: `terms`, then `name` ascending
+    /// unless a term already orders by it (`ordered_by_name`), then `id`, the
+    /// tie-break a window needs because a name is not unique.
+    pub fn named(mut terms: Vec<SortTerm>, ordered_by_name: bool, name: &str, id: &str) -> Self {
+        if !ordered_by_name {
+            terms.push(SortTerm::ascending(name));
+        }
+        terms.push(SortTerm::ascending(id));
+        Self::new(terms)
+    }
+}
+
 /// The values a row has for its list's order terms, which say where it sits.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrderKey(Vec<Value>);

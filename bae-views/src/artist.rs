@@ -264,7 +264,7 @@ pub(crate) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistS
 /// tie-break a window needs. An index of `artist_listing` serves each
 /// one-field sort.
 pub(crate) fn artist_order(sort: &[ArtistSortCriterion]) -> ListOrder {
-    let mut terms = sort
+    let terms = sort
         .iter()
         .map(|c| {
             let field = match c.field {
@@ -274,11 +274,8 @@ pub(crate) fn artist_order(sort: &[ArtistSortCriterion]) -> ListOrder {
             SortTerm::running(field, c.direction)
         })
         .collect::<Vec<_>>();
-    if !sort.iter().any(|c| c.field == ArtistSortField::Name) {
-        terms.push(SortTerm::ascending("listing.name"));
-    }
-    terms.push(SortTerm::ascending("listing.artist_id"));
-    ListOrder::new(terms)
+    let ordered_by_name = sort.iter().any(|c| c.field == ArtistSortField::Name);
+    ListOrder::named(terms, ordered_by_name, "listing.name", "listing.artist_id")
 }
 
 #[derive(Debug, Clone, PartialEq)]
