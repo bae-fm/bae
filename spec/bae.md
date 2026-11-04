@@ -2060,9 +2060,9 @@ Two ways put a release back on disk, from desktop:
   number the track's medium's position, written only for a release of several
   mediums, and its YEAR the pressing's year, else the album's. A lossless
   preset writes the 16, 24 or 32 bits it names, whatever depth the source
-  has. A preset can
-  write a release as one image with a CUE sheet. FLAC and MP3 presets come
-  built in (Appendix C).
+  has. A preset can write a release as one image with a CUE sheet, both
+  taking the name of the folder that holds them, written as that folder's
+  is. FLAC and MP3 presets come built in (Appendix C).
 
 Both run from a queue that can be paused and cancelled, kept and emptied as
 the pin queue is (§4.3); a failed one stays in it, with its error, until it is

@@ -190,16 +190,20 @@ impl LibraryManager {
         .map_err(|error| self.save_failed(error))
     }
 
+    /// Save `release`, written in the folder named `folder`, into
+    /// `staging_dir` under `preset`.
     pub(super) async fn save_release_tracks_to_dir(
         &self,
-        release_id: &str,
+        release: &DbRelease,
+        folder: &str,
         preset: bae_preferences::SavePreset,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
+        let release_id = release.id.as_str();
         let tracks = self.database.get_tracks_for_release(release_id).await?;
         let total = tracks.len();
         if preset.pregap_placement == bae_preferences::SavePregapPlacement::SingleFileWithCue {
-            self.save_release_image_with_cue_to_dir(release_id, preset, &tracks, staging_dir)
+            self.save_release_image_with_cue_to_dir(release, folder, preset, &tracks, staging_dir)
                 .await?;
             self.set_output_progress(release_id, 100);
             return Ok(());
@@ -273,9 +277,12 @@ impl LibraryManager {
         }
     }
 
+    /// Save `release` as one image and its CUE sheet, which take the name of
+    /// `folder`, the folder holding them.
     async fn save_release_image_with_cue_to_dir(
         &self,
-        release_id: &str,
+        release: &DbRelease,
+        folder: &str,
         preset: bae_preferences::SavePreset,
         tracks: &[DbTrack],
         staging_dir: &std::path::Path,
@@ -285,26 +292,10 @@ impl LibraryManager {
             let meta = TrackAudioMeta::resolve(&self.database, &track.id).await?;
             plans.push(self.save_track_plan(meta, SaveWindow::ImageTrack).await?);
         }
-        let cover = self.save_cover_image(release_id, preset.embed_cover).await?;
-
-        let release = self
-            .get_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Save(format!("release not found: {release_id}")))?;
-        let folder = release.source_folder_name.ok_or_else(|| {
-            LibraryError::Save(format!(
-                "release {release_id} has no source folder name; cannot name its CUE image"
-            ))
-        })?;
-        let stem = crate::save::sanitize_filename_stem(&folder);
-        if stem.is_empty() {
-            return Err(LibraryError::Save(format!(
-                "release {release_id} source folder name has no usable filename characters"
-            )));
-        }
+        let cover = self.save_cover_image(&release.id, preset.embed_cover).await?;
         let output_audio_path =
-            staging_dir.join(crate::save::save_file_name(&stem, preset.codec.extension()));
-        let output_cue_path = staging_dir.join(crate::save::save_file_name(&stem, "cue"));
+            staging_dir.join(crate::save::save_file_name(folder, preset.codec.extension()));
+        let output_cue_path = staging_dir.join(crate::save::save_file_name(folder, "cue"));
 
         let sources = Self::save_source_files(&plans);
         SaveService::save_release_image_with_cue(

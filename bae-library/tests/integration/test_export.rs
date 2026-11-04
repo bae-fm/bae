@@ -317,6 +317,41 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     assert_eq!(image_pcm.samples.len(), first_pcm.samples.len() + second_pcm.samples.len());
 }
 
+/// A release image takes its folder's name as the release's folder does,
+/// spaces and all: the save writes the image and its CUE sheet inside the
+/// folder under the one name.
+#[tokio::test]
+async fn a_release_image_is_named_as_its_folder_is() {
+    bae_util::test_logs::install();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album  two");
+    fs::create_dir_all(&album_dir).unwrap();
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "Track Two");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+
+    let image_preset = flac_save_preset("image", SavePregapPlacement::SingleFileWithCue);
+    let mut presets = f.library.save_presets().await.unwrap();
+    presets.push(image_preset.clone());
+    f.library.set_save_presets(presets).await.unwrap();
+
+    let target = f.temp_path().join("export-target");
+    fs::create_dir_all(&target).unwrap();
+    f.library
+        .export_release(&release_id, &target, OutputKind::Save { preset: image_preset })
+        .await
+        .expect("the release image saves");
+
+    let folder = target.join("album  two");
+    let mut written: Vec<_> = fs::read_dir(&folder)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
+        .filter(|name| name != ".bae-output")
+        .collect();
+    written.sort();
+    assert_eq!(written, vec!["album  two.cue", "album  two.flac"]);
+}
+
 /// `Track?.flac` and `Track？.flac` are two names, and coven writes both as
 /// `Track？.flac`: the export fails rather than write one file over the
 /// other, and leaves nothing behind. Windows refuses `?` in a name, so the

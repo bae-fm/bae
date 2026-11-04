@@ -185,7 +185,7 @@ impl LibraryManager {
             .get_release_by_id(release_id)
             .await?
             .ok_or_else(|| LibraryError::Export(format!("release not found: {release_id}")))?;
-        let folder = release.source_folder_name.ok_or_else(|| {
+        let folder = release.source_folder_name.clone().ok_or_else(|| {
             LibraryError::Export(format!(
                 "release {release_id} has no source folder name; cannot reconstruct its folder"
             ))
@@ -214,7 +214,7 @@ impl LibraryManager {
                     preset = preset.id.as_str(),
                     "Writing release output"
                 );
-                self.save_release_tracks_to_dir(release_id, preset, staging.path()).await?;
+                self.save_release_tracks_to_dir(&release, &folder, preset, staging.path()).await?;
             }
         }
 
