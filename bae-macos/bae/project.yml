@@ -22,7 +22,7 @@ packages:
     url: https://github.com/apple/swift-collections
     from: "1.4.1"
   # The shared data/service/domain layer plus the generated bridge bindings and
-  # the platform-conditional BaeBridgeFFI xcframework. BaeKit re-exports the
+  # the BaeBridgeFFI xcframework, a slice per platform. BaeKit re-exports the
   # bridge types and depends on Sentry, so both come in transitively.
   BaeKit:
     path: ../../BaeKit

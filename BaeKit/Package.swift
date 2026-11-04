@@ -1,51 +1,12 @@
-import Foundation
 // swift-tools-version: 6.0
 import PackageDescription
 
-let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-
-// Declare a binary target only when its xcframework actually exists on disk.
-// SwiftPM validates every declared binaryTarget's artifact at resolve time,
-// regardless of the platform the dependency is conditioned on — so declaring the
-// iOS xcframework unconditionally breaks a macOS-only build (which never runs
-// build-ios.sh, so the iOS artifact is absent), and vice versa. Check the
-// xcframework's Info.plist (not just the directory) so a leftover empty dir
-// doesn't read as a real artifact. If neither exists, BaeBridge has no binary
-// dependency and resolves fine; compiling the bindings then fails with the same
-// missing-module error as a missing-bindings build — the documented failure mode.
-func xcframeworkExists(_ name: String) -> Bool {
-    let plist =
-        packageDir
-        .appendingPathComponent("Frameworks")
-        .appendingPathComponent(name)
-        .appendingPathComponent("Info.plist")
-    return FileManager.default.fileExists(atPath: plist.path)
-}
-
-var binaryTargets: [Target] = []
-var bridgeDependencies: [Target.Dependency] = []
-if xcframeworkExists("BaeBridgeFFI.xcframework") {
-    binaryTargets.append(
-        .binaryTarget(
-            name: "BaeBridgeFFI",
-            path: "Frameworks/BaeBridgeFFI.xcframework"
-        )
-    )
-    bridgeDependencies.append(
-        .target(name: "BaeBridgeFFI", condition: .when(platforms: [.macOS]))
-    )
-}
-if xcframeworkExists("BaeBridgeFFI-ios.xcframework") {
-    binaryTargets.append(
-        .binaryTarget(
-            name: "BaeBridgeFFIiOS",
-            path: "Frameworks/BaeBridgeFFI-ios.xcframework"
-        )
-    )
-    bridgeDependencies.append(
-        .target(name: "BaeBridgeFFIiOS", condition: .when(platforms: [.iOS]))
-    )
-}
+// The bridge's one xcframework holds a slice for each platform whose bridge
+// this checkout built: bae-bridge/build-macos.sh and build-ios.sh each write
+// their own platform's slices into it and keep the others
+// (bae-bridge/xcframework.py). The manifest names it without asking what is
+// on disk: SwiftPM caches a manifest's evaluation by its text, so a manifest
+// that checked for files kept the answer it got first.
 
 let package = Package(
     name: "BaeKit",
@@ -58,8 +19,12 @@ let package = Package(
             exact: "9.18.0"
         )
     ],
-    targets: binaryTargets + [
-        .target(name: "BaeBridge", dependencies: bridgeDependencies),
+    targets: [
+        .binaryTarget(
+            name: "BaeBridgeFFI",
+            path: "Frameworks/BaeBridgeFFI.xcframework"
+        ),
+        .target(name: "BaeBridge", dependencies: ["BaeBridgeFFI"]),
         .target(
             name: "BaeKit",
             dependencies: [

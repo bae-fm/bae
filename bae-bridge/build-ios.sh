@@ -110,7 +110,11 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
 
 echo "Generating Swift bindings..."
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-ios"
+# Written last, once the xcframework holds this build's iOS slices: the app's
+# pre-build step rebuilds the bridge when an input is newer than it.
+COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
 mkdir -p "$SWIFT_BINDINGS_DIR"
+rm -f "$COMPLETION_STAMP"
 # The generator is its own host-only package so this build doesn't compile
 # bae-library again.
 run_host_cargo build -p bae-uniffi-bindgen
@@ -148,21 +152,20 @@ libtool -static -o "$SIM_MERGED" \
     "$FFMPEG_SIM/lib/libavutil.a" \
     "$FFMPEG_SIM/lib/libswresample.a"
 
-echo "Creating iOS XCFramework..."
-rm -rf BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework
-
+echo "Writing the XCFramework's iOS slices..."
 mkdir -p "$SWIFT_BINDINGS_DIR/headers"
 cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" "$SWIFT_BINDINGS_DIR/headers/"
 cp "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.modulemap" "$SWIFT_BINDINGS_DIR/headers/module.modulemap"
 
-xcodebuild -create-xcframework \
+# The macOS slice build-macos.sh wrote stays in the xcframework.
+python3 bae-bridge/xcframework.py write ios BaeKit/Frameworks/BaeBridgeFFI.xcframework \
     -library "$DEVICE_MERGED" \
     -headers "$SWIFT_BINDINGS_DIR/headers" \
     -library "$SIM_MERGED" \
-    -headers "$SWIFT_BINDINGS_DIR/headers" \
-    -output BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework
+    -headers "$SWIFT_BINDINGS_DIR/headers"
+touch "$COMPLETION_STAMP"
 
 echo ""
 echo "Done ($CARGO_PROFILE). Outputs:"
-echo "  BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework/"
+echo "  BaeKit/Frameworks/BaeBridgeFFI.xcframework/ (its iOS slices)"
 echo "  BaeKit/Sources/BaeBridge/bae_bridge_ios.swift"

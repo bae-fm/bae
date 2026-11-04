@@ -30,7 +30,9 @@ targets:
         script: |
           cd "$SRCROOT/../.."
           ./scripts/build-layout.sh
-          MARKER="BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework/Info.plist"
+          # build-ios.sh writes the marker last, once the xcframework holds
+          # its iOS slices; build-macos.sh's writes to the xcframework leave it.
+          MARKER="bae-bridge/swift-bindings-ios/.generation-complete"
           BINDINGS_SOURCE="bae-bridge/swift-bindings-ios/bae_bridge.swift"
           BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_ios.swift"
           # Every file the last device build of the bridge read, as cargo
@@ -38,7 +40,8 @@ targets:
           # decide what it reads.
           DEP_INFO="target-ios/aarch64-apple-ios/debug/libbae_bridge.d"
           NEEDS_BUILD=0
-          if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ] || [ ! -f "$DEP_INFO" ]; then
+          if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ] || [ ! -f "$DEP_INFO" ] ||
+            ! python3 bae-bridge/xcframework.py has ios BaeKit/Frameworks/BaeBridgeFFI.xcframework; then
             NEEDS_BUILD=1
           else
             # A dep-info line is "<output>: <input> <input> ...", with a space

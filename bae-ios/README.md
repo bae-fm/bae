@@ -37,5 +37,6 @@ The generated bridge bindings and the launch pieces the app uses live in the
 depends on it as a local package (`packages.BaeKit: ../../BaeKit` in
 `bae/project.yml`), so a single `import BaeKit` brings both the shared layer
 and the re-exported bridge types. `build-ios.sh` installs the iOS uniffi
-bindings into `BaeKit/Sources/BaeBridge` and writes the platform-conditional
-`BaeKit/Frameworks/BaeBridgeFFI-ios.xcframework` binary target.
+bindings into `BaeKit/Sources/BaeBridge` and writes the iOS slices of the
+`BaeKit/Frameworks/BaeBridgeFFI.xcframework` binary target, keeping any macOS
+slice `build-macos.sh` wrote.

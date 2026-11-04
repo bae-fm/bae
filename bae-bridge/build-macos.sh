@@ -136,6 +136,7 @@ COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
 # static library.
 UNIFFI_CONFIG="bae-bridge/uniffi.toml"
 INSTALL_BINDINGS="bae-bridge/install-swift-bindings.sh"
+XCFRAMEWORK_TOOL="bae-bridge/xcframework.py"
 EXPECTED_STAMP="$CARGO_PROFILE|$BAE_BRIDGE_FEATURES"
 NEEDS_GENERATION=0
 
@@ -147,23 +148,23 @@ else
        [[ "$STATIC_LIB" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$UNIFFI_CONFIG" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$INSTALL_BINDINGS" -nt "$COMPLETION_STAMP" ]] ||
+       [[ "$XCFRAMEWORK_TOOL" -nt "$COMPLETION_STAMP" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridge.swift" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.h" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridgeFFI.modulemap" ]] ||
        [[ ! -f "$INSTALLED_BINDINGS" ]] ||
-       [[ ! -f "$XCFRAMEWORK/Info.plist" ]]; then
+       ! python3 "$XCFRAMEWORK_TOOL" has macos "$XCFRAMEWORK"; then
         NEEDS_GENERATION=1
     fi
 fi
 
 if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
-    echo "Generating Swift bindings and XCFramework..."
+    echo "Generating Swift bindings and the XCFramework's macOS slice..."
     rm -f "$COMPLETION_STAMP"
 
     GENERATION_TMP="$(mktemp -d "$CARGO_TARGET_DIR/bridge-generation.XXXXXX")"
     trap 'rm -rf "$GENERATION_TMP" "$FEATURES_XCCONFIG_TMP"' EXIT
     GENERATED_BINDINGS="$GENERATION_TMP/swift-bindings"
-    GENERATED_XCFRAMEWORK="$GENERATION_TMP/BaeBridgeFFI.xcframework"
     mkdir -p "$GENERATED_BINDINGS"
 
     "$BINDGEN" generate \
@@ -176,19 +177,14 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     cp "$GENERATED_BINDINGS/bae_bridgeFFI.modulemap" \
         "$GENERATED_BINDINGS/headers/module.modulemap"
 
-    xcodebuild -create-xcframework \
-        -library "$STATIC_LIB" \
-        -headers "$GENERATED_BINDINGS/headers" \
-        -output "$GENERATED_XCFRAMEWORK"
-
     rm -rf "$SWIFT_BINDINGS_DIR"
     mv "$GENERATED_BINDINGS" "$SWIFT_BINDINGS_DIR"
     ./bae-bridge/install-swift-bindings.sh macos
 
-    rm -rf "$XCFRAMEWORK"
-    # Nothing under BaeKit/Frameworks/ is tracked, so a fresh checkout lacks it.
-    mkdir -p "$(dirname "$XCFRAMEWORK")"
-    mv "$GENERATED_XCFRAMEWORK" "$XCFRAMEWORK"
+    # The iOS slices build-ios.sh wrote stay in the xcframework.
+    python3 "$XCFRAMEWORK_TOOL" write macos "$XCFRAMEWORK" \
+        -library "$STATIC_LIB" \
+        -headers "$SWIFT_BINDINGS_DIR/headers"
 
     STAMP_TMP="$SWIFT_BINDINGS_DIR/.generation-complete.tmp.$$"
     printf '%s\n' "$EXPECTED_STAMP" > "$STAMP_TMP"
