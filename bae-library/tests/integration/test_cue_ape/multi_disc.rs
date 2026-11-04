@@ -74,8 +74,7 @@ async fn test_cue_ape_next_track() {
         track2_sample_count,
     );
 
-    let captured_snapshot =
-        captured.wait_for_samples(track2_sample_count, Duration::from_secs(60)).await;
+    let captured_snapshot = captured.wait_for_samples(track2_sample_count).await;
     assert!(
         captured_snapshot.len() >= track2_sample_count,
         "Not enough captured samples after Next (60s): {} (needed {})",

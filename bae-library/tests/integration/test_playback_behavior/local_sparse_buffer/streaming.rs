@@ -19,7 +19,7 @@ async fn a_local_load_waits_on_no_storage_and_holds_the_whole_track() {
 
         // Once playback stops, no track's bytes are followed.
         playback.playback_handle.stop();
-        tokio::time::timeout(Duration::from_secs(20), async {
+        tokio::time::timeout(HANG_GUARD, async {
             while let Some(held) = buffered.next().await.expect("playback runs") {
                 assert_eq!(held.track_id, track, "only the playing track is followed");
             }
@@ -48,7 +48,6 @@ async fn switching_tracks_within_a_multi_window_file_keeps_streaming() {
         let playing = wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == middle_track),
-            Duration::from_secs(20),
         )
         .await;
         assert!(
@@ -79,9 +78,7 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
         // Track 1's raw timeline is 58 s (it ends at track 2's INDEX 00); seek near
         // the end so the boundary arrives in a few real-time seconds.
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
-        let outcome =
-            observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(25))
-                .await;
+        let outcome = observe_boundary(&mut playback.progress_rx, &first, &second).await;
         assert!(
             outcome.reached_incoming,
             "playback crosses into the second track (through its pregap)"
@@ -101,9 +98,7 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
 
         // Track 2's raw timeline is 62 s (2 s pregap + 60 s).
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(58)));
-        let outcome =
-            observe_boundary(&mut playback.progress_rx, &second, &third, Duration::from_secs(25))
-                .await;
+        let outcome = observe_boundary(&mut playback.progress_rx, &second, &third).await;
         assert!(outcome.reached_incoming, "playback crosses into the third track");
         assert!(
             outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
@@ -133,7 +128,6 @@ async fn manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming() {
     let states = collect_states_on(
         &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
-        Duration::from_secs(20),
     )
     .await;
     assert!(
@@ -169,7 +163,6 @@ async fn manual_next_into_a_clean_track_promotes_the_preload() {
     let states = collect_states_on(
         &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-        Duration::from_secs(20),
     )
     .await;
     assert!(
@@ -208,7 +201,7 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
         // already partly cover, but well behind wherever playback has since moved.
         let backward_target = Duration::from_secs(5);
         playback.playback_handle.seek(TrackTime::from_duration(backward_target));
-        let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        let landed = wait_for_seeked_on(&mut playback.progress_rx)
             .await
             .expect("a backward seek within the last track emits Seeked");
         assert!(
@@ -223,7 +216,7 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
         // has not fetched — the fill's demand-driven window fetch must catch up.
         let forward_target = Duration::from_secs(40);
         playback.playback_handle.seek(TrackTime::from_duration(forward_target));
-        let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        let landed = wait_for_seeked_on(&mut playback.progress_rx)
             .await
             .expect("a forward seek within the last track emits Seeked");
         assert!(
@@ -250,7 +243,6 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
         let playing = wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == last_track),
-            Duration::from_secs(20),
         )
         .await;
         assert!(playing.is_some(), "the last track reaches Playing");
@@ -258,7 +250,7 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
         // Seek immediately — no settle time for the fill to get ahead.
         let target = Duration::from_secs(20);
         playback.playback_handle.seek(TrackTime::from_duration(target));
-        let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        let landed = wait_for_seeked_on(&mut playback.progress_rx)
             .await
             .expect("a seek issued right after Playing still emits Seeked");
         assert!(
@@ -290,7 +282,7 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
     let mut saw_loading = false;
     let saw_seeked = bae_util::test_channels::next_matching(
         &mut playback.progress_rx,
-        Duration::from_secs(20),
+        HANG_GUARD,
         |event| match event {
             PlaybackProgress::StateChanged {
                 state:
@@ -343,7 +335,7 @@ async fn seek_past_end_of_track_signals_rather_than_hanging_over_sparse_buffer()
 
         let signaled = bae_util::test_channels::next_matching(
             &mut playback.progress_rx,
-            Duration::from_secs(15),
+            HANG_GUARD,
             |event| {
                 matches!(
                     event,
@@ -373,11 +365,11 @@ async fn seek_by_ratio_maps_to_a_proportional_position_over_sparse_buffer() {
     playback.play_and_wait(&last_track).await;
 
     playback.playback_handle.seek_by_ratio(0.25);
-    let quarter = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+    let quarter = wait_for_seeked_on(&mut playback.progress_rx)
         .await
         .expect("Seeked for ratio 0.25");
     playback.playback_handle.seek_by_ratio(0.75);
-    let three_quarter = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+    let three_quarter = wait_for_seeked_on(&mut playback.progress_rx)
         .await
         .expect("Seeked for ratio 0.75");
 
@@ -402,17 +394,13 @@ async fn pause_seek_resume_advances_position_over_sparse_buffer() {
         playback.play_and_wait(&last_track).await;
 
         playback.playback_handle.pause();
-        wait_for_state_on(
-            &mut playback.progress_rx,
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(5),
-        )
-        .await
-        .expect("playback should pause");
+        wait_for_state_on(&mut playback.progress_rx, |s| matches!(s, PlaybackState::Paused { .. }))
+            .await
+            .expect("playback should pause");
 
         let seek_target = Duration::from_secs(20);
         playback.playback_handle.seek(TrackTime::from_duration(seek_target));
-        let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        let landed = wait_for_seeked_on(&mut playback.progress_rx)
             .await
             .expect("Seeked after seeking while paused");
         assert!(
@@ -422,11 +410,9 @@ async fn pause_seek_resume_advances_position_over_sparse_buffer() {
 
         // The seek holds Loading until the target's window is fetched and decoded,
         // then settles on the pause it had.
-        let settled = wait_for_state_on(
-            &mut playback.progress_rx,
-            |s| !matches!(s, PlaybackState::Loading { .. }),
-            Duration::from_secs(20),
-        )
+        let settled = wait_for_state_on(&mut playback.progress_rx, |s| {
+            !matches!(s, PlaybackState::Loading { .. })
+        })
         .await
         .expect("the seek settles");
         assert!(
@@ -435,11 +421,9 @@ async fn pause_seek_resume_advances_position_over_sparse_buffer() {
         );
 
         playback.playback_handle.resume();
-        wait_for_state_on(
-            &mut playback.progress_rx,
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        wait_for_state_on(&mut playback.progress_rx, |s| {
+            matches!(s, PlaybackState::Playing { .. })
+        })
         .await
         .expect("resume should start playing");
 
@@ -491,7 +475,6 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
-            Duration::from_secs(25),
         )
         .await
         .expect("playback should auto-advance into the pregapped track");
@@ -535,7 +518,9 @@ async fn stopping_playback_closes_the_files_it_streamed() {
 
     playback_handle.stop();
 
-    let deadline = Instant::now() + Duration::from_secs(5);
+    // Nothing tells when the reader closes its file, so this checks the
+    // process's open files until it has.
+    let deadline = Instant::now() + HANG_GUARD;
     while !coven::open_files_under(&imported.album_dir).is_empty() {
         assert!(
             Instant::now() < deadline,

@@ -40,23 +40,20 @@ impl SidePauseTestFixture {
 
     async fn wait_for_next_side(&mut self, message: &str) {
         let side_b_track_id = self.track_ids[2].clone();
-        self.wait_for_playing_track(&side_b_track_id, Duration::from_secs(5), message).await;
+        self.wait_for_playing_track(&side_b_track_id, message).await;
     }
 
     /// Wait for the side pause to be announced again without a countdown.
     async fn wait_for_countdown_cancelled(&mut self) {
-        self.wait_for_state(
-            |s| {
-                matches!(
-                    s,
-                    PlaybackState::Paused {
-                        reason: PlaybackPauseReason::SideEnded(prompt),
-                        ..
-                    } if prompt.countdown.is_none()
-                )
-            },
-            Duration::from_secs(5),
-        )
+        self.wait_for_state(|s| {
+            matches!(
+                s,
+                PlaybackState::Paused {
+                    reason: PlaybackPauseReason::SideEnded(prompt),
+                    ..
+                } if prompt.countdown.is_none()
+            )
+        })
         .await
         .expect("the side pause is announced without its countdown");
     }

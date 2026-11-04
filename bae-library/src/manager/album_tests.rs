@@ -125,7 +125,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
 
     manager.delete_album(&album_id).await.unwrap();
 
-    let after = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let after = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let value = browse.next().await.expect("the query stays open").result.unwrap();
             if value.total_count == 1 {
@@ -136,7 +136,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     .await
     .expect("the grid follows the delete");
     assert_eq!(listed(&after), std::slice::from_ref(&other.album_id));
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let value = detail.next().await.expect("the query stays open").result.unwrap();
             if value.detail.is_none() {

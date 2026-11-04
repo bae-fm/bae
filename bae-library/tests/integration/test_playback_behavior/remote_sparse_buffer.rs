@@ -112,7 +112,7 @@ async fn a_load_from_storage_waits_on_storage() {
 
         playback.playback_handle.play(track.clone());
         observed.await.expect("the load reads the FLAC from storage");
-        let waiting = tokio::time::timeout(Duration::from_secs(30), async {
+        let waiting = tokio::time::timeout(HANG_GUARD, async {
             loop {
                 if let Some(waiting) = waits.waiting() {
                     return waiting;
@@ -131,7 +131,6 @@ async fn a_load_from_storage_waits_on_storage() {
         wait_for_state_on(
         &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track: playing, .. } if playing.track_id == track),
-        Duration::from_secs(30),
     )
     .await
     .expect("the track plays once its bytes arrive");
@@ -155,7 +154,6 @@ async fn switching_tracks_within_a_multi_window_file_over_remote_cloud() {
         let playing = wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == middle_track),
-            Duration::from_secs(30),
         )
         .await;
         assert!(
@@ -177,9 +175,7 @@ async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
         playback.play_and_wait(&first).await;
 
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
-        let outcome =
-            observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(30))
-                .await;
+        let outcome = observe_boundary(&mut playback.progress_rx, &first, &second).await;
         assert!(
             outcome.reached_incoming,
             "playback crosses into the second track over a real ranged cloud read"
@@ -207,7 +203,6 @@ async fn manual_next_into_a_pregap_track_over_remote_cloud() {
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
-            Duration::from_secs(30),
         )
         .await
         .expect(
@@ -232,7 +227,6 @@ async fn manual_next_into_a_clean_track_over_remote_cloud() {
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-            Duration::from_secs(30),
         )
         .await
         .expect(
@@ -256,7 +250,7 @@ async fn seek_within_the_last_track_over_remote_cloud() {
 
         let target = Duration::from_secs(20);
         playback.playback_handle.seek(TrackTime::from_duration(target));
-        let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(30))
+        let landed = wait_for_seeked_on(&mut playback.progress_rx)
             .await
             .expect("a seek within the last track emits Seeked over a real ranged cloud read");
         assert!(
@@ -287,11 +281,6 @@ const SEEK_LARGEST_RANGE_BOUND: u64 = 5 * 1024 * 1024;
 /// race and well below the file.
 const SEEK_RANGE_BYTES_BOUND: u64 = 16 * 1024 * 1024;
 
-/// Coarse backstop on the seek itself. Serving a range used to mean downloading,
-/// decrypting and hashing the whole file — seconds per read, several reads to a
-/// seek — so this is far above a chunked seek and far below the old cost.
-const SEEK_COST_BACKSTOP: Duration = Duration::from_secs(15);
-
 /// A seek over a remote cloud home costs the chunks its range touches, not the
 /// whole file. coven seals a file per chunk and authenticates each chunk on its
 /// own, so a ranged read fetches only the chunks covering it: seeking near the end
@@ -301,7 +290,7 @@ const SEEK_COST_BACKSTOP: Duration = Duration::from_secs(15);
 /// Before chunked ranges, opening a remote stream downloaded, decrypted and hashed
 /// the entire file before it could serve a byte. The byte count is what pins the
 /// shape here, because it is exact where a stopwatch is load-dependent, and it is
-/// two-sided: see the assertions. The elapsed bound is only a coarse backstop.
+/// two-sided: see the assertions.
 ///
 /// This test owns its bucket. Every other remote test clones the shared template
 /// and reads one `MemoryStorage` between them, so counters taken there would
@@ -323,11 +312,10 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
         // short tail to read ahead into, so what the counter sees is the seek's own
         // window.
         let target = Duration::from_secs(50);
-        let started = Instant::now();
         playback.playback_handle.seek(TrackTime::from_duration(target));
-        let landed = wait_for_seeked_on(&mut playback.progress_rx, SEEK_COST_BACKSTOP)
+        let landed = wait_for_seeked_on(&mut playback.progress_rx)
             .await
-            .expect("the seek must land within the backstop over a chunked ranged read");
+            .expect("the seek lands over a chunked ranged read");
         assert!(
             Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
             "the seek should land near {target:?}, got {landed}ms"
@@ -335,7 +323,6 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
         wait_for_position_advance(&mut playback.progress_rx)
             .await
             .expect("audio must flow from the completed chunked-range seek");
-        let elapsed = started.elapsed();
 
         // Ranged reads are the measurement, not `exact_full_read_count`: that counter
         // is bucket-wide and the sync loop reads whole objects (commits, snapshots)
@@ -366,10 +353,6 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
             "the seek fetched {range_bytes} bytes from the cloud across {} reads (bound \
          {SEEK_RANGE_BYTES_BOUND}); a seek must not drag the whole file across",
             reads.len(),
-        );
-        assert!(
-            elapsed < SEEK_COST_BACKSTOP,
-            "the seek took {elapsed:?}, past the {SEEK_COST_BACKSTOP:?} backstop"
         );
     })
     .await;

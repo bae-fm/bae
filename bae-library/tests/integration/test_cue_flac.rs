@@ -12,7 +12,6 @@ use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_db::DbAudioSegmentRole;
 use bae_util::content_type::ContentType;
 use std::path::Path;
-use std::time::Duration;
 use tempfile::TempDir;
 use tracing::info;
 
@@ -214,7 +213,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
     // second of alignment search is plenty.
     let max_alignment = sample_rate as usize * channels / 10;
     let needed = max_alignment + 500 * channels;
-    let captured_snapshot = captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
+    let captured_snapshot = captured.wait_for_samples(needed + 1).await;
     assert!(
         captured_snapshot.len() > needed,
         "not enough captured samples after 60s: {} (needed {needed})",

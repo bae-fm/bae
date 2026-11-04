@@ -22,7 +22,6 @@ async fn cd_auto_advance_respects_disc_boundaries_and_setting() {
                 fixture
                     .wait_for_playing_track(
                         &second,
-                        Duration::from_secs(10),
                         "same disc, disabled setting, and digital releases should continue",
                     )
                     .await;
@@ -57,13 +56,7 @@ async fn cd_disc_pause_resumes_at_next_disc() {
                 other => panic!("expected disc-ended pause, got {other:?}"),
             }
             fixture.playback_handle.resume();
-            fixture
-                .wait_for_playing_track(
-                    &second,
-                    Duration::from_secs(5),
-                    "Play should start the next disc",
-                )
-                .await;
+            fixture.wait_for_playing_track(&second, "Play should start the next disc").await;
             fixture.playback_handle.shutdown().await;
         },
     )
@@ -91,7 +84,6 @@ async fn cd_setting_changes_mid_track_apply_at_disc_boundary() {
                     fixture
                         .wait_for_playing_track(
                             &second,
-                            Duration::from_secs(10),
                             "disabling the setting should continue into the next disc",
                         )
                         .await;
@@ -127,7 +119,6 @@ async fn cd_manual_next_and_repeat_track_do_not_pause_at_disc_boundary() {
                 fixture
                     .wait_for_playing_track(
                         expected,
-                        Duration::from_secs(10),
                         "manual navigation and repeat-track should keep playing",
                     )
                     .await;

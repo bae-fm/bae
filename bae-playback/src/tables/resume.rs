@@ -6,7 +6,7 @@ use super::*;
 /// The single device-local `playback_state` row: where playback stood, so a
 /// restart resumes it. The queue it plays from is in the queue tables, and
 /// the volume it resumes at in `playback_now`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlaybackResumeRow {
     /// The queue entry playing, `None` when its track was deleted.
     pub current: Option<crate::QueueEntry>,
@@ -47,36 +47,46 @@ pub async fn save_playback_state(
 pub async fn load_playback_state(
     database: &Database,
 ) -> Result<Option<PlaybackResumeRow>, DbError> {
-    database
-        .read(move |sql| {
-            Ok(sql
-                .query_row(
-                    "SELECT current_entry, current_track_id, position_ms \
+    database.read(|sql| playback_state_on(&sql)).await
+}
+
+/// Follow the device-local `playback_state` row as `load_playback_state`
+/// reads it.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn subscribe_playback_state(
+    database: &Database,
+) -> coven::LiveQuery<Option<PlaybackResumeRow>> {
+    database.subscribe(|sql| playback_state_on(&sql).map_err(CovenError::from))
+}
+
+/// The `playback_state` row `sql` reads, `None` when none is stored.
+fn playback_state_on(sql: &SqlReadContext<'_>) -> Result<Option<PlaybackResumeRow>, DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT current_entry, current_track_id, position_ms \
                  FROM playback_state WHERE id = 'current'",
-                    [],
-                    |row| {
-                        let entry: Option<String> = row.get("current_entry")?;
-                        let track_id: Option<String> = row.get("current_track_id")?;
-                        // The schema keeps `position_ms` non-negative.
-                        let position_ms: Option<i64> = row.get("position_ms")?;
-                        let current = match entry.zip(track_id) {
-                            Some((entry, track_id)) => Some(crate::QueueEntry {
-                                id: entry.parse().map_err(|e: String| {
-                                    column_conversion_error(row, "current_entry", e)
-                                })?,
-                                track_id,
-                            }),
-                            None => None,
-                        };
-                        Ok(PlaybackResumeRow {
-                            current,
-                            position_ms: position_ms.map(|position| position as u64),
-                        })
-                    },
-                )
-                .optional()?)
-        })
-        .await
+            [],
+            |row| {
+                let entry: Option<String> = row.get("current_entry")?;
+                let track_id: Option<String> = row.get("current_track_id")?;
+                // The schema keeps `position_ms` non-negative.
+                let position_ms: Option<i64> = row.get("position_ms")?;
+                let current = match entry.zip(track_id) {
+                    Some((entry, track_id)) => Some(crate::QueueEntry {
+                        id: entry.parse().map_err(|e: String| {
+                            column_conversion_error(row, "current_entry", e)
+                        })?,
+                        track_id,
+                    }),
+                    None => None,
+                };
+                Ok(PlaybackResumeRow {
+                    current,
+                    position_ms: position_ms.map(|position| position as u64),
+                })
+            },
+        )
+        .optional()?)
 }
 
 /// Delete the device-local `playback_state` row (playback stopped).

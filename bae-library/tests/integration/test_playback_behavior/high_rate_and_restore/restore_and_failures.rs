@@ -18,13 +18,10 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     let mut progress_rx = handle.subscribe_progress();
     let played = handle.play_release(release_id, None, true).await.expect("the play is answered");
     assert_eq!(played, bae_playback::PlayOutcome::Playing);
-    let playing = wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { .. }),
-        Duration::from_secs(20),
-    )
-    .await
-    .expect("the shuffled release plays");
+    let playing =
+        wait_for_state_on(&mut progress_rx, |s| matches!(s, PlaybackState::Playing { .. }))
+            .await
+            .expect("the shuffled release plays");
     handle.add_to_queue(vec![lib.track_ids[0].clone()]);
     handle.pause();
     let before = handle.queue_value().await.expect("queue value");
@@ -38,7 +35,6 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     wait_for_state_on(
         &mut progress_rx,
         |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == playing_id),
-        Duration::from_secs(20),
     )
     .await
     .expect("the playing track resumes paused");
@@ -68,10 +64,8 @@ async fn test_preview_seek_while_paused_emits_position_update() {
         fixture
             .playback_handle
             .preview_play(bae_track_audio::PreviewTarget::whole_file(preview_path));
-        let saw_playing = bae_util::test_channels::next_matching(
-            &mut fixture.progress_rx,
-            Duration::from_secs(5),
-            |event| {
+        let saw_playing =
+            bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
                 matches!(
                     event,
                     PlaybackProgress::PreviewStateChanged(
@@ -79,17 +73,14 @@ async fn test_preview_seek_while_paused_emits_position_update() {
                     )
                 )
                 .then_some(())
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(saw_playing.is_some(), "preview should reach Playing state");
 
         // Pause — wait for Paused state.
         fixture.playback_handle.preview_toggle_pause();
-        let saw_paused = bae_util::test_channels::next_matching(
-            &mut fixture.progress_rx,
-            Duration::from_secs(3),
-            |event| {
+        let saw_paused =
+            bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
                 matches!(
                     event,
                     PlaybackProgress::PreviewStateChanged(
@@ -97,9 +88,8 @@ async fn test_preview_seek_while_paused_emits_position_update() {
                     )
                 )
                 .then_some(())
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(saw_paused.is_some(), "preview should reach Paused state");
 
         // Seek to the middle of the file while paused. No ticks fire in the
@@ -107,15 +97,16 @@ async fn test_preview_seek_while_paused_emits_position_update() {
         // the explicit emit in handle_preview_seek.
         fixture.playback_handle.preview_seek_by_ratio(0.5);
 
-        let saw_position_update = bae_util::test_channels::next_matching(
-            &mut fixture.progress_rx,
-            Duration::from_secs(3),
-            |event| match event {
-                PlaybackProgress::PreviewPositionUpdate { position_ms, .. } => Some(position_ms),
-                _ => None,
-            },
-        )
-        .await;
+        let saw_position_update =
+            bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
+                match event {
+                    PlaybackProgress::PreviewPositionUpdate { position_ms, .. } => {
+                        Some(position_ms)
+                    }
+                    _ => None,
+                }
+            })
+            .await;
 
         assert!(
             saw_position_update.is_some(),
@@ -238,12 +229,8 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
     // before the decoder's ready signal, so Playing must never appear: the
     // ready-gated emission holds Playing until audio flows, and the error path
     // tears playback down to Stopped instead. Both are exercised here.
-    let states = collect_states_on(
-        &mut fixture.progress_rx,
-        |s| matches!(s, PlaybackState::Stopped),
-        Duration::from_secs(8),
-    )
-    .await;
+    let states =
+        collect_states_on(&mut fixture.progress_rx, |s| matches!(s, PlaybackState::Stopped)).await;
     assert!(
         matches!(states.last(), Some(PlaybackState::Stopped)),
         "a mid-flight cloud read failure must end in Stopped, got {states:?}"

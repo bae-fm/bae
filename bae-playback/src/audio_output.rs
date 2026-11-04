@@ -551,22 +551,21 @@ impl CapturedStream {
         self.samples.clone()
     }
 
-    /// Checks every 50 ms until at least `at_least` samples have arrived or
-    /// `timeout` elapses, and returns what arrived, so the caller can assert
-    /// against whatever was captured.
-    pub async fn wait_for_samples(
-        &mut self,
-        at_least: usize,
-        timeout: std::time::Duration,
-    ) -> Vec<f32> {
-        let deadline = std::time::Instant::now() + timeout;
-        loop {
-            let samples = self.samples();
-            if samples.len() >= at_least || std::time::Instant::now() >= deadline {
-                return samples;
+    /// Every sample this transition has sent once at least `at_least` have
+    /// arrived, waiting on each run the capture thread sends. Returns what
+    /// arrived if the stream ends first or none ever completes the count
+    /// (`HANG_GUARD`), so the caller can assert against whatever was captured.
+    pub async fn wait_for_samples(&mut self, at_least: usize) -> Vec<f32> {
+        let deadline = tokio::time::Instant::now() + bae_util::test_channels::HANG_GUARD;
+        while self.samples.len() < at_least {
+            match tokio::time::timeout_at(deadline, self.runs.recv()).await {
+                Ok(Some(run)) => self.samples.extend(run),
+                // The stream ended, or no more came: the caller asserts on
+                // what arrived.
+                Ok(None) | Err(_) => break,
             }
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
+        self.samples()
     }
 }
 

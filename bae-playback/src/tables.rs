@@ -27,6 +27,8 @@ pub use queue_reads::subscribe_queue_addition;
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue_reads::{queue_addition, queue_context_version, queue_upcoming};
 pub use queue_reads::{subscribe_queue_upcoming, subscribe_queue_value, QueueUpcomingRead};
+#[cfg(any(test, feature = "test-utils"))]
+pub use resume::subscribe_playback_state;
 pub use resume::{
     clear_playback_state, load_playback_state, save_playback_state, PlaybackResumeRow,
 };

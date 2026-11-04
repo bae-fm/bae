@@ -447,7 +447,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
         assert_eq!(failed.retry_effect, coven::RetryEffect::Pass);
         assert!(failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
-        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             manager.retry_now().await.unwrap().await
         })
         .await
@@ -487,7 +487,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
         assert_eq!(failed.retry_effect, coven::RetryEffect::Failed);
         assert!(!failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
-        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             manager.retry_now().await.unwrap().await
         })
         .await
@@ -523,7 +523,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     let ends = std::time::UNIX_EPOCH + std::time::Duration::from_secs(600);
     assert_eq!(cooling.retry_effect, coven::RetryEffect::CoolingDown { until: ends });
     assert!(!cooling.retry_offered(), "{:?}", cooling.coven);
-    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         manager.retry_now().await.unwrap().await
     })
     .await
@@ -544,7 +544,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     assert!(offline.retry_offered(), "{:?}", offline.retry_effect);
     manager.storage.set_faults(coven::Faults::none()).await;
     let requests = manager.storage.request_trace().len();
-    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         manager.retry_now().await.unwrap().await
     })
     .await

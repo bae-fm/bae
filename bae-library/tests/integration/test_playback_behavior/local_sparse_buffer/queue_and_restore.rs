@@ -22,11 +22,9 @@ async fn assert_skip_preserves_play_state_over_sparse_buffer(
 
         if start_paused {
             playback.playback_handle.pause();
-            wait_for_state_on(
-                &mut playback.progress_rx,
-                |s| matches!(s, PlaybackState::Paused { .. }),
-                Duration::from_secs(5),
-            )
+            wait_for_state_on(&mut playback.progress_rx, |s| {
+                matches!(s, PlaybackState::Paused { .. })
+            })
             .await
             .expect("playback should pause");
         }
@@ -38,18 +36,14 @@ async fn assert_skip_preserves_play_state_over_sparse_buffer(
             SkipDirection::Previous => playback.playback_handle.previous(),
         }
 
-        let landed = wait_for_state_on(
-            &mut playback.progress_rx,
-            |s| {
-                let (track, is_paused) = match s {
-                    PlaybackState::Playing { track, .. } => (track, false),
-                    PlaybackState::Paused { track, .. } => (track, true),
-                    _ => return false,
-                };
-                track.track_id == target_track_id && is_paused == start_paused
-            },
-            Duration::from_secs(25),
-        )
+        let landed = wait_for_state_on(&mut playback.progress_rx, |s| {
+            let (track, is_paused) = match s {
+                PlaybackState::Playing { track, .. } => (track, false),
+                PlaybackState::Paused { track, .. } => (track, true),
+                _ => return false,
+            };
+            track.track_id == target_track_id && is_paused == start_paused
+        })
         .await;
         assert!(
             landed.is_some(),
@@ -96,7 +90,6 @@ async fn previous_navigation_over_sparse_buffer() {
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
-            Duration::from_secs(25),
         )
         .await
         .expect("Next should switch to the second track");
@@ -109,7 +102,6 @@ async fn previous_navigation_over_sparse_buffer() {
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-            Duration::from_secs(25),
         )
         .await
         .expect("Previous called early in the track should go to the previous track");
@@ -125,7 +117,6 @@ async fn previous_navigation_over_sparse_buffer() {
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-            Duration::from_secs(25),
         )
         .await
         .expect("Previous called late in the track should restart it");
@@ -150,17 +141,11 @@ async fn seek_preserves_staged_next_over_sparse_buffer() {
         // Seek twice to stress the take-out/re-stage across an already-re-staged
         // source, then let the boundary arrive.
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(30)));
-        wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
-            .await
-            .expect("first seek lands");
+        wait_for_seeked_on(&mut playback.progress_rx).await.expect("first seek lands");
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(56)));
-        wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
-            .await
-            .expect("second seek lands");
+        wait_for_seeked_on(&mut playback.progress_rx).await.expect("second seek lands");
 
-        let outcome =
-            observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(25))
-                .await;
+        let outcome = observe_boundary(&mut playback.progress_rx, &first, &second).await;
         assert!(
             outcome.reached_incoming,
             "playback crosses into the second track after two re-staging seeks"
@@ -185,7 +170,7 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
 
         let target = Duration::from_secs(20);
         playback.playback_handle.seek(TrackTime::from_duration(target));
-        wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        wait_for_seeked_on(&mut playback.progress_rx)
             .await
             .expect("the seek before shutdown lands");
 
@@ -200,7 +185,6 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
         wait_for_state_on(
             &mut progress_rx,
             |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == last_track),
-            Duration::from_secs(20),
         )
         .await
         .expect("restart should restore paused at the saved track");
@@ -209,7 +193,6 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
         wait_for_state_on(
             &mut progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == last_track),
-            Duration::from_secs(20),
         )
         .await
         .expect("resume after restore should start playing");
@@ -249,11 +232,9 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
 
         // No restored Paused/Playing state may surface. The bounded window is
         // generous relative to how fast a restore emits (immediately at startup).
-        let restored = wait_for_state_on(
-            &mut progress_rx,
-            |s| matches!(s, PlaybackState::Paused { .. } | PlaybackState::Playing { .. }),
-            Duration::from_secs(3),
-        )
+        let restored = wait_for_state_on(&mut progress_rx, |s| {
+            matches!(s, PlaybackState::Paused { .. } | PlaybackState::Playing { .. })
+        })
         .await;
         assert!(
             restored.is_none(),
@@ -287,11 +268,9 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
         playback.playback_handle.set_volume(0.3);
         playback.playback_handle.set_muted(true);
         let mut progress_rx = playback.playback_handle.subscribe_progress();
-        bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(3), |event| {
-            match event {
-                PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
-                _ => None,
-            }
+        bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| match event {
+            PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
+            _ => None,
         })
         .await
         .expect("the mute lands");
@@ -303,18 +282,14 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
         // after this subscribes.
         let mut progress_rx = handle.subscribe_progress();
         let mut announced = (None, None);
-        bae_util::test_channels::next_matching(
-            &mut progress_rx,
-            Duration::from_secs(20),
-            |event| {
-                match event {
-                    PlaybackProgress::VolumeChanged { volume } => announced.0 = Some(volume),
-                    PlaybackProgress::MuteChanged { is_muted } => announced.1 = Some(is_muted),
-                    _ => {}
-                }
-                announced.0.zip(announced.1)
-            },
-        )
+        bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| {
+            match event {
+                PlaybackProgress::VolumeChanged { volume } => announced.0 = Some(volume),
+                PlaybackProgress::MuteChanged { is_muted } => announced.1 = Some(is_muted),
+                _ => {}
+            }
+            announced.0.zip(announced.1)
+        })
         .await
         .expect("restore announces the volume and the mute");
         assert_eq!(announced, (Some(0.3), Some(true)));
@@ -346,27 +321,20 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
     playback.playback_handle.add_to_queue(initial_queue);
     playback.playback_handle.play(track0.to_string());
 
-    let (played, entries) = wait_for_playing_capturing_queue_on(
-        &playback.playback_handle,
-        &mut playback.progress_rx,
-        Duration::from_secs(25),
-    )
-    .await;
+    let (played, entries) =
+        wait_for_playing_capturing_queue_on(&playback.playback_handle, &mut playback.progress_rx)
+            .await;
     assert!(played, "track0 should start playing");
 
     mutate(&playback.playback_handle, &entries);
     playback.playback_handle.next();
 
-    let next_state = wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| match s {
-            PlaybackState::Playing { track, .. } | PlaybackState::Paused { track, .. } => {
-                track.track_id != track0
-            }
-            _ => false,
-        },
-        Duration::from_secs(25),
-    )
+    let next_state = wait_for_state_on(&mut playback.progress_rx, |s| match s {
+        PlaybackState::Playing { track, .. } | PlaybackState::Paused { track, .. } => {
+            track.track_id != track0
+        }
+        _ => false,
+    })
     .await;
     let state = next_state.expect("Next should switch off track0 after the queue mutation");
     let playing_id = match &state {
@@ -480,7 +448,6 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
         let (played, entries) = wait_for_playing_capturing_queue_on(
             &playback.playback_handle,
             &mut playback.progress_rx,
-            Duration::from_secs(25),
         )
         .await;
         assert!(played, "the release starts playing");
@@ -492,7 +459,6 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-            Duration::from_secs(25),
         )
         .await
         .expect("SkipTo jumps to the targeted entry");

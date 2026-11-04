@@ -449,7 +449,7 @@ async fn output_queue_until(
     done: impl Fn(&bae_transfers::OutputPhaseSnapshot) -> bool,
 ) -> bae_transfers::OutputPhaseSnapshot {
     let mut values = manager.subscribe_output_snapshot();
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let queue = values.next().await.expect("the query stays open").unwrap();
             if done(&queue) {

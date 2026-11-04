@@ -133,16 +133,13 @@ async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
     assert_eq!(manager.database.read_release_file(&files[0].id).await.unwrap(), b"audio");
 }
 
-/// How long a test waits for a live read to deliver a value.
-const DELIVERY: std::time::Duration = std::time::Duration::from_secs(20);
-
 /// The next value of a release's live read for which `wanted` holds.
 async fn next_playability(
     live: &mut coven::ReconfigurableLiveQuery<Option<String>, bae_views::ReleaseDetailProjection>,
     release_id: &str,
     wanted: impl Fn(&ReleasePlayability) -> bool,
 ) -> ReleasePlayability {
-    tokio::time::timeout(DELIVERY, async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let projection = live
                 .next()
@@ -330,8 +327,6 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
         "the cover remains evictable"
     );
 }
-
-const WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// A transition's row is there while its work runs; a work that fails or
 /// panics has it deleted in a write of its own. A work that succeeds deletes
@@ -613,7 +608,7 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     });
     observed.await.unwrap();
     let listed = tokio::time::timeout(
-        WAIT,
+        bae_util::test_channels::HANG_GUARD,
         transfers.until(|transfers| transfers.contains_key(&release_id)),
     )
     .await
@@ -626,10 +621,13 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
 
     resume.send(()).unwrap();
     making.await.unwrap().unwrap();
-    tokio::time::timeout(WAIT, transfers.until(|transfers| transfers.is_empty()))
-        .await
-        .expect("a release whose files switched is listed no more")
-        .unwrap();
+    tokio::time::timeout(
+        bae_util::test_channels::HANG_GUARD,
+        transfers.until(|transfers| transfers.is_empty()),
+    )
+    .await
+    .expect("a release whose files switched is listed no more")
+    .unwrap();
 }
 
 #[tokio::test]

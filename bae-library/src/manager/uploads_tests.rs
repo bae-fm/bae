@@ -207,7 +207,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         let manager = manager.library.clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let event = browse.next().await.expect("the browse query answers");
             let projection = event.result.unwrap();

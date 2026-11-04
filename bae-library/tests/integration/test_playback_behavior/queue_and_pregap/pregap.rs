@@ -17,14 +17,10 @@ async fn test_direct_play_skips_pregap() {
             let pregapped_track_id = fixture.track_ids[1].clone();
 
             fixture.playback_handle.play(pregapped_track_id.clone());
-            wait_for_state_on(
-                &mut fixture.progress_rx,
-                |s| {
-                    matches!(s, PlaybackState::Playing { track, .. }
+            wait_for_state_on(&mut fixture.progress_rx, |s| {
+                matches!(s, PlaybackState::Playing { track, .. }
                 if track.track_id == pregapped_track_id)
-                },
-                Duration::from_secs(5),
-            )
+            })
             .await
             .expect("the pregapped track should start playing");
 
@@ -58,24 +54,18 @@ async fn test_next_button_skips_pregap() {
             let pregapped_track_id = fixture.track_ids[1].clone();
 
             fixture.playback_handle.play(first_track_id.clone());
-            wait_for_state_on(
-                &mut fixture.progress_rx,
-                |s| matches!(s, PlaybackState::Playing { .. }),
-                Duration::from_secs(5),
-            )
+            wait_for_state_on(&mut fixture.progress_rx, |s| {
+                matches!(s, PlaybackState::Playing { .. })
+            })
             .await
             .expect("the first track should start playing");
 
             // Next is a direct selection: it skips the incoming track's pregap.
             fixture.playback_handle.next();
-            wait_for_state_on(
-                &mut fixture.progress_rx,
-                |s| {
-                    matches!(s, PlaybackState::Playing { track, .. }
+            wait_for_state_on(&mut fixture.progress_rx, |s| {
+                matches!(s, PlaybackState::Playing { track, .. }
                 if track.track_id == pregapped_track_id)
-                },
-                Duration::from_secs(5),
-            )
+            })
             .await
             .expect("Next should switch to the pregapped track");
 
@@ -109,27 +99,19 @@ async fn test_auto_advance_plays_pregap() {
             let pregapped_track_id = fixture.track_ids[1].clone();
 
             fixture.playback_handle.play(first_track_id.clone());
-            wait_for_state_on(
-                &mut fixture.progress_rx,
-                |s| {
-                    matches!(s, PlaybackState::Playing { track, .. }
+            wait_for_state_on(&mut fixture.progress_rx, |s| {
+                matches!(s, PlaybackState::Playing { track, .. }
                 if track.track_id == first_track_id)
-                },
-                Duration::from_secs(5),
-            )
+            })
             .await
             .expect("the first track should start playing");
 
             // Track 1 runs 0–8s; seek near its end so it crosses into track 2's pregap.
             fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(7)));
-            wait_for_state_on(
-                &mut fixture.progress_rx,
-                |s| {
-                    matches!(s, PlaybackState::Playing { track, .. }
+            wait_for_state_on(&mut fixture.progress_rx, |s| {
+                matches!(s, PlaybackState::Playing { track, .. }
                 if track.track_id == pregapped_track_id)
-                },
-                Duration::from_secs(10),
-            )
+            })
             .await
             .expect("playback should auto-advance into the pregapped track");
 
@@ -175,7 +157,7 @@ async fn test_cue_flac_seek() {
 
             let started = bae_util::test_channels::next_matching(
                 &mut fixture.progress_rx,
-                Duration::from_secs(5),
+                HANG_GUARD,
                 |event| {
                     matches!(
                         event,
@@ -208,8 +190,7 @@ async fn test_cue_flac_seek() {
 
             // One second of samples.
             let target_samples = sample_rate as usize * channels;
-            let captured_snapshot =
-                captured.wait_for_samples(target_samples, Duration::from_secs(60)).await;
+            let captured_snapshot = captured.wait_for_samples(target_samples).await;
 
             assert!(!captured_snapshot.is_empty(), "No samples captured after seek",);
 
@@ -281,7 +262,7 @@ async fn seek_lands_at_the_track_time_it_names() {
             fixture.playback_handle.seek(TrackTime::from_millis(4_000));
             let seeked = bae_util::test_channels::next_matching(
                 &mut fixture.progress_rx,
-                PLAY_START_BACKSTOP,
+                HANG_GUARD,
                 |event| match event {
                     PlaybackProgress::Seeked { position_ms, track_id: tid, .. }
                         if tid == track_id =>
@@ -324,11 +305,9 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
     let (handle, _capture_rx) = start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
     let shown =
-        bae_util::test_channels::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| {
-            match event {
-                PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
-                _ => None,
-            }
+        bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| match event {
+            PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
+            _ => None,
         })
         .await;
     assert_eq!(shown, Some(0), "the restored track shows its start");
@@ -374,8 +353,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
 
             // Two seconds of samples.
             let target_samples = sample_rate as usize * channels * 2;
-            let captured_snapshot =
-                captured.wait_for_samples(target_samples, Duration::from_secs(60)).await;
+            let captured_snapshot = captured.wait_for_samples(target_samples).await;
 
             // Had the pregap played, the start of the reference would not be found
             // within the first tenth of a second.
@@ -569,7 +547,6 @@ async fn assert_back_twice_reaches_previous(
     wait_for_state_on(
         &mut fixture.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == track_id),
-        PLAY_START_BACKSTOP,
     )
     .await
     .expect("Back 5 s into the track restarts it");
@@ -590,13 +567,10 @@ async fn assert_back_twice_reaches_previous(
     .expect("the restarted track plays on to 1 s");
 
     fixture.playback_handle.previous();
-    let landed = wait_for_state_on(
-        &mut fixture.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { .. }),
-        PLAY_START_BACKSTOP,
-    )
-    .await
-    .expect("Back plays a track");
+    let landed =
+        wait_for_state_on(&mut fixture.progress_rx, |s| matches!(s, PlaybackState::Playing { .. }))
+            .await
+            .expect("Back plays a track");
     let PlaybackState::Playing { track: landed, .. } = landed else {
         unreachable!("the wait matched only Playing");
     };
@@ -683,7 +657,6 @@ async fn pause_on_back_album(fixture: &mut CueFlacTestFixture, track_id: &str) {
     wait_for_state_on(
         &mut fixture.progress_rx,
         |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == track_id),
-        Duration::from_secs(5),
     )
     .await
     .expect("the track pauses");

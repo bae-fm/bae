@@ -220,8 +220,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
         // track's CUE start time. Search within 2s for alignment.
         let max_alignment = sample_rate as usize * channels * 2;
         let needed = max_alignment + 500 * channels;
-        let captured_snapshot =
-            captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
+        let captured_snapshot = captured.wait_for_samples(needed + 1).await;
         assert!(
             captured_snapshot.len() > needed,
             "not enough captured samples after 60s for {label}: {} (needed {needed})",
@@ -282,8 +281,7 @@ async fn test_cue_ape_seek() {
     let reference_f32 = samples_as_f32(&reference);
 
     let needed_for_seek = sample_rate as usize * channels;
-    let captured_snapshot =
-        captured.wait_for_samples(needed_for_seek, Duration::from_secs(60)).await;
+    let captured_snapshot = captured.wait_for_samples(needed_for_seek).await;
 
     assert!(
         captured_snapshot.len() >= needed_for_seek,
@@ -425,7 +423,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // alignment would exceed tolerance.
     let max_alignment = sample_rate as usize * channels * 5;
     let needed = max_alignment + 500 * channels;
-    let captured_snapshot = captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
+    let captured_snapshot = captured.wait_for_samples(needed + 1).await;
     assert!(
         captured_snapshot.len() > needed,
         "not enough captured samples after 60s: {} (needed {needed})",

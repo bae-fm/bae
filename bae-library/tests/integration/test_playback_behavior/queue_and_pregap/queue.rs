@@ -7,66 +7,54 @@ async fn test_previous_track_navigation() {
         let first_track_id = fixture.track_ids[0].clone();
         let second_track_id = fixture.track_ids[1].clone();
         fixture.playback_handle.play(first_track_id.clone());
-        let first_track_state = fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
-            .await;
+        let first_track_state =
+            fixture.wait_for_state(|s| matches!(s, PlaybackState::Playing { .. })).await;
         assert!(first_track_state.is_some(), "Should be playing first track after play command",);
         fixture.playback_handle.next();
         let second_track_state = fixture
-            .wait_for_state(
-                |s| {
-                    if let PlaybackState::Playing { track, .. } = s {
-                        track.track_id == second_track_id
-                    } else {
-                        false
-                    }
-                },
-                Duration::from_secs(5),
-            )
+            .wait_for_state(|s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == second_track_id
+                } else {
+                    false
+                }
+            })
             .await;
         assert!(second_track_state.is_some(), "Should be playing second track after Next command",);
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-        let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
+        let _position = fixture.wait_for_position_update().await;
         fixture.playback_handle.previous();
         let previous_track_state = fixture
-            .wait_for_state(
-                |s| {
-                    if let PlaybackState::Playing { track, .. } = s {
-                        track.track_id == first_track_id
-                    } else {
-                        false
-                    }
-                },
-                Duration::from_secs(5),
-            )
+            .wait_for_state(|s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
+                } else {
+                    false
+                }
+            })
             .await;
         assert!(
             previous_track_state.is_some(),
             "Should go to previous track when Previous is called early in track",
         );
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(4)));
-        let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
+        let _position = fixture.wait_for_position_update().await;
         fixture.playback_handle.previous();
         let restart_state = fixture
-            .wait_for_state(
-                |s| {
-                    if let PlaybackState::Playing { track, .. } = s {
-                        track.track_id == first_track_id
-                    } else {
-                        false
-                    }
-                },
-                Duration::from_secs(5),
-            )
+            .wait_for_state(|s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
+                } else {
+                    false
+                }
+            })
             .await;
         assert!(
             restart_state.is_some(),
             "Should restart current track when Previous is called late in track",
         );
-        let restart_position = fixture
-            .wait_for_position_update(Duration::from_secs(2))
-            .await
-            .expect("Position update after restart");
+        let restart_position =
+            fixture.wait_for_position_update().await.expect("Position update after restart");
         assert!(
             Duration::from_millis(restart_position) < Duration::from_secs(1),
             "Restart should reset position near 0, got {restart_position}ms",
@@ -79,20 +67,19 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         let track_id = &fixture.track_ids[0];
         fixture.playback_handle.play(track_id.clone());
-        let playing_state = fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
-            .await;
+        let playing_state =
+            fixture.wait_for_state(|s| matches!(s, PlaybackState::Playing { .. })).await;
         assert!(playing_state.is_some(), "Should be playing after play command");
         let seek_position = Duration::from_secs(2);
         fixture.playback_handle.seek(TrackTime::from_duration(seek_position));
-        let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
+        let _position = fixture.wait_for_position_update().await;
         let current_pos_ms = fixture
-            .wait_for_position_update(Duration::from_secs(2))
+            .wait_for_position_update()
             .await
             .expect("a position update should arrive while playing");
         let same_position = Duration::from_millis(current_pos_ms + 50);
         fixture.playback_handle.seek(TrackTime::from_duration(same_position));
-        let seeked_position = fixture.wait_for_seeked(Duration::from_secs(2)).await;
+        let seeked_position = fixture.wait_for_seeked().await;
         assert!(
             seeked_position.is_some(),
             "Should receive Seeked event when position difference < 100ms",
@@ -105,7 +92,7 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
                 diff,
             );
         }
-        let position_update = fixture.wait_for_position_update(Duration::from_secs(2)).await;
+        let position_update = fixture.wait_for_position_update().await;
         assert!(position_update.is_some(), "Position updates should continue after skipped seek",);
     })
     .await;
@@ -117,64 +104,52 @@ async fn test_queue_maintained_after_previous_navigation() {
         let second_track_id = fixture.track_ids[1].clone();
         fixture.playback_handle.play(first_track_id.clone());
         let _first_track_state = fixture
-            .wait_for_state(
-                |s| {
-                    if let PlaybackState::Playing { track, .. } = s {
-                        track.track_id == first_track_id
-                    } else {
-                        false
-                    }
-                },
-                Duration::from_secs(5),
-            )
+            .wait_for_state(|s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
+                } else {
+                    false
+                }
+            })
             .await;
         fixture.playback_handle.next();
         let second_track_state = fixture
-            .wait_for_state(
-                |s| {
-                    if let PlaybackState::Playing { track, .. } = s {
-                        track.track_id == second_track_id
-                    } else {
-                        false
-                    }
-                },
-                Duration::from_secs(5),
-            )
+            .wait_for_state(|s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == second_track_id
+                } else {
+                    false
+                }
+            })
             .await;
         assert!(second_track_state.is_some(), "Should be playing second track after Next command",);
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-        let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
+        let _position = fixture.wait_for_position_update().await;
         fixture.playback_handle.previous();
         let back_to_first_state = fixture
-            .wait_for_state(
-                |s| {
-                    if let PlaybackState::Playing { track, .. } = s {
-                        track.track_id == first_track_id
-                    } else {
-                        false
-                    }
-                },
-                Duration::from_secs(5),
-            )
+            .wait_for_state(|s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
+                } else {
+                    false
+                }
+            })
             .await;
         assert!(
             back_to_first_state.is_some(),
             "Should go back to first track when Previous is called from second track",
         );
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-        let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
+        let _position = fixture.wait_for_position_update().await;
         fixture.playback_handle.next();
         let should_be_second_state = fixture
-            .wait_for_state(
-                |s| {
-                    if let PlaybackState::Playing { track, .. } = s {
-                        track.track_id == second_track_id
-                    } else {
-                        false
-                    }
-                },
-                Duration::from_secs(5),
-            )
+            .wait_for_state(|s| {
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == second_track_id
+                } else {
+                    false
+                }
+            })
             .await;
         assert!(
             should_be_second_state.is_some(),
@@ -203,22 +178,19 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     // `play` refills the context lane from the track's release, minting fresh
     // entry ids, and leaves Up Next alone — so capture the entries *after* play
     // settles: drain up to Playing, then read the current queue value.
-    let (played, entries) = fixture.wait_for_playing_capturing_queue(Duration::from_secs(5)).await;
+    let (played, entries) = fixture.wait_for_playing_capturing_queue().await;
     assert!(played, "track0 should start playing");
 
     mutate(&fixture.playback_handle, &entries);
     fixture.playback_handle.next();
 
     let next_state = fixture
-        .wait_for_state(
-            |s| match s {
-                PlaybackState::Playing { track, .. } | PlaybackState::Paused { track, .. } => {
-                    track.track_id != track0
-                }
-                _ => false,
-            },
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| match s {
+            PlaybackState::Playing { track, .. } | PlaybackState::Paused { track, .. } => {
+                track.track_id != track0
+            }
+            _ => false,
+        })
         .await;
 
     let state = next_state.expect("Next should switch off track0 after the queue mutation");
@@ -362,7 +334,6 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-                Duration::from_secs(5),
             )
             .await
             .expect("the release starts playing");
@@ -420,7 +391,6 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-            Duration::from_secs(5),
         )
         .await
         .expect("the release starts playing");
@@ -457,7 +427,6 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
     fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == shuffled_next),
-            Duration::from_secs(10),
         )
         .await
         .expect(
@@ -474,7 +443,7 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
             fixture.playback_handle.play_library_shuffled().await.expect("the play is answered");
         assert_eq!(outcome, bae_playback::PlayOutcome::Playing);
         fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }))
             .await
             .expect("a library track starts playing");
         let proj = fixture.playback_handle.queue_value().await.expect("queue value");
@@ -508,7 +477,6 @@ async fn play_tracks_tells_its_caller_which_tracks_it_left_out() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-                Duration::from_secs(5),
             )
             .await
             .expect("the start index's track plays");
@@ -562,13 +530,11 @@ async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
     let mut progress = handle.subscribe_progress();
     let outcome = handle.play_library_shuffled().await.expect("the play is answered");
     assert_eq!(outcome, bae_playback::PlayOutcome::NothingToPlay);
-    let played = wait_for_state_on(
-        &mut progress,
-        |s| matches!(s, PlaybackState::Playing { .. }),
-        Duration::from_secs(1),
-    )
-    .await;
-    assert!(played.is_none(), "an empty library has nothing to shuffle-play");
+    let events = settled_events_on(&handle, &mut progress).await;
+    assert!(
+        !states_in(&events).iter().any(|s| matches!(s, PlaybackState::Playing { .. })),
+        "an empty library has nothing to shuffle-play: {events:?}"
+    );
     handle.stop();
 }
 
@@ -578,7 +544,7 @@ async fn set_repeat_mode_applies_and_reports_each_mode() {
         let values = playback_values(fixture);
         for expected in [RepeatMode::Context, RepeatMode::Track, RepeatMode::Off] {
             fixture.playback_handle.set_repeat_mode(expected);
-            tokio::time::timeout(Duration::from_secs(3), async {
+            tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let value = values.next().await.expect("the playback values resolve");
                     if value.is_some_and(|value| value.repeat_mode == expected) {
@@ -599,10 +565,7 @@ async fn set_muted_round_trips_and_set_volume_clears_mute() {
         fixture.playback_handle.set_volume(0.5);
 
         fixture.playback_handle.set_muted(true);
-        assert!(
-            wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
-            "SetMuted(true) mutes"
-        );
+        assert!(wait_for_mute(&mut fixture.progress_rx).await, "SetMuted(true) mutes");
 
         // A repeated set to the state already held emits nothing; the next
         // MuteChanged is the unmute that follows. A toggle-shaped implementation
@@ -611,19 +574,16 @@ async fn set_muted_round_trips_and_set_volume_clears_mute() {
         fixture.playback_handle.set_muted(true);
         fixture.playback_handle.set_muted(false);
         assert!(
-            !wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
+            !wait_for_mute(&mut fixture.progress_rx).await,
             "the repeated SetMuted(true) was a no-op; only SetMuted(false) emitted"
         );
 
         // Mute again, then a non-zero SetVolume clears the mute.
         fixture.playback_handle.set_muted(true);
-        assert!(
-            wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
-            "muted again"
-        );
+        assert!(wait_for_mute(&mut fixture.progress_rx).await, "muted again");
         fixture.playback_handle.set_volume(0.7);
         assert!(
-            !wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
+            !wait_for_mute(&mut fixture.progress_rx).await,
             "SetVolume above zero clears the mute"
         );
     })
@@ -636,8 +596,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
         let first = fixture.track_ids[0].clone();
         let third = fixture.track_ids[2].clone();
         fixture.playback_handle.play(first.clone());
-        let (played, entries) =
-            fixture.wait_for_playing_capturing_queue(Duration::from_secs(5)).await;
+        let (played, entries) = fixture.wait_for_playing_capturing_queue().await;
         assert!(played, "the release starts playing");
         let target = entries
             .iter()
@@ -647,7 +606,6 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-                Duration::from_secs(5),
             )
             .await
             .expect("SkipTo jumps to the targeted entry");
@@ -667,7 +625,6 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-                Duration::from_secs(5),
             )
             .await
             .expect("the release starts playing");
@@ -695,7 +652,6 @@ async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-                Duration::from_secs(5),
             )
             .await
             .expect("the release starts playing");
@@ -726,7 +682,6 @@ async fn add_release_to_queue_appends_its_tracks_to_the_manual_lane() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-                Duration::from_secs(5),
             )
             .await
             .expect("the release starts playing");
@@ -751,7 +706,6 @@ async fn add_release_next_puts_its_tracks_at_the_front_of_the_manual_lane() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-                Duration::from_secs(5),
             )
             .await
             .expect("the release starts playing");
@@ -776,8 +730,7 @@ async fn remove_currently_playing_entry_stops_playback() {
         let first = fixture.track_ids[0].clone();
         let second = fixture.track_ids[1].clone();
         fixture.playback_handle.play(first.clone());
-        let (played, entries) =
-            fixture.wait_for_playing_capturing_queue(Duration::from_secs(5)).await;
+        let (played, entries) = fixture.wait_for_playing_capturing_queue().await;
         assert!(played, "the release starts playing");
 
         // Skip onto the second track so it's the current context entry, then remove
@@ -792,14 +745,13 @@ async fn remove_currently_playing_entry_stops_playback() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
-                Duration::from_secs(5),
             )
             .await
             .expect("SkipTo makes the second track current");
 
         fixture.playback_handle.remove_entry(entry.id.clone());
         fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Stopped), Duration::from_secs(5))
+            .wait_for_state(|s| matches!(s, PlaybackState::Stopped))
             .await
             .expect("removing the currently-playing entry stops playback");
     })
@@ -816,7 +768,6 @@ async fn play_release_starts_at_the_named_track() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-                Duration::from_secs(5),
             )
             .await
             .expect("the first track plays");
@@ -832,7 +783,6 @@ async fn play_release_starts_at_the_named_track() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-                Duration::from_secs(5),
             )
             .await
             .expect("the named track plays");
@@ -851,7 +801,6 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-                Duration::from_secs(5),
             )
             .await
             .expect("the third track plays");
@@ -921,7 +870,6 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     wait_for_state_on(
         &mut progress,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-        Duration::from_secs(5),
     )
     .await
     .expect("release A starts playing");
@@ -943,8 +891,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
         !after.manual.iter().any(|e| e.track_id == b_first),
         "the deleted release's queued track is purged"
     );
-    let still_playing =
-        wait_for_track_position(&mut progress, &first, Duration::from_secs(5)).await;
+    let still_playing = wait_for_track_position(&mut progress, &first).await;
     assert!(
         still_playing.is_some(),
         "deleting only the preloaded-next release leaves the current track playing"
@@ -952,13 +899,9 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
 
     // Delete A: the current track is deleted → playback stops.
     lib.library.delete_release(&a_release_id).await.expect("delete release A");
-    wait_for_state_on(
-        &mut progress,
-        |s| matches!(s, PlaybackState::Stopped),
-        Duration::from_secs(5),
-    )
-    .await
-    .expect("deleting the current track's release stops playback");
+    wait_for_state_on(&mut progress, |s| matches!(s, PlaybackState::Stopped))
+        .await
+        .expect("deleting the current track's release stops playback");
 
     handle.stop();
 }

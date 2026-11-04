@@ -13,6 +13,7 @@ pub(super) use bae_playback::{
 };
 pub(super) use bae_preferences::SidePauseCountdown;
 pub(super) use bae_types::track_time::TrackTime;
+pub(super) use bae_util::test_channels::HANG_GUARD;
 pub(super) use coven::{IdSource, SequentialIds};
 pub(super) use std::sync::Arc;
 pub(super) use std::time::{Duration, Instant};
@@ -20,16 +21,15 @@ pub(super) use tempfile::TempDir;
 pub(super) use tracing::debug;
 
 /// Return the first `StateChanged` state that satisfies `predicate`, or `None`
-/// on timeout.
+/// if none ever comes.
 pub(super) async fn wait_for_state_on<F>(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     predicate: F,
-    timeout_duration: Duration,
 ) -> Option<PlaybackState>
 where
     F: Fn(&PlaybackState) -> bool,
 {
-    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::StateChanged { state } if predicate(&state) => Some(state),
         _ => None,
     })
@@ -37,17 +37,16 @@ where
 }
 
 /// Collect every StateChanged state in arrival order until one satisfies `done`
-/// (that final state is included) or the timeout elapses.
+/// (that final state is included), or every state seen if none ever does.
 pub(super) async fn collect_states_on<F>(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     done: F,
-    timeout_duration: Duration,
 ) -> Vec<PlaybackState>
 where
     F: Fn(&PlaybackState) -> bool,
 {
     let mut states = Vec::new();
-    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| {
         let PlaybackProgress::StateChanged { state } = event else {
             return None;
         };
@@ -60,22 +59,16 @@ where
 }
 
 /// The next `PositionUpdate`'s track-relative `position_ms`, or `None` if none
-/// arrives within `timeout_duration`.
+/// ever arrives.
 pub(super) async fn next_position(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
-    timeout_duration: Duration,
 ) -> Option<i64> {
-    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, .. } => Some(position_ms),
         _ => None,
     })
     .await
 }
-
-/// How long a playing track's position may take to reach the mark a test waits
-/// for before the wait counts as a stall. Tests assert only that the position
-/// gets there, not how fast.
-pub(super) const POSITION_BACKSTOP: Duration = Duration::from_secs(10);
 
 /// The first `position_ms` reported for `track_id`. Where a track starts is
 /// what tells a skipped pregap (it starts at 0) from a played one (it starts
@@ -84,19 +77,19 @@ pub(super) async fn first_position_of(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
 ) -> i64 {
-    wait_for_track_position(progress_rx, track_id, Duration::from_secs(30))
+    wait_for_track_position(progress_rx, track_id)
         .await
-        .unwrap_or_else(|| panic!("no position update for {track_id} arrived within 30s"))
+        .unwrap_or_else(|| panic!("no position update for {track_id} ever arrived"))
 }
 
 /// The first `position_ms` reported for `track_id` that satisfies `reached`,
-/// or `None` if none does within `POSITION_BACKSTOP`.
+/// or `None` if none ever does.
 pub(super) async fn wait_for_track_position_where(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
     reached: impl Fn(i64) -> bool,
 ) -> Option<i64> {
-    bae_util::test_channels::next_matching(progress_rx, POSITION_BACKSTOP, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. }
             if tid == track_id && reached(position_ms) =>
         {
@@ -112,25 +105,15 @@ pub(super) async fn wait_for_track_position_where(
 pub(super) async fn wait_for_position_advance(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
 ) -> Option<i64> {
-    let anchor = next_position(progress_rx, Duration::from_secs(30))
-        .await
-        .expect("no position update arrived within 30s of requesting one");
-    bae_util::test_channels::next_matching(
-        progress_rx,
-        Duration::from_secs(10),
-        |event| match event {
-            PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > anchor => {
-                Some(position_ms)
-            }
-            _ => None,
-        },
-    )
+    let anchor = next_position(progress_rx).await.expect("a position update arrives");
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
+        PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > anchor => {
+            Some(position_ms)
+        }
+        _ => None,
+    })
     .await
 }
-
-/// How long `play` may take to reach `Playing` before the wait counts as a
-/// hang. Tests assert only that `Playing` arrives, not how fast.
-pub(super) const PLAY_START_BACKSTOP: Duration = Duration::from_secs(30);
 
 /// Play `track_id` and wait for it to reach `Playing`.
 pub(super) async fn play_and_wait_on(
@@ -142,15 +125,9 @@ pub(super) async fn play_and_wait_on(
     let playing = wait_for_state_on(
         progress_rx,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == track_id),
-        PLAY_START_BACKSTOP,
     )
     .await;
-    assert!(
-        playing.is_some(),
-        "track {track_id} never reached Playing within {PLAY_START_BACKSTOP:?}: playback \
-         produced no audio at all. That is a stalled fill or a deadlocked decoder — not a \
-         slow machine, which would only have made this wait longer."
-    );
+    assert!(playing.is_some(), "track {track_id} never reached Playing");
 }
 
 /// Wait until `follow` tells that this device holds every byte of
@@ -160,7 +137,7 @@ pub(super) async fn wait_for_whole_track(
     track_id: &str,
 ) {
     let whole = vec![bae_playback::TrackSpan { start: 0.0, end: 1.0 }];
-    tokio::time::timeout(PLAY_START_BACKSTOP, async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let told = follow.next().await.expect("playback runs");
             if told.is_some_and(|held| held.track_id == track_id && held.ranges == whole) {
@@ -172,13 +149,12 @@ pub(super) async fn wait_for_whole_track(
     .expect("the playing track's bytes all arrive");
 }
 
-/// Wait for the next `Seeked` event and return its `position_ms`, or `None` on
-/// timeout.
+/// Wait for the next `Seeked` event and return its `position_ms`, or `None` if
+/// none ever comes.
 pub(super) async fn wait_for_seeked_on(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
-    timeout_duration: Duration,
 ) -> Option<u64> {
-    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::Seeked { position_ms, .. } => Some(
             u64::try_from(position_ms)
                 .expect("a seek target cannot be inside the pregap countdown"),
@@ -206,19 +182,15 @@ pub(super) async fn settled_events_on(
 ) -> Vec<PlaybackProgress> {
     handle.set_volume(SENTINEL_VOLUME);
     let mut events = Vec::new();
-    bae_util::test_channels::next_matching(
-        progress_rx,
-        Duration::from_secs(10),
-        |event| match event {
-            PlaybackProgress::VolumeChanged { volume } if volume == SENTINEL_VOLUME => Some(()),
-            other => {
-                events.push(other);
-                None
-            }
-        },
-    )
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
+        PlaybackProgress::VolumeChanged { volume } if volume == SENTINEL_VOLUME => Some(()),
+        other => {
+            events.push(other);
+            None
+        }
+    })
     .await
-    .expect("the sentinel volume change arrives within 10s");
+    .expect("the sentinel volume change arrives");
     events
 }
 
@@ -239,9 +211,8 @@ pub(super) fn states_in(events: &[PlaybackProgress]) -> Vec<&PlaybackState> {
 pub(super) async fn wait_for_playing_capturing_queue_on(
     playback_handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
-    timeout_duration: Duration,
 ) -> (bool, Vec<bae_playback::QueueEntry>) {
-    let playing = bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
+    let playing = bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| {
         matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
             .then_some(())
     })
@@ -270,15 +241,14 @@ pub(super) async fn assert_position_advances(progress_rx: &mut bae_playback::Pla
         .expect("position must keep advancing while playing (the audio stream stalled)");
 }
 
-/// Return the first `position_ms` reported for `track_id`, or `None` on
-/// timeout. Updates for other tracks are skipped, since one for the finishing
-/// track can still arrive right after a boundary.
+/// Return the first `position_ms` reported for `track_id`, or `None` if none
+/// ever comes. Updates for other tracks are skipped, since one for the
+/// finishing track can still arrive right after a boundary.
 pub(super) async fn wait_for_track_position(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
-    timeout_duration: Duration,
 ) -> Option<i64> {
-    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. } if tid == track_id => {
             Some(position_ms)
         }
@@ -287,17 +257,15 @@ pub(super) async fn wait_for_track_position(
     .await
 }
 
-/// Wait for the next `MuteChanged` and return its flag, or panic on timeout.
-pub(super) async fn wait_for_mute(
-    progress_rx: &mut bae_playback::PlaybackProgressFeed,
-    timeout_duration: Duration,
-) -> bool {
-    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
+/// Wait for the next `MuteChanged` and return its flag; panics if none ever
+/// comes.
+pub(super) async fn wait_for_mute(progress_rx: &mut bae_playback::PlaybackProgressFeed) -> bool {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::MuteChanged { is_muted } => Some(is_muted),
         _ => None,
     })
     .await
-    .expect("no MuteChanged arrived within the timeout")
+    .expect("a MuteChanged arrives")
 }
 
 /// The progress events a track boundary produced. A gapless handoff reports the
@@ -312,12 +280,11 @@ pub(super) struct BoundaryOutcome {
 }
 
 /// Record what the boundary from `finishing` to `incoming` produced, until
-/// `incoming` reaches `Playing` or the timeout elapses.
+/// `incoming` reaches `Playing`, or as far as playback ever gets.
 pub(super) async fn observe_boundary(
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
     finishing: &str,
     incoming: &str,
-    timeout_duration: Duration,
 ) -> BoundaryOutcome {
     let mut outcome = BoundaryOutcome {
         decode_stats_for_finishing: false,
@@ -326,7 +293,7 @@ pub(super) async fn observe_boundary(
         reached_incoming: false,
         decode_errors: 0,
     };
-    bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
+    bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| {
         match event {
             PlaybackProgress::DecodeStats { track_id, error_count, .. } => {
                 outcome.decode_errors += error_count;
@@ -449,35 +416,23 @@ impl PlaybackTestFixture {
             _temp_dir: temp_dir,
         }
     }
-    /// Wait for a specific state change with timeout
-    pub(super) async fn wait_for_state<F>(
-        &mut self,
-        predicate: F,
-        timeout_duration: Duration,
-    ) -> Option<PlaybackState>
+    /// See `wait_for_state_on`.
+    pub(super) async fn wait_for_state<F>(&mut self, predicate: F) -> Option<PlaybackState>
     where
         F: Fn(&PlaybackState) -> bool,
     {
-        wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
+        wait_for_state_on(&mut self.progress_rx, predicate).await
     }
     /// See `wait_for_playing_capturing_queue_on`.
     pub(super) async fn wait_for_playing_capturing_queue(
         &mut self,
-        timeout_duration: Duration,
     ) -> (bool, Vec<bae_playback::QueueEntry>) {
-        wait_for_playing_capturing_queue_on(
-            &self.playback_handle,
-            &mut self.progress_rx,
-            timeout_duration,
-        )
-        .await
+        wait_for_playing_capturing_queue_on(&self.playback_handle, &mut self.progress_rx).await
     }
-    /// Wait for a position update with timeout (returns position in ms)
-    pub(super) async fn wait_for_position_update(
-        &mut self,
-        timeout_duration: Duration,
-    ) -> Option<u64> {
-        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| {
+    /// The next position update's position in ms, or `None` if none ever
+    /// comes.
+    pub(super) async fn wait_for_position_update(&mut self) -> Option<u64> {
+        bae_util::test_channels::next_matching(&mut self.progress_rx, HANG_GUARD, |event| {
             match event {
                 PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
                     u64::try_from(position_ms)
@@ -488,16 +443,12 @@ impl PlaybackTestFixture {
         })
         .await
     }
-    /// Wait for the first position update past `floor_ms`, or `None` on
-    /// timeout. The first update after a seek can still report the seek target,
-    /// so only a position past it proves playback moved.
-    pub(super) async fn wait_for_position_past(
-        &mut self,
-        floor_ms: u64,
-        timeout_duration: Duration,
-    ) -> Option<u64> {
+    /// Wait for the first position update past `floor_ms`, or `None` if none
+    /// ever comes. The first update after a seek can still report the seek
+    /// target, so only a position past it proves playback moved.
+    pub(super) async fn wait_for_position_past(&mut self, floor_ms: u64) -> Option<u64> {
         let floor = i64::try_from(floor_ms).expect("position floor exceeds i64 range");
-        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| {
+        bae_util::test_channels::next_matching(&mut self.progress_rx, HANG_GUARD, |event| {
             match event {
                 PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => {
                     Some(
@@ -510,25 +461,20 @@ impl PlaybackTestFixture {
         })
         .await
     }
-    /// Wait for a Seeked event with timeout (returns position in ms)
-    pub(super) async fn wait_for_seeked(&mut self, timeout_duration: Duration) -> Option<u64> {
-        wait_for_seeked_on(&mut self.progress_rx, timeout_duration).await
+    /// See `wait_for_seeked_on`.
+    pub(super) async fn wait_for_seeked(&mut self) -> Option<u64> {
+        wait_for_seeked_on(&mut self.progress_rx).await
     }
     /// See `settled_events_on`.
     pub(super) async fn settled_events(&mut self) -> Vec<PlaybackProgress> {
         settled_events_on(&self.playback_handle, &mut self.progress_rx).await
     }
-    /// Collect every `StateChanged` state in arrival order until one satisfies
-    /// `done` (that final state is included) or the timeout elapses.
-    pub(super) async fn collect_states_until<F>(
-        &mut self,
-        done: F,
-        timeout_duration: Duration,
-    ) -> Vec<PlaybackState>
+    /// See `collect_states_on`.
+    pub(super) async fn collect_states_until<F>(&mut self, done: F) -> Vec<PlaybackState>
     where
         F: Fn(&PlaybackState) -> bool,
     {
-        collect_states_on(&mut self.progress_rx, done, timeout_duration).await
+        collect_states_on(&mut self.progress_rx, done).await
     }
 }
 

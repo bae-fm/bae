@@ -164,7 +164,7 @@ async fn keys_replaced_elsewhere(
         .await
         .unwrap();
     laptop.start_sync().await.unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         let mut status = laptop.test_sync_status();
         while !matches!(
             laptop.restore_code().await,

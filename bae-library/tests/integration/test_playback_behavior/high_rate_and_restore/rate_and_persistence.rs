@@ -99,19 +99,18 @@ async fn test_high_sample_rate_position_calculation() {
 
     // Wait for track to complete, keeping the last position seen before it.
     let mut final_position_ms: Option<i64> = None;
-    let track_completed = bae_util::test_channels::next_matching(
-        &mut fixture.progress_rx,
-        Duration::from_secs(10),
-        |event| match event {
-            PlaybackProgress::PositionUpdate { position_ms, .. } => {
-                final_position_ms = Some(position_ms);
-                None
+    let track_completed =
+        bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
+            match event {
+                PlaybackProgress::PositionUpdate { position_ms, .. } => {
+                    final_position_ms = Some(position_ms);
+                    None
+                }
+                PlaybackProgress::TrackCompleted { .. } => Some(()),
+                _ => None,
             }
-            PlaybackProgress::TrackCompleted { .. } => Some(()),
-            _ => None,
-        },
-    )
-    .await;
+        })
+        .await;
 
     assert!(track_completed.is_some(), "Track should complete");
 
@@ -163,9 +162,8 @@ async fn test_seek_lands_near_target_position() {
         fixture.playback_handle.play(track_id.clone());
 
         // Wait for playback to start
-        let playing_state = fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
-            .await;
+        let playing_state =
+            fixture.wait_for_state(|s| matches!(s, PlaybackState::Playing { .. })).await;
         assert!(playing_state.is_some(), "Should start playing");
 
         // Seek to 2.5 seconds
@@ -173,23 +171,22 @@ async fn test_seek_lands_near_target_position() {
         fixture.playback_handle.seek(TrackTime::from_duration(seek_position));
 
         // Wait for seek to complete
-        let seeked = fixture.wait_for_seeked(Duration::from_secs(3)).await;
+        let seeked = fixture.wait_for_seeked().await;
         assert!(seeked.is_some(), "Should receive Seeked event");
 
         // Wait for track to complete and get decode stats
-        let decode_stats = bae_util::test_channels::next_matching(
-            &mut fixture.progress_rx,
-            Duration::from_secs(10),
-            |event| match event {
-                PlaybackProgress::DecodeStats {
-                    error_count,
-                    samples_decoded,
-                    track_id: stats_track_id,
-                } if stats_track_id == track_id => Some((error_count, samples_decoded)),
-                _ => None,
-            },
-        )
-        .await;
+        let decode_stats =
+            bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
+                match event {
+                    PlaybackProgress::DecodeStats {
+                        error_count,
+                        samples_decoded,
+                        track_id: stats_track_id,
+                    } if stats_track_id == track_id => Some((error_count, samples_decoded)),
+                    _ => None,
+                }
+            })
+            .await;
 
         let (_error_count, samples_decoded) =
             decode_stats.expect("Should receive DecodeStats after track completes");
@@ -245,7 +242,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
             // Wait for playback to start
             let started = bae_util::test_channels::next_matching(
                 &mut fixture.progress_rx,
-                Duration::from_secs(5),
+                HANG_GUARD,
                 |event| {
                     matches!(
                         event,
@@ -271,7 +268,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
             // its decode stats at the boundary rather than via TrackCompleted.
             let decoded_samples = bae_util::test_channels::next_matching(
                 &mut fixture.progress_rx,
-                Duration::from_secs(30),
+                HANG_GUARD,
                 |event| match event {
                     PlaybackProgress::DecodeStats {
                         track_id: ref tid, samples_decoded, ..
@@ -408,7 +405,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
     let (handle, _capture_rx) = start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
 
-    let landed = wait_for_seeked_on(&mut progress_rx, Duration::from_secs(20)).await;
+    let landed = wait_for_seeked_on(&mut progress_rx).await;
     assert_eq!(
         landed,
         Some(0),
@@ -449,18 +446,10 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let played =
         handle.play_release(release_id.clone(), None, false).await.expect("the play is answered");
     assert_eq!(played, bae_playback::PlayOutcome::Playing);
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut persisted = None;
-    while Instant::now() < deadline {
-        if let Some(row) =
-            bae_playback::tables::load_playback_state(library.database()).await.unwrap()
-        {
-            persisted = Some(row);
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    let row = persisted.expect("playing a release should persist the playback_state row");
+    let mut state = bae_playback::tables::subscribe_playback_state(library.database());
+    let row = bae_library::followed::value_matching(&mut state, Option::is_some)
+        .await
+        .expect("playing a release persists the playback_state row");
     assert_eq!(row.current.map(|current| current.track_id).as_deref(), Some(first_track.as_str()));
     let context = handle
         .queue_value()
@@ -472,16 +461,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 
     // Stopping clears it, so a restart wouldn't re-cue a finished session.
     handle.stop();
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut cleared = false;
-    while Instant::now() < deadline {
-        if bae_playback::tables::load_playback_state(library.database()).await.unwrap().is_none() {
-            cleared = true;
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    assert!(cleared, "stopping playback should clear the playback_state row");
+    bae_library::followed::value_matching(&mut state, Option::is_none).await;
 }
 
 /// The `playback_state` row must advance while a track plays, with no
@@ -495,7 +475,7 @@ async fn test_position_persists_periodically_while_playing() {
 
         fixture.playback_handle.play(track_id.clone());
         fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }))
             .await
             .expect("the track should start playing");
 
@@ -511,25 +491,13 @@ async fn test_position_persists_periodically_while_playing() {
     .await;
 }
 
-/// The `playback_state` row's position once it passes `floor_ms`, read again
-/// after each position update. Panics if it hasn't within `POSITION_BACKSTOP`.
-async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u64) -> u64 {
-    let deadline = Instant::now() + POSITION_BACKSTOP;
-    loop {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        next_position(&mut fixture.progress_rx, remaining).await.unwrap_or_else(|| {
-            panic!(
-                "the persisted position should pass {floor_ms}ms while playing, \
-                     with no Shutdown/SaveState sent"
-            )
-        });
-        let state = bae_playback::tables::load_playback_state(fixture.library.database())
-            .await
-            .expect("load_playback_state should succeed");
-        if let Some(persisted_ms) =
-            state.and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms)
-        {
-            return persisted_ms;
-        }
-    }
+/// The `playback_state` row's position once it passes `floor_ms`. Panics if
+/// it never does.
+async fn persisted_position_past(fixture: &PlaybackTestFixture, floor_ms: u64) -> u64 {
+    let mut state = bae_playback::tables::subscribe_playback_state(fixture.library.database());
+    let past = |row: &Option<bae_playback::tables::PlaybackResumeRow>| {
+        row.as_ref().and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms)
+    };
+    let row = bae_library::followed::value_matching(&mut state, |row| past(row).is_some()).await;
+    past(&row).expect("the matched row's position is past the floor")
 }

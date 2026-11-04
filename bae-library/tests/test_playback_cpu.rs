@@ -331,15 +331,18 @@ fn get_process_cpu_time() -> Duration {
     }
 }
 
-/// Wait (up to `within`) for playback to report it is playing.
-async fn await_playing(fixture: &mut PlaybackTestFixture, within: Duration, label: &str) {
-    let started =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, within, |event| {
+/// Wait for playback to report it is playing.
+async fn await_playing(fixture: &mut PlaybackTestFixture, label: &str) {
+    let started = bae_util::test_channels::next_matching(
+        &mut fixture.progress_rx,
+        bae_util::test_channels::HANG_GUARD,
+        |event| {
             matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
                 .then_some(())
-        })
-        .await;
-    assert!(started.is_some(), "{label}: playback did not start within {within:?}");
+        },
+    )
+    .await;
+    assert!(started.is_some(), "{label}: playback never started");
 }
 
 /// This machine's cost to decode one second of this album's audio: CPU-seconds
@@ -402,7 +405,7 @@ async fn measure_playback_realtime_factor(fixture: &mut PlaybackTestFixture, lab
     let track_id = fixture.track_ids[0].clone();
     fixture.playback_handle.play(track_id);
 
-    await_playing(fixture, Duration::from_secs(5), label).await;
+    await_playing(fixture, label).await;
 
     // Skip the initial ring-buffer fill burst, then measure steady state.
     tokio::time::sleep(WARMUP).await;

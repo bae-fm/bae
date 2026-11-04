@@ -37,7 +37,7 @@ async fn now_playing_until(
     what: &str,
     accept: impl Fn(&bae_playback::TrackDisplay) -> bool,
 ) -> bae_playback::TrackDisplay {
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let Some(value) = values.next().await.expect("the playback values resolve") else {
                 continue;
@@ -66,7 +66,7 @@ async fn first_upcoming_until(
     queue: &bae_library::LiveQueueUpcoming,
     accept: impl Fn(&bae_playback::QueueItem) -> bool,
 ) -> bae_playback::QueueItem {
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(HANG_GUARD, async {
         loop {
             let value = queue.next().await.expect("the queue's upcoming read resolves");
             if let Some(item) = value
@@ -197,7 +197,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
         let track_id = fixture.track_ids[0].clone();
         let values = playback_values(fixture);
         let mut positions = fixture.playback_handle.subscribe_positions();
-        let value = tokio::time::timeout(Duration::from_secs(10), values.next())
+        let value = tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("the playing value arrives")
             .expect("the playback values resolve")
@@ -209,7 +209,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
 
         let mut seen = Vec::new();
         while seen.len() < 3 {
-            tokio::time::timeout(Duration::from_secs(10), positions.changed())
+            tokio::time::timeout(HANG_GUARD, positions.changed())
                 .await
                 .expect("the playing track's position moves")
                 .expect("the positions stay open");

@@ -373,7 +373,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
         let release_id = release_id.clone();
         async move { manager.pin_release_files_with_progress(&release_id, |_| {}).await }
     });
-    let fetched = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let fetched = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             for change in files.next().await.unwrap() {
                 if let crate::FileTransferChange::Updated { file, .. } = change {

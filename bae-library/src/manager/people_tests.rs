@@ -20,7 +20,7 @@ fn the_watch_reports_the_first_device_that_joins_while_it_is_open() {
         let mut watch = first.manager().subscribe_added_device(adding.watch);
         assert_eq!(watch.next().await.expect("the watch stays open").unwrap(), None);
         let phone = library.restore(&adding.share.code, "Phone").await;
-        let added = tokio::time::timeout(Duration::from_secs(20), async {
+        let added = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
                 first.manager().trigger_sync();
                 tokio::select! {
@@ -51,7 +51,7 @@ fn the_watch_syncs_often_while_it_is_open() {
         let mut watch = first.manager().subscribe_added_device(adding.watch);
         assert_eq!(watch.next().await.expect("the watch stays open").unwrap(), None);
         let phone = library.restore(&adding.share.code, "Phone").await;
-        let added = tokio::time::timeout(Duration::from_secs(15), async {
+        let added = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
                 let value = watch.next().await.expect("the watch stays open");
                 if let Some(device) = value.unwrap() {
@@ -60,7 +60,7 @@ fn the_watch_syncs_often_while_it_is_open() {
             }
         })
         .await
-        .expect("an idle pass within 15 s reports the phone");
+        .expect("an idle pass reports the phone");
         let phone_device = this_device(&phone).await;
         phone.close().await;
         assert_eq!(added.id, phone_device.id);
@@ -93,7 +93,7 @@ fn the_watch_reports_a_device_that_joined_before_its_first_look() {
         let adding = first.manager().add_device().await.unwrap();
         let phone = library.restore(&adding.share.code, "Phone").await;
         let phone_device = this_device(&phone).await;
-        tokio::time::timeout(Duration::from_secs(20), async {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             while !first
                 .database()
                 .membership()

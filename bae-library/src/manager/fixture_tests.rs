@@ -460,7 +460,7 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         .await;
     let values = manager.values_until_closed(manager.subscribe_now_playing());
     let mut positions = playback.subscribe_positions();
-    let restored = tokio::time::timeout(std::time::Duration::from_secs(30), async {
+    let restored = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let value = values.next().await.expect("the playback values resolve");
             if let Some(bae_playback::PlaybackState::Paused { track, .. }) =
@@ -474,7 +474,7 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     .expect("playback resumes the fixture's track");
     assert_eq!(restored.track.track_id, pregap_track);
     tokio::time::timeout(
-        std::time::Duration::from_secs(30),
+        bae_util::test_channels::HANG_GUARD,
         positions.wait_for(|positions| {
             positions.library.as_ref().is_some_and(|position| {
                 position.track_id == pregap_track && position.position_ms == -2_000

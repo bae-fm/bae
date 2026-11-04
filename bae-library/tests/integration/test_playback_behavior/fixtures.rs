@@ -9,12 +9,8 @@ pub(super) async fn play_emits_bare_loading_then_loading_with_metadata_then_play
         let track_id = fixture.track_ids[0].clone();
 
         fixture.playback_handle.play(track_id.clone());
-        let states = fixture
-            .collect_states_until(
-                |s| matches!(s, PlaybackState::Playing { .. }),
-                Duration::from_secs(5),
-            )
-            .await;
+        let states =
+            fixture.collect_states_until(|s| matches!(s, PlaybackState::Playing { .. })).await;
 
         let loading: Vec<&PlaybackState> =
             states.iter().filter(|s| matches!(s, PlaybackState::Loading { .. })).collect();
@@ -55,25 +51,22 @@ pub(super) async fn seek_past_end_of_track_signals_rather_than_hanging() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         fixture.playback_handle.play(fixture.track_ids[0].clone());
         fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }))
             .await
             .expect("track should start playing");
 
         // Fixture tracks are 5 s long.
         fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
 
-        let signaled = bae_util::test_channels::next_matching(
-            &mut fixture.progress_rx,
-            Duration::from_secs(8),
-            |event| {
+        let signaled =
+            bae_util::test_channels::next_matching(&mut fixture.progress_rx, HANG_GUARD, |event| {
                 matches!(
                     event,
                     PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }
                 )
                 .then_some(())
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(
             signaled.is_some(),
             "a seek past the end must signal (Seeked or PlaybackError), not freeze silently"
@@ -89,16 +82,14 @@ pub(super) async fn seek_by_ratio_maps_to_a_proportional_position() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         fixture.playback_handle.play(fixture.track_ids[0].clone());
         fixture
-            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }))
             .await
             .expect("track should start playing");
 
         fixture.playback_handle.seek_by_ratio(0.5);
-        let mid =
-            fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("Seeked for ratio 0.5");
+        let mid = fixture.wait_for_seeked().await.expect("Seeked for ratio 0.5");
         fixture.playback_handle.seek_by_ratio(1.0);
-        let end =
-            fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("Seeked for ratio 1.0");
+        let end = fixture.wait_for_seeked().await.expect("Seeked for ratio 1.0");
 
         assert!(mid > 1_000, "ratio 0.5 should land well past the start, got {mid}ms");
         assert!(
@@ -320,15 +311,11 @@ impl SidePauseTestFixture {
         }
     }
 
-    pub(super) async fn wait_for_state<F>(
-        &mut self,
-        predicate: F,
-        timeout_duration: Duration,
-    ) -> Option<PlaybackState>
+    pub(super) async fn wait_for_state<F>(&mut self, predicate: F) -> Option<PlaybackState>
     where
         F: Fn(&PlaybackState) -> bool,
     {
-        wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
+        wait_for_state_on(&mut self.progress_rx, predicate).await
     }
 
     /// See `settled_events_on`.
@@ -356,15 +343,9 @@ impl SidePauseTestFixture {
             .seek(TrackTime::from_duration(Duration::from_secs(4) + Duration::from_millis(800)));
     }
 
-    pub(super) async fn wait_for_playing_track(
-        &mut self,
-        track_id: &str,
-        timeout_duration: Duration,
-        message: &str,
-    ) {
+    pub(super) async fn wait_for_playing_track(&mut self, track_id: &str, message: &str) {
         self.wait_for_state(
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == track_id),
-            timeout_duration,
         )
         .await
         .expect(message);
@@ -372,12 +353,7 @@ impl SidePauseTestFixture {
 
     pub(super) async fn play_track_and_wait(&mut self, track_id: &str) {
         self.play_release_from(track_id).await;
-        self.wait_for_playing_track(
-            track_id,
-            Duration::from_secs(5),
-            "track before side boundary should start",
-        )
-        .await;
+        self.wait_for_playing_track(track_id, "track before side boundary should start").await;
     }
 
     pub(super) async fn wait_for_side_pause(
@@ -385,19 +361,16 @@ impl SidePauseTestFixture {
         expected_side_label: &str,
         expected_boundary: PlaybackPauseBoundary,
     ) -> PlaybackState {
-        self.wait_for_state(
-            |s| {
-                matches!(
-                    s,
-                    PlaybackState::Paused {
-                        reason: PlaybackPauseReason::SideEnded(prompt),
-                        ..
-                    } if prompt.side_label == expected_side_label
-                        && prompt.boundary == expected_boundary
-                )
-            },
-            Duration::from_secs(10),
-        )
+        self.wait_for_state(|s| {
+            matches!(
+                s,
+                PlaybackState::Paused {
+                    reason: PlaybackPauseReason::SideEnded(prompt),
+                    ..
+                } if prompt.side_label == expected_side_label
+                    && prompt.boundary == expected_boundary
+            )
+        })
         .await
         .expect("side boundary should pause")
     }

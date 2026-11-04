@@ -405,7 +405,6 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
 #[test]
 fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
     on_app_runtime(async {
-        use std::time::Duration;
         let household = Household::new().await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
@@ -419,7 +418,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
             |_| {},
             &control,
         );
-        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, household.approve())
         })
         .await
@@ -458,7 +457,6 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
 #[test]
 fn a_replacement_invite_writes_no_profile() {
     on_app_runtime(async {
-        use std::time::Duration;
         let household = Household::new().await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let first_dir = tempfile::tempdir().unwrap();
@@ -472,7 +470,7 @@ fn a_replacement_invite_writes_no_profile() {
             |_| {},
             &control,
         );
-        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, household.approve())
         })
         .await
@@ -502,7 +500,7 @@ fn a_replacement_invite_writes_no_profile() {
             |_| {},
             &control,
         );
-        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, household.approve())
         })
         .await
@@ -598,7 +596,6 @@ fn a_replacement_invite_writes_no_profile() {
 #[test]
 fn a_stopped_join_resumes_and_writes_the_profile() {
     on_app_runtime(async {
-        use std::time::Duration;
         let household = Household::new().await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
@@ -617,7 +614,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             },
             &control,
         );
-        tokio::time::timeout(Duration::from_secs(30), async {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::select! {
                 result = joining => panic!("the join ended while waiting: {:?}", result.err()),
                 changed = waits.wait_for(|waiting| *waiting) => drop(changed.unwrap()),
@@ -640,7 +637,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
             |_| {},
             &control,
         );
-        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(resuming, household.approve())
         })
         .await
@@ -756,7 +753,6 @@ async fn stopped_dropbox_join(
     guest: &coven::Coven,
     control: &bae_library::JoinControl,
 ) -> coven::InviteInfo {
-    use std::time::Duration;
     let invite = household.invite(new_member("Rowan"), "").await;
     let (waiting, mut waits) = tokio::sync::watch::channel(false);
     let joining = bae_library::join_with_invite(
@@ -771,7 +767,7 @@ async fn stopped_dropbox_join(
         },
         control,
     );
-    tokio::time::timeout(Duration::from_secs(30), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         tokio::select! {
             result = joining => panic!("the join ended while waiting: {:?}", result.err()),
             changed = waits.wait_for(|waiting| *waiting) => drop(changed.unwrap()),
@@ -791,7 +787,6 @@ async fn stopped_dropbox_join(
 #[test]
 fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
     on_app_runtime(async {
-        use std::time::Duration;
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
         let guest_dir = tempfile::tempdir().unwrap();
@@ -806,7 +801,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
             |_| {},
             &control,
         );
-        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(resuming, household.approve())
         })
         .await
@@ -825,7 +820,6 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
 #[test]
 fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
     on_app_runtime(async {
-        use std::time::Duration;
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
         let guest_dir = tempfile::tempdir().unwrap();
@@ -842,7 +836,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
             |_| {},
             &control,
         );
-        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(resuming, household.approve())
         })
         .await

@@ -76,7 +76,6 @@ async fn assert_plays(library: &bae_library::test_libraries::TestLibrary, track_
     wait_for_state_on(
         &mut progress_rx,
         |state| matches!(state, PlaybackState::Playing { track, .. } if track.track_id == track_id),
-        Duration::from_secs(5),
     )
     .await
     .expect("the track plays");

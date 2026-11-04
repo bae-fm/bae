@@ -23,7 +23,7 @@ async fn an_ended_query_takes_a_new_request() {
     );
     database.close().await.unwrap();
     // Results read before the close may still be waiting to be taken.
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while events.recv().await.is_some() {}
     })
     .await

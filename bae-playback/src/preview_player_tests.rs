@@ -94,9 +94,9 @@ async fn preview_plays_only_the_requested_sample_window() {
     assert_eq!(playing, Some((target, 1_000)));
 
     let mut captured = capture_rx.recv().await.expect("preview capture");
-    let completed = tokio::time::timeout(Duration::from_secs(10), command_rx.recv())
+    let completed = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, command_rx.recv())
         .await
-        .expect("bounded preview completes within the timeout")
+        .expect("the bounded preview completes")
         .expect("bounded preview sends its completion command");
     assert!(matches!(completed, PlaybackCommand::PreviewCompleted));
     let captured = captured.samples();
@@ -144,7 +144,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     player.seek_by_ratio(0.5, &device).await;
     let mut seeked_capture = capture_rx.recv().await.expect("seeked preview capture");
     player.toggle_pause();
-    let captured = seeked_capture.wait_for_samples(1_000, Duration::from_secs(10)).await;
+    let captured = seeked_capture.wait_for_samples(1_000).await;
 
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
@@ -238,7 +238,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
 
     assert!(player.play(target, &device).await.started());
     let mut first_capture = capture_rx.recv().await.expect("the first stream's capture");
-    first_capture.wait_for_samples(4_000, Duration::from_secs(10)).await;
+    first_capture.wait_for_samples(4_000).await;
     player.toggle_pause();
 
     *report.lock().unwrap() = Some("the default device changed".to_string());
@@ -260,7 +260,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     );
 
     player.toggle_pause();
-    let captured = second_capture.wait_for_samples(1_000, Duration::from_secs(10)).await;
+    let captured = second_capture.wait_for_samples(1_000).await;
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
     let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
     let reference_buffer = filled_sparse_buffer(&reference_bytes);
@@ -338,9 +338,9 @@ async fn preview_listener_maps_completion_to_preview_completed() {
         0,
     )));
 
-    let cmd = tokio::time::timeout(Duration::from_secs(1), command_rx.recv())
+    let cmd = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, command_rx.recv())
         .await
-        .expect("the listener dispatches within the timeout")
+        .expect("the listener dispatches")
         .expect("a command is sent");
     assert!(matches!(cmd, PlaybackCommand::PreviewCompleted));
     handle.abort();
@@ -460,7 +460,7 @@ async fn ending_a_preview_closes_its_file() {
     // The preview's reader opens its file on its own task, and closes it there
     // once the preview ends, so each count is awaited rather than sampled.
     let wait_open = |path: std::path::PathBuf, count: usize| async move {
-        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        let deadline = std::time::Instant::now() + bae_util::test_channels::HANG_GUARD;
         while open_now(&path) != count {
             assert!(
                 std::time::Instant::now() < deadline,

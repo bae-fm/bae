@@ -257,7 +257,7 @@ async fn a_done_row_carries_its_release_upload() {
         async move { manager.drain_uploads_for_test().await }
     });
     let sending = Some(bae_db::UploadProgress { queued: 0, uploading: 1 });
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while !done_uploads(&subscription.next().await.unwrap().windows)
             .iter()
             .any(|(_, upload)| *upload == sending)
@@ -266,7 +266,7 @@ async fn a_done_row_carries_its_release_upload() {
     .await
     .expect("a row counts its file being sent");
     drain.await.unwrap().unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while done_uploads(&subscription.next().await.unwrap().windows)
             .iter()
             .any(|(_, upload)| upload.is_some())
@@ -579,7 +579,7 @@ async fn the_transfers_name_only_the_files_being_sent() {
         let manager = manager.library.clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    let sending = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let sending = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
             let current = held.as_ref().unwrap();
@@ -596,7 +596,7 @@ async fn the_transfers_name_only_the_files_being_sent() {
     );
 
     drain.await.unwrap().unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let current = held.as_ref().unwrap();
             if current.releases.is_empty() && current.total.bar.is_none() {
@@ -635,14 +635,14 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
         let manager = manager.library.clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    let sending = tokio::time::timeout(std::time::Duration::from_secs(10), total.next())
+    let sending = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, total.next())
         .await
         .expect("the file being sent moves the total")
         .unwrap()
         .unwrap();
     assert!(sending.bar.is_some(), "{sending:?}");
     drain.await.unwrap().unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         let mut told = sending;
         while told != idle {
             let next = total.next().await.unwrap().unwrap();
@@ -685,7 +685,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
         let manager = manager.library.clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    let bar = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let bar = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
             let bar = held.as_ref().unwrap().releases.get(&release.id).map(|transfer| transfer.bar);
@@ -701,7 +701,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
         crate::UploadBar { bytes_done: 7, bytes_total: 7 },
         "the file's whole share counts once its request has taken it"
     );
-    let fraction = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+    let fraction = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         let mut held = std::collections::BTreeMap::new();
         loop {
             for change in files.next().await.unwrap() {

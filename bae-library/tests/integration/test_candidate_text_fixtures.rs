@@ -14,7 +14,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tempfile::TempDir;
 
 #[derive(Debug, Deserialize)]
@@ -223,7 +222,7 @@ async fn drive_fixture(
     );
 
     // The run's watch holds its latest snapshot until the text settles.
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             if let Some(snapshot) = run.snapshot() {
                 if let TextSignal::Settled { free_text, .. } = &snapshot.signals.text {
@@ -234,7 +233,7 @@ async fn drive_fixture(
         }
     })
     .await
-    .expect("timed out waiting for settled signals")
+    .expect("the signals settle")
 }
 
 async fn assert_fixture(fixture_path: &Path) {

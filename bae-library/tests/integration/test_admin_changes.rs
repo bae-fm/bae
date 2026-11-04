@@ -10,7 +10,6 @@ use bae_db::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 #[test]
 fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
     on_app_runtime(async {
-        use std::time::Duration;
         let household = Household::new().await;
         let dir = tempfile::tempdir().unwrap();
         let library = household.owners_library(dir.path()).await;
@@ -42,7 +41,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
             .unwrap();
             library.approve_join_request(&request).await.unwrap();
         };
-        let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             tokio::join!(joining, approving)
         })
         .await
