@@ -10,7 +10,7 @@ use crate::envelope::Element;
 use crate::error::SubError;
 use crate::id::SubId;
 use crate::library_map::{
-    artist_id3, lib_err, release_album_id3, release_album_id3_with, track_child,
+    artist_id3, artist_release_ids, lib_err, release_album_id3, release_album_id3_with, track_child,
 };
 use crate::model::ArtistId3;
 use crate::params::Params;
@@ -90,8 +90,7 @@ pub(crate) async fn get_artist(
         .ok_or_else(SubError::not_found)?;
 
     let artist = &detail.artist.raw.artist;
-    let release_ids: Vec<String> =
-        detail.albums.iter().flat_map(|album| album.release_ids.iter().cloned()).collect();
+    let release_ids = artist_release_ids(&detail);
 
     let mut element = artist_id3(
         &artist.id,
