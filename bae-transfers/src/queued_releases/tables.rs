@@ -80,9 +80,7 @@ impl QueuedPayload for OutputRequest {
     }
 
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
-        let target_dir = coven::path_from_bytes(row.get(at)?).map_err(|error| {
-            rusqlite::Error::FromSqlConversionFailure(at, Type::Blob, Box::new(error))
-        })?;
+        let target_dir = bae_db::client::path_column::get(row, at)?;
         let kind: String = row.get(at + 1)?;
         let preset: Option<String> = row.get(at + 2)?;
         let kind = match (kind.as_str(), preset) {

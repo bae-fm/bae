@@ -2,6 +2,7 @@
 //! of its values changes, and read by the screens' live query with the
 //! playing track's display and the queue's repeat mode.
 
+use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::queue::repeat_from_column;
 use super::track_display::track_display_on;
 use super::*;
@@ -11,7 +12,6 @@ use crate::{
     PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
     PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemoteDevice, RemotePlayback,
 };
-use bae_track_audio::PreviewTarget;
 
 /// The `playback_now` row, as playback writes it.
 #[derive(Clone)]
@@ -125,13 +125,8 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                 }
             };
             let clip = clip.map(|(target, duration_ms)| {
-                let (path, start_sample, end_sample) = target.clone().into_sample_range();
-                (
-                    coven::path_bytes(&path),
-                    start_sample as i64,
-                    end_sample.map(|end| end as i64),
-                    *duration_ms as i64,
-                )
+                let (path, start_sample, end_sample) = preview_target_values(target);
+                (path, start_sample, end_sample, *duration_ms)
             });
             sql.execute(
                 "UPDATE playback_now SET preview = ?, preview_path = ?, \
@@ -393,19 +388,8 @@ fn preview_from_row(row: &Row<'_>) -> rusqlite::Result<PreviewState> {
     if preview == "idle" {
         return Ok(PreviewState::Idle);
     }
-    let path = coven::path_from_bytes(row.get("preview_path")?).map_err(|error| {
-        rusqlite::Error::FromSqlConversionFailure(
-            0,
-            rusqlite::types::Type::Blob,
-            format!("playback_now.preview_path does not open on this device: {error}").into(),
-        )
-    })?;
-    let start_sample: i64 = row.get("preview_start_sample")?;
-    let end_sample: Option<i64> = row.get("preview_end_sample")?;
-    let duration_ms: i64 = row.get("preview_duration_ms")?;
-    let target =
-        PreviewTarget::sample_range(path, start_sample as u64, end_sample.map(|end| end as u64));
-    let duration_ms = duration_ms as u64;
+    let target = preview_target_from_row(row)?.ok_or_else(|| unknown("preview_path", "NULL"))?;
+    let duration_ms: u64 = row.get("preview_duration_ms")?;
     Ok(match preview.as_str() {
         "playing" => PreviewState::Playing { target, duration_ms },
         "paused" => PreviewState::Paused { target, duration_ms },

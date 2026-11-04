@@ -2,9 +2,9 @@
 //! that move the position on themselves, written only as playback leaves the
 //! line it holds, and read by their live query.
 
+use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::*;
 use crate::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
-use bae_track_audio::PreviewTarget;
 
 /// The `playback_timeline` row, as playback writes it.
 #[derive(Clone)]
@@ -42,8 +42,8 @@ impl PlaybackTimelineRow {
 fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Result<()> {
     let library = timeline.library.as_ref();
     let preview = timeline.preview.as_ref().map(|preview| {
-        let (path, start_sample, end_sample) = preview.target.clone().into_sample_range();
-        (coven::path_bytes(&path), start_sample, end_sample, preview)
+        let (path, start_sample, end_sample) = preview_target_values(&preview.target);
+        (path, start_sample, end_sample, preview)
     });
     sql.execute(
         "UPDATE playback_timeline SET track_id = ?, position_ms = ?, duration_ms = ?, \
@@ -91,30 +91,14 @@ fn playback_timeline_on(sql: &SqlReadContext<'_>) -> Result<PlaybackTimeline, Db
                 moving: row.get("moving")?,
             }),
         };
-        let preview = match row.get::<_, Option<Vec<u8>>>("preview_path")? {
+        let preview = match preview_target_from_row(row)? {
             None => None,
-            Some(path) => {
-                let path = coven::path_from_bytes(path).map_err(|error| {
-                    rusqlite::Error::FromSqlConversionFailure(
-                        0,
-                        rusqlite::types::Type::Blob,
-                        format!(
-                            "playback_timeline.preview_path does not open on this device: {error}"
-                        )
-                        .into(),
-                    )
-                })?;
-                Some(PreviewTimelinePoint {
-                    target: PreviewTarget::sample_range(
-                        path,
-                        row.get("preview_start_sample")?,
-                        row.get("preview_end_sample")?,
-                    ),
-                    position_ms: row.get("preview_position_ms")?,
-                    duration_ms: row.get("preview_duration_ms")?,
-                    moving: row.get("preview_moving")?,
-                })
-            }
+            Some(target) => Some(PreviewTimelinePoint {
+                target,
+                position_ms: row.get("preview_position_ms")?,
+                duration_ms: row.get("preview_duration_ms")?,
+                moving: row.get("preview_moving")?,
+            }),
         };
         Ok(PlaybackTimeline { library, seek_revision: row.get("seek_revision")?, preview })
     })?)

@@ -21,13 +21,11 @@ pub fn decode(bytes: Vec<u8>) -> Result<PathBuf, DbError> {
 
 /// The path column `index` of `row` records. Bytes this platform never
 /// records fail the read: the row is one nothing here wrote.
-#[cfg(desktop)]
 pub fn get<I: rusqlite::RowIndex>(row: &rusqlite::Row<'_>, index: I) -> rusqlite::Result<PathBuf> {
     Ok(row.get::<_, StoredPath>(index)?.0)
 }
 
 /// [`get`] of a column that may be NULL.
-#[cfg(desktop)]
 pub fn get_optional<I: rusqlite::RowIndex>(
     row: &rusqlite::Row<'_>,
     index: I,
@@ -37,10 +35,8 @@ pub fn get_optional<I: rusqlite::RowIndex>(
 
 /// A path column's value, read as its bytes. A TEXT value is refused, so a
 /// path bound as text by mistake fails rather than reading back.
-#[cfg(desktop)]
 struct StoredPath(PathBuf);
 
-#[cfg(desktop)]
 impl rusqlite::types::FromSql for StoredPath {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
         coven::path_from_bytes(value.as_blob()?.to_vec())

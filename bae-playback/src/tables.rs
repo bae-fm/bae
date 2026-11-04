@@ -8,6 +8,7 @@
 //! everything else.
 
 mod now;
+mod preview_target;
 mod queue;
 mod queue_fill;
 mod queue_reads;
