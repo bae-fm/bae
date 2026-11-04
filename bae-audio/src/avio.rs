@@ -14,6 +14,24 @@ use tracing::{debug, warn};
 
 // --- AVIO custom I/O implementation ---
 
+/// FFmpeg's seek of `offset` from `whence` (SEEK_SET, SEEK_CUR or SEEK_END) as
+/// the seek it asks of a reader or writer. `None`, logged against `what`
+/// seeks, for a negative SEEK_SET offset and for any other whence.
+fn seek_from(offset: i64, whence: c_int, what: &str) -> Option<SeekFrom> {
+    match whence {
+        0 => match u64::try_from(offset) {
+            Ok(offset) => Some(SeekFrom::Start(offset)),
+            Err(e) => {
+                warn!("AVIO {what} seek rejected negative SEEK_SET offset {offset}: {e}");
+                None
+            }
+        },
+        1 => Some(SeekFrom::Current(offset)),
+        2 => Some(SeekFrom::End(offset)),
+        _ => None,
+    }
+}
+
 pub(super) unsafe fn free_custom_avio_context(avio: *mut ffmpeg_sys_next::AVIOContext) {
     let mut avio = avio;
     ffmpeg_sys_next::av_freep(&mut (*avio).buffer as *mut *mut u8 as *mut c_void);
@@ -144,14 +162,20 @@ impl StreamingAvioContext {
             return self.buffer.get_total_size() as i64;
         }
 
+        let Some(seek_from) = seek_from(offset, whence, "stream") else {
+            return -1;
+        };
         let Ok(mut reader) = self.reader.lock() else {
             return -1;
         };
-        let new_pos = match whence {
-            0 => offset as u64,                                    // SEEK_SET
-            1 => (reader.get_read_pos() as i64 + offset) as u64,   // SEEK_CUR
-            2 => (reader.get_total_size() as i64 + offset) as u64, // SEEK_END
-            _ => return -1,
+        let new_pos = match seek_from {
+            SeekFrom::Start(position) => Some(position),
+            SeekFrom::Current(offset) => reader.get_read_pos().checked_add_signed(offset),
+            SeekFrom::End(offset) => reader.get_total_size().checked_add_signed(offset),
+        };
+        let Some(new_pos) = new_pos else {
+            warn!("AVIO stream seek rejected a position before the start: offset {offset}, whence {whence}");
+            return -1;
         };
 
         if reader.seek(new_pos) {
@@ -235,17 +259,8 @@ pub(super) unsafe extern "C" fn file_avio_seek_callback(
     let position = if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
         ctx.file.metadata().map(|metadata| metadata.len())
     } else {
-        let seek_from = match whence {
-            0 => match u64::try_from(offset) {
-                Ok(offset) => SeekFrom::Start(offset),
-                Err(e) => {
-                    warn!("AVIO file seek rejected negative SEEK_SET offset {offset}: {e}");
-                    return -1;
-                }
-            },
-            1 => SeekFrom::Current(offset),
-            2 => SeekFrom::End(offset),
-            _ => return -1,
+        let Some(seek_from) = seek_from(offset, whence, "file") else {
+            return -1;
         };
         ctx.file.seek(seek_from)
     };
@@ -344,17 +359,8 @@ pub(super) unsafe extern "C" fn avio_write_seek_callback(
         };
     }
 
-    let seek_from = match whence {
-        0 => match u64::try_from(offset) {
-            Ok(offset) => SeekFrom::Start(offset),
-            Err(e) => {
-                warn!("AVIO write seek rejected negative SEEK_SET offset {offset}: {e}");
-                return -1;
-            }
-        },
-        1 => SeekFrom::Current(offset),
-        2 => SeekFrom::End(offset),
-        _ => return -1,
+    let Some(seek_from) = seek_from(offset, whence, "write") else {
+        return -1;
     };
 
     let pos = match sink.seek(seek_from).and_then(|pos| {
@@ -373,3 +379,7 @@ pub(super) unsafe extern "C" fn avio_write_seek_callback(
     };
     pos
 }
+
+#[cfg(test)]
+#[path = "avio_tests.rs"]
+mod tests;
