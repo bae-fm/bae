@@ -1,11 +1,11 @@
 use super::*;
 
-/// The Latin-1 spelling of `Café` followed by `extension`: a name that isn't
+/// The Latin-1 spelling of `Café` followed by `rest`: a name that isn't
 /// UTF-8.
-fn latin1_name(extension: &str) -> std::ffi::OsString {
+fn latin1_name(rest: &str) -> std::ffi::OsString {
     use std::os::unix::ffi::OsStringExt;
-    let mut name = b"Caf\xE9.".to_vec();
-    name.extend_from_slice(extension.as_bytes());
+    let mut name = b"Caf\xE9".to_vec();
+    name.extend_from_slice(rest.as_bytes());
     std::ffi::OsString::from_vec(name)
 }
 
@@ -21,7 +21,7 @@ fn album_with_a_latin1_name(collection: &Path) -> (std::path::PathBuf, std::path
         None,
         &[TaggedTrack { filename: "Track.flac", title: "Track Title", track_number: 1 }],
     );
-    let track = album.join(latin1_name("flac"));
+    let track = album.join(latin1_name(".flac"));
     fs::rename(album.join("Track.flac"), &track).unwrap();
     (album, track)
 }
@@ -59,6 +59,121 @@ async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
         .await
         .expect("the import completes");
     release_id
+}
+
+/// `Collection/Café`, its name Latin-1, holding one tagged track; the folder.
+fn latin1_album(collection: &Path) -> std::path::PathBuf {
+    let album = collection.join(latin1_name(""));
+    fs::create_dir_all(&album).unwrap();
+    generate_tagged_album_files(
+        &album,
+        "Album Title",
+        "Artist Name",
+        None,
+        &[TaggedTrack { filename: "Track.flac", title: "Track Title", track_number: 1 }],
+    );
+    album
+}
+
+/// A folder whose name isn't UTF-8 is listed under its escaped name, keyed
+/// by its own path, and imports: the library records its tracks' own paths
+/// and its escaped name as the release's folder name.
+#[tokio::test]
+async fn a_folder_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escaped_name() {
+    bae_util::test_logs::install();
+    let f = ImportFixture::new().await;
+    let collection = f.temp_path().join("Collection");
+    let album = latin1_album(&collection);
+
+    let releases = scanned_releases(&f, &collection).await;
+
+    let [release] = releases.as_slice() else {
+        panic!("the scan lists the folder: {releases:?}");
+    };
+    assert_eq!(release.path, album);
+    assert_eq!(release.name, r"Caf\xE9");
+    assert_eq!(release.key(), bae_import::CandidateKey::folder(&album));
+
+    let release_id = import_scanned(&f, &album).await;
+
+    let files = f.library.database().get_files_for_release(&release_id).await.unwrap();
+    let [file] = files.as_slice() else {
+        panic!("the release holds the track: {files:?}");
+    };
+    assert_eq!(file.original_filename, "Track.flac");
+    let original = f
+        .library
+        .database()
+        .external_file(&file.id)
+        .await
+        .unwrap()
+        .expect("the track's original is recorded");
+    assert_eq!(original.path, album.join("Track.flac"));
+    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    assert_eq!(release.source_folder_name.as_deref(), Some(r"Caf\xE9"));
+}
+
+/// Skipping a folder whose name isn't UTF-8 is stored under its own bytes
+/// below the watched folder, so the skip names that folder and no other.
+#[tokio::test]
+async fn a_folder_whose_name_is_not_utf8_is_skipped_by_its_own_path() {
+    bae_util::test_logs::install();
+    let f = ImportFixture::new().await;
+    let collection = f.temp_path().join("Collection");
+    let album = latin1_album(&collection);
+    let releases = scanned_releases(&f, &collection).await;
+    assert_eq!(releases.len(), 1, "the scan lists the folder: {releases:?}");
+    let key = bae_import::CandidateKey::folder(&album);
+
+    f.handle.set_candidate_skipped(key.clone(), true).await.unwrap();
+
+    let skipped = bae_import::tables::ImportTables::new(f.library.database().clone())
+        .load_skipped_import_candidates(&collection)
+        .await
+        .unwrap();
+    let expected = bae_db::RelativeFolder::of(Path::new(&latin1_name(""))).unwrap();
+    assert_eq!(skipped, std::collections::HashSet::from([expected]));
+    match f.handle.get_candidate(&key).await.unwrap() {
+        Some(bae_import::ImportCandidateSnapshot::Folder { skipped, .. }) => {
+            assert!(skipped, "the folder reads as skipped");
+        }
+        other => panic!("{key} is a scanned folder: {other:?}"),
+    }
+}
+
+/// The two releases in a folder whose name isn't UTF-8 combine into one,
+/// read from that folder: the decision is kept under its bytes.
+#[tokio::test]
+async fn the_releases_in_a_folder_whose_name_is_not_utf8_combine_into_it() {
+    bae_util::test_logs::install();
+    let f = ImportFixture::new().await;
+    let collection = f.temp_path().join("Collection");
+    let boxed = collection.join(latin1_name(""));
+    let albums = [boxed.join("Album A"), boxed.join("Album B")];
+    for album in &albums {
+        fs::create_dir_all(album).unwrap();
+        generate_album_files(album, &["01 Track.flac"]);
+    }
+    let releases = scanned_releases(&f, &collection).await;
+    assert_eq!(releases.len(), 2, "the scan lists each album: {releases:?}");
+
+    let combined = f
+        .handle
+        .combine_candidates(
+            albums.iter().map(|album| bae_import::CandidateKey::folder(album)).collect(),
+        )
+        .await
+        .expect("the albums combine");
+
+    assert_eq!(f.handle.candidate_source_folders(&combined).await.unwrap(), albums);
+    let reading = bae_import::tables::ImportTables::new(f.library.database().clone())
+        .folder_reading_grouping(&bae_import::FolderReleaseDecisionKey {
+            watched_folder_path: collection.clone(),
+            relative_folder: bae_db::RelativeFolder::of(Path::new(&latin1_name(""))).unwrap(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(reading, Some(combined), "the folder is read as the combined release");
 }
 
 /// A track whose name isn't UTF-8 doesn't fail its folder's scan: the release
@@ -178,7 +293,7 @@ async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
     let album = collection.join("Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &[r"Caf\xE9.flac", "Track.flac"]);
-    fs::rename(album.join("Track.flac"), album.join(latin1_name("flac"))).unwrap();
+    fs::rename(album.join("Track.flac"), album.join(latin1_name(".flac"))).unwrap();
 
     assert!(scanned_releases(&f, &collection).await.is_empty());
 
