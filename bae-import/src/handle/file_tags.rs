@@ -43,7 +43,7 @@ impl ImportServiceHandle {
     pub(super) async fn read_file_tag_snapshot(
         &self,
         candidate_key: &crate::CandidateKey,
-        reader: std::sync::Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+        reader: std::sync::Arc<dyn crate::file_tag_reader::FileTagReader>,
     ) -> Result<FileTagSnapshotRead, crate::ImportError> {
         let candidate = self.require_release_candidate(candidate_key).await?;
         let watched_folder_path = candidate.watched_folder_path.clone();

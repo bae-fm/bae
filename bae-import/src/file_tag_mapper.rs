@@ -16,9 +16,12 @@
 //! rule (`StatedYears::of`). Source codecs are physical audio facts, not
 //! release media, so the pressing's media stay unstated.
 
+use super::file_tag_reader::non_empty;
 #[cfg(test)]
-use super::file_tag_snapshot::{extract_file_tag_snapshot, LoftyFileTagReader};
-use super::file_tag_snapshot::{non_empty, FileTagFact, FileTagSnapshot};
+use super::file_tag_reader::LoftyFileTagReader;
+#[cfg(test)]
+use super::file_tag_snapshot::extract_file_tag_snapshot;
+use super::file_tag_snapshot::{FileTagFact, FileTagSnapshot};
 use crate::folder_scanner::CategorizedFiles;
 #[cfg(test)]
 use crate::folder_scanner::ScannedFile;

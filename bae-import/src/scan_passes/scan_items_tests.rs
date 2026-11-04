@@ -369,11 +369,8 @@ struct EmbeddingTagReader {
     picture: Vec<u8>,
 }
 
-impl crate::file_tag_snapshot::FileTagReader for EmbeddingTagReader {
-    fn read(
-        &self,
-        path: &Path,
-    ) -> Result<crate::file_tag_snapshot::FileTagRead, crate::ImportError> {
+impl crate::file_tag_reader::FileTagReader for EmbeddingTagReader {
+    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
         let mut read = self.counted.read(path)?;
         read.embedded_cover =
             Some((self.picture.clone(), bae_util::content_type::ContentType::Jpeg));
@@ -497,13 +494,10 @@ impl CountingTagReader {
     }
 }
 
-impl crate::file_tag_snapshot::FileTagReader for CountingTagReader {
-    fn read(
-        &self,
-        path: &Path,
-    ) -> Result<crate::file_tag_snapshot::FileTagRead, crate::ImportError> {
+impl crate::file_tag_reader::FileTagReader for CountingTagReader {
+    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
         *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
-        crate::file_tag_snapshot::LoftyFileTagReader.read(path)
+        crate::file_tag_reader::LoftyFileTagReader.read(path)
     }
 }
 

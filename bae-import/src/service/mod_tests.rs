@@ -43,7 +43,7 @@ impl TestService {
     pub(crate) fn import_services(
         &self,
         event_tx: crate::ImportEventBus,
-        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+        file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
         directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
         folder_state_commit: crate::FolderStateCommit,
     ) -> crate::ImportServices {
@@ -69,7 +69,7 @@ impl TestService {
     /// A scan over this service's library, and the stream it announces on.
     pub(crate) fn scan(&self) -> (TestScan, crate::ImportEvents) {
         self.scan_with(
-            Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+            Arc::new(crate::file_tag_reader::LoftyFileTagReader),
             Arc::new(crate::folder_scanner::OsDirectoryReader),
         )
     }
@@ -78,7 +78,7 @@ impl TestService {
     /// `directories`.
     pub(crate) fn scan_with(
         &self,
-        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+        file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
         directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
     ) -> (TestScan, crate::ImportEvents) {
         let event_tx = crate::ImportEventBus::new(self.service.runtime.clone());

@@ -46,7 +46,7 @@ fn stored_rows_that_disagree_about_a_file_fail_the_pass() {
             FolderEntry::Release(stored_release(measured(6_000))),
         ],
         &[],
-        Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
     )
     .err()
     .expect("the rows disagree");
@@ -57,7 +57,7 @@ fn stored_rows_that_disagree_about_a_file_fail_the_pass() {
             FolderEntry::Release(stored_release(measured(5_000))),
         ],
         &[],
-        Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
     )
     .is_ok());
 }
@@ -79,13 +79,10 @@ impl PictureReader {
     }
 }
 
-impl crate::file_tag_snapshot::FileTagReader for PictureReader {
-    fn read(
-        &self,
-        path: &Path,
-    ) -> Result<crate::file_tag_snapshot::FileTagRead, crate::ImportError> {
+impl crate::file_tag_reader::FileTagReader for PictureReader {
+    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
         *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
-        let mut read = crate::file_tag_snapshot::LoftyFileTagReader.read(path)?;
+        let mut read = crate::file_tag_reader::LoftyFileTagReader.read(path)?;
         read.embedded_cover = Some((vec![0; self.size], bae_util::content_type::ContentType::Jpeg));
         Ok(read)
     }

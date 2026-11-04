@@ -752,7 +752,7 @@ pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(WalkItem)>(
             decisions: &FolderReleaseDecisions::default(),
             new_grouping_key: &fresh_grouping_key,
         },
-        &FileReads::new(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
+        &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
         &ScanCancellation::new(),
         |_| {},
         on_item,

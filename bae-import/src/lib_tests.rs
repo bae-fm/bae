@@ -180,7 +180,7 @@ pub(crate) mod import {
         /// [`Self::start`] reading folders' tags through `file_tags`.
         pub(crate) async fn start_reading_tags_with(
             &self,
-            file_tags: std::sync::Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+            file_tags: std::sync::Arc<dyn crate::file_tag_reader::FileTagReader>,
         ) -> Result<ImportServiceHandle, crate::ImportError> {
             crate::ImportService::start_reading_tags_through(
                 tokio::runtime::Handle::current(),

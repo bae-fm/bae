@@ -134,3 +134,20 @@ impl CoverChoice {
         }
     }
 }
+
+/// The cover a draft read from its files' tags is committed with: the
+/// snapshot's embedded artwork, when its bytes are an image the import can
+/// store. Folder artwork remains the candidate's source-neutral fallback.
+pub(crate) fn embedded_cover_selection(
+    snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
+) -> Option<PreparedCover> {
+    let cover = snapshot.embedded_cover.as_ref()?;
+    cover
+        .content_type
+        .is_supported_cover()
+        .then(|| PreparedCover::Embedded(cover.source_relative_path.clone()))
+}
+
+#[cfg(test)]
+#[path = "cover_art_tests.rs"]
+mod tests;

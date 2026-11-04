@@ -5,7 +5,8 @@
 use super::read::{load_items, RowSources};
 use super::tag_snapshot::{StoredFileTags, FILE_TAG_COLUMNS};
 use super::*;
-use crate::file_tag_snapshot::{FileTagReader, FileTagSnapshot, FileTags};
+use crate::file_tag_reader::FileTagReader;
+use crate::file_tag_snapshot::{FileTagSnapshot, FileTags};
 use crate::folder_scanner::{Coverage, FileReads, FileVersion};
 use crate::CandidateKey;
 use std::sync::Arc;

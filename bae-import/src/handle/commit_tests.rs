@@ -82,11 +82,8 @@ impl HeldTagReader {
     }
 }
 
-impl crate::file_tag_snapshot::FileTagReader for HeldTagReader {
-    fn read(
-        &self,
-        path: &Path,
-    ) -> Result<crate::file_tag_snapshot::FileTagRead, crate::ImportError> {
+impl crate::file_tag_reader::FileTagReader for HeldTagReader {
+    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
         let held = self.held.lock().unwrap().as_ref().is_some_and(|held| path.starts_with(held));
         if held {
             // The receiver is gone once the test has stopped watching, which
@@ -102,7 +99,7 @@ impl crate::file_tag_snapshot::FileTagReader for HeldTagReader {
                 open = condition.wait(open).unwrap();
             }
         }
-        crate::file_tag_snapshot::LoftyFileTagReader.read(path)
+        crate::file_tag_reader::LoftyFileTagReader.read(path)
     }
 }
 

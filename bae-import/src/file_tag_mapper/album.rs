@@ -4,7 +4,8 @@
 //! trailing disc marker.
 
 use crate::cue_flac::CueSheet;
-use crate::file_tag_snapshot::{non_empty, years_in_date, FileTags};
+use crate::file_tag_reader::{non_empty, years_in_date};
+use crate::file_tag_snapshot::FileTags;
 use bae_identify::row_facts::StatedYears;
 
 /// What one unit that states album facts — a file's tags, or a CUE sheet —

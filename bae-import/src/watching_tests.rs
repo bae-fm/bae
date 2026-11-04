@@ -310,7 +310,7 @@ impl CoordinatorHarness {
             fs_rx,
             test.import_services(
                 test.event_tx().clone(),
-                Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+                Arc::new(crate::file_tag_reader::LoftyFileTagReader),
                 Arc::new(crate::folder_scanner::OsDirectoryReader),
                 folder_state_commit.clone(),
             ),

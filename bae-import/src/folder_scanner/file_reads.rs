@@ -11,9 +11,9 @@
 //! draft is seeded, one the walk read to place the release's tracks.
 
 use super::*;
+use crate::file_tag_reader::{FileTagRead, FileTagReader};
 use crate::file_tag_snapshot::{
-    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagRead, FileTagReader, FileTagSnapshot,
-    FileTags,
+    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,
 };
 use crate::track_numbers::TrackNumbers;
 use crate::ImportError;

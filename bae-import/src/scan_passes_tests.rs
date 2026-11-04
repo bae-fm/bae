@@ -13,7 +13,7 @@ pub(crate) fn test_scan_services(
     test: &TestService,
     event_tx: crate::ImportEventBus,
     folder_watcher: Arc<FolderWatcher>,
-    file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+    file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
     directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
 ) -> ScanServices {
     ScanServices::new(
@@ -104,7 +104,7 @@ impl DecisionFixture {
         test.tables().add_watched_import_folder(&root).await.unwrap();
         let listing = Arc::new(RecordingListing::default());
         let (scan, _) =
-            test.scan_with(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader), listing.clone());
+            test.scan_with(Arc::new(crate::file_tag_reader::LoftyFileTagReader), listing.clone());
         scan.rescan(&root).await.unwrap();
         listing.take();
         Self { test, scan, listing, root }
@@ -224,7 +224,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
             &test,
             test.event_tx().clone(),
             watcher,
-            std::sync::Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+            std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
             std::sync::Arc::new(crate::folder_scanner::OsDirectoryReader),
         ),
         completion_tx,

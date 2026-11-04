@@ -19,17 +19,6 @@ pub(crate) struct TrackNumbers {
 }
 
 impl TrackNumbers {
-    /// What `tag` states: its track number (Vorbis `TRACKNUMBER`, ID3 `TRCK`,
-    /// MP4 `trkn`) and disc number (`DISCNUMBER`, `TPOS`, `disk`), without the
-    /// totals some formats write beside them.
-    pub(crate) fn of_tag(tag: &lofty::tag::Tag) -> Self {
-        use lofty::tag::Accessor;
-        Self {
-            disc: tag.disk().filter(|number| *number > 0),
-            track: tag.track().filter(|number| *number > 0),
-        }
-    }
-
     /// The numbers a file's name starts with: `07 Title.flac` is track 7, and
     /// `2-07 Title.flac` — how a multi-disc rip is commonly named — is disc 2,
     /// track 7. A run of more than three digits is a year or a catalog number,

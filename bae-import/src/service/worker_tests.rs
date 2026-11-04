@@ -71,7 +71,7 @@ async fn a_start_reading_tags_its_own_way_opens_with_no_standing_a_crash_left() 
 
     let reopened = fixture
         .parts
-        .start_reading_tags_with(std::sync::Arc::new(crate::file_tag_snapshot::LoftyFileTagReader))
+        .start_reading_tags_with(std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader))
         .await
         .unwrap();
 

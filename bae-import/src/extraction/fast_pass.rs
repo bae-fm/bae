@@ -135,7 +135,7 @@ pub(super) fn gather_non_ocr_sources(
     let audio_files: Vec<_> = categorized.audio().cloned().collect();
     match crate::file_tag_snapshot::read_delivered_file_tags(
         &audio_files,
-        &crate::file_tag_snapshot::LoftyFileTagReader,
+        &crate::file_tag_reader::LoftyFileTagReader,
     ) {
         Ok(files) => {
             // Each file's ISRCs, as `isrc::code` reads its tag, in the files'

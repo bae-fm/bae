@@ -61,7 +61,7 @@ fn tag_draft(root: &Path) -> Vec<(String, u16, u32, String)> {
     let seed = crate::file_metadata_seed::FileMetadataSeed::read(
         candidate,
         0,
-        &FileReads::new(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
+        &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
         None,
     )
     .expect("tags read");
@@ -227,7 +227,7 @@ fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
     let seed = crate::file_metadata_seed::FileMetadataSeed::read(
         candidate,
         0,
-        &FileReads::new(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
+        &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
         None,
     )
     .expect("tags read");

@@ -74,7 +74,7 @@ pub struct ImportServiceHandle {
     ids: coven::IdSourceRef,
     /// Reads a folder's audio files for their embedded tags; the scan's
     /// pre-fill uses the same reader.
-    file_tags: std::sync::Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+    file_tags: std::sync::Arc<dyn crate::file_tag_reader::FileTagReader>,
     /// The import service's event channel.
     event_tx: ImportEventBus,
     /// What the bus's events have said about every candidate.

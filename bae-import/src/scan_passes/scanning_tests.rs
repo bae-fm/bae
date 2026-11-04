@@ -100,7 +100,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     }
     tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan_with(
-        Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
         Arc::new(ListingThatPanicsOnce { panicked: std::sync::atomic::AtomicBool::new(false) }),
     );
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -268,7 +268,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
     let (reader, mut entered) = HeldListing::new();
     let reader = Arc::new(reader);
     let (scan, mut events) =
-        test.scan_with(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader), reader.clone());
+        test.scan_with(Arc::new(crate::file_tag_reader::LoftyFileTagReader), reader.clone());
 
     let observe = async {
         let _opens_on_failure = OpensOnDrop(&reader);

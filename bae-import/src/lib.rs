@@ -45,6 +45,8 @@ pub(crate) mod file_metadata_seed;
 #[cfg(desktop)]
 pub mod file_tag_mapper;
 #[cfg(desktop)]
+pub(crate) mod file_tag_reader;
+#[cfg(desktop)]
 pub(crate) mod file_tag_snapshot;
 #[cfg(desktop)]
 mod file_validation;
@@ -153,7 +155,7 @@ pub(crate) struct ImportServices {
     /// What reads a folder's audio files for their embedded tags. Held here
     /// rather than reached for, so a test can hand the scan a reader whose
     /// answers — and whose count of calls — it decides.
-    file_tags: std::sync::Arc<dyn file_tag_snapshot::FileTagReader>,
+    file_tags: std::sync::Arc<dyn file_tag_reader::FileTagReader>,
     /// What lists a folder's entries for a scan. Held for the same reason as
     /// `file_tags`: a test can hand the scan a reader that holds one folder's
     /// listing closed, and observe what the scan has announced by then.
@@ -180,7 +182,7 @@ impl ImportServices {
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
-        file_tags: std::sync::Arc<dyn file_tag_snapshot::FileTagReader>,
+        file_tags: std::sync::Arc<dyn file_tag_reader::FileTagReader>,
         diagnostics: bae_diagnostics::Diagnostics,
         closing: tokio_util::sync::CancellationToken,
     ) -> Self {

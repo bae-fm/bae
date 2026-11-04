@@ -308,7 +308,7 @@ pub async fn store_scan_item(
         item,
         generation,
         std::sync::Arc::new(crate::folder_scanner::FileReads::new(std::sync::Arc::new(
-            crate::file_tag_snapshot::LoftyFileTagReader,
+            crate::file_tag_reader::LoftyFileTagReader,
         ))),
     )
     .await?;

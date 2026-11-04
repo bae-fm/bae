@@ -335,7 +335,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
                 decisions: &FolderReleaseDecisions::default(),
                 new_grouping_key: &fresh_grouping_key,
             },
-            &FileReads::new(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
+            &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
             &thread_cancellation,
             |_| {},
             |_| {},

@@ -676,7 +676,7 @@ where
         &OsDirectoryReader,
         root,
         &ScanReadings { stored, decisions, new_grouping_key: &fresh_grouping_key },
-        &FileReads::new(std::sync::Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
+        &FileReads::new(std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -748,7 +748,7 @@ pub fn collect_release_candidate_files_with_scope(
         stored,
         &[],
         &ScanCancellation::new(),
-        &FileReads::new(std::sync::Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
+        &FileReads::new(std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid { files, .. } => Err(InvalidReason::of(&files).into()),

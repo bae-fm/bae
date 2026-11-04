@@ -55,12 +55,9 @@ async fn a_damaged_image_is_never_picked_as_the_cover() {
 /// A retained reading from a tag reader that accepted BMP artwork.
 struct UnsupportedEmbeddedArtworkReader;
 
-impl crate::file_tag_snapshot::FileTagReader for UnsupportedEmbeddedArtworkReader {
-    fn read(
-        &self,
-        path: &Path,
-    ) -> Result<crate::file_tag_snapshot::FileTagRead, crate::ImportError> {
-        let mut read = crate::file_tag_snapshot::LoftyFileTagReader.read(path)?;
+impl crate::file_tag_reader::FileTagReader for UnsupportedEmbeddedArtworkReader {
+    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
+        let mut read = crate::file_tag_reader::LoftyFileTagReader.read(path)?;
         read.embedded_cover = Some((b"BM".to_vec(), bae_util::content_type::ContentType::Bmp));
         Ok(read)
     }

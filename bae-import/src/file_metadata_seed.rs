@@ -58,7 +58,7 @@ impl FileMetadataSeed {
             crate::pane::keep_row_identities(&mut draft.tracks, keeping)?;
         }
         let cover = crate::local_artwork::file_tags_cover(
-            crate::file_tag_snapshot::embedded_cover_selection(&snapshot),
+            crate::cover_art::embedded_cover_selection(&snapshot),
             candidate.files.artwork(),
         );
         Ok(Self { snapshot, draft, cover })

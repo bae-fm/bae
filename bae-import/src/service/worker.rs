@@ -27,7 +27,7 @@ impl ImportService {
             clock,
             ids,
             closing,
-            Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
+            Arc::new(crate::file_tag_reader::LoftyFileTagReader),
         )
         .await
     }
@@ -45,7 +45,7 @@ impl ImportService {
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         closing: tokio_util::sync::CancellationToken,
-        file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
+        file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
     ) -> Result<ImportServiceHandle, crate::ImportError> {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
