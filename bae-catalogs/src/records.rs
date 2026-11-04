@@ -154,6 +154,19 @@ impl PayloadSource {
         }
     }
 
+    /// The catalog asked for this document: a lookup by a Discogs address is
+    /// asked of MusicBrainz. A Wikidata item is no lookup catalog's.
+    pub fn asked_catalog(self) -> Option<LookupCatalog> {
+        match self {
+            Self::MusicBrainz
+            | Self::MusicBrainzReleaseGroup
+            | Self::MusicBrainzDiscogsXref
+            | Self::MusicBrainzDiscogsMasterXref => Some(LookupCatalog::MusicBrainz),
+            Self::Discogs | Self::DiscogsMaster => Some(LookupCatalog::Discogs),
+            Self::Wikidata => None,
+        }
+    }
+
     /// The payload holding a release's own editorial metadata on `source` — the
     /// anchor of everything else identification fetched alongside it.
     pub fn release_of(catalog: LookupCatalog) -> Self {

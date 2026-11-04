@@ -142,7 +142,7 @@ fn a_linked_release_that_was_not_fetched_leaves_the_album_unread() {
     payloads.unfetched.push(UnfetchedDocument {
         document: PayloadSource::Discogs,
         key: "11".to_string(),
-        reason: UnfetchedReason::DiscogsNotConfigured,
+        reason: UnfetchedReason::NotAsked,
     });
     assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Unread);
 }

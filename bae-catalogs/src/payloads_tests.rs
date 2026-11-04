@@ -529,6 +529,7 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
     let payloads = providers
         .fetch_payloads(
             None,
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::MusicBrainz, release_id),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -579,6 +580,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
     let payloads = providers
         .fetch_payloads(
             None,
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::MusicBrainz, release_id),
             ReadDepth::Complete,
             CallPriority::Interactive,

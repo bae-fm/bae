@@ -319,7 +319,7 @@ pub(super) fn replace_source_release_on(
                 unfetched.key,
                 match unfetched.reason {
                     UnfetchedReason::Failed => "failed",
-                    UnfetchedReason::DiscogsNotConfigured => "discogs_not_configured",
+                    UnfetchedReason::NotAsked => "not_asked",
                     UnfetchedReason::StoppedShort => "stopped_short",
                 },
             ],
@@ -613,7 +613,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                 key: document_key,
                 reason: match reason.as_str() {
                     "failed" => UnfetchedReason::Failed,
-                    "discogs_not_configured" => UnfetchedReason::DiscogsNotConfigured,
+                    "not_asked" => UnfetchedReason::NotAsked,
                     "stopped_short" => UnfetchedReason::StoppedShort,
                     other => {
                         return Err(DbError::unreadable("source_release_unfetched.reason", other))

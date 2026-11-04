@@ -86,8 +86,10 @@ pub struct UnfetchedDocument {
 pub enum UnfetchedReason {
     /// Its source was asked and failed.
     Failed,
-    /// It is a Discogs document and this library held no Discogs key.
-    DiscogsNotConfigured,
+    /// Its catalog was not one the read asked: the person switched it off, or
+    /// it is Discogs and the library held no key to ask with. A read always
+    /// asks its release's own catalog.
+    NotAsked,
     /// The read stopped short of it on purpose: an identification read
     /// follows only the documents ranking the release reads, and takes a
     /// release a Disc ID lookup returned from that answer rather than its own
@@ -331,19 +333,22 @@ impl SourceRelease {
         &self.release
     }
 
-    /// Whether reading this release again at `depth` could add what its fetch
-    /// missed: a document whose source failed, a Discogs document now that a
-    /// key is held, or — for a complete read — a document an identification
-    /// read stopped short of. Anything else missing is what the catalogs
-    /// answered, and asking again answers the same.
+    /// Whether reading this release again at `depth`, asking the catalogs
+    /// `asked` names, could add what its fetch missed: a document whose source
+    /// failed, one on a catalog the fetch did not ask that is asked now, or —
+    /// for a complete read — a document an identification read stopped short
+    /// of. Anything else missing is what the catalogs answered, and asking
+    /// again answers the same.
     pub fn fetch_could_add(
         &self,
         depth: crate::payloads::ReadDepth,
-        discogs_configured: bool,
+        asked: &[LookupCatalog],
     ) -> bool {
         self.unfetched.iter().any(|document| match document.reason {
             UnfetchedReason::Failed => true,
-            UnfetchedReason::DiscogsNotConfigured => discogs_configured,
+            UnfetchedReason::NotAsked => {
+                document.document.asked_catalog().is_some_and(|catalog| asked.contains(&catalog))
+            }
             UnfetchedReason::StoppedShort => match depth {
                 crate::payloads::ReadDepth::Identification => false,
                 crate::payloads::ReadDepth::Complete => true,

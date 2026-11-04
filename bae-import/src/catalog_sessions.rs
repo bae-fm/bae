@@ -103,27 +103,33 @@ impl CatalogSessions {
         }
     }
 
-    /// Discogs as this library may ask it right now. No client while no key
-    /// is stored or the stored one was rejected. Otherwise the one client for
-    /// the stored key, built the first time it is needed — reading the key
-    /// off the keyring once rather than on every call — and reused until the
-    /// key is set or cleared.
+    /// The catalogs as this library may ask them right now: those the person
+    /// has switched on, and Discogs as the stored key allows. No client while
+    /// no key is stored or the stored one was rejected. Otherwise the one
+    /// client for the stored key, built the first time it is needed — reading
+    /// the key off the keyring once rather than on every call — and reused
+    /// until the key is set or cleared.
     pub(crate) async fn session(&self) -> Result<CatalogSession, CatalogSessionError> {
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
         let mut key = self.discogs.lock().await;
-        let validation = bae_preferences::preferences(&self.database).await?.discogs;
-        if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
-            return Ok(CatalogSession::new(None, self.providers.clone()));
+        let preferences = bae_preferences::preferences(&self.database).await?;
+        let asked = bae_preferences::asked_sources(&preferences.metadata_sources());
+        if matches!(preferences.discogs, None | Some(DiscogsValidation::Rejected)) {
+            return Ok(CatalogSession::new(None, asked, self.providers.clone()));
         }
-        Ok(self.session_with(&mut key)?)
+        Ok(self.session_with(&mut key, asked)?)
     }
 
-    /// A session asking Discogs with the client for the stored key, built the
-    /// first time it is needed with an observer recording what each call
-    /// proves about that key; one without Discogs while the keyring holds no
-    /// key.
-    fn session_with(&self, key: &mut DiscogsKey) -> Result<CatalogSession, coven::KeyError> {
+    /// A session asking the catalogs of `asked`, Discogs with the client for
+    /// the stored key, built the first time it is needed with an observer
+    /// recording what each call proves about that key; one without Discogs
+    /// while the keyring holds no key.
+    fn session_with(
+        &self,
+        key: &mut DiscogsKey,
+        asked: Vec<LookupCatalog>,
+    ) -> Result<CatalogSession, coven::KeyError> {
         if key.client.is_none() {
             // The client reports from its request path; recording the signal
             // is a write, so it runs as its own task. Nothing waits on it, so
@@ -164,7 +170,7 @@ impl CatalogSessions {
                 .host_secret(DISCOGS_API_KEY)?
                 .map(|stored| Arc::new(self.providers.discogs_client(stored, Some(observer))));
         }
-        Ok(CatalogSession::new(key.client.clone(), self.providers.clone()))
+        Ok(CatalogSession::new(key.client.clone(), asked, self.providers.clone()))
     }
 
     /// Wait until every signal write started so far has ended, for a test.
@@ -194,7 +200,7 @@ impl CatalogSessions {
 
     /// The session that asks MusicBrainz alone, which needs no key.
     pub(crate) fn musicbrainz(&self) -> CatalogSession {
-        CatalogSession::new(None, self.providers.clone())
+        CatalogSession::new(None, vec![LookupCatalog::MusicBrainz], self.providers.clone())
     }
 
     /// The session a read of `release` asks with. A MusicBrainz release
@@ -318,14 +324,14 @@ impl CatalogSessions {
     ) -> Result<Option<DiscogsCheck>, DiscogsKeyError> {
         let (session, generation) = {
             let mut key = self.discogs.lock().await;
-            let validation = bae_preferences::preferences(&self.database)
+            let preferences = bae_preferences::preferences(&self.database)
                 .await
-                .map_err(bae_preferences::PreferencesError::from)?
-                .discogs;
-            if validation != Some(DiscogsValidation::Unvalidated) {
+                .map_err(bae_preferences::PreferencesError::from)?;
+            if preferences.discogs != Some(DiscogsValidation::Unvalidated) {
                 return Ok(None);
             }
-            (self.session_with(&mut key)?, key.generation)
+            let asked = bae_preferences::asked_sources(&preferences.metadata_sources());
+            (self.session_with(&mut key, asked)?, key.generation)
         };
         let check = session.validate().await.ok_or(DiscogsKeyError::Missing)?;
         let key = self.discogs.lock().await;

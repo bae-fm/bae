@@ -9,6 +9,7 @@
 
 use std::sync::Arc;
 
+use crate::catalog::LookupCatalog;
 use crate::discogs::client::{
     Discogs, DiscogsClient, DiscogsError, DiscogsSearchParams, DiscogsValidationObserver,
 };
@@ -87,10 +88,12 @@ impl Providers {
     }
 
     /// The selected release and the documents it links to, as far as `depth`
-    /// follows them.
+    /// follows them, asking another catalog than the release's own only when
+    /// `asked` names it.
     pub(crate) async fn fetch_payloads(
         &self,
         discogs: Option<&DiscogsClient>,
+        asked: &[LookupCatalog],
         release: &LookupRef,
         depth: ReadDepth,
         priority: CallPriority,
@@ -99,6 +102,7 @@ impl Providers {
             &self.musicbrainz,
             &self.wikidata,
             discogs,
+            asked,
             release,
             depth,
             priority,
@@ -108,10 +112,11 @@ impl Providers {
 
     /// A release a Disc ID lookup returned, read for an identify run from
     /// that answer, and the documents it links to as far as such a read
-    /// follows them.
+    /// follows them, asking Discogs only when `asked` names it.
     pub(crate) async fn read_disc_id_release(
         &self,
         discogs: Option<&DiscogsClient>,
+        asked: &[LookupCatalog],
         answered: &DiscIdRelease,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, CatalogError> {
@@ -119,6 +124,7 @@ impl Providers {
             &self.musicbrainz,
             &self.wikidata,
             discogs,
+            asked,
             answered,
             priority,
         )
@@ -148,22 +154,34 @@ mod test_access {
 }
 
 /// One operation's view of the catalogs: the client for the library's stored
-/// Discogs key, when there is one Discogs may be asked with, and the other
-/// providers a release fetch follows links into.
+/// Discogs key, when there is one Discogs may be asked with, the catalogs the
+/// person has switched on, and the other providers a release fetch follows
+/// links into.
 pub struct CatalogSession {
     client: Option<Arc<DiscogsClient>>,
+    /// The catalogs switched on that this session can ask. A read follows
+    /// links into these, and always into its release's own catalog.
+    asked: Vec<LookupCatalog>,
     providers: crate::providers::Providers,
 }
 
 impl CatalogSession {
-    pub fn new(client: Option<Arc<DiscogsClient>>, providers: Providers) -> Self {
-        Self { client, providers }
+    /// A session asking the catalogs of `asked` it can: Discogs only with
+    /// `client`.
+    pub fn new(
+        client: Option<Arc<DiscogsClient>>,
+        mut asked: Vec<LookupCatalog>,
+        providers: Providers,
+    ) -> Self {
+        if client.is_none() {
+            asked.retain(|catalog| *catalog != LookupCatalog::Discogs);
+        }
+        Self { client, asked, providers }
     }
 
-    /// Whether Discogs may be asked: this library holds a key it was not told
-    /// is rejected.
-    pub fn asks_discogs(&self) -> bool {
-        self.client.is_some()
+    /// The catalogs switched on that this session can ask.
+    pub fn asked(&self) -> &[LookupCatalog] {
+        &self.asked
     }
 
     /// Ask one provider for releases matching `params`.
@@ -209,7 +227,9 @@ impl CatalogSession {
         depth: ReadDepth,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, CatalogError> {
-        self.providers.fetch_payloads(self.client.as_deref(), release, depth, priority).await
+        self.providers
+            .fetch_payloads(self.client.as_deref(), &self.asked, release, depth, priority)
+            .await
     }
 
     pub async fn read_disc_id_release(
@@ -217,7 +237,9 @@ impl CatalogSession {
         answered: &DiscIdRelease,
         priority: CallPriority,
     ) -> Result<ReleasePayloads, CatalogError> {
-        self.providers.read_disc_id_release(self.client.as_deref(), answered, priority).await
+        self.providers
+            .read_disc_id_release(self.client.as_deref(), &self.asked, answered, priority)
+            .await
     }
 
     pub async fn release_covers(

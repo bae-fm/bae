@@ -195,7 +195,7 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     musicbrainz.unfetched.push(bae_catalogs::source_release::UnfetchedDocument {
         document: PayloadSource::Discogs,
         key: "4242".to_string(),
-        reason: bae_catalogs::source_release::UnfetchedReason::DiscogsNotConfigured,
+        reason: bae_catalogs::source_release::UnfetchedReason::NotAsked,
     });
     let performed = &musicbrainz.mediums[0].entries[0].works[0].work;
     let bae_catalogs::source_release::SourceWorkEvent::Part { work: parent, .. } =

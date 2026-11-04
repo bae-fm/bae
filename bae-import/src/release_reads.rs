@@ -141,8 +141,8 @@ impl ReleaseReads {
         steps: &CatalogApplySteps,
     ) -> Result<PreparedRelease, ImportError> {
         if let Some(stored) = self.tables.load_prepared_release(release_ref).await? {
-            let discogs_configured = self.catalogs.session().await?.asks_discogs();
-            if !stored.stored.fetch_could_add(depth, discogs_configured) {
+            let session = self.catalogs.session().await?;
+            if !stored.stored.fetch_could_add(depth, session.asked()) {
                 return Ok(stored);
             }
         }

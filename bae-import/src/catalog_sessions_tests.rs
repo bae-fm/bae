@@ -25,7 +25,7 @@ async fn stored_validation(database: &Database) -> Option<DiscogsValidation> {
 }
 
 async fn asks_discogs(sessions: &CatalogSessions) -> bool {
-    sessions.session().await.unwrap().asks_discogs()
+    sessions.session().await.unwrap().asked().contains(&LookupCatalog::Discogs)
 }
 
 /// Record what Discogs said of the stored key, as a check of it does.
@@ -53,6 +53,27 @@ async fn discogs_is_not_asked_with_a_rejected_key() {
 
     record_validation(&database, DiscogsValidation::Rejected).await;
     assert!(!asks_discogs(&sessions).await, "a Rejected key is withheld");
+}
+
+/// A catalog the person switched off is not one a session asks, whatever key
+/// the library holds; switching it back on asks it again.
+#[tokio::test]
+async fn a_switched_off_catalog_is_not_asked() {
+    let (sessions, database, _temp_dir) = test_sessions().await;
+    sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
+    let switch = |catalog, enabled| {
+        bae_preferences::edit_preferences(&database, move |prefs| {
+            prefs.identification.catalogs.set(catalog, enabled);
+            Ok(())
+        })
+    };
+
+    switch(LookupCatalog::Discogs, false).await.unwrap();
+    assert_eq!(sessions.session().await.unwrap().asked(), [LookupCatalog::MusicBrainz]);
+
+    switch(LookupCatalog::Discogs, true).await.unwrap();
+    switch(LookupCatalog::MusicBrainz, false).await.unwrap();
+    assert_eq!(sessions.session().await.unwrap().asked(), [LookupCatalog::Discogs]);
 }
 
 /// A key present in the keyring but absent from the preferences (the residue a

@@ -253,13 +253,13 @@ impl DocumentTraversal {
                     "Supporting metadata document does not exist"
                 );
             }
-            Ok(Fetched::DiscogsNotConfigured) => {
+            Ok(Fetched::NotAsked) => {
                 tracing::debug!(
                     ?source,
                     entity = key,
-                    "Supporting Discogs document needs a Discogs key"
+                    "Supporting document is on a catalog this read does not ask"
                 );
-                self.missing(source, key, UnfetchedReason::DiscogsNotConfigured);
+                self.missing(source, key, UnfetchedReason::NotAsked);
             }
             Ok(Fetched::FailedEarlier) => {
                 tracing::debug!(
@@ -334,15 +334,17 @@ enum Fetched {
     Document(String),
     /// The catalog answered that there is none to give.
     Absent,
-    /// A Discogs document, and no Discogs client to ask with.
-    DiscogsNotConfigured,
+    /// The document is on a catalog this walk does not ask.
+    NotAsked,
     /// The same entity was asked for under another key in this walk and its
     /// source failed.
     FailedEarlier,
 }
 
+/// What a walk asks for its documents, holding a client for each catalog it
+/// asks and none for one it does not.
 struct FetchDocuments<'a> {
-    musicbrainz: &'a crate::musicbrainz::MusicBrainz,
+    musicbrainz: Option<&'a crate::musicbrainz::MusicBrainz>,
     wikidata: &'a crate::wikidata::Wikidata,
     discogs: Option<&'a DiscogsClient>,
     priority: CallPriority,
@@ -360,15 +362,18 @@ impl FetchDocuments<'_> {
         if let Some(json) = self.documents.get(&key) {
             return Ok(Fetched::Document(json.clone()));
         }
+        let Some(musicbrainz) = self.musicbrainz else {
+            return Ok(Fetched::NotAsked);
+        };
         if !self.attempted_musicbrainz.insert(key.clone()) {
             return Ok(Fetched::FailedEarlier);
         }
         let json = match source {
             PayloadSource::MusicBrainz => {
-                self.musicbrainz.lookup_release_by_id(id, self.priority).await?.1
+                musicbrainz.lookup_release_by_id(id, self.priority).await?.1
             }
             PayloadSource::MusicBrainzReleaseGroup => {
-                self.musicbrainz.fetch_release_group_json(id, self.priority).await?
+                musicbrainz.fetch_release_group_json(id, self.priority).await?
             }
             _ => unreachable!("MusicBrainz entity fetch requires a release or group"),
         };
@@ -386,13 +391,13 @@ impl FetchDocuments<'_> {
             }
             PayloadSource::Discogs => {
                 let Some(client) = self.discogs else {
-                    return Ok(Fetched::DiscogsNotConfigured);
+                    return Ok(Fetched::NotAsked);
                 };
                 client.get_release(id, self.priority).await?.1
             }
             PayloadSource::DiscogsMaster => {
                 let Some(client) = self.discogs else {
-                    return Ok(Fetched::DiscogsNotConfigured);
+                    return Ok(Fetched::NotAsked);
                 };
                 client.get_master(id, self.priority).await?.1
             }
@@ -408,12 +413,16 @@ impl FetchDocuments<'_> {
     /// The MusicBrainz document each of `pages` is linked from, the lookups
     /// asked of MusicBrainz in one request. Its failure fails every page it
     /// carried; a page MusicBrainz has no document for, or whose address
-    /// several of its entities link, has none.
+    /// several of its entities link, has none. Without MusicBrainz to ask,
+    /// every page is one not asked about.
     async fn discogs_pages(
         &mut self,
         pages: &[DiscogsPage],
     ) -> Result<Vec<(DiscogsPage, Result<Fetched, CatalogError>)>, CatalogError> {
-        let mut linked = self.musicbrainz.lookup_discogs_pages(pages, self.priority).await?;
+        let Some(musicbrainz) = self.musicbrainz else {
+            return Ok(pages.iter().map(|page| (page.clone(), Ok(Fetched::NotAsked))).collect());
+        };
+        let mut linked = musicbrainz.lookup_discogs_pages(pages, self.priority).await?;
         let mut answers = Vec::with_capacity(pages.len());
         for page in pages {
             let fetched = match linked.remove(page).as_deref() {
@@ -442,16 +451,22 @@ impl FetchDocuments<'_> {
 }
 
 impl<'a> FetchDocuments<'a> {
+    /// What a read of a release on `own` asks: its own catalog always, as
+    /// whoever reads a release names its catalog, and another only when
+    /// `asked` names it. Discogs is asked only with a client.
     fn new(
         musicbrainz: &'a crate::musicbrainz::MusicBrainz,
         wikidata: &'a crate::wikidata::Wikidata,
         discogs: Option<&'a DiscogsClient>,
+        own: LookupCatalog,
+        asked: &[LookupCatalog],
         priority: CallPriority,
     ) -> Self {
+        let asks = |catalog: LookupCatalog| catalog == own || asked.contains(&catalog);
         Self {
-            musicbrainz,
+            musicbrainz: asks(LookupCatalog::MusicBrainz).then_some(musicbrainz),
             wikidata,
-            discogs,
+            discogs: discogs.filter(|_| asks(LookupCatalog::Discogs)),
             priority,
             documents: HashMap::new(),
             attempted_musicbrainz: HashSet::new(),
@@ -460,20 +475,25 @@ impl<'a> FetchDocuments<'a> {
 }
 
 /// The documents `release` links to, as far as `depth` follows them, asked of
-/// MusicBrainz, Wikidata and — when a client is given — Discogs.
+/// Wikidata, of the release's own catalog, and of each other catalog `asked`
+/// names — Discogs only when a client is given.
 pub(crate) async fn fetch_documents(
     musicbrainz: &crate::musicbrainz::MusicBrainz,
     wikidata: &crate::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
+    asked: &[LookupCatalog],
     release: &LookupRef,
     depth: ReadDepth,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, CatalogError> {
-    let mut fetcher = FetchDocuments::new(musicbrainz, wikidata, discogs, priority);
+    let mut fetcher =
+        FetchDocuments::new(musicbrainz, wikidata, discogs, release.catalog, asked, priority);
     let anchor =
         match fetcher.document(PayloadSource::release_of(release.catalog), &release.key).await? {
             Fetched::Document(json) => json,
-            Fetched::DiscogsNotConfigured => return Err(CatalogError::DiscogsNotConfigured),
+            // The walk asks its release's own catalog, so only a Discogs
+            // release with no client to ask leaves it unasked.
+            Fetched::NotAsked => return Err(CatalogError::DiscogsNotConfigured),
             Fetched::Absent | Fetched::FailedEarlier => {
                 unreachable!("a release's own document is asked for first and by its own id")
             }
@@ -492,6 +512,7 @@ pub(crate) async fn read_disc_id_release(
     musicbrainz: &crate::musicbrainz::MusicBrainz,
     wikidata: &crate::wikidata::Wikidata,
     discogs: Option<&DiscogsClient>,
+    asked: &[LookupCatalog],
     answered: &DiscIdRelease,
     priority: CallPriority,
 ) -> Result<ReleasePayloads, CatalogError> {
@@ -503,7 +524,9 @@ pub(crate) async fn read_disc_id_release(
         release.key.clone(),
         UnfetchedReason::StoppedShort,
     );
-    Ok(walk(FetchDocuments::new(musicbrainz, wikidata, discogs, priority), traversal).await)
+    let fetcher =
+        FetchDocuments::new(musicbrainz, wikidata, discogs, release.catalog, asked, priority);
+    Ok(walk(fetcher, traversal).await)
 }
 
 /// Ask for every document `traversal` follows, and finish it.

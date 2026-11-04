@@ -998,7 +998,10 @@ loses the " (2)" Discogs adds to tell two labels of one name apart: the
 label's id tells them apart, and the name is what a release prints. Either catalog can be
 switched off, but not the last one asked. A library left asking none, its
 last asked catalog having lost its key, has nothing to search, which core
-states and Find online says. MusicBrainz is asked no more than once every 1.2 seconds, under
+states and Find online says. A catalog switched off is asked nothing: a read
+of a release asks its own catalog, and of the documents its pages link, only
+those on a catalog switched on; the rest it names as not asked, and a later
+read asks them once their catalog is switched on. MusicBrainz is asked no more than once every 1.2 seconds, under
 the rate it allows.
 
 **Rounds.** One lookup is not enough. Ana's Disc ID returns three CD
@@ -4392,7 +4395,7 @@ write commits, so the release and the row naming it land in either order.
 | `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
-| `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, Discogs had no key, or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |
+| `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, its catalog was not asked (switched off, or Discogs had no key), or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |
 
 ### A.9 Transfer queues
 

@@ -138,6 +138,7 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
         .providers
         .fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::MusicBrainz, "selected"),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -205,6 +206,7 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
         std::time::Duration::from_secs(15),
         server.providers.fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -254,7 +256,13 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
     let namer = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     server
         .providers
-        .fetch_payloads(Some(&discogs), &namer, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            Some(&discogs),
+            &LookupCatalog::ALL,
+            &namer,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
     let asked = server.requests();
@@ -262,7 +270,13 @@ async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
     let named = LookupRef::new(LookupCatalog::Discogs, "920001");
     let twin = server
         .providers
-        .fetch_payloads(Some(&discogs), &named, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            Some(&discogs),
+            &LookupCatalog::ALL,
+            &named,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
     assert_eq!(server.requests(), asked, "reading the twin asks nothing");
@@ -291,6 +305,7 @@ async fn a_complete_read_of_a_discogs_release_asks_about_both_addresses_at_once(
         .providers
         .fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -356,6 +371,7 @@ async fn an_address_musicbrainz_does_not_know_is_absent_beside_one_it_does() {
         .providers
         .fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -397,6 +413,7 @@ async fn a_failed_lookup_by_both_addresses_fails_both() {
         .providers
         .fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "920001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -446,6 +463,7 @@ async fn an_identification_read_of_a_discogs_release_asks_musicbrainz_nothing() 
         .providers
         .fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &selected,
             ReadDepth::Identification,
             CallPriority::Interactive,
@@ -479,8 +497,8 @@ async fn an_identification_read_of_a_discogs_release_asks_musicbrainz_nothing() 
         stored.metadata.album.first_year, None,
         "the master states no year, and nothing else is asked for one"
     );
-    assert!(!stored.fetch_could_add(ReadDepth::Identification, true));
-    assert!(stored.fetch_could_add(ReadDepth::Complete, true));
+    assert!(!stored.fetch_could_add(ReadDepth::Identification, &LookupCatalog::ALL));
+    assert!(stored.fetch_could_add(ReadDepth::Complete, &LookupCatalog::ALL));
 }
 
 /// A MusicBrainz release linking a Discogs release as itself, whose release
@@ -526,6 +544,7 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
         .providers
         .fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &selected,
             ReadDepth::Identification,
             CallPriority::Interactive,
@@ -571,6 +590,7 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
         .providers
         .fetch_payloads(
             Some(&complete_discogs),
+            &LookupCatalog::ALL,
             &selected,
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -603,7 +623,12 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
     let discogs = server.fakes.discogs_client("fixture-token");
     let read = server
         .providers
-        .read_disc_id_release(Some(&discogs), &answered, CallPriority::Interactive)
+        .read_disc_id_release(
+            Some(&discogs),
+            &LookupCatalog::ALL,
+            &answered,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
 
@@ -643,8 +668,8 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
         ]
     );
     let stored = read.extract().unwrap();
-    assert!(!stored.fetch_could_add(ReadDepth::Identification, true));
-    assert!(stored.fetch_could_add(ReadDepth::Complete, true));
+    assert!(!stored.fetch_could_add(ReadDepth::Identification, &LookupCatalog::ALL));
+    assert!(stored.fetch_could_add(ReadDepth::Complete, &LookupCatalog::ALL));
 
     let complete_server = ProviderServer::start(statement_answers()).await;
     let complete_discogs = complete_server.fakes.discogs_client("fixture-token");
@@ -652,6 +677,7 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
         .providers
         .fetch_payloads(
             Some(&complete_discogs),
+            &LookupCatalog::ALL,
             answered.release(),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -690,7 +716,13 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
     let selected = LookupRef::new(LookupCatalog::Discogs, "930001");
     let payloads = server
         .providers
-        .fetch_payloads(Some(&discogs), &selected, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            Some(&discogs),
+            &LookupCatalog::ALL,
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
 
@@ -723,7 +755,13 @@ async fn a_malformed_optional_group_is_skipped() {
     .await;
     let fetched = server
         .providers
-        .fetch_payloads(None, &selected, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            None,
+            &LookupCatalog::ALL,
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive,
+        )
         .await
         .unwrap();
     assert!(fetched.supporting.is_empty());
@@ -763,6 +801,7 @@ async fn a_malformed_reverse_alias_is_skipped() {
         .providers
         .fetch_payloads(
             Some(&discogs),
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "940001"),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -772,68 +811,6 @@ async fn a_malformed_reverse_alias_is_skipped() {
     assert!(fetched.supporting.is_empty());
     assert_eq!(fetched.extract().unwrap().records().len(), 1);
     assert!(server.requests().is_empty());
-}
-
-/// What a fetch followed a link to and did not get is named with the
-/// release: a source that failed, and a Discogs document with no key to ask
-/// with. A catalog answering that there is none is not missing anything.
-#[tokio::test]
-async fn documents_a_fetch_could_not_get_are_named() {
-    let selected = LookupRef::new(LookupCatalog::MusicBrainz, "missing-parts-release");
-    let server = ProviderServer::start(HashMap::from([
-        (
-            "/ws/2/release/missing-parts-release".into(),
-            (
-                200,
-                release_json(
-                    &selected.key,
-                    Some("missing-parts-group"),
-                    &["https://www.discogs.com/release/950001"],
-                ),
-            ),
-        ),
-        ("/ws/2/release-group/missing-parts-group".into(), (400, "Rejected group request".into())),
-    ]))
-    .await;
-    let fetched = server
-        .providers
-        .fetch_payloads(None, &selected, ReadDepth::Complete, CallPriority::Interactive)
-        .await
-        .unwrap();
-    let mut unfetched = fetched.unfetched.clone();
-    unfetched.sort_by_key(|document| document.key.clone());
-    assert_eq!(
-        unfetched,
-        vec![
-            UnfetchedDocument {
-                document: PayloadSource::Discogs,
-                key: "950001".into(),
-                reason: UnfetchedReason::DiscogsNotConfigured,
-            },
-            UnfetchedDocument {
-                document: PayloadSource::MusicBrainzReleaseGroup,
-                key: "missing-parts-group".into(),
-                reason: UnfetchedReason::Failed,
-            },
-        ]
-    );
-    let stored = fetched.extract().unwrap();
-    assert!(
-        stored.fetch_could_add(ReadDepth::Complete, false),
-        "the failed group can be asked again"
-    );
-    let mut only_the_key_missing = stored.clone();
-    only_the_key_missing
-        .unfetched
-        .retain(|document| document.reason == UnfetchedReason::DiscogsNotConfigured);
-    assert!(
-        !only_the_key_missing.fetch_could_add(ReadDepth::Complete, false),
-        "without a key, asking again gets no Discogs document"
-    );
-    assert!(
-        only_the_key_missing.fetch_could_add(ReadDepth::Complete, true),
-        "with a key, the Discogs document can be asked for"
-    );
 }
 
 #[tokio::test]
@@ -846,7 +823,13 @@ async fn a_malformed_required_anchor_is_rejected() {
     .await;
     assert!(server
         .providers
-        .fetch_payloads(None, &selected, ReadDepth::Complete, CallPriority::Interactive)
+        .fetch_payloads(
+            None,
+            &LookupCatalog::ALL,
+            &selected,
+            ReadDepth::Complete,
+            CallPriority::Interactive
+        )
         .await
         .is_err());
     assert_eq!(
@@ -873,6 +856,7 @@ async fn a_master_backlink_is_followed() {
     let fetched = providers
         .fetch_payloads(
             Some(&client),
+            &LookupCatalog::ALL,
             &LookupRef::new(LookupCatalog::Discogs, "7811"),
             ReadDepth::Complete,
             CallPriority::Interactive,
@@ -898,3 +882,6 @@ async fn a_master_backlink_is_followed() {
     assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "B1"]);
     assert_eq!(parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(), Some("artist-id"));
 }
+
+#[path = "traversal_unfetched_tests.rs"]
+mod unfetched;

@@ -6428,7 +6428,8 @@ CREATE TABLE IF NOT EXISTS source_release_work_composer (
 
 -- The linked documents a fetch did not get, whose facts the release's rows
 -- lack: 'failed' when the source was asked and failed,
--- 'discogs_not_configured' for a Discogs document with no key to ask with,
+-- 'not_asked' for one on a catalog the read did not ask (switched off, or
+-- Discogs with no key to ask with),
 -- 'stopped_short' for one an identification read does not follow, or the
 -- release's own document where the read took the release from a Disc ID
 -- lookup's answer, which a complete read fetches. A new fetch replaces them.
@@ -6437,7 +6438,7 @@ CREATE TABLE IF NOT EXISTS source_release_unfetched (
     release_id TEXT NOT NULL,
     document   TEXT NOT NULL,
     key        TEXT NOT NULL CHECK (key <> ''),
-    reason     TEXT NOT NULL CHECK (reason IN ('failed', 'discogs_not_configured', 'stopped_short')),
+    reason     TEXT NOT NULL CHECK (reason IN ('failed', 'not_asked', 'stopped_short')),
     PRIMARY KEY (catalog, release_id, document, key),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
