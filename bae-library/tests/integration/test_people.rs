@@ -771,7 +771,7 @@ async fn stopped_dropbox_join(
     sign_in: &DropboxSignIn,
     guest: &coven::Coven,
     control: &bae_library::JoinControl,
-) -> coven::InviteInfo {
+) -> (String, coven::InviteInfo) {
     let invite = household.invite(new_member("Rowan"), "").await;
     let (waiting, mut waits) = tokio::sync::watch::channel(false);
     let joining = bae_library::join_with_invite(
@@ -797,7 +797,7 @@ async fn stopped_dropbox_join(
     let [join] = &bae_library::unfinished_joins(&household.device(guest)).await.unwrap()[..] else {
         panic!("one join under way");
     };
-    join.clone()
+    (invite.code, join.clone())
 }
 
 /// Rowan closes bae while his Dropbox join waits. coven kept his sign-in
@@ -811,7 +811,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let join = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
+        let (_, join) = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
         let presented = sign_in.presented();
         let resuming = bae_library::resume_join(
             || sign_in.configure(household.device(&guest)),
@@ -844,7 +844,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let join = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
+        let (_, join) = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
         // The owner's sign-in was the first; Rowan's join kept the second.
         household.storage.reject_access_token("access-1").await;
         let presented = sign_in.presented();
@@ -862,6 +862,98 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         .unwrap();
         let (guest, profile) = joined.unwrap().unwrap();
         assert_eq!(sign_in.presented(), presented + 1);
+        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
+        guest.close().await.unwrap();
+        household.owner.close().await.unwrap();
+    });
+}
+
+/// The system clock run ahead to the end of the invite `code` holds, as the
+/// clock of a device that opens it once it has ended.
+fn ended_clock(code: &str) -> coven::ClockRef {
+    let coven::CodeInfo::Invite(invite) = coven::decode_code_info(code).unwrap() else {
+        panic!("an invite code");
+    };
+    let ahead = invite.expires_at.duration_since(std::time::SystemTime::now()).unwrap();
+    std::sync::Arc::new(AheadClock(ahead))
+}
+
+/// The system clock, `self.0` ahead.
+struct AheadClock(std::time::Duration);
+
+impl coven::Clock for AheadClock {
+    fn now(&self) -> std::time::SystemTime {
+        coven::Clock::now(&coven::SystemClock) + self.0
+    }
+    fn elapsed(&self) -> std::time::Duration {
+        coven::Clock::elapsed(&coven::SystemClock)
+    }
+    fn sleep_until(
+        &self,
+        at: std::time::SystemTime,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<(), coven::WallTimerError>> + Send>,
+    > {
+        coven::Clock::sleep_until(&coven::SystemClock, at - self.0)
+    }
+}
+
+/// Rowan opens his Dropbox invite only after it has ended. His phone would
+/// send no request, so it says the invite ended without asking him to sign in
+/// to Dropbox first, and leaves no join behind (§5.6).
+#[test]
+fn an_ended_dropbox_invite_ends_before_any_sign_in() {
+    on_app_runtime(async {
+        let sign_in = DropboxSignIn::start().await;
+        let household = Household::on_dropbox(&sign_in).await;
+        let invite = household.invite(new_member("Rowan"), "").await;
+        let ended = ended_clock(&invite.code);
+        let guest_dir = tempfile::tempdir().unwrap();
+        let guest = installation_in(&guest_dir);
+        let presented = sign_in.presented();
+        let joined = bae_library::join_with_invite(
+            sign_in.configure(household.device(&guest)).clock(ended.clone()),
+            &invite.code,
+            "Guest Device",
+            ended,
+            |_| {},
+            &bae_library::JoinControl::new(),
+        )
+        .await;
+        assert!(matches!(joined, Ok(None)), "{:?}", joined.err());
+        assert_eq!(sign_in.presented(), presented, "no sign-in for an ended invite");
+        assert!(bae_library::unfinished_joins(&household.device(&guest)).await.unwrap().is_empty());
+        household.owner.close().await.unwrap();
+    });
+}
+
+/// Rowan's request was sent before his invite ended, and he enters the code
+/// again after: his join is still under way, so it goes on to Robin's
+/// approval rather than ending.
+#[test]
+fn a_join_whose_request_was_sent_goes_on_after_its_invite_ends() {
+    on_app_runtime(async {
+        let sign_in = DropboxSignIn::start().await;
+        let household = Household::on_dropbox(&sign_in).await;
+        let guest_dir = tempfile::tempdir().unwrap();
+        let guest = installation_in(&guest_dir);
+        let control = bae_library::JoinControl::new();
+        let (code, _) = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
+        let ended = ended_clock(&code);
+        let joining = bae_library::join_with_invite(
+            sign_in.configure(household.device(&guest)).clock(ended.clone()),
+            &code,
+            "Guest Device",
+            ended,
+            |_| {},
+            &control,
+        );
+        let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+            tokio::join!(joining, household.approve())
+        })
+        .await
+        .unwrap();
+        let (guest, profile) = joined.unwrap().expect("the sent request is approved");
         assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
         household.owner.close().await.unwrap();

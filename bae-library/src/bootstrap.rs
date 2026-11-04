@@ -162,7 +162,11 @@ impl Default for JoinControl {
 
 /// Join a library from an invite. The person's profile takes the name the
 /// admin typed in the invite (§5.4). Dropping the call keeps the join for
-/// `resume_join`.
+/// `resume_join`. An invite that has ended by `clock`, with no join for its
+/// library under way here, ends the call with `None` before any sign-in:
+/// coven sends no first request after the invite ends and would end the join
+/// as soon as it was signed in. A join under way may have sent its request,
+/// which coven goes on waiting for (§5.6).
 pub async fn join_with_invite(
     mut builder: coven::CovenBuilder,
     code: &str,
@@ -172,6 +176,14 @@ pub async fn join_with_invite(
     control: &JoinControl,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
     let invite = invite_info(code)?;
+    if clock.now() >= invite.expires_at
+        && !unfinished_joins(&builder)
+            .await?
+            .iter()
+            .any(|join| join.metadata.store_id == invite.metadata.store_id)
+    {
+        return Ok(None);
+    }
     auth::authenticate(&mut builder, invite.metadata.oauth_access, &control.sign_in.subscribe())
         .await?;
     let joined = Box::pin(coven::join_with_invite(
