@@ -755,3 +755,50 @@ async fn a_works_cover_is_its_first_albums_primary_release_when_it_performs_it()
     .await;
     assert_eq!(representative_release(&db).await.as_deref(), Some(RELEASE_ALPHA_PRIMARY));
 }
+
+/// A work's page lists the releases performing it, and their tracks, by album
+/// title compared without case, as the cover rule picks its album: `album
+/// alpha`'s releases come before `Album Beta`'s. An album sharing a title with
+/// another follows it whole, by id, rather than interleaving its releases with
+/// the other's by place.
+#[tokio::test]
+async fn a_works_page_lists_its_albums_by_title_without_case_each_album_whole() {
+    let (db, _tmp) = work_across_albums_db().await;
+    exec_batch(
+        &db,
+        "
+        INSERT INTO albums (id, title, year, is_compilation, created_at) VALUES
+            ('11111111-0000-4000-8000-000000000003', 'album alpha', 2026, 0, '2026-01-01T00:00:00Z');
+        INSERT INTO releases (id, album_id, release_name, year, discogs_details, source_folder_name, album_loudness_lufs, album_peak_linear, created_at, album_order) VALUES
+            ('22222222-0000-4000-8000-000000000005', '11111111-0000-4000-8000-000000000003', NULL, 2026, '[]', NULL, NULL, NULL, '2026-01-01T00:00:00Z', 1);
+        INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES
+            ('33333333-0000-4000-8000-000000000005', '22222222-0000-4000-8000-000000000005', 1, 'cd', 1, '2026-01-01T00:00:00Z');
+        INSERT INTO tracks (id, release_id, title, side, track_number, position, duration_ms, created_at, medium_id) VALUES
+            ('44444444-0000-4000-8000-000000000005', '22222222-0000-4000-8000-000000000005', 'Alpha Twin Track', 1, 1, 0, 1000, '2026-01-01T00:00:00Z', '33333333-0000-4000-8000-000000000005');
+        INSERT INTO track_works (id, track_id, work_id, position, source, created_at) VALUES
+            ('66666666-0000-4000-8000-000000000005', '44444444-0000-4000-8000-000000000005', '55555555-0000-4000-8000-000000000001', 0, 'musicbrainz', '2026-01-01T00:00:00Z');
+        ",
+    )
+    .await;
+
+    let detail = crate::LibraryViews::new(db.clone())
+        .find_work_detail(WORK_ACROSS_ALBUMS)
+        .await
+        .unwrap()
+        .expect("the work is in the library");
+
+    let in_order = [
+        RELEASE_ALPHA_SECOND,
+        "22222222-0000-4000-8000-000000000003",
+        "22222222-0000-4000-8000-000000000005",
+        "22222222-0000-4000-8000-000000000001",
+    ];
+    assert_eq!(
+        detail.releases.iter().map(|release| release.release_id.as_str()).collect::<Vec<_>>(),
+        in_order
+    );
+    assert_eq!(
+        detail.tracks.iter().map(|track| track.track.release_id.as_str()).collect::<Vec<_>>(),
+        in_order
+    );
+}

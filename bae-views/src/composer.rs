@@ -143,7 +143,8 @@ fn find_work_detail_on(
     )?;
     let releases = work_release_rows(sql, &work.work.id)?;
     let tracks = sql.query(
-        "SELECT tw.id AS track_work_id, tw.work_id,
+        &format!(
+            "SELECT tw.id AS track_work_id, tw.work_id,
                 tw.position, tw.source AS link_source, tw.created_at,
                 t.id AS track_id, t.release_id AS track_release_id,
                 t.title AS track_title, t.medium_id AS track_medium_id, t.side AS track_side,
@@ -159,7 +160,9 @@ fn find_work_detail_on(
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
-         ORDER BY a.title, r.album_order, r.id, t.position, tw.position",
+         ORDER BY {releases}, t.position, tw.position",
+            releases = work_release_order("a", "r"),
+        ),
         params![work.work.id],
         |row| {
             Ok(DbWorkTrackSummary {
@@ -235,23 +238,35 @@ pub(crate) fn composer_listing_query(
     query
 }
 
-/// The release whose cover a work shows (a SQL expression over `w`): of the
-/// albums with a release performing it, the first by title, compared without
-/// case as the composer page compares titles, then by id; that album's
-/// primary release when it performs the work, otherwise its first release in
-/// album order that does. The primary release is first in album order, so
-/// both are the album's first performing release in that order.
-const WORK_REPRESENTATIVE_RELEASE: &str = "(
+/// The order a work's releases take over the album `album` and its release
+/// `release`: albums by title, compared without case as the composer page
+/// compares titles, then by id, so two albums sharing a title don't
+/// interleave; each album's releases in album order. The work's page lists
+/// its releases and their tracks in it, and its cover is the first.
+fn work_release_order(album: &str, release: &str) -> String {
+    format!("{album}.title COLLATE NOCASE, {album}.id, {release}.album_order, {release}.id")
+}
+
+/// The release whose cover a work shows (a SQL expression over `w`): the
+/// first of the releases performing it in [`work_release_order`]. That is the
+/// first album's primary release when it performs the work, otherwise its
+/// first release in album order that does: the primary release is first in
+/// album order.
+fn work_representative_release() -> String {
+    format!(
+        "(
                     SELECT r_cover.id
                     FROM track_works tw_cover
                     JOIN tracks tr ON tr.id = tw_cover.track_id
                     JOIN releases r_cover ON r_cover.id = tr.release_id
                     JOIN albums a_cover ON a_cover.id = r_cover.album_id
                     WHERE tw_cover.work_id = w.id
-                    ORDER BY a_cover.title COLLATE NOCASE, a_cover.id,
-                             r_cover.album_order, r_cover.id
+                    ORDER BY {order}
                     LIMIT 1
-                )";
+                )",
+        order = work_release_order("a_cover", "r_cover"),
+    )
+}
 
 /// The columns [`row_to_work_summary`] reads of the work `w`: its own, the
 /// release whose cover it shows, its composers' names in credit order, and how
@@ -264,7 +279,7 @@ pub(crate) fn work_summary_columns() -> String {
                 w.work_type AS work_type,
                 w.musicbrainz_work_id AS work_musicbrainz_id,
                 w.created_at AS work_created_at,
-                {WORK_REPRESENTATIVE_RELEASE} AS representative_release_id,
+                {representative_release} AS representative_release_id,
                 {representative_cover} AS representative_cover_version,
                 (
                     SELECT GROUP_CONCAT(composer.name, ', ' ORDER BY credit.position)
@@ -283,7 +298,8 @@ pub(crate) fn work_summary_columns() -> String {
                     WHERE tw.work_id = w.id
                 ) AS linked_release_count",
         work_artist = shown_artist_id("wa.artist_id"),
-        representative_cover = cover_version_sql(WORK_REPRESENTATIVE_RELEASE),
+        representative_release = work_representative_release(),
+        representative_cover = cover_version_sql(&work_representative_release()),
     )
 }
 
@@ -365,7 +381,8 @@ fn work_release_rows(
          JOIN releases r ON r.id = t.release_id
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
-         ORDER BY a.title, r.album_order, r.id",
+         ORDER BY {order}",
+            order = work_release_order("a", "r"),
             cover = cover_version_sql("r.id"),
             media = release_media_sql("r.id"),
         ),
