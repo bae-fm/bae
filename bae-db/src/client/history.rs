@@ -57,9 +57,7 @@ impl Database {
             }
             HistoryAudience::Person { .. } => {}
         }
-        let played_ms = i64::try_from(entry.played.as_millis()).map_err(|error| {
-            DbError::Message(format!("played duration exceeds SQLite's integer range: {error}"))
-        })?;
+        let played_ms = super::query::to_i64(entry.played.as_millis(), "played_ms")?;
         self.call(move |sql| {
             match entry.audience {
                 HistoryAudience::DevicePrivate => {

@@ -139,13 +139,8 @@ impl FailureColumns {
     }
 
     fn sizes(&mut self, size: u64, limit: u64) -> Result<(), DbError> {
-        let bytes = |value: u64| {
-            i64::try_from(value).map_err(|_overflow| {
-                DbError::Message(format!("{value} bytes is past SQLite's integers"))
-            })
-        };
-        self.size_bytes = Some(bytes(size)?);
-        self.limit_bytes = Some(bytes(limit)?);
+        self.size_bytes = Some(super::query::to_i64(size, "size_bytes")?);
+        self.limit_bytes = Some(super::query::to_i64(limit, "limit_bytes")?);
         Ok(())
     }
 }

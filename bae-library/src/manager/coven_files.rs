@@ -145,7 +145,7 @@ impl LibraryManager {
             pinnable.push(PinnableFile {
                 row_id: file.id.clone(),
                 file: self.release_file_ref(&file.id).await?,
-                bytes: pinnable_bytes(release_id, &file.id, file.file_size)?,
+                bytes: bae_db::client::query::to_u64(file.file_size, "release_files.file_size")?,
             });
         }
         Ok(pinnable)
@@ -206,14 +206,6 @@ pub(super) struct PinnableFile {
     pub(super) row_id: String,
     pub(super) file: coven::FileRef,
     pub(super) bytes: u64,
-}
-
-fn pinnable_bytes(release_id: &str, row_id: &str, file_size: i64) -> Result<u64, LibraryError> {
-    u64::try_from(file_size).map_err(|error| {
-        LibraryError::Storage(format!(
-            "pin release {release_id}: row {row_id} has negative size: {error}"
-        ))
-    })
 }
 
 pub(super) fn total_bytes(

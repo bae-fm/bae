@@ -7,19 +7,11 @@ use crate::folder_scanner::{
     AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
 };
 
+pub(crate) use bae_db::client::query::{to_u32, to_u64};
+
 /// A column holding a value no writer here produces.
 pub(crate) fn unreadable(column: &str, stored: &str) -> DbError {
     DbError::Message(format!("folder scan column {column} holds {stored:?}"))
-}
-
-pub(crate) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
-    u64::try_from(value).map_err(|error| DbError::Message(format!("{what} is negative: {error}")))
-}
-
-pub(crate) fn to_u32(value: i64, what: &str) -> Result<u32, DbError> {
-    u32::try_from(value).map_err(|error| {
-        DbError::Message(format!("{what} is outside the range it counts over: {error}"))
-    })
 }
 
 pub(super) fn scope_text(scope: ReleaseFileScope) -> &'static str {
