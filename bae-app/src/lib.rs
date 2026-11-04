@@ -99,24 +99,40 @@ pub enum BootstrapError {
 /// library that was fine.
 pub(crate) fn classify_key_state_error(error: bae_library::LibraryError) -> BootstrapError {
     match error {
-        bae_library::LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable(_)) => {
-            BootstrapError::KeyringUnavailable
-        }
-        bae_library::LibraryError::Keyring(coven::KeyError::MissingKeychainEntitlement(error)) => {
-            BootstrapError::KeychainEntitlementMissing(error)
-        }
+        bae_library::LibraryError::Keyring(key) => match BootstrapError::from_keychain_refusal(key)
+        {
+            Ok(refusal) => refusal,
+            Err(key) => BootstrapError::Config(bae_library::LibraryError::Keyring(key).to_string()),
+        },
         error => BootstrapError::Config(error.to_string()),
+    }
+}
+
+impl BootstrapError {
+    /// The bootstrap outcome of a keychain that refused the read, or `key`
+    /// back when it failed some other way.
+    fn from_keychain_refusal(key: coven::KeyError) -> Result<Self, coven::KeyError> {
+        match key {
+            coven::KeyError::KeychainTemporarilyUnavailable(_) => Ok(Self::KeyringUnavailable),
+            coven::KeyError::MissingKeychainEntitlement(error) => {
+                Ok(Self::KeychainEntitlementMissing(error))
+            }
+            key => Err(key),
+        }
     }
 }
 
 fn classify_open_error(error: bae_db::DbError) -> BootstrapError {
     match error {
-        bae_db::DbError::Coven(coven::CovenError::Key(
-            coven::KeyError::KeychainTemporarilyUnavailable(_),
-        )) => BootstrapError::KeyringUnavailable,
-        bae_db::DbError::Coven(coven::CovenError::Key(
-            coven::KeyError::MissingKeychainEntitlement(error),
-        )) => BootstrapError::KeychainEntitlementMissing(error),
+        bae_db::DbError::Coven(coven::CovenError::Key(key)) => {
+            match BootstrapError::from_keychain_refusal(key) {
+                Ok(refusal) => refusal,
+                Err(key) => {
+                    let error = bae_db::DbError::Coven(coven::CovenError::Key(key));
+                    BootstrapError::Database(format!("Failed to open database: {error}"))
+                }
+            }
+        }
         error @ bae_db::DbError::Coven(coven::CovenError::Database(
             coven::DbError::DamagedDatabase,
         )) => BootstrapError::DeviceResetRequired(error.to_string()),
