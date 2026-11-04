@@ -935,7 +935,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zatvaranje biblioteke…"
+            "value" : "Zatvaranje fonoteke…"
           }
         },
         "hu" : {
@@ -1271,7 +1271,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traženje vaših biblioteka…"
+            "value" : "Traženje vaših fonoteka…"
           }
         },
         "hu" : {
@@ -1949,7 +1949,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otvaranje biblioteke…"
+            "value" : "Otvaranje fonoteke…"
           }
         },
         "hu" : {
@@ -2117,7 +2117,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uklanjanje biblioteke…"
+            "value" : "Uklanjanje fonoteke…"
           }
         },
         "hu" : {
@@ -2453,7 +2453,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Postavljanje biblioteke…"
+            "value" : "Postavljanje fonoteke…"
           }
         },
         "hu" : {
@@ -8649,7 +8649,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "U vašoj knjižnici nema navedenih izvođača"
+            "value" : "U vašoj fonoteci nema navedenih izvođača"
           }
         },
         "hu" : {
@@ -8823,7 +8823,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "U vašoj knjižnici nema navedenih skladatelja"
+            "value" : "U vašoj fonoteci nema navedenih skladatelja"
           }
         },
         "hu" : {
@@ -8997,7 +8997,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otkaži svaki uvoz koji još nije počeo pisati u knjižnicu"
+            "value" : "Otkaži svaki uvoz koji još nije počeo pisati u fonoteku"
           }
         },
         "hu" : {
@@ -10209,7 +10209,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בחרו תיקייה לייבוא, לא קובץ"
+            "value" : "בחר תיקייה לייבוא, לא קובץ"
           }
         },
         "hr" : {
@@ -21263,7 +21263,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הוסיפו תיקייה לייבוא מוזיקה ממנה"
+            "value" : "הוסף תיקייה לייבוא מוזיקה ממנה"
           }
         },
         "hr" : {
@@ -24895,7 +24895,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מהדורה אחרת של אלבום זה כבר נמצאת בספרייה שלכם"
+            "value" : "מהדורה אחרת של אלבום זה כבר נמצאת בספרייה שלך"
           }
         },
         "hr" : {
@@ -25698,7 +25698,7 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الموافقة"
+            "value" : "موافقة"
           }
         },
         "bg" : {
@@ -30080,7 +30080,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בחרו תיקייה סרוקה כדי לחפש מטא-נתונים"
+            "value" : "בחר תיקייה סרוקה כדי לחפש מטא-נתונים"
           }
         },
         "hr" : {
@@ -30253,7 +30253,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בחרו ספרייה אחרת או שחזרו אותה באמצעות “הוספת מכשיר”."
+            "value" : "בחר ספרייה אחרת או שחזר אותה באמצעות “הוספת מכשיר”."
           }
         },
         "hr" : {
@@ -30796,7 +30796,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「次に再生」をクリア"
+            "value" : "「次はこちら」をクリア"
           }
         },
         "ko" : {
@@ -40457,7 +40457,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Discogs דחה את המפתח הזה. בדקו אותו ושמרו שוב."
+            "value" : "Discogs דחה את המפתח הזה. בדוק אותו ושמור שוב."
           }
         },
         "hr" : {
@@ -41149,7 +41149,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "גררו רצועות לכאן או נגנו אלבום"
+            "value" : "גרור רצועות לכאן או נגן אלבום"
           }
         },
         "hr" : {
@@ -43053,7 +43053,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הזינו פורט מ-1 עד 65535."
+            "value" : "הזן פורט מ-1 עד 65535."
           }
         },
         "hr" : {
@@ -43595,7 +43595,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "書き出しに失敗しました"
+            "value" : "エクスポートに失敗しました"
           }
         },
         "ko" : {
@@ -47375,7 +47375,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "התחילו עם ספריית המוזיקה שלכם."
+            "value" : "התחל עם ספריית המוזיקה שלך."
           }
         },
         "hr" : {
@@ -49104,7 +49104,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ייבאו מוזיקה כדי להתחיל"
+            "value" : "ייבא מוזיקה כדי להתחיל"
           }
         },
         "hr" : {
@@ -52564,7 +52564,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שום דבר לא רץ אחרי השלב שנכשל. תקנו את מה שהשגיאה מציינת, ואז הריצו שוב את scripts/reset-bae.py."
+            "value" : "שום דבר לא רץ אחרי השלב שנכשל. תקן את מה שהשגיאה מציינת, ואז הרץ שוב את scripts/reset-bae.py."
           }
         },
         "hr" : {
@@ -59658,7 +59658,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "פתחו תחילה ספרייה"
+            "value" : "פתח תחילה ספרייה"
           }
         },
         "hr" : {
@@ -59831,7 +59831,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "פתחו תחילה ספרייה כדי לגשת להגדרות"
+            "value" : "פתח תחילה ספרייה כדי לגשת להגדרות"
           }
         },
         "hr" : {
@@ -61388,7 +61388,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הדביקו את המפתח שלכם כאן"
+            "value" : "הדבק את המפתח שלך כאן"
           }
         },
         "hr" : {
@@ -62254,7 +62254,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "נעץ"
+            "value" : "הצמד"
           }
         },
         "hr" : {
@@ -62427,7 +62427,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ננעץ"
+            "value" : "מוצמד"
           }
         },
         "hr" : {
@@ -74422,7 +74422,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בחרו תיקייה"
+            "value" : "בחר תיקייה"
           }
         },
         "hr" : {
@@ -74595,7 +74595,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בחרו תיקייה למעקב אחר מוזיקה לייבוא"
+            "value" : "בחר תיקייה למעקב אחר מוזיקה לייבוא"
           }
         },
         "hr" : {
@@ -76158,7 +76158,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nasumično reproduciraj biblioteku"
+            "value" : "Nasumično reproduciraj fonoteku"
           }
         },
         "hu" : {
@@ -82548,7 +82548,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סנכרון דרך חשבון iCloud שלכם"
+            "value" : "סנכרון דרך חשבון iCloud שלך"
           }
         },
         "hr" : {
@@ -83586,7 +83586,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מהדורה זו כבר נמצאת בספרייה שלכם"
+            "value" : "מהדורה זו כבר נמצאת בספרייה שלך"
           }
         },
         "hr" : {
@@ -84105,7 +84105,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כדי להתחבר, [השיגו מפתח API חינמי](https://www.discogs.com/settings/developers) והדביקו אותו למעלה."
+            "value" : "כדי להתחבר, [השג מפתח API חינמי](https://www.discogs.com/settings/developers) והדבק אותו למעלה."
           }
         },
         "hr" : {
@@ -87045,7 +87045,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בטל נעיצה"
+            "value" : "בטל הצמדה"
           }
         },
         "hr" : {
@@ -87415,7 +87415,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "次に再生"
+            "value" : "次はこちら"
           }
         },
         "ko" : {
@@ -89814,7 +89814,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הספריות שלכם"
+            "value" : "הספריות שלך"
           }
         },
         "hr" : {
@@ -89993,7 +89993,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaša biblioteka"
+            "value" : "Vaša fonoteka"
           }
         },
         "hu" : {
@@ -90506,7 +90506,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "גררו תמונה לכאן, או לחצו לבחירה"
+            "value" : "גרור תמונה לכאן, או לחץ לבחירה"
           }
         },
         "hr" : {
@@ -100800,7 +100800,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "צרו את הפרופיל שלכם כדי שהספרייה תוכל להראות מי אתם."
+            "value" : "צור את הפרופיל שלך כדי שהספרייה תוכל להראות מי אתה."
           }
         },
         "hr" : {
@@ -101464,7 +101464,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הזינו מפתח גישה לדלי של הספרייה הזו."
+            "value" : "הזן מפתח גישה לדלי של הספרייה הזו."
           }
         },
         "hr" : {
@@ -102460,7 +102460,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "עבור AWS השאירו את נקודת הקצה ריקה."
+            "value" : "עבור AWS השאר את נקודת הקצה ריקה."
           }
         },
         "hr" : {
@@ -103622,7 +103622,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אין תיקיות משותפות. שתפו תיקייה ב‑Dropbox ואז חפשו שוב."
+            "value" : "אין תיקיות משותפות. שתף תיקייה ב‑Dropbox ואז חפש שוב."
           }
         },
         "hr" : {
@@ -104120,7 +104120,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הדביקו קוד"
+            "value" : "הדבק קוד"
           }
         },
         "hr" : {
@@ -104784,7 +104784,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "החזירו את הקובץ למקום שבו היה בזמן הייבוא ואז נסו שוב."
+            "value" : "החזר את הקובץ למקום שבו היה בזמן הייבוא ואז נסה שוב."
           }
         },
         "hr" : {
@@ -105366,7 +105366,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu aygıtı kaldır"
+            "value" : "Bu cihazı kaldır"
           }
         },
         "uk" : {
@@ -105614,7 +105614,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מסיר את ה‑Mac הזה מחברי הספרייה ואז מוחק ממנו את הספרייה ואת הקבצים שהורדו. הספרייה תישאר באחסון ובמכשירים האחרים שלכם. ההסרה דורשת חיבור לאחסון שלכם."
+            "value" : "מסיר את ה‑Mac הזה מחברי הספרייה ואז מוחק ממנו את הספרייה ואת הקבצים שהורדו. הספרייה תישאר באחסון ובמכשירים האחרים שלך. ההסרה דורשת חיבור לאחסון שלך."
           }
         },
         "hr" : {
@@ -106030,7 +106030,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu aygıt sıfırlansın mı?"
+            "value" : "Bu cihaz sıfırlansın mı?"
           }
         },
         "uk" : {
@@ -106112,7 +106112,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "קודי שחזור שנשמרו על ידי המכשירים האחרים שלכם המחוברים לחשבון Apple הזה."
+            "value" : "קודי שחזור שנשמרו על ידי המכשירים האחרים שלך המחוברים לחשבון Apple הזה."
           }
         },
         "hr" : {
@@ -106954,7 +106954,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סרקו או הדביקו את ההזמנה שמנהל הספרייה שלח לכם."
+            "value" : "סרוק או הדבק את ההזמנה שמנהל הספרייה שלח לך."
           }
         },
         "hr" : {
@@ -107127,7 +107127,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סרקו או הדביקו את הקוד ש“הוספת מכשיר…” מציג באחד המכשירים שלכם. אם איבדתם את כל המכשירים, השתמשו בקוד השחזור שלכם."
+            "value" : "סרוק או הדבק את הקוד ש“הוספת מכשיר…” מציג באחד המכשירים שלך. אם איבדת את כל המכשירים, השתמש בקוד השחזור שלך."
           }
         },
         "hr" : {
@@ -108207,7 +108207,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aygıt kitaplığa erişimini kaybeder."
+            "value" : "Cihaz kitaplığa erişimini kaybeder."
           }
         },
         "uk" : {
@@ -108787,7 +108787,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ה‑Mac הזה עוזב את הספרייה ואז העותק שלו נמחק. ההסרה דורשת חיבור לאחסון שלכם. הספרייה תישאר באחסון ובמכשירים האחרים שלכם."
+            "value" : "ה‑Mac הזה עוזב את הספרייה ואז העותק שלו נמחק. ההסרה דורשת חיבור לאחסון שלך. הספרייה תישאר באחסון ובמכשירים האחרים שלך."
           }
         },
         "hr" : {
@@ -109623,7 +109623,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אתם"
+            "value" : "אתה"
           }
         },
         "hr" : {
@@ -109789,7 +109789,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "תתחברו ל‑%@ בדפדפן."
+            "value" : "תתחבר ל‑%@ בדפדפן."
           }
         },
         "hr" : {
@@ -109955,7 +109955,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "השם שלכם"
+            "value" : "השם שלך"
           }
         },
         "hr" : {
@@ -111661,7 +111661,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vrati ovu knjižnicu"
+            "value" : "Vrati ovu fonoteku"
           }
         },
         "hu" : {
@@ -112165,7 +112165,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dovrši vraćanje ove knjižnice"
+            "value" : "Dovrši vraćanje ove fonoteke"
           }
         },
         "hu" : {
@@ -112411,7 +112411,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu aygıtın sıfırlanması tamamlansın mı?"
+            "value" : "Bu cihazın sıfırlanması tamamlansın mı?"
           }
         },
         "uk" : {
@@ -121151,7 +121151,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "במכשיר החדש בחרו ב“הוספת מכשיר”, ואז סרקו את זה או הקלידו:"
+            "value" : "במכשיר החדש בחר ב“הוספת מכשיר”, ואז סרוק את זה או הקלד:"
           }
         },
         "hr" : {
@@ -121324,7 +121324,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "קוד השחזור שלכם"
+            "value" : "קוד השחזור שלך"
           }
         },
         "hr" : {
@@ -121497,7 +121497,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אם תאבדו את כל המכשירים שלכם, הזינו את הקוד הזה במכשיר חדש כדי לקבל את הספרייה בחזרה. כל מי שיש לו את הקוד וגישה לאחסון שלכם יכול לפתוח את הספרייה, לכן שמרו אותו במקום פרטי."
+            "value" : "אם תאבד את כל המכשירים שלך, הזן את הקוד הזה במכשיר חדש כדי לקבל את הספרייה בחזרה. כל מי שיש לו את הקוד וגישה לאחסון שלך יכול לפתוח את הספרייה, לכן שמור אותו במקום פרטי."
           }
         },
         "hr" : {
@@ -121581,7 +121581,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tüm aygıtlarınızı kaybederseniz kitaplığınızı geri almak için bu kodu yeni bir aygıta girin. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir, bu yüzden kodu gizli bir yerde saklayın."
+            "value" : "Tüm cihazlarınızı kaybederseniz kitaplığınızı geri almak için bu kodu yeni bir cihaza girin. Kodu ve depolamanıza erişimi olan herkes kitaplığı açabilir, bu yüzden kodu gizli bir yerde saklayın."
           }
         },
         "uk" : {
@@ -121670,7 +121670,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "תצטרכו גם את מפתח הגישה ואת המפתח הסודי של S3."
+            "value" : "תצטרך גם את מפתח הגישה ואת המפתח הסודי של S3."
           }
         },
         "hr" : {
@@ -122619,7 +122619,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu işlem, “%@” için kurtarma kodunu tüm Apple aygıtlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu Mac'teki ya da depolama alanınızdaki hiçbir şeyi silmez."
+            "value" : "Bu işlem, “%@” için kurtarma kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu Mac'teki ya da depolama alanınızdaki hiçbir şeyi silmez."
           }
         },
         "uk" : {
@@ -123657,7 +123657,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu işlem, kurtarma kodunu tüm Apple aygıtlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu Mac'teki ya da depolama alanınızdaki hiçbir şeyi silmez."
+            "value" : "Bu işlem, kurtarma kodunu tüm Apple cihazlarınızdaki iCloud Anahtar Zinciri'nden kaldırır. Kitaplığı veya bu Mac'teki ya da depolama alanınızdaki hiçbir şeyi silmez."
           }
         },
         "uk" : {
@@ -124188,13 +124188,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Kaldırılan aygıt (%lld)"
+                  "value" : "Kaldırılan cihaz (%lld)"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Kaldırılan aygıtlar (%lld)"
+                  "value" : "Kaldırılan cihazlar (%lld)"
                 }
               }
             }
@@ -127268,7 +127268,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "נועץ"
+            "value" : "מצמיד"
           }
         },
         "hr" : {
@@ -127638,7 +127638,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "書き出し"
+            "value" : "エクスポート"
           }
         },
         "ko" : {
@@ -127960,7 +127960,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "השהיית נעיצה"
+            "value" : "השהיית הצמדה"
           }
         },
         "hr" : {
@@ -128133,7 +128133,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "המשך נעיצה"
+            "value" : "המשך הצמדה"
           }
         },
         "hr" : {
@@ -128330,7 +128330,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "書き出しを一時停止"
+            "value" : "エクスポートを一時停止"
           }
         },
         "ko" : {
@@ -128503,7 +128503,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "書き出しを再開"
+            "value" : "エクスポートを再開"
           }
         },
         "ko" : {
@@ -133801,7 +133801,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Knjižnica se dijeli. Kôd će se pojaviti kad se ova knjižnica sinkronizira."
+            "value" : "Fonoteka se dijeli. Kôd će se pojaviti kad se ova fonoteka sinkronizira."
           }
         },
         "hu" : {
@@ -133961,7 +133961,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הפרופיל שלכם נוצר…"
+            "value" : "הפרופיל שלך נוצר…"
           }
         },
         "hr" : {
@@ -134127,13 +134127,13 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הפרופיל שלכם יופיע אחרי שהספרייה הזו תסונכרן."
+            "value" : "הפרופיל שלך יופיע אחרי שהספרייה הזו תסונכרן."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaš profil pojavit će se kad se ova knjižnica sinkronizira."
+            "value" : "Vaš profil pojavit će se kad se ova fonoteka sinkronizira."
           }
         },
         "hu" : {
@@ -134293,7 +134293,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן היה ליצור את הפרופיל שלכם. %@"
+            "value" : "לא ניתן היה ליצור את הפרופיל שלך. %@"
           }
         },
         "hr" : {
@@ -134465,7 +134465,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Račun koji je vlasnik pohrane knjižnice ne može se ukloniti."
+            "value" : "Račun koji je vlasnik pohrane fonoteke ne može se ukloniti."
           }
         },
         "hu" : {
@@ -134631,7 +134631,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ta osoba više nije u knjižnici."
+            "value" : "Ta osoba više nije u fonoteci."
           }
         },
         "hu" : {
@@ -134797,7 +134797,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taj uređaj više nije u knjižnici."
+            "value" : "Taj uređaj više nije u fonoteci."
           }
         },
         "hu" : {
@@ -135129,7 +135129,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Knjižnica ne bi imala nijednog administratora."
+            "value" : "Fonoteka ne bi imala nijednog administratora."
           }
         },
         "hu" : {
@@ -135959,7 +135959,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preimenuj knjižnicu u „%@”"
+            "value" : "Preimenuj fonoteku u „%@”"
           }
         },
         "hu" : {
@@ -137463,7 +137463,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ovaj je uređaj uklonjen iz knjižnice."
+            "value" : "Ovaj je uređaj uklonjen iz fonoteke."
           }
         },
         "hu" : {
@@ -137630,7 +137630,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vraćanje je zamijenilo kopiju knjižnice na ovom uređaju."
+            "value" : "Vraćanje je zamijenilo kopiju fonoteke na ovom uređaju."
           }
         },
         "hu" : {
@@ -137797,7 +137797,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Druga kopija knjižnice ovog uređaja sinkronizira se kao ovaj uređaj."
+            "value" : "Druga kopija fonoteke ovog uređaja sinkronizira se kao ovaj uređaj."
           }
         },
         "hu" : {
@@ -137958,7 +137958,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "המפתחות שלכם הוחלפו במכשיר אחר שלכם."
+            "value" : "המפתחות שלך הוחלפו במכשיר אחר שלך."
           }
         },
         "hr" : {
@@ -138131,7 +138131,7 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ova je pozivnica završila. Odbijena je ili otkazana, istekla je ili uređaj koji ju je izradio više nije u knjižnici."
+            "value" : "Ova je pozivnica završila. Odbijena je ili otkazana, istekla je ili uređaj koji ju je izradio više nije u fonoteci."
           }
         },
         "hu" : {
