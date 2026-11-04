@@ -462,6 +462,12 @@ fn a_database_fault_is_not_prefixed_twice() {
         panic!("diagnostic")
     };
     assert_eq!(detail, "invalid folder scan value");
+    let BridgeError::Diagnostic { detail, .. } =
+        BridgeError::from(bae_db::DbError::Message("invalid folder scan value".into()))
+    else {
+        panic!("diagnostic")
+    };
+    assert_eq!(detail, "invalid folder scan value", "a bare database failure reads the same");
     let error = coven::CovenError::Database(coven::DbError::DamagedDatabase);
     let expected = coven::DbError::DamagedDatabase.to_string();
     let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {

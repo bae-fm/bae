@@ -255,13 +255,12 @@ impl BridgeError {
 
     /// A failed database read or write, carrying the fault alone.
     ///
-    /// Both layers a database failure crosses on its way up prefix themselves
+    /// The layers a database failure crosses on its way up prefix themselves
     /// onto it — `CovenError::Database` and `LibraryError::Database` each
-    /// render as "database error: {inner}", and the `DbError::Message` inside
-    /// does too — so what a person was shown read "database error: database
-    /// error: …". Neither prefix belongs in the detail: the `Database`
-    /// category beside it is what says which kind of failure this is, and each
-    /// UI renders that as its own localized line.
+    /// render as "database error: {inner}". No prefix belongs in the detail:
+    /// the `Database` category beside it is what says which kind of failure
+    /// this is, and each UI renders that as its own localized line. A bare
+    /// `DbError` crosses as its own text, through `From<DbError>`.
     pub(crate) fn database_query(error: impl DatabaseFault) -> Self {
         Self::database(error.database_fault())
     }
@@ -399,16 +398,6 @@ pub(crate) trait DatabaseFault {
     fn database_fault(self) -> String;
 }
 
-/// The message a `DbError` carries, without its own "database error:" prefix.
-///
-/// Non-message failures retain their complete diagnostic chain.
-fn db_fault(error: bae_db::DbError) -> String {
-    match error {
-        bae_db::DbError::Message(message) => message,
-        other => other.to_string(),
-    }
-}
-
 impl DatabaseFault for coven::CovenError {
     fn database_fault(self) -> String {
         match self {
@@ -421,7 +410,7 @@ impl DatabaseFault for coven::CovenError {
 impl DatabaseFault for bae_library::LibraryError {
     fn database_fault(self) -> String {
         match self {
-            bae_library::LibraryError::Database(inner) => db_fault(inner),
+            bae_library::LibraryError::Database(inner) => inner.to_string(),
             other => other.to_string(),
         }
     }
