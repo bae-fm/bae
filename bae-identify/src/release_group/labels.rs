@@ -2,21 +2,6 @@
 
 use super::Pressing;
 
-/// Whether two records state the same label: names of one label, and the
-/// same number, each compared the way two spellings of one are.
-fn same_label(
-    a: &bae_types::pressing::ReleaseLabel,
-    b: &bae_types::pressing::ReleaseLabel,
-) -> bool {
-    let same_name = match (a.name(), b.name()) {
-        (Some(a), Some(b)) => bae_types::text_match::same_label_name(a, b),
-        (a, b) => a.is_none() && b.is_none(),
-    };
-    same_name
-        && a.catalog_number().and_then(bae_types::text_match::catalog_key)
-            == b.catalog_number().and_then(bae_types::text_match::catalog_key)
-}
-
 impl Pressing {
     /// Why a record of the row's document could not be read, where one could
     /// not: the row then states what its search result said.
@@ -31,7 +16,7 @@ impl Pressing {
     pub fn labels(&self) -> Vec<bae_types::pressing::ReleaseLabel> {
         let mut labels: Vec<bae_types::pressing::ReleaseLabel> = Vec::new();
         for label in self.releases.iter().flat_map(|release| &release.labels) {
-            match labels.iter_mut().find(|stated| same_label(stated, label)) {
+            match labels.iter_mut().find(|stated| stated.same_label(label)) {
                 Some(stated) => stated.take_missing_ids(label),
                 None => labels.push(label.clone()),
             }

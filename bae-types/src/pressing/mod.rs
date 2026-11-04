@@ -227,6 +227,29 @@ impl ReleaseLabel {
         self.discogs_label_id.as_deref()
     }
 
+    /// Whether the two state one label: names of one label
+    /// ([`same_label_name`](crate::text_match::same_label_name)), or neither
+    /// naming one, and numbers that compare as one
+    /// ([`catalog_key`](crate::text_match::catalog_key)), or neither stating
+    /// one.
+    pub fn same_label(&self, other: &Self) -> bool {
+        let same_name = match (self.name(), other.name()) {
+            (Some(a), Some(b)) => crate::text_match::same_label_name(a, b),
+            (a, b) => a.is_none() && b.is_none(),
+        };
+        let key = |label: &Self| label.catalog_number().and_then(crate::text_match::catalog_key);
+        same_name && key(self) == key(other)
+    }
+
+    /// Whether the two print one catalog number under one label: both name
+    /// a label and state a number, and they state [one label](Self::same_label).
+    pub fn prints_number_of(&self, other: &Self) -> bool {
+        self.name.is_some()
+            && other.name.is_some()
+            && self.catalog_number.is_some()
+            && self.same_label(other)
+    }
+
     /// Fill each id this label does not carry from `other`, a statement of
     /// the same label by another record.
     pub fn take_missing_ids(&mut self, other: &Self) {

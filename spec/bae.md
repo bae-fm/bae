@@ -1074,6 +1074,12 @@ alike. Five statements count:
 5. They print the same catalog number under the same label, and their titles
    share a word.
 
+Wherever two labels are compared (a pressing's records listing their labels
+each once, statement 5, the releases a catalog-number search keeps), two
+names are one label when they read alike once the trade words they end on are
+dropped, or one is written as the other's initials; two names of trade words
+alone are one only when written alike.
+
 A stored catalog release, and each match a run keeps, holds the albums the
 statements about it named, in the order they were read, strongest first;
 which statement named each is not kept, since nothing past the reading

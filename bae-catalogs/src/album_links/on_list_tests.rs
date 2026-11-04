@@ -160,3 +160,14 @@ fn only_the_group_s_releases_and_albums_on_the_list_join() {
     ])
     .is_empty());
 }
+
+/// A label printed as nothing but a trade word is one label with a label
+/// written alike, as two records' labels are compared everywhere else.
+#[test]
+fn a_catalog_number_under_one_trade_word_label_joins_the_albums() {
+    let joined = albums_on(&[
+        ours("Album", &[], &[("Records", "LB 100")]),
+        theirs("dg-1", "700", "Album", &[], &[("RECORDS", "LB-100")]),
+    ]);
+    assert_eq!(joined, vec![master("700")]);
+}

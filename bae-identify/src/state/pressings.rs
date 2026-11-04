@@ -15,7 +15,7 @@ use super::{LookupOutcome, LookupState};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::search::{MetadataResult, SourceFailure};
-use bae_types::text_match::{catalog_key, same_label_name};
+use bae_types::pressing::ReleaseLabel;
 
 /// What an offered row's pressing is asked for by on one catalog.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,7 +53,12 @@ impl PressingLookup {
         self.state = match outcome {
             Ok(mut results) => {
                 if let PressingKey::CatalogNumber { number, label, .. } = &self.key {
-                    results.retain(|result| prints_under(result, number, label));
+                    let asked = ReleaseLabel::new(Some(label.clone()), Some(number.clone()));
+                    results.retain(|result| {
+                        asked.as_ref().is_some_and(|asked| {
+                            result.labels.iter().any(|stated| stated.prints_number_of(asked))
+                        })
+                    });
                 }
                 LookupState::Done { results }
             }
@@ -80,15 +85,6 @@ impl PressingLookup {
             LookupState::LookingUp | LookupState::Done { .. } => None,
         }
     }
-}
-
-/// Whether `result` prints `number` under the label `label` names.
-fn prints_under(result: &MetadataResult, number: &str, label: &str) -> bool {
-    let asked = catalog_key(number);
-    result.labels.iter().any(|stated| {
-        stated.catalog_number().and_then(catalog_key).is_some_and(|key| Some(key) == asked)
-            && stated.name().is_some_and(|name| same_label_name(name, label))
-    })
 }
 
 /// What `row`'s pressing is asked for by on each of `providers`' lookup
