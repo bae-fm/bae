@@ -22,7 +22,7 @@ use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
 use super::capabilities::{AirPlayCapabilities, Dialect, UnreadableSetting};
-use crate::renderer::discovery::RendererServiceType;
+use crate::renderer::discovery::{sort_for_picker, RendererServiceType};
 use crate::renderer::protocol_discovery::{self, preferred_address, Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
@@ -153,9 +153,10 @@ fn run_browse(
             if let Some(change) = table_change(service_type, event) {
                 let mut table = lock_table(&table);
                 if change.apply(&mut table) {
-                    devices.publish(
-                        snapshot(&table).iter().map(AirPlayDevice::to_renderer_device).collect(),
-                    );
+                    let mut snapshot: Vec<RendererDevice> =
+                        snapshot(&table).iter().map(AirPlayDevice::to_renderer_device).collect();
+                    sort_for_picker(&mut snapshot);
+                    devices.publish(snapshot);
                 }
             }
         });
@@ -210,11 +211,9 @@ fn table_change(service_type: RendererServiceType, event: ServiceEvent) -> Optio
 }
 
 /// One entry per device id, preferring the AirPlay 2 advertisement when a
-/// receiver is seen on both service types, sorted by name for a stable UI.
+/// receiver is seen on both service types.
 fn snapshot(table: &DeviceTable) -> Vec<AirPlayDevice> {
-    let mut devices = dedupe_by_id(table.by_fullname.values());
-    devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
-    devices
+    dedupe_by_id(table.by_fullname.values())
 }
 
 /// One entry per receiver id, preferring the AirPlay 2 advertisement when a
