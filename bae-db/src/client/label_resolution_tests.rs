@@ -114,23 +114,6 @@ async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
     assert_eq!(label_count(&db).await, 3);
 }
 
-/// A catalog id the library holds on two labels, as when two devices apart
-/// each gave it to a different label of one name, refuses the write: bae
-/// never picks one of them.
-#[tokio::test]
-async fn a_catalog_id_two_labels_hold_refuses_the_write() {
-    let (db, _tmp) = library().await;
-    add_label(&db, "label-a", "Label Name", None, Some("7190")).await;
-    add_label(&db, "label-b", "Label Name", None, Some("7190")).await;
-
-    let error = write(&db, vec![with_ids(label(Some("Label Name"), None), None, Some("7190"))])
-        .await
-        .unwrap_err();
-
-    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error:?}");
-    assert!(placed(&db).await.is_empty());
-}
-
 /// A label whose two catalog ids two library labels hold refuses the write
 /// with both labels for the person to answer, and writes nothing.
 #[tokio::test]
@@ -151,4 +134,60 @@ async fn two_labels_holding_the_labels_two_ids_are_the_identity_conflict() {
     assert_eq!(conflict.musicbrainz_label.label_id, "by-musicbrainz");
     assert_eq!(conflict.incoming_label_name, "Label Name");
     assert!(placed(&db).await.is_empty());
+}
+
+/// Fill in `discogs` on the label `id` on `db`, as a device does once a
+/// catalog names it.
+async fn give_discogs_id(db: &Database, id: &'static str, discogs: &'static str) {
+    db.call(move |sql| {
+        sql.execute("UPDATE labels SET discogs_label_id = ? WHERE id = ?", params![discogs, id])?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+}
+
+/// Two devices apart each give one Discogs id to a different label of one
+/// name. Once each has the other's write, the next write naming that id
+/// merges the two into the smaller id and names it, and the other device
+/// reads the release's label as that one.
+#[test]
+fn a_catalog_id_two_devices_gave_two_labels_merges_them() {
+    crate::test_devices::run_two_store_test(check_two_devices_give_one_label_id);
+}
+
+async fn check_two_devices_give_one_label_id(devices: &crate::test_devices::TwoStores) {
+    let album = crate::DbAlbum::new_test("Album Title");
+    let release = crate::DbRelease::new_test(&album.id, RELEASE);
+    devices
+        .a()
+        .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
+        .await
+        .unwrap();
+    add_label(devices.a(), "label-a", "Label Name", None, None).await;
+    add_label(devices.a(), "label-b", "Label Name", None, None).await;
+    let labels = "SELECT id || ':' || COALESCE(discogs_label_id, '') FROM labels \
+                  UNION ALL SELECT 'release:' || id FROM releases";
+    devices.converge(labels).await;
+
+    devices.pause().await;
+    give_discogs_id(devices.a(), "label-a", "7190").await;
+    give_discogs_id(devices.b(), "label-b", "7190").await;
+    devices.resume().await;
+    devices.converge(labels).await;
+
+    write(devices.a(), vec![with_ids(label(Some("Label Name"), Some("LN 1")), None, Some("7190"))])
+        .await
+        .unwrap();
+    devices
+        .converge(
+            "SELECT id || '>' || into_label_id FROM label_merges \
+             UNION ALL SELECT 'placed:' || COALESCE(label_id, '') FROM release_labels",
+        )
+        .await;
+
+    for device in [devices.a(), devices.b()] {
+        assert_eq!(ids_of(&placed(device).await), [Some("label-a")]);
+        assert_eq!(read_labels(device).await, vec![label(Some("Label Name"), Some("LN 1"))]);
+    }
 }

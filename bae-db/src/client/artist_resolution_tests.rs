@@ -1,7 +1,7 @@
 //! How the store resolves the artists an import credits: a credit whose
 //! catalog ids or name match a library artist is that artist, credits of
-//! one write that name the same artist are one new artist, and ids that
-//! name two different artists are refused.
+//! one write that name the same artist are one new artist, artists holding
+//! one id are merged, and ids that name two different artists are refused.
 
 use super::*;
 use crate::test_fixtures::temp_db;
@@ -218,37 +218,43 @@ fn two_artists_holding_the_credits_two_ids_are_the_identity_conflict() {
     assert_eq!(conflict.musicbrainz_artist.artist_id, "by-musicbrainz");
 }
 
+/// One catalog id is one artist: two library artists holding it are merged
+/// into the smaller id, which the credit names and which takes the other's
+/// ids where it has none.
 #[test]
-fn a_catalog_id_two_library_artists_hold_refuses_the_write() {
+fn a_catalog_id_two_library_artists_hold_merges_them() {
     let conn = library();
     add_artist(&conn, "first", "Artist Name", Some("discogs-1"), None);
-    add_artist(&conn, "second", "Artist Name", Some("discogs-1"), None);
+    add_artist(&conn, "second", "Artist Name", Some("discogs-1"), Some("mb-2"));
 
-    let error = resolve_artists_on(
-        &conn,
-        &[credit("credit", "Artist Name", Some("discogs-1"), None)],
-        &HashSet::new(),
-    )
-    .unwrap_err();
+    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), None)]);
 
-    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
+    assert_eq!(resolved.ids, ["first"]);
+    let merged: Vec<(&str, &str)> = resolved
+        .merges
+        .iter()
+        .map(|merge| (merge.absorbed.id.as_str(), merge.survivor.as_str()))
+        .collect();
+    assert_eq!(merged, [("second", "first")]);
+    let (_, survivor) = &resolved.external_id_updates[0];
+    assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-2"));
 }
 
+/// An id on the row it derives and on another artist that was given it is
+/// one artist too: the smaller id survives.
 #[test]
-fn a_catalog_id_on_its_own_row_and_on_another_artist_refuses_the_write() {
+fn a_catalog_id_on_its_own_row_and_on_another_artist_merges_them() {
     let conn = library();
     let identity = crate::identity::artist_id(Some("mb-1"), None).unwrap();
     add_artist(&conn, &identity, "Artist Name", None, None);
     add_artist(&conn, "filled-in", "Artist Name", None, Some("mb-1"));
 
-    let error = resolve_artists_on(
-        &conn,
-        &[credit("credit", "Artist Name", None, Some("mb-1"))],
-        &HashSet::new(),
-    )
-    .unwrap_err();
+    let resolved = resolve(&conn, &[credit("credit", "Artist Name", None, Some("mb-1"))]);
 
-    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
+    let survivor = identity.as_str().min("filled-in");
+    assert_eq!(resolved.ids, [survivor]);
+    assert_eq!(resolved.merges.len(), 1);
+    assert_eq!(resolved.merges[0].survivor, survivor);
 }
 
 fn read_credit(
@@ -332,18 +338,20 @@ fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
     assert_eq!(artist_ids(&artists), ["by-discogs", "by-musicbrainz"]);
 }
 
+/// A read of a credit whose id two library artists hold names the one the
+/// next write merges them into.
 #[test]
-fn a_read_credit_whose_id_two_artists_hold_is_conflicting() {
+fn a_read_credit_whose_id_two_artists_hold_is_the_smaller_one() {
     let conn = library();
     add_artist(&conn, "first", "Artist One", Some("discogs-1"), None);
     add_artist(&conn, "second", "Artist Two", Some("discogs-1"), None);
 
-    let crate::CreditResolution::Conflicting { artists } =
+    let crate::CreditResolution::Library { artist } =
         read_credit(&conn, "Artist Name", Some("discogs-1"))
     else {
-        panic!("two artists hold the credit's id");
+        panic!("one id names one artist");
     };
-    assert_eq!(artist_ids(&artists), ["first", "second"]);
+    assert_eq!(artist.artist_id, "first");
 }
 
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
@@ -599,4 +607,57 @@ async fn test_new_artist_inserts() {
     assert_eq!(saved.name, "New Band");
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d999"));
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-999"));
+}
+
+/// Two devices apart each give one Discogs id to a different artist of one
+/// name. Once each has the other's write, the next write crediting that id
+/// merges the two into the smaller id and credits it, and the other device
+/// reads the credit as that artist.
+#[test]
+fn a_catalog_id_two_devices_gave_two_artists_merges_them() {
+    crate::test_devices::run_two_store_test(check_two_devices_give_one_artist_id);
+}
+
+async fn check_two_devices_give_one_artist_id(devices: &crate::test_devices::TwoStores) {
+    for id in ["artist-a", "artist-b"] {
+        devices.a().insert_artist(&credit(id, "Artist Name", None, None)).await.unwrap();
+    }
+    let artists = "SELECT id || ':' || COALESCE(discogs_artist_id, '') FROM artists";
+    devices.converge(artists).await;
+
+    devices.pause().await;
+    for (device, id) in [(devices.a(), "artist-a"), (devices.b(), "artist-b")] {
+        device
+            .call(move |sql| {
+                sql.execute(
+                    "UPDATE artists SET discogs_artist_id = 'discogs-1' WHERE id = ?",
+                    [id],
+                )?;
+                Ok(())
+            })
+            .await
+            .unwrap();
+    }
+    devices.resume().await;
+    devices.converge(artists).await;
+
+    let credited = devices
+        .a()
+        .find_or_create_artists(&[credit("credit", "Artist Name", Some("discogs-1"), None)])
+        .await
+        .unwrap();
+    assert_eq!(credited, ["artist-a"]);
+    devices.converge("SELECT id || '>' || into_artist_id FROM artist_merges").await;
+
+    let read = bae_catalogs::credits::ArtistCredit {
+        discogs_artist_id: Some("discogs-1".to_string()),
+        ..bae_catalogs::credits::ArtistCredit::named("Artist Name")
+    };
+    for device in [devices.a(), devices.b()] {
+        let resolved = device.resolve_artist_credits(std::slice::from_ref(&read)).await.unwrap();
+        let crate::CreditResolution::Library { artist } = &resolved[0].resolution else {
+            panic!("the id names one artist, got {:?}", resolved[0].resolution);
+        };
+        assert_eq!(artist.artist_id, "artist-a");
+    }
 }

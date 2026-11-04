@@ -352,10 +352,10 @@ on screen, so an artist added, renamed or given another name meanwhile shows
 as it is. Typing a name, or picking an artist for a tag credit that spelled it
 differently, prints the artist's own name.
 
-Two artists can be merged into one, and only one way: on the import page, when
-an import's credit shows that two library artists are the same person and the
-person says so (§3.7). That is the one place bae shows both artists beside the
-evidence that they are one; bae has no other merge action.
+Two artists are merged into one in two ways: on the import page, when an
+import's credit shows that two library artists are the same person and the
+person says so (§3.7), and by any write that finds one catalog id on two
+artists, since one id is one artist (below). bae has no other merge action.
 
 Merging records that one artist was absorbed into the other; both rows stay, so
 a credit another device gave the absorbed artist still resolves. Every read
@@ -369,7 +369,10 @@ decides it, whichever device made that write.
 writes the credit, so nothing landing in between can make it wrong:
 
 1. A credit carrying a MusicBrainz or Discogs id is the library artist holding
-   that id, followed through any merge.
+   that id, followed through any merge. One id is one artist: where several
+   hold it, the write merges them into the one with the smallest id, which
+   takes the ids and sort name it lacks from the others, and the credit
+   names it.
 2. Otherwise it is the one library artist whose folded name matches and whose
    ids don't contradict the credit. The folding ignores case, accents and
    spacing, and takes a word-final sigma (ς) as σ.
@@ -386,8 +389,8 @@ name.
   (§3.7). bae never settles it on its own.
 - **One id, two artists.** The library holds a credit's id on two artists,
   as when two devices apart each gave it to a different artist of that name.
-  The write is refused, and the import page offers both artists for the
-  person to pick the one the credit names. bae never picks one on its own.
+  The two are one artist, so the next write naming that id merges them into
+  the smaller id (rule 1) and goes on; nobody is asked.
 - **A contradicting id.** A credit whose id names an artist that holds a
   different id of either catalog is refused outright. A credit whose name
   alone matches such an artist is not that artist (rule 2).
@@ -399,7 +402,9 @@ one rule, inside the transaction that writes the release's labels, an
 import's or an edit's save:
 
 1. A label carrying a MusicBrainz or Discogs id is the library label holding
-   that id, followed through any merge.
+   that id, followed through any merge. One id is one label: where several
+   hold it, the write merges them into the one with the smallest id, which
+   takes the ids it lacks from the others.
 2. On an edit, a label carrying no id whose name is the name of a label the
    release names now is that label, so saving a release keeps its labels.
 3. Otherwise it is the one library label whose name key matches and whose
@@ -410,9 +415,10 @@ import's or an edit's save:
    key: *DFC* is not *Dance Floor Corporation*.
 4. Several such labels, or none, make a new label.
 
-A label that matches fills in its missing ids. Two labels merge only on the
+A label that matches fills in its missing ids. Two labels merge on the
 import page, when an import's label shows that two library labels are one
-and the person says so (§3.7). Both rows stay, and every read shows the
+and the person says so (§3.7), and in any write that finds one id on both
+(rule 1). Both rows stay, and every read shows the
 survivor, following a chain or a loop as artists do; no list sorts by label,
 so no table keeps the label each label shows as. The artist edge cases hold
 for labels: two ids naming two labels stop the import for the person to

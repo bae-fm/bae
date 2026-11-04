@@ -31,8 +31,8 @@ async fn merge_artist(
             &ArtistMerge {
                 survivor: &survivor,
                 absorbed: &absorbed,
-                discogs_artist_id: "discogs-1",
-                musicbrainz_artist_id: "mb-1",
+                discogs_artist_id: Some("discogs-1"),
+                musicbrainz_artist_id: Some("mb-1"),
                 sort_name: sort_name.as_deref(),
                 at: AT,
             },
@@ -211,8 +211,8 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
             &ArtistMerge {
                 survivor: &absorbed_id,
                 absorbed: &earlier_id,
-                discogs_artist_id: "discogs-earlier",
-                musicbrainz_artist_id: "mb-1",
+                discogs_artist_id: Some("discogs-earlier"),
+                musicbrainz_artist_id: Some("mb-1"),
                 sort_name: None,
                 at: AT,
             },
@@ -252,8 +252,8 @@ async fn merge_label(db: &Database, survivor: &str, absorbed: &str) -> Result<()
             &LabelMerge {
                 survivor: &survivor,
                 absorbed: &absorbed,
-                discogs_label_id: "7190",
-                musicbrainz_label_id: "mb-label",
+                discogs_label_id: Some("7190"),
+                musicbrainz_label_id: Some("mb-label"),
                 at: AT,
             },
         )

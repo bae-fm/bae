@@ -198,8 +198,8 @@ fn apply_artist_identity_merge(
         &bae_db::client::identity_merges::ArtistMerge {
             survivor: &plan.surviving_artist_id,
             absorbed: &plan.absorbed_artist_id,
-            discogs_artist_id: &plan.discogs_artist_id,
-            musicbrainz_artist_id: &plan.musicbrainz_artist_id,
+            discogs_artist_id: Some(&plan.discogs_artist_id),
+            musicbrainz_artist_id: Some(&plan.musicbrainz_artist_id),
             sort_name: plan.surviving_sort_name.as_deref(),
             at: &plan.now,
         },

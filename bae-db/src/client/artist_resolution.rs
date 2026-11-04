@@ -7,11 +7,12 @@
 //! The rule, in order:
 //!
 //! 1. **A catalog id is decisive.** A credit carrying a MusicBrainz or Discogs
-//!    id is the library artist holding that id, followed through any merge. Two
-//!    different artists holding the credit's two ids is the conflict a person
-//!    settles on the import page; one id held by several artists, or a matched
-//!    artist holding a different id, is refused, and the import page offers
-//!    the artists it names to pick from.
+//!    id is the library artist holding that id, followed through any merge.
+//!    One id is one artist: several library artists holding it, as two
+//!    devices apart can leave them, are merged in the write, into the
+//!    smallest id. Two different artists holding the credit's two ids is the
+//!    conflict a person settles on the import page; a matched artist holding a
+//!    different id is refused, and the import page offers it to pick.
 //! 2. **Otherwise the name.** A credit is the one library artist whose
 //!    `name_key`, or one of whose other printed names (`artist_credits`),
 //!    equals the credit's folded name and whose catalog ids do not contradict
@@ -164,6 +165,21 @@ pub struct ResolvedArtists {
     /// `(artist_id, artist)` — an existing artist whose empty catalog ids and
     /// sort name this write fills in.
     pub external_id_updates: Vec<(String, DbArtist)>,
+    /// Library artists holding one catalog id, each merged into the artist
+    /// with the smallest id.
+    pub merges: Vec<ArtistIdMerge>,
+}
+
+/// A library artist this write merges into another because both hold one
+/// catalog id.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtistIdMerge {
+    pub survivor: String,
+    /// The absorbed artist as this write leaves it, whose ids and sort name
+    /// the survivor takes where it has none.
+    pub absorbed: DbArtist,
+    /// When the credit that found the two was written.
+    pub at: DateTime<Utc>,
 }
 
 impl ResolvedArtists {
@@ -180,6 +196,19 @@ impl ResolvedArtists {
                 artist.discogs_artist_id.as_deref(),
                 artist.musicbrainz_artist_id.as_deref(),
                 artist.sort_name.as_deref(),
+            )?;
+        }
+        for merge in &self.merges {
+            super::identity_merges::merge_artist_on(
+                tx,
+                &super::identity_merges::ArtistMerge {
+                    survivor: &merge.survivor,
+                    absorbed: &merge.absorbed.id,
+                    discogs_artist_id: merge.absorbed.discogs_artist_id.as_deref(),
+                    musicbrainz_artist_id: merge.absorbed.musicbrainz_artist_id.as_deref(),
+                    sort_name: merge.absorbed.sort_name.as_deref(),
+                    at: &merge.at.to_rfc3339(),
+                },
             )?;
         }
         Ok(())
@@ -230,6 +259,7 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
     let mut ids = Vec::with_capacity(credits.len());
     let mut inserts: Vec<DbArtist> = Vec::new();
     let mut external_id_updates: Vec<(String, DbArtist)> = Vec::new();
+    let mut merges: Vec<ArtistIdMerge> = Vec::new();
 
     for credit in credits {
         if picked.contains(&credit.id) {
@@ -245,7 +275,12 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
 
         let committed = match catalog_match_on(sql, credit, &external_id_updates)? {
             CatalogMatch::Unmatched => None,
-            CatalogMatch::Artist(artist) => Some(artist),
+            CatalogMatch::Artist(held) => {
+                for absorbed in held.absorbed {
+                    merge_into(&mut merges, &mut ids, &held.artist.id, absorbed, credit.created_at);
+                }
+                Some(held.artist)
+            }
             CatalogMatch::Conflict(conflict) => return Err(conflict.into_error()),
         };
         let pending_by_catalog = pending_catalog_indices(&inserts, credit);
@@ -280,7 +315,13 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
                     remove_pending_artists(&mut inserts, &mut ids, &absorbed, &survivor_id);
                     survivor_id
                 }
-                None => resolve_by_name_on(sql, credit, &mut inserts, &mut external_id_updates)?,
+                None => resolve_by_name_on(
+                    sql,
+                    credit,
+                    &mut inserts,
+                    &mut external_id_updates,
+                    &merges,
+                )?,
             },
         };
         ids.push(resolved_id);
@@ -301,7 +342,7 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
         insert.id = identity;
     }
 
-    Ok(ResolvedArtists { ids, inserts, external_id_updates })
+    Ok(ResolvedArtists { ids, inserts, external_id_updates, merges })
 }
 
 /// The library artist each of `credits` resolves to when one write commits
@@ -333,7 +374,7 @@ pub fn resolve_credit_on<Q: QueryOne + QueryRows>(
         created_at: chrono::DateTime::<Utc>::MIN_UTC,
     };
     Ok(match catalog_match_on(sql, &row, &[])? {
-        CatalogMatch::Artist(artist) => CreditResolution::Library { artist: artist.into() },
+        CatalogMatch::Artist(held) => CreditResolution::Library { artist: held.artist.into() },
         CatalogMatch::Conflict(conflict) => {
             CreditResolution::Conflicting { artists: conflict.artists() }
         }
@@ -383,6 +424,7 @@ fn resolve_by_name_on<Q: QueryOne + QueryRows>(
     credit: &DbArtist,
     inserts: &mut Vec<DbArtist>,
     external_id_updates: &mut Vec<(String, DbArtist)>,
+    merges: &[ArtistIdMerge],
 ) -> Result<String, IdentityWriteError> {
     let pending: Vec<usize> = inserts
         .iter()
@@ -398,7 +440,10 @@ fn resolve_by_name_on<Q: QueryOne + QueryRows>(
         return Ok(inserts[*only].id.clone());
     }
     if pending.is_empty() {
-        if let [only] = name_matches_on(sql, credit, external_id_updates)?.as_slice() {
+        // An artist this write merges into another is that one.
+        let mut named = name_matches_on(sql, credit, external_id_updates)?;
+        named.retain(|artist| !merges.iter().any(|merge| merge.absorbed.id == artist.id));
+        if let [only] = named.as_slice() {
             let mut merged = only.clone();
             merge_artist_metadata(&mut merged, credit)?;
             let id = merged.id.clone();
@@ -456,7 +501,7 @@ pub(super) enum CatalogMatch {
     /// The credit carries no id the library holds.
     Unmatched,
     /// The library artist its ids name.
-    Artist(DbArtist),
+    Artist(HeldArtist),
     /// Its ids name library artists that disagree with it.
     Conflict(CatalogConflict),
 }
@@ -464,8 +509,7 @@ pub(super) enum CatalogMatch {
 pub(super) enum CatalogConflict {
     /// Two different artists each hold one of the credit's ids.
     Identity(Box<crate::ArtistIdentityConflict>),
-    /// A matched artist holds a different id of the same catalog, or the
-    /// library holds one id on several artists.
+    /// A matched artist holds a different id of the same catalog.
     Contradicted { artists: Vec<DbArtist>, detail: String },
 }
 
@@ -490,6 +534,13 @@ impl CatalogConflict {
     }
 }
 
+/// The library artist a catalog id names, and the other library artists
+/// holding it, which the write merges into it.
+pub(super) struct HeldArtist {
+    pub(super) artist: DbArtist,
+    pub(super) absorbed: Vec<DbArtist>,
+}
+
 /// The catalog-id step: the library artist the credit's Discogs and
 /// MusicBrainz ids name, as `staged` (this write's own fills) leaves it.
 pub(super) fn catalog_match_on<Q: QueryRows>(
@@ -497,40 +548,26 @@ pub(super) fn catalog_match_on<Q: QueryRows>(
     credit: &DbArtist,
     staged: &[(String, DbArtist)],
 ) -> Result<CatalogMatch, DbError> {
-    let by_discogs = match credit.discogs_artist_id.as_deref() {
-        Some(id) => match exact_artist(
-            "Discogs",
-            &credit.name,
-            id,
-            artists_by_catalog_id_on(sql, CatalogColumn::Discogs, id)?,
-            staged,
-            |artist| artist.discogs_artist_id.as_deref(),
-        ) {
-            Ok(artist) => artist,
-            Err(conflict) => return Ok(CatalogMatch::Conflict(conflict)),
-        },
-        None => None,
+    let mut absorbed = Vec::new();
+    let mut held_by = |column: CatalogColumn, id: Option<&str>| -> Result<_, DbError> {
+        let Some(id) = id else {
+            return Ok(None);
+        };
+        let held = exact_artist(id, artists_by_catalog_id_on(sql, column, id)?, staged, column);
+        Ok(held.map(|held| {
+            absorbed.extend(held.absorbed);
+            held.artist
+        }))
     };
-    let by_musicbrainz = match credit.musicbrainz_artist_id.as_deref() {
-        Some(id) => match exact_artist(
-            "MusicBrainz",
-            &credit.name,
-            id,
-            artists_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, id)?,
-            staged,
-            |artist| artist.musicbrainz_artist_id.as_deref(),
-        ) {
-            Ok(artist) => artist,
-            Err(conflict) => return Ok(CatalogMatch::Conflict(conflict)),
-        },
-        None => None,
-    };
+    let by_discogs = held_by(CatalogColumn::Discogs, credit.discogs_artist_id.as_deref())?;
+    let by_musicbrainz =
+        held_by(CatalogColumn::MusicBrainz, credit.musicbrainz_artist_id.as_deref())?;
     let matched = match matching_artist(credit, by_discogs, by_musicbrainz) {
         Ok(matched) => matched,
         Err(conflict) => return Ok(CatalogMatch::Conflict(conflict)),
     };
     if let Some(artist) = matched {
-        return Ok(CatalogMatch::Artist(artist));
+        return Ok(CatalogMatch::Artist(HeldArtist { artist, absorbed }));
     }
     if !credit.is_various_artists() {
         return Ok(CatalogMatch::Unmatched);
@@ -540,30 +577,15 @@ pub(super) fn catalog_match_on<Q: QueryRows>(
     // incoming exact provider match still wins; only its absence permits the
     // other provider's canonical row to stand in for it.
     let va = &crate::VARIOUS_ARTISTS;
-    let stand_in =
+    let (column, id) =
         match (credit.discogs_artist_id.as_deref(), credit.musicbrainz_artist_id.as_deref()) {
-            (Some(_), None) => exact_artist(
-                "MusicBrainz",
-                &credit.name,
-                va.musicbrainz,
-                artists_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, va.musicbrainz)?,
-                staged,
-                |artist| artist.musicbrainz_artist_id.as_deref(),
-            ),
-            (None, Some(_)) => exact_artist(
-                "Discogs",
-                &credit.name,
-                va.discogs,
-                artists_by_catalog_id_on(sql, CatalogColumn::Discogs, va.discogs)?,
-                staged,
-                |artist| artist.discogs_artist_id.as_deref(),
-            ),
-            (Some(_), Some(_)) | (None, None) => Ok(None),
+            (Some(_), None) => (CatalogColumn::MusicBrainz, va.musicbrainz),
+            (None, Some(_)) => (CatalogColumn::Discogs, va.discogs),
+            (Some(_), Some(_)) | (None, None) => return Ok(CatalogMatch::Unmatched),
         };
-    Ok(match stand_in {
-        Ok(Some(artist)) => CatalogMatch::Artist(artist),
-        Ok(None) => CatalogMatch::Unmatched,
-        Err(conflict) => CatalogMatch::Conflict(conflict),
+    Ok(match exact_artist(id, artists_by_catalog_id_on(sql, column, id)?, staged, column) {
+        Some(held) => CatalogMatch::Artist(held),
+        None => CatalogMatch::Unmatched,
     })
 }
 
@@ -650,37 +672,58 @@ fn artist_by_id_on<Q: QueryOne>(sql: &Q, artist_id: &str) -> Result<Option<DbArt
         .map_err(DbError::from)
 }
 
-/// The one library artist a credit's `source` id names, as this write's own
-/// fills (`staged_updates`) leave it: the artists the library holds it on
-/// (`stored`), and the artists this write is giving it. More than one is a
-/// contradiction a person settles; none is no match.
+/// The one library artist a credit's `column` id `source_id` names, as this
+/// write's own fills (`staged_updates`) leave it: of the artists the library
+/// holds it on (`stored`) and those this write is giving it, the smallest id.
+/// One id is one artist, so the others are merged into it, and it takes the
+/// ids and sort name it lacks from them. None is no match.
 fn exact_artist(
-    source: &str,
-    incoming_name: &str,
     source_id: &str,
     stored: Vec<DbArtist>,
     staged_updates: &[(String, DbArtist)],
-    external_id: impl for<'a> Fn(&'a DbArtist) -> Option<&'a str>,
-) -> Result<Option<DbArtist>, CatalogConflict> {
+    column: CatalogColumn,
+) -> Option<HeldArtist> {
+    let external_id = |artist: &DbArtist| match column {
+        CatalogColumn::Discogs => artist.discogs_artist_id.clone(),
+        CatalogColumn::MusicBrainz => artist.musicbrainz_artist_id.clone(),
+    };
     let staged = |id: &str| {
         staged_updates.iter().find(|(staged_id, _)| staged_id == id).map(|(_, artist)| artist)
     };
     let mut named: Vec<DbArtist> =
         stored.into_iter().map(|artist| staged(&artist.id).cloned().unwrap_or(artist)).collect();
     for (id, artist) in staged_updates {
-        if external_id(artist) == Some(source_id) && !named.iter().any(|named| named.id == *id) {
+        if external_id(artist).as_deref() == Some(source_id)
+            && !named.iter().any(|named| named.id == *id)
+        {
             named.push(artist.clone());
         }
     }
-    if named.len() > 1 {
-        return Err(CatalogConflict::Contradicted {
-            artists: named,
-            detail: format!(
-                "artist '{incoming_name}' has a {source} source ID belonging to multiple library artists"
-            ),
-        });
+    named.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut named = named.into_iter();
+    let mut artist = named.next()?;
+    let absorbed: Vec<DbArtist> = named.collect();
+    for other in &absorbed {
+        fill_missing(&mut artist, other);
     }
-    Ok(named.pop())
+    Some(HeldArtist { artist, absorbed })
+}
+
+/// Record that `absorbed` is merged into `survivor`, once, and name the
+/// survivor wherever this write already resolved a credit to `absorbed`.
+fn merge_into(
+    merges: &mut Vec<ArtistIdMerge>,
+    ids: &mut [String],
+    survivor: &str,
+    absorbed: DbArtist,
+    at: DateTime<Utc>,
+) {
+    for id in ids.iter_mut().filter(|id| **id == absorbed.id) {
+        *id = survivor.to_string();
+    }
+    if !merges.iter().any(|merge| merge.absorbed.id == absorbed.id) {
+        merges.push(ArtistIdMerge { survivor: survivor.to_string(), absorbed, at });
+    }
 }
 
 fn matching_artist(
@@ -775,16 +818,21 @@ fn merge_artist_metadata(
             incoming.name
         )));
     }
+    fill_missing(target, incoming);
+    Ok(())
+}
+
+/// Give `target` each catalog id and the sort name it lacks from `other`.
+fn fill_missing(target: &mut DbArtist, other: &DbArtist) {
     if target.discogs_artist_id.is_none() {
-        target.discogs_artist_id.clone_from(&incoming.discogs_artist_id);
+        target.discogs_artist_id.clone_from(&other.discogs_artist_id);
     }
     if target.musicbrainz_artist_id.is_none() {
-        target.musicbrainz_artist_id.clone_from(&incoming.musicbrainz_artist_id);
+        target.musicbrainz_artist_id.clone_from(&other.musicbrainz_artist_id);
     }
     if target.sort_name.is_none() {
-        target.sort_name.clone_from(&incoming.sort_name);
+        target.sort_name.clone_from(&other.sort_name);
     }
-    Ok(())
 }
 
 /// Whether no catalog id the two carry contradicts the other's.

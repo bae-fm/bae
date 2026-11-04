@@ -184,8 +184,8 @@ fn merge_labels_on(
         &bae_db::client::identity_merges::LabelMerge {
             survivor,
             absorbed,
-            discogs_label_id: &conflict.discogs,
-            musicbrainz_label_id: &conflict.musicbrainz,
+            discogs_label_id: Some(&conflict.discogs),
+            musicbrainz_label_id: Some(&conflict.musicbrainz),
             at: now,
         },
     )

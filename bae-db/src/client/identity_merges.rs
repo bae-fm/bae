@@ -1,6 +1,7 @@
 //! One library artist or label merged into another, as a person's answer to
-//! an import's identity conflict records it: the survivor takes the absorbed
-//! one's catalog ids, and the absorbed one stays, recorded as merged into the
+//! an import's identity conflict records it, or as a write does on finding
+//! one catalog id on several: the survivor takes the absorbed one's catalog
+//! ids, and the absorbed one stays, recorded as merged into the
 //! survivor (`artist_merges`, `label_merges`). Neither row is deleted and no
 //! credit or release label is rewritten: both are shared with devices that
 //! may be naming the absorbed one while apart, and every read shows the
@@ -8,12 +9,13 @@
 
 use super::*;
 
-/// An artist merged into another, with the catalog ids the survivor takes.
+/// An artist merged into another, with the catalog ids the survivor takes
+/// where it holds none of that catalog.
 pub struct ArtistMerge<'a> {
     pub survivor: &'a str,
     pub absorbed: &'a str,
-    pub discogs_artist_id: &'a str,
-    pub musicbrainz_artist_id: &'a str,
+    pub discogs_artist_id: Option<&'a str>,
+    pub musicbrainz_artist_id: Option<&'a str>,
     /// The sort name the survivor takes where it has none.
     pub sort_name: Option<&'a str>,
     /// When the merge is recorded, as RFC 3339.
@@ -41,8 +43,8 @@ pub fn merge_artist_on(conn: &CovenWrite<'_>, merge: &ArtistMerge<'_>) -> Result
     let changed = super::write::update_artist_external_ids_row(
         conn,
         merge.survivor,
-        Some(merge.discogs_artist_id),
-        Some(merge.musicbrainz_artist_id),
+        merge.discogs_artist_id,
+        merge.musicbrainz_artist_id,
         merge.sort_name,
     )?;
     if changed != 1 {
@@ -63,12 +65,13 @@ pub fn merge_artist_on(conn: &CovenWrite<'_>, merge: &ArtistMerge<'_>) -> Result
     Ok(())
 }
 
-/// A label merged into another, with the catalog ids the survivor takes.
+/// A label merged into another, with the catalog ids the survivor takes
+/// where it holds none of that catalog.
 pub struct LabelMerge<'a> {
     pub survivor: &'a str,
     pub absorbed: &'a str,
-    pub discogs_label_id: &'a str,
-    pub musicbrainz_label_id: &'a str,
+    pub discogs_label_id: Option<&'a str>,
+    pub musicbrainz_label_id: Option<&'a str>,
     /// When the merge is recorded, as RFC 3339.
     pub at: &'a str,
 }
