@@ -131,9 +131,7 @@ impl BridgeHost {
         steps: &crate::screens::ClosingSteps,
     ) -> Result<(), bae_library::LibraryRemovalError> {
         self.diagnostics
-            .remove_unopenable_library(&self.app_dir, &self.coven, store, &|step| {
-                steps.step(crate::types::BridgeClosingStep::from_core(step))
-            })
+            .remove_unopenable_library(&self.app_dir, &self.coven, store, &|step| steps.core(step))
             .await
     }
 
@@ -311,8 +309,7 @@ impl BridgeHost {
         closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
-        let steps =
-            closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
+        let steps = crate::screens::ClosingSteps::of(closing);
         self.operations
             .clone()
             .run_to_completion(

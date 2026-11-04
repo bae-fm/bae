@@ -358,15 +358,8 @@ impl AppHandle {
         let host = self._host.clone();
         async move {
             #[cfg(feature = "desktop")]
-            {
-                steps.step(crate::types::BridgeClosingStep::StoppingServers);
-                desktop.shutdown().await;
-            }
-            let closed = services
-                .close_reporting(&|step| {
-                    steps.step(crate::types::BridgeClosingStep::from_core(step))
-                })
-                .await;
+            steps.stop_servers(&desktop).await;
+            let closed = services.close_reporting(&|step| steps.core(step)).await;
             drop(host);
             closed
         }
@@ -411,13 +404,13 @@ impl AppHandle {
         &self,
         closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<(), BridgeError> {
-        let steps =
-            closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
-        self.session.end(self.closing(steps)).ok_or_else(|| {
-            BridgeError::from(bae_library::LibraryError::Internal(
-                "the library is already closed".to_string(),
-            ))
-        })??;
+        self.session.end(self.closing(crate::screens::ClosingSteps::of(closing))).ok_or_else(
+            || {
+                BridgeError::from(bae_library::LibraryError::Internal(
+                    "the library is already closed".to_string(),
+                ))
+            },
+        )??;
         info!("Closed library");
         Ok(())
     }

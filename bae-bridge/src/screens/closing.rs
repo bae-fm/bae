@@ -85,6 +85,24 @@ impl ClosingSteps {
         }
     }
 
+    /// Where `closing`, the close the app shows, reads the steps; where
+    /// nothing does without it.
+    pub(crate) fn of(closing: Option<Arc<BridgeLibraryClosing>>) -> Self {
+        closing.map_or_else(Self::unread, |closing| closing.writer())
+    }
+
+    /// Stop the desktop services, the step every close starts with.
+    #[cfg(feature = "desktop")]
+    pub(crate) async fn stop_servers(&self, desktop: &bae_desktop::DesktopServices) {
+        self.step(BridgeClosingStep::StoppingServers);
+        desktop.shutdown().await;
+    }
+
+    /// The close runs core's `step`.
+    pub(crate) fn core(&self, step: bae_library::ClosingStep) {
+        self.step(BridgeClosingStep::from_core(step));
+    }
+
     /// The close runs `step`.
     pub(crate) fn step(&self, step: BridgeClosingStep) {
         #[cfg(test)]

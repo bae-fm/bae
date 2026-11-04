@@ -86,22 +86,13 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<BridgeLibraryRemoval, BridgeError> {
-        let steps =
-            closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
+        let steps = crate::screens::ClosingSteps::of(closing);
         self.runtime
             .clone()
             .run_to_completion(self.clone(), "remove library", move || async move {
                 #[cfg(feature = "desktop")]
-                {
-                    steps.step(crate::types::BridgeClosingStep::StoppingServers);
-                    self.desktop.shutdown().await;
-                }
-                let removal = self
-                    .services
-                    .remove_library(&|step| {
-                        steps.step(crate::types::BridgeClosingStep::from_core(step))
-                    })
-                    .await;
+                steps.stop_servers(&self.desktop).await;
+                let removal = self.services.remove_library(&|step| steps.core(step)).await;
                 if matches!(removal, Ok(()) | Err(bae_library::LibraryRemovalError::Unfinished(_)))
                 {
                     self.session.removed();
