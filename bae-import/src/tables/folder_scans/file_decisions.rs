@@ -62,7 +62,7 @@ pub(crate) fn settle_candidate_files(
                     )?;
                 }
             }
-            other => return Err(DbError::Message(format!("unknown candidate source {other}"))),
+            other => return Err(DbError::unreadable("scan_candidate.source_kind", other)),
         }
         let changed = sql.execute(
             "UPDATE scan_candidate SET file_edit_revision = ? \

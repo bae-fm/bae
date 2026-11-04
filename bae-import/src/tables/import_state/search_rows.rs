@@ -16,7 +16,6 @@
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_rows::load_search_matches_on;
 use super::match_rows::{store_match, store_picked, Listing, MatchOwner, Written};
-use super::verdict_rows::unreadable;
 use super::*;
 use crate::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
 use crate::candidates::CandidateFiles;
@@ -68,7 +67,7 @@ fn query_of(row: &Row<'_>) -> Result<SearchQuery, DbError> {
         "general" => SearchQuery::General { artist: value("artist")?, album: value("album")? },
         "catalog_number" => SearchQuery::CatalogNumber { catalog_number: value("catalog_number")? },
         "barcode" => SearchQuery::Barcode { barcode: value("barcode")? },
-        other => return Err(unreadable("search mode", other)),
+        other => return Err(DbError::unreadable("import_candidate_search.mode", other)),
     })
 }
 
@@ -147,7 +146,7 @@ impl StoredPart {
                 };
                 holds_none(SourceSearch::Failed(failure))
             }
-            other => Err(unreadable("search part state", other)),
+            other => Err(DbError::unreadable("import_candidate_search_source.state", other)),
         }
     }
 }

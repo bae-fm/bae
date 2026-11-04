@@ -89,7 +89,10 @@ impl StoredSidecar {
                                 ("document", None) => FileRole::Document,
                                 ("other", None) => FileRole::Other,
                                 (other, _) => {
-                                    return Err(unreadable("scan_sidecar_file.role", other))
+                                    return Err(DbError::unreadable(
+                                        "scan_sidecar_file.role",
+                                        other,
+                                    ))
                                 }
                             },
                         })
@@ -111,7 +114,7 @@ impl StoredSidecar {
                     })
                     .collect::<Result<_, DbError>>()?,
             ),
-            other => return Err(unreadable("scan_sidecar.state", other)),
+            other => return Err(DbError::unreadable("scan_sidecar.state", other)),
         };
         Ok(FolderSidecar { watched_folder_path: self.watched_folder_path, folder, files })
     }

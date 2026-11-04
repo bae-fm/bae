@@ -72,7 +72,7 @@ impl BasisColumns {
             None => None,
             Some("answered") => Some(StoredLookup::Answered),
             Some("failed") => Some(StoredLookup::Failed),
-            Some(other) => return Err(unreadable("a stored lookup", other)),
+            Some(other) => return Err(DbError::unreadable("import_list_placement.lookup", other)),
         };
         Ok(CandidateActionBasis {
             actionable: column(self.actionable)?,
@@ -146,18 +146,30 @@ impl ListedColumns {
                             folder: match self.reason_medium.as_deref() {
                                 Some("cd_rip") => MediumConflict::CdRip,
                                 Some("not_cd_audio") => MediumConflict::NotCdAudio,
-                                Some(other) => return Err(unreadable("a medium conflict", other)),
+                                Some(other) => {
+                                    return Err(DbError::unreadable(
+                                        "import_list_placement.reason_medium",
+                                        other,
+                                    ))
+                                }
                                 None => return Err(broken("names no medium")),
                             },
                             releases: pressings()?,
                         },
                         Some("not_found") => NeedsYouReason::NotFound,
                         Some("nothing_to_look_up") => NeedsYouReason::NothingToLookUp,
-                        Some(other) => return Err(unreadable("a needs-you reason", other)),
+                        Some(other) => {
+                            return Err(DbError::unreadable(
+                                "import_list_placement.needs_you_reason",
+                                other,
+                            ))
+                        }
                         None => return Err(broken("needs the person for no reason")),
                     },
                 },
-                other => return Err(unreadable("a Found state", other)),
+                other => {
+                    return Err(DbError::unreadable("import_list_placement.pending_state", other))
+                }
             }),
         };
         Ok(ListedRelease { basis: self.basis.basis(key)?, standing })

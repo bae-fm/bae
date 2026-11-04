@@ -101,7 +101,7 @@ impl StoredSheet {
                 .ripper
                 .map(|key| {
                     crate::cue_flac::CdRipper::from_key(&key)
-                        .ok_or_else(|| unreadable("ripper", &key))
+                        .ok_or_else(|| DbError::unreadable("scan_cue_sheet.ripper", &key))
                 })
                 .transpose()?,
             tracks: self.tracks.into_iter().map(StoredCueTrack::track).collect::<Result<_, _>>()?,
@@ -118,7 +118,7 @@ impl StoredCueTrack {
                 "other" => CueTrackMode::Other(self.mode_other.ok_or_else(|| {
                     DbError::Message("a non-audio cue track names no mode".to_string())
                 })?),
-                other => return Err(unreadable("mode", other)),
+                other => return Err(DbError::unreadable("scan_cue_track.mode", other)),
             },
             title: self.title,
             performer: self.performer,

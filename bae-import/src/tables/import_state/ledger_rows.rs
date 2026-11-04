@@ -11,7 +11,7 @@
 //! storing one fails. A run in flight stores its ledger as it stands.
 
 use super::lookup_failure_columns::{failure_columns, failure_of};
-use super::verdict_rows::{unreadable, Owner};
+use super::verdict_rows::Owner;
 use super::*;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::search::MetadataResult;
@@ -553,7 +553,9 @@ impl StoredLedger {
                     _ => DiscIdStepView::NotCdAudio,
                 }
             }
-            other => return Err(unreadable("disc_id_step", other)),
+            other => {
+                return Err(DbError::unreadable("import_candidate_verdict.disc_id_step", other))
+            }
         };
         let barcode_rows = take(STEP_BARCODE);
         let barcode = match barcode.as_str() {
@@ -568,7 +570,9 @@ impl StoredLedger {
                     _ => BarcodeStepView::NoCodes,
                 }
             }
-            other => return Err(unreadable("barcode_step", other)),
+            other => {
+                return Err(DbError::unreadable("import_candidate_verdict.barcode_step", other))
+            }
         };
         let catalog_rows = take(STEP_CATALOG);
         let catalog = match catalog.as_str() {
@@ -589,7 +593,9 @@ impl StoredLedger {
                 }
                 CatalogStepView::NoneFound
             }
-            other => return Err(unreadable("catalog_step", other)),
+            other => {
+                return Err(DbError::unreadable("import_candidate_verdict.catalog_step", other))
+            }
         };
         let isrc_rows = take(STEP_ISRC);
         let isrc = match isrc.as_str() {
@@ -614,7 +620,7 @@ impl StoredLedger {
                     _ => IsrcStepView::Absent,
                 }
             }
-            other => return Err(unreadable("isrc_step", other)),
+            other => return Err(DbError::unreadable("import_candidate_verdict.isrc_step", other)),
         };
         let search_rows = take(STEP_SEARCH);
         let search = match (search.as_str(), search_album, search_artist) {
@@ -638,10 +644,12 @@ impl StoredLedger {
                     _ => SearchStepView::NoTitle,
                 }
             }
-            (other, _, _) => return Err(unreadable("search_step", other)),
+            (other, _, _) => {
+                return Err(DbError::unreadable("import_candidate_verdict.search_step", other))
+            }
         };
         if let Some(step) = by_step.keys().next() {
-            return Err(unreadable("ledger row step", step));
+            return Err(DbError::unreadable("import_candidate_lookup.step", step));
         }
         let ledger = IdentifyRunView {
             providers: providers
@@ -678,7 +686,12 @@ fn lookup_of(
             reason: match reason.as_deref() {
                 Some("left_out") => NotAskedReason::LeftOut,
                 Some("no_catalog") => NotAskedReason::NoCatalog,
-                other => return Err(unreadable("not_asked_reason", other.unwrap_or("NULL"))),
+                other => {
+                    return Err(DbError::unreadable(
+                        "import_candidate_lookup.not_asked_reason",
+                        other.unwrap_or("NULL"),
+                    ))
+                }
             },
         }),
         "failed" => Ok(LookupView::Failed {
@@ -699,7 +712,7 @@ fn lookup_of(
                 .collect::<Result<Vec<_>, DbError>>()?;
             Ok(LookupView::answered(&found))
         }
-        other => Err(unreadable("lookup answer", other)),
+        other => Err(DbError::unreadable("a stored lookup answer", other)),
     }
 }
 

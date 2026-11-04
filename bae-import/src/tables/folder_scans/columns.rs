@@ -9,11 +9,6 @@ use crate::folder_scanner::{
 
 pub(crate) use bae_db::client::query::{to_u32, to_u64};
 
-/// A column holding a value no writer here produces.
-pub(crate) fn unreadable(column: &str, stored: &str) -> DbError {
-    DbError::Message(format!("folder scan column {column} holds {stored:?}"))
-}
-
 pub(super) fn scope_text(scope: ReleaseFileScope) -> &'static str {
     match scope {
         ReleaseFileScope::Direct => "direct",
@@ -25,7 +20,7 @@ pub(super) fn scope_of(stored: &str) -> Result<ReleaseFileScope, DbError> {
     match stored {
         "direct" => Ok(ReleaseFileScope::Direct),
         "recursive" => Ok(ReleaseFileScope::Recursive),
-        other => Err(unreadable("scope", other)),
+        other => Err(DbError::unreadable("scan_candidate.scope", other)),
     }
 }
 
@@ -148,7 +143,7 @@ pub(super) fn sheet_binding_of(
         "refused_codec" => Ok(SheetBinding::RefusedCodec {
             codec: codec.ok_or_else(|| malformed("has no codec"))?,
         }),
-        other => Err(unreadable("sheet_binding", other)),
+        other => Err(DbError::unreadable("scan_candidate_file.sheet_binding", other)),
     }
 }
 
@@ -161,6 +156,6 @@ pub(super) fn sheet_disc_of(stored: &str, number: Option<i64>) -> Result<SheetDi
             Ok(SheetDisc::Disc { number: to_u32(number, "a sheet's disc number")? })
         }
         "ignored" => Ok(SheetDisc::Ignored),
-        other => Err(unreadable("sheet_disc", other)),
+        other => Err(DbError::unreadable("scan_candidate_file.sheet_disc", other)),
     }
 }

@@ -15,7 +15,6 @@ pub(crate) use provenance::{
     insert_provenance, read_provenance, store_provenance, StoredProvenance, PROVENANCE_COLUMNS,
 };
 
-use super::verdict_rows::unreadable;
 use super::*;
 use crate::cover_art::PreparedCover;
 use crate::tables::downscaled_copies::{copies_json_sql, copies_of};
@@ -55,7 +54,7 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
         "prefill" => Ok(MetadataAuthor::Prefill),
         "identification" => Ok(MetadataAuthor::Identification),
         "person" => Ok(MetadataAuthor::Person),
-        other => Err(unreadable("draft author", other)),
+        other => Err(DbError::unreadable("a draft's stored author", other)),
     }
 }
 
@@ -411,7 +410,7 @@ impl StoredCover {
                     .map_err(DbError::Message)?,
                 ))
             }
-            other => Err(unreadable("cover kind", other)),
+            other => Err(DbError::unreadable("import_candidate_cover.kind", other)),
         }
     }
 }
@@ -555,8 +554,9 @@ impl StoredDraftRow {
                 let carrier = medium
                     .carrier
                     .map(|key| {
-                        bae_types::pressing::Medium::from_key(&key)
-                            .ok_or_else(|| unreadable("draft medium", &key))
+                        bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
+                            DbError::unreadable("import_candidate_medium.medium", &key)
+                        })
                     })
                     .transpose()?;
                 Ok(bae_types::mediums::ReleaseMedium { carrier, sides: medium.sides })
@@ -589,14 +589,7 @@ impl StoredDraftRow {
 
 /// The draft's label rows as typed, as the read's `labels` array holds them.
 fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
-    let labels: String = row.get("labels")?;
-    serde_json::from_str::<Vec<RawLabelEdit>>(&labels).map_err(|error| {
-        bae_db::client::read::column_conversion_error(
-            row,
-            "labels",
-            format!("label rows {labels:?}: {error}"),
-        )
-    })
+    bae_db::client::read::json_column(row, "labels")
 }
 
 /// One `import_candidate_medium` row as the draft's read holds it.
@@ -639,7 +632,7 @@ impl StoredTrack {
                     .map(StoredAssignment::credited)
                     .collect::<Result<_, _>>()?,
             ),
-            other => return Err(unreadable("artist assignment kind", other)),
+            other => return Err(DbError::unreadable("a stored artist assignment's kind", other)),
         };
         let file = match self.file_kind.as_str() {
             "standalone" => AudioFile::Standalone { file_id: self.file_id },
@@ -649,7 +642,7 @@ impl StoredTrack {
                 index: u32::try_from(self.slice_index.ok_or_else(|| missing("slice"))?)
                     .map_err(|error| missing(&format!("a readable slice ({error})")))?,
             },
-            other => return Err(unreadable("file_kind", other)),
+            other => return Err(DbError::unreadable("import_candidate_track.file_kind", other)),
         };
         let stated_length_ms = self
             .stated_length_ms
@@ -789,7 +782,7 @@ impl StoredAssignment {
                     credited_as: self.credited_as,
                 },
             },
-            other => return Err(unreadable("artist assignment kind", other)),
+            other => return Err(DbError::unreadable("a stored artist assignment's kind", other)),
         };
         Ok(Credited { artist, join: self.join_phrase })
     }

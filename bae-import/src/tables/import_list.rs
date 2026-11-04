@@ -26,7 +26,7 @@ mod writes;
 use super::*;
 use crate::list::{ImportListId, ImportListView};
 use crate::PendingFilter;
-use folder_scans::columns::{to_u32, to_u64, unreadable};
+use folder_scans::columns::{to_u32, to_u64};
 use order::{Items, Shown};
 
 pub use selection::SelectionWrite;
@@ -76,7 +76,7 @@ fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
         "identified" => Ok(PendingFilter::Identified),
         "unmatched" => Ok(PendingFilter::Unmatched),
         "not_looked_up" => Ok(PendingFilter::NotLookedUp),
-        other => Err(unreadable("a Found filter entry", other)),
+        other => Err(DbError::unreadable("an import list's stored pending filter", other)),
     }
 }
 

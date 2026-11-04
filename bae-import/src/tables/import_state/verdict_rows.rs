@@ -110,11 +110,6 @@ impl<'a> Outcome<'a> {
     }
 }
 
-/// What a stored column holds that no writer here produces.
-pub(super) fn unreadable(column: &str, stored: &str) -> DbError {
-    DbError::Message(format!("import candidate column {column} holds {stored:?}"))
-}
-
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
 /// it: they hang off the verdict row.
 pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
@@ -538,7 +533,7 @@ pub(super) fn outcome_of(
             })?;
             TerminalVerdict::Error { failure: InternalFailure { detail } }
         }
-        other => return Err(unreadable("verdict kind", other)),
+        other => return Err(DbError::unreadable("import_candidate_verdict.kind", other)),
     };
     Ok((RunOutcome::Answered(verdict), kept_own_draft))
 }
@@ -553,7 +548,9 @@ pub(super) fn medium_conflict_of(
     Ok(Some(match kind.as_str() {
         "cd_rip" => bae_identify::MediumConflict::CdRip,
         "not_cd_audio" => bae_identify::MediumConflict::NotCdAudio,
-        other => return Err(verdict_rows::unreadable("medium_conflict", other)),
+        other => {
+            return Err(DbError::unreadable("import_candidate_verdict.medium_conflict", other))
+        }
     }))
 }
 

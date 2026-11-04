@@ -3,7 +3,6 @@
 //! album a person linked it to, written in place when it changes and read
 //! back with every read that shows the candidate.
 
-use super::verdict_rows::unreadable;
 use super::*;
 use crate::ReleaseLink;
 use bae_catalogs::catalog::Catalog;
@@ -148,7 +147,7 @@ impl StoredReleaseLink {
                     ))
                 })?,
             )),
-            (other, _, _) => Err(unreadable("release link", other)),
+            (other, _, _) => Err(DbError::unreadable("import_candidate_release_link.kind", other)),
         }
     }
 }

@@ -448,7 +448,7 @@ pub(crate) fn load_candidate_items_rows(
                         _ => ScanItem::Valid(candidate),
                     }
                 }
-                other => return Err(unreadable("kind", other)),
+                other => return Err(DbError::unreadable("scan_candidate.kind", other)),
             };
             items.push(StoredScanItem { key: row.path, generation, item });
         }
@@ -524,7 +524,7 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
                         )?,
                     }
                 }
-                other => return Err(unreadable("role", other)),
+                other => return Err(DbError::unreadable("scan_candidate_file.role", other)),
             };
             Ok(CandidateFile {
                 file: ScannedFile {

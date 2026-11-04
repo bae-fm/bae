@@ -1,7 +1,6 @@
 //! A catalog's lookup failure as the two columns every row that stores one
 //! uses: its kind, and the provider's HTTP status.
 
-use super::verdict_rows::unreadable;
 use super::*;
 use bae_catalogs::LookupFailure;
 
@@ -41,6 +40,6 @@ pub(super) fn failure_of(
                 })
                 .transpose()?,
         },
-        other => return Err(unreadable("lookup failure", other)),
+        other => return Err(DbError::unreadable("a stored lookup failure's kind", other)),
     }))
 }

@@ -34,7 +34,7 @@ impl Item {
             "candidate" => Ok(Self::Candidate),
             "invalid" => Ok(Self::Invalid),
             "group" => Ok(Self::Group),
-            other => Err(unreadable("an import list item", other)),
+            other => Err(DbError::unreadable("an import list's stored item", other)),
         }
     }
 }
@@ -83,7 +83,7 @@ pub(super) fn tab_of(column: &str) -> Result<TriageTab, DbError> {
         "pending" => Ok(TriageTab::Pending),
         "done" => Ok(TriageTab::Done),
         "skipped" => Ok(TriageTab::Skipped),
-        other => Err(unreadable("an import list tab", other)),
+        other => Err(DbError::unreadable("an import list's stored tab", other)),
     }
 }
 
@@ -103,7 +103,7 @@ pub(super) fn order_of(column: &str) -> Result<ImportListOrder, DbError> {
         "oldest_first" => Ok(ImportListOrder::OldestFirst),
         "path_ascending" => Ok(ImportListOrder::PathAscending),
         "path_descending" => Ok(ImportListOrder::PathDescending),
-        other => Err(unreadable("an import list order", other)),
+        other => Err(DbError::unreadable("import_list.list_order", other)),
     }
 }
 

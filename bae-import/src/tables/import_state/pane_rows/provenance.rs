@@ -110,7 +110,7 @@ impl StoredProvenance {
                     )?,
                 })
             }
-            other => Err(unreadable("provenance kind", other)),
+            other => Err(DbError::unreadable("import_candidate_draft_provenance.kind", other)),
         }
     }
 }

@@ -3,7 +3,7 @@
 //! bae broke reading a signal is one column, its error chain. A still-scanning
 //! signal reaching a candidate's rows is a defect, and the write refuses it.
 
-use super::verdict_rows::{unreadable, Owner};
+use super::verdict_rows::Owner;
 use super::*;
 use bae_catalogs::{
     AudioOrigin, AudioSource, CdProof, DownloadProof, InternalFailure, StoreMarker,
@@ -327,22 +327,29 @@ impl StoredSignals {
         let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
             (None, None, None) => None,
             (Some("cd_rip"), Some(proof), None) => Some(AudioSource::CdRip {
-                proof: CdProof::from_key(&proof)
-                    .ok_or_else(|| unreadable("cd_rip_proof", &proof))?,
+                proof: CdProof::from_key(&proof).ok_or_else(|| {
+                    DbError::unreadable("import_candidate_signals.cd_rip_proof", &proof)
+                })?,
                 file: audio_source_file,
             }),
             (Some("download"), None, Some(proof)) if proof == DELIVERY_SET => {
                 Some(AudioSource::Download(DownloadProof::DeliverySet))
             }
             (Some("download"), None, Some(proof)) => {
-                let marker = StoreMarker::from_key(&proof)
-                    .ok_or_else(|| unreadable("download_proof", &proof))?;
+                let marker = StoreMarker::from_key(&proof).ok_or_else(|| {
+                    DbError::unreadable("import_candidate_signals.download_proof", &proof)
+                })?;
                 let file = audio_source_file.ok_or_else(|| {
                     DbError::Message("a stored store download names no file".into())
                 })?;
                 Some(AudioSource::Download(DownloadProof::Store { marker, file }))
             }
-            (source, ..) => return Err(unreadable("audio_source", source.unwrap_or("NULL"))),
+            (source, ..) => {
+                return Err(DbError::unreadable(
+                    "import_candidate_signals.audio_source",
+                    source.unwrap_or("NULL"),
+                ))
+            }
         };
         let origin = AudioOrigin { source, not_cd_rate };
         let discs: Vec<ComputedDiscId> = list_of::<StoredSourcedValue>(&discs, "Disc IDs")?
@@ -360,7 +367,9 @@ impl StoredSignals {
             "absent" => DiscIdSignal::Absent,
             "not_cd_audio" => DiscIdSignal::NotCdAudio,
             "failed" => DiscIdSignal::Failed { failure: failure_of(disc_id_failure, "Disc ID")? },
-            other => return Err(unreadable("disc_id_state", other)),
+            other => {
+                return Err(DbError::unreadable("import_candidate_signals.disc_id_state", other))
+            }
         };
         let codes: Vec<SourcedValue> = list_of::<StoredSourcedValue>(&barcodes, "barcodes")?
             .into_iter()
@@ -373,7 +382,9 @@ impl StoredSignals {
             "failed" => {
                 BarcodeSignal::Failed { failure: failure_of(barcode_failure, "barcode")?, codes }
             }
-            other => return Err(unreadable("barcode_state", other)),
+            other => {
+                return Err(DbError::unreadable("import_candidate_signals.barcode_state", other))
+            }
         };
         let catalogs = list_of(&catalogs, "catalog numbers")?;
         let free_text = list_of(&free_text, "free text")?;
@@ -385,7 +396,7 @@ impl StoredSignals {
                 catalogs,
                 free_text,
             },
-            other => return Err(unreadable("text_state", other)),
+            other => return Err(DbError::unreadable("import_candidate_signals.text_state", other)),
         };
         let text_pool = list_of::<StoredTextLine>(&text_pool, "text lines")?
             .into_iter()

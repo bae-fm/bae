@@ -2,7 +2,7 @@
 //! found, or a typed search's catalog returned, where it is listed, what the
 //! record said and the rows hanging off it, written and read back.
 
-use super::verdict_rows::{unreadable, Owner};
+use super::verdict_rows::Owner;
 use super::*;
 use crate::tables::album_link_rows::AlbumLinkRow;
 use bae_catalogs::album_links::AlbumLinks;
@@ -22,7 +22,8 @@ fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
 }
 
 fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
-    CoverStanding::from_column(stored).ok_or_else(|| unreadable("cover_standing", stored))
+    CoverStanding::from_column(stored)
+        .ok_or_else(|| DbError::unreadable("import_candidate_match.cover_standing", stored))
 }
 
 /// Whose match rows these are: a verdict-shaped owner's — a candidate's
@@ -551,7 +552,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
                 .map(|stored| StatedFormat { medium: stored.medium, quantity: stored.quantity })
                 .collect(),
         ),
-        other => return Err(unreadable("media_kind", other)),
+        other => return Err(DbError::unreadable("import_candidate_match.media_kind", other)),
     };
     result.labels = labels;
     result.barcodes = barcodes;
@@ -575,7 +576,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         }
         ALBUM_LINKS_NOT_ASKED => AlbumLinks::NotAsked,
         ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
-        other => return Err(unreadable("album_links", other)),
+        other => return Err(DbError::unreadable("import_candidate_match.album_links", other)),
     };
     let listed = |pressing: Option<i64>| {
         let Some(pressing) = pressing else {
@@ -607,7 +608,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
                  or offered release holds"
             )))
         }
-        other => return Err(unreadable("listing", other)),
+        other => return Err(DbError::unreadable("import_candidate_match.listing", other)),
     };
     Ok(MatchRow { position, result, listing })
 }
@@ -642,7 +643,9 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
                 })?,
             })
         }
-        Some(other) => return Err(unreadable("source_tracks_kind", other)),
+        Some(other) => {
+            return Err(DbError::unreadable("import_candidate_match.source_tracks_kind", other))
+        }
     };
     let source: String = row.get("source")?;
     let facts = bae_db::client::pressing_columns::read_facts_without_media(row, "")?;
@@ -795,8 +798,12 @@ impl StoredMatchEntries {
                         medium: stored
                             .medium
                             .map(|key| {
-                                bae_types::pressing::Medium::from_key(&key)
-                                    .ok_or_else(|| unreadable("medium", &key))
+                                bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
+                                    DbError::unreadable(
+                                        "import_candidate_match_medium.medium",
+                                        &key,
+                                    )
+                                })
                             })
                             .transpose()?,
                         quantity: stored.quantity,

@@ -65,16 +65,13 @@ fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbEr
     }
 }
 
-fn unreadable(what: &str, value: impl std::fmt::Debug) -> DbError {
-    DbError::Message(format!("stored source release holds an unreadable {what}: {value:?}"))
-}
-
 #[expect(
     clippy::map_err_ignore,
     reason = "the unreadable value is named; the parse says nothing past it"
 )]
 fn catalog_column(value: &str) -> Result<Catalog, DbError> {
-    Catalog::from_str(value).map_err(|_| unreadable("catalog", value))
+    Catalog::from_str(value)
+        .map_err(|_| DbError::unreadable("a source release's stored catalog", value))
 }
 
 #[expect(
@@ -82,7 +79,7 @@ fn catalog_column(value: &str) -> Result<Catalog, DbError> {
     reason = "the unreadable value is named; the conversion says nothing past it"
 )]
 fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
-    u64::try_from(value).map_err(|_| unreadable(what, value))
+    u64::try_from(value).map_err(|_| DbError::unreadable(what, value))
 }
 
 /// The album year a stored release reads back with: its album's first year,
@@ -421,10 +418,15 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
     let archive_release = match (archive_release, archive_group) {
         (Some(release_id), group_id) => Some(ArchiveRelease { release_id, group_id }),
         (None, None) => None,
-        (None, Some(group)) => return Err(unreadable("archive group without a release", group)),
+        (None, Some(group)) => {
+            return Err(DbError::unreadable(
+                "a source release's archive group without a release",
+                group,
+            ))
+        }
     };
-    let notes: Vec<String> =
-        serde_json::from_str(&notes).map_err(|error| unreadable("notes", (&notes, error)))?;
+    let notes: Vec<String> = serde_json::from_str(&notes)
+        .map_err(|error| DbError::unreadable("source_release.notes", (&notes, error)))?;
     pressing.labels = sql
         .query(
             "SELECT name, catalog_number, musicbrainz_label_id, discogs_label_id \
@@ -444,7 +446,9 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
         .map(|(name, catalog_number, musicbrainz, discogs)| {
             ReleaseLabel::new(name.clone(), catalog_number.clone())
                 .map(|label| label.with_ids(musicbrainz, discogs))
-                .ok_or_else(|| unreadable("label", (name, catalog_number)))
+                .ok_or_else(|| {
+                    DbError::unreadable("source_release_cover.label", (name, catalog_number))
+                })
         })
         .collect::<Result<_, DbError>>()?;
     pressing.barcodes = sql.query(
@@ -501,7 +505,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                     .collect::<Result<_, DbError>>()?,
                 ),
                 Some(ALBUM_LINKS_UNREAD) => AlbumLinks::Unread,
-                other => return Err(unreadable("MusicBrainz release album links", other)),
+                other => return Err(DbError::unreadable("source_release.album_links", other)),
             },
         },
         LookupCatalog::Discogs => CatalogFacts::Discogs {
@@ -578,12 +582,12 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
             label,
             source: catalog_column(&source)?,
             standing: CoverStanding::from_column(&standing)
-                .ok_or_else(|| unreadable("cover standing", &standing))?,
+                .ok_or_else(|| DbError::unreadable("source_release_cover.standing", &standing))?,
         };
         match scope.as_str() {
             "release" => covers.release.push(cover),
             "album" => covers.album.push(cover),
-            other => return Err(unreadable("cover scope", other)),
+            other => return Err(DbError::unreadable("source_release_cover.scope", other)),
         }
     }
     let archive_groups: Vec<String> = sql.query(
@@ -607,14 +611,21 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
         .map(|(document, document_key, reason)| {
             Ok(UnfetchedDocument {
                 document: bae_catalogs::records::PayloadSource::from_str(&document).map_err(
-                    |error| unreadable(&format!("unfetched document ({error})"), &document),
+                    |error| {
+                        DbError::unreadable(
+                            format!("source_release_unfetched.document ({error})"),
+                            &document,
+                        )
+                    },
                 )?,
                 key: document_key,
                 reason: match reason.as_str() {
                     "failed" => UnfetchedReason::Failed,
                     "discogs_not_configured" => UnfetchedReason::DiscogsNotConfigured,
                     "stopped_short" => UnfetchedReason::StoppedShort,
-                    other => return Err(unreadable("unfetched reason", other)),
+                    other => {
+                        return Err(DbError::unreadable("source_release_unfetched.reason", other))
+                    }
                 },
             })
         })
@@ -667,7 +678,7 @@ fn own_records_on<S: QueryRows>(
         match kind.as_str() {
             "pressing" => Ok(ReleaseRecord::new(&reference, album_key)),
             "album" => Ok(ReleaseRecord::album(&reference)),
-            other => Err(unreadable("record kind", other)),
+            other => Err(DbError::unreadable("source_release_record.kind", other)),
         }
     })
     .collect()

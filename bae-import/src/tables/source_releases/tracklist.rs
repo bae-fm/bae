@@ -237,7 +237,8 @@ fn artist_json(alias: &str) -> String {
 }
 
 fn stored_list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
-    serde_json::from_str(json).map_err(|error| unreadable(what, format!("{json:?}: {error}")))
+    serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable(what, format!("{json:?}: {error}")))
 }
 
 pub(super) fn load_mediums<S: QueryOne + QueryRows>(
@@ -344,7 +345,8 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
             medium,
             parent,
             value: TracklistEntry {
-                kind: EntryKind::parse(&kind).ok_or_else(|| unreadable("entry kind", &kind))?,
+                kind: EntryKind::parse(&kind)
+                    .ok_or_else(|| DbError::unreadable("source_release_entry.kind", &kind))?,
                 position,
                 title,
                 duration_ms: duration_ms
@@ -358,10 +360,9 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
         });
     }
     let entry_at = |entry: i64| -> Result<usize, DbError> {
-        index_of
-            .get(&entry)
-            .copied()
-            .ok_or_else(|| unreadable("reference to a missing entry", entry))
+        index_of.get(&entry).copied().ok_or_else(|| {
+            DbError::unreadable("a source release tracklist's reference to a missing entry", entry)
+        })
     };
     for (entry, performed) in load_works(sql, catalog, key)? {
         let index = entry_at(entry)?;
@@ -381,7 +382,10 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
         };
         let parent_index = entry_at(parent)?;
         if parent_index >= index {
-            return Err(unreadable("entry parented under a later entry", parent));
+            return Err(DbError::unreadable(
+                "a source release tracklist's entry parented under a later entry",
+                parent,
+            ));
         }
         let child = attached[index].take().expect("each entry is attached once");
         attached[parent_index]
@@ -397,7 +401,12 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
         let medium = usize::try_from(medium)
             .ok()
             .and_then(|medium| mediums.get_mut(medium))
-            .ok_or_else(|| unreadable("reference to a missing medium", medium))?;
+            .ok_or_else(|| {
+                DbError::unreadable(
+                    "a source release tracklist's reference to a missing medium",
+                    medium,
+                )
+            })?;
         medium.entries.push(value);
     }
     Ok(mediums)
@@ -476,7 +485,12 @@ fn load_works<S: QueryOne + QueryRows>(
             None => None,
             Some("forward") => Some(PartDirection::Forward),
             Some("backward") => Some(PartDirection::Backward),
-            Some(other) => return Err(unreadable("part direction", other)),
+            Some(other) => {
+                return Err(DbError::unreadable(
+                    "a source release tracklist's part direction",
+                    other,
+                ))
+            }
         };
         nodes.push(WorkRow {
             node,
@@ -502,15 +516,24 @@ fn load_works<S: QueryOne + QueryRows>(
             .map(|event| match event {
                 StoredEvent::Composer(artist) => Ok(SourceWorkEvent::Composer(artist.artist())),
                 StoredEvent::Part(node) => {
-                    let part_index = *index_of
-                        .get(&node)
-                        .ok_or_else(|| unreadable("part of a missing work", node))?;
+                    let part_index = *index_of.get(&node).ok_or_else(|| {
+                        DbError::unreadable(
+                            "a source release tracklist's part of a missing work",
+                            node,
+                        )
+                    })?;
                     if part_index <= index {
-                        return Err(unreadable("work parented under a later work", row.node));
+                        return Err(DbError::unreadable(
+                            "a source release tracklist's work parented under a later work",
+                            row.node,
+                        ));
                     }
-                    let (direction, work) = parts[part_index]
-                        .take()
-                        .ok_or_else(|| unreadable("work that is a part twice", node))?;
+                    let (direction, work) = parts[part_index].take().ok_or_else(|| {
+                        DbError::unreadable(
+                            "a source release tracklist's work that is a part twice",
+                            node,
+                        )
+                    })?;
                     Ok(SourceWorkEvent::Part { direction, work })
                 }
             })
@@ -520,12 +543,20 @@ fn load_works<S: QueryOne + QueryRows>(
                 performed.push((entry, PerformedWork { position: row.position, work }))
             }
             (None, Some(_), Some(direction)) => parts[index] = Some((direction, work)),
-            _ => return Err(unreadable("work placed on neither a track nor a work", row.node)),
+            _ => {
+                return Err(DbError::unreadable(
+                    "a source release tracklist's work placed on neither a track nor a work",
+                    row.node,
+                ))
+            }
         }
     }
     // A part whose work no node holds was never taken.
     if let Some(index) = parts.iter().position(Option::is_some) {
-        return Err(unreadable("part of a missing work", nodes[index].node));
+        return Err(DbError::unreadable(
+            "a source release tracklist's part of a missing work",
+            nodes[index].node,
+        ));
     }
     performed.reverse();
     Ok(performed)

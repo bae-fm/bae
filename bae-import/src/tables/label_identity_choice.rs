@@ -231,7 +231,7 @@ fn chosen_label_on<Q: QueryOne>(
             )))
         }
         (other, _) => {
-            return Err(DbError::Message(format!("unknown label identity choice {other:?}")))
+            return Err(DbError::unreadable("import_candidate_label_identity_choice.choice", other))
         }
     }))
 }

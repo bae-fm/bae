@@ -19,7 +19,7 @@ fn presentation_of(column: &str) -> Result<MetadataPresentation, DbError> {
     match column {
         "draft" => Ok(MetadataPresentation::Draft),
         "find_online" => Ok(MetadataPresentation::FindOnline),
-        other => Err(DbError::Message(format!("unreadable session presentation {other:?}"))),
+        other => Err(DbError::unreadable("import_candidate_session.presentation", other)),
     }
 }
 
@@ -34,7 +34,7 @@ fn section_of(column: &str) -> Result<FindOnlineSection, DbError> {
     match column {
         "automatic" => Ok(FindOnlineSection::Automatic),
         "search" => Ok(FindOnlineSection::Search),
-        other => Err(DbError::Message(format!("unreadable Find online section {other:?}"))),
+        other => Err(DbError::unreadable("import_candidate_session.find_online_section", other)),
     }
 }
 
@@ -51,7 +51,7 @@ fn tab_of(column: &str) -> Result<SearchTab, DbError> {
         "general" => Ok(SearchTab::General),
         "catalog_number" => Ok(SearchTab::CatalogNumber),
         "barcode" => Ok(SearchTab::Barcode),
-        other => Err(DbError::Message(format!("unreadable session search tab {other:?}"))),
+        other => Err(DbError::unreadable("import_candidate_session.search_tab", other)),
     }
 }
 
@@ -82,7 +82,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
         "keep_own_draft" => PaneCommand::KeepOwnDraft,
         "link_shared_album" => PaneCommand::LinkSharedAlbum,
         "unlink" => PaneCommand::Unlink,
-        other => return Err(DbError::Message(format!("unreadable pane command {other:?}"))),
+        other => return Err(DbError::unreadable("import_candidate_session.error_command", other)),
     })
 }
 

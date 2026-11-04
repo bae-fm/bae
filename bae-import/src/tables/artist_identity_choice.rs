@@ -161,7 +161,12 @@ fn chosen_artist_on<Q: QueryOne>(
             Some(artist) => ChosenArtist::Library(artist),
             None => ChosenArtist::New(artist_id),
         },
-        other => return Err(DbError::Message(format!("unknown artist identity choice {other:?}"))),
+        other => {
+            return Err(DbError::unreadable(
+                "import_candidate_artist_identity_choice.choice",
+                other,
+            ))
+        }
     };
     Ok(Some(selected))
 }

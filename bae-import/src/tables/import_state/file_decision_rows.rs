@@ -3,7 +3,6 @@
 //! decision at all); read back by the next scan, and settled onto every
 //! scanned release reading the same files.
 
-use super::verdict_rows::unreadable;
 use super::*;
 use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
 use crate::tables::FinishRead;
@@ -138,7 +137,9 @@ impl StoredFileEdits {
                         })?,
                     }
                 }
-                other => return Err(unreadable("disc", other)),
+                other => {
+                    return Err(DbError::unreadable("import_candidate_sheet_disc.disc", other))
+                }
             };
             edits.sheet_discs.set(stored.sheet_id, disc);
         }
