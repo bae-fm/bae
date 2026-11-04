@@ -9,7 +9,6 @@
 mod album_link_rows;
 #[cfg(desktop)]
 mod downscaled_copies;
-#[cfg(desktop)]
 mod folder_scans;
 mod import_list;
 #[cfg(desktop)]
@@ -24,8 +23,12 @@ mod source_releases;
 mod watched_folders;
 
 /// Import's parts of the library's schema, in the order they run.
-pub const SCHEMA_PARTS: &[bae_db::SchemaPart] =
-    &[watched_folders::SCHEMA, skipped_candidates::SCHEMA, import_list::SCHEMA];
+pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[
+    watched_folders::SCHEMA,
+    skipped_candidates::SCHEMA,
+    folder_scans::SCHEMA,
+    import_list::SCHEMA,
+];
 
 #[cfg(desktop)]
 pub(crate) use folder_scans::DbCandidateFileTagSnapshot;
