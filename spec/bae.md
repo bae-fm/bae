@@ -994,7 +994,9 @@ about a key replaced since leaves the new key as its own save recorded it. A
 Discogs label name
 loses the " (2)" Discogs adds to tell two labels of one name apart: the
 label's id tells them apart, and the name is what a release prints. Either catalog can be
-switched off. MusicBrainz is asked no more than once every 1.2 seconds, under
+switched off, but not the last one asked. A library left asking none, its
+last asked catalog having lost its key, has nothing to search, which core
+states and Find online says. MusicBrainz is asked no more than once every 1.2 seconds, under
 the rate it allows.
 
 **Rounds.** One lookup is not enough. Ana's Disc ID returns three CD

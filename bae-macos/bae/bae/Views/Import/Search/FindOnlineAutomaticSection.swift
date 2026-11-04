@@ -44,9 +44,11 @@ struct FindOnlineAutomaticSection: View {
     @Binding
     var narrowedOutExpanded: Bool
 
-    /// Which sources are asked is core's answer, carried on the config the app
-    /// observes: adding a token in Settings takes the notice away while the
-    /// pane is open.
+    /// Whether any source is asked is core's answer, carried on the config the
+    /// app observes: adding a token in Settings takes the notice away while
+    /// the pane is open. With none, there is nothing to start: core refuses to
+    /// switch off the last source, so this is reachable only by a source
+    /// losing its credential after being left as the only one switched on.
     @Environment(ConfigStore.self)
     private var configStore
 
@@ -54,25 +56,11 @@ struct FindOnlineAutomaticSection: View {
         FindOnlineResultArea(identifyState: state.identifyState)
     }
 
-    /// Whether any source is being asked at all. With none, there is nothing to
-    /// start: core refuses to switch off the last source, so this is reachable
-    /// only by a source losing its credential after being left as the only one
-    /// switched on.
-    private var hasSourceToSearch: Bool {
-        Self.hasSourceToSearch(configStore.config)
-    }
-
-    /// Whether any catalog is on to ask, without which there is nothing to
-    /// search by name.
-    static func hasSourceToSearch(_ config: Config) -> Bool {
-        config.lookupCatalogs.contains { $0.availability == .on }
-    }
-
     var body: some View {
         switch area {
         case .notStarted:
             FindOnlineEmptyZone {
-                if hasSourceToSearch {
+                if configStore.config.hasSourceToSearch {
                     // Nothing has run for this candidate. Starting one is the
                     // card's own action, so what is left here is the other way
                     // to a release: asking for it by name.

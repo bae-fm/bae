@@ -17,7 +17,7 @@ mod save;
 mod server;
 
 pub use catalog_availability::{
-    asked_sources, is_the_only_asked_source, CatalogAvailability, SourceAvailability,
+    asked_sources, asks_a_source, is_the_only_asked_source, CatalogAvailability, SourceAvailability,
 };
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;

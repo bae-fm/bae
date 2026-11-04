@@ -76,26 +76,6 @@ struct FindOnlineSourceSwitchTests {
             #expect(try locales(key) == reference, "\(key) is missing locales")
         }
     }
-
-    /// With every source switched off or unreachable there is nothing to look
-    /// up, so the pane says so instead of offering the typed search, which
-    /// would ask providers core will not ask.
-    /// The pane's words for each are the `import-search-no-source` and
-    /// `import-search-not-started` shots'.
-    @Test("a pane with no source to ask says so instead of offering a search")
-    func aPaneWithNoSourceSaysSo() {
-        let nothingToAsk = PreviewData.makeConfigStore(
-            libraryFullWidth: false,
-            discogsUsable: false,
-            musicBrainz: .off
-        )
-        let ordinary = PreviewData.makeConfigStore(libraryFullWidth: false)
-        #expect(
-            !FindOnlineAutomaticSection.hasSourceToSearch(nothingToAsk.config)
-        )
-        #expect(FindOnlineAutomaticSection.hasSourceToSearch(ordinary.config))
-    }
-
 }
 
 /// Collects what the source checkboxes write, and optionally refuses the way

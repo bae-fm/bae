@@ -229,6 +229,7 @@ impl BridgeConfig {
             import_when_identified: *import_when_identified,
             import_storage: BridgeImportStorage { cloud: *cloud, pinned: *pinned },
             lookup_catalogs,
+            has_source_to_search: bae_preferences::asks_a_source(&config.prefs.metadata_sources()),
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
             save_presets: save_presets.iter().map(BridgeSavePreset::from_core).collect(),

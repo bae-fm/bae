@@ -206,6 +206,7 @@ struct SyncStatusStoreTests {
                     canChange: true
                 ),
             ],
+            hasSourceToSearch: true,
             showRemainingTime: false,
             libraryFullWidth: false,
             savePresets: [],

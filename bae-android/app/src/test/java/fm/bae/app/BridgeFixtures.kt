@@ -277,6 +277,7 @@ object BridgeFixtures {
                         canChange = false,
                     ),
                 ),
+            hasSourceToSearch = true,
             showRemainingTime = false,
             libraryFullWidth = false,
             savePresets =

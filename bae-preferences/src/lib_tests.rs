@@ -145,6 +145,23 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
     );
 }
 
+/// A library asks no source once every source is switched off or lacks what it
+/// needs: MusicBrainz off and Discogs without a key.
+#[test]
+fn a_library_with_every_source_off_or_unreachable_asks_none() {
+    use crate::asks_a_source;
+    use bae_catalogs::catalog::LookupCatalog;
+
+    let mut prefs = Preferences::default();
+    assert!(asks_a_source(&prefs.metadata_sources()), "a fresh library asks MusicBrainz");
+
+    prefs.identification.catalogs.set(LookupCatalog::MusicBrainz, false);
+    assert!(!asks_a_source(&prefs.metadata_sources()), "Discogs has no key to be asked with");
+
+    prefs.discogs = Some(DiscogsValidation::Valid);
+    assert!(asks_a_source(&prefs.metadata_sources()), "a key lets Discogs be asked");
+}
+
 /// The rule that decides both the refusal and the greyed-out switch: switching
 /// off the only source still being asked would leave nothing to ask.
 #[test]

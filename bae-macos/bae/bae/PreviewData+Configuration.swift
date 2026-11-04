@@ -78,7 +78,11 @@
             discogs: BridgeSourceAvailability? = nil,
             storage: BridgeStorageLocation? = nil
         ) -> ConfigStore {
-            ConfigStore(
+            let catalogs = lookupCatalogs(
+                musicBrainz: musicBrainz,
+                discogs: discogs ?? (discogsUsable ? .on : .notConfigured)
+            )
+            return ConfigStore(
                 config: Config(
                     bridge: BridgeConfig(
                         libraryId: "lib-preview",
@@ -94,11 +98,11 @@
                             cloud: true,
                             pinned: true
                         ),
-                        lookupCatalogs: lookupCatalogs(
-                            musicBrainz: musicBrainz,
-                            discogs: discogs
-                                ?? (discogsUsable ? .on : .notConfigured)
-                        ),
+                        lookupCatalogs: catalogs,
+                        // As core answers it: whether any catalog is asked.
+                        hasSourceToSearch: catalogs.contains {
+                            $0.availability == .on
+                        },
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
                         savePresets: savePresets,

@@ -37,6 +37,13 @@ pub fn asked_sources(sources: &[CatalogAvailability]) -> Vec<LookupCatalog> {
     sources.iter().filter(|entry| entry.state.is_on()).map(|entry| entry.catalog).collect()
 }
 
+/// Whether an availability list asks any source at all. With none, Find
+/// online has nothing to search: switching off the last source is refused,
+/// so a list reaches it only by its last asked source losing its credential.
+pub fn asks_a_source(sources: &[CatalogAvailability]) -> bool {
+    sources.iter().any(|entry| entry.state.is_on())
+}
+
 /// Whether `source` is the only one this library still asks, so switching it
 /// off would leave nothing to ask.
 ///

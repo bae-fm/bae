@@ -37,6 +37,9 @@ public struct Config: Equatable {
     /// render this rather than re-deriving "on and reachable" from
     /// `discogsUsable` plus a flag of their own.
     public let lookupCatalogs: [BridgeLookupCatalogSetting]
+    /// Whether any catalog is asked, core's answer: with none, Find online
+    /// has nothing to search and says so.
+    public let hasSourceToSearch: Bool
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, so the bar
     /// reads it here rather than keeping its own copy per device.
@@ -75,6 +78,7 @@ public struct Config: Equatable {
         importWhenIdentified = bridge.importWhenIdentified
         importStorage = bridge.importStorage
         lookupCatalogs = bridge.lookupCatalogs
+        hasSourceToSearch = bridge.hasSourceToSearch
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
         savePresets = bridge.savePresets

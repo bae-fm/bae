@@ -386,6 +386,7 @@ private func makeAppService(
                     canChange: true
                 ),
             ],
+            hasSourceToSearch: true,
             showRemainingTime: false,
             libraryFullWidth: false,
             savePresets: [],

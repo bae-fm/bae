@@ -34,6 +34,9 @@ pub struct BridgeConfig {
     /// choice and the catalog's credentials into a single answer, so no surface
     /// re-derives "on and reachable" from a flag plus `discogs_usable`.
     pub lookup_catalogs: Vec<BridgeLookupCatalogSetting>,
+    /// Whether any catalog is asked. With none, Find online has nothing to
+    /// search and says so.
+    pub has_source_to_search: bool,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, not a
     /// per-device one — the seek bar reads it and never stores a copy.
