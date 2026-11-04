@@ -130,7 +130,7 @@ impl Pacer {
     /// latency lead plus the frames the playback clock has reached, minus what's
     /// already been sent.
     pub(crate) fn packets_due(&self, elapsed: Duration) -> u64 {
-        let played = (elapsed.as_secs_f64() * f64::from(self.sample_rate)) as u64;
+        let played = bae_util::sample_time::frame_at(elapsed, self.sample_rate);
         let target = u64::from(self.latency_frames) + played;
         target.saturating_sub(self.frames_sent) / u64::from(FRAMES_PER_PACKET)
     }
@@ -259,7 +259,7 @@ impl RaopStreamControl {
     /// [`latency_frames`](Self::latency_frames) as time, at the rate the
     /// stream carries PCM: what playback holds its audible position back by.
     pub(super) fn latency(&self) -> Duration {
-        Duration::from_secs_f64(f64::from(self.latency_frames) / f64::from(PCM_SAMPLE_RATE))
+        bae_util::sample_time::frame_start(u64::from(self.latency_frames), PCM_SAMPLE_RATE)
     }
 
     /// The re-anchor counter the audio thread watches: a change means restart the

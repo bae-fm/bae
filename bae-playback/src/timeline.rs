@@ -42,7 +42,7 @@ impl StreamPosition {
 
     /// The frame this position falls on at `sample_rate`.
     pub fn frames(self, sample_rate: u32) -> u64 {
-        (self.0.as_secs_f64() * f64::from(sample_rate)) as u64
+        bae_util::sample_time::frame_at(self.0, sample_rate)
     }
 
     /// This position moved `earlier` back, stopping at the stream's start.

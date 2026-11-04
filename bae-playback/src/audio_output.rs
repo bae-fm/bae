@@ -97,8 +97,8 @@ pub(crate) enum DrainStatus {
 
 #[cfg(any(test, feature = "test-utils"))]
 pub(crate) fn sleep_realtime_buffer(read: usize, channels: u32, sample_rate: u32) {
-    let frames = (read as u32 / channels) as f64;
-    std::thread::sleep(std::time::Duration::from_secs_f64(frames / sample_rate as f64));
+    let frames = (read / channels as usize) as u64;
+    std::thread::sleep(bae_util::sample_time::frame_start(frames, sample_rate));
 }
 
 pub(crate) struct AudioLockMissLog {

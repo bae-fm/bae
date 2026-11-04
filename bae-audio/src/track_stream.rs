@@ -278,12 +278,7 @@ impl TrackStream {
     }
 
     pub fn position(&self) -> std::time::Duration {
-        let samples = self.state.position_samples();
-        let sample_rate = self.state.sample_rate() as u64;
-        if sample_rate == 0 {
-            return std::time::Duration::ZERO;
-        }
-        std::time::Duration::from_secs_f64(samples as f64 / sample_rate as f64)
+        bae_util::sample_time::frame_start(self.state.position_samples(), self.state.sample_rate())
     }
 
     pub fn sample_rate(&self) -> u32 {

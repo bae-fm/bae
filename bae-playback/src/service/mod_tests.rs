@@ -794,6 +794,27 @@ fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
     }
 }
 
+/// INDEX 01 lands on the frame after the pregap's last, whatever the pregap's
+/// length in nanoseconds: 88 201 frames at 44.1 kHz is no whole number of them.
+#[test]
+fn a_direct_start_lands_on_the_frame_after_the_pregap() {
+    let mut resolved = test_resolved_track_audio("track");
+    for pregap in [88_200, 88_201, 88_199, 1] {
+        resolved.pregap_samples = Some(pregap);
+        let prepared = finalize_playback_track(
+            "track".to_string(),
+            &resolved,
+            vec![],
+            bae_preferences::ReplayGainMode::Off,
+        );
+        assert_eq!(
+            prepared.timeline.track_start().frames(prepared.sample_rate),
+            pregap,
+            "a pregap of {pregap} frames"
+        );
+    }
+}
+
 /// A direct start lands past a positive pregap, and at the stream's start
 /// without one; a natural start always at the stream's start.
 #[test]

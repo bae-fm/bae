@@ -139,9 +139,9 @@ impl PlaybackService {
         if listening.play.entry().track_id != fmt.track_id {
             return;
         }
-        let decoded = Duration::from_secs_f64(
-            samples as f64
-                / (f64::from(cur.prepared.sample_rate) * f64::from(cur.prepared.channels)),
+        let decoded = bae_util::sample_time::frame_start(
+            samples / u64::from(cur.prepared.channels),
+            cur.prepared.sample_rate,
         );
         let position = fmt.starts_at + decoded;
         listening.play.finish_at(

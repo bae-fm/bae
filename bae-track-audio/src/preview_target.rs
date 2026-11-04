@@ -44,11 +44,11 @@ impl PreviewTarget {
     }
 
     pub fn duration(&self, file_duration: Duration, sample_rate: u32) -> Option<Duration> {
-        let start = Duration::from_secs_f64(self.span.start_sample as f64 / sample_rate as f64);
+        let start = bae_util::sample_time::frame_start(self.span.start_sample, sample_rate);
         let end = self
             .span
             .end_sample
-            .map(|sample| Duration::from_secs_f64(sample as f64 / sample_rate as f64))
+            .map(|sample| bae_util::sample_time::frame_start(sample, sample_rate))
             .unwrap_or(file_duration);
         end.checked_sub(start).filter(|duration| !duration.is_zero())
     }

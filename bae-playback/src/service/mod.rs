@@ -227,7 +227,7 @@ impl PlaybackPreparedTrack {
         let main = self.segments.iter().find(|segment| segment.role == DbAudioSegmentRole::Main)?;
         let samples = match main.span.end_sample {
             Some(end) => end.saturating_sub(main.span.start_sample),
-            None => (duration.as_secs_f64() * f64::from(self.sample_rate)) as u64,
+            None => bae_util::sample_time::frame_at(duration, self.sample_rate),
         };
         Some(PlayingBytes::new(
             self.track_id.clone(),

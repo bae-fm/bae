@@ -208,11 +208,6 @@ impl ResolvedTrackAudio {
     /// rate. Zero without either.
     pub fn pregap(&self) -> std::time::Duration {
         let frames = self.pregap_samples.unwrap_or(0) + self.generated_pregap_frames();
-        let rate = u64::from(self.sample_rate.get());
-        let nanos = (frames % rate) * 1_000_000_000 / rate;
-        std::time::Duration::new(
-            frames / rate,
-            u32::try_from(nanos).expect("a fraction of a second is under 10^9 ns"),
-        )
+        bae_util::sample_time::frame_start(frames, self.sample_rate.get())
     }
 }
