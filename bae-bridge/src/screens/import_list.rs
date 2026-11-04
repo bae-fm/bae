@@ -273,29 +273,22 @@ impl ImportListSubscription {
             })
             .await
     }
+}
 
-    pub async fn next(
-        self: std::sync::Arc<Self>,
-    ) -> Result<crate::types::BridgeImportListSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ImportListSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(crate::types::BridgeImportListSnapshot::from_core)
-                    .map_err(list_error)
-            })
-            .await
+pulled_read_calls! {
+    ImportListSubscription => crate::types::BridgeImportListSnapshot,
+    converted by crate::types::BridgeImportListSnapshot::from_core
+}
+
+impl super::PulledRead for bae_import::LiveImportList {
+    type Value = bae_import::ImportListSnapshot;
+
+    async fn next(&self) -> Result<bae_import::ImportListSnapshot, BridgeError> {
+        bae_import::LiveImportList::next(self).await.map_err(list_error)
     }
 
-    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ImportListSubscription.cancel", move || async move {
-                self.inner.cancel().await.map_err(list_error)
-            })
-            .await
+    async fn cancel(&self) -> Result<(), BridgeError> {
+        bae_import::LiveImportList::cancel(self).await.map_err(list_error)
     }
 }
 

@@ -3,8 +3,6 @@
 //! already in the library. Each is one live query for as long as its screen
 //! is open, moved in place to each text the person types.
 
-use std::sync::Arc;
-
 use crate::types::BridgeError;
 
 /// One value a live library search delivered.
@@ -17,58 +15,31 @@ pub struct BridgeLibrarySearchSnapshot {
     pub request_revision: u64,
 }
 
-/// A live library search whose query changes in place as the person types:
-/// one query for as long as the search is open, not one per keystroke. It
-/// starts with no query.
-#[derive(uniffi::Object)]
-pub struct LibrarySearchSubscription {
-    inner: bae_views::LiveLibrarySearch,
-    runtime: crate::operation_runtime::OperationRuntime,
+impl BridgeLibrarySearchSnapshot {
+    fn from_core(snapshot: bae_views::LibrarySearchSnapshot) -> Self {
+        Self {
+            query: snapshot.query.map(|query| query.as_str().to_string()).unwrap_or_default(),
+            results: crate::types::BridgeSearchResults::from_core(snapshot.results),
+            request_revision: snapshot.request_revision,
+        }
+    }
 }
 
-pub(crate) fn library_search(
-    inner: bae_views::LiveLibrarySearch,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> Arc<LibrarySearchSubscription> {
-    Arc::new(LibrarySearchSubscription { inner, runtime })
+pulled_read! {
+    /// A live library search whose query changes in place as the person
+    /// types: one query for as long as the search is open, not one per
+    /// keystroke. It starts with no query.
+    LibrarySearchSubscription: bae_views::LiveLibrarySearch => BridgeLibrarySearchSnapshot,
+    converted by BridgeLibrarySearchSnapshot::from_core,
+    built by library_search
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl LibrarySearchSubscription {
     /// Search for `query`; a blank one is no search. Returns the revision the
     /// answer will carry.
     pub fn set_query(&self, query: String) -> Result<u64, BridgeError> {
         self.inner.set_query(&query).map_err(BridgeError::from)
-    }
-
-    pub async fn next(self: Arc<Self>) -> Result<BridgeLibrarySearchSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibrarySearchSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(|snapshot| BridgeLibrarySearchSnapshot {
-                        query: snapshot
-                            .query
-                            .map(|query| query.as_str().to_string())
-                            .unwrap_or_default(),
-                        results: crate::types::BridgeSearchResults::from_core(snapshot.results),
-                        request_revision: snapshot.request_revision,
-                    })
-                    .map_err(BridgeError::from)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibrarySearchSubscription.cancel", move || async move {
-                self.inner.cancel().await;
-                Ok(())
-            })
-            .await
     }
 }
 
@@ -90,24 +61,38 @@ pub struct BridgeArtistSearchSnapshot {
     pub request_revision: u64,
 }
 
-/// An artist picker's live search of the library's artists: one query for as
-/// long as the picker is open, moved in place to each text the person types
-/// and to the windows of its list on screen. It has no text and no windows
-/// until `set_view` names them.
-#[derive(uniffi::Object)]
-pub struct ArtistSearchSubscription {
-    inner: bae_views::LiveArtistSearch,
-    runtime: crate::operation_runtime::OperationRuntime,
+impl BridgeArtistSearchSnapshot {
+    fn from_core(snapshot: bae_views::ArtistSearchSnapshot) -> Self {
+        Self {
+            windows: snapshot
+                .windows
+                .into_iter()
+                .map(|window| BridgeArtistSearchWindow {
+                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
+                    rows: window
+                        .rows
+                        .into_iter()
+                        .map(crate::types::BridgeArtistSearchResult::from_core)
+                        .collect(),
+                })
+                .collect(),
+            total_count: snapshot.total_count,
+            request_revision: snapshot.request_revision,
+        }
+    }
 }
 
-pub(crate) fn artist_search(
-    inner: bae_views::LiveArtistSearch,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> Arc<ArtistSearchSubscription> {
-    Arc::new(ArtistSearchSubscription { inner, runtime })
+pulled_read! {
+    /// An artist picker's live search of the library's artists: one query for
+    /// as long as the picker is open, moved in place to each text the person
+    /// types and to the windows of its list on screen. It has no text and no
+    /// windows until `set_view` names them.
+    ArtistSearchSubscription: bae_views::LiveArtistSearch => BridgeArtistSearchSnapshot,
+    converted by BridgeArtistSearchSnapshot::from_core,
+    built by artist_search
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl ArtistSearchSubscription {
     /// Read `windows` of what `query` finds from now on; a blank one is no
     /// search. Returns the revision the answer will carry.
@@ -122,46 +107,6 @@ impl ArtistSearchSubscription {
                 windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect(),
             )
             .map_err(BridgeError::from)
-    }
-
-    pub async fn next(self: Arc<Self>) -> Result<BridgeArtistSearchSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ArtistSearchSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(|snapshot| BridgeArtistSearchSnapshot {
-                        windows: snapshot
-                            .windows
-                            .into_iter()
-                            .map(|window| BridgeArtistSearchWindow {
-                                window: crate::types::BridgeLibraryPageWindow::from_core(
-                                    window.window,
-                                ),
-                                rows: window
-                                    .rows
-                                    .into_iter()
-                                    .map(crate::types::BridgeArtistSearchResult::from_core)
-                                    .collect(),
-                            })
-                            .collect(),
-                        total_count: snapshot.total_count,
-                        request_revision: snapshot.request_revision,
-                    })
-                    .map_err(BridgeError::from)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ArtistSearchSubscription.cancel", move || async move {
-                self.inner.cancel().await;
-                Ok(())
-            })
-            .await
     }
 }
 
@@ -186,18 +131,37 @@ pub struct BridgeLibraryStatusSnapshot {
     pub request_revision: u64,
 }
 
-/// Whether the releases an import pane offers are already in the library:
-/// one live query for as long as the pane is open, whose checks move in place
-/// as its offers change. It starts with no checks.
 #[cfg(feature = "desktop")]
-#[derive(uniffi::Object)]
-pub struct LibraryStatusSubscription {
-    inner: bae_library::LiveLibraryStatus,
-    runtime: crate::operation_runtime::OperationRuntime,
+impl BridgeLibraryStatusSnapshot {
+    fn from_core(snapshot: bae_library::LibraryStatusSnapshot) -> Self {
+        Self {
+            statuses: snapshot
+                .statuses
+                .into_iter()
+                .map(|status| {
+                    (
+                        status.release_id.clone(),
+                        crate::types::BridgeLibraryStatus::from_core(status),
+                    )
+                })
+                .collect(),
+            request_revision: snapshot.request_revision,
+        }
+    }
 }
 
 #[cfg(feature = "desktop")]
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+pulled_read! {
+    /// Whether the releases an import pane offers are already in the
+    /// library: one live query for as long as the pane is open, whose checks
+    /// move in place as its offers change. It starts with no checks.
+    LibraryStatusSubscription: bae_library::LiveLibraryStatus => BridgeLibraryStatusSnapshot,
+    converted by BridgeLibraryStatusSnapshot::from_core,
+    built by library_statuses
+}
+
+#[cfg(feature = "desktop")]
+#[uniffi::export]
 impl LibraryStatusSubscription {
     /// Check `checks` from now on. Returns the revision the answer will
     /// carry.
@@ -210,48 +174,4 @@ impl LibraryStatusSubscription {
             }))
             .map_err(BridgeError::from)
     }
-
-    pub async fn next(self: Arc<Self>) -> Result<BridgeLibraryStatusSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibraryStatusSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(|snapshot| BridgeLibraryStatusSnapshot {
-                        statuses: snapshot
-                            .statuses
-                            .into_iter()
-                            .map(|status| {
-                                (
-                                    status.release_id.clone(),
-                                    crate::types::BridgeLibraryStatus::from_core(status),
-                                )
-                            })
-                            .collect(),
-                        request_revision: snapshot.request_revision,
-                    })
-                    .map_err(BridgeError::from)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("LibraryStatusSubscription.cancel", move || async move {
-                self.inner.cancel().await;
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[cfg(feature = "desktop")]
-#[cfg(feature = "desktop")]
-pub(crate) fn library_statuses(
-    inner: bae_library::LiveLibraryStatus,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> Arc<LibraryStatusSubscription> {
-    Arc::new(LibraryStatusSubscription { inner, runtime })
 }

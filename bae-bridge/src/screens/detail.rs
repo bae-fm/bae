@@ -2,8 +2,6 @@
 //! import folder, and storage inspector detail views, each read live through
 //! one subscription whose id moves in place as the view shows another item.
 
-use std::sync::Arc;
-
 use crate::types::BridgeError;
 
 /// A macro rather than a generic: uniffi exports concrete objects and records,
@@ -38,52 +36,26 @@ macro_rules! detail_subscription {
             pub value: Option<$bridge_value>,
         }
 
-        /// A read that shows nothing until `set_id` names an item.
-        #[derive(uniffi::Object)]
-        pub struct $object {
-            inner: bae_library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
-            runtime: crate::operation_runtime::OperationRuntime,
+        pulled_read! {
+            /// A read that shows nothing until `set_id` names an item.
+            $object: bae_library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>
+                => $snapshot,
+            converted by |snapshot: bae_library::DetailSnapshot<
+                <$bridge_value as DetailValue>::Core,
+                $core_id,
+            >| $snapshot {
+                id: snapshot.id.map(<$id>::from),
+                value: snapshot.value.map(<$bridge_value>::from_core),
+            },
+            built by $make
         }
 
-        pub(crate) fn $make(
-            inner: bae_library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
-            runtime: crate::operation_runtime::OperationRuntime,
-        ) -> Arc<$object> {
-            Arc::new($object { inner, runtime })
-        }
-
-        #[uniffi::export(async_runtime = "tokio", cancellable)]
+        #[uniffi::export]
         impl $object {
             /// Show `id` from now on. A view that stops showing anything
             /// cancels the read rather than pointing it at nothing.
             pub fn set_id(&self, id: $id) -> Result<(), BridgeError> {
                 self.inner.set(Some(<$core_id>::from(id))).map_err(live_read_error)
-            }
-
-            pub async fn next(self: Arc<Self>) -> Result<$snapshot, BridgeError> {
-                let runtime = self.runtime.clone();
-                runtime
-                    .run(concat!(stringify!($object), ".next"), move || async move {
-                        self.inner
-                            .next()
-                            .await
-                            .map(|snapshot| $snapshot {
-                                id: snapshot.id.map(<$id>::from),
-                                value: snapshot.value.map(<$bridge_value>::from_core),
-                            })
-                            .map_err(live_read_error)
-                    })
-                    .await
-            }
-
-            pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-                let runtime = self.runtime.clone();
-                runtime
-                    .run(concat!(stringify!($object), ".cancel"), move || async move {
-                        self.inner.cancel();
-                        Ok(())
-                    })
-                    .await
             }
         }
     };

@@ -71,25 +71,47 @@ impl BridgeStorageQueues {
     }
 }
 
-/// The Storage Manager list read live: one query for as long as the manager
-/// is open, whose sort, filter, search text and windows move in place. It
-/// starts under the sort and filter it was opened with, searching for
-/// nothing, reading no windows and holding no selection until `set_view`
-/// names them.
-#[derive(uniffi::Object)]
-pub struct StorageBrowseSubscription {
-    inner: bae_app::live_reads::LiveStorageBrowse,
-    runtime: crate::operation_runtime::OperationRuntime,
+impl BridgeStorageBrowseSnapshot {
+    fn from_core(snapshot: bae_views::StorageBrowseSnapshot) -> Self {
+        Self {
+            sort: BridgeStorageSort::from_core(snapshot.sort),
+            filter: BridgeStorageFilter::from_core(snapshot.filter),
+            search: snapshot.search,
+            searching: snapshot.searching,
+            windows: snapshot
+                .windows
+                .into_iter()
+                .map(|window| BridgeStorageBrowseWindow {
+                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
+                    rows: window.rows.into_iter().map(BridgeStorageRow::from_core).collect(),
+                })
+                .collect(),
+            total_count: snapshot.total_count,
+            total_size: snapshot.total_size,
+            selected: snapshot.selected.into_iter().map(BridgeStorageRow::from_core).collect(),
+            selection_actions: snapshot
+                .selection_actions
+                .into_iter()
+                .map(crate::types::BridgeReleaseStorageAction::from_core)
+                .collect(),
+            queues: BridgeStorageQueues::from_core(snapshot.queues),
+        }
+    }
 }
 
-pub(crate) fn storage_browse(
-    inner: bae_app::live_reads::LiveStorageBrowse,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> std::sync::Arc<StorageBrowseSubscription> {
-    std::sync::Arc::new(StorageBrowseSubscription { inner, runtime })
+pulled_read! {
+    /// The Storage Manager list read live: one query for as long as the
+    /// manager is open, whose sort, filter, search text and windows move in
+    /// place. It starts under the sort and filter it was opened with,
+    /// searching for nothing, reading no windows and holding no selection
+    /// until `set_view` names them.
+    StorageBrowseSubscription:
+        bae_app::live_reads::LiveStorageBrowse => BridgeStorageBrowseSnapshot,
+    converted by BridgeStorageBrowseSnapshot::from_core,
+    built by storage_browse
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl StorageBrowseSubscription {
     /// Read `windows` of the list under `sort`, `filter` and the `search`
     /// text, and the rows of the `selected` releases it holds, from now on.
@@ -113,62 +135,5 @@ impl StorageBrowseSubscription {
                 selected: selected.into_iter().collect(),
             })
             .map_err(live_read_error)
-    }
-
-    pub async fn next(
-        self: std::sync::Arc<Self>,
-    ) -> Result<BridgeStorageBrowseSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("StorageBrowseSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(|snapshot| BridgeStorageBrowseSnapshot {
-                        sort: BridgeStorageSort::from_core(snapshot.sort),
-                        filter: BridgeStorageFilter::from_core(snapshot.filter),
-                        search: snapshot.search,
-                        searching: snapshot.searching,
-                        windows: snapshot
-                            .windows
-                            .into_iter()
-                            .map(|window| BridgeStorageBrowseWindow {
-                                window: crate::types::BridgeLibraryPageWindow::from_core(
-                                    window.window,
-                                ),
-                                rows: window
-                                    .rows
-                                    .into_iter()
-                                    .map(BridgeStorageRow::from_core)
-                                    .collect(),
-                            })
-                            .collect(),
-                        total_count: snapshot.total_count,
-                        total_size: snapshot.total_size,
-                        selected: snapshot
-                            .selected
-                            .into_iter()
-                            .map(BridgeStorageRow::from_core)
-                            .collect(),
-                        selection_actions: snapshot
-                            .selection_actions
-                            .into_iter()
-                            .map(crate::types::BridgeReleaseStorageAction::from_core)
-                            .collect(),
-                        queues: BridgeStorageQueues::from_core(snapshot.queues),
-                    })
-                    .map_err(live_read_error)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("StorageBrowseSubscription.cancel", move || async move {
-                self.inner.cancel();
-                Ok(())
-            })
-            .await
     }
 }

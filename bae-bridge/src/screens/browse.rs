@@ -5,7 +5,6 @@
 //! or ids move in place.
 
 use std::collections::BTreeSet;
-use std::sync::Arc;
 
 use crate::types::BridgeError;
 
@@ -20,21 +19,12 @@ macro_rules! browse_subscription {
         built by $make:ident,
         snapshot: $snapshot:ident,
     ) => {
-        $(#[$meta])*
-        #[derive(uniffi::Object)]
-        pub struct $object {
-            inner: $inner,
-            runtime: crate::operation_runtime::OperationRuntime,
+        pulled_read! {
+            $(#[$meta])*
+            $object: $inner => $snapshot, converted by $snapshot::from_core, built by $make
         }
 
-        pub(crate) fn $make(
-            inner: $inner,
-            runtime: crate::operation_runtime::OperationRuntime,
-        ) -> Arc<$object> {
-            Arc::new($object { inner, runtime })
-        }
-
-        #[uniffi::export(async_runtime = "tokio", cancellable)]
+        #[uniffi::export]
         impl $object {
             /// Read `windows` of the list from now on, offsets counted from
             /// its first row.
@@ -43,25 +33,6 @@ macro_rules! browse_subscription {
                 windows: Vec<crate::types::BridgeLibraryPageWindow>,
             ) -> Result<(), BridgeError> {
                 self.inner.set_windows(core_windows(windows)).map_err(BridgeError::from)
-            }
-
-            pub async fn next(self: Arc<Self>) -> Result<$snapshot, BridgeError> {
-                let runtime = self.runtime.clone();
-                runtime
-                    .run(concat!(stringify!($object), ".next"), move || async move {
-                        self.inner.next().await.map($snapshot::from_core).map_err(BridgeError::from)
-                    })
-                    .await
-            }
-
-            pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-                let runtime = self.runtime.clone();
-                runtime
-                    .run(concat!(stringify!($object), ".cancel"), move || async move {
-                        self.inner.cancel().await;
-                        Ok(())
-                    })
-                    .await
             }
         }
     };
@@ -280,52 +251,25 @@ pub struct BridgeAlbumSelectionSnapshot {
     pub gone: Vec<String>,
 }
 
-/// The album grid's multi-selection read live: one query for as long as the
-/// grid is open, whose ids move in place as the selection changes. It starts
-/// with none.
-#[derive(uniffi::Object)]
-pub struct AlbumSelectionSubscription {
-    inner: bae_library::LiveAlbumSelection,
-    runtime: crate::operation_runtime::OperationRuntime,
+impl BridgeAlbumSelectionSnapshot {
+    fn from_core(snapshot: bae_library::AlbumSelectionSnapshot) -> Self {
+        Self { requested: snapshot.requested.into_iter().collect(), gone: snapshot.gone }
+    }
 }
 
-pub(crate) fn album_selection(
-    inner: bae_library::LiveAlbumSelection,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> Arc<AlbumSelectionSubscription> {
-    Arc::new(AlbumSelectionSubscription { inner, runtime })
+pulled_read! {
+    /// The album grid's multi-selection read live: one query for as long as
+    /// the grid is open, whose ids move in place as the selection changes. It
+    /// starts with none.
+    AlbumSelectionSubscription: bae_library::LiveAlbumSelection => BridgeAlbumSelectionSnapshot,
+    converted by BridgeAlbumSelectionSnapshot::from_core,
+    built by album_selection
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl AlbumSelectionSubscription {
     /// Read `album_ids` from now on.
     pub fn set_albums(&self, album_ids: Vec<String>) -> Result<(), BridgeError> {
         self.inner.set_albums(album_ids).map_err(BridgeError::from)
-    }
-
-    pub async fn next(self: Arc<Self>) -> Result<BridgeAlbumSelectionSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("AlbumSelectionSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(|snapshot| BridgeAlbumSelectionSnapshot {
-                        requested: snapshot.requested.into_iter().collect(),
-                        gone: snapshot.gone,
-                    })
-                    .map_err(BridgeError::from)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("AlbumSelectionSubscription.cancel", move || async move {
-                self.inner.cancel().await;
-                Ok(())
-            })
-            .await
     }
 }

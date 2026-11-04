@@ -21,23 +21,17 @@ pub struct BridgeQueueUpcomingSnapshot {
     pub windows: Vec<BridgeQueueUpcomingWindow>,
 }
 
-/// The context's upcoming tail, read in the windows the UI asks for: one live
-/// read for as long as the queue is shown, moved in place as it scrolls and as
-/// the queue changes. It reads no windows until `set_windows`.
-#[derive(uniffi::Object)]
-pub struct QueueUpcomingSubscription {
-    inner: bae_library::LiveQueueUpcoming,
-    runtime: crate::operation_runtime::OperationRuntime,
+pulled_read! {
+    /// The context's upcoming tail, read in the windows the UI asks for: one
+    /// live read for as long as the queue is shown, moved in place as it
+    /// scrolls and as the queue changes. It reads no windows until
+    /// `set_windows`.
+    QueueUpcomingSubscription: bae_library::LiveQueueUpcoming => BridgeQueueUpcomingSnapshot,
+    converted by BridgeQueueUpcomingSnapshot::from_core,
+    built by queue_upcoming
 }
 
-pub(crate) fn queue_upcoming(
-    inner: bae_library::LiveQueueUpcoming,
-    runtime: crate::operation_runtime::OperationRuntime,
-) -> std::sync::Arc<QueueUpcomingSubscription> {
-    std::sync::Arc::new(QueueUpcomingSubscription { inner, runtime })
-}
-
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export]
 impl QueueUpcomingSubscription {
     /// Read `windows` of the upcoming tail from now on; offsets count from
     /// the first entry after the playing track.
@@ -50,31 +44,6 @@ impl QueueUpcomingSubscription {
                 windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect(),
             )
             .map_err(live_read_error)
-    }
-
-    pub async fn next(
-        self: std::sync::Arc<Self>,
-    ) -> Result<BridgeQueueUpcomingSnapshot, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("QueueUpcomingSubscription.next", move || async move {
-                self.inner
-                    .next()
-                    .await
-                    .map(BridgeQueueUpcomingSnapshot::from_core)
-                    .map_err(live_read_error)
-            })
-            .await
-    }
-
-    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("QueueUpcomingSubscription.cancel", move || async move {
-                self.inner.cancel();
-                Ok(())
-            })
-            .await
     }
 }
 

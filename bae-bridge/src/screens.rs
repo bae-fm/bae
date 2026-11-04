@@ -3,18 +3,169 @@
 //! `KeyedValueStream`, and reaches the app by pull: the app awaits each
 //! value's `next()`. Nothing here takes a channel or a closure loop.
 //!
-//! This file holds the live queries a screen follows whole; the submodules
-//! hold the reads a screen moves in place (lists, searches, details, the
-//! Storage Manager, the queue's tail, the import list) and the streams
-//! (fast values, and the steps of an open, a setup call, a close or an apply
-//! of a catalog release).
+//! This file holds the pull every screen read answers through
+//! ([`PulledRead`] and `pulled_read!`) and the live queries a screen follows
+//! whole; the submodules hold the reads a screen moves in place (lists,
+//! searches, details, the Storage Manager, the queue's tail, the import list)
+//! and the streams (fast values, and the steps of an open, a setup call, a
+//! close or an apply of a catalog release).
 //! `AppHandle`'s `subscribe_*` and `feed_*` calls hand out what is built
 //! here, and nothing else builds a pull object.
 
-use std::sync::Arc;
+use std::future::Future;
+
+use bae_db::live_query::LiveValues;
 
 use crate::types::BridgeError;
 
+/// A core read a screen pulls from, as the bridge answers the pulls: its
+/// next value, or its failure as the bridge reports it, and its end.
+pub(crate) trait PulledRead: Send + Sync + 'static {
+    type Value: Send + 'static;
+
+    /// The read's next value; waits until there is one.
+    fn next(&self) -> impl Future<Output = Result<Self::Value, BridgeError>> + Send;
+
+    /// End the read.
+    fn cancel(&self) -> impl Future<Output = Result<(), BridgeError>> + Send;
+}
+
+/// A read over one coven live query: its errors are the query's, and its end
+/// can't fail.
+macro_rules! live_query_read {
+    ($read:ty => $value:ty $(, over [$($generics:tt)*])?) => {
+        impl$(<$($generics)*>)? PulledRead for $read {
+            type Value = $value;
+
+            async fn next(&self) -> Result<$value, BridgeError> {
+                <$read>::next(self).await.map_err(BridgeError::from)
+            }
+
+            async fn cancel(&self) -> Result<(), BridgeError> {
+                <$read>::cancel(self).await;
+                Ok(())
+            }
+        }
+    };
+}
+
+live_query_read!(LiveValues<T> => T, over [T: Clone + PartialEq + Send + Sync + 'static]);
+live_query_read!(
+    bae_views::LiveLibraryBrowse<Projection, Snapshot> => Snapshot,
+    over [Projection: Clone + PartialEq + Send + Sync + 'static, Snapshot: Send + 'static]
+);
+live_query_read!(bae_views::LiveLibrarySearch => bae_views::LibrarySearchSnapshot);
+live_query_read!(bae_views::LiveArtistSearch => bae_views::ArtistSearchSnapshot);
+live_query_read!(bae_library::LiveAlbumSelection => bae_library::AlbumSelectionSnapshot);
+#[cfg(feature = "desktop")]
+live_query_read!(bae_library::LiveLibraryStatus => bae_library::LibraryStatusSnapshot);
+
+/// A read core's task produces, whose request moves in place.
+impl<Request, Value> PulledRead for bae_library::LiveRead<Request, Value>
+where
+    Request: PartialEq + Send + Sync + 'static,
+    Value: Send + 'static,
+{
+    type Value = Value;
+
+    async fn next(&self) -> Result<Value, BridgeError> {
+        bae_library::LiveRead::next(self).await.map_err(detail::live_read_error)
+    }
+
+    async fn cancel(&self) -> Result<(), BridgeError> {
+        bae_library::LiveRead::cancel(self);
+        Ok(())
+    }
+}
+
+/// A screen's read as the app pulls it: `$object` holds `$inner`, a
+/// [`PulledRead`], each pulled value converted to `$bridge` by `$convert`,
+/// and `$make` builds it. With `when present`, `$convert` answers an
+/// `Option`, and a pull passes over each value it answers `None` for,
+/// waiting for the next. A screen that moves its read in place adds its own
+/// exported calls on `$object`.
+macro_rules! pulled_read {
+    (
+        $(#[$meta:meta])*
+        $object:ident: $inner:ty => $bridge:ty, converted by $convert:expr, built by $make:ident
+    ) => {
+        pulled_read! {
+            $(#[$meta])*
+            $object: $inner => $bridge,
+            converted by |value| Some(($convert)(value)), when present,
+            built by $make
+        }
+    };
+    (
+        $(#[$meta:meta])*
+        $object:ident: $inner:ty => $bridge:ty,
+        converted by $convert:expr, when present,
+        built by $make:ident
+    ) => {
+        $(#[$meta])*
+        #[derive(uniffi::Object)]
+        pub struct $object {
+            inner: $inner,
+            runtime: crate::operation_runtime::OperationRuntime,
+        }
+
+        pub(crate) fn $make(
+            inner: $inner,
+            runtime: crate::operation_runtime::OperationRuntime,
+        ) -> std::sync::Arc<$object> {
+            std::sync::Arc::new($object { inner, runtime })
+        }
+
+        pulled_read_calls! { $object => $bridge, converted by $convert, when present }
+    };
+}
+
+/// `next` and `cancel` on `$object`, whose `inner` is its [`PulledRead`],
+/// for an object that holds more than its read; [`pulled_read!`] makes them
+/// for every other.
+macro_rules! pulled_read_calls {
+    ($object:ident => $bridge:ty, converted by $convert:expr) => {
+        pulled_read_calls! {
+            $object => $bridge, converted by |value| Some(($convert)(value)), when present
+        }
+    };
+    ($object:ident => $bridge:ty, converted by $convert:expr, when present) => {
+        #[uniffi::export(async_runtime = "tokio", cancellable)]
+        impl $object {
+            /// The read's next value, the first at once. A failed read is
+            /// answered as its error.
+            pub async fn next(
+                self: std::sync::Arc<Self>,
+            ) -> Result<$bridge, crate::types::BridgeError> {
+                let runtime = self.runtime.clone();
+                runtime
+                    .run(concat!(stringify!($object), ".next"), move || async move {
+                        loop {
+                            let value = crate::screens::PulledRead::next(&self.inner).await?;
+                            if let Some(value) = ($convert)(value) {
+                                return Ok(value);
+                            }
+                        }
+                    })
+                    .await
+            }
+
+            /// End the read.
+            pub async fn cancel(
+                self: std::sync::Arc<Self>,
+            ) -> Result<(), crate::types::BridgeError> {
+                let runtime = self.runtime.clone();
+                runtime
+                    .run(concat!(stringify!($object), ".cancel"), move || async move {
+                        crate::screens::PulledRead::cancel(&self.inner).await
+                    })
+                    .await
+            }
+        }
+    };
+}
+
+// The submodules come after the macros above, which they use.
 #[cfg(feature = "desktop")]
 mod applying;
 mod browse;
@@ -45,83 +196,12 @@ pub use setup::*;
 pub use storage::*;
 pub(crate) use streams::*;
 
-/// A live query's values as the app pulls them: `$object` holds core's
-/// [`LiveValues`](bae_db::live_query::LiveValues) of `$core`, each pulled
-/// value converted to `$bridge` by `$convert`, and `$make` builds it. With
-/// `when present`, `$convert` answers an `Option`, and a pull passes over
-/// each value it answers `None` for, waiting for the next.
-macro_rules! pulled_values {
-    (
-        $(#[doc = $doc:literal])*
-        $object:ident: $core:ty => $bridge:ty, converted by $convert:expr, built by $make:ident
-    ) => {
-        pulled_values! {
-            $(#[doc = $doc])*
-            $object: $core => $bridge,
-            converted by |value: $core| Some(($convert)(value)), when present,
-            built by $make
-        }
-    };
-    (
-        $(#[doc = $doc:literal])*
-        $object:ident: $core:ty => $bridge:ty,
-        converted by $convert:expr, when present,
-        built by $make:ident
-    ) => {
-        $(#[doc = $doc])*
-        #[derive(uniffi::Object)]
-        pub struct $object {
-            values: bae_db::live_query::LiveValues<$core>,
-            runtime: crate::operation_runtime::OperationRuntime,
-        }
-
-        #[uniffi::export(async_runtime = "tokio", cancellable)]
-        impl $object {
-            /// The first value at once, then one after each write that
-            /// changes it. A failed read is answered as an error; the next
-            /// pull waits for the read after it.
-            pub async fn next(self: Arc<Self>) -> Result<$bridge, BridgeError> {
-                let runtime = self.runtime.clone();
-                runtime
-                    .run(concat!(stringify!($object), ".next"), move || async move {
-                        loop {
-                            let value = self.values.next().await.map_err(BridgeError::from)?;
-                            if let Some(value) = ($convert)(value) {
-                                return Ok(value);
-                            }
-                        }
-                    })
-                    .await
-            }
-
-            /// End the subscription: a waiting pull answers that it was
-            /// cancelled, and so does every later one.
-            pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
-                let runtime = self.runtime.clone();
-                runtime
-                    .run(concat!(stringify!($object), ".cancel"), move || async move {
-                        self.values.cancel().await;
-                        Ok(())
-                    })
-                    .await
-            }
-        }
-
-        pub(crate) fn $make(
-            values: bae_db::live_query::LiveValues<$core>,
-            runtime: crate::operation_runtime::OperationRuntime,
-        ) -> Arc<$object> {
-            Arc::new($object { values, runtime })
-        }
-    };
-}
-
-pulled_values! {
+pulled_read! {
     /// What playback is doing, apart from where it is in what it plays. A
     /// value whose playing track the library no longer holds is passed over:
     /// the value before it stands until playback moves off the track.
     PlaybackValuesSubscription:
-        Option<bae_playback::NowPlayingValues> => crate::types::BridgePlaybackValues,
+        LiveValues<Option<bae_playback::NowPlayingValues>> => crate::types::BridgePlaybackValues,
     converted by |values: Option<bae_playback::NowPlayingValues>| {
         values.map(crate::types::BridgePlaybackValues::from_core)
     },
@@ -129,21 +209,21 @@ pulled_values! {
     built by playback_values
 }
 
-pulled_values! {
+pulled_read! {
     /// Where playback is, for a surface that moves the position on itself:
     /// the timeline now, then each time playback leaves the line it holds.
     PlaybackTimelineSubscription:
-        bae_playback::PlaybackTimeline => crate::types::BridgePlaybackTimeline,
+        LiveValues<bae_playback::PlaybackTimeline> => crate::types::BridgePlaybackTimeline,
     converted by crate::types::BridgePlaybackTimeline::from_core,
     built by playback_timeline
 }
 
-pulled_values! {
+pulled_read! {
     /// Each time tracks go into Up Next, with how many: one value per
     /// addition, none before the first since playback started with the
     /// library.
     QueueAdditionsSubscription:
-        Option<bae_playback::QueueAddition> => crate::types::BridgeQueueAddition,
+        LiveValues<Option<bae_playback::QueueAddition>> => crate::types::BridgeQueueAddition,
     converted by |addition: Option<bae_playback::QueueAddition>| {
         addition.map(crate::types::BridgeQueueAddition::from_core)
     },
@@ -152,18 +232,19 @@ pulled_values! {
 }
 
 #[cfg(feature = "desktop")]
-pulled_values! {
+pulled_read! {
     /// How far the identifications and imports in flight have got.
-    ImportCountsSubscription: bae_import::ImportCounts => crate::types::BridgeImportCounts,
+    ImportCountsSubscription:
+        LiveValues<bae_import::ImportCounts> => crate::types::BridgeImportCounts,
     converted by crate::types::BridgeImportCounts::from_core,
     built by import_counts
 }
 
 #[cfg(feature = "desktop")]
-pulled_values! {
+pulled_read! {
     /// What one candidate has in flight; `None` while nothing is.
     CandidateRuntimeSubscription:
-        Option<bae_import::CandidateRuntimeSnapshot>
+        LiveValues<Option<bae_import::CandidateRuntimeSnapshot>>
             => Option<crate::types::BridgeCandidateRuntimeSnapshot>,
     converted by |runtime: Option<bae_import::CandidateRuntimeSnapshot>| {
         runtime.map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
@@ -172,86 +253,87 @@ pulled_values! {
 }
 
 #[cfg(feature = "cast")]
-pulled_values! {
+pulled_read! {
     /// The receivers the cast picker lists, by name.
     CastDevicesSubscription:
-        Vec<bae_playback::renderer::CastDevice> => Vec<crate::types::BridgeCastDevice>,
+        LiveValues<Vec<bae_playback::renderer::CastDevice>> => Vec<crate::types::BridgeCastDevice>,
     converted by |devices: Vec<bae_playback::renderer::CastDevice>| {
         devices.into_iter().map(crate::types::BridgeCastDevice::from_core).collect::<Vec<_>>()
     },
     built by cast_devices
 }
 
-pulled_values! {
+pulled_read! {
     /// This device's preferences for the library, as the settings screens
     /// show them.
-    ConfigSubscription: bae_preferences::Config => crate::types::BridgeConfig,
+    ConfigSubscription: LiveValues<bae_preferences::Config> => crate::types::BridgeConfig,
     converted by |config: bae_preferences::Config| crate::types::BridgeConfig::from_core(&config),
     built by config
 }
 
-pulled_values! {
+pulled_read! {
     /// The queue as its screens show it.
-    QueueSubscription: bae_playback::ResolvedQueueSnapshot => crate::types::BridgeQueueSnapshot,
+    QueueSubscription:
+        LiveValues<bae_playback::ResolvedQueueSnapshot> => crate::types::BridgeQueueSnapshot,
     converted by crate::types::BridgeQueueSnapshot::from_core,
     built by queue
 }
 
-pulled_values! {
+pulled_read! {
     /// How many downloads are in each phase, and whether the queue is paused.
     DownloadCountsSubscription:
-        bae_transfers::ReleaseQueueCounts => crate::types::BridgeDownloadCounts,
+        LiveValues<bae_transfers::ReleaseQueueCounts> => crate::types::BridgeDownloadCounts,
     converted by crate::types::BridgeDownloadCounts::from_core,
     built by download_counts
 }
 
-pulled_values! {
+pulled_read! {
     /// What sync is doing, what it waits on, and why a start failed.
     SyncStatusSubscription:
-        bae_db::SyncStatusSnapshot => crate::types::BridgeSyncStatusSnapshot,
+        LiveValues<bae_db::SyncStatusSnapshot> => crate::types::BridgeSyncStatusSnapshot,
     converted by crate::types::BridgeSyncStatusSnapshot::from_core,
     built by sync_status
 }
 
-pulled_values! {
+pulled_read! {
     /// Everything sync is doing: what needs the person, and the transfers
     /// moving bytes.
     SyncActivitySubscription:
-        bae_views::SyncActivity => crate::types::BridgeSyncActivity,
+        LiveValues<bae_views::SyncActivity> => crate::types::BridgeSyncActivity,
     converted by crate::types::BridgeSyncActivity::from_core,
     built by sync_activity
 }
 
-pulled_values! {
+pulled_read! {
     /// Whether the person paused uploads.
-    UploadsPausedSubscription: bool => bool,
+    UploadsPausedSubscription: LiveValues<bool> => bool,
     converted by |paused: bool| paused,
     built by uploads_paused
 }
 
-pulled_values! {
+pulled_read! {
     /// The store's members and their devices.
     MembersSubscription:
-        bae_db::membership::Membership => crate::types::BridgeMembership,
+        LiveValues<bae_db::membership::Membership> => crate::types::BridgeMembership,
     converted by crate::types::BridgeMembership::from_core,
     built by members
 }
 
-pulled_values! {
+pulled_read! {
     /// This device's open invites, each with what coven holds its work for.
     InvitesSubscription:
-        Vec<bae_db::people::OpenInvite> => Vec<crate::types::BridgeInvite>,
+        LiveValues<Vec<bae_db::people::OpenInvite>> => Vec<crate::types::BridgeInvite>,
     converted by |invites: Vec<bae_db::people::OpenInvite>| {
         invites.into_iter().map(crate::types::BridgeInvite::from_core).collect::<Vec<_>>()
     },
     built by invites
 }
 
-pulled_values! {
+pulled_read! {
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     AdminChangesSubscription:
-        Vec<bae_db::admin_change::AdminChange>
+        LiveValues<Vec<bae_db::admin_change::AdminChange>>
             => Vec<crate::types::BridgeAdminChange>,
     converted by |changes: Vec<bae_db::admin_change::AdminChange>| {
         changes.into_iter().map(crate::types::BridgeAdminChange::from_core).collect::<Vec<_>>()
@@ -259,11 +341,11 @@ pulled_values! {
     built by admin_changes
 }
 
-pulled_values! {
+pulled_read! {
     /// This person's device that joined after Add Device made its code; none
     /// until one does.
     AddedDeviceSubscription:
-        Option<bae_db::membership::ActiveDevice>
+        LiveValues<Option<bae_db::membership::ActiveDevice>>
             => Option<crate::types::BridgeActiveDevice>,
     converted by |device: Option<bae_db::membership::ActiveDevice>| {
         device.map(crate::types::BridgeActiveDevice::from_core)
@@ -271,21 +353,21 @@ pulled_values! {
     built by added_device
 }
 
-pulled_values! {
+pulled_read! {
     /// Every person's profile.
     ProfilesSubscription:
-        Vec<bae_db::people::PersonProfile> => Vec<crate::types::BridgePersonProfile>,
+        LiveValues<Vec<bae_db::people::PersonProfile>> => Vec<crate::types::BridgePersonProfile>,
     converted by |profiles: Vec<bae_db::people::PersonProfile>| {
         profiles.into_iter().map(crate::types::BridgePersonProfile::from_core).collect::<Vec<_>>()
     },
     built by profiles
 }
 
-pulled_values! {
+pulled_read! {
     /// The profile this person asked for, until it is written: none before
     /// they ask and once it is.
     RequestedProfileSubscription:
-        Option<bae_db::people::RequestedProfile>
+        LiveValues<Option<bae_db::people::RequestedProfile>>
             => Option<crate::types::BridgeRequestedProfile>,
     converted by |requested: Option<bae_db::people::RequestedProfile>| {
         requested.map(crate::types::BridgeRequestedProfile::from_core)
@@ -293,18 +375,18 @@ pulled_values! {
     built by requested_profile
 }
 
-pulled_values! {
+pulled_read! {
     /// The library's name.
-    LibraryNameSubscription: String => String,
+    LibraryNameSubscription: LiveValues<String> => String,
     converted by |name: String| name,
     built by library_name
 }
 
 #[cfg(feature = "desktop")]
-pulled_values! {
+pulled_read! {
     /// Where each watched folder's scan stands.
     FolderScansSubscription:
-        bae_import::FolderScanProgress => crate::types::BridgeFolderScans,
+        LiveValues<bae_import::FolderScanProgress> => crate::types::BridgeFolderScans,
     converted by crate::types::BridgeFolderScans::from_core,
     built by folder_scans
 }
