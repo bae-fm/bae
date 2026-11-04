@@ -14,7 +14,8 @@ pub struct BridgeSyncActivity {
     pub failure: Option<super::BridgeError>,
     /// The pending records that need the person.
     pub attention: Vec<super::BridgePendingRecord>,
-    /// A sync pass is running.
+    /// coven's sync state is syncing: a pass is moving, or a file is being
+    /// sent or downloaded.
     pub syncing: bool,
     pub uploads: Option<BridgeUploadsInFlight>,
     pub downloads: Option<BridgeDownloadsInFlight>,

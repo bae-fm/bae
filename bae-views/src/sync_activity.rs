@@ -2,7 +2,7 @@
 //! indicator in the app's title bar and the list it opens.
 
 use super::*;
-use bae_db::{PendingItem, SyncStatusSnapshot};
+use bae_db::{PendingItem, SyncStatusRows, SyncStatusSnapshot};
 use bae_diagnostics::UiError;
 use bae_transfers::ReleaseQueueCounts;
 use bae_transfers::ReleaseQueueProgress;
@@ -19,7 +19,8 @@ pub struct SyncActivity {
     pub failure: Option<UiError>,
     /// The pending records that need the person.
     pub attention: Vec<PendingItem>,
-    /// A sync pass is running.
+    /// coven's sync state is syncing: a pass is moving, or a file is being
+    /// sent or downloaded.
     pub syncing: bool,
     /// The files this device is sending now, if any.
     pub uploads: Option<UploadsInFlight>,
@@ -121,14 +122,29 @@ impl SyncActivity {
 #[path = "sync_activity_tests.rs"]
 mod tests;
 
-/// Everything sync is doing, as one read of the sync status's tables, the
-/// upload queue and the download queue sees it: the counts are read first,
+/// What the activity reads of the library's tables in one go, beside
+/// coven's sync state: the upload and download queues' counts and the sync
+/// status's rows.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyncActivityRows {
+    uploads: UploadQueueCounts,
+    downloads: ReleaseQueueCounts,
+    status: SyncStatusRows,
+}
+
+/// The activity's rows as one read sees them: the counts are read first,
 /// since the retry effect's read takes the read whole.
-pub(crate) fn sync_activity_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncActivity> {
+fn sync_activity_rows_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncActivityRows> {
     let uploads = upload_queue_counts_on(&sql)?;
     let downloads = bae_transfers::tables::release_queue_counts_on::<()>(&sql)?;
-    let status = bae_db::sync_status_on(sql)?;
-    Ok(SyncActivity::new(&status, &uploads, &downloads))
+    let status = bae_db::sync_status_rows_on(sql)?;
+    Ok(SyncActivityRows { uploads, downloads, status })
+}
+
+/// The activity from coven's sync state and the rows read beside it.
+fn sync_activity(state: coven::SyncStatus, rows: SyncActivityRows) -> SyncActivity {
+    let SyncActivityRows { uploads, downloads, status } = rows;
+    SyncActivity::new(&SyncStatusSnapshot::read(state, status), &uploads, &downloads)
 }
 
 /// The upload queue's counts: every queued file, those being sent, and
@@ -150,9 +166,12 @@ fn upload_queue_counts_on(
 }
 
 impl LibraryViews {
-    /// Follow everything sync is doing, each value read in one go. Bytes
+    /// Follow everything sync is doing: coven's sync state beside one read
+    /// of the library's rows, each value made from the latest of both. Bytes
     /// moving change none of what it reads, so they send nothing.
-    pub fn subscribe_sync_activity(&self) -> coven::LiveQuery<crate::SyncActivity> {
-        self.database.subscribe(crate::sync_activity::sync_activity_on)
+    pub fn subscribe_sync_activity(
+        &self,
+    ) -> bae_db::WithSyncState<SyncActivityRows, crate::SyncActivity> {
+        self.database.with_sync_state(sync_activity_rows_on, sync_activity)
     }
 }

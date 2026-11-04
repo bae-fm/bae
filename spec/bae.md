@@ -2651,16 +2651,17 @@ neither it is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the indicator would blink for nothing.
 
 Clicking it opens what sync is doing, a popover on macOS and a sheet on the
-phones, updating as it changes. What it shows is one read of the library's
-tables, followed as they change: the sync status the status line reads
-(below), and the upload and download queues' counts. Bytes moving change none
-of them, so they send it nothing. What needs the person comes first, under
+phones, updating as it changes. What it shows is the sync status the status
+line reads (below), with the upload and download queues' counts read in the
+same read of the library's tables. Bytes moving change none of them, so they
+send it nothing. What needs the person comes first, under
 *Needs Attention*: the failure's line and each pending record in plain words, with
 *Open Sync Settings*, where each record offers its action. A failure a pending record shows has no line of its own: a pass that
 storage refused or couldn't reach leaves the connection's record, a blocked
 slot and a failed operation of coven's own have theirs, and the failure again
 beside its record would read as a second problem. Then one row per
-thing moving: a pass syncing the library's changes, the uploads ("2
+thing moving: syncing, while coven's sync state says so (a pass moving, or a
+file being sent or downloaded), the uploads ("2
 uploading · 10 queued", with the bytes their providers confirmed), and the
 offline downloads, which on the phones open the downloads list. With nothing
 to show it says everything is up to date. *Retry Now* shows only while pressing
@@ -2682,19 +2683,29 @@ waiting on the person offers its own action. It retries everything at once, as
 pulling to refresh does.
 
 **The status line.** Settings shows one line for sync. With records pending it
-says "Waiting: 3 items". With none it names what sync is doing: Syncing while
-a pass has read or claimed a slot; otherwise how the last pass ended, Offline
-or Sync failed; and once it ended synced, or none has ended since setup read
-the store, Synced, or Sync stopped when the library has a cloud home but isn't
-syncing. A failure shows above activity, as coven ranks its own sync state. A
-failure's error sits under the line, unless a pending
-record shows it. The line is one read of the library's tables, followed as
-they change: coven's sync status row (whether storage is set up on this
-device, whether a pass is moving, how the last pass ended) and what a retry
+says "Waiting: 3 items". With none it names coven's sync state
+([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)):
+Syncing while a pass moves or a file is sent or downloaded; Offline, with or
+without changes waiting to go out; Sync failed for any failure coven names
+(signed out, no access, storage full, the folder gone, the clock wrong, an
+update needed, removed, a reset needed, or any other); and Synced, or Sync
+stopped when the library has a cloud home but isn't syncing, for synced or
+waiting to sync. A failure shows above activity, as coven ranks its own sync
+state, and the line never works out that state again from coven's tables. A
+failure's error is the last pass's when the pass names the state, and sits
+under the line unless a pending record shows it; a state a pending record
+names shows its error in that record. The line is made from two sources, each
+followed as it changes: coven's sync state, which coven computes and follows
+itself (it changes as a file starts or ends a transfer, which no table the
+library reads shows), and one read of the library's tables: what a retry
 would do
 ([coven api.md
 E5](https://github.com/bae-fm/coven/blob/main/spec/api.md#e5-storage-and-sync)),
-its pending records, and why this device last failed to start sync. "Checking
+its pending records, and why this device last failed to start sync. Each
+value's read of the tables is made after the sync state it carries arrived,
+so the rows are never older than the state: a start's failure that the
+start or setup after it ended never shows beside the state that ended it,
+while a record read before the state names it shows as waiting. "Checking
 sync…" shows only until that is first read, and if it can't be read the line
 says "Couldn't read sync status", opening onto the error, until a read
 succeeds. Those two are each app's own states around the read, with the
@@ -2709,8 +2720,8 @@ the record, written with it by the run that met the failure, and clears it as
 the library opens, so a record read after reopening has no details and offers
 none. A retry that fails for the same reason leaves its record as it was and
 writes the error it met, which the list then shows. The connection's record
-takes its text from the last pass, whose error coven's sync status row keeps
-when the pass failed on the connection. The details are never the record's internal debug text. This list
+takes its text from the last pass, whose error coven's sync state carries
+when that pass, failed on the connection, is what names the state. The details are never the record's internal debug text. This list
 replaces any banner of blocked work: there is one place to look.
 
 **Signing in again to the recorded storage.** A device has no way to drop its
@@ -3975,7 +3986,7 @@ bindings export none of their symbols.
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local path, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
 | bae-transfers | the transfer queues and storage transitions: the download queue that keeps releases on this device and the export and save queue, each worked through one release at a time, paused, cancelled and retried, their entries as this device's tables hold them, and the storage transition each release is in, ended in the write that changes its files |
-| bae-db | the library's store: the database over coven and the entry points every read and write runs through, the schema (its one migration, the synced tables and the SQL functions it declares), the library's records and the row writers that keep them, list windows, the cancellable live queries a surface pulls values from, the people, collections and history a library holds, and the sync status as the status line shows it: coven's sync status row, its pending records and the action each offers, what a retry would do and why the last start failed |
+| bae-db | the library's store: the database over coven and the entry points every read and write runs through, the schema (its one migration, the synced tables and the SQL functions it declares), the library's records and the row writers that keep them, list windows, the cancellable live queries a surface pulls values from, the people, collections and history a library holds, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |

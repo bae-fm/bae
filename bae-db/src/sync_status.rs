@@ -1,21 +1,19 @@
 //! The sync status as the status line and the activity list show it:
-//! coven's sync status row, its pending records, what a retry would do and
-//! why the last start failed, read in one go, and the actions each pending
-//! record offers.
+//! coven's sync state beside the library's read of its pending records,
+//! what a retry would do and why the last start failed, and the actions
+//! each pending record offers.
 
-use crate::client::sync_status::CovenSyncRow;
 use crate::pending_item::{PendingItem, PendingSubjectName, PendingWait};
-use crate::PendingRow;
 use bae_diagnostics::UiError;
 
-/// Sync activity and the things coven is waiting on that need attention,
-/// read from coven's tables and bae's own in one go.
+/// Sync activity and the things coven is waiting on that need attention:
+/// coven's sync state, followed from coven, beside the rows the library
+/// reads in one go ([`SyncStatusRows`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncStatusSnapshot {
-    /// coven's sync status row: whether storage is set up on this device,
-    /// whether the running pass has moved a slot, and how the last pass
-    /// ended.
-    pub coven: CovenSyncRow,
+    /// coven's sync state and when sync last finished, as coven computes
+    /// them from what it knows (`subscribe_sync_status`).
+    pub coven: coven::SyncStatus,
     pub pending: Vec<PendingItem>,
     /// Why this device's last attempt to start sync failed, while that
     /// stands.
@@ -122,59 +120,90 @@ fn blocked_failure(
     }
 }
 
-/// The sync status as one read of its tables sees it: coven's sync status
-/// row (`coven_sync_status`), what a retry would do (`coven_retry_effect`),
-/// its pending records (`coven_pending`), and why this device's last
-/// attempt to start sync failed (`sync_start_failure`).
-pub fn sync_status_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncStatusSnapshot> {
-    let coven = crate::client::sync_status::coven_row_on(&sql)?;
-    let pending = crate::client::pending::pending_rows_on(&sql)?;
+/// What the sync status reads of the library's tables in one go, beside
+/// coven's sync state: coven's pending records (`coven_pending`) each named
+/// by its row, why this device's last attempt to start sync failed
+/// (`sync_start_failure`), and what a retry would do (`coven_retry_effect`).
+/// Two reads are equal only when every record's error behind it is too:
+/// coven's records compare by subject and reason alone.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyncStatusRows {
+    pub pending: Vec<PendingItem>,
+    pub start_failure: Option<UiError>,
+    pub retry_effect: coven::RetryEffect,
+}
+
+/// The sync status's rows as one read of the library's tables sees them.
+pub fn sync_status_rows_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncStatusRows> {
+    let pending = crate::client::pending::pending_rows_on(&sql)?
+        .into_iter()
+        .map(PendingItem::listed)
+        .collect();
     let start_failure = crate::client::sync_start_failure::start_failure_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
-    Ok(SyncStatusSnapshot::read(coven, retry_effect, pending, start_failure))
+    Ok(SyncStatusRows { pending, start_failure, retry_effect })
 }
 
 impl SyncStatusSnapshot {
-    /// The sync status from one read of its tables: coven's sync status row
-    /// and what a retry would do, its pending records each named by its
-    /// row, and why the last attempt to start sync failed, while that
-    /// stands.
-    pub fn read(
-        coven: CovenSyncRow,
-        retry_effect: coven::RetryEffect,
-        pending: Vec<PendingRow>,
-        error: Option<UiError>,
-    ) -> Self {
-        let mut snapshot = Self {
-            coven,
-            pending: pending.into_iter().map(PendingItem::listed).collect(),
-            error,
-            retry_effect,
-        };
+    /// The sync status from coven's sync state and the library's rows
+    /// beside it: the pending records each named by its row, why the last
+    /// attempt to start sync failed, while that stands, and what a retry
+    /// would do.
+    pub fn read(coven: coven::SyncStatus, rows: SyncStatusRows) -> Self {
+        let SyncStatusRows { pending, start_failure, retry_effect } = rows;
+        let mut snapshot = Self { coven, pending, error: start_failure, retry_effect };
         snapshot.name_connection_cause();
         snapshot
     }
 
-    /// A pass is moving: it has read a slot it hadn't, or claimed one.
+    /// Storage is set up on this device: a location is recorded and this
+    /// device holds its credentials, as coven's sync state says.
+    fn storage_set_up(&self) -> bool {
+        !matches!(
+            self.coven.state,
+            coven::SyncState::NotSynced | coven::SyncState::SignedOut { cause: None, .. }
+        )
+    }
+
+    /// A pass is moving, or a file is being sent or downloaded, as coven's
+    /// sync state says.
     pub fn syncing(&self) -> bool {
-        self.coven.connected && self.coven.moving
+        self.coven.state == coven::SyncState::Syncing
     }
 
     /// Whether coven's sync loop runs: storage is set up on this device and
     /// sync isn't stopped, as what a retry would do says.
     pub fn running(&self) -> bool {
-        self.coven.connected && self.retry_effect != coven::RetryEffect::NotSyncing
+        self.storage_set_up() && self.retry_effect != coven::RetryEffect::NotSyncing
     }
 
-    /// How the last pass ended, while that is what the status shows:
-    /// storage is set up on this device and no pass is moving. A pass that
-    /// moves shows as syncing until it ends, as coven's own sync state
-    /// shows it.
-    pub fn ended_pass(&self) -> Option<&coven::LastPass> {
-        if !self.coven.connected || self.coven.moving {
-            return None;
+    /// How the last pass ended, while it is what names coven's sync state:
+    /// offline, or a failure the pass met. A synced or moving state, or one
+    /// a pending record names, has no pass behind it.
+    pub fn shown_pass(&self) -> Option<&coven::LastPass> {
+        use coven::SyncState as S;
+        let cause = match &self.coven.state {
+            S::Offline(cause)
+            | S::OfflineWithUnsentChanges(cause)
+            | S::SignedOut { cause: Some(cause), .. }
+            | S::NoAccess(cause)
+            | S::StorageFull(cause)
+            | S::FolderMissing(cause)
+            | S::ClockWrong(cause)
+            | S::UpdateNeeded(cause)
+            | S::Removed(cause)
+            | S::NeedsReset(cause)
+            | S::Failed(cause) => cause,
+            S::NotSynced
+            | S::Syncing
+            | S::WaitingToSync(_)
+            | S::Synced
+            | S::SignedOut { cause: None, .. } => return None,
+        };
+        match cause {
+            coven::SyncCause::Pass(pass) => Some(pass),
+            coven::SyncCause::Pending(_) => None,
         }
-        self.coven.last_pass.as_ref()
     }
 
     /// Give the connection's record the error behind it. coven keeps the
@@ -199,7 +228,7 @@ impl SyncStatusSnapshot {
     /// The storage failure a pass failed on, with its text, when it failed
     /// on the connection: storage refused it, or couldn't be reached.
     fn connection_error(&self) -> Option<(coven::StorageFailure, &str)> {
-        match self.ended_pass()? {
+        match self.shown_pass()? {
             coven::LastPass::Offline { failure, error }
             | coven::LastPass::Failed { failure: coven::StatusFailure::Storage(failure), error } => {
                 Some((*failure, error))
@@ -217,7 +246,7 @@ impl SyncStatusSnapshot {
     fn failure_recorded(&self) -> bool {
         use coven::{LastPass as S, PendingReason as R, StatusFailure as F};
         use PendingSubjectName as N;
-        let Some(pass) = self.ended_pass() else {
+        let Some(pass) = self.shown_pass() else {
             return false;
         };
         self.pending.iter().any(|item| match (pass, &item.subject, &item.wait.reason) {
@@ -255,7 +284,7 @@ impl SyncStatusSnapshot {
             return Some(error.clone());
         }
         use bae_diagnostics::UiErrorCategory as C;
-        match self.ended_pass()? {
+        match self.shown_pass()? {
             coven::LastPass::Offline { error, .. } => Some(UiError::diagnostic(C::Network, error)),
             coven::LastPass::Failed { failure, error } => {
                 Some(UiError::diagnostic(status_failure_category(failure), error))
@@ -276,7 +305,7 @@ impl SyncStatusSnapshot {
     /// its wait; with no storage set up on this device there is no sync to
     /// start, and signing in to the recorded storage again is the way back.
     pub fn reconnect_offered(&self) -> bool {
-        self.error.is_some() && self.coven.connected && !self.running()
+        self.error.is_some() && self.storage_set_up() && !self.running()
     }
 
     /// Whether the activity list offers Retry Now: pressing it runs a pass,
@@ -303,7 +332,7 @@ impl SyncStatusSnapshot {
         use coven::{LastPass as S, StatusFailure as F};
         let retries =
             |record: &coven::PendingRecord| PendingWait::of(record, None).retries_by_itself();
-        match self.ended_pass() {
+        match self.shown_pass() {
             Some(S::Offline { .. } | S::Failed { failure: F::Storage(_) | F::Other, .. }) => true,
             Some(S::Blocked { slot, reason, .. }) => retries(&coven::PendingRecord::new(
                 coven::PendingSubject::Slot(*slot),
@@ -335,7 +364,7 @@ impl SyncStatusSnapshot {
     fn failure_coven_does_not_log(&self) -> Option<UiError> {
         let logged_by_coven = self.error.is_none()
             && matches!(
-                self.ended_pass(),
+                self.shown_pass(),
                 Some(
                     coven::LastPass::Blocked { .. }
                         | coven::LastPass::Failed {
@@ -356,23 +385,28 @@ impl SyncStatusSnapshot {
     /// for it, and signs in to it again.
     ///
     /// Pending records come first, since the list shows what each waits on.
-    /// With none, the line names the status itself: a moving pass is
-    /// syncing; otherwise how the last pass ended, as coven's sync state
-    /// ranks a failure above activity, and a pass that ended synced (or
-    /// none yet) is stopped while the loop isn't running. Its error, when it
-    /// has one, is `failure()`.
+    /// With none, the line names coven's sync state: syncing; offline, with
+    /// or without changes waiting to go out; a failure coven names, ranked
+    /// above activity; and synced, or waiting to sync, which is stopped
+    /// while the loop isn't running. Its error, when it has one, is
+    /// `failure()`.
     pub fn indicator(&self) -> Option<SyncIndicator> {
-        if !self.coven.connected {
-            return None;
-        }
-        let named = match self.ended_pass() {
-            None if self.coven.moving => SyncIndicator::Syncing,
-            Some(coven::LastPass::Offline { .. }) => SyncIndicator::Offline,
-            Some(coven::LastPass::Failed { .. } | coven::LastPass::Blocked { .. }) => {
-                SyncIndicator::Failed
-            }
-            Some(coven::LastPass::Synced) | None if !self.running() => SyncIndicator::Stopped,
-            Some(coven::LastPass::Synced) | None => SyncIndicator::Synced,
+        use coven::SyncState as S;
+        let named = match &self.coven.state {
+            S::NotSynced | S::SignedOut { cause: None, .. } => return None,
+            S::Syncing => SyncIndicator::Syncing,
+            S::Offline(_) | S::OfflineWithUnsentChanges(_) => SyncIndicator::Offline,
+            S::Synced | S::WaitingToSync(_) if !self.running() => SyncIndicator::Stopped,
+            S::Synced | S::WaitingToSync(_) => SyncIndicator::Synced,
+            S::SignedOut { cause: Some(_), .. }
+            | S::NoAccess(_)
+            | S::StorageFull(_)
+            | S::FolderMissing(_)
+            | S::ClockWrong(_)
+            | S::UpdateNeeded(_)
+            | S::Removed(_)
+            | S::NeedsReset(_)
+            | S::Failed(_) => SyncIndicator::Failed,
         };
         if !self.pending.is_empty() {
             return Some(SyncIndicator::Waiting { items: self.pending.len() });

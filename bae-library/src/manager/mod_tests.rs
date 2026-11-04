@@ -175,7 +175,7 @@ pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, Db
 pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     connect_test_cloud_with_sync_loop(manager).await;
     manager.database.stop_sync().await.unwrap();
-    let mut status = manager.database.subscribe(bae_db::sync_status_on);
+    let mut status = manager.subscribe_sync_status();
     crate::followed::value_matching(&mut status, |status| !status.running()).await;
     manager.database.unlock_store_key().await.unwrap();
     manager.database.set_uploads_paused(true).await.unwrap();
@@ -194,9 +194,9 @@ pub(super) async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> 
         )
         .await
         .unwrap();
-    let mut status = manager.database.subscribe(bae_db::sync_status_on);
+    let mut status = manager.subscribe_sync_status();
     crate::followed::value_matching(&mut status, |status| {
-        matches!(status.ended_pass(), Some(coven::LastPass::Synced))
+        status.coven.state == coven::SyncState::Synced
     })
     .await;
     manager.storage.clone()
@@ -561,7 +561,7 @@ pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_i
 /// Follow the pending list as the running library does, and wait for the
 /// first list `matches` accepts.
 pub(super) async fn pending_list_until(
-    values: &mut coven::LiveQuery<bae_db::SyncStatusSnapshot>,
+    values: &mut impl bae_db::live_query::LiveSource<bae_db::SyncStatusSnapshot>,
     matches: impl Fn(&[bae_db::PendingItem]) -> bool,
 ) -> Vec<bae_db::PendingItem> {
     crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending

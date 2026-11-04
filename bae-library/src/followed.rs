@@ -1,5 +1,5 @@
-//! A test's hold on one live query: the first value it reports that a test
-//! is waiting for, failing loudly when none comes.
+//! A test's hold on one live source of values: the first value it reports
+//! that a test is waiting for, failing loudly when none comes.
 
 use std::time::Duration;
 
@@ -9,7 +9,7 @@ const PATIENCE: Duration = Duration::from_secs(20);
 /// The first value `query` reports that `matches` accepts. Panics after
 /// twenty seconds without one, on a failed read, and when the query ends.
 pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'static>(
-    query: &mut coven::LiveQuery<T>,
+    query: &mut impl bae_db::live_query::LiveSource<T>,
     mut matches: impl FnMut(&T) -> bool,
 ) -> T {
     let mut last = None;
@@ -31,7 +31,7 @@ pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'sta
 }
 
 /// [`value_matching`] for the values a library hands out, which the library
-/// pulls from one live query: the first `values` gives that `matches`
+/// pulls from one live source: the first `values` gives that `matches`
 /// accepts, panicking as `value_matching` does.
 pub async fn pulled_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'static>(
     values: &bae_db::live_query::LiveValues<T>,

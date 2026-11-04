@@ -118,7 +118,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         bae_library::followed::pulled_matching(&status, |status| {
             status.error.is_some()
                 || matches!(
-                    status.ended_pass(),
+                    status.shown_pass(),
                     Some(coven::LastPass::Failed { .. } | coven::LastPass::Offline { .. })
                 )
         })

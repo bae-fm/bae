@@ -208,6 +208,7 @@ task_types = [
     "LiveStorageBrowse",
     "LiveDetail",
     "LiveValues",
+    "WithSyncState",
     "CancellableLiveQuery",
     "AddedDeviceSubscription",
     "AdminChangesSubscription",

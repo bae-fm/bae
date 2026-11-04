@@ -31,11 +31,12 @@ pub mod source_audio;
 pub mod stored_name;
 mod sync_status;
 pub mod synced;
-pub use client::sync_status::CovenSyncRow;
 pub use sync_status::{
-    pending_action, sync_status_on, PendingAction, SyncIndicator, SyncRetryOutcome,
-    SyncStatusSnapshot,
+    pending_action, sync_status_rows_on, PendingAction, SyncIndicator, SyncRetryOutcome,
+    SyncStatusRows, SyncStatusSnapshot,
 };
+mod with_sync_state;
+pub use with_sync_state::WithSyncState;
 mod upload_progress;
 pub use upload_progress::{UploadActivity, UploadProgress};
 #[cfg(any(test, feature = "test-utils"))]

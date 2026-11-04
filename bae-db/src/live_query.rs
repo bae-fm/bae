@@ -15,7 +15,7 @@
 use tokio_util::sync::CancellationToken;
 
 mod values;
-pub use values::{LiveValues, LiveValuesError};
+pub use values::{LiveSource, LiveValues, LiveValuesError};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
 /// ended.

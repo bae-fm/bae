@@ -1,4 +1,7 @@
 use super::*;
+
+/// How coven's sync state names a cause: the state it shows.
+type Names = fn(coven::SyncCause) -> coven::SyncState;
 use bae_transfers::ReleaseQueueCounts;
 use bae_types::count_label::CountLabel;
 
@@ -9,11 +12,7 @@ fn idle_uploads() -> UploadQueueCounts {
 
 fn status() -> SyncStatusSnapshot {
     SyncStatusSnapshot {
-        coven: bae_db::CovenSyncRow {
-            connected: true,
-            moving: false,
-            last_pass: Some(coven::LastPass::Synced),
-        },
+        coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         error: None,
@@ -33,7 +32,7 @@ fn a_settled_library_is_quiet() {
 #[test]
 fn a_pass_alone_is_not_movement() {
     let mut syncing = status();
-    syncing.coven.moving = true;
+    syncing.coven.state = coven::SyncState::Syncing;
     let activity = SyncActivity::new(&syncing, &idle_uploads(), &ReleaseQueueCounts::default());
     assert!(activity.syncing);
     assert!(!activity.moving());
@@ -57,10 +56,13 @@ fn transfers_are_movement() {
 #[test]
 fn failures_and_pending_records_need_attention() {
     let mut failed = status();
-    failed.coven.last_pass = Some(coven::LastPass::Offline {
-        failure: coven::StorageFailure::Network,
-        error: "unreachable".into(),
-    });
+    failed.coven.state = named(
+        coven::LastPass::Offline {
+            failure: coven::StorageFailure::Network,
+            error: "unreachable".into(),
+        },
+        coven::SyncState::Offline,
+    );
     let new = |status: &SyncStatusSnapshot| {
         SyncActivity::new(status, &idle_uploads(), &ReleaseQueueCounts::default())
     };
@@ -99,6 +101,11 @@ fn refused(failure: coven::StorageFailure) -> coven::LastPass {
     }
 }
 
+/// coven's sync state named by the last pass `pass`, as `state` names it.
+fn named(pass: coven::LastPass, state: Names) -> coven::SyncState {
+    state(coven::SyncCause::Pass(pass))
+}
+
 fn pending(record: coven::PendingRecord) -> Vec<PendingItem> {
     vec![PendingItem::before_open(record)]
 }
@@ -123,15 +130,19 @@ fn activity(status: &SyncStatusSnapshot) -> SyncActivity {
 /// person can do, and not the same failure again as a second line.
 #[test]
 fn a_failed_connection_shows_once_as_its_record() {
-    for failure in [
-        refused(coven::StorageFailure::Protocol),
-        coven::LastPass::Offline {
-            failure: coven::StorageFailure::Protocol,
-            error: ANSWERED_S3.into(),
-        },
-    ] {
+    let cases: [(coven::LastPass, Names); 2] = [
+        (refused(coven::StorageFailure::Protocol), coven::SyncState::Failed),
+        (
+            coven::LastPass::Offline {
+                failure: coven::StorageFailure::Protocol,
+                error: ANSWERED_S3.into(),
+            },
+            coven::SyncState::Offline,
+        ),
+    ];
+    for (failure, state) in cases {
         let mut failed = status();
-        failed.coven.last_pass = Some(failure);
+        failed.coven.state = named(failure, state);
         failed.pending = pending(connection(coven::StorageFailure::Protocol));
         let shown = activity(&failed);
         assert_eq!(shown.failure, None, "{:?}", failed.coven);
@@ -146,15 +157,18 @@ fn a_failed_connection_shows_once_as_its_record() {
 fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
     let reason = coven::PendingReason::Storage {
         provider: coven::CloudProvider::S3,
-        failure: coven::StorageFailure::Network,
+        failure: coven::StorageFailure::Protocol,
         answered: true,
     };
     let mut blocked = status();
-    blocked.coven.last_pass = Some(coven::LastPass::Blocked {
-        slot: coven::Slot(3),
-        reason: reason.clone(),
-        error: Some(ANSWERED_S3.into()),
-    });
+    blocked.coven.state = named(
+        coven::LastPass::Blocked {
+            slot: coven::Slot(3),
+            reason: reason.clone(),
+            error: Some(ANSWERED_S3.into()),
+        },
+        coven::SyncState::Failed,
+    );
     blocked.pending = pending(coven::PendingRecord::new(
         coven::PendingSubject::Slot(coven::Slot(3)),
         reason.clone(),
@@ -169,10 +183,13 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
         reason,
     );
     let mut failed = status();
-    failed.coven.last_pass = Some(coven::LastPass::Failed {
-        failure: coven::StatusFailure::Operation(operation.clone()),
-        error: "the invite failed".into(),
-    });
+    failed.coven.state = named(
+        coven::LastPass::Failed {
+            failure: coven::StatusFailure::Operation(operation.clone()),
+            error: "the invite failed".into(),
+        },
+        coven::SyncState::Failed,
+    );
     failed.pending = pending(operation);
     assert_eq!(activity(&failed).failure, None);
 }
@@ -183,15 +200,19 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
 #[test]
 fn a_failure_no_record_shows_is_its_own_line() {
     let mut copied = status();
-    copied.coven.last_pass = Some(coven::LastPass::Failed {
-        failure: coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced),
-        error: "another copy uses this device's id".into(),
-    });
+    copied.coven.state = named(
+        coven::LastPass::Failed {
+            failure: coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced),
+            error: "another copy uses this device's id".into(),
+        },
+        coven::SyncState::NeedsReset,
+    );
     copied.pending = pending(connection(coven::StorageFailure::Network));
     assert!(activity(&copied).failure.is_some());
 
     let mut unrecorded = status();
-    unrecorded.coven.last_pass = Some(refused(coven::StorageFailure::Protocol));
+    unrecorded.coven.state =
+        named(refused(coven::StorageFailure::Protocol), coven::SyncState::Failed);
     unrecorded.pending = pending(connection(coven::StorageFailure::Network));
     assert!(activity(&unrecorded).failure.is_some());
 }
@@ -203,7 +224,8 @@ fn a_failure_no_record_shows_is_its_own_line() {
 fn the_list_offers_retry_only_when_a_retry_runs_a_pass_that_can_clear_a_failure() {
     let failed = |retry_effect| {
         let mut failed = status();
-        failed.coven.last_pass = Some(refused(coven::StorageFailure::Network));
+        failed.coven.state =
+            named(refused(coven::StorageFailure::Network), coven::SyncState::Failed);
         failed.pending = pending(connection(coven::StorageFailure::Network));
         failed.retry_effect = retry_effect;
         activity(&failed).retry_offered

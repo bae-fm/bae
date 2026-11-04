@@ -84,7 +84,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         let b = devices.b();
         b.wait_until("the second device stopping for the update", || async {
             matches!(
-                b.manager().sync_status().await.unwrap().ended_pass(),
+                b.manager().sync_status().await.unwrap().shown_pass(),
                 Some(coven::LastPass::Blocked {
                     reason: coven::PendingReason::UpdateRequired(
                         coven::RequiredUpdate::AppSchema { version: 2 }

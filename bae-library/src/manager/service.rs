@@ -235,7 +235,7 @@ impl LibraryManager {
     /// start.
     pub fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
-        query: coven::LiveQuery<T>,
+        query: impl bae_db::live_query::LiveSource<T> + 'static,
     ) -> bae_db::live_query::LiveValues<T> {
         bae_db::live_query::LiveValues::new(query, self.tasks.closing.child_token())
     }
@@ -326,7 +326,7 @@ impl LibraryManager {
     /// each once, as it appears or changes. Call once after construction,
     /// with a tokio runtime available.
     pub fn start(&self) -> Result<(), LibraryError> {
-        let mut statuses = self.database.subscribe(bae_db::sync_status_on);
+        let mut statuses = self.subscribe_sync_status();
         let lm = self.clone();
         self.spawn_supervised_task(
             "sync status follower",
@@ -362,7 +362,7 @@ impl LibraryManager {
         {
             tracing::warn!(?category, "sync failure: {detail}");
         }
-        let failed = |snapshot: &bae_db::SyncStatusSnapshot| match snapshot.ended_pass() {
+        let failed = |snapshot: &bae_db::SyncStatusSnapshot| match snapshot.shown_pass() {
             Some(coven::LastPass::Failed { error, .. }) => Some(error.clone()),
             _ => None,
         };
@@ -378,9 +378,12 @@ impl LibraryManager {
         }
     }
 
-    /// Follow the sync status, each value read from its tables in one go.
-    pub fn subscribe_sync_status(&self) -> coven::LiveQuery<bae_db::SyncStatusSnapshot> {
-        self.database.subscribe(bae_db::sync_status_on)
+    /// Follow the sync status: coven's sync state beside one read of the
+    /// sync status's rows, each value made from the latest of both.
+    pub fn subscribe_sync_status(
+        &self,
+    ) -> bae_db::WithSyncState<bae_db::SyncStatusRows, bae_db::SyncStatusSnapshot> {
+        self.database.with_sync_state(bae_db::sync_status_rows_on, bae_db::SyncStatusSnapshot::read)
     }
 
     /// How far and how fast each release with files being sent goes, and

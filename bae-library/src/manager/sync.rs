@@ -27,9 +27,12 @@ impl LibraryManager {
         Ok(self.sync_status().await?.running())
     }
 
-    /// The sync status now, as [`Self::subscribe_sync_status`] reads it.
+    /// The sync status now, as [`Self::subscribe_sync_status`] makes each.
     pub async fn sync_status(&self) -> Result<bae_db::SyncStatusSnapshot, LibraryError> {
-        Ok(self.database.read(|sql| Ok(bae_db::sync_status_on(sql)?)).await?)
+        Ok(self
+            .database
+            .read_with_sync_state(bae_db::sync_status_rows_on, bae_db::SyncStatusSnapshot::read)
+            .await?)
     }
 
     pub async fn pending(&self) -> Result<Vec<coven::PendingRecord>, LibraryError> {
