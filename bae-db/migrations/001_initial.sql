@@ -2397,7 +2397,7 @@ CREATE TABLE IF NOT EXISTS playback_now (
     side_boundary_kind TEXT CHECK (side_boundary_kind IN ('side', 'disc')),
     side_label         TEXT,
     side_resumes_at    INTEGER,
-    volume      REAL NOT NULL CHECK (volume >= 0),
+    volume      REAL NOT NULL CHECK (volume BETWEEN 0 AND 1),
     is_muted    INTEGER NOT NULL CHECK (is_muted IN (0, 1)),
     -- Where playback goes: this device's own output, a remote renderer, or
     -- back here after the link to the renderer was lost, with why

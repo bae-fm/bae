@@ -30,7 +30,7 @@ fn playing_drain() -> (AudioOutputControls, AudioDrain, AudioEventReceiver) {
     let (mut sink, stream, _ready) = create_track_stream_pair(44_100, 2);
     sink.push_samples(&ramp());
     let source = Arc::new(Mutex::new(PlaybackSource::new(stream, track_fmt())));
-    let controls = AudioOutputControls::new(1.0);
+    let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     let (tx, rx) = audio_event_channel();
     let drain = AudioDrain::new(controls.clone(), source, tx, 100);

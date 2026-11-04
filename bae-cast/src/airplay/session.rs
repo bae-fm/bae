@@ -54,11 +54,11 @@ pub(crate) struct NegotiatedTransport {
     pub timing_port: u16,
 }
 
-/// Map a 0.0–1.0 volume to the RAOP dB level SET_PARAMETER carries: silence is
-/// the sentinel −144, otherwise a linear map onto the −30 dB … 0 dB range the
+/// Map a volume to the RAOP dB level SET_PARAMETER carries: silence is the
+/// sentinel −144, otherwise a linear map onto the −30 dB … 0 dB range the
 /// receiver applies.
-pub(crate) fn volume_to_raop_db(level: f32) -> f32 {
-    let level = level.clamp(0.0, 1.0);
+pub(crate) fn volume_to_raop_db(level: bae_playback::Volume) -> f32 {
+    let level = level.get();
     if level <= 0.0 {
         -144.0
     } else {
@@ -138,7 +138,7 @@ pub(crate) fn perform_handshake(
     local_timing_port: u16,
     initial_sequence: u16,
     initial_timestamp: u32,
-    volume: f32,
+    volume: bae_playback::Volume,
 ) -> Result<(NegotiatedTransport, Option<u32>), RaopError> {
     let options = conn.request(&RtspRequest::new(Method::Options, "*"))?;
     expect_success("OPTIONS", &options)?;
@@ -240,7 +240,7 @@ impl RaopSession {
         rtsp_port: u16,
         source: Box<dyn PcmSource>,
         cipher: RaopCipher,
-        volume: f32,
+        volume: bae_playback::Volume,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, RaopError> {
         let mut conn = RtspConnection::connect(receiver, rtsp_port, "bae/1 (RAOP)")?;

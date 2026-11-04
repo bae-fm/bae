@@ -48,7 +48,7 @@ enum SessionCommand {
     Play,
     Pause,
     Seek(Duration),
-    SetVolume(f32),
+    SetVolume(crate::Volume),
     Stop,
 }
 
@@ -101,7 +101,7 @@ impl RendererSession {
         self.send(SessionCommand::Seek(position));
     }
 
-    pub fn set_volume(&self, level: f32) {
+    pub fn set_volume(&self, level: crate::Volume) {
         self.send(SessionCommand::SetVolume(level));
     }
 

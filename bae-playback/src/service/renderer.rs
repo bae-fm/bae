@@ -51,7 +51,7 @@ impl Renderer {
         }
     }
 
-    pub(super) fn set_remote_volume(&self, volume: f32) {
+    pub(super) fn set_remote_volume(&self, volume: crate::Volume) {
         if let Self::Remote(remote) = self {
             remote.session.set_volume(volume);
         }

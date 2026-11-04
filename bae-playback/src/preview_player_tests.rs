@@ -242,7 +242,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let report = Arc::new(std::sync::Mutex::new(None));
     player.audio_output = Some(crate::audio_output::PlayerOutput::new(
         Box::new(InvalidatingOutput { capture, report: report.clone() }),
-        crate::audio_output::AudioOutputControls::new(1.0),
+        crate::audio_output::AudioOutputControls::new(crate::Volume::FULL),
     ));
     // The preview reuses the output set above, so nothing is opened from this.
     let device = FailingAudioDevice;
@@ -393,7 +393,7 @@ async fn failed_preview_seek_surfaces_idle() {
     // output, so the device passed here is never opened from.)
     player.audio_output = Some(crate::audio_output::PlayerOutput::new(
         Box::new(FailingAudioOutput),
-        crate::audio_output::AudioOutputControls::new(1.0),
+        crate::audio_output::AudioOutputControls::new(crate::Volume::FULL),
     ));
     player.seek(crate::StreamPosition::from_millis(500), &device).await;
 

@@ -1,4 +1,5 @@
 use crate::audio_output::PlayerOutput;
+use crate::Volume;
 
 /// The main player's output volume and mute, as one owner: the level the
 /// person set, and whether it is muted. The output's gain — what the audio
@@ -13,15 +14,15 @@ use crate::audio_output::PlayerOutput;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) enum OutputVolume {
     /// Playing at this level.
-    Audible(f32),
+    Audible(Volume),
     /// Muted: the output sits at zero, and `level` is what unmuting puts
     /// back.
-    Muted { level: f32 },
+    Muted { level: Volume },
 }
 
 impl OutputVolume {
     pub(super) fn new() -> Self {
-        Self::Audible(1.0)
+        Self::Audible(Volume::FULL)
     }
 
     #[cfg(test)]
@@ -31,7 +32,7 @@ impl OutputVolume {
 
     /// The level the person set — what the UI shows, muted or not.
     #[cfg(test)]
-    fn level(&self) -> f32 {
+    fn level(&self) -> Volume {
         match *self {
             Self::Audible(level) | Self::Muted { level } => level,
         }
@@ -39,10 +40,10 @@ impl OutputVolume {
 
     /// What a listener hears right now — zero while muted. A remote device is
     /// seeded with this so it matches what the user hears.
-    pub(super) fn audible_level(&self) -> f32 {
+    pub(super) fn audible_level(&self) -> Volume {
         match *self {
             Self::Audible(level) => level,
-            Self::Muted { .. } => 0.0,
+            Self::Muted { .. } => Volume::SILENT,
         }
     }
 
@@ -55,13 +56,13 @@ impl OutputVolume {
     /// Set the level to `level`. Returns whether this lifted mute: raising
     /// the level above zero is how a muted output is unmuted, while setting
     /// zero leaves mute as it stands.
-    pub(super) fn set(&mut self, level: f32, output: &PlayerOutput) -> bool {
+    pub(super) fn set(&mut self, level: Volume, output: &PlayerOutput) -> bool {
         let lifted_mute = match *self {
             Self::Audible(_) => {
                 *self = Self::Audible(level);
                 false
             }
-            Self::Muted { .. } if level > 0.0 => {
+            Self::Muted { .. } if level > Volume::SILENT => {
                 *self = Self::Audible(level);
                 true
             }
@@ -74,7 +75,7 @@ impl OutputVolume {
     /// Mute or unmute. Returns the new audible level — zero on mute, the
     /// pre-mute level on unmute — or `None` when the output is already in that
     /// state and nothing changes.
-    pub(super) fn set_muted(&mut self, muted: bool, output: &PlayerOutput) -> Option<f32> {
+    pub(super) fn set_muted(&mut self, muted: bool, output: &PlayerOutput) -> Option<Volume> {
         *self = match (*self, muted) {
             (Self::Audible(level), true) => Self::Muted { level },
             (Self::Muted { level }, false) => Self::Audible(level),
@@ -86,7 +87,7 @@ impl OutputVolume {
 
     /// Adopt a persisted level and mute state: the output plays at `level`, or
     /// at zero with `level` held for the unmute when the session was muted.
-    pub(super) fn restore(&mut self, level: f32, muted: bool, output: &PlayerOutput) {
+    pub(super) fn restore(&mut self, level: Volume, muted: bool, output: &PlayerOutput) {
         *self = if muted { Self::Muted { level } } else { Self::Audible(level) };
         self.apply_to(output);
     }

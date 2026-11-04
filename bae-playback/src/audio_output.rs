@@ -47,10 +47,10 @@ pub struct AudioOutputControls {
 }
 
 impl AudioOutputControls {
-    pub(crate) fn new(initial_volume: f32) -> Self {
+    pub(crate) fn new(initial_volume: crate::Volume) -> Self {
         Self {
             state: Arc::new(AtomicU8::new(AudioState::Stopped as u8)),
-            volume: Arc::new(AtomicF32::new(initial_volume)),
+            volume: Arc::new(AtomicF32::new(initial_volume.get())),
         }
     }
 
@@ -62,8 +62,8 @@ impl AudioOutputControls {
         AudioState::from_u8(self.state.load(Ordering::Relaxed))
     }
 
-    pub(crate) fn set_volume(&self, volume: f32) {
-        self.volume.store(volume.clamp(0.0, 1.0));
+    pub(crate) fn set_volume(&self, volume: crate::Volume) {
+        self.volume.store(volume.get());
     }
 
     pub(crate) fn get_volume(&self) -> f32 {
@@ -480,7 +480,7 @@ impl PlayerOutput {
         self.controls.get_state()
     }
 
-    pub(crate) fn set_volume(&self, volume: f32) {
+    pub(crate) fn set_volume(&self, volume: crate::Volume) {
         self.controls.set_volume(volume);
     }
 

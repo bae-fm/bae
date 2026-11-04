@@ -84,7 +84,7 @@ fn create_stream_drives_the_sink_and_publishes_control() {
     let state = sink.state.clone();
     let control = Arc::new(AirPlayControl::new());
     let mut output = AirPlayOutput::new(Box::new(sink), control.clone());
-    let controls = AudioOutputControls::new(1.0);
+    let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
 
     let (tx, _rx) = audio_event_channel();
@@ -110,7 +110,7 @@ fn create_stream_drives_the_sink_and_publishes_control() {
 #[test]
 fn a_converter_that_cant_be_set_up_refuses_the_stream() {
     let (tx, _rx) = audio_event_channel();
-    let controls = AudioOutputControls::new(1.0);
+    let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     let refused = DrainSource::new(
         AudioDrain::new(controls.clone(), playing_source(4), tx, 100),
@@ -126,7 +126,7 @@ fn a_converter_that_cant_be_set_up_refuses_the_stream() {
 #[test]
 fn drain_source_respects_pause_and_converts_scale() {
     let (tx, _rx) = audio_event_channel();
-    let controls = AudioOutputControls::new(1.0);
+    let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Paused);
     let mut paused = DrainSource::new(
         AudioDrain::new(controls.clone(), playing_source(4), tx, 100),
@@ -140,7 +140,7 @@ fn drain_source_respects_pause_and_converts_scale() {
 
     // Now playing: the four full-scale stereo frames convert to i16::MAX.
     let (tx2, _rx2) = audio_event_channel();
-    let controls2 = AudioOutputControls::new(1.0);
+    let controls2 = AudioOutputControls::new(crate::Volume::FULL);
     controls2.set_state(AudioState::Playing);
     let mut playing = DrainSource::new(
         AudioDrain::new(controls2.clone(), playing_source(4), tx2, 100),
@@ -167,7 +167,7 @@ fn drain_source_resamples_to_the_receiver_rate() {
     sink.mark_finished();
     let source = Arc::new(Mutex::new(PlaybackSource::new(stream, track_fmt())));
 
-    let controls = AudioOutputControls::new(1.0);
+    let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     let (tx, _rx) = audio_event_channel();
     let mut ds =

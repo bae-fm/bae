@@ -32,7 +32,10 @@ fn test_fmt() -> TrackFmt {
 #[tokio::test]
 async fn start_stream_pipeline_failure_returns_err_and_cancels_decoder() {
     let buffer = create_sparse_buffer(0);
-    let mut output = PlayerOutput::new(Box::new(FailingAudioOutput), AudioOutputControls::new(1.0));
+    let mut output = PlayerOutput::new(
+        Box::new(FailingAudioOutput),
+        AudioOutputControls::new(crate::Volume::FULL),
+    );
 
     let result = start_stream_pipeline(
         &Diagnostics::noop(),
@@ -66,7 +69,7 @@ async fn start_stream_pipeline_success_builds_pipeline() {
     let (captured, _capture_rx) = tokio::sync::mpsc::unbounded_channel();
     let mut output = PlayerOutput::new(
         Box::new(CaptureAudioOutput::new(captured)),
-        AudioOutputControls::new(1.0),
+        AudioOutputControls::new(crate::Volume::FULL),
     );
 
     let start = start_stream_pipeline(

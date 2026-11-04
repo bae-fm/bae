@@ -23,7 +23,7 @@ fn drain_over(rate: u32, samples: &[f32]) -> (AudioDrain, AudioOutputControls) {
     sink.push_samples(samples);
     sink.mark_finished();
     let source = Arc::new(Mutex::new(PlaybackSource::new(stream, track_fmt())));
-    let controls = AudioOutputControls::new(1.0);
+    let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     let (tx, _rx) = audio_event_channel();
     (AudioDrain::new(controls.clone(), source, tx, 100), controls)

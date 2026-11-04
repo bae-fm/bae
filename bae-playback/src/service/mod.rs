@@ -576,9 +576,10 @@ fn open_audio_device_and_output(
         None => Box::new(SystemAudioOutputDevice::new()),
     };
     match audio_device.open_output() {
-        Ok(output) => {
-            Some((audio_device, PlayerOutput::new(output, AudioOutputControls::new(1.0))))
-        }
+        Ok(output) => Some((
+            audio_device,
+            PlayerOutput::new(output, AudioOutputControls::new(crate::Volume::FULL)),
+        )),
         Err(e) => {
             error!("Failed to initialize audio output: {:?}", e);
             None

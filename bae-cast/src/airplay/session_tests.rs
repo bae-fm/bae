@@ -6,12 +6,10 @@ use std::net::TcpListener;
 
 #[test]
 fn volume_maps_to_raop_db_range() {
-    assert_eq!(volume_to_raop_db(1.0), 0.0);
-    assert_eq!(volume_to_raop_db(0.5), -15.0);
-    assert_eq!(volume_to_raop_db(0.0), -144.0);
-    // Out-of-range is clamped.
-    assert_eq!(volume_to_raop_db(2.0), 0.0);
-    assert_eq!(volume_to_raop_db(-1.0), -144.0);
+    let level = |level: f32| bae_playback::Volume::new(level).unwrap();
+    assert_eq!(volume_to_raop_db(level(1.0)), 0.0);
+    assert_eq!(volume_to_raop_db(level(0.5)), -15.0);
+    assert_eq!(volume_to_raop_db(level(0.0)), -144.0);
 }
 
 #[test]
@@ -95,8 +93,17 @@ fn handshake_drives_the_7_1_sequence_in_order() {
 
     let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
     let sdp = build_announce_sdp(7, conn.local_addr(), addr.ip(), &RaopCipher::none());
-    let (negotiated, audio_latency) =
-        perform_handshake(&mut conn, "rtsp://x/7", &sdp, 6100, 6200, 0, 0, 0.5).unwrap();
+    let (negotiated, audio_latency) = perform_handshake(
+        &mut conn,
+        "rtsp://x/7",
+        &sdp,
+        6100,
+        6200,
+        0,
+        0,
+        bae_playback::Volume::new(0.5).unwrap(),
+    )
+    .unwrap();
 
     assert_eq!(negotiated.server_port, 6000);
     assert_eq!(negotiated.control_port, 6001);
@@ -165,7 +172,7 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         addr.port(),
         Box::new(SilentSource),
         RaopCipher::none(),
-        1.0,
+        bae_playback::Volume::FULL,
         Arc::new(crate::airplay::stream::SystemClock::new()),
     )
     .expect("the RAOP session starts");

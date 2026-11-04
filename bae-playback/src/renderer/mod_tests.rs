@@ -70,7 +70,7 @@ fn session_routes_commands_to_the_channel() {
     session.load(media("http://host/track"));
     session.pause();
     session.seek(Duration::from_secs(42));
-    session.set_volume(0.3);
+    session.set_volume(crate::Volume::new(0.3).unwrap());
 
     // Wait until every command has been applied by the session thread.
     let applied = {

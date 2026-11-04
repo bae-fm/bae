@@ -38,6 +38,7 @@ pub mod tables;
 pub mod test_capture;
 pub mod timeline;
 mod track_buffered;
+mod volume_level;
 
 pub use audio_focus::{AudioFocus, AudioFocusRefused, AudioFocusSystem};
 pub use audio_output::{
@@ -81,3 +82,4 @@ pub use service::{
 pub use source::{TrackCrossing, TrackFmt};
 pub use timeline::{StreamPosition, TrackTimeline};
 pub use track_buffered::{TrackBuffered, TrackBufferedFollow, TrackSpan};
+pub use volume_level::Volume;

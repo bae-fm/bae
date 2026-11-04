@@ -375,7 +375,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
     service.audio_output = crate::audio_output::PlayerOutput::new(
         Box::new(EndPanicsOutput { panicked: false }),
-        AudioOutputControls::new(1.0),
+        AudioOutputControls::new(crate::Volume::FULL),
     );
     let command_tx = service.command_tx.clone();
     let (saved_tx, saved_rx) = oneshot::channel();

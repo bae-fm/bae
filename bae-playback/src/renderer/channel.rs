@@ -98,8 +98,8 @@ pub trait RendererChannel: Send {
     fn play(&mut self) -> Result<(), RendererError>;
     fn pause(&mut self) -> Result<(), RendererError>;
     fn seek(&mut self, position: Duration) -> Result<(), RendererError>;
-    /// Set the renderer volume to `level` (0.0–1.0).
-    fn set_volume(&mut self, level: f32) -> Result<(), RendererError>;
+    /// Set the renderer volume to `level`.
+    fn set_volume(&mut self, level: crate::Volume) -> Result<(), RendererError>;
     /// Stop playback on the renderer (the loaded media is unloaded).
     fn stop(&mut self) -> Result<(), RendererError>;
     /// Read the renderer's current status.
@@ -178,8 +178,8 @@ impl RendererChannel for FakeChannel {
         self.state.lock().unwrap().seeks.push(position);
         Ok(())
     }
-    fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
-        self.state.lock().unwrap().volumes.push(level);
+    fn set_volume(&mut self, level: crate::Volume) -> Result<(), RendererError> {
+        self.state.lock().unwrap().volumes.push(level.get());
         Ok(())
     }
     fn stop(&mut self) -> Result<(), RendererError> {

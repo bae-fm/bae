@@ -93,7 +93,7 @@ fn build_airplay_sink(
                 encryption,
                 // The receiver plays at its hardware volume; bae attenuates locally
                 // in the output drain, so seed the session at full.
-                1.0,
+                bae_playback::Volume::FULL,
                 diagnostics.clone(),
             )))
         }

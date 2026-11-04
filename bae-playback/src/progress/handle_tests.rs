@@ -69,7 +69,10 @@ async fn a_change_is_in_the_row_before_its_event_is_forwarded() {
     next_event(&mut events).await;
     next_event(&mut events).await;
 
-    assert_eq!(crate::tables::playback_level(&db).await.unwrap(), (0.25, true));
+    assert_eq!(
+        crate::tables::playback_level(&db).await.unwrap(),
+        (crate::Volume::new(0.25).unwrap(), true)
+    );
 }
 
 #[tokio::test]
@@ -189,5 +192,8 @@ async fn a_position_tick_moves_only_the_positions_and_a_state_change_only_the_ro
         .unwrap();
     next_event(&mut events).await;
     assert!(positions.has_changed().unwrap(), "a position tick sends a position");
-    assert_eq!(crate::tables::playback_level(&db).await.unwrap(), (1.0, false));
+    assert_eq!(
+        crate::tables::playback_level(&db).await.unwrap(),
+        (crate::Volume::new(1.0).unwrap(), false)
+    );
 }

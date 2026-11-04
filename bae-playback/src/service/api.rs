@@ -126,7 +126,7 @@ pub(crate) enum PlaybackCommand {
     Seek(TrackTime),
     /// Seek by slider ratio (0.0–1.0) of the current track's duration and pregap.
     SeekByRatio(f64),
-    SetVolume(f32),
+    SetVolume(crate::Volume),
     AddToQueue(Vec<String>),
     AddNext(Vec<String>),
     AddReleaseToQueue(String),
@@ -401,8 +401,13 @@ impl PlaybackHandle {
     pub fn seek_by_ratio(&self, ratio: f64) {
         self.dispatch(PlaybackCommand::SeekByRatio(ratio));
     }
+    /// Set the level to `volume`, held to silent and full; a level that is
+    /// no number sets nothing.
     pub fn set_volume(&self, volume: f32) {
-        self.dispatch(PlaybackCommand::SetVolume(volume));
+        match crate::Volume::new(volume) {
+            Some(volume) => self.dispatch(PlaybackCommand::SetVolume(volume)),
+            None => warn!(volume, "a volume that is no number sets nothing"),
+        }
     }
     pub fn set_muted(&self, muted: bool) {
         self.dispatch(PlaybackCommand::SetMuted(muted));

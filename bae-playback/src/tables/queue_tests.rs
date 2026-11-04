@@ -290,10 +290,14 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
     let resumed = now_playing(&db).await.unwrap().expect("nothing to display");
     assert_eq!(resumed.playback.state, crate::PlaybackState::Stopped);
     assert_eq!(resumed.failure, None);
-    assert_eq!(playback_level(&db).await.unwrap(), (0.5, true), "kept to resume");
+    assert_eq!(
+        playback_level(&db).await.unwrap(),
+        (crate::Volume::new(0.5).unwrap(), true),
+        "kept to resume"
+    );
 
     settle_playback_queue(&db, false).await.unwrap();
-    assert_eq!(playback_level(&db).await.unwrap(), (1.0, false));
+    assert_eq!(playback_level(&db).await.unwrap(), (crate::Volume::new(1.0).unwrap(), false));
     assert!(queue_value(&db).await.unwrap().context.is_none(), "restore off empties it");
     assert!(load_playback_state(&db).await.unwrap().is_none());
     assert_eq!(

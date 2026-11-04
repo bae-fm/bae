@@ -40,11 +40,19 @@ pub async fn now_playing(database: &Database) -> Result<Option<NowPlayingValues>
 }
 
 /// The volume and mute the row holds, which resuming playback restores.
-pub async fn playback_level(database: &Database) -> Result<(f32, bool), DbError> {
+pub async fn playback_level(database: &Database) -> Result<(crate::Volume, bool), DbError> {
     database
         .read(|sql| {
             Ok(sql.query_row("SELECT volume, is_muted FROM playback_now", [], |row| {
-                Ok((row.get("volume")?, row.get("is_muted")?))
+                let stored: f32 = row.get("volume")?;
+                let volume = crate::Volume::new(stored).ok_or_else(|| {
+                    bae_db::client::read::column_conversion_error(
+                        row,
+                        "volume",
+                        format!("volume {stored} is no level"),
+                    )
+                })?;
+                Ok((volume, row.get("is_muted")?))
             })?)
         })
         .await

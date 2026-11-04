@@ -320,7 +320,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
         assert_eq!(announced, (Some(0.3), Some(true)));
         assert_eq!(
             bae_playback::tables::playback_level(playback.library.database()).await.unwrap(),
-            (0.3, true)
+            (bae_playback::Volume::new(0.3).unwrap(), true)
         );
         handle.shutdown().await;
     })

@@ -428,8 +428,10 @@ impl PreviewPlayer {
         if self.audio_output.is_none() {
             match audio_device.open_output() {
                 Ok(output) => {
-                    self.audio_output =
-                        Some(PlayerOutput::new(output, AudioOutputControls::new(1.0)))
+                    self.audio_output = Some(PlayerOutput::new(
+                        output,
+                        AudioOutputControls::new(crate::Volume::FULL),
+                    ))
                 }
                 Err(e) => {
                     error!("Failed to open the preview audio output: {:?}", e);

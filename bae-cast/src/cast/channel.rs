@@ -147,10 +147,10 @@ impl RendererChannel for RustCastChannel {
             .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }
 
-    fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
+    fn set_volume(&mut self, level: bae_playback::Volume) -> Result<(), RendererError> {
         self.device
             .receiver
-            .set_volume(level.clamp(0.0, 1.0))
+            .set_volume(level.get())
             .map(|_| ())
             .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }

@@ -368,7 +368,7 @@ async fn seek_while_remote_seeks_the_device() {
 #[tokio::test]
 async fn set_volume_while_remote_sets_the_device_volume() {
     let (_home, mut service, state, _rx) = remote_over_fake().await;
-    service.set_volume(0.3);
+    service.set_volume(crate::Volume::new(0.3).unwrap());
     assert!(
         wait_until(|| state.lock().unwrap().volumes.contains(&0.3)),
         "setting the volume while remote must set the device's volume"
@@ -810,7 +810,7 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
 #[tokio::test]
 async fn stopping_airplay_keeps_the_level_set_on_the_receiver() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.set_volume(0.8);
+    service.set_volume(crate::Volume::new(0.8).unwrap());
     service
         .handle_play_on_airplay(renderer::AirPlayConnect::new(
             Box::new(NoopAirPlaySink),
@@ -818,7 +818,7 @@ async fn stopping_airplay_keeps_the_level_set_on_the_receiver() {
         ))
         .await;
 
-    service.set_volume(0.3);
+    service.set_volume(crate::Volume::new(0.3).unwrap());
     service.handle_stop_remote().await;
 
     assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
@@ -830,7 +830,7 @@ async fn stopping_airplay_keeps_the_level_set_on_the_receiver() {
 #[tokio::test]
 async fn a_mute_made_on_airplay_holds_after_airplay_ends() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.set_volume(0.8);
+    service.set_volume(crate::Volume::new(0.8).unwrap());
     service
         .handle_play_on_airplay(renderer::AirPlayConnect::new(
             Box::new(NoopAirPlaySink),
@@ -838,7 +838,7 @@ async fn a_mute_made_on_airplay_holds_after_airplay_ends() {
         ))
         .await;
 
-    service.set_volume(0.4);
+    service.set_volume(crate::Volume::new(0.4).unwrap());
     service.set_muted(true);
     service.stop().await;
 

@@ -28,7 +28,7 @@ pub(crate) struct RaopSink {
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
     /// `et=1`.
     encryption: RaopEncryption,
-    initial_volume: f32,
+    initial_volume: bae_playback::Volume,
     /// Where the session's stream threads report a panic.
     diagnostics: Diagnostics,
 }
@@ -38,7 +38,7 @@ impl RaopSink {
         receiver: IpAddr,
         rtsp_port: u16,
         encryption: RaopEncryption,
-        initial_volume: f32,
+        initial_volume: bae_playback::Volume,
         diagnostics: Diagnostics,
     ) -> Self {
         Self { receiver, rtsp_port, encryption, initial_volume, diagnostics }

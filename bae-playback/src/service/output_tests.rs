@@ -151,7 +151,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     }
     service.audio_output = crate::audio_output::PlayerOutput::new(
         Box::new(NoDeviceOutput),
-        AudioOutputControls::new(1.0),
+        AudioOutputControls::new(crate::Volume::FULL),
     );
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
@@ -373,4 +373,23 @@ async fn an_output_that_stops_sending_stops_playback_and_reports_the_bug() {
     assert!(matches!(service.slot, PlaybackSlot::Stopped));
     assert_eq!(bugs.reports().len(), 1);
     assert!(bugs.reports()[0].1.contains("swr_convert"));
+}
+
+/// A level asked for past full or below silent is held to that range where
+/// it is set, so the output, the device and what is stored and shown all
+/// hold one level in range.
+#[tokio::test]
+async fn a_level_out_of_range_is_held_to_silent_and_full_where_it_is_set() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let mut emitted = Vec::new();
+    for asked in [1.5, -0.5] {
+        service.set_volume(crate::Volume::new(asked).unwrap());
+        while let Ok(progress) = progress_rx.try_recv() {
+            if let PlaybackProgress::VolumeChanged { volume } = progress {
+                emitted.push(volume);
+            }
+        }
+    }
+    assert_eq!(emitted, vec![1.0, 0.0]);
+    assert_eq!(service.audio_output.get_volume(), 0.0);
 }

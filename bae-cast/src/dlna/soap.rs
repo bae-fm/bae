@@ -94,10 +94,9 @@ pub(crate) fn get_position_info() -> SoapRequest {
 }
 
 /// `SetVolume(InstanceID=0, Channel=Master, DesiredVolume=0..=100)` on
-/// RenderingControl. `level` (0.0–1.0) is clamped and scaled to the UPnP 0–100
-/// integer range.
-pub(crate) fn set_volume(level: f32) -> SoapRequest {
-    let percent = (level.clamp(0.0, 1.0) * 100.0).round() as u32;
+/// RenderingControl: `level` scaled to the UPnP 0–100 integer range.
+pub(crate) fn set_volume(level: bae_playback::Volume) -> SoapRequest {
+    let percent = (level.get() * 100.0).round() as u32;
     let arguments = format!(
         "<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>{percent}</DesiredVolume>"
     );

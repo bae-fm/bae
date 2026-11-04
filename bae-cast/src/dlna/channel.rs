@@ -206,7 +206,7 @@ impl RendererChannel for DlnaChannel {
         self.post(&self.av_transport_url.clone(), soap::seek(position)).map(|_| ())
     }
 
-    fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
+    fn set_volume(&mut self, level: bae_playback::Volume) -> Result<(), RendererError> {
         let Some(control_url) = self.rendering_control_url.clone() else {
             debug!("dlna: renderer has no RenderingControl; volume set ignored");
             return Ok(());

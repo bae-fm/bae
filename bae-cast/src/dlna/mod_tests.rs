@@ -368,16 +368,13 @@ fn seek_targets_rel_time_in_hms() {
 
 #[test]
 fn set_volume_scales_to_upnp_percent_on_rendering_control() {
-    let request = soap::set_volume(0.5);
+    let request = soap::set_volume(bae_playback::Volume::new(0.5).unwrap());
     assert_eq!(
         request.soap_action,
         "\"urn:schemas-upnp-org:service:RenderingControl:1#SetVolume\""
     );
     assert!(request.body.contains("<DesiredVolume>50</DesiredVolume>"), "{}", request.body);
     assert!(request.body.contains("<Channel>Master</Channel>"));
-    // Out-of-range levels clamp to the 0–100 bounds.
-    assert!(soap::set_volume(1.7).body.contains("<DesiredVolume>100</DesiredVolume>"));
-    assert!(soap::set_volume(-0.3).body.contains("<DesiredVolume>0</DesiredVolume>"));
 }
 
 // -- SOAP response parsing ----------------------------------------------------
@@ -558,7 +555,7 @@ fn channel_routes_each_command_to_its_soap_action() {
     channel.load(&test_media()).unwrap();
     channel.pause().unwrap();
     channel.seek(Duration::from_secs(42)).unwrap();
-    channel.set_volume(0.5).unwrap();
+    channel.set_volume(bae_playback::Volume::new(0.5).unwrap()).unwrap();
     channel.play().unwrap();
     channel.stop().unwrap();
 

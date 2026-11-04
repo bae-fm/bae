@@ -194,14 +194,14 @@ impl PlaybackService {
             Ok(level) => level,
             Err(e) => {
                 warn!("couldn't read the volume to resume: {e}; resuming at full volume");
-                (1.0, false)
+                (crate::Volume::FULL, false)
             }
         };
         // The saved level is what the UI shows even when the session was muted —
         // that is the level unmuting puts back — so `VolumeChanged` carries it
         // either way, and the mute is announced on top.
         self.volume.restore(volume, is_muted, &self.audio_output);
-        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume });
+        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume: volume.get() });
         if is_muted {
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: true });
         }
@@ -278,13 +278,13 @@ impl PlaybackService {
     /// Set the output volume. While playing remotely, the device's volume is set
     /// too so it stays in step and survives the handoff back to local. Unmutes on
     /// a non-zero level, and always emits `VolumeChanged`.
-    pub(super) fn set_volume(&mut self, volume: f32) {
+    pub(super) fn set_volume(&mut self, volume: crate::Volume) {
         let lifted_mute = self.volume.set(volume, &self.audio_output);
         self.renderer.set_remote_volume(volume);
         if lifted_mute {
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: false });
         }
-        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume });
+        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume: volume.get() });
     }
 
     /// Mute or unmute. Already in that state means nothing changes and nothing

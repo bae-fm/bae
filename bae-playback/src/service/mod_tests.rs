@@ -80,7 +80,7 @@ impl AudioOutput for TestAudioOutput {
 /// `output` as the main player's, playing at full volume, as a test's
 /// service starts it.
 pub(super) fn test_player_output(output: impl AudioOutput) -> PlayerOutput {
-    let controls = AudioOutputControls::new(1.0);
+    let controls = AudioOutputControls::new(crate::Volume::FULL);
     controls.set_state(AudioState::Playing);
     PlayerOutput::new(Box::new(output), controls)
 }
@@ -713,7 +713,7 @@ pub(super) fn install_airplay(
         Arc::new(FakeAirPlayControl { state: state.clone(), latency });
     let control = Arc::new(crate::airplay_output::AirPlayControl::new());
     control.bind(&session);
-    let saved_output = AudioOutputControls::new(1.0);
+    let saved_output = AudioOutputControls::new(crate::Volume::FULL);
     saved_output.set_state(AudioState::Playing);
     let saved = PlayerOutput::new(Box::new(TestAudioOutput::new()), saved_output.clone());
     service.renderer =
@@ -737,7 +737,8 @@ fn playback_command_kind_maps_user_intent_only() {
         Some(PlaybackCommandKind::SetRepeat)
     ));
     // A continuous input and an internal command ship nothing.
-    assert!(playback_command_kind(&PlaybackCommand::SetVolume(0.5)).is_none());
+    assert!(playback_command_kind(&PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap()))
+        .is_none());
     assert!(playback_command_kind(&PlaybackCommand::AutoAdvance {
         track_id: "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
     })
@@ -765,7 +766,7 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
     }
     let leaves = [
         PlaybackCommand::Resume,
-        PlaybackCommand::SetVolume(0.5),
+        PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap()),
         PlaybackCommand::SetMuted(true),
         PlaybackCommand::SetRepeatMode(RepeatMode::Context),
         PlaybackCommand::AutoAdvance { track_id: "track".to_string() },
