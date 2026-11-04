@@ -3,9 +3,41 @@
 //! the reader that accepts it cannot drift apart.
 
 use super::*;
+use crate::cue_flac::CdRipper;
 use crate::folder_scanner::{
     AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
 };
+use crate::VolumeKind;
+
+/// The volume a scan root's row says its folder is on.
+pub(super) fn volume_text(volume: VolumeKind) -> &'static str {
+    match volume {
+        VolumeKind::Local => "local",
+        VolumeKind::Network => "network",
+    }
+}
+
+pub(super) fn volume_of(stored: &str) -> Result<VolumeKind, DbError> {
+    match stored {
+        "local" => Ok(VolumeKind::Local),
+        "network" => Ok(VolumeKind::Network),
+        other => Err(DbError::unreadable("folder_scan_roots.volume", other)),
+    }
+}
+
+/// The ripper a stored track sheet names.
+pub(super) fn ripper_text(ripper: CdRipper) -> &'static str {
+    match ripper {
+        CdRipper::ExactAudioCopy => "exact_audio_copy",
+    }
+}
+
+pub(super) fn ripper_of(stored: &str) -> Result<CdRipper, DbError> {
+    match stored {
+        "exact_audio_copy" => Ok(CdRipper::ExactAudioCopy),
+        other => Err(DbError::unreadable("scan_cue_sheet.ripper", other)),
+    }
+}
 
 pub(super) fn scope_text(scope: ReleaseFileScope) -> &'static str {
     match scope {

@@ -36,26 +36,6 @@ pub enum VolumeKind {
     Network,
 }
 
-impl VolumeKind {
-    /// The spelling a scan root's row stores.
-    pub(crate) fn as_column(self) -> &'static str {
-        match self {
-            Self::Local => "local",
-            Self::Network => "network",
-        }
-    }
-
-    /// The kind a scan root's row stores, or `None` for a spelling no writer
-    /// here produces.
-    pub(crate) fn from_column(column: &str) -> Option<Self> {
-        match column {
-            "local" => Some(Self::Local),
-            "network" => Some(Self::Network),
-            _ => None,
-        }
-    }
-}
-
 /// The volume `path` lives on, or `Local` where this platform will not say.
 ///
 /// Only a network folder is checked on a schedule: a local one's watch reports

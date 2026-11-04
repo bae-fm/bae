@@ -148,20 +148,6 @@ impl CdRipper {
     fn named_in(comment: &str) -> Option<Self> {
         comment.starts_with("ExactAudioCopy").then_some(Self::ExactAudioCopy)
     }
-
-    /// The word a stored sheet keeps it as.
-    pub fn key(self) -> &'static str {
-        match self {
-            Self::ExactAudioCopy => "exact_audio_copy",
-        }
-    }
-
-    pub fn from_key(key: &str) -> Option<Self> {
-        match key {
-            "exact_audio_copy" => Some(Self::ExactAudioCopy),
-            _ => None,
-        }
-    }
 }
 
 impl CueSheet {

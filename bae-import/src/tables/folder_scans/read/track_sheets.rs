@@ -99,10 +99,7 @@ impl StoredSheet {
             date: self.date,
             ripper: self
                 .ripper
-                .map(|key| {
-                    crate::cue_flac::CdRipper::from_key(&key)
-                        .ok_or_else(|| DbError::unreadable("scan_cue_sheet.ripper", &key))
-                })
+                .map(|stored| crate::tables::folder_scans::columns::ripper_of(&stored))
                 .transpose()?,
             tracks: self.tracks.into_iter().map(StoredCueTrack::track).collect::<Result<_, _>>()?,
         })

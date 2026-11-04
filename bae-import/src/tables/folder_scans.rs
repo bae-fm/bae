@@ -193,7 +193,7 @@ impl ImportTables {
         volume: crate::VolumeKind,
     ) -> Result<u64, DbError> {
         let watched_folder_path = coven::path_bytes(watched_folder_path);
-        let volume = volume.as_column();
+        let volume = columns::volume_text(volume);
         self.database
             .call(move |sql| {
                 let generation = next_folder_scan_generation(sql)?;

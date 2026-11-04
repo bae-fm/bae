@@ -24,12 +24,7 @@ fn load_folder_scan_progress_on(
             ))
         })?
     {
-        let volume = crate::VolumeKind::from_column(&volume).ok_or_else(|| {
-            DbError::Message(format!(
-                "folder scan root {} has invalid volume {volume:?}",
-                coven::path_text(&watched_folder_path)
-            ))
-        })?;
+        let volume = super::columns::volume_of(&volume)?;
         let status = match (status.as_str(), error) {
             ("scanning", None) => FolderScanStatus::Scanning {
                 found_count: to_u64(found_count, "current folder-scan candidate count")?,

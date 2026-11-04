@@ -420,7 +420,7 @@ fn insert_cue_sheet(
             sheet.performer,
             sheet.catalog,
             sheet.date,
-            sheet.ripper.map(crate::cue_flac::CdRipper::key),
+            sheet.ripper.map(ripper_text),
         ],
     )?;
     for (position, track) in sheet.tracks.iter().enumerate() {
