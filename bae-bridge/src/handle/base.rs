@@ -110,22 +110,6 @@ forward! { async this => {
             .collect())
     }
 
-    /// Filesystem path, as coven's bytes (`coven::path_bytes`), for the
-    /// user's own external file behind a library file
-    /// (including the DiscID re-read of a rip's LOG/CUE evidence; retained
-    /// source-audio facts supply its duration). Returns `Ok(None)` if the
-    /// file has no readable local location (e.g. cloud-only and not cached).
-    /// Returns `Err` on DB failures so callers can distinguish a missing file
-    /// from a broken library state. NOT a substitute for a coven byte read.
-    fn file_path(file_id: String) -> Option<Vec<u8>> {
-        let path = this
-            .services
-            .file_local_path(&file_id)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
-        Ok(path.map(|path| coven::path_bytes(&path)))
-    }
-
     /// Resolve a list of IDs (album or track) to track IDs.
     /// Album IDs are expanded to the primary release's tracks.
     fn resolve_to_track_ids(ids: Vec<String>) -> Vec<String> {

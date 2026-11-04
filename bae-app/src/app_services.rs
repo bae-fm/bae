@@ -443,7 +443,6 @@ impl AppServices {
     delegate_async!(manager, get_release_mediums => get_release_mediums(release_id: &str) -> Result<bae_db::DbReleaseMediums, bae_library::LibraryError>);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<bae_db::DbFile>, bae_library::LibraryError>);
     delegate_async!(manager, get_file_by_id => get_file_by_id(file_id: &str) -> Result<Option<bae_db::DbFile>, bae_library::LibraryError>);
-    delegate_async!(manager, file_local_path => file_local_path(file_id: &str) -> Result<Option<std::path::PathBuf>, bae_library::LibraryError>);
     delegate_async!(manager, get_library_image => get_library_image(id: &str, image_type: &bae_db::LibraryImageType) -> Result<Option<bae_db::DbLibraryImage>, bae_library::LibraryError>);
     delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_db::ImageRef>, bae_library::LibraryError>);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_db::ImageRef) -> Result<Option<Vec<u8>>, bae_library::LibraryError>);

@@ -19,7 +19,6 @@ public struct AppServiceComponents {
     fileprivate let library: Library
     fileprivate let playback: Playback
     fileprivate let queue: Queue
-    fileprivate let mediaPaths: MediaPaths
     fileprivate let imageStore: ImageStore
     fileprivate let sync: Sync
     fileprivate let downloads: Downloads
@@ -37,7 +36,6 @@ public struct AppServiceComponents {
         library: Library,
         playback: Playback,
         queue: Queue,
-        mediaPaths: MediaPaths,
         imageStore: ImageStore,
         sync: Sync,
         downloads: Downloads,
@@ -54,7 +52,6 @@ public struct AppServiceComponents {
         self.library = library
         self.playback = playback
         self.queue = queue
-        self.mediaPaths = mediaPaths
         self.imageStore = imageStore
         self.sync = sync
         self.downloads = downloads
@@ -127,7 +124,6 @@ open class AppService: @unchecked Sendable, Observable {
     private nonisolated let library: Library
     private nonisolated let playback: Playback
     private nonisolated let queue: Queue
-    private nonisolated let mediaPaths: MediaPaths
     /// The app's image pipeline: fetch, decode-at-size, bounded decoded cache.
     private nonisolated let imageStore: ImageStore
     private nonisolated let sync: Sync
@@ -177,7 +173,6 @@ open class AppService: @unchecked Sendable, Observable {
         library = components.library
         playback = components.playback
         queue = components.queue
-        mediaPaths = components.mediaPaths
         imageStore = components.imageStore
         sync = components.sync
         downloads = components.downloads
@@ -372,6 +367,5 @@ extension AppService {
             .environment(sync)
             .environment(cast)
             .environment(castStore)
-            .environment(mediaPaths)
     }
 }

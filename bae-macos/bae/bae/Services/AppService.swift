@@ -91,7 +91,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             show: { uiStore.showError($0) }
         )
         let queue = Queue(handle: appHandle)
-        let mediaPaths = MediaPaths(handle: appHandle)
         let imageStore = ImageStore(handle: appHandle)
         let sync = Sync(handle: appHandle, deviceName: deviceName, host: host)
         let downloads = Downloads(handle: appHandle)
@@ -161,7 +160,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             library: library,
             playback: playback,
             queue: queue,
-            mediaPaths: mediaPaths,
             imageStore: imageStore,
             sync: sync,
             downloads: downloads,

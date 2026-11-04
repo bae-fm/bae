@@ -32,7 +32,6 @@ CAPABILITY_TYPES = {
     "LibraryBrowseSession",
     "LibrarySetup",
     "MediaControlService",
-    "MediaPaths",
     "MembershipStore",
     "OutboxStore",
     "OutputStore",
@@ -71,10 +70,6 @@ ALLOWED_OUTPUTS = {
     ),
     (
         "BaeKit/Sources/BaeKit/Services/Library.swift",
-        "public static func stub",
-    ),
-    (
-        "BaeKit/Sources/BaeKit/Services/MediaPaths.swift",
         "public static func stub",
     ),
     (

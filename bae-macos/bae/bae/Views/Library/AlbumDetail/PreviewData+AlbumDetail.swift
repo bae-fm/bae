@@ -152,7 +152,6 @@
                 .frame(width: 1100)
                 .background(Theme.background)
                 .environment(UiStore())
-                .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
         }
 
@@ -329,7 +328,6 @@
         @MainActor
         func albumDetailPreviewEnvironment() -> some View {
             self
-                .environment(MediaPaths.stub())
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())
                 .environment(Queue.stub())

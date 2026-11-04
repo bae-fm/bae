@@ -8,9 +8,7 @@ impl LibraryManager {
     /// whether or not it has been uploaded. `Ok(None)` means there is no
     /// original here or no such row; coven's cached copies expose no path.
     /// Database errors propagate.
-    ///
-    /// For the callers that need the user's actual file — the DiscID re-read of the
-    /// rip's artifacts — rather than coven's locality-aware byte read.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn file_local_path(&self, file_id: &str) -> Result<Option<PathBuf>, LibraryError> {
         Ok(self.database.external_file(file_id).await?.map(|ext| ext.path))
     }

@@ -102,6 +102,7 @@ impl Database {
     /// release local again wrote. `None` when there is no such row or this
     /// device records no original for it, as for a release another device
     /// imported.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn external_file(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
         let Some(row) = self.find_file_by_id(file_id).await? else {
             return Ok(None);
