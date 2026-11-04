@@ -247,12 +247,6 @@ impl PcmSource for FixedSource {
     }
 }
 
-fn pv_nonce(label: &[u8; 8]) -> Nonce {
-    let mut b = [0u8; 12];
-    b[4..].copy_from_slice(label);
-    Nonce::from(b)
-}
-
 /// What the fake receiver captured over one full session.
 struct Captured {
     methods: Vec<String>,
@@ -352,8 +346,12 @@ fn run_full_ap2_session(
             .push(tlv_type::IDENTIFIER, b"fake".to_vec())
             .push(tlv_type::SIGNATURE, sig.to_bytes().to_vec())
             .encode();
-        let sealed =
-            cipher.encrypt(&pv_nonce(b"PV-Msg02"), Payload { msg: &inner, aad: &[] }).unwrap();
+        let sealed = cipher
+            .encrypt(
+                &crate::airplay::airplay2::pair_verify_nonce(b"PV-Msg02"),
+                Payload { msg: &inner, aad: &[] },
+            )
+            .unwrap();
         respond(
             &mut writer,
             &cseq,

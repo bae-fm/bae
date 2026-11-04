@@ -32,7 +32,7 @@ use super::tlv8::{state, tlv_type, Tlv8};
 use super::{check_no_error, expect_state};
 
 /// The nonce prefix for the pair-verify messages: four zero bytes then the label.
-fn pair_verify_nonce(label: &[u8; 8]) -> Nonce {
+pub(super) fn pair_verify_nonce(label: &[u8; 8]) -> Nonce {
     super::ap2_channel::nonce_with_tail(label)
 }
 
