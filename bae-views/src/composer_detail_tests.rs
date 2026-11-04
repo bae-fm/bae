@@ -461,3 +461,44 @@ async fn the_page_refreshes_read_one_work_or_one_credit() {
         );
     }
 }
+
+/// Two albums sharing a title keep their releases' credits apart: releases go
+/// by album title, then by album, then by their place among the album's, so a
+/// later release of the first album comes before the other album's first.
+#[tokio::test]
+async fn credits_on_albums_sharing_a_title_stay_by_album() {
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    exec_batch(&db, PAGE).await;
+    exec_batch(
+        &db,
+        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+            ('3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03', 'album first', 0, '2026-01-01T00:00:00Z');
+         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+            ('4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03', '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03', '2026-01-01T00:00:00Z', 0),
+            ('4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04', '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01', '2026-01-01T00:00:00Z', 1);
+         INSERT INTO release_artist_roles (id, release_id, artist_id, position, source, source_credit, created_at) VALUES
+            ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f05', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'discogs', 'Written-By', '2026-01-01T00:00:00Z'),
+            ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f06', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'discogs', 'Written-By', '2026-01-01T00:00:00Z');",
+    )
+    .await;
+
+    let credits = LibraryViews::new(db.clone())
+        .get_composer_detail_rows(COMPOSER, 0, 100)
+        .await
+        .unwrap()
+        .into_iter()
+        .filter_map(|row| match row.item {
+            DbComposerDetailItem::ReleaseCredit(credit) => Some(credit.role.id),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        credits,
+        [
+            CREDIT_ON_FIRST,
+            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f06",
+            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f05",
+            CREDIT_ON_SECOND,
+        ]
+    );
+}

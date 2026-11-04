@@ -1061,9 +1061,9 @@ END;
 -- or not, and a credited work part of none heads a group of its own; a group
 -- sorts by its heading work's title, its works heading first, then by title.
 -- Each unlinked credit is listed under its release, the releases by album
--- title and then the release's place among its album's, the credits by track
--- and then by their own order. Titles compare without case, as the album
--- grid's do.
+-- title, then by album, so two albums sharing a title don't interleave, then
+-- by the release's place among its album's; the credits by track and then by
+-- their own order. Titles compare without case, as the album grid's do.
 CREATE TABLE IF NOT EXISTS composer_detail_row (
     -- The row's number: what a screen tells it apart by.
     entry       INTEGER PRIMARY KEY,
@@ -1077,6 +1077,8 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
     group_id    TEXT NOT NULL,
     -- The heading work's title, or the release's album's.
     group_title TEXT NOT NULL COLLATE NOCASE,
+    -- For a credit, the release's album.
+    group_album TEXT,
     -- For a credit, the release's place among its album's (`album_order`).
     group_order REAL,
     -- In the works, 0 for the work heading its group and 1 for a part; for a
@@ -1090,6 +1092,7 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
     item_id     TEXT NOT NULL,
     UNIQUE (artist_id, section, group_id, item_id),
     CHECK ((section = 0) = (title IS NOT NULL)),
+    CHECK ((section = 0) = (group_album IS NULL)),
     CHECK ((section = 0) = (group_order IS NULL)),
     CHECK ((section = 0) = (position IS NULL)),
     CHECK ((section = 1) = (place IS NULL)),
@@ -1097,7 +1100,7 @@ CREATE TABLE IF NOT EXISTS composer_detail_row (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_composer_detail_row_order ON composer_detail_row
-    (artist_id, section, group_title, group_order, group_id, place, title, position, item_id);
+    (artist_id, section, group_title, group_album, group_order, group_id, place, title, position, item_id);
 
 CREATE INDEX IF NOT EXISTS idx_composer_detail_row_item ON composer_detail_row (item_id);
 
@@ -1111,8 +1114,9 @@ BEGIN
     UPDATE list_order_versions SET version = version + 1 WHERE source = 'composer_detail_row';
 END;
 
-CREATE TRIGGER IF NOT EXISTS composer_detail_row_order_moved AFTER UPDATE OF group_title, group_order, place, title, position ON composer_detail_row
+CREATE TRIGGER IF NOT EXISTS composer_detail_row_order_moved AFTER UPDATE OF group_title, group_album, group_order, place, title, position ON composer_detail_row
 WHEN OLD.group_title IS NOT NEW.group_title
+  OR OLD.group_album IS NOT NEW.group_album
   OR OLD.group_order IS NOT NEW.group_order
   OR OLD.place IS NOT NEW.place
   OR OLD.title IS NOT NEW.title
@@ -1152,15 +1156,15 @@ WHERE NOT EXISTS (
 -- release, once its release and album are held.
 CREATE VIEW IF NOT EXISTS composer_detail_credits AS
 SELECT unlinked.artist_id, 1 AS section, unlinked.release_id AS group_id,
-       album.title AS group_title, r.album_order AS group_order, NULL AS place,
-       rar.position, unlinked.credit_id AS item_id
+       album.title AS group_title, album.id AS group_album, r.album_order AS group_order,
+       NULL AS place, rar.position, unlinked.credit_id AS item_id
 FROM composer_unlinked_credit unlinked
 JOIN release_artist_roles rar ON rar.id = unlinked.credit_id
 JOIN releases r ON r.id = unlinked.release_id
 JOIN albums album ON album.id = r.album_id
 UNION ALL
-SELECT unlinked.artist_id, 2, unlinked.release_id, album.title, r.album_order, t.position,
-       tar.position, unlinked.credit_id
+SELECT unlinked.artist_id, 2, unlinked.release_id, album.title, album.id, r.album_order,
+       t.position, tar.position, unlinked.credit_id
 FROM composer_unlinked_credit unlinked
 JOIN track_artist_roles tar ON tar.id = unlinked.credit_id
 JOIN tracks t ON t.id = tar.track_id
@@ -1205,15 +1209,19 @@ BEGIN
           SELECT artist_id, section, group_id FROM composer_detail_credits
           WHERE item_id = NEW.credit_id);
     INSERT INTO composer_detail_row
-        (artist_id, section, group_id, group_title, group_order, place, position, item_id)
-    SELECT artist_id, section, group_id, group_title, group_order, place, position, item_id
+        (artist_id, section, group_id, group_title, group_album, group_order, place, position,
+         item_id)
+    SELECT artist_id, section, group_id, group_title, group_album, group_order, place, position,
+           item_id
     FROM composer_detail_credits WHERE item_id = NEW.credit_id
     ON CONFLICT (artist_id, section, group_id, item_id) DO UPDATE SET
         group_title = excluded.group_title,
+        group_album = excluded.group_album,
         group_order = excluded.group_order,
         place = excluded.place,
         position = excluded.position
     WHERE composer_detail_row.group_title IS NOT excluded.group_title
+       OR composer_detail_row.group_album IS NOT excluded.group_album
        OR composer_detail_row.group_order IS NOT excluded.group_order
        OR composer_detail_row.place IS NOT excluded.place
        OR composer_detail_row.position IS NOT excluded.position;

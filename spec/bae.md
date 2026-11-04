@@ -449,8 +449,9 @@ the artist is credited on it or not, with its parts indented below it; a
 credited work part of none heads a group of its own, and a work is listed once
 in a group however many of its parts are credited. Groups sort by their
 heading work's title, its parts after it by title. Each credit is listed under
-its release: releases by album title, then the release's place among its
-album's; a release's credits by track, then their own order. Titles compare
+its release: releases by album title, two albums sharing a title by id, then
+the release's place among its album's; a release's credits by track, then
+their own order. Titles compare
 without case, as the album grid's do. A work shows the cover of its first
 album by title, compared the same way, then by id, among the albums with a
 release that performs it: that album's primary release's cover when the release performs
@@ -4273,7 +4274,7 @@ Beside them, device-local tables:
 | `composer_release` | release and artist shown credited on a work one of its tracks performs |
 | `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
 | `composer_listing` | artist the composer list shows (§2.4): its name and its counts of works, releases and unlinked credits, with an index for each of the list's sorts |
-| `composer_detail_row` | row of a composer's page (§2.4): a credited work under a work it is part of, a work heading a group, or an unlinked credit under its release, with what the page sorts it by, the heading work's title or the release's album title and place, and an index of the page's order |
+| `composer_detail_row` | row of a composer's page (§2.4): a credited work under a work it is part of, a work heading a group, or an unlinked credit under its release, with what the page sorts it by, the heading work's title or the release's album title, album and place, and an index of the page's order |
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
