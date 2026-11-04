@@ -110,6 +110,21 @@ impl ScanItemWrite {
     }
 }
 
+/// The generation `watched_folder_path` was last scanned under, `None` for a
+/// root never scanned.
+pub(super) fn root_generation_on(
+    sql: &impl QueryOne,
+    watched_folder_path: &Path,
+) -> Result<Option<i64>, DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
+            [coven::path_bytes(watched_folder_path)],
+            |row| row.get(0),
+        )
+        .optional()?)
+}
+
 /// Refuse to write under a generation the root has moved past. Runs inside the
 /// write transaction, so a scan that lost the root after the caller's check
 /// cannot write over its successor.
@@ -118,14 +133,7 @@ fn ensure_generation(
     watched_folder_path: &Path,
     generation: i64,
 ) -> Result<(), DbError> {
-    let current: Option<i64> = sql
-        .query_row(
-            "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-            [coven::path_bytes(watched_folder_path)],
-            |row| row.get(0),
-        )
-        .optional()?;
-    if current != Some(generation) {
+    if root_generation_on(sql, watched_folder_path)? != Some(generation) {
         return Err(DbError::Message(format!(
             "folder scan generation {generation} is no longer {}'s: \
              a newer scan took the root between the check and the write",
@@ -172,18 +180,8 @@ impl ImportTables {
         &self,
         watched_folder_path: &Path,
     ) -> Result<Option<i64>, DbError> {
-        let watched_folder_path = coven::path_bytes(watched_folder_path);
-        self.database
-            .read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                        [&watched_folder_path],
-                        |row| row.get(0),
-                    )
-                    .optional()?)
-            })
-            .await
+        let watched_folder_path = watched_folder_path.to_path_buf();
+        self.database.read(move |sql| root_generation_on(&sql, &watched_folder_path)).await
     }
 
     /// Open a new scan generation for `watched_folder_path`, recording the

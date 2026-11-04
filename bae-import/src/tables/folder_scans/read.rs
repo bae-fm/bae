@@ -95,14 +95,7 @@ pub(super) fn load_items(
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
     let items = load_candidate_items_rows(sql, EntryRows::Root(watched_folder_path), sources)?;
-    let root_generation = sql
-        .query(
-            "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-            [coven::path_bytes(watched_folder_path)],
-            |row| row.get::<_, i64>(0),
-        )?
-        .into_iter()
-        .next()
+    let root_generation = super::root_generation_on(sql, watched_folder_path)?
         .map(|generation| to_u64(generation, "a folder scan root's generation"))
         .transpose()?;
     Ok(Box::new(move || {

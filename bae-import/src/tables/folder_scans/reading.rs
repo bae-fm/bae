@@ -56,14 +56,7 @@ impl ImportTables {
         let watched_folder_path = watched_folder_path.to_path_buf();
         self.database
             .call(move |sql| {
-                let read_under: Option<i64> = sql
-                    .query_row(
-                        "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                        [coven::path_bytes(&watched_folder_path)],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                let Some(read_under) = read_under else {
+                let Some(read_under) = root_generation_on(sql, &watched_folder_path)? else {
                     return Err(DbError::Message(format!(
                         "{} has not been read, so none of its folders can be read again",
                         coven::path_text(&watched_folder_path)
@@ -140,14 +133,7 @@ impl ImportTables {
         self.database
             .call(move |sql| {
                 let root = coven::path_bytes(&watched_folder_path);
-                let current: Option<i64> = sql
-                    .query_row(
-                        "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-                        [&root],
-                        |row| row.get(0),
-                    )
-                    .optional()?;
-                if current != Some(read_under) {
+                if root_generation_on(sql, &watched_folder_path)? != Some(read_under) {
                     return Err(DbError::Message(format!(
                         "{} changed while it was being read again: the root's entries were \
                      written after the reading began",

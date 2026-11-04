@@ -323,19 +323,12 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
          WHERE key = ?",
         params![reads_parent_files, key],
     )?;
-    let generation: i64 = sql
-        .query_row(
-            "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
-            [coven::path_bytes(&root)],
-            |row| row.get(0),
-        )
-        .optional()?
-        .ok_or_else(|| {
-            DbError::Message(format!(
-                "{} has not been read, so no release can be listed under it",
-                coven::path_text(&root)
-            ))
-        })?;
+    let generation = folder_scans::root_generation_on(sql, &root)?.ok_or_else(|| {
+        DbError::Message(format!(
+            "{} has not been read, so no release can be listed under it",
+            coven::path_text(&root)
+        ))
+    })?;
     let written = folder_scans::write_entry(
         sql,
         &root,
