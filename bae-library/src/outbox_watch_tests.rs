@@ -23,7 +23,7 @@ fn transfers(
 
 /// A file being sent: a release's of `file_size` bytes, or one no release
 /// owns.
-fn sending(file: coven::FileId, release: Option<(&str, i64)>) -> DbSendingFile {
+fn sending(file: coven::FileId, release: Option<(&str, u64)>) -> DbSendingFile {
     DbSendingFile {
         file,
         release_id: release.map(|(id, _)| id.to_string()),

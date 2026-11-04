@@ -52,7 +52,6 @@ impl OutboxTransfers {
         let add = |sum: &mut u64, value: u64| {
             *sum = sum.checked_add(value).expect("upload bytes overflow");
         };
-        let bytes = |value: i64| u64::try_from(value).expect("a release's bytes");
         let mut releases: BTreeMap<String, ReleaseUploadTransfer> = sending
             .releases
             .iter()
@@ -61,8 +60,8 @@ impl OutboxTransfers {
                     release.release_id.clone(),
                     ReleaseUploadTransfer {
                         bar: UploadBar {
-                            bytes_done: bytes(release.bytes_stored),
-                            bytes_total: bytes(release.bytes_total),
+                            bytes_done: release.bytes_stored,
+                            bytes_total: release.bytes_total,
                         },
                         throughput_bps: 0,
                     },
@@ -81,10 +80,8 @@ impl OutboxTransfers {
                     .get_mut(release_id)
                     .expect("a file being sent has its release read with it");
                 add(&mut release.throughput_bps, rate);
-                let size = file
-                    .file_size
-                    .map(bytes)
-                    .expect("a release file being sent has its size read with it");
+                let size =
+                    file.file_size.expect("a release file being sent has its size read with it");
                 let sent = moved.map_or(0.0, super::file_transfers::fraction);
                 add(&mut release.bar.bytes_done, (size as f64 * sent) as u64);
             }

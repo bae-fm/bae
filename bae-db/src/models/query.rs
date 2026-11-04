@@ -69,7 +69,7 @@ pub struct DbReleaseEditSourceFile {
 pub struct DbSendingFile {
     pub file: coven::FileId,
     pub release_id: Option<String>,
-    pub file_size: Option<i64>,
+    pub file_size: Option<u64>,
 }
 
 /// A release with files this process is sending now: of its whole size, the
@@ -77,8 +77,8 @@ pub struct DbSendingFile {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbSendingRelease {
     pub release_id: String,
-    pub bytes_stored: i64,
-    pub bytes_total: i64,
+    pub bytes_stored: u64,
+    pub bytes_total: u64,
 }
 
 /// The files this process is sending now, the releases they belong to, and
@@ -124,14 +124,14 @@ pub struct DbTrackWithArtists {
 }
 
 /// A release's files in this device's upload queue, as one read finds them:
-/// how many wait there, how many of those this process is sending now, and
-/// how many are stored.
+/// how many only wait there, how many this process is sending now, and how
+/// many are stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbReleaseUpload {
-    pub queued: i64,
-    pub sending: i64,
+    pub waiting: u32,
+    pub sending: u32,
     /// How many of the release's files are stored: those not queued.
-    pub stored: i64,
+    pub stored: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

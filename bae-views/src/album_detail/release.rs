@@ -115,11 +115,7 @@ impl ReleaseUpload {
             summary: bae_transfers::transfer_summary([
                 ("core.queue.uploading", progress.uploading, TransferStage::Moving),
                 ("core.queue.queued", progress.queued, TransferStage::Waiting),
-                (
-                    "core.queue.stored",
-                    u32::try_from(raw.stored).expect("a release's stored file count"),
-                    TransferStage::Done,
-                ),
+                ("core.queue.stored", raw.stored, TransferStage::Done),
             ]),
             progress,
         }

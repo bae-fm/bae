@@ -22,8 +22,7 @@ impl UploadProgress {
     /// read holds at least one queued file
     /// ([`release_upload_in_row`](crate::client::queued_uploads::release_upload_in_row)).
     pub fn of_release(raw: &crate::DbReleaseUpload) -> Self {
-        let count = |value: i64| u32::try_from(value).expect("a release's queued file count");
-        Self { queued: count(raw.queued - raw.sending), uploading: count(raw.sending) }
+        Self { queued: raw.waiting, uploading: raw.sending }
     }
 
     /// Uploading while any of the files is being sent, queued while they all
