@@ -94,9 +94,10 @@ impl IdentifyState {
         }
     }
 
-    /// The audio this state was identified over; `None` only for `Idle`.
-    pub fn audio(&self) -> Option<&AudioFacts> {
-        self.context().map(|context| &context.audio)
+    /// The sample rate that rules a CD out, read off the audio this state
+    /// was identified over; `None` for `Idle`.
+    pub fn rate_ruling_out_cd(&self) -> Option<u32> {
+        self.context().and_then(|context| context.audio.rate_ruling_out_cd)
     }
 
     /// The audio this state read its offered releases against; `None` for

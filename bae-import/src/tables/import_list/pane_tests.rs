@@ -207,10 +207,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .await
         .unwrap()
         .expect("the candidate reads back");
-    assert_eq!(
-        detail.resumed_identify_state.audio().and_then(|audio| audio.rate_ruling_out_cd),
-        Some(96_000)
-    );
+    assert_eq!(detail.resumed_identify_state.rate_ruling_out_cd(), Some(96_000));
 }
 
 /// The detail resumes the stored verdict's matches.

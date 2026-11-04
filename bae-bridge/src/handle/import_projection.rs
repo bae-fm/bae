@@ -661,7 +661,7 @@ impl crate::types::BridgeImportCandidateDetail {
             signals,
             stage,
         } = detail;
-        let rate = resumed_identify_state.audio().and_then(|audio| audio.rate_ruling_out_cd);
+        let rate = resumed_identify_state.rate_ruling_out_cd();
         Self {
             candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
             actionable,

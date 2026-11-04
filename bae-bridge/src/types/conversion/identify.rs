@@ -381,7 +381,7 @@ impl BridgeAgreements {
 /// copy per variant with the rate of the state's audio on its run.
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_identify::IdentifyState) -> Self {
-        let rate = s.audio().and_then(|audio| audio.rate_ruling_out_cd);
+        let rate = s.rate_ruling_out_cd();
         Self::from_view(bae_identify::IdentifyStateView::from(s), rate)
     }
 
