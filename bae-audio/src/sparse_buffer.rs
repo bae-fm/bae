@@ -19,8 +19,6 @@ use tracing::{debug, error};
 /// Hands each buffer a small process-unique id so the fill's per-window fetch
 /// logs and the decoder's first-sample log can be tied to one track's stream.
 static NEXT_BUFFER_ID: AtomicU64 = AtomicU64::new(0);
-const READ_WAIT_LOG_AFTER: Duration = Duration::from_millis(250);
-const READ_WAIT_LOG_EVERY: Duration = Duration::from_secs(1);
 
 /// A contiguous range of buffered data.
 #[derive(Debug, Clone)]
@@ -334,8 +332,7 @@ impl SparseStreamingBuffer {
             id,
             read_pos: 0,
             cancel_token,
-            wait_started: None,
-            last_wait_log: None,
+            wait: bae_util::stall::Stall::default(),
         }
     }
 
@@ -783,8 +780,8 @@ pub struct BufferReader {
     /// Checked during `read()`, so the playback service can cancel one decoder's
     /// reader without touching the others on this buffer.
     cancel_token: Option<Arc<std::sync::atomic::AtomicBool>>,
-    wait_started: Option<Instant>,
-    last_wait_log: Option<Instant>,
+    /// This reader waiting for bytes no range holds yet, as it logs it.
+    wait: bae_util::stall::Stall,
 }
 
 impl BufferReader {
@@ -831,20 +828,16 @@ impl BufferReader {
                 None => None,
             };
             if let Some(stop) = stop {
-                if let Some(started) = self.wait_started.take() {
-                    let waited = started.elapsed();
-                    if waited >= READ_WAIT_LOG_AFTER {
-                        debug!(
-                            buffer = self.buffer.id(),
-                            reader = self.id,
-                            pos = self.read_pos,
-                            waited_ms = waited.as_millis(),
-                            ?stop,
-                            token_cancelled,
-                            "sparse buffer reader stopped while waiting for bytes"
-                        );
-                    }
-                    self.last_wait_log = None;
+                if let Some(waited) = self.wait.ended(Instant::now()) {
+                    debug!(
+                        buffer = self.buffer.id(),
+                        reader = self.id,
+                        pos = self.read_pos,
+                        waited_ms = waited.as_millis(),
+                        ?stop,
+                        token_cancelled,
+                        "sparse buffer reader stopped while waiting for bytes"
+                    );
                 }
                 return Err(stop);
             }
@@ -856,22 +849,17 @@ impl BufferReader {
 
             for range in &inner.ranges {
                 if range.contains(read_pos) {
-                    if let Some(started) = self.wait_started.take() {
-                        let waited = started.elapsed();
-                        if waited >= READ_WAIT_LOG_AFTER {
-                            debug!(
-                                buffer = self.buffer.id(),
-                                reader = self.id,
-                                pos = read_pos,
-                                waited_ms = waited.as_millis(),
-                                read_bytes = buf
-                                    .len()
-                                    .min(range.data.len() - (read_pos - range.start) as usize),
-                                bytes_fetched = self.buffer.bytes_fetched(),
-                                "sparse buffer reader resumed with bytes"
-                            );
-                        }
-                        self.last_wait_log = None;
+                    if let Some(waited) = self.wait.ended(Instant::now()) {
+                        debug!(
+                            buffer = self.buffer.id(),
+                            reader = self.id,
+                            pos = read_pos,
+                            waited_ms = waited.as_millis(),
+                            read_bytes =
+                                buf.len().min(range.data.len() - (read_pos - range.start) as usize),
+                            bytes_fetched = self.buffer.bytes_fetched(),
+                            "sparse buffer reader resumed with bytes"
+                        );
                     }
                     let offset_in_range = (read_pos - range.start) as usize;
                     let available = range.data.len() - offset_in_range;
@@ -902,14 +890,7 @@ impl BufferReader {
 
             // Nothing buffered here yet: the demand published above tells the
             // fill where this reader is stuck; wake it, then wait for the bytes.
-            let now = Instant::now();
-            let started = *self.wait_started.get_or_insert(now);
-            let waited = now.duration_since(started);
-            if waited >= READ_WAIT_LOG_AFTER
-                && self
-                    .last_wait_log
-                    .is_none_or(|last| now.duration_since(last) >= READ_WAIT_LOG_EVERY)
-            {
+            if let Some(waited) = self.wait.waiting(Instant::now()) {
                 debug!(
                     buffer = self.buffer.id(),
                     reader = self.id,
@@ -921,7 +902,6 @@ impl BufferReader {
                     total_size = self.buffer.total_size,
                     "sparse buffer reader waiting for bytes"
                 );
-                self.last_wait_log = Some(now);
             }
             self.buffer.wake_fill();
             #[cfg(any(test, feature = "test-instrumentation"))]

@@ -101,39 +101,27 @@ pub(crate) fn sleep_realtime_buffer(read: usize, channels: u32, sample_rate: u32
     std::thread::sleep(bae_util::sample_time::frame_start(frames, sample_rate));
 }
 
+/// The audio callback missing the source's lock, as it reports it.
 pub(crate) struct AudioLockMissLog {
-    started: Option<std::time::Instant>,
-    last_log: Option<std::time::Instant>,
+    stall: bae_util::stall::Stall,
 }
 
 impl AudioLockMissLog {
     #[cfg(not(target_os = "android"))]
     pub(crate) fn new() -> Self {
-        Self { started: None, last_log: None }
+        Self { stall: bae_util::stall::Stall::default() }
     }
 
     fn acquired(&mut self, audio_events: &mut AudioEventSender) {
-        if let Some(started) = self.started.take() {
-            let missed = started.elapsed();
-            if missed >= std::time::Duration::from_millis(250) {
-                audio_events
-                    .push(AudioEvent::SourceLockReacquired { missed_ms: duration_millis(missed) });
-            }
-            self.last_log = None;
+        if let Some(missed) = self.stall.ended(std::time::Instant::now()) {
+            audio_events
+                .push(AudioEvent::SourceLockReacquired { missed_ms: duration_millis(missed) });
         }
     }
 
     fn missed(&mut self, audio_events: &mut AudioEventSender) {
-        let now = std::time::Instant::now();
-        let started = *self.started.get_or_insert(now);
-        let missed = now.duration_since(started);
-        if missed >= std::time::Duration::from_millis(250)
-            && self
-                .last_log
-                .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(1))
-        {
+        if let Some(missed) = self.stall.waiting(std::time::Instant::now()) {
             audio_events.push(AudioEvent::SourceLockMissed { missed_ms: duration_millis(missed) });
-            self.last_log = Some(now);
         }
     }
 }

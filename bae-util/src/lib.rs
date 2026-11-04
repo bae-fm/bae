@@ -18,6 +18,7 @@ pub mod retry;
 pub mod sample_time;
 pub mod server;
 pub mod session_cache;
+pub mod stall;
 pub mod stored_image;
 pub mod task_failure;
 #[cfg(any(test, feature = "test-utils"))]
