@@ -34,18 +34,12 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
 
 /// A PNG of `width` by `height` pixels in one color.
 fn solid_png(width: u32, height: u32, color: [u8; 3]) -> Vec<u8> {
-    encoded(image::RgbImage::from_pixel(width, height, image::Rgb(color)), image::ImageFormat::Png)
+    png(image::RgbImage::from_pixel(width, height, image::Rgb(color)))
 }
 
-/// A JPEG of `width` by `height` pixels in one color, as an app hands a
-/// picked photo over.
-fn solid_jpeg(width: u32, height: u32, color: [u8; 3]) -> Vec<u8> {
-    encoded(image::RgbImage::from_pixel(width, height, image::Rgb(color)), image::ImageFormat::Jpeg)
-}
-
-fn encoded(image: image::RgbImage, format: image::ImageFormat) -> Vec<u8> {
+fn png(image: image::RgbImage) -> Vec<u8> {
     let mut bytes = std::io::Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgb8(image).write_to(&mut bytes, format).unwrap();
+    image::DynamicImage::ImageRgb8(image).write_to(&mut bytes, image::ImageFormat::Png).unwrap();
     bytes.into_inner()
 }
 
@@ -58,8 +52,8 @@ async fn a_profile_names_each_new_avatar_at_once() {
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Rowan").await;
     assert_eq!(library.avatar(profile.id).await.unwrap(), None);
-    let first_source = solid_jpeg(16, 16, [120, 40, 200]);
-    let second_source = solid_jpeg(16, 16, [20, 160, 90]);
+    let first_source = solid_png(16, 16, [120, 40, 200]);
+    let second_source = solid_png(16, 16, [20, 160, 90]);
     let first_jpeg = bae_util::stored_image::stored_jpeg(&first_source).unwrap();
     let second_jpeg = bae_util::stored_image::stored_jpeg(&second_source).unwrap();
     library.set_avatar(Some(first_source)).await.unwrap();
@@ -85,7 +79,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
 
 /// A camera-sized photo is stored as a cover is: a JPEG downscaled to fit the
 /// stored edge, its aspect kept. Its pixels vary everywhere, so neither the
-/// source JPEG nor the stored one compresses it away.
+/// PNG source nor the JPEG compresses it away.
 #[tokio::test]
 async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     let directory = tempfile::tempdir().unwrap();
@@ -94,14 +88,11 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Rowan").await;
     let edge = bae_util::stored_image::STORED_MAX_EDGE;
-    let photo = encoded(
-        image::RgbImage::from_fn(edge * 5, edge * 10 / 3, |x, y| {
-            let mixed = x.wrapping_mul(2_654_435_761) ^ y.wrapping_mul(2_246_822_519);
-            let [r, g, b, _] = mixed.to_le_bytes();
-            image::Rgb([r, g, b])
-        }),
-        image::ImageFormat::Jpeg,
-    );
+    let photo = png(image::RgbImage::from_fn(edge * 5, edge * 10 / 3, |x, y| {
+        let mixed = x.wrapping_mul(2_654_435_761) ^ y.wrapping_mul(2_246_822_519);
+        let [r, g, b, _] = mixed.to_le_bytes();
+        image::Rgb([r, g, b])
+    }));
 
     library.set_avatar(Some(photo)).await.unwrap();
 
@@ -116,8 +107,27 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     library.close().await.unwrap();
 }
 
-/// Bytes that open as a JPEG but don't decode make no avatar: the setting is
-/// refused and the profile keeps none.
+/// A picked PNG is stored as a cover or an artist picture would be: the
+/// stored bytes are the JPEG bae makes of any image it stores.
+#[tokio::test]
+async fn a_png_avatar_is_stored_as_covers_are() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) =
+        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    connect_storage(&library, &storage).await;
+    let profile = made_profile(&library, "Rowan").await;
+    let picked = solid_png(16, 16, [120, 40, 200]);
+
+    library.set_avatar(Some(picked.clone())).await.unwrap();
+
+    let stored = library.avatar(profile.id).await.unwrap().unwrap();
+    assert_eq!(stored, bae_util::stored_image::stored_jpeg(&picked).unwrap());
+    assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
+    library.close().await.unwrap();
+}
+
+/// Bytes that are no image make no avatar: the setting is refused and the
+/// profile keeps none.
 #[tokio::test]
 async fn an_undecodable_avatar_is_refused() {
     let directory = tempfile::tempdir().unwrap();
@@ -127,32 +137,11 @@ async fn an_undecodable_avatar_is_refused() {
     let profile = made_profile(&library, "Rowan").await;
 
     let error = library
-        .set_avatar(Some([0xFF, 0xD8, 0xFF, 0xE0, 0x00].to_vec()))
+        .set_avatar(Some(b"not an image".to_vec()))
         .await
         .expect_err("bytes that are no image make no avatar");
 
     assert!(matches!(error, bae_library::people::AvatarError::Image { .. }), "{error}");
-    assert_eq!(library.avatar(profile.id).await.unwrap(), None);
-    library.close().await.unwrap();
-}
-
-/// An avatar arrives as a JPEG: the apps convert a picked photo with the
-/// platform's decoder first, so an image in any other format is refused by
-/// its first bytes, before it is decoded, and the profile keeps none.
-#[tokio::test]
-async fn an_avatar_that_is_no_jpeg_is_refused() {
-    let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
-    connect_storage(&library, &storage).await;
-    let profile = made_profile(&library, "Rowan").await;
-
-    let error = library
-        .set_avatar(Some(solid_png(16, 16, [120, 40, 200])))
-        .await
-        .expect_err("a PNG makes no avatar");
-
-    assert!(matches!(error, bae_library::people::AvatarError::NotJpeg), "{error}");
     assert_eq!(library.avatar(profile.id).await.unwrap(), None);
     library.close().await.unwrap();
 }

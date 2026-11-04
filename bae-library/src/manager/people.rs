@@ -25,19 +25,14 @@ impl LibraryManager {
         self.database.set_history_sharing(sharing).await
     }
 
-    /// Set this person's avatar to the JPEG in `bytes`, downscaled to the
+    /// Set this person's avatar to the image in `bytes`, downscaled to the
     /// JPEG bae stores for covers and artist pictures, or clear it with `None`.
-    /// Bytes that don't open as a JPEG are refused before they are decoded:
-    /// the apps convert a picked photo to JPEG first.
     pub async fn set_avatar(
         &self,
         bytes: Option<Vec<u8>>,
     ) -> Result<(), crate::people::AvatarError> {
         let avatar = match bytes {
             Some(bytes) => {
-                if bae_util::content_type::ContentType::Jpeg.opens_with(&bytes) != Some(true) {
-                    return Err(crate::people::AvatarError::NotJpeg);
-                }
                 // Decoding and re-encoding the image is CPU work.
                 let jpeg = blocking("resize an avatar", move || {
                     bae_util::stored_image::stored_jpeg(&bytes)
