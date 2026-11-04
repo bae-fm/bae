@@ -211,7 +211,9 @@ async fn coordinator_shutdown_waits_for_active_scan() {
     harness.scans.wait_for_count(1).await;
     let (shutdown_completion, shutdown_done) = std::sync::mpsc::channel();
     harness.commands.send(WatcherCommand::Shutdown { completion: shutdown_completion }).unwrap();
-    tokio::task::yield_now().await;
+    // Shutdown cancels the scan before it waits for it, and only the scan
+    // ending lets it finish.
+    harness.scans.wait_for_cancellation(0).await;
     assert!(matches!(shutdown_done.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty)));
     harness.scans.complete(0);
     tokio::task::spawn_blocking(move || shutdown_done.recv()).await.unwrap().unwrap();

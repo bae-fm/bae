@@ -140,13 +140,9 @@ impl FakeScanStarter {
     }
 
     pub(crate) async fn wait_for_cancellation(&self, index: usize) {
-        tokio::time::timeout(HANG_GUARD, async {
-            while !self.cancellation(index).is_cancelled() {
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .expect("scan coordinator did not cancel the active scan");
+        tokio::time::timeout(HANG_GUARD, self.cancellation(index).cancelled())
+            .await
+            .expect("scan coordinator did not cancel the active scan");
     }
 }
 

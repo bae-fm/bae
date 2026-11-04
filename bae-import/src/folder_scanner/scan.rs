@@ -47,6 +47,12 @@ impl ScanCancellation {
         self.0.is_cancelled()
     }
 
+    /// Wait until this is cancelled.
+    #[cfg(test)]
+    pub(crate) async fn cancelled(&self) {
+        self.0.cancelled().await;
+    }
+
     pub(super) fn check(&self) -> Result<(), FolderScanError> {
         if self.is_cancelled() {
             Err(FolderScanError::Cancelled)
