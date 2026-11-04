@@ -455,7 +455,9 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiEr
             {
                 C::Internal
             }
-            RemoteImageError::Transport { .. } | RemoteImageError::Status { .. } => C::Import,
+            RemoteImageError::Transport { .. }
+            | RemoteImageError::Status { .. }
+            | RemoteImageError::NoImage { .. } => C::Import,
             RemoteImageError::CacheTask(_) => C::Internal,
         },
     }

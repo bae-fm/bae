@@ -148,7 +148,7 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
 
 #[test]
 fn artwork_request_conditions_remain_expected_at_the_bridge() {
-    for status in [404, 500] {
+    for status in [403, 500] {
         let error = ImportError::from(bae_catalogs::remote_image::RemoteImageError::Status {
             status,
             detail: "artwork request failed".into(),

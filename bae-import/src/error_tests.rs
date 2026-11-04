@@ -41,8 +41,10 @@ async fn a_failed_remote_image_fetch_shows_as_whose_failure_it_is() {
         error,
     };
 
-    let answered = RemoteImageError::Status { status: 404, detail: "not found".to_string() };
+    let answered = RemoteImageError::Status { status: 503, detail: "unavailable".to_string() };
     assert_eq!(category(answered), UiErrorCategory::Import);
+    let absent = RemoteImageError::NoImage { url: "https://example.com/front".to_string() };
+    assert_eq!(category(absent), UiErrorCategory::Import);
     let unreached = reqwest::Client::new()
         .get("http://127.0.0.1:1/cover.jpg")
         .send()

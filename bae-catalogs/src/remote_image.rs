@@ -39,9 +39,14 @@ pub enum RemoteImageError {
     },
 
     /// An artwork host answered with a status that is not an image: a server
-    /// error, a refusal, or no image at an address that must have one.
+    /// error or a refusal.
     #[error("cover art request failed: {detail}")]
     Status { status: u16, detail: String },
+
+    /// The host serves no image at `url`, where the caller needs one: the
+    /// person picked an address nothing had said holds an image.
+    #[error("no image is served at {url}")]
+    NoImage { url: String },
 
     /// The blocking task that reads or writes the disk cache did not report
     /// back: it panicked — a bug the caller reports — or the runtime is
@@ -623,11 +628,10 @@ impl RemoteImageCache {
         read_disk(Arc::clone(&self.disk), url.to_string()).await
     }
 
+    /// The image at `url`, which the caller needs: [`RemoteImageError::NoImage`]
+    /// where its host serves none.
     pub async fn fetch_required(&self, url: &str) -> Result<RemoteImage, RemoteImageError> {
-        self.fetch(url).await?.ok_or_else(|| RemoteImageError::Status {
-            status: 404,
-            detail: format!("no image is served at {url}"),
-        })
+        self.fetch(url).await?.ok_or_else(|| RemoteImageError::NoImage { url: url.to_string() })
     }
 }
 

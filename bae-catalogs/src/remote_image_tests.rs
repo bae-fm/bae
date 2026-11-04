@@ -346,14 +346,19 @@ async fn artwork_http_failures_keep_their_status_after_retries() {
     }
 }
 
+/// An address its host serves no image at, where one is required, is that
+/// answer: no image there, not a status the host never sent.
 #[tokio::test]
-async fn required_missing_artwork_is_a_not_found_status() {
+async fn required_missing_artwork_is_no_image() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
     let cache = RemoteImageCache::for_test(direct_http());
     assert!(cache.fetch(&url).await.unwrap().is_none());
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);
-    assert!(matches!(error, RemoteImageError::Status { status: 404, .. }), "{error}");
+    assert!(
+        matches!(&error, RemoteImageError::NoImage { url: missing } if *missing == url),
+        "{error}"
+    );
 }
 
 /// A successful response whose body ends before its declared length.

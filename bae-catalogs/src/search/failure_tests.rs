@@ -59,6 +59,14 @@ fn a_request_bae_could_not_build_is_its_own_failure() {
     assert_eq!(remote_image_failure(&error), None);
 }
 
+/// No image where the caller needed one is the host's answer, not its
+/// failure.
+#[test]
+fn no_image_at_an_address_is_no_failure_of_its_host() {
+    let error = RemoteImageError::NoImage { url: "https://example.com/front".to_string() };
+    assert_eq!(remote_image_failure(&error), None);
+}
+
 #[test]
 fn bytes_that_are_not_an_image_are_unusable_data() {
     let error =
