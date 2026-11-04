@@ -794,7 +794,7 @@ async fn release_edit_seed_refuses_a_track_without_stored_audio() {
 }
 
 #[tokio::test]
-async fn release_edit_seed_projects_track_sources_in_segment_order() {
+async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
@@ -823,8 +823,8 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
         &manager,
         &second,
         &[
-            ("second-a.flac", bae_db::source_audio::SourceAudioLayout::Cue),
-            ("second-b.flac", bae_db::source_audio::SourceAudioLayout::Cue),
+            ("pregap.flac", bae_db::source_audio::SourceAudioLayout::Cue),
+            ("body.flac", bae_db::source_audio::SourceAudioLayout::Cue),
         ],
     )
     .await;
@@ -845,16 +845,13 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
         panic!("a track on its own file is a run of its own");
     };
     assert_eq!(first_context.track_id, first.id);
-    assert_eq!(first_context.sources[0].layout, bae_db::source_audio::SourceAudioLayout::File);
-    // A track playing two files is no sheet's run, though a sheet carves both.
+    assert_eq!(first_context.source.layout, bae_db::source_audio::SourceAudioLayout::File);
+    // A pregap stored in the file before is not the track's source.
     let bae_import::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
-        panic!("a track over two files is a run of its own");
+        panic!("the one track of its disc is a run of its own");
     };
     assert_eq!(second_context.track_id, second.id);
-    assert_eq!(
-        second_context.sources.iter().map(|source| source.name.as_str()).collect::<Vec<_>>(),
-        vec!["second-a.flac", "second-b.flac"]
-    );
+    assert_eq!(second_context.source.name, "body.flac");
     assert!(matches!(
         seed.display.source_audio,
         Some(bae_db::source_audio::SourceAudioSummary::Mixed { .. })

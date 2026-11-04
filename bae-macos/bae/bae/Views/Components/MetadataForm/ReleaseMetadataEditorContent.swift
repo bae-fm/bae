@@ -239,8 +239,7 @@ struct ReleaseMetadataEditorContent: View {
             .opacity(onPlayTrack == nil ? 0 : 1)
             .allowsHitTesting(onPlayTrack != nil)
             if !sourceIsInCaption {
-                let name = item.context.sources.map(\.name)
-                    .joined(separator: " + ")
+                let name = item.context.source.name
                 Text(verbatim: name)
                     .themeText(.mono)
                     .lineLimit(1)

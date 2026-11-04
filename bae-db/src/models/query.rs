@@ -46,11 +46,12 @@ pub struct DbReleaseEditTrack {
     pub segments: Vec<DbReleaseEditSegment>,
 }
 
-/// One segment of a track's audio as the release editor reads it: the file it
-/// names, and that file's name and stored audio layout; `file` is `None` when
-/// no release file has that id.
+/// One segment of a track's audio as the release editor reads it: whether it
+/// is the track's body or its pregap, the file it names, and that file's name
+/// and stored audio layout; `file` is `None` when no release file has that id.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditSegment {
+    pub role: DbAudioSegmentRole,
     pub file_id: String,
     pub file: Option<DbReleaseEditSourceFile>,
 }

@@ -657,7 +657,7 @@ pub struct BridgeReleaseEditSeed {
     pub album: BridgeDraftAlbum,
 }
 
-/// One persisted file that supplies samples for a track in the release editor.
+/// The persisted file a track's body plays from in the release editor.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackSource {
     pub file_id: String,
@@ -669,7 +669,7 @@ pub struct BridgeReleaseEditTrackSource {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackContext {
     pub track_id: String,
-    pub sources: Vec<BridgeReleaseEditTrackSource>,
+    pub source: BridgeReleaseEditTrackSource,
     /// The track's stored length as a clock label's fields ("3:07").
     pub duration_clock: BridgeDurationClock,
     /// How the track's place reads ("A1", "3"), which the editor shows and

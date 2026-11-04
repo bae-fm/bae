@@ -161,6 +161,28 @@ fn the_schema_refuses_negative_audio_positions() {
     }
 }
 
+/// A track's audio has one body and at most one pregap: the schema refuses a
+/// second segment of either role for one format, and takes a pregap beside
+/// the body, from another file.
+#[test]
+fn the_schema_refuses_a_second_body_or_pregap_for_one_track() {
+    let conn = seeded_audio_segment();
+    insert_file(&conn, "file-2", Some("file"), Some(("audio/flac", 16))).unwrap();
+    let insert = |id: &str, index: i64, role: &str| {
+        conn.execute(
+            "INSERT INTO audio_format_segments (id, audio_format_id, segment_index, role, file_id, start_sample, created_at) VALUES (?1, 'format-1', ?2, ?3, 'file-2', 0, '2026-01-01T00:00:00Z')",
+            params![id, index, role],
+        )
+    };
+
+    let second_body = insert("segment-2", 1, "main").expect_err("a second body was stored");
+    assert!(second_body.to_string().contains("UNIQUE constraint failed"), "{second_body}");
+    insert("segment-2", 2, "audio_pregap").expect("a pregap beside the body");
+    let second_pregap =
+        insert("segment-3", 3, "audio_pregap").expect_err("a second pregap was stored");
+    assert!(second_pregap.to_string().contains("UNIQUE constraint failed"), "{second_pregap}");
+}
+
 /// A track's audio has a sample rate and channels above zero, and a bit depth
 /// that is absent (lossy) or 1 to 32, whichever device wrote the row.
 #[test]

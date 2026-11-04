@@ -695,11 +695,15 @@ pub(super) fn every_storage_setup_failure_keeps_its_exact_user_action() {
     }
 }
 
+/// Store `track`'s audio over new release files, `sources` in segment order:
+/// the file its pregap is stored in, when there are two, then the file its
+/// body plays from.
 pub(super) async fn add_track_audio_sources(
     manager: &LibraryManager,
     track: &bae_db::DbTrack,
     sources: &[(&str, bae_db::source_audio::SourceAudioLayout)],
 ) -> Vec<NewReleaseFile> {
+    assert!(matches!(sources.len(), 1 | 2), "a track's audio is a body and at most one pregap");
     let now = Utc::now();
     let mut files = Vec::with_capacity(sources.len());
     for (name, layout) in sources {
@@ -745,7 +749,11 @@ pub(super) async fn add_track_audio_sources(
             id: Uuid::new_v4().to_string(),
             audio_format_id: audio_format.id.clone(),
             segment_index: i64::try_from(index).unwrap(),
-            role: bae_db::DbAudioSegmentRole::Main,
+            role: if index + 1 == files.len() {
+                bae_db::DbAudioSegmentRole::Main
+            } else {
+                bae_db::DbAudioSegmentRole::AudioPregap
+            },
             file_id: file.id.clone(),
             start_sample: 0,
             end_sample: None,

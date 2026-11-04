@@ -1650,8 +1650,10 @@ session opened on what it saved.
 The editor lays the tracks out as the import's mapping table does: a heading
 for each disc or record side where the release has several, and two or more
 consecutive tracks a CUE sheet carves from one file under that file's name,
-once; every other track names its own file in its row. An applied catalog
-lays them out again at the places it gives them.
+once; every other track names in its row the file its body, from its
+INDEX 01 on, plays from. A pregap stored at the tail of the file before
+(§2.2) is not named: a row names one file. An applied catalog lays them out
+again at the places it gives them.
 
 ---
 ## 4. Files
@@ -4270,7 +4272,7 @@ All sync.
 | `track_artist_roles` | credit on a track, as the catalog stated it |
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
-| `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
+| `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes; one main and at most one pregap per format, each kept to one by a unique index |
 | `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC whose seektable is missing or sparser than the points' 10-second spacing, and for every MP3 (§3.7) |
 
 Beside them, device-local tables:

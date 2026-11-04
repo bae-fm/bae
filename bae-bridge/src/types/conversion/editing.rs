@@ -159,11 +159,11 @@ mirror_struct! {
 
 impl BridgeReleaseEditTrackContext {
     fn from_core(context: bae_import::ReleaseEditTrackContext) -> Self {
-        let bae_import::ReleaseEditTrackContext { track_id, sources, duration_ms, position_text } =
+        let bae_import::ReleaseEditTrackContext { track_id, source, duration_ms, position_text } =
             context;
         Self {
             track_id,
-            sources: sources.into_iter().map(BridgeReleaseEditTrackSource::from_core).collect(),
+            source: BridgeReleaseEditTrackSource::from_core(source),
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
             position_text,
         }

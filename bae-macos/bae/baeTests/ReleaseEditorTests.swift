@@ -173,7 +173,7 @@ struct ReleaseEditorTests {
                 side: .flat,
                 headerKey: nil,
                 runs: shared
-                    ? [.sheet(source: contexts[0].sources[0], tracks: contexts)]
+                    ? [.sheet(source: contexts[0].source, tracks: contexts)]
                     : contexts.map { .track(track: $0) }
             )
         ]

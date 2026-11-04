@@ -22,6 +22,7 @@ mod test_cue_ape;
 mod test_cue_flac;
 mod test_delete;
 mod test_export;
+mod test_gap_appended_rip;
 mod test_history;
 mod test_image_track_audio;
 mod test_import_open_files;

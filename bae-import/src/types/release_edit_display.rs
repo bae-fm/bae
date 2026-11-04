@@ -5,8 +5,8 @@
 use bae_db::source_audio::{SourceAudioLayout, SourceAudioSummary};
 use bae_types::mediums::TrackSide;
 
-/// One physical source file that supplies a persisted track. A track can span
-/// several files; callers retain this order from the stored audio segments.
+/// The file a persisted track's body plays from: its main segment's file. A
+/// pregap stored in the file before is not the track's source.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditTrackSource {
     pub file_id: String,
@@ -19,7 +19,7 @@ pub struct ReleaseEditTrackSource {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditTrackContext {
     pub track_id: String,
-    pub sources: Vec<ReleaseEditTrackSource>,
+    pub source: ReleaseEditTrackSource,
     pub duration_ms: u64,
     /// How the track's place reads ("A1", "3"), which the editor shows and
     /// never edits.
@@ -28,13 +28,9 @@ pub struct ReleaseEditTrackContext {
 
 #[cfg(desktop)]
 impl ReleaseEditTrackContext {
-    /// The file a CUE sheet carves this track from, when that one file is
-    /// all it plays.
+    /// The file a CUE sheet carves this track's body from.
     fn sheet_source(&self) -> Option<&ReleaseEditTrackSource> {
-        match self.sources.as_slice() {
-            [source] if source.layout == SourceAudioLayout::Cue => Some(source),
-            _ => None,
-        }
+        (self.source.layout == SourceAudioLayout::Cue).then_some(&self.source)
     }
 }
 
@@ -169,8 +165,10 @@ pub enum ReleaseEditLoadError {
     MissingAudioFormat { track_id: String },
     #[error("track '{track_id}' has more than one stored audio format")]
     MultipleAudioFormats { track_id: String },
-    #[error("track '{track_id}' has no stored audio segments")]
-    MissingAudioSegments { track_id: String },
+    #[error("track '{track_id}' has no stored main audio segment")]
+    MissingMainSegment { track_id: String },
+    #[error("track '{track_id}' has more than one stored main audio segment")]
+    MultipleMainSegments { track_id: String },
     #[error("track '{track_id}' references missing source file '{file_id}'")]
     MissingSourceFile { track_id: String, file_id: String },
     #[error("track '{track_id}' source file '{file_id}' has no stored audio layout")]
@@ -193,36 +191,32 @@ impl ReleaseEditDisplayContext {
                 1 => {}
                 _ => return Err(ReleaseEditLoadError::MultipleAudioFormats { track_id }),
             }
-            if entry.segments.is_empty() {
-                return Err(ReleaseEditLoadError::MissingAudioSegments { track_id });
-            }
-            let mut sources: Vec<ReleaseEditTrackSource> = Vec::new();
-            for segment in entry.segments {
-                // A file a track plays in several segments is one source.
-                if sources.iter().any(|source| source.file_id == segment.file_id) {
-                    continue;
+            let mut mains = entry
+                .segments
+                .into_iter()
+                .filter(|segment| segment.role == bae_db::DbAudioSegmentRole::Main);
+            let main = match (mains.next(), mains.next()) {
+                (Some(main), None) => main,
+                (None, _) => return Err(ReleaseEditLoadError::MissingMainSegment { track_id }),
+                (Some(_), Some(_)) => {
+                    return Err(ReleaseEditLoadError::MultipleMainSegments { track_id })
                 }
-                let file = segment.file.ok_or_else(|| ReleaseEditLoadError::MissingSourceFile {
-                    track_id: track_id.clone(),
-                    file_id: segment.file_id.clone(),
-                })?;
-                let layout =
-                    file.layout.ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
-                        track_id: track_id.clone(),
-                        file_id: segment.file_id.clone(),
-                    })?;
-                sources.push(ReleaseEditTrackSource {
-                    file_id: segment.file_id,
-                    name: file.name,
-                    layout,
-                });
-            }
+            };
+            let file = main.file.ok_or_else(|| ReleaseEditLoadError::MissingSourceFile {
+                track_id: track_id.clone(),
+                file_id: main.file_id.clone(),
+            })?;
+            let layout = file.layout.ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
+                track_id: track_id.clone(),
+                file_id: main.file_id.clone(),
+            })?;
+            let source = ReleaseEditTrackSource { file_id: main.file_id, name: file.name, layout };
             let position = raw.mediums.position(&entry.track);
             contexts.push((
                 position.side(),
                 ReleaseEditTrackContext {
                     track_id,
-                    sources,
+                    source,
                     duration_ms: entry.track.duration_ms,
                     position_text: position.text(),
                 },

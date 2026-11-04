@@ -397,11 +397,11 @@ mod conversion_roundtrip {
                         runs: vec![bae_import::ReleaseEditTrackRun::Track(
                             bae_import::ReleaseEditTrackContext {
                                 track_id: "track-id".to_string(),
-                                sources: vec![bae_import::ReleaseEditTrackSource {
+                                source: bae_import::ReleaseEditTrackSource {
                                     file_id: "file-id".to_string(),
                                     name: "source.flac".to_string(),
                                     layout: bae_db::source_audio::SourceAudioLayout::File,
-                                }],
+                                },
                                 duration_ms: 123_000,
                                 position_text: "3".to_string(),
                             },
@@ -427,7 +427,7 @@ mod conversion_roundtrip {
                 panic!("the side's one run is its track");
             };
             assert_eq!(track.track_id, "track-id");
-            assert_eq!(track.sources[0].name, "source.flac");
+            assert_eq!(track.source.name, "source.flac");
             let clock = track.duration_clock;
             assert_eq!((clock.minutes, clock.seconds), (2, 3));
         }

@@ -663,6 +663,15 @@ CREATE TABLE IF NOT EXISTS audio_format_segments (
 
 CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_segments (audio_format_id);
 
+-- A track's audio has one body, the span from its INDEX 01 on, and at most
+-- one pregap before it, which can lie in the file before the body's (§2.2).
+-- Each format's segments are written with the format, in one write, so no
+-- merge judges two devices' claims on one of these.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_format_segments_one_main
+    ON audio_format_segments (audio_format_id) WHERE role = 'main';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_format_segments_one_pregap
+    ON audio_format_segments (audio_format_id) WHERE role = 'audio_pregap';
+
 -- The frames in a segment's file that a scrub starts its decode at, one row
 -- per segment that has any: each frame's first sample, the byte it begins at,
 -- and the first sample a decode from it plays as a decode from the stream's

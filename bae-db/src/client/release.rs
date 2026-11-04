@@ -489,11 +489,13 @@ impl Database {
 
 /// Each of a release's tracks in release order, with how many audio formats
 /// it stores and its formats' segments in segment order as a JSON array, each
-/// with the name and stored audio layout of the release file it names.
+/// with its role and the name and stored audio layout of the release file it
+/// names.
 #[cfg(desktop)]
 pub(super) const RELEASE_EDIT_TRACKS: &str = "SELECT t.*, \
         (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) AS audio_format_count, \
         (SELECT json_group_array(json_object( \
+                    'role', s.role, \
                     'file_id', s.file_id, \
                     'found', json(CASE WHEN f.id IS NULL THEN 'false' ELSE 'true' END), \
                     'name', f.original_filename, 'layout', f.source_audio_layout) \
@@ -511,6 +513,7 @@ pub fn release_edit_tracks_on(
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {
     #[derive(serde::Deserialize)]
     struct Segment {
+        role: String,
         file_id: String,
         found: bool,
         name: Option<String>,
@@ -521,6 +524,14 @@ pub fn release_edit_tracks_on(
         let segments = segments
             .into_iter()
             .map(|segment| {
+                let role =
+                    crate::DbAudioSegmentRole::from_db_value(&segment.role).ok_or_else(|| {
+                        super::read::column_conversion_error(
+                            row,
+                            "segments_json",
+                            format!("unknown segment role {:?}", segment.role),
+                        )
+                    })?;
                 let file = match (segment.found, segment.name) {
                     (true, Some(name)) => Some(DbReleaseEditSourceFile {
                         name,
@@ -544,7 +555,7 @@ pub fn release_edit_tracks_on(
                         ))
                     }
                 };
-                Ok(DbReleaseEditSegment { file_id: segment.file_id, file })
+                Ok(DbReleaseEditSegment { role, file_id: segment.file_id, file })
             })
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(DbReleaseEditTrack {

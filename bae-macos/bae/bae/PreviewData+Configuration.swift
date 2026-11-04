@@ -246,7 +246,7 @@
         ) -> BridgeReleaseEditTrackContext {
             BridgeReleaseEditTrackContext(
                 trackId: trackId,
-                sources: [source],
+                source: source,
                 durationClock: bridgeLengthClock(
                     ms: UInt64(180_000 + index * 12_000)
                 ),

@@ -337,3 +337,85 @@ async fn check_labels(devices: &crate::test_devices::TwoStores) {
         .unwrap();
     assert_eq!(labels, 1);
 }
+
+/// The release editor reads each segment's role: a track whose pregap is
+/// stored at the tail of the file before reads its pregap's file and its
+/// body's, each with the role it plays.
+#[cfg(desktop)]
+#[tokio::test]
+async fn the_editor_reads_which_file_holds_a_track_s_body() {
+    use crate::{DbAudioSegmentRole, NewReleaseFile};
+    const TRACK_A: &str = "0482872e-d4bf-4080-8426-441a0a3e71fc";
+    let (db, tmp) = aggregate_ordering::release_detail_db().await;
+    let mut files = Vec::new();
+    for name in ["01 Track Title A.flac", "02 Track Title B.flac"] {
+        let file = NewReleaseFile {
+            id: bae_util::test_ids::test_uuid(name),
+            release_id: RELEASE.to_string(),
+            original_filename: name.to_string(),
+            content_type: bae_util::content_type::ContentType::Flac,
+            source_audio: Some(crate::source_audio::SourceAudioFile {
+                layout: Some(crate::source_audio::SourceAudioLayout::Cue),
+                format: bae_types::audio_format::AudioFormat {
+                    codec: "FLAC".to_string(),
+                    sample_rate_hz: 44_100,
+                    bits_per_sample: Some(16),
+                    bitrate_kbps: None,
+                    channels: 2,
+                },
+                content_type: bae_util::content_type::ContentType::Flac,
+                duration_ms: 1_000,
+            }),
+            created_at: chrono::Utc::now(),
+        };
+        aggregate_ordering::insert_file(&db, tmp.path(), file.clone(), 1).await;
+        files.push(file);
+    }
+    let format = crate::DbAudioFormat::new(
+        TRACK_A,
+        bae_util::content_type::ContentType::Flac,
+        std::num::NonZeroU32::new(44_100).unwrap(),
+        std::num::NonZeroU32::new(16),
+        std::num::NonZeroU32::new(2).unwrap(),
+        bae_util::test_ids::test_uuid("format"),
+        chrono::Utc::now(),
+    );
+    let segment =
+        |index: i64, role: DbAudioSegmentRole, file: &NewReleaseFile| crate::DbAudioSegment {
+            id: bae_util::test_ids::test_uuid(&format!("segment-{index}")),
+            audio_format_id: format.id.clone(),
+            segment_index: index,
+            role,
+            file_id: file.id.clone(),
+            start_sample: 0,
+            end_sample: None,
+            start_byte: None,
+            end_byte: None,
+            created_at: chrono::Utc::now(),
+        };
+    db.insert_audio_format_with_segments_for_test(
+        &format,
+        &[
+            segment(0, DbAudioSegmentRole::AudioPregap, &files[0]),
+            segment(1, DbAudioSegmentRole::Main, &files[1]),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let tracks = db.read(|sql| crate::client::release_edit_tracks_on(&sql, RELEASE)).await.unwrap();
+
+    let track = tracks.iter().find(|track| track.track.id == TRACK_A).expect("track A");
+    let segments: Vec<_> = track
+        .segments
+        .iter()
+        .map(|segment| (segment.role.clone(), segment.file.as_ref().map(|file| file.name.as_str())))
+        .collect();
+    assert_eq!(
+        segments,
+        [
+            (DbAudioSegmentRole::AudioPregap, Some("01 Track Title A.flac")),
+            (DbAudioSegmentRole::Main, Some("02 Track Title B.flac")),
+        ]
+    );
+}
