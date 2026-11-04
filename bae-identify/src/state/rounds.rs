@@ -74,7 +74,8 @@ pub(super) fn next_round(
                 }),
                 PressingKey::CatalogNumber { number, artist, .. } => {
                     catalog.lookups().iter().any(|lookup| {
-                        super::number_key(&lookup.value) == super::number_key(number)
+                        bae_types::text_match::squash(&lookup.value)
+                            == bae_types::text_match::squash(number)
                             && lookup.covers(source, artist.as_deref())
                     })
                 }

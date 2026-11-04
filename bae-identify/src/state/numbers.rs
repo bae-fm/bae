@@ -281,10 +281,10 @@ pub(super) fn catalog_searches_due(
     for number in
         answers.all().flat_map(|result| &result.labels).filter_map(ReleaseLabel::catalog_number)
     {
-        let key = super::number_key(number);
+        let key = bae_types::text_match::squash(number);
         if facts.states_catalog(number)
             && !context.catalog.holds(number)
-            && !numbers.iter().any(|held| super::number_key(held) == key)
+            && !numbers.iter().any(|held| bae_types::text_match::squash(held) == key)
         {
             numbers.push(number.to_string());
         }

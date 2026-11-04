@@ -22,6 +22,7 @@ use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::payloads::DiscIdRelease;
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::{AudioOrigin, LookupFailure};
+use bae_types::text_match::squash;
 
 /// The disc-ID signal and what asking about each of its disc IDs produced.
 #[derive(Clone, Debug, PartialEq)]
@@ -275,8 +276,8 @@ impl CatalogEvidence {
 
     /// Whether the person struck `value` out, however either is spelled.
     pub fn is_struck_out(&self, value: &str) -> bool {
-        let key = number_key(value);
-        self.struck_out.iter().any(|struck| number_key(struck) == key)
+        let key = squash(value);
+        self.struck_out.iter().any(|struck| squash(struck) == key)
     }
 
     /// The numbers in effect: the picked ones not struck out, in the order
@@ -298,8 +299,8 @@ impl CatalogEvidence {
     /// Whether `value` is one of the numbers picked or confirmed, however
     /// either is spelled.
     pub(crate) fn holds(&self, value: &str) -> bool {
-        let key = number_key(value);
-        self.chosen.iter().chain(&self.confirmed).any(|held| number_key(held) == key)
+        let key = squash(value);
+        self.chosen.iter().chain(&self.confirmed).any(|held| squash(held) == key)
     }
 
     /// Every searched number's results, in the order asked.
@@ -315,13 +316,6 @@ impl CatalogEvidence {
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
         into.extend(self.recorded_failures().into_iter().map(IdentifyFailure::Catalog));
     }
-}
-
-/// Two spellings of one catalog number compare alike: `SD 19244-2` and
-/// `sd19244-2`.
-pub(crate) fn number_key(value: &str) -> String {
-    bae_types::text_match::catalog_key(value)
-        .unwrap_or_else(|| bae_types::text_match::squash(value))
 }
 
 /// The title the run can search by, and what asking every provider produced.

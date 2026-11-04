@@ -673,7 +673,6 @@ mod progress;
 mod rounds;
 mod search;
 
-pub(crate) use context::number_key;
 pub use context::{
     BarcodeEvidence, CatalogEvidence, DiscIdEvidence, IsrcEvidence, SearchEvidence,
     SearchedCatalog, SignalsContext,
