@@ -2983,7 +2983,9 @@ directory and the secrets the laptop keeps for it; the library stays in storage.
 is an admin entry, so it needs storage. Offline, removal says so and waits
 rather than deleting the local copy and leaving a device listed that will
 never come back. A library with no cloud home has no members to leave, and is
-deleted at once.
+deleted at once. If the laptop has left but closing its copy then fails,
+nothing is deleted: the removal fails saying the laptop left the library and
+its files are still on it.
 
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
   removing, bae asks coven what this device hasn't sent, and the confirmation

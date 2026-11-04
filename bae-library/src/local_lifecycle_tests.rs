@@ -174,6 +174,32 @@ async fn removing_the_active_library_clears_its_pointer() {
     assert_eq!(home.unfinished().await, None);
 }
 
+/// Closing the store fails once this device has left the library: the
+/// removal fails saying so, with the library's files still on this device,
+/// its pointer kept and no removal recorded.
+#[tokio::test]
+async fn a_close_failing_after_leaving_keeps_the_files_and_says_so() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    home.point_at(id);
+    let error = super::remove_recorded(
+        &home.app_dir,
+        &Diagnostics::noop(),
+        id,
+        async { Err(coven::StoreDeletionError::Closing(coven::SyncError::NoStorage)) },
+        &|_| (),
+    )
+    .await
+    .expect_err("the close failed");
+    assert!(matches!(error, LibraryRemovalError::Closing(_)), "{error}");
+    assert!(error.to_string().contains("files are still on this device"), "{error}");
+    assert_eq!(home.stores().await, 1);
+    assert!(home.directory(id).join("cache").exists());
+    assert_eq!(home.pointer(), Some(id.to_string()));
+    assert!(!home.record(id).exists());
+}
+
 /// A removal coven refuses changes nothing of bae's; the same request
 /// finishes once storage is back.
 #[tokio::test]

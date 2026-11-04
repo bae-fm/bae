@@ -25,7 +25,13 @@ pub enum LibraryRemovalError {
     Record(#[source] LibraryError),
     /// coven didn't delete the store; bae's files for it are untouched.
     #[error(transparent)]
-    Store(#[from] coven::StoreDeletionError),
+    Store(coven::StoreDeletionError),
+    /// This device left the library, but closing its store failed: coven
+    /// deleted nothing, and the library's files are still on this device.
+    #[error(
+        "this device left the library, but closing its store failed, so its files are still on this device: {0}"
+    )]
+    Closing(#[source] coven::SyncError),
     /// coven deleted the store, but deleting bae's files for it or its record
     /// failed. The record keeps it an [`UnfinishedRemoval`] until
     /// [`finish_removals`] completes it.
@@ -33,10 +39,20 @@ pub enum LibraryRemovalError {
     Unfinished(#[source] LibraryError),
 }
 
+impl From<coven::StoreDeletionError> for LibraryRemovalError {
+    fn from(error: coven::StoreDeletionError) -> Self {
+        match error {
+            coven::StoreDeletionError::Closing(error) => Self::Closing(error),
+            error => Self::Store(error),
+        }
+    }
+}
+
 impl LibraryRemovalError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
             Self::Store(error) => bae_diagnostics::deletion_category(error),
+            Self::Closing(error) => bae_diagnostics::sync_category(error),
             Self::Stop(source) | Self::Record(source) | Self::Unfinished(source) => {
                 source.category()
             }
