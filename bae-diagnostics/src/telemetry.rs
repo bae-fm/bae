@@ -204,12 +204,9 @@ telemetry_value_enum! {
     }
 }
 
-telemetry_value_enum! {
-    impl ReleaseStorageAction {
-        ReleaseStorageAction::Upload => "upload",
-        ReleaseStorageAction::Pin => "pin",
-        ReleaseStorageAction::Unpin => "unpin",
-        ReleaseStorageAction::DetachAudio => "detach_audio",
+impl TelemetryValue for ReleaseStorageAction {
+    fn record(&self) -> serde_json::Value {
+        serde_json::Value::String(self.key().to_string())
     }
 }
 

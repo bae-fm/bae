@@ -86,17 +86,6 @@ pub enum AutomationReleaseStorageAction {
     DetachAudio,
 }
 
-impl From<ReleaseStorageAction> for AutomationReleaseStorageAction {
-    fn from(action: ReleaseStorageAction) -> Self {
-        match action {
-            ReleaseStorageAction::Upload => Self::Upload,
-            ReleaseStorageAction::Pin => Self::Pin,
-            ReleaseStorageAction::Unpin => Self::Unpin,
-            ReleaseStorageAction::DetachAudio => Self::DetachAudio,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationImageRef {
     pub id: String,

@@ -53,15 +53,12 @@ pub fn transfer_action_column(
     let Some(action) = row.get::<_, Option<String>>(column)? else {
         return Ok(None);
     };
-    match action.as_str() {
-        "upload" => Ok(Some(ReleaseStorageAction::Upload)),
-        "pin" => Ok(Some(ReleaseStorageAction::Pin)),
-        "unpin" => Ok(Some(ReleaseStorageAction::Unpin)),
-        "detach_audio" => Ok(Some(ReleaseStorageAction::DetachAudio)),
-        other => Err(bae_db::client::read::column_conversion_error(
+    match ReleaseStorageAction::from_key(&action) {
+        Some(action) => Ok(Some(action)),
+        None => Err(bae_db::client::read::column_conversion_error(
             row,
             column,
-            format!("storage action {other} names no transition"),
+            format!("storage action {action} names no transition"),
         )),
     }
 }
@@ -78,10 +75,11 @@ pub enum StoredTransition {
 impl StoredTransition {
     fn column(self) -> &'static str {
         match self {
-            Self::Upload => "upload",
-            Self::Unpin => "unpin",
-            Self::DetachAudio => "detach_audio",
+            Self::Upload => ReleaseStorageAction::Upload,
+            Self::Unpin => ReleaseStorageAction::Unpin,
+            Self::DetachAudio => ReleaseStorageAction::DetachAudio,
         }
+        .key()
     }
 }
 

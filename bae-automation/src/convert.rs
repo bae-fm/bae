@@ -141,12 +141,14 @@ pub(super) fn require_action(
 
 /// The request name a caller uses for a transition.
 fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str {
-    match action {
-        AutomationReleaseStorageAction::Upload => "upload",
-        AutomationReleaseStorageAction::Pin => "pin",
-        AutomationReleaseStorageAction::Unpin => "unpin",
-        AutomationReleaseStorageAction::DetachAudio => "detach_audio",
-    }
+    action.into_core().key()
+}
+
+mirror_enum! {
+    AutomationReleaseStorageAction = ReleaseStorageAction,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Upload, Pin, Unpin, DetachAudio },
 }
 
 /// Split a single-source request into the query and the source to ask.
@@ -616,8 +618,8 @@ mirror_struct! {
         media,
         storage_state: (into),
         pinned,
-        storage_actions: (each into),
-        transfer_action: (opt into),
+        storage_actions: (each AutomationReleaseStorageAction),
+        transfer_action: (opt AutomationReleaseStorageAction),
         upload: (opt AutomationReleaseUpload),
         transitioning,
         file_count,

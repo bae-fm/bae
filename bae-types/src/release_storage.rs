@@ -16,3 +16,27 @@ pub enum ReleaseStorageAction {
     /// Remote -> Local (move the files back out to a user folder).
     DetachAudio,
 }
+
+impl ReleaseStorageAction {
+    /// The name the transition goes by wherever it is stored or reported: the
+    /// `release_storage_action` column, telemetry, automation requests.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Upload => "upload",
+            Self::Pin => "pin",
+            Self::Unpin => "unpin",
+            Self::DetachAudio => "detach_audio",
+        }
+    }
+
+    /// The transition named `key`, or `None` when no transition goes by it.
+    pub fn from_key(key: &str) -> Option<Self> {
+        [Self::Upload, Self::Pin, Self::Unpin, Self::DetachAudio]
+            .into_iter()
+            .find(|action| action.key() == key)
+    }
+}
+
+#[cfg(test)]
+#[path = "release_storage_tests.rs"]
+mod tests;
