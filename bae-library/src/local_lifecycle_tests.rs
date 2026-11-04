@@ -35,7 +35,7 @@ impl Home {
     /// A library with bae's own directory for it, as one this device has
     /// opened.
     async fn library(&self, name: &str) -> coven::CovenHandle {
-        let handle = bae_db::configure_store(self.installation.builder())
+        let handle = bae_db::configure_store(self.installation.builder(), crate::SCHEMA)
             .storage_connector(self.storage.clone())
             .create_store(name)
             .await
@@ -551,8 +551,10 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
 
     let work = super::unsent_before_removal(home.installation.builder(), id, |_| ()).await.unwrap();
     assert!(work.is_empty(), "{work:?}");
-    let reopened =
-        bae_db::configure_store(home.installation.builder()).open(id, |_| ()).await.unwrap();
+    let reopened = bae_db::configure_store(home.installation.builder(), crate::SCHEMA)
+        .open(id, |_| ())
+        .await
+        .unwrap();
     assert_eq!(reopened.store_name().await.unwrap(), "Library");
 }
 

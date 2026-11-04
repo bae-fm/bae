@@ -177,7 +177,7 @@ pub(crate) async fn scanned_box_and_sibling(db: &Database, root: &std::path::Pat
 
 #[tokio::test]
 async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let first = scanned_candidate(root, "First");
@@ -224,7 +224,7 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
 
 #[tokio::test]
 async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_the_snapshot() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -246,7 +246,7 @@ async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_th
 /// here, and fails to load.
 #[tokio::test]
 async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -272,7 +272,7 @@ async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded
 /// A scan generation is allocated even when the counter table holds no row.
 #[tokio::test]
 async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -295,7 +295,7 @@ async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
 async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
     use crate::folder_scanner::ScanItem;
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let settled = scanned_candidate(root, "Album");
@@ -354,7 +354,7 @@ async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
 async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
     use crate::folder_scanner::ScanItem;
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let settled = scanned_candidate(root, "Album");
@@ -403,7 +403,7 @@ async fn write(
 async fn a_release_is_found_by_its_first_settled_write_only() {
     use crate::folder_scanner::ScanItem;
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let settled = scanned_candidate(root, "Album");
@@ -434,7 +434,7 @@ async fn a_release_is_found_by_its_first_settled_write_only() {
 async fn a_fixed_folder_is_not_found_again() {
     use crate::folder_scanner::{InvalidCandidate, ScanItem};
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let settled = scanned_candidate(root, "Album");
@@ -466,7 +466,7 @@ async fn a_fixed_folder_is_not_found_again() {
 /// folder forgets what it found, so adding it again finds them again.
 #[tokio::test]
 async fn a_takeover_finds_only_folders_new_to_the_parent() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let music = host_root("/music");
     let inner = host_root("/music/inner");
@@ -511,7 +511,7 @@ async fn a_takeover_finds_only_folders_new_to_the_parent() {
 async fn a_grouping_is_found_when_combined_only() {
     use crate::folder_scanner::ScanItem;
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let music = host_root("/music");
     let inner = host_root("/music/inner");
@@ -590,7 +590,7 @@ async fn save_in_turn(
 /// same letters.
 #[tokio::test]
 async fn a_release_read_over_a_folder_replaces_the_entries_below_it_and_no_sibling() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -620,7 +620,7 @@ async fn a_release_read_over_a_folder_replaces_the_entries_below_it_and_no_sibli
 /// above it, but not one read from that folder's own files.
 #[tokio::test]
 async fn a_release_read_from_one_folder_replaces_only_a_whole_folder_above_it() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -656,7 +656,7 @@ async fn a_release_read_from_one_folder_replaces_only_a_whole_folder_above_it() 
 /// reading its files.
 #[tokio::test]
 async fn a_release_written_again_does_not_replace_itself() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -690,7 +690,7 @@ async fn a_release_written_again_does_not_replace_itself() {
 /// the release's is stored.
 #[tokio::test]
 async fn a_tentative_candidate_stands_down_only_for_a_release_reading_its_files() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();

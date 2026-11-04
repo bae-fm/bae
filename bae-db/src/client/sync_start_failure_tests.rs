@@ -20,7 +20,7 @@ async fn read_back(db: &Database) -> Option<UiError> {
 /// value it names, comes back as written.
 #[tokio::test]
 async fn every_class_a_start_fails_in_reads_back_as_written() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let storage = [
         F::ProviderUnavailable,
         F::AccessNotRegistered { required: OAuthAccess::Dropbox(DropboxAccess::AppFolder) },
@@ -89,7 +89,7 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
 /// already standing is left as it was.
 #[tokio::test]
 async fn a_class_no_start_fails_in_is_refused() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     db.record_sync_start_failure(Some(failure(C::KeyringLocked))).await.unwrap();
     let refused = db.record_sync_start_failure(Some(failure(C::ReleaseChangedSinceOpened))).await;
     assert!(refused.is_err(), "{refused:?}");
@@ -99,7 +99,7 @@ async fn a_class_no_start_fails_in_is_refused() {
 /// The table's CHECKs keep each column to the reason that uses it.
 #[tokio::test]
 async fn a_row_whose_columns_disagree_is_refused() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     for columns in [
         // A storage failure with no reason.
         "'storage', NULL, NULL, NULL, NULL, NULL",

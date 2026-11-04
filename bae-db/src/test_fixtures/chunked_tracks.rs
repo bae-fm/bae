@@ -5,7 +5,7 @@ use crate::Database;
 use rusqlite::params;
 
 pub async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
     let track_ids = track_ids(SQL_MAX_IN_VARS * 45);
     let seed_track_ids = track_ids.clone();
     db.call(move |conn| seed_release(conn, &seed_track_ids)).await.unwrap();

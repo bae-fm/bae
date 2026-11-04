@@ -295,7 +295,10 @@ async fn open_store(
 ) -> Result<bae_db::Database, bae_db::DbError> {
     let handle = match opening {
         LibraryOpening::Registered { builder, store, on_progress } => {
-            bae_db::configure_store(builder).clock(clock.clone()).open(store, on_progress).await?
+            bae_db::configure_store(builder, bae_library::SCHEMA)
+                .clock(clock.clone())
+                .open(store, on_progress)
+                .await?
         }
         LibraryOpening::Open(handle) => handle,
     };

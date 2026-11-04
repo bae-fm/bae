@@ -13,25 +13,75 @@
 //! candidate (`pane`) from the same placement. A surface changes the list it
 //! has open by its view and folds (`writes`) and by its selection
 //! (`selection`).
+//!
+//! Its schema, which every device's library holds, is the SQL files beside
+//! this one, a file per family of rules: the placement and the rules it is
+//! kept by (`placement`), Found's groups (`groups`), the counts (`counts`),
+//! the search index (`search`), the lists a surface has open (`views`), the
+//! triggers that place a release again when a table it is kept from changes
+//! (`follows_scans`, `follows_groupings`, `follows_candidates`,
+//! `follows_library`), and the versions of the tables the list's order reads
+//! (`versions`).
 
+mod counts;
+mod follows_candidates;
+mod follows_groupings;
+mod follows_library;
+mod follows_scans;
+mod groups;
+#[cfg(desktop)]
 mod listed;
+#[cfg(desktop)]
 mod order;
+#[cfg(desktop)]
 mod pane;
+mod placement;
+#[cfg(desktop)]
 mod read;
+mod search;
+#[cfg(desktop)]
 mod selection;
+#[cfg(desktop)]
 mod summary;
+mod versions;
+mod views;
+#[cfg(desktop)]
 mod window;
+#[cfg(desktop)]
 mod writes;
 
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use crate::list::{ImportListId, ImportListView};
+#[cfg(desktop)]
 use crate::PendingFilter;
+#[cfg(desktop)]
 use order::{Items, Shown};
 
+#[cfg(desktop)]
 pub use selection::SelectionWrite;
+
+/// The import list's part of the library's schema. Each file runs after the
+/// ones creating the tables its triggers fire on: the placement first, the
+/// lists a surface has open before the triggers that follow other domains'
+/// tables, and the versions after the placement.
+pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
+    placement::SQL,
+    groups::SQL,
+    counts::SQL,
+    search::SQL,
+    views::SQL,
+    follows_scans::SQL,
+    follows_groupings::SQL,
+    follows_candidates::SQL,
+    follows_library::SQL,
+    versions::SQL,
+]);
 
 /// One list's row as its reads take it: its view, its revisions, and whether
 /// its view narrows its tab or keeps every row of it.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 struct ListRow {
     id: ImportListId,
@@ -50,12 +100,14 @@ struct ListRow {
     keeps_all: bool,
 }
 
+#[cfg(desktop)]
 impl ListRow {
     fn items<'a>(&'a self, shown: Shown<'a>) -> Items<'a> {
         Items::new(self.id, self.view.tab, self.view.order, shown)
     }
 }
 
+#[cfg(desktop)]
 fn pending_filter_column(filter: PendingFilter) -> &'static str {
     match filter {
         PendingFilter::All => "all",
@@ -67,6 +119,7 @@ fn pending_filter_column(filter: PendingFilter) -> &'static str {
     }
 }
 
+#[cfg(desktop)]
 fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
     match column {
         "all" => Ok(PendingFilter::All),
@@ -81,6 +134,7 @@ fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
 
 /// The list `id`'s row. A list is read only while it is open, so a missing
 /// row is a list closed under its own read.
+#[cfg(desktop)]
 fn list_row(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     id: ImportListId,

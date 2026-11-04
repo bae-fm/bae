@@ -123,7 +123,7 @@ async fn commit_import(db: &Database, release: &DbRelease, commit: Commit<'_>) {
 
 #[tokio::test]
 async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
-    let (db, tmp) = temp_db().await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = tmp.path().join("watch").to_path_buf();
     let candidate_path = std::path::PathBuf::from(&root).join("Album");
@@ -201,7 +201,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
 
 #[tokio::test]
 async fn finalize_import_persists_composer_work_and_role_rows() {
-    let (db, tmp) = temp_db().await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);

@@ -6,10 +6,13 @@ use super::*;
 async fn a_follow_ends_once_its_store_closes() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database =
-        bae_db::Database::new_test(path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+    let database = bae_db::Database::new_test(
+        bae_db::test_fixtures::TEST_SCHEMA,
+        path.to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
     let (heard, mut reports) = tokio::sync::mpsc::unbounded_channel();
     let mut follow = LibraryFollow::new(
         crate::tables::subscribe_playback_track_infos(&database, Vec::new()),
@@ -41,10 +44,13 @@ async fn follow_ends<Request, Value>(follow: &mut LibraryFollow<Request, Value>)
 async fn an_ended_follow_takes_a_new_request() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database =
-        bae_db::Database::new_test(path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+    let database = bae_db::Database::new_test(
+        bae_db::test_fixtures::TEST_SCHEMA,
+        path.to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
     let mut follow = LibraryFollow::new(
         crate::tables::subscribe_playback_track_infos(&database, Vec::new()),
         Vec::new(),
@@ -76,10 +82,13 @@ impl bae_diagnostics::BugReporter for HeardBugs {
 async fn a_failed_read_is_reported_as_a_bug() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database =
-        bae_db::Database::new_test(path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+    let database = bae_db::Database::new_test(
+        bae_db::test_fixtures::TEST_SCHEMA,
+        path.to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
     let (heard, mut reports) = tokio::sync::mpsc::unbounded_channel();
     let diagnostics = bae_diagnostics::Diagnostics::noop()
         .reporting_bugs_to(std::sync::Arc::new(HeardBugs(heard)));

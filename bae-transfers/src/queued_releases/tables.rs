@@ -13,8 +13,7 @@ use crate::release_queue::{
     ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
 use bae_db::client::list_windows::{
-    list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
-    WindowsRead,
+    list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
 };
 use bae_db::client::read::column_conversion_error;
 use bae_db::{DbError, LibraryBrowseWindow, LibraryPageWindows};
@@ -227,7 +226,7 @@ pub(crate) fn release_queue_windows_on<P: QueuedPayload>(
     windows: &LibraryPageWindows,
     places: &KnownPlaces<Vec<i64>>,
 ) -> Result<ReleaseQueueWindows<P>, DbError> {
-    let versions = list_order_versions_on(sql, &[P::TABLE])?;
+    let versions = list_versions_on(sql, "list_order_versions", &[P::TABLE])?;
     let total_count: u64 =
         sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?;
     let order = queue_order();

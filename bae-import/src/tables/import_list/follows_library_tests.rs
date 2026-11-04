@@ -1,9 +1,11 @@
-//! What an imported release's Done row shows of its library album: the
-//! album's title, its credits and the names they print, each moved by the
-//! write that changes it in the library.
+//! What this device imported places: a release on Done, dated by when its
+//! release was written, and what its Done row shows of its library album:
+//! the album's title, its credits and the names they print, each moved by
+//! the write that changes it in the library.
 
-use super::super::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
-use super::*;
+use crate::tables::import_list::placement::tests::*;
+use crate::tables::import_list::tests::*;
+use bae_db::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
 
 /// An imported release's Done row, showing `title` and `artists`.
 fn done(title: &str, artists: &str) -> Placed {
@@ -12,6 +14,69 @@ fn done(title: &str, artists: &str) -> Placed {
 
 fn uuid(name: &str) -> String {
     bae_util::test_ids::test_uuid(name)
+}
+
+/// What this device imported from a folder's files puts it on Done, dated by
+/// when its release was written and showing its library album, whatever else
+/// is stored for it.
+#[tokio::test]
+async fn an_imported_release_is_done_dated_by_its_release() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}{}
+         INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});
+         INSERT INTO albums (id, title, is_compilation, created_at)
+         VALUES ('{ALBUM_A}', 'Album Title', 0, '2026-01-01T00:00:00Z');
+         INSERT INTO releases (id, album_id, created_at, album_order)
+         VALUES ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00.123456789+00:00', 0);",
+        lib.scan("Album"),
+        lib.discovered("Album", 100),
+        lib.state("Album"),
+        lib.sql("Album")
+    ))
+    .await;
+    let imported_at = 1_767_225_600_000;
+    assert_eq!(
+        lib.moved(&format!(
+            "INSERT INTO local_release_origin (release_id, content_hash)
+             VALUES ('{RELEASE_A}', '{}');",
+            hash("Album")
+        ))
+        .await,
+        moves([(
+            lib.release("Album"),
+            Some(found("Album").on("done").dated(imported_at + 123).shown("Album Title", Some("")))
+        )])
+    );
+    assert_eq!(
+        lib.moved(&format!(
+            "UPDATE releases SET created_at = '2026-01-01T02:00:01+02:00' WHERE id = '{RELEASE_A}';"
+        ))
+        .await,
+        moves([(
+            lib.release("Album"),
+            Some(
+                found("Album").on("done").dated(imported_at + 1_000).shown("Album Title", Some(""))
+            )
+        )])
+    );
+    assert_eq!(
+        lib.moved(&format!(
+            "UPDATE releases SET created_at = '2026-01-01T00:00:02Z' WHERE id = '{RELEASE_A}';"
+        ))
+        .await,
+        moves([(
+            lib.release("Album"),
+            Some(
+                found("Album").on("done").dated(imported_at + 2_000).shown("Album Title", Some(""))
+            )
+        )])
+    );
+    assert_eq!(
+        lib.moved(&format!("DELETE FROM local_release_origin WHERE release_id = '{RELEASE_A}';"))
+            .await,
+        moves([(lib.release("Album"), Some(found("Album").on("skipped").dated(100)))])
+    );
 }
 
 /// The Done row follows its library album: retitling it, its credits coming,

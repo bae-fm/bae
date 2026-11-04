@@ -15,7 +15,7 @@ use std::path::PathBuf;
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn overlapping_folders_added_at_once_keep_only_one() {
     for _ in 0..20 {
-        let (db, _tmp) = temp_db().await;
+        let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
         let tables = crate::tables::ImportTables::new(db.clone());
         let outer = host_root("/music");
         let inner = host_root("/music/inner");
@@ -44,7 +44,7 @@ async fn overlapping_folders_added_at_once_keep_only_one() {
 /// watched folder is, a folder inside it or beside it is not.
 #[tokio::test]
 async fn a_folder_is_watched_only_by_its_own_key() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let watched = host_root("/music");
     tables.add_watched_import_folder(&watched).await.unwrap();
@@ -59,7 +59,7 @@ async fn a_folder_is_watched_only_by_its_own_key() {
 /// order, never one beside it whose name only begins with its own.
 #[tokio::test]
 async fn the_watched_folders_above_and_below_a_folder_are_read_by_path() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for folder in ["/music/b", "/music/a", "/musical"] {
         tables.add_watched_import_folder(&host_root(folder)).await.unwrap();
@@ -82,7 +82,7 @@ async fn the_watched_folders_above_and_below_a_folder_are_read_by_path() {
 
 #[tokio::test]
 async fn watched_root_overlap_uses_paths_not_sql_patterns() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for root in ["/music/100%", "/music/name_value"] {
         assert!(tables.add_watched_import_folder(&host_root(root)).await.unwrap().is_some());
@@ -95,7 +95,7 @@ async fn watched_root_overlap_uses_paths_not_sql_patterns() {
 
 #[tokio::test]
 async fn watched_root_order_survives_middle_removal_and_later_add() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for root in ["/one", "/two", "/three"] {
         tables.add_watched_import_folder(&host_root(root)).await.unwrap();
@@ -125,7 +125,7 @@ async fn watched_root_order_survives_middle_removal_and_later_add() {
 /// spelling.
 #[tokio::test]
 async fn watched_root_spellings_settle_on_one_row() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let canonical = host_root("/music/rips");
     assert!(tables.add_watched_import_folder(&canonical).await.unwrap().is_some());
@@ -163,7 +163,7 @@ async fn watched_root_spellings_settle_on_one_row() {
 /// symlink.
 #[tokio::test]
 async fn watched_root_rejects_a_path_climbing_out_of_itself() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let path = host_root("/music/../rips");
     assert!(tables.add_watched_import_folder(&path).await.is_err(), "{}", path.display());
@@ -173,7 +173,7 @@ async fn watched_root_rejects_a_path_climbing_out_of_itself() {
 /// corrupt and fail to load.
 #[tokio::test]
 async fn overlapping_stored_roots_fail_to_load() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let outer = host_root("/music");
     let inner = host_root("/music/artist");

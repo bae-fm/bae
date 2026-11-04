@@ -350,7 +350,7 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
 /// the commit makes one artist.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
-    let conn = crate::schema::bare_library_connection();
+    let conn = crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
     resolve_artists_on(&conn, credits, &HashSet::new())
         .expect("credits resolve in an empty library")
         .ids

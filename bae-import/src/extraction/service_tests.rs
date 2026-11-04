@@ -112,6 +112,7 @@ pub(super) async fn collect_snapshots(
 pub(super) async fn make_database() -> (bae_db::Database, TempDir) {
     let tmp = TempDir::new().unwrap();
     let database = bae_db::Database::new_test(
+        crate::TEST_SCHEMA,
         tmp.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )

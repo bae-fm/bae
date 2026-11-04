@@ -557,7 +557,7 @@ mod playback_queue_bench {
     /// coven every synced row's write is captured whole, which would take
     /// minutes, and the queue tables read nothing of `tracks` but its rows.
     async fn library_db() -> (Database, tempfile::TempDir, std::path::PathBuf) {
-        let (db, tmp) = temp_db().await;
+        let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
         db.call(move |conn| {
             seed_artist_album_release(conn)?;
             conn.execute(

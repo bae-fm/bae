@@ -8,7 +8,7 @@ use std::time::Duration;
 /// is gone once the walk finishes.
 #[tokio::test]
 async fn folder_scan_progress_follows_the_walk_in_flight() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -53,7 +53,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
 /// A folder on this machine's disk recorded as network reads as network.
 #[tokio::test]
 async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -74,7 +74,7 @@ async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
 /// progress counts only the entries encountered by the generation in flight.
 #[tokio::test]
 async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -111,7 +111,7 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
 /// first comes first, whatever its path.
 #[tokio::test]
 async fn folder_scan_progress_lists_the_folders_in_their_order() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let roots =
         [bae_db::watched_path::host_root("/zeta"), bae_db::watched_path::host_root("/alpha")];

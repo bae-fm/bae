@@ -34,7 +34,7 @@ impl LibraryViews {
         let order = composer_order(sort);
         let places = KnownPlaces::new();
         self.database.subscribe_reconfigurable(initial_windows, move |requested, sql| {
-            let versions = list_order_versions_on(&sql, &["composer_listing"])?;
+            let versions = list_versions_on(&sql, "list_order_versions", &["composer_listing"])?;
             let total_count = composer_count_on(&sql).map_err(CovenError::from)?;
             let WindowsRead { windows, found } =
                 read_windows(&order, requested, places.under(&versions), |seek, limit, offset| {

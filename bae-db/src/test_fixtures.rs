@@ -1,5 +1,9 @@
-//! Test databases with bae's schema and the rows tests seed them with, for
-//! the tests of this crate and every crate that builds on it.
+//! Test databases on a schema and the rows tests seed them with, for the
+//! tests of this crate and every crate that builds on it.
+
+/// The schema this crate's tests open their stores on, and the tests of the
+/// crates above it that hold no part of the schema: bae-db's part.
+pub const TEST_SCHEMA: crate::Schema = crate::Schema::new(&[crate::SCHEMA_PARTS]);
 
 // Fixture row ids, UUIDs because coven refuses any other synced primary key.
 pub const ALBUM_A: &str = "a67c03ad-425f-45e9-8279-0144c852aaa5";
@@ -19,11 +23,12 @@ pub const TRACK_ROLE_A: &str = "fa0c8483-f09a-4b69-8903-b1ebcdc31322";
 pub const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015";
 pub const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4";
 
-/// A database in a fresh temp directory, under the real clock. The `TempDir`
-/// owns the file, so it must outlive the handle.
-pub async fn temp_db() -> (crate::Database, tempfile::TempDir) {
+/// A database on `schema` in a fresh temp directory, under the real clock.
+/// The `TempDir` owns the file, so it must outlive the handle.
+pub async fn temp_db(schema: crate::Schema) -> (crate::Database, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let db = crate::Database::new_test(
+        schema,
         tmp.path().join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
     )
@@ -40,9 +45,10 @@ pub fn fixed_now() -> chrono::DateTime<chrono::Utc> {
 }
 
 /// `temp_db` under that pinned clock instead of the system one.
-pub async fn empty_db() -> (crate::Database, tempfile::TempDir) {
+pub async fn empty_db(schema: crate::Schema) -> (crate::Database, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let db = crate::Database::new_test(
+        schema,
         tmp.path().join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::FixedClock::new((fixed_now()).into())),
     )
@@ -129,5 +135,6 @@ pub mod chunked_tracks;
 pub mod composed_work;
 pub mod labels;
 pub mod live_query;
+pub mod schema_checks;
 pub mod storage_listing;
 pub mod window_cost;

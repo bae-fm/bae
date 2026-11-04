@@ -39,7 +39,7 @@ pub(crate) async fn store_user_folder_decision(
 /// separator, which the read takes the range below the root by.
 #[tokio::test]
 async fn corrupt_folder_decision_keys_fail_when_loaded() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/mounted/library");
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -65,7 +65,7 @@ async fn corrupt_folder_decision_keys_fail_when_loaded() {
 async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
     use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let root = &host_root("/mounted/library");
     scanned_box_and_sibling(&db, root).await;
     let key = |folder: &str| FolderReleaseDecisionKey {
@@ -98,7 +98,7 @@ async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
 async fn folder_release_decision_is_idempotent_and_root_scoped() {
     use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let other = host_root("/other/library");
     let key = FolderReleaseDecisionKey {

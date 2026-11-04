@@ -34,7 +34,7 @@ fn search_result(source: LookupCatalog, release_id: &str) -> MetadataResult {
 
 /// Tables over a library whose scan holds one folder candidate, and its key.
 async fn scanned() -> (ImportTables, CandidateKey, tempfile::TempDir) {
-    let (db, tmp) = empty_db().await;
+    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     stored_pane_candidate(&db).await;
     (ImportTables::new(db), pane_candidate_key(), tmp)
 }
@@ -152,7 +152,7 @@ async fn a_replaced_search_cannot_land() {
 /// being identified again has no files, and searches all the same.
 #[tokio::test]
 async fn a_search_is_of_a_candidate_the_scan_holds_or_of_a_library_release() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = ImportTables::new(db);
     let unscanned = &pane_candidate_key();
     assert!(tables

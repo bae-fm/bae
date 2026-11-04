@@ -277,6 +277,7 @@ impl TestLibrary {
 /// Open `dir/test.db` under the real clock and real UUID provider.
 async fn open_test_db(dir: &std::path::Path) -> Database {
     Database::new_test(
+        crate::SCHEMA,
         dir.join("test.db").to_str().expect("test database path is valid UTF-8"),
         Arc::new(coven::SystemClock),
     )
@@ -354,7 +355,7 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let library = runtime.block_on(async {
-        let handle = bae_db::configure_store(installation.builder())
+        let handle = bae_db::configure_store(installation.builder(), crate::SCHEMA)
             .create_store("Test Library")
             .await
             .expect("create fresh test store");

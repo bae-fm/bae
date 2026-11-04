@@ -30,7 +30,7 @@ pub(crate) struct Library {
 
 impl Library {
     pub(crate) async fn new() -> Self {
-        let (db, tmp) = empty_db().await;
+        let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
         let root = bae_db::watched_path::host_root("/music");
         let library = Self { db, _tmp: tmp, root };
         library.run(&library.watch(&library.root, 0)).await;

@@ -1,7 +1,8 @@
 //! What the scan stores places: its releases, their folders' dates, the
 //! watched folders' order and the folders the person skipped.
 
-use super::*;
+use crate::tables::import_list::placement::tests::*;
+use crate::tables::import_list::tests::*;
 
 #[tokio::test]
 async fn a_scanned_release_is_placed_on_found_as_nobody_has_looked_it_up() {

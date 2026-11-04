@@ -71,7 +71,7 @@ async fn artist_image_file(db: &Database, artist_id: &str) -> Option<coven::File
 /// naming the absorbed artist stays as written and reads as the survivor.
 #[tokio::test]
 async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the_survivor() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
     let survivor = artist("survivor", Some("discogs-1"), None);
     let absorbed = artist("absorbed", None, Some("mb-1"));
     db.insert_artist(&survivor).await.unwrap();
@@ -114,7 +114,7 @@ async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the
 
 #[tokio::test]
 async fn a_survivor_keeps_the_sort_name_it_has() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
     let mut survivor = artist("survivor", Some("discogs-1"), None);
     survivor.sort_name = Some("Name, Artist".to_string());
     let absorbed = artist("absorbed", None, Some("mb-1"));
@@ -131,7 +131,7 @@ async fn a_survivor_keeps_the_sort_name_it_has() {
 /// image row goes.
 #[tokio::test]
 async fn a_survivor_with_an_image_keeps_it_and_the_absorbed_artists_goes() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
     let survivor = artist("survivor", Some("discogs-1"), None);
     let absorbed = artist("absorbed", None, Some("mb-1"));
     db.insert_artist(&survivor).await.unwrap();
@@ -161,7 +161,7 @@ async fn a_survivor_without_an_image_takes_the_absorbed_artists_file() {
     const LOW: &str = "00000000-0000-4000-8000-000000000001";
     const HIGH: &str = "00000000-0000-4000-8000-000000000002";
     for (survivor_id, absorbed_id) in [(LOW, HIGH), (HIGH, LOW)] {
-        let (db, _tmp) = empty_db().await;
+        let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
         let mut survivor = artist("survivor", Some("discogs-1"), None);
         survivor.id = survivor_id.to_string();
         let mut absorbed = artist("absorbed", None, Some("mb-1"));
@@ -197,7 +197,7 @@ async fn a_survivor_without_an_image_takes_the_absorbed_artists_file() {
 /// merged into the survivor, so its credits read as the survivor directly.
 #[tokio::test]
 async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
     let earlier = artist("earlier", None, None);
     let absorbed = artist("absorbed", None, Some("mb-1"));
     let survivor = artist("survivor", Some("discogs-1"), None);
@@ -231,7 +231,7 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
 
 #[tokio::test]
 async fn an_artist_merge_into_a_missing_survivor_is_refused() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
     let absorbed = artist("absorbed", None, Some("mb-1"));
     db.insert_artist(&absorbed).await.unwrap();
     let missing = bae_util::test_ids::test_uuid("missing");

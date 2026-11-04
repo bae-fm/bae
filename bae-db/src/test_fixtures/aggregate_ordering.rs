@@ -5,7 +5,7 @@ use super::RELEASE_A;
 use crate::{Database, DbError, NewReleaseFile};
 
 pub async fn aggregate_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -39,7 +39,7 @@ pub async fn aggregate_db() -> (Database, tempfile::TempDir) {
 }
 
 pub async fn queue_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
     db.call(|conn| {
         super::seed_artist_album_release(conn)?;
         conn.execute_batch(
@@ -63,7 +63,7 @@ pub async fn queue_db() -> (Database, tempfile::TempDir) {
 }
 
 pub async fn release_detail_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
     db.call(|conn| {
         super::seed_artist_album_release(conn)?;
         conn.execute_batch(

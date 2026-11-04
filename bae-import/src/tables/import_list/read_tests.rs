@@ -26,7 +26,7 @@ fn candidate_names(projection: &crate::ImportListProjection) -> Vec<String> {
 
 #[tokio::test]
 async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -56,7 +56,7 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
 /// read rather than being listed.
 #[tokio::test]
 async fn overlapping_stored_roots_fail_the_list_read() {
-    let (db, _temp) = empty_db().await;
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let outer = bae_db::watched_path::host_root("/music");
     let inner = bae_db::watched_path::host_root("/music/artist");
@@ -81,7 +81,7 @@ async fn overlapping_stored_roots_fail_the_list_read() {
 /// Found like any other.
 #[tokio::test]
 async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -102,7 +102,7 @@ async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
 /// and then moved or renamed is Done where it is now.
 #[tokio::test]
 async fn a_moved_folder_stays_done() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -123,7 +123,7 @@ async fn a_moved_folder_stays_done() {
 /// its folder is back in Found.
 #[tokio::test]
 async fn deleting_the_release_puts_its_folder_back_in_found() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -149,7 +149,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
 /// says so without anything having been written.
 #[tokio::test]
 async fn import_list_moving_the_window_reruns_without_a_commit() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -181,7 +181,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
 /// again: the tab does not re-render for a write it cannot show.
 #[tokio::test]
 async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -223,7 +223,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
 /// scan until something unrelated changed.
 #[tokio::test]
 async fn import_list_wakes_on_a_scan_item() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -253,7 +253,7 @@ async fn import_list_wakes_on_a_scan_item() {
 /// startup rescan of a large folder lasted.
 #[tokio::test]
 async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -283,7 +283,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
 /// request asks for, with the rows its last read held.
 #[tokio::test]
 async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -351,7 +351,7 @@ async fn import_items(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
     use crate::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
-    let (db, tmp) = empty_db().await;
+    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     grow_import_list(&db, tmp.path(), 0, 300).await;
     let list = tables
@@ -510,7 +510,7 @@ async fn measure_import_list(db: &Database, n: u64) {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "measurement: run in release with --ignored --nocapture"]
 async fn import_list_window_cost() {
-    let (db, tmp) = empty_db().await;
+    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let mut held = 0;
     for n in SIZES {
         let took = grow_import_list(&db, tmp.path(), held, n).await;

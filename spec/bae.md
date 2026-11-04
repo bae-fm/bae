@@ -3669,8 +3669,8 @@ Reads come two ways:
   last rows of each window it read before, and of each window its last read
   held while no row of the list has moved since: the tables a list sorts keep
   a count of the writes that inserted, deleted or reordered their rows
-  (`list_order_versions`, Appendix A), and a read starts from its last read's
-  rows only while those counts stand. Any other window, such as one a jump to
+  (`list_order_versions`, `import_list_versions`, Appendix A), and a read
+  starts from its last read's rows only while those counts stand. Any other window, such as one a jump to
   the middle of the list reaches, is read by its offset, past every row before
   it. The playback queue's upcoming tracks are read by offset alone: the
   offset passes over the context lane's positions before any track is read,
@@ -4071,7 +4071,7 @@ bindings export none of their symbols.
 | Crate | Holds |
 |---|---|
 | bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it, and the live reads the screens pull over the library and its views |
-| bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives |
+| bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives, and the library's schema, assembled from each crate's parts of it |
 | bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in |
 | bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
@@ -4079,7 +4079,7 @@ bindings export none of their symbols.
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local path, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
 | bae-transfers | the transfer queues and storage transitions: the download queue that keeps releases on this device and the export and save queue, each worked through one release at a time, paused, cancelled and retried, their entries as this device's tables hold them, and the storage transition each release is in, ended in the write that changes its files |
-| bae-db | the library's store: the database over coven and the entry points every read and write runs through, the schema (its one migration, the synced tables and the SQL functions it declares), the library's records and the row writers that keep them, list windows, the cancellable live queries a surface pulls values from, the people, collections and history a library holds, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
+| bae-db | the library's store: the database over coven and the entry points every read and write runs through, the schema's shape (the parts each crate holds of it, run in crate order as one migration), its own part of the schema, the synced tables and the SQL functions the schema calls, the library's records and the row writers that keep them, list windows, the cancellable live queries a surface pulls values from, the people, collections and history a library holds, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
@@ -4106,8 +4106,10 @@ each device and hands playback the channel or sink.
 
 ### 11.2 Conventions
 
-- **One schema.** The database schema is one migration file. A schema change
-  edits it; there is never a second migration, and development data is reset.
+- **One schema.** The database schema is one migration, assembled from each
+  domain's SQL files, which sit beside the domain's code. A schema change
+  edits its domain's file; there is never a second migration, and
+  development data is reset.
   No library has to advance from an older schema before 1.0.
 - **One shape at a time.** When a shared shape changes — a bridge type, an
   event, a file layout, a storage path — every caller changes with it. No
@@ -4184,8 +4186,12 @@ the iOS builds for both editions, and Swift lint and format.
 ---
 ## Appendix A. Schema
 
-The schema is `bae-db/migrations/001_initial.sql`, which coven applies as
-migration 1. Every table is `STRICT`. "Syncs" means coven syncs its rows
+The schema is one migration, which coven applies as migration 1: each
+crate's parts of it, in crate order, each part a domain's SQL files beside its
+code. bae-library assembles it from bae-db's part,
+`bae-db/migrations/001_initial.sql`, which holds every table no other part
+does, and the import list's, in `bae-import/src/tables/import_list/`. A part
+runs after the parts creating the tables its triggers fire on. Every table is `STRICT`. "Syncs" means coven syncs its rows
 (Appendix B); every other table stays on the device.
 
 A list is stored as rows, one per item, when its items have an identity of
@@ -4271,7 +4277,7 @@ Beside them, device-local tables:
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
-| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, `download_queue`, `output_queue`, for the import list `import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
+| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, `download_queue`, `output_queue`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
@@ -4394,6 +4400,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order, where its view opened (its first selected row when the view was set, or its top), and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 | `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
+| `import_list_versions` | table the import list's order reads (`import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2). Done's uploads also read `release_listing`'s count in `list_order_versions` |
 
 No list outlives the process that opened it: the import service empties
 `import_list` and the tables hanging off it as the library opens, with the

@@ -28,6 +28,7 @@ impl ImportingLibrary {
     async fn asking(providers: bae_catalogs::providers::Providers) -> Self {
         let temp = TempDir::new().unwrap();
         let database = bae_db::Database::new_test(
+            bae_library::SCHEMA,
             temp.path().join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
         )

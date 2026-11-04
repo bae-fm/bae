@@ -140,7 +140,7 @@ fn whole_page() -> Vec<(bool, Shown)> {
 
 #[tokio::test]
 async fn a_composer_page_lists_each_work_under_every_work_it_is_part_of_then_its_credits() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(&db, PAGE).await;
 
     // Movement One is part of both parents and shows under each; Gamma Work,
@@ -158,7 +158,7 @@ async fn a_composer_page_lists_each_work_under_every_work_it_is_part_of_then_its
 
 #[tokio::test]
 async fn each_part_of_the_page_opens_its_heading() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(&db, PAGE).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
@@ -195,7 +195,7 @@ async fn each_part_of_the_page_opens_its_heading() {
 
 #[tokio::test]
 async fn the_page_keeps_its_order_as_titles_parts_and_credits_change() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(&db, PAGE).await;
 
     // A retitled heading work moves its group; the rows it heads move with it.
@@ -292,7 +292,7 @@ fn held_rows(conn: &rusqlite::Connection) -> Vec<(i64, String, Option<i64>, Stri
 fn rows_whose_titles_arrive_late_wait_for_them() {
     // Rows from another device can arrive before the rows they name: here a
     // part's parent, and a credit's release and album.
-    let conn = bae_db::schema::bare_library_connection();
+    let conn = bae_db::schema::bare_library_connection(bae_db::test_fixtures::TEST_SCHEMA);
     conn.execute_batch(
         "PRAGMA foreign_keys = OFF;
          INSERT INTO artists (id, name, name_key, created_at) VALUES
@@ -347,7 +347,7 @@ fn rows_whose_titles_arrive_late_wait_for_them() {
 
 #[tokio::test]
 async fn the_page_rows_follow_writes_in_their_windows() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(&db, PAGE).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
@@ -387,7 +387,7 @@ async fn the_page_rows_follow_writes_in_their_windows() {
 /// (`work_summary_columns`) sorts that work's own tracks.
 #[tokio::test]
 async fn every_seek_of_the_page_reads_its_index() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(&db, PAGE).await;
     let order = crate::composer_detail::composer_detail_order("listing");
     for at in 0..12 {
@@ -438,7 +438,7 @@ async fn every_seek_of_the_page_reads_its_index() {
 /// read of the artist's credited works names the work.
 #[tokio::test]
 async fn the_page_refreshes_read_one_work_or_one_credit() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(&db, PAGE).await;
     for statement in [
         "SELECT * FROM composer_detail_works WHERE artist_id = 'a' AND item_id = 'w'",

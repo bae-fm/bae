@@ -15,7 +15,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
-    let handle = bae_db::configure_store(installation.builder())
+    let handle = bae_db::configure_store(installation.builder(), crate::TEST_SCHEMA)
         .clock(clock.clone())
         .create_store("Test Library")
         .await
@@ -59,7 +59,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     db.close().await.unwrap();
     drop(db);
 
-    let handle = bae_db::configure_store(installation.builder())
+    let handle = bae_db::configure_store(installation.builder(), crate::TEST_SCHEMA)
         .clock(clock.clone())
         .open(id, |_| ())
         .await

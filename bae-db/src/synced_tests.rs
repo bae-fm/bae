@@ -128,9 +128,11 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
     );
 }
 
-/// Tables whose rows never leave this device. A table the schema creates
-/// is either declared in `synced_tables()` or named here, so a new table
-/// is a decision rather than a row that silently stays on one device.
+/// Tables of bae-db's part of the schema whose rows never leave this device.
+/// A table its part creates is either declared in `synced_tables()` or named
+/// here, so a new table is a decision rather than a row that silently stays
+/// on one device. A synced table is one of bae-db's part, so every table of
+/// another crate's part stays on the device.
 const DEVICE_LOCAL_TABLES: &[&str] = &[
     // This device's own copies: the folder each release was imported
     // from, plays before a person exists, and what this device plays:
@@ -269,18 +271,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     "import_candidate_lookup_value",
     "import_candidate_lookup",
     "import_candidate_lookup_release",
-    // Where each row of the import list sits, worked out from the rows
-    // above.
-    "import_list_placement",
-    "import_list_tab_count",
-    "import_list_entry_count",
-    "import_list_group_entry_count",
-    "import_list_search",
-    // The import lists open on this device: each one's view, its folded
-    // groups and its selection.
-    "import_list",
-    "import_list_collapsed",
-    "import_list_selection",
     // Catalog releases this device fetched; any device can fetch them.
     "source_release",
     "source_release_album_artist",
@@ -311,8 +301,9 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
 fn every_schema_table_is_synced_or_declared_device_local() {
     let create =
         regex::Regex::new(r"(?m)^\s*CREATE (?:VIRTUAL )?TABLE (?:IF NOT EXISTS )?(\w+)").unwrap();
-    let schema: BTreeSet<&str> = create
-        .captures_iter(include_str!("../migrations/001_initial.sql"))
+    let schema: BTreeSet<&str> = crate::test_fixtures::TEST_SCHEMA
+        .sql()
+        .flat_map(|sql| create.captures_iter(sql))
         .map(|captures| captures.get(1).unwrap().as_str())
         .collect();
     let tables = synced_tables();

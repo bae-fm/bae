@@ -12,10 +12,13 @@ async fn manager_with_recording_transport(
 ) -> (LibraryManager, Diagnostics, Arc<RecordingTransport>, TempDir) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("transfer-test.db");
-    let database =
-        bae_db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+    let database = bae_db::Database::new_test(
+        crate::SCHEMA,
+        db_path.to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
 
     let transport = Arc::new(RecordingTransport::new(vec![]));
     let config = DatadogDiagnosticsConfig {

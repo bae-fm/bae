@@ -116,7 +116,7 @@ async fn every_settled_signal_shape_round_trips() {
     let isrcs =
         [vec!["IT0000000002", "IT0000000001", "IT0000000002"], vec!["YU0000000001"], Vec::new()];
     for (at, (what, origin, disc_id, barcode, text)) in cases.into_iter().enumerate() {
-        let (db, _tmp) = empty_db().await;
+        let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
         let tables = crate::tables::ImportTables::new(db.clone());
         let (_, hash) = stored_pane_candidate(&db).await;
         let signals = Signals {
@@ -166,7 +166,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             track_titles: Vec::new(),
         },
     ] {
-        let (db, _tmp) = empty_db().await;
+        let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
         let tables = crate::tables::ImportTables::new(db.clone());
         let candidate = pane_candidate();
         let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
@@ -200,7 +200,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
 /// surface each was read off.
 #[tokio::test]
 async fn the_candidate_s_text_round_trips_line_by_line() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);

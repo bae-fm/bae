@@ -174,7 +174,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
 
 #[tokio::test]
 async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
-    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
 
     let track = DbTrack::new_test("missing-release", TRACK_A, "Track Title A", 1);
     let error = db
@@ -190,7 +190,7 @@ async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
 
 #[tokio::test]
 async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
-    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let runtime_thread = std::thread::current().id();
     let fetched_thread = db
         .read(|sql| {
@@ -225,7 +225,7 @@ async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
 /// numbers by value, letters without regard to case, then bytes.
 #[tokio::test]
 async fn coven_connection_orders_by_bae_natural_order() {
-    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let ordered = db
         .read(|sql| {
             Ok(sql.query(
@@ -242,7 +242,7 @@ async fn coven_connection_orders_by_bae_natural_order() {
 
 #[tokio::test]
 async fn single_table_subscription_ignores_a_different_primary_key() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
     exec(
         &db,
         "INSERT INTO albums

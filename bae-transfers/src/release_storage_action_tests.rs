@@ -13,7 +13,7 @@ const LIBRARY: &str = "
 ";
 
 async fn library() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = temp_db().await;
+    let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     db.call(|sql| sql.execute_batch(LIBRARY).map_err(DbError::from)).await.unwrap();
     (db, tmp)
 }

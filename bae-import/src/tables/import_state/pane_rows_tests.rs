@@ -9,7 +9,7 @@ use bae_db::ExistingArtist;
 
 #[tokio::test]
 async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let existing = existing_artist();
@@ -49,7 +49,7 @@ async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
 
 #[tokio::test]
 async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
     let error = PaneControls::of_pane_candidate(&db)
@@ -75,7 +75,7 @@ async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
 /// candidate pane.
 #[tokio::test]
 async fn a_track_row_round_trips_metadata_and_mapping() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
@@ -107,7 +107,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
 /// preparation's save with an error, rather than stopping the import.
 #[tokio::test]
 async fn a_stated_length_past_sqlites_range_fails_the_save() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     fetched(&db, "release-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let mut draft = candidate_draft("Release Title", "Artist Name");

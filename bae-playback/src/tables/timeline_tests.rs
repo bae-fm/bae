@@ -32,7 +32,7 @@ fn nothing() -> PlaybackTimeline {
 /// running to its file's end included, and a line taken away is gone.
 #[tokio::test]
 async fn the_row_holds_each_line_as_written() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     assert_eq!(playback_timeline(&db).await.unwrap(), nothing());
     let row = PlaybackTimelineRow::new(db.clone());
 
@@ -55,7 +55,7 @@ async fn the_row_holds_each_line_as_written() {
 /// resumes the queue or not.
 #[tokio::test]
 async fn starting_playback_leaves_no_line() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     for resume in [true, false] {
         PlaybackTimelineRow::new(db.clone()).write(&timeline()).await.unwrap();
         settle_playback_queue(&db, resume).await.unwrap();
@@ -66,7 +66,7 @@ async fn starting_playback_leaves_no_line() {
 /// Each line's columns are set together; a length or an end needs its line.
 #[tokio::test]
 async fn the_schema_refuses_half_a_line() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     for sql in [
         "UPDATE playback_timeline SET track_id = 'track-1'",
         "UPDATE playback_timeline SET track_id = 'track-1', position_ms = 0",

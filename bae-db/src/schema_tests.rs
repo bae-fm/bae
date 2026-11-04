@@ -4,73 +4,11 @@ use crate::test_fixtures::live_query::{live_db, RELEASE_ID};
 use crate::test_fixtures::storage_listing::*;
 use crate::test_fixtures::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B};
 
-const SCHEMA: &str = include_str!("../migrations/001_initial.sql");
-
-/// Every table the schema creates is `STRICT`, so a value of the wrong type
-/// is refused rather than stored.
-#[test]
-fn every_table_is_strict() {
-    let conn = crate::schema::bare_library_connection();
-    let loose: Vec<String> = regex::Regex::new(r"(?m)^CREATE TABLE IF NOT EXISTS (\w+)")
-        .unwrap()
-        .captures_iter(SCHEMA)
-        .map(|captures| captures[1].to_string())
-        .filter(|table| {
-            let strict: i64 = conn
-                .query_row("SELECT strict FROM pragma_table_list WHERE name = ?", [table], |row| {
-                    row.get(0)
-                })
-                .unwrap();
-            strict != 1
-        })
-        .collect();
-    assert!(loose.is_empty(), "tables not STRICT: {loose:?}");
-}
-
-/// Every column an `UPDATE OF` trigger names is a column of its table.
-/// SQLite accepts a name no column has, and the trigger then never fires on
-/// it.
-#[test]
-fn every_update_of_trigger_names_columns_its_table_has() {
-    let conn = crate::schema::bare_library_connection();
-    let update_of = regex::Regex::new(r"(?is)UPDATE OF\s+(.+?)\s+ON\s+(\w+)").unwrap();
-    let triggers: Vec<(String, String)> = conn
-        .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'trigger'")
-        .unwrap()
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-        .unwrap()
-        .collect::<Result<_, _>>()
-        .unwrap();
-    let mut checked = 0;
-    let mut missing = Vec::new();
-    for (trigger, sql) in &triggers {
-        let Some(captures) = update_of.captures(sql) else {
-            continue;
-        };
-        checked += 1;
-        let table = &captures[2];
-        let columns: Vec<String> = conn
-            .prepare("SELECT name FROM pragma_table_xinfo(?)")
-            .unwrap()
-            .query_map([table], |row| row.get(0))
-            .unwrap()
-            .collect::<Result<_, _>>()
-            .unwrap();
-        for named in captures[1].split(',').map(str::trim) {
-            if !columns.iter().any(|column| column == named) {
-                missing.push(format!("{trigger}: {table}.{named}"));
-            }
-        }
-    }
-    assert!(checked > 0, "no UPDATE OF trigger found");
-    assert!(missing.is_empty(), "triggers name absent columns: {missing:?}");
-}
-
 /// Whether this device imported a folder's files is a lookup by its hash,
 /// which the hash's uniqueness indexes.
 #[test]
 fn imported_content_hash_lookup_uses_its_unique_index() {
-    let conn = crate::schema::bare_library_connection();
+    let conn = crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
     let plan: Vec<String> = conn
         .prepare(
             "EXPLAIN QUERY PLAN \
@@ -92,7 +30,7 @@ fn imported_content_hash_lookup_uses_its_unique_index() {
 #[tokio::test]
 async fn deleting_an_artist_removes_local_draft_references() {
     for removed in [ARTIST_A, ARTIST_B] {
-        let (db, _tmp) = temp_db().await;
+        let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
         for artist in [ARTIST_A, ARTIST_B] {
             exec(
                 &db,
@@ -243,7 +181,7 @@ async fn renaming_an_album_renames_its_releases_listing_rows() {
 /// release.
 #[tokio::test]
 async fn the_uploading_releases_read_the_listing_in_queue_order() {
-    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     assert_eq!(
         plan(
             &db,
@@ -260,7 +198,7 @@ async fn the_uploading_releases_read_the_listing_in_queue_order() {
 /// A bare library connection that records every release whose listing row
 /// a write asks to refresh, in `refreshed`.
 fn counting_refreshes() -> rusqlite::Connection {
-    let conn = crate::schema::bare_library_connection();
+    let conn = crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
     conn.execute_batch(
         "CREATE TEMP TABLE refreshed (release_id TEXT NOT NULL);
          CREATE TEMP TRIGGER count_refresh INSTEAD OF INSERT ON main.release_listing_refresh
@@ -420,7 +358,7 @@ fn a_release_s_media_rows_set_its_listing_s_media() {
 /// files this device already imported is refused.
 #[tokio::test]
 async fn one_folder_hash_records_one_release() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
     exec(
         &db,
         "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",

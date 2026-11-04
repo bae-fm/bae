@@ -61,7 +61,7 @@ async fn change(db: &Database, key: &crate::CandidateKey, changes: Vec<Identific
 /// its import, reads back as the change that reached it left it.
 #[tokio::test]
 async fn every_standing_reads_back_as_written() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let admit = |key: &str| IdentificationChange::Admit {
         files: files_of(&crate::CandidateKey::test(key)),
@@ -153,7 +153,7 @@ async fn every_standing_reads_back_as_written() {
 /// going for it removes the row it had.
 #[tokio::test]
 async fn nothing_running_removes_the_row() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = &crate::CandidateKey::test("/music/Album");
     scanned(&db, key, &files_of(key)).await;
@@ -177,7 +177,7 @@ async fn nothing_running_removes_the_row() {
 /// changes nothing — the identification change asked with it included.
 #[tokio::test]
 async fn a_claim_while_another_stands_is_refused_whole() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = &crate::CandidateKey::test("/music/Album");
     scanned(&db, key, &files_of(key)).await;
@@ -206,7 +206,7 @@ async fn a_claim_while_another_stands_is_refused_whole() {
 /// Clearing the table, as the library opens, removes every standing.
 #[tokio::test]
 async fn clearing_removes_every_standing() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for key in ["/music/One", "/music/Two"] {
         let key = &crate::CandidateKey::test(key);
@@ -247,7 +247,7 @@ async fn imports_in_flight(db: &Database) -> u32 {
 /// ending takes its row out.
 #[tokio::test]
 async fn the_imports_in_flight_are_the_rows_an_import_holds() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for key in ["/music/One", "/music/Two", "/music/Three"] {
         let key = &crate::CandidateKey::test(key);
@@ -335,7 +335,7 @@ async fn admitted_pane_candidate(db: &Database) -> (crate::CandidateKey, crate::
 
 #[tokio::test]
 async fn a_pass_that_no_longer_finds_a_candidate_ends_its_identification() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (key, _) = admitted_pane_candidate(&db).await;
     let root = host_root("/music");
@@ -349,7 +349,7 @@ async fn a_pass_that_no_longer_finds_a_candidate_ends_its_identification() {
 
 #[tokio::test]
 async fn an_entry_rewritten_with_other_files_ends_its_identification() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (key, _) = admitted_pane_candidate(&db).await;
     let root = host_root("/music");
@@ -382,7 +382,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_identification() {
 /// other files ends it, every row it owns with it.
 #[tokio::test]
 async fn an_entry_rewritten_with_other_files_ends_its_search() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     stored_pane_candidate(&db).await;
     let key = pane_candidate_key();
@@ -442,7 +442,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
 
 #[tokio::test]
 async fn a_file_decision_ends_its_candidate_s_identification() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let (files, hash) = stored_pane_candidate(&db).await;
     let key = pane_candidate_key();
     admitted(
@@ -469,7 +469,7 @@ async fn a_file_decision_ends_its_candidate_s_identification() {
 
 #[tokio::test]
 async fn separating_a_picked_grouping_ends_its_release_s_identification() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -510,7 +510,7 @@ async fn separating_a_picked_grouping_ends_its_release_s_identification() {
 
 #[tokio::test]
 async fn removing_a_watched_folder_ends_its_candidates_identification_and_keeps_an_import() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (key, _) = admitted_pane_candidate(&db).await;
     tables.claim_candidate_import(&key, "import-1", None).await.unwrap();

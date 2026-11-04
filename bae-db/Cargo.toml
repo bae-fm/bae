@@ -45,6 +45,8 @@ natord = { workspace = true }
 # A test database's app directory, and the temporary directory it lives in.
 bae-app-dir = { workspace = true, features = ["test-utils"], optional = true }
 tempfile = { workspace = true, optional = true }
+# The schema checks read the triggers' `UPDATE OF` columns.
+regex = { workspace = true, optional = true }
 
 [dev-dependencies]
 bae-app-dir = { workspace = true, features = ["test-utils"] }
@@ -54,7 +56,7 @@ bae-types = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
-# The schema test reads the tables the schema creates.
+# The schema tests read the tables the schema creates.
 regex = { workspace = true }
 
 [features]
@@ -69,6 +71,7 @@ oauth-providers = []
 test-utils = [
     "dep:bae-app-dir",
     "dep:tempfile",
+    "dep:regex",
     "bae-util/test-utils",
     "coven/test-utils",
     "tokio/rt",

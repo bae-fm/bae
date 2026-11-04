@@ -23,6 +23,7 @@ mod queue_upcoming;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
 mod saved_restore_codes;
+mod schema;
 pub mod storage;
 pub mod sync;
 pub(crate) mod sync_controller;
@@ -59,6 +60,7 @@ pub use outbox_watch::{
 };
 pub use queue_upcoming::{subscribe_queue_upcoming, LiveQueueUpcoming, QueueUpcomingSnapshot};
 pub use saved_restore_codes::{saved_restore_codes, SavedRestoreCodesError};
+pub use schema::SCHEMA;
 pub use upload_progress::{UploadBar, UploadState};
 
 pub use tokio_util::sync::CancellationToken;

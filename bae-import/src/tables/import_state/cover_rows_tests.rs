@@ -45,7 +45,7 @@ async fn a_cover_choice_round_trips_in_every_shape() {
         },
         remote_with_copies("https://example.invalid/front"),
     ] {
-        let (db, _tmp) = empty_db().await;
+        let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
         let tables = crate::tables::ImportTables::new(db.clone());
         let (_, hash) = stored_pane_candidate(&db).await;
 
@@ -62,7 +62,7 @@ async fn a_cover_choice_round_trips_in_every_shape() {
 /// new ones beside them.
 #[tokio::test]
 async fn a_new_cover_choice_leaves_none_of_the_old_copies() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let pane = PaneControls::of_pane_candidate(&db);
@@ -95,7 +95,7 @@ fn remote_cover() -> PreparedCover {
 
 #[tokio::test]
 async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
 
@@ -125,7 +125,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
 /// naming it, and nothing reads the cover as one the import could fetch.
 #[tokio::test]
 async fn a_remote_cover_stored_without_its_bytes_fails_its_read() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     crate::CandidatePreparations::new(db.clone())

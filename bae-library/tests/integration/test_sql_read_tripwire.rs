@@ -3,7 +3,7 @@
 
 #[tokio::test]
 async fn pure_reads_use_the_read_connection() {
-    let (db, tmp) = bae_db::test_fixtures::temp_db().await;
+    let (db, tmp) = bae_db::test_fixtures::temp_db(bae_library::SCHEMA).await;
 
     let tables = bae_import::tables::ImportTables::new(db.clone());
 

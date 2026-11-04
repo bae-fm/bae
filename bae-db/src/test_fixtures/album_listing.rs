@@ -32,7 +32,7 @@ pub const LIBRARY: &str = "
 ";
 
 pub async fn listed_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
     super::exec_batch(&db, LIBRARY).await;
     (db, tmp)
 }

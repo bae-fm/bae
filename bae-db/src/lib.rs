@@ -1,6 +1,7 @@
 //! bae's library store: the `Database` over coven's handle and the entry
-//! points every read and write runs through, the schema (its one migration,
-//! the synced tables and the SQL functions it declares), the library's
+//! points every read and write runs through, the schema's shape (each
+//! crate's parts of it, run as one migration), the synced tables and the SQL
+//! functions the schema calls, this crate's part of the schema, the library's
 //! records and the row writers that keep them, list windows, the cancellable
 //! live queries a surface pulls values from, the people, collections and
 //! history a library holds, and the sync status as coven and this device's
@@ -8,6 +9,7 @@
 
 pub mod admin_change;
 pub mod client;
+pub mod collation;
 pub mod collections;
 pub mod credits;
 mod entered_name;
@@ -18,13 +20,17 @@ pub mod history;
 pub mod identity;
 pub mod live_query;
 pub mod membership;
-pub mod migrations;
 mod models;
 mod pending_item;
 pub mod people;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 pub mod schema;
-pub use schema::configure_store;
+pub use schema::{configure_store, Schema, SchemaPart};
+
+/// bae-db's part of the schema: `001_initial.sql`, which holds every table
+/// no other crate's part creates.
+pub const SCHEMA_PARTS: &[SchemaPart] =
+    &[SchemaPart::new(&[include_str!("../migrations/001_initial.sql")])];
 mod resolved_track_audio;
 pub use resolved_track_audio::{
     ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError, TrackAudioMeta,

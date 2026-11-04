@@ -10,7 +10,7 @@ use rusqlite::params;
 /// columns rather than the draft whole; every draft write keeps them current.
 #[tokio::test]
 async fn every_draft_write_keeps_the_lists_draft_columns_current() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let columns = |db: &Database, hash: &str| {

@@ -94,7 +94,7 @@ async fn downloads(db: &Database) -> Vec<(String, ReleaseQueueState<()>)> {
 /// release already queued is not queued again.
 #[tokio::test]
 async fn a_queued_release_is_a_row_in_the_order_queued() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     assert!(enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap());
     assert!(!enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap());
 
@@ -115,7 +115,7 @@ async fn a_queued_release_is_a_row_in_the_order_queued() {
 /// leaves. A move on an entry no longer there says so.
 #[tokio::test]
 async fn an_entry_starts_fails_retries_and_finishes() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
 
     assert!(activate_queued_release::<()>(&db, RELEASE_A).await.unwrap());
@@ -156,7 +156,7 @@ async fn an_entry_starts_fails_retries_and_finishes() {
 /// The schema holds one active entry at most.
 #[tokio::test]
 async fn a_queue_holds_one_active_entry_at_most() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
     activate_queued_release::<()>(&db, RELEASE_A).await.unwrap();
     let second = db
@@ -174,7 +174,7 @@ async fn a_queue_holds_one_active_entry_at_most() {
 /// offers the first again.
 #[tokio::test]
 async fn a_paused_queue_offers_nothing_to_start() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
     assert!(!set_release_queue_paused::<()>(&db, true).await.unwrap());
     assert_eq!(next_queued_release::<()>(&db).await.unwrap(), None);
@@ -188,7 +188,7 @@ async fn a_paused_queue_offers_nothing_to_start() {
 /// Cancelling takes an entry out in any phase.
 #[tokio::test]
 async fn cancelling_takes_entries_out() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B), download(RELEASE_Z)])
         .await
         .unwrap();
@@ -208,7 +208,7 @@ async fn cancelling_takes_entries_out() {
 /// left the library stays listed with none, to be cancelled.
 #[tokio::test]
 async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     db.call(|sql| {
         seed_artist_album_release(sql)?;
         Ok(())
@@ -230,7 +230,7 @@ async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
 /// whole.
 #[tokio::test]
 async fn an_output_keeps_its_target_and_preset() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     let preset = bae_preferences::Preferences::default().save_presets.remove(0);
     let save = ReleaseQueueEntry {
         release_id: RELEASE_A.to_string(),
@@ -260,7 +260,7 @@ async fn an_output_keeps_its_target_and_preset() {
 /// outlives the process that ran it.
 #[tokio::test]
 async fn opening_leaves_the_queues_empty_and_running() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
     set_release_queue_paused::<()>(&db, true).await.unwrap();
     set_release_queue_paused::<OutputRequest>(&db, true).await.unwrap();
@@ -277,7 +277,7 @@ async fn opening_leaves_the_queues_empty_and_running() {
 /// process that ran it.
 #[tokio::test]
 async fn opening_ends_every_transition() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(
         &db,
         &format!(
@@ -308,7 +308,7 @@ async fn opening_ends_every_transition() {
 /// each row to its release by key.
 #[tokio::test]
 async fn the_queue_reads_are_planned_on_their_keys() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     let plan = |sql_text: String| {
         let db = db.clone();
         async move {
@@ -341,7 +341,7 @@ async fn the_queue_reads_are_planned_on_their_keys() {
 /// read says how many the queue holds; a window past the end holds none.
 #[tokio::test]
 async fn a_window_reads_its_entries_and_the_queue_length() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     let releases: Vec<String> =
         (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
     enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();

@@ -9,7 +9,7 @@ use bae_identify::{Findings, NarrowedOut, TerminalVerdict};
 /// A stored verdict reads back exactly, its ledger included.
 #[tokio::test]
 async fn round_trip_preserves_the_verdict_and_its_ledger() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -37,7 +37,7 @@ async fn round_trip_preserves_the_verdict_and_its_ledger() {
 /// A failed verdict reads back with what its answering lookups found.
 #[tokio::test]
 async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -70,7 +70,7 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
 /// A run that ended because bae broke reads back with why.
 #[tokio::test]
 async fn an_error_verdict_round_trips_its_failure() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -96,7 +96,7 @@ async fn an_error_verdict_round_trips_its_failure() {
 /// A verdict recorded with no ledger reads back with none.
 #[tokio::test]
 async fn a_verdict_with_no_ledger_reads_back_without_one() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -121,7 +121,7 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
 /// Narrowed-out releases read back apart from the matches.
 #[tokio::test]
 async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -172,7 +172,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     use bae_identify::state::step as identify_step;
     use bae_identify::{IdentifyEvent, IdentifyState};
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = candidate.content_hash();

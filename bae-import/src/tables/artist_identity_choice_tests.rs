@@ -10,7 +10,7 @@ use bae_db::ArtistCredits;
 use bae_util::content_type::ContentType;
 
 async fn fixture() -> (Database, tempfile::TempDir, String, DbArtist, DbArtist, DbArtist) {
-    let (db, tmp) = empty_db().await;
+    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {

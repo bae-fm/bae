@@ -8,7 +8,7 @@ use bae_db::watched_path::host_root;
 /// were written.
 #[tokio::test]
 async fn preparation_round_trips_a_drafts_roles_and_works() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "release-with-role").await;
     let (_, hash) = stored_pane_candidate(&db).await;

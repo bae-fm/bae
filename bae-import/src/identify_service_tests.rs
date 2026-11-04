@@ -25,8 +25,13 @@ pub(super) async fn setup_inner_reporting_to(
 ) -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database =
-        Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
+    let database = Database::new_test(
+        crate::TEST_SCHEMA,
+        db_path.to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
 
     let catalogs = crate::CatalogSessions::new(
         bae_catalogs::providers::Providers::offline(),

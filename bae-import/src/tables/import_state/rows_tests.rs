@@ -9,7 +9,7 @@ use bae_db::watched_path::host_root;
 /// old row stays under its own key.
 #[tokio::test]
 async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let original = track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let original_hash = original.content_hash();
@@ -32,7 +32,7 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
 /// A moved folder hashes the same, so its saved row is still found.
 #[tokio::test]
 async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let at_old_location =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);

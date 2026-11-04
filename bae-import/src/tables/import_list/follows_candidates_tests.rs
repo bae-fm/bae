@@ -1,8 +1,10 @@
-//! What a release's import state places: its draft, its link, its failure,
-//! what this device imported from it, and what is running for it.
+//! What a release's stored import state places: its draft, its link, its
+//! failure, what is running for it, and the verdict its lookup stored and why
+//! a found one picks none of its releases unattended.
 
-use super::super::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
-use super::*;
+use crate::tables::import_list::placement::tests::*;
+use crate::tables::import_list::tests::*;
+use bae_db::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
 
 /// The draft counts only while its state describes the folder's current
 /// files: it shows once it is not blank, and an older revision's shows nothing.
@@ -207,69 +209,6 @@ async fn a_failed_import_is_founds_import_error() {
     );
 }
 
-/// What this device imported from a folder's files puts it on Done, dated by
-/// when its release was written and showing its library album, whatever else
-/// is stored for it.
-#[tokio::test]
-async fn an_imported_release_is_done_dated_by_its_release() {
-    let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}
-         INSERT INTO skipped_import_candidates (candidate_path) VALUES ({});
-         INSERT INTO albums (id, title, is_compilation, created_at)
-         VALUES ('{ALBUM_A}', 'Album Title', 0, '2026-01-01T00:00:00Z');
-         INSERT INTO releases (id, album_id, created_at, album_order)
-         VALUES ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00.123456789+00:00', 0);",
-        lib.scan("Album"),
-        lib.discovered("Album", 100),
-        lib.state("Album"),
-        lib.sql("Album")
-    ))
-    .await;
-    let imported_at = 1_767_225_600_000;
-    assert_eq!(
-        lib.moved(&format!(
-            "INSERT INTO local_release_origin (release_id, content_hash)
-             VALUES ('{RELEASE_A}', '{}');",
-            hash("Album")
-        ))
-        .await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").on("done").dated(imported_at + 123).shown("Album Title", Some("")))
-        )])
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE releases SET created_at = '2026-01-01T02:00:01+02:00' WHERE id = '{RELEASE_A}';"
-        ))
-        .await,
-        moves([(
-            lib.release("Album"),
-            Some(
-                found("Album").on("done").dated(imported_at + 1_000).shown("Album Title", Some(""))
-            )
-        )])
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE releases SET created_at = '2026-01-01T00:00:02Z' WHERE id = '{RELEASE_A}';"
-        ))
-        .await,
-        moves([(
-            lib.release("Album"),
-            Some(
-                found("Album").on("done").dated(imported_at + 2_000).shown("Album Title", Some(""))
-            )
-        )])
-    );
-    assert_eq!(
-        lib.moved(&format!("DELETE FROM local_release_origin WHERE release_id = '{RELEASE_A}';"))
-            .await,
-        moves([(lib.release("Album"), Some(found("Album").on("skipped").dated(100)))])
-    );
-}
-
 /// What is running for a Found release decides its state over the tables: an
 /// import, then a run, then a run's answer bae could not store.
 #[tokio::test]
@@ -464,4 +403,182 @@ async fn a_draft_stored_written_shows_at_once() {
         .await,
         moves([(lib.release("Album"), Some(found("Album").shown("Tagged Title", Some(""))))])
     );
+}
+
+/// A release whose stored state is current, ready for a verdict.
+async fn looked_up() -> Library {
+    let lib = Library::new().await;
+    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
+    lib
+}
+
+/// The one move a write to the verdict of `Album` makes.
+fn now(lib: &Library, placed: Placed) -> Moved {
+    moves([(lib.release("Album"), Some(placed))])
+}
+
+/// The verdict kinds that hold no find place the release by themselves.
+#[tokio::test]
+async fn each_verdict_kind_places_its_release() {
+    for (kind, track_count, placed) in [
+        ("not_found", None, found("Album").needs_you("not_found")),
+        ("manual_only", Some(11), found("Album").needs_you("nothing_to_look_up")),
+        ("failed", Some(11), found("Album").state("lookup_error")),
+        ("error", None, found("Album").state("error")),
+        // Nothing found that agreement kept.
+        ("found", Some(11), found("Album").needs_you("not_found")),
+    ] {
+        let lib = looked_up().await;
+        assert_eq!(
+            lib.moved(&lib.verdict("Album", kind, track_count)).await,
+            now(&lib, placed),
+            "{kind}"
+        );
+    }
+}
+
+/// The person keeping their own draft over the verdict leaves the release
+/// unmatched, and taking the verdict away leaves it not looked up.
+#[tokio::test]
+async fn keeping_ones_own_draft_leaves_the_release_unmatched() {
+    let lib = looked_up().await;
+    lib.run(&lib.verdict("Album", "not_found", None)).await;
+    let verdict = |set: &str| format!("{set} WHERE content_hash = '{}';", hash("Album"));
+    assert_eq!(
+        lib.moved(&verdict("UPDATE import_candidate_verdict SET kept_own_draft = 1")).await,
+        now(&lib, found("Album").state("unmatched"))
+    );
+    assert_eq!(
+        lib.moved(&verdict(
+            "UPDATE import_candidate_verdict SET disc_id_step = 'absent', \
+             barcode_step = 'absent', catalog_step = 'none_found', isrc_step = 'absent', \
+             search_step = 'not_needed'"
+        ))
+        .await,
+        moves([])
+    );
+    assert_eq!(
+        lib.moved(&verdict("DELETE FROM import_candidate_verdict")).await,
+        now(&lib, found("Album"))
+    );
+}
+
+/// A found verdict picks its one pressing when its lead's tracklist fits the
+/// folder; otherwise it says why it picks none.
+#[tokio::test]
+async fn a_found_verdict_is_judged_by_its_lead() {
+    for (source_tracks, placed) in [
+        ((Some("listed"), Some(11)), found("Album").state("unmatched")),
+        ((Some("listed"), Some(12)), found("Album").needs_you("not_found")),
+        ((Some("unreadable"), None), found("Album").needs_you("not_found")),
+        ((Some("nothing"), None), found("Album").needs_you("no_tracklist")),
+        ((None, None), found("Album").needs_you("no_tracklist")),
+    ] {
+        let lib = looked_up().await;
+        lib.run(&lib.verdict("Album", "found", Some(11))).await;
+        // Before it found anything, it found nothing that could be the
+        // folder's.
+        let expected = match placed == found("Album").needs_you("not_found") {
+            true => moves([]),
+            false => now(&lib, placed),
+        };
+        assert_eq!(
+            lib.moved(&lib.found_release("Album", 0, 0, source_tracks)).await,
+            expected,
+            "{source_tracks:?}"
+        );
+    }
+}
+
+/// Several pressings are the person's to pick between; the lead is the
+/// release at the lowest position agreement kept; a record whose document
+/// went unread is a lookup error; and the folder's own files ruling out
+/// every release is named over all of it.
+#[tokio::test]
+async fn a_found_verdict_names_what_holds_its_pick_back() {
+    let lib = looked_up().await;
+    let fits = (Some("listed"), Some(11));
+    lib.run(&format!(
+        "{}{}",
+        lib.verdict("Album", "found", Some(11)),
+        lib.found_release("Album", 1, 0, fits)
+    ))
+    .await;
+    let found_releases =
+        |set: &str| format!("{set} WHERE content_hash = '{}' AND position = 0;", hash("Album"));
+    assert_eq!(
+        lib.moved(&lib.found_release("Album", 0, 1, (Some("listed"), Some(12)))).await,
+        now(&lib, found("Album").needs_you("matches"))
+    );
+    assert_eq!(
+        lib.moved(&found_releases("UPDATE import_candidate_match SET listing = 'narrowed_out'"))
+            .await,
+        now(&lib, found("Album").state("unmatched"))
+    );
+    assert_eq!(
+        lib.moved(&found_releases(
+            "UPDATE import_candidate_match SET listing = 'unlisted', pressing = NULL"
+        ))
+        .await,
+        moves([]),
+        "a release only the ledger lists is no more offered than one set aside"
+    );
+    assert_eq!(
+        lib.moved(&found_releases(
+            "UPDATE import_candidate_match SET listing = 'offered', pressing = 0"
+        ))
+        .await,
+        now(&lib, found("Album").needs_you("not_found"))
+    );
+    assert_eq!(
+        lib.moved(&found_releases(
+            "UPDATE import_candidate_match SET source_tracks_count = 11, \
+             document_failure = 'network'"
+        ))
+        .await,
+        now(&lib, found("Album").state("lookup_error"))
+    );
+    assert_eq!(
+        lib.moved(&format!(
+            "UPDATE import_candidate_verdict SET medium_conflict = 'cd_rip'
+             WHERE content_hash = '{}';",
+            hash("Album")
+        ))
+        .await,
+        now(&lib, found("Album").needs_you("medium_mismatch"))
+    );
+    assert_eq!(
+        lib.moved(&format!(
+            "UPDATE import_candidate_verdict SET medium_conflict = NULL
+             WHERE content_hash = '{}';
+             {}",
+            hash("Album"),
+            found_releases("DELETE FROM import_candidate_match")
+        ))
+        .await,
+        now(&lib, found("Album").state("unmatched"))
+    );
+    assert_eq!(
+        lib.moved(&format!(
+            "UPDATE import_candidate_match SET title = 'Retitled'
+             WHERE content_hash = '{}';",
+            hash("Album")
+        ))
+        .await,
+        moves([])
+    );
+}
+
+/// A verdict counts only through a state at the folder's current files.
+#[tokio::test]
+async fn a_verdict_of_older_files_places_nothing() {
+    let lib = Library::new().await;
+    lib.run(&format!(
+        "{}{}UPDATE import_candidate_state SET edit_revision = 2 WHERE content_hash = '{}';",
+        lib.scan("Album"),
+        lib.state("Album"),
+        hash("Album")
+    ))
+    .await;
+    assert_eq!(lib.moved(&lib.verdict("Album", "not_found", None)).await, moves([]));
 }

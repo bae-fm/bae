@@ -189,7 +189,7 @@ fn discogs_documents() -> ReleasePayloads {
 /// import surface reads is lost between the extraction and the tables.
 #[tokio::test]
 async fn a_stored_release_reads_back_as_it_was_extracted() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let mut musicbrainz = musicbrainz_documents().extract().unwrap();
     musicbrainz.unfetched.push(bae_catalogs::source_release::UnfetchedDocument {
@@ -259,7 +259,7 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
 async fn a_stored_release_reads_back_its_album_links() {
     use bae_catalogs::album_links::AlbumLinks;
     use bae_catalogs::source_release::CatalogFacts;
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let extracted = musicbrainz_documents().extract().unwrap();
     let CatalogFacts::MusicBrainz { album_links, .. } = &extracted.catalog else {
@@ -292,7 +292,7 @@ async fn a_stored_release_reads_back_its_album_links() {
 /// the earlier extraction outlives it.
 #[tokio::test]
 async fn saving_a_release_again_replaces_its_rows() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let earlier = musicbrainz_documents().extract().unwrap();
     tables.save_source_release(&earlier).await.unwrap();
@@ -322,7 +322,7 @@ async fn saving_a_release_again_replaces_its_rows() {
 #[tokio::test]
 async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
     use bae_types::pressing::{MediaCount, Medium};
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let musicbrainz = |media: serde_json::Value, group: Option<&str>| {
         let mut anchor = serde_json::json!({
@@ -410,7 +410,7 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
 /// give is refused, since the store keeps only those other facts.
 #[tokio::test]
 async fn a_release_whose_derived_facts_disagree_is_not_stored() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let extracted = musicbrainz_documents().extract().unwrap();
     let mut year = extracted.clone();
@@ -426,7 +426,7 @@ async fn a_release_whose_derived_facts_disagree_is_not_stored() {
 /// A release nothing fetched reads back as nothing.
 #[tokio::test]
 async fn an_unfetched_release_reads_as_nothing() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     assert_eq!(
         tables.load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242")).await.unwrap(),
@@ -462,7 +462,7 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
     expected.archive_groups.push("mb-group-same".to_string());
 
     // Stored first, then the statement read.
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.save_source_release(&discogs).await.unwrap();
     tables.replace_group_album_links(statements()).await.unwrap();
@@ -470,7 +470,7 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
     assert_eq!(before.as_ref(), Some(&expected));
 
     // The statement read first, then stored.
-    let (db_after, _tmp_after) = empty_db().await;
+    let (db_after, _tmp_after) = empty_db(crate::TEST_SCHEMA).await;
     let tables_after = crate::tables::ImportTables::new(db_after);
     tables_after.replace_group_album_links(statements()).await.unwrap();
     tables_after.save_source_release(&discogs).await.unwrap();
@@ -487,7 +487,7 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
 /// master names back reads back as it was extracted.
 #[tokio::test]
 async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let fetched = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "7811"),
@@ -512,7 +512,7 @@ async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
 /// nothing asked of the network.
 #[tokio::test]
 async fn an_items_records_are_stored_with_the_release() {
-    let (database, _dir) = empty_db().await;
+    let (database, _dir) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(database.clone());
     let fetched = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::MusicBrainz, "offline-mb-release"),
@@ -554,7 +554,7 @@ async fn an_items_records_are_stored_with_the_release() {
 /// once it is fetched again: the new extraction replaces the old one whole.
 #[tokio::test]
 async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
-    let (db, _temp) = empty_db().await;
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let with_alias = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "7811"),
@@ -594,7 +594,7 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
 /// earlier fetch: the stored release is the later fetch's, whole.
 #[tokio::test]
 async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetch() {
-    let (db, _temp) = empty_db().await;
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let earlier = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "7811"),
@@ -740,7 +740,7 @@ async fn the_last_row_naming_a_catalog_release_takes_it_with_it() {
         ),
     ];
     for (case, naming, dropping) in cases {
-        let (db, _tmp) = empty_db().await;
+        let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
         exec_batch(&db, SETUP).await;
         exec_batch(&db, &naming).await;
         assert_eq!(stored(&db, "rel-1").await, (true, 1), "{case}: named, so kept");
@@ -753,7 +753,7 @@ async fn the_last_row_naming_a_catalog_release_takes_it_with_it() {
 /// the second.
 #[tokio::test]
 async fn a_release_two_candidates_name_stays_until_both_drop_it() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     exec_batch(&db, SETUP).await;
     exec_batch(
         &db,
@@ -783,7 +783,7 @@ fn release(key: &str) -> SourceRelease {
 /// none, takes them.
 #[tokio::test]
 async fn a_verdict_stores_only_the_releases_its_rows_name() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = candidate.content_hash();
@@ -835,7 +835,7 @@ async fn store_release_run(
 /// name, and none it read that they don't; the run's end takes them.
 #[tokio::test]
 async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = crate::CandidateKey::test("release-reidentify");
     let run = IdentifyRunId::for_test(1);
@@ -860,7 +860,7 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
 /// overwrites a fuller one stored since.
 #[tokio::test]
 async fn a_stored_release_is_replaced_only_by_a_copy_that_read_more() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let key = crate::CandidateKey::test("release-reidentify");
     let run = IdentifyRunId::for_test(1);
     let mut partial = release("rel-1");

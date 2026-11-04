@@ -1,43 +1,37 @@
-//! The import list's placement table against the tables it is kept from: each
-//! write to one of them moves exactly the placement rows it should, in that
-//! write.
+//! The placement's shared test fixtures: a placement row's columns, the
+//! rows a test expects, and what a write did to the placement. The tests of
+//! each file that keeps the placement read through them: each write to a
+//! table the placement is kept from moves exactly the placement rows it
+//! should, in that write.
 
 use crate::tables::import_list::tests::*;
-use crate::tables::tests::folder_below;
 use std::collections::BTreeMap;
-
-mod candidates;
-mod done_rows;
-mod groupings;
-mod groups;
-mod scans;
-mod verdicts;
 
 /// A placement row's columns, past its key.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Placed {
-    root_position: i64,
-    tab: String,
-    pending_state: Option<String>,
-    needs_you_reason: Option<String>,
-    group_name: Option<String>,
-    own_date: Option<i64>,
-    unit_date: Option<i64>,
-    display_path: Option<String>,
-    shown_title: Option<String>,
-    shown_artists: Option<String>,
+pub(crate) struct Placed {
+    pub(crate) root_position: i64,
+    pub(crate) tab: String,
+    pub(crate) pending_state: Option<String>,
+    pub(crate) needs_you_reason: Option<String>,
+    pub(crate) group_name: Option<String>,
+    pub(crate) own_date: Option<i64>,
+    pub(crate) unit_date: Option<i64>,
+    pub(crate) display_path: Option<String>,
+    pub(crate) shown_title: Option<String>,
+    pub(crate) shown_artists: Option<String>,
 }
 
 /// A placement row's key: its watched folder, what it is, and the release's
 /// key or the group's folder.
-type Item = (String, &'static str, String);
+pub(crate) type Item = (String, &'static str, String);
 
 /// What a write did to the placement: each row it changed, as it now stands,
 /// or `None` for one it took out.
-type Moved = BTreeMap<Item, Option<Placed>>;
+pub(crate) type Moved = BTreeMap<Item, Option<Placed>>;
 
 /// A release on Found nobody has looked up, as its scan alone places it.
-fn found(display_path: &str) -> Placed {
+pub(crate) fn found(display_path: &str) -> Placed {
     Placed {
         root_position: 0,
         tab: "pending".to_string(),
@@ -53,12 +47,12 @@ fn found(display_path: &str) -> Placed {
 }
 
 /// A folder that failed validation, which only Skipped lists.
-fn failed_validation(display_path: &str) -> Placed {
+pub(crate) fn failed_validation(display_path: &str) -> Placed {
     Placed { tab: "skipped".to_string(), pending_state: None, ..found(display_path) }
 }
 
 /// The header of the group at `name`, dated `date`.
-fn header(name: &str, date: Option<i64>) -> Placed {
+pub(crate) fn header(name: &str, date: Option<i64>) -> Placed {
     Placed {
         root_position: 0,
         tab: "pending".to_string(),
@@ -79,7 +73,7 @@ fn last_component(display_path: &str) -> &str {
 
 impl Placed {
     /// On `tab`, where only Found holds a state.
-    fn on(self, tab: &str) -> Self {
+    pub(crate) fn on(self, tab: &str) -> Self {
         Self {
             tab: tab.to_string(),
             pending_state: (tab == "pending").then(|| "not_looked_up".to_string()),
@@ -88,12 +82,12 @@ impl Placed {
         }
     }
 
-    fn state(self, state: &str) -> Self {
+    pub(crate) fn state(self, state: &str) -> Self {
         Self { pending_state: Some(state.to_string()), needs_you_reason: None, ..self }
     }
 
     /// Needing the person, for `reason`.
-    fn needs_you(self, reason: &str) -> Self {
+    pub(crate) fn needs_you(self, reason: &str) -> Self {
         Self {
             pending_state: Some("needs_you".to_string()),
             needs_you_reason: Some(reason.to_string()),
@@ -102,16 +96,16 @@ impl Placed {
     }
 
     /// Dated `date` and sorting by it.
-    fn dated(self, date: i64) -> Self {
+    pub(crate) fn dated(self, date: i64) -> Self {
         Self { own_date: Some(date), unit_date: Some(date), ..self }
     }
 
     /// Listed under the group at `name`, sorting in its header's place.
-    fn grouped(self, name: &str) -> Self {
+    pub(crate) fn grouped(self, name: &str) -> Self {
         Self { group_name: Some(name.to_string()), unit_date: None, ..self }
     }
 
-    fn shown(self, title: &str, artists: Option<&str>) -> Self {
+    pub(crate) fn shown(self, title: &str, artists: Option<&str>) -> Self {
         Self {
             shown_title: Some(title.to_string()),
             shown_artists: artists.map(str::to_string),
@@ -119,13 +113,13 @@ impl Placed {
         }
     }
 
-    fn at_root(self, root_position: i64) -> Self {
+    pub(crate) fn at_root(self, root_position: i64) -> Self {
         Self { root_position, ..self }
     }
 }
 
 impl Library {
-    fn release(&self, display_path: &str) -> Item {
+    pub(crate) fn release(&self, display_path: &str) -> Item {
         (self.root_text(), "candidate", self.text(display_path))
     }
 
@@ -133,15 +127,15 @@ impl Library {
     /// Unix test of a folder name that isn't valid UTF-8 spells a release by
     /// its path.
     #[cfg(unix)]
-    fn release_at(&self, relative: &std::path::Path) -> Item {
+    pub(crate) fn release_at(&self, relative: &std::path::Path) -> Item {
         (self.root_text(), "candidate", coven::path_text(&self.folder(relative)))
     }
 
-    fn invalid(&self, display_path: &str) -> Item {
+    pub(crate) fn invalid(&self, display_path: &str) -> Item {
         (self.root_text(), "invalid", self.text(display_path))
     }
 
-    fn group(&self, name: &str) -> Item {
+    pub(crate) fn group(&self, name: &str) -> Item {
         (self.root_text(), "group", name.to_string())
     }
 
@@ -151,12 +145,12 @@ impl Library {
 
     /// The text of the folder at `display_path`, as a placement row's key
     /// reads back.
-    fn text(&self, display_path: &str) -> String {
+    pub(crate) fn text(&self, display_path: &str) -> String {
         coven::path_text(&self.path(display_path))
     }
 
     /// Every placement row as it stands.
-    async fn placed(&self) -> BTreeMap<Item, Placed> {
+    pub(crate) async fn placed(&self) -> BTreeMap<Item, Placed> {
         self.db
             .read(|sql| {
                 let rows = sql.query(
@@ -197,7 +191,7 @@ impl Library {
     }
 
     /// What running `sql` did to the placement.
-    async fn moved(&self, sql: &str) -> Moved {
+    pub(crate) async fn moved(&self, sql: &str) -> Moved {
         let before = self.placed().await;
         self.run(sql).await;
         let after = self.placed().await;
@@ -211,6 +205,6 @@ impl Library {
 }
 
 /// The moves `rows` name, as a test spells them.
-fn moves<const N: usize>(rows: [(Item, Option<Placed>); N]) -> Moved {
+pub(crate) fn moves<const N: usize>(rows: [(Item, Option<Placed>); N]) -> Moved {
     rows.into_iter().collect()
 }

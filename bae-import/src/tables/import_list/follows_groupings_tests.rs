@@ -1,7 +1,8 @@
 //! Releases read from several folders picked together: what their grouping
 //! places, and the folders it takes in.
 
-use super::*;
+use crate::tables::import_list::placement::tests::*;
+use crate::tables::import_list::tests::*;
 
 impl Library {
     /// The grouping that reads the folders picked together as the release at

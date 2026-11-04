@@ -21,7 +21,7 @@ pub(crate) async fn scanned(names: &[&str]) -> (Database, tempfile::TempDir, Vec
 async fn scanned_folders(
     folders: Vec<FolderCandidate>,
 ) -> (Database, tempfile::TempDir, Vec<FolderCandidate>) {
-    let (db, temp) = empty_db().await;
+    let (db, temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -180,7 +180,7 @@ async fn a_release_is_taken_into_one_grouping_at_most() {
 /// the two it replaced are gone from the schema.
 #[tokio::test]
 async fn the_schema_holds_one_grouping_model() {
-    let (db, _temp) = empty_db().await;
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables: Vec<String> = db
         .read(|sql| {
             Ok(sql.query(
@@ -526,7 +526,7 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
 /// folder's one reader, not by reading every grouping in the folder.
 #[tokio::test]
 async fn the_folder_files_reader_is_found_by_its_index() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let plan = db
         .read(|sql| {
             sql.query(

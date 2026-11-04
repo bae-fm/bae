@@ -18,7 +18,7 @@ use uuid::Uuid;
 /// A store holding a single test artist that the helpers below reference
 /// for inserted albums.
 async fn setup_test_db_with_artist() -> (Database, TempDir) {
-    let (db, tmp) = temp_db().await;
+    let (db, tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let artist = DbArtist {
         id: TEST_ARTIST_ID.to_string(),
         name: "Artist Name".to_string(),
@@ -509,7 +509,7 @@ async fn ids(db: &Database, query: &'static str) -> Vec<String> {
 /// writes the same row.
 #[tokio::test]
 async fn fact_rows_take_their_ids_from_their_facts() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let now = Utc::now();
 
     let artist = DbArtist {
@@ -566,7 +566,7 @@ async fn fact_rows_take_their_ids_from_their_facts() {
 /// one read that answers them all.
 #[tokio::test]
 async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
     let offered = LibraryCheck {
         release_id: "source-release-1".to_string(),
         source: Catalog::MusicBrainz,
@@ -644,7 +644,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
 /// order, one per check, matched or not.
 #[tokio::test]
 async fn library_statuses_answer_every_check_in_order() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
     exec_batch(
         &db,
         &format!(

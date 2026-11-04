@@ -12,7 +12,7 @@ use uuid::Uuid;
 const NOW: &str = "2026-01-01T00:00:00Z";
 
 fn library() -> Connection {
-    crate::schema::bare_library_connection()
+    crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA)
 }
 
 fn add_artist(
@@ -377,7 +377,7 @@ fn catalog_artist_id(artist: &DbArtist) -> String {
 
 #[tokio::test]
 async fn test_same_discogs_id_reuses_existing() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist One", Some("d123"), None);
     db.insert_artist(&existing).await.unwrap();
 
@@ -389,7 +389,7 @@ async fn test_same_discogs_id_reuses_existing() {
 
 #[tokio::test]
 async fn test_same_mb_id_reuses_existing() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist One", None, Some("mb-abc"));
     db.insert_artist(&existing).await.unwrap();
 
@@ -401,7 +401,7 @@ async fn test_same_mb_id_reuses_existing() {
 
 #[tokio::test]
 async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
@@ -420,7 +420,7 @@ async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
 
 #[tokio::test]
 async fn one_import_reuses_an_idless_artist_name_already_waiting_to_be_inserted() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let album_credit = make_artist("Artist Name", None, None);
     let track_credit = make_artist("Artist Name", None, None);
 
@@ -434,7 +434,7 @@ async fn one_import_reuses_an_idless_artist_name_already_waiting_to_be_inserted(
 
 #[tokio::test]
 async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let musicbrainz_credit = make_artist("Artist One", None, Some("mb-abc"));
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
@@ -457,7 +457,7 @@ async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them(
 
 #[tokio::test]
 async fn a_pending_artist_is_folded_into_a_committed_cross_provider_match() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist One", None, Some("mb-abc"));
     db.insert_artist(&existing).await.unwrap();
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
@@ -473,7 +473,7 @@ async fn a_pending_artist_is_folded_into_a_committed_cross_provider_match() {
 
 #[tokio::test]
 async fn one_import_reuses_an_external_id_waiting_to_be_added_to_an_existing_artist() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist One", None, Some("mb-abc"));
     db.insert_artist(&existing).await.unwrap();
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
@@ -488,7 +488,7 @@ async fn one_import_reuses_an_external_id_waiting_to_be_added_to_an_existing_art
 
 #[tokio::test]
 async fn credits_of_one_write_reuse_an_artist_waiting_to_be_inserted() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
@@ -501,7 +501,7 @@ async fn credits_of_one_write_reuse_an_artist_waiting_to_be_inserted() {
 
 #[tokio::test]
 async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let discogs_artist = make_artist("Artist One", Some("d123"), None);
     let musicbrainz_artist = make_artist("Artist Two", None, Some("mb-abc"));
     db.insert_artist(&discogs_artist).await.unwrap();
@@ -526,7 +526,7 @@ async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
 
 #[tokio::test]
 async fn a_same_name_credit_without_ids_is_the_library_artist() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist One", None, None);
     db.insert_artist(&existing).await.unwrap();
 
@@ -538,7 +538,7 @@ async fn a_same_name_credit_without_ids_is_the_library_artist() {
 
 #[tokio::test]
 async fn test_same_name_same_mb_id_reuses() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist Two", None, Some("mb-artist-two"));
     db.insert_artist(&existing).await.unwrap();
 
@@ -550,7 +550,7 @@ async fn test_same_name_same_mb_id_reuses() {
 
 #[tokio::test]
 async fn test_same_name_different_mb_id_creates_new() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist Two", None, Some("mb-artist-two-uk"));
     db.insert_artist(&existing).await.unwrap();
 
@@ -564,7 +564,7 @@ async fn test_same_name_different_mb_id_creates_new() {
 
 #[tokio::test]
 async fn test_same_name_different_discogs_id_creates_new() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let existing = make_artist("Artist Two", Some("d100"), None);
     db.insert_artist(&existing).await.unwrap();
 
@@ -577,7 +577,7 @@ async fn test_same_name_different_discogs_id_creates_new() {
 
 #[tokio::test]
 async fn ids_of_different_catalogs_do_not_keep_a_name_match_apart() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     // Existing has a Discogs ID only; the credit a MusicBrainz ID only.
     // Neither contradicts the other, so the name decides.
     let existing = make_artist("Artist One", Some("d456"), None);
@@ -595,7 +595,7 @@ async fn ids_of_different_catalogs_do_not_keep_a_name_match_apart() {
 
 #[tokio::test]
 async fn test_new_artist_inserts() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
 
     let incoming = make_artist("New Band", Some("d999"), Some("mb-999"));
     let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
@@ -615,7 +615,10 @@ async fn test_new_artist_inserts() {
 /// reads the credit as that artist.
 #[test]
 fn a_catalog_id_two_devices_gave_two_artists_merges_them() {
-    crate::test_devices::run_two_store_test(check_two_devices_give_one_artist_id);
+    crate::test_devices::run_two_store_test(
+        crate::test_fixtures::TEST_SCHEMA,
+        check_two_devices_give_one_artist_id,
+    );
 }
 
 async fn check_two_devices_give_one_artist_id(devices: &crate::test_devices::TwoStores) {

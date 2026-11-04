@@ -20,7 +20,7 @@ async fn plan(db: &crate::client::Database, statement: &'static str) -> Vec<Stri
 
 #[tokio::test]
 async fn personal_lists_read_in_order_without_a_sort() {
-    let (db, _temp) = crate::test_fixtures::temp_db().await;
+    let (db, _temp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     for statement in [PLAYLISTS_SQL, PLAYLIST_ENTRIES_SQL, PROFILES_SQL] {
         let plan = plan(&db, statement).await;
         assert!(

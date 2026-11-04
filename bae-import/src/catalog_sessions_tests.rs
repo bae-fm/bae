@@ -6,6 +6,7 @@ use tempfile::TempDir;
 pub(crate) async fn test_sessions() -> (CatalogSessions, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let database = Database::new_test(
+        crate::TEST_SCHEMA,
         temp_dir.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
@@ -135,6 +136,7 @@ async fn sessions_over(
 ) -> (CatalogSessions, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let database = Database::new_test(
+        crate::TEST_SCHEMA,
         temp_dir.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )

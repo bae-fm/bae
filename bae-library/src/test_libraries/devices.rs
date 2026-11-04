@@ -130,7 +130,8 @@ impl DeviceLibrary {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::Coven::in_memory(app.coven_app_dir());
-        let handle = stores::create_first_store(&installation, storage.clone()).await;
+        let handle =
+            stores::create_first_store(crate::SCHEMA, &installation, storage.clone()).await;
         Self { first: device(dir, app, handle, installation, storage.clone()).await, storage }
     }
 
@@ -146,7 +147,8 @@ impl DeviceLibrary {
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::Coven::in_memory(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
-        let handle = stores::restore_store(&installation, storage.clone(), code, name).await;
+        let handle =
+            stores::restore_store(crate::SCHEMA, &installation, storage.clone(), code, name).await;
         let device = device(dir, app, handle, installation, storage).await;
         device.database().start_sync().await.unwrap();
         device
@@ -211,6 +213,7 @@ impl TestDevice {
     pub async fn reopen_with(&mut self, migrations: Vec<coven::Migration>) {
         self.close().await;
         let handle = stores::reopen_store(
+            crate::SCHEMA,
             &self.installation,
             self.storage.clone(),
             self.database().store_id(),

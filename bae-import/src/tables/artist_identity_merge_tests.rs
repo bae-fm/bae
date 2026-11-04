@@ -9,7 +9,7 @@ use bae_db::test_fixtures::{empty_db, fixed_now};
 /// survivor, and dismisses every candidate's failure on the pair.
 #[tokio::test]
 async fn resolving_an_artist_identity_conflict_merges_the_artists_and_moves_the_drafts() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
@@ -133,7 +133,7 @@ async fn resolving_an_artist_identity_conflict_merges_the_artists_and_moves_the_
 
 #[tokio::test]
 async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing_state() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {

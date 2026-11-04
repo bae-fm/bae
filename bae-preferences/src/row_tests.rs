@@ -30,7 +30,7 @@ async fn next(values: &mut coven::LiveQuery<Preferences>) -> Preferences {
 /// limits a library is loaded from storage under.
 #[tokio::test]
 async fn a_new_library_starts_at_the_defaults() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     let prefs = preferences(&db).await.unwrap();
     assert_eq!(prefs, Preferences::default());
     assert_eq!(prefs.transfer_limits(), bae_app_dir::default_transfer_limits());
@@ -47,7 +47,7 @@ async fn a_new_library_starts_at_the_defaults() {
 /// here.
 #[tokio::test]
 async fn every_preference_reads_back_as_set() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     let edited = Preferences {
         discogs: Some(DiscogsValidation::Valid),
         replay_gain_mode: ReplayGainMode::Album,
@@ -113,7 +113,7 @@ async fn every_preference_reads_back_as_set() {
 /// Each value of each enumerated setting is stored and read back unchanged.
 #[tokio::test]
 async fn each_choice_of_each_setting_reads_back() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     for discogs in [
         None,
         Some(DiscogsValidation::Unvalidated),
@@ -165,7 +165,7 @@ async fn each_choice_of_each_setting_reads_back() {
 /// delivers nothing.
 #[tokio::test]
 async fn the_live_query_follows_only_what_changes() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     let mut values = subscribe_preferences(&db);
     assert_eq!(next(&mut values).await, Preferences::default());
 
@@ -187,7 +187,7 @@ async fn the_live_query_follows_only_what_changes() {
 /// inside its own write.
 #[tokio::test]
 async fn concurrent_edits_keep_both_changes() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     let (cast, pause) = tokio::join!(
         set(&db, |prefs| prefs.cast_enabled = true),
         set(&db, |prefs| prefs.pause_between_sides = false),
@@ -203,7 +203,7 @@ async fn concurrent_edits_keep_both_changes() {
 /// can't write.
 #[tokio::test]
 async fn the_schema_refuses_preferences_no_setter_writes() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     for (what, edit) in [
         (
             "a default naming no preset",

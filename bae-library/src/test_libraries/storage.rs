@@ -17,7 +17,7 @@ pub async fn storage_library(
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage =
         Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
-    let handle = bae_db::configure_store(installation.builder())
+    let handle = bae_db::configure_store(installation.builder(), crate::SCHEMA)
         .storage_connector(storage.clone())
         .create_store("Test Library")
         .await

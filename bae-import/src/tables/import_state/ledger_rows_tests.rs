@@ -236,7 +236,7 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
 /// under way.
 #[tokio::test]
 async fn a_ledger_with_a_lookup_under_way_is_not_stored() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();

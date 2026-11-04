@@ -1,7 +1,9 @@
 //! Found's groups: which releases a folder's header gathers, and the date the
 //! header and its members sort by.
 
-use super::*;
+use crate::tables::import_list::placement::tests::*;
+use crate::tables::import_list::tests::*;
+use crate::tables::tests::folder_below;
 
 /// A release nested below a folder is listed under that folder's header, and
 /// the group sorts by its newest member. A member sorts in its header's
@@ -152,7 +154,7 @@ async fn a_moved_release_changes_group() {
 /// own steps for the write of the release's scan row, its triggers' included.
 #[test]
 fn a_member_costs_the_same_however_large_its_group() {
-    let conn = bae_db::schema::bare_library_connection();
+    let conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
     let root = bae_db::watched_path::host_root("/music");
     let root_bytes = coven::path_bytes(&root);
     conn.execute(

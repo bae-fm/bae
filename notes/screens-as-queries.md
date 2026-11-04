@@ -22,8 +22,8 @@ screen that reads what it changed.
   comes from, and an index on that table serves the screen. The album grid
   sorts by `album_listing`, and the import list reads its tabs, states,
   groups, dates and shown text from `import_list_placement`
-  (`bae-db/migrations/001_initial.sql`). No read sees such a table behind the
-  tables it comes from.
+  (`bae-import/src/tables/import_list/placement.sql`). No read sees such a
+  table behind the tables it comes from.
 - **What decides a tab, a group, an order, a filter match or a count comes
   from the database.** The import list's coarse states are rows of their own
   (`import_candidate_standing`, `import_candidate_verdict`,

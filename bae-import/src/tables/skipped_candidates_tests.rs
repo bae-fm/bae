@@ -9,7 +9,7 @@ use bae_db::watched_path::host_root;
 /// separator, which the read takes the range below the root by.
 #[tokio::test]
 async fn corrupt_skipped_keys_fail_when_loaded() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/mounted/library");
     tables.add_watched_import_folder(&root).await.unwrap();

@@ -60,7 +60,10 @@ pub(crate) fn with_transfer_limits(
 /// under the default transfer limits: the library's own preferences are in
 /// the store being loaded, so they apply once it opens.
 fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
-    with_transfer_limits(configure_store(builder), bae_app_dir::default_transfer_limits())
+    with_transfer_limits(
+        configure_store(builder, crate::SCHEMA),
+        bae_app_dir::default_transfer_limits(),
+    )
 }
 
 /// Create a store and retain its open handle, including its identity custody.
@@ -68,7 +71,7 @@ pub async fn create_library(
     builder: coven::CovenBuilder,
     name: bae_db::EnteredName,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
-    Ok(configure_store(builder).create_store(name.as_str()).await?)
+    Ok(configure_store(builder, crate::SCHEMA).create_store(name.as_str()).await?)
 }
 
 /// Restore with a separately entered S3 key and coven's own OAuth presentation.
@@ -358,7 +361,7 @@ async fn settings_of_this_copy(
     store: coven::StoreId,
 ) -> Result<Option<bae_preferences::Preferences>, RestoreFromCodeError> {
     let unread = |error: crate::LibraryError| RestoreFromCodeError::SettingsUnread(Box::new(error));
-    let handle = match configure_store(builder).open(store, |_| ()).await {
+    let handle = match configure_store(builder, crate::SCHEMA).open(store, |_| ()).await {
         Ok(handle) => handle,
         Err(coven::CovenError::Lock(coven::StoreLockError::ReplacementUnfinished {
             by: coven::ReplacedBy::Restore,

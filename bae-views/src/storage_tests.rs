@@ -29,7 +29,7 @@ async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
 
 #[tokio::test]
 async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
-    let (db, tmp) = bae_db::test_fixtures::temp_db().await;
+    let (db, tmp) = bae_db::test_fixtures::temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     exec_batch(&db, LIBRARY).await;
     // The first release has two files, of 10 and 20 bytes; the second none.
     for file in [
@@ -109,7 +109,7 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
 /// direction, under every filter: SQLite never sorts the list itself.
 #[tokio::test]
 async fn the_storage_sort_reads_a_window_from_an_index() {
-    let (db, _tmp) = bae_db::test_fixtures::temp_db().await;
+    let (db, _tmp) = bae_db::test_fixtures::temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
         for direction in [SortDirection::Ascending, SortDirection::Descending] {
             let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };

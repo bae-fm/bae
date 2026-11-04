@@ -47,6 +47,7 @@ impl Library {
         bae_util::test_logs::install();
         let temp = TempDir::new().unwrap();
         let database = bae_db::Database::new_test(
+            bae_library::SCHEMA,
             temp.path().join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
         )

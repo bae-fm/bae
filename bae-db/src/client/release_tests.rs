@@ -53,7 +53,7 @@ fn insert_track(
 /// first, in the same write, removes it.
 #[tokio::test]
 async fn a_medium_still_holding_a_track_cannot_be_removed() {
-    let (db, _tmp) = temp_db().await;
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     db.call(seed_two_discs).await.unwrap();
 
     let refused = db
@@ -105,7 +105,10 @@ async fn tracks_on_missing_mediums(db: &crate::Database) -> Vec<String> {
 /// neither holds a track on a missing medium.
 #[test]
 fn concurrent_medium_removal_and_track_write_leave_no_track_on_a_missing_medium() {
-    crate::test_devices::run_two_store_test(check_concurrent_medium_removal);
+    crate::test_devices::run_two_store_test(
+        crate::test_fixtures::TEST_SCHEMA,
+        check_concurrent_medium_removal,
+    );
 }
 
 async fn check_concurrent_medium_removal(devices: &crate::test_devices::TwoStores) {
@@ -175,7 +178,10 @@ const MEDIA_ROWS: &str = "SELECT id || ':' || position || ':' || medium || ':' |
 /// release and sorts its listing by them.
 #[test]
 fn a_media_edit_reaches_the_other_device() {
-    crate::test_devices::run_two_store_test(check_media_edit_reaches);
+    crate::test_devices::run_two_store_test(
+        crate::test_fixtures::TEST_SCHEMA,
+        check_media_edit_reaches,
+    );
 }
 
 async fn check_media_edit_reaches(devices: &crate::test_devices::TwoStores) {
@@ -199,7 +205,10 @@ async fn check_media_edit_reaches(devices: &crate::test_devices::TwoStores) {
 /// Once each has the other's write, both hold both changes.
 #[test]
 fn concurrent_edits_of_different_places_both_stay() {
-    crate::test_devices::run_two_store_test(check_concurrent_places);
+    crate::test_devices::run_two_store_test(
+        crate::test_fixtures::TEST_SCHEMA,
+        check_concurrent_places,
+    );
 }
 
 async fn check_concurrent_places(devices: &crate::test_devices::TwoStores) {
@@ -239,7 +248,7 @@ const BARCODE_ROWS: &str = "SELECT id || ':' || position || ':' || barcode \
 /// later edit that drops one leaves only the other on both.
 #[test]
 fn barcode_edits_merge_by_place_and_reach_the_other_device() {
-    crate::test_devices::run_two_store_test(check_barcodes);
+    crate::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_barcodes);
 }
 
 async fn check_barcodes(devices: &crate::test_devices::TwoStores) {
@@ -292,7 +301,7 @@ const LABEL_ROWS: &str = "SELECT id || ':' || name || ':' || ifnull(discogs_labe
 /// write, both read the release with the label at each place either wrote.
 #[test]
 fn label_rows_converge_on_both_devices() {
-    crate::test_devices::run_two_store_test(check_labels);
+    crate::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_labels);
 }
 
 async fn check_labels(devices: &crate::test_devices::TwoStores) {

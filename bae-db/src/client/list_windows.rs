@@ -8,9 +8,10 @@
 //!
 //! A row's place is known when an earlier window of the same read held it, or
 //! when the list's last read held it and no row of the list has moved since.
-//! Each table a list's order reads keeps a version in `list_order_versions`
-//! that any write inserting, deleting or reordering one of its rows advances,
-//! in that write (Appendix A of the spec). A read carries the places its
+//! Each table a list's order reads keeps a version, in the versions table of
+//! the domain whose list reads it (`list_order_versions`,
+//! `import_list_versions`), that any write inserting, deleting or reordering
+//! one of its rows advances, in that write (Appendix A of the spec). A read carries the places its
 //! windows' first and last rows sat at, with the versions it read them at, and
 //! the next read starts from them only while those versions still stand.
 
@@ -381,22 +382,15 @@ impl<Standing: PartialEq, Kept: Clone + Default> KnownPlaces<Standing, Kept> {
     }
 }
 
-/// The versions of the tables `sources` names, as `list_order_versions`
-/// holds them in this read.
-pub fn list_order_versions_on(
+/// The versions of the tables `sources` names, as the versions table
+/// `versions` holds them in this read.
+pub fn list_versions_on(
     sql: &SqlReadContext<'_>,
+    versions: &str,
     sources: &[&str],
 ) -> rusqlite::Result<Vec<i64>> {
-    sources
-        .iter()
-        .map(|source| {
-            sql.query_row(
-                "SELECT version FROM list_order_versions WHERE source = ?",
-                [source],
-                |row| row.get(0),
-            )
-        })
-        .collect()
+    let statement = format!("SELECT version FROM {versions} WHERE source = ?");
+    sources.iter().map(|source| sql.query_row(&statement, [source], |row| row.get(0))).collect()
 }
 
 /// Where one window's read starts.

@@ -331,7 +331,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 /// scan, holding no draft.
 #[tokio::test]
 async fn the_pane_of_an_imported_candidate_is_placed_done() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -380,7 +380,7 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
 
 #[tokio::test]
 async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     tables
@@ -421,7 +421,7 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
 /// a running one's step, so its import status says the step the import is at.
 #[tokio::test]
 async fn the_pane_s_import_status_says_the_step_the_import_is_at() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     stored_pane_candidate(&db).await;
     let key = pane_candidate_key();
@@ -448,7 +448,7 @@ async fn the_pane_s_import_status_says_the_step_the_import_is_at() {
 /// each value answers the key set last, and no key reads nothing.
 #[tokio::test]
 async fn import_candidate_moves_between_candidates_on_one_subscription() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();

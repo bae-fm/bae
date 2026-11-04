@@ -8,7 +8,7 @@ use bae_db::watched_path::host_root;
 /// A candidate discovery stored with a blank draft: nobody wrote it.
 #[tokio::test]
 async fn a_candidate_with_no_pick_has_no_author() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;

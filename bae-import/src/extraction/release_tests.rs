@@ -12,6 +12,7 @@ async fn library_with_release(root: &std::path::Path) -> (Database, String) {
     let library_root = root.join("library");
     std::fs::create_dir_all(&library_root).unwrap();
     let database = Database::new_test(
+        crate::TEST_SCHEMA,
         library_root.join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )

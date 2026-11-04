@@ -160,7 +160,7 @@ async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
 }
 
 async fn grouped_library() -> (Database, tempfile::TempDir) {
-    let (db, dir) = temp_db().await;
+    let (db, dir) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
     for (id, name, sort_name) in [
         (ARTIST_A, "Artist Name A", "Same Sort Name"),
         (ARTIST_B, "Artist Name B", "Same Sort Name"),

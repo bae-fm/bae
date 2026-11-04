@@ -12,7 +12,7 @@ use bae_db::watched_path::host_root;
 /// absorb: the form is drawn only under a pick, and a pick writes that row.
 #[tokio::test]
 async fn a_pane_edit_without_a_candidate_row_is_refused() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let hash = pane_candidate().content_hash();
 
     for error in [
@@ -57,7 +57,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
 
 #[tokio::test]
 async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let root = host_root("/music");
@@ -88,7 +88,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
 
 #[tokio::test]
 async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let current_cover = PreparedCover::Remote {
@@ -141,7 +141,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
 /// Field writes update the one complete draft and leave its other values intact.
 #[tokio::test]
 async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
@@ -176,7 +176,7 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
 
 #[tokio::test]
 async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
@@ -234,7 +234,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
 /// edit it is their answer, not the run's pick waiting on the auto-import check.
 #[tokio::test]
 async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-1").await;
     let candidate =

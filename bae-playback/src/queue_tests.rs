@@ -22,6 +22,7 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     use bae_db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
     let home = tempfile::TempDir::new().unwrap();
     let db = Database::new_test(
+        bae_db::test_fixtures::TEST_SCHEMA,
         home.path().join("queue.db").to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
     )

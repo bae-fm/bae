@@ -12,7 +12,7 @@ use bae_db::DbArtist;
 /// replaces it.
 #[tokio::test]
 async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
 
@@ -58,7 +58,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
 
 #[tokio::test]
 async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
@@ -91,7 +91,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
 /// labels as they stand.
 #[tokio::test]
 async fn a_label_identity_conflict_round_trips_with_both_library_labels() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     db.call(|sql| {
@@ -140,7 +140,7 @@ async fn a_label_identity_conflict_round_trips_with_both_library_labels() {
 
 #[tokio::test]
 async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/mounted/library");
     let candidate = scanned_candidate(&root, "Release");

@@ -60,8 +60,7 @@ use release::{build_release_detail_on, ReleaseDetailRows};
 use album_search::*;
 use bae_db::client::files::{artist_image_version_sql, cover_version_sql};
 use bae_db::client::list_windows::{
-    list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
-    WindowsRead,
+    list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
 };
 use bae_db::client::pressing_columns::{read_media, release_media_sql};
 use bae_db::client::query::*;

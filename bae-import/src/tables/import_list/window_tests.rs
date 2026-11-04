@@ -637,7 +637,7 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
 /// the library release reaches the row.
 #[tokio::test]
 async fn a_done_row_reads_its_library_release() {
-    let (db, _temp) = live_db().await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &bae_db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();

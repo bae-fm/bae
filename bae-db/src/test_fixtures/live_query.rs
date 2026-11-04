@@ -23,8 +23,8 @@ pub const COMPOSER_LINK_ID: &str = "8621fd15-044a-44dd-ae70-dd6de30e35da";
 pub const OTHER_COMPOSER_LINK_ID: &str = "49a10300-3036-4301-9e1b-a50a76a46032";
 pub const INSERTED_COMPOSER_LINK_ID: &str = "9168d755-3ed6-446c-a0ec-5f4039e18a6f";
 
-pub async fn live_db() -> (Database, tempfile::TempDir) {
-    let (db, temp) = super::temp_db().await;
+pub async fn live_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
+    let (db, temp) = super::temp_db(schema).await;
     exec_batch(
         &db,
         &format!(

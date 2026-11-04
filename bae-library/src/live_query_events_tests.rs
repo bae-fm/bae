@@ -6,9 +6,13 @@ use std::sync::Arc;
 async fn an_ended_query_takes_a_new_request() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database = bae_db::Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
-        .await
-        .unwrap();
+    let database = bae_db::Database::new_test(
+        crate::SCHEMA,
+        path.to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
     let manager = crate::test_libraries::TestLibrary::open(
         database.clone(),
         bae_app_dir::AppDir::under_home(directory.path()).unwrap(),

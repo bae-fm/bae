@@ -110,7 +110,7 @@ impl BenchLibrary {
         let app_dir =
             bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-        let handle = bae_db::configure_store(installation.builder())
+        let handle = bae_db::configure_store(installation.builder(), bae_library::SCHEMA)
             .create_store(name)
             .await
             .map_err(|error| format!("creating the library failed: {error}"))?;

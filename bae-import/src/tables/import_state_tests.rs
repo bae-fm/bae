@@ -416,7 +416,7 @@ pub(crate) fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist
 /// Store `verdict` for a fresh candidate and read it back, with the
 /// listing of each match row in position order.
 pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdict, Vec<String>) {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);

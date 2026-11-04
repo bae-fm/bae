@@ -85,8 +85,12 @@ impl LibraryViews {
                     Some(_) => &["release_listing", "library_search"],
                     None => &["release_listing"],
                 };
-                let standing =
-                    (request.sort, request.filter, query, list_order_versions_on(&sql, sources)?);
+                let standing = (
+                    request.sort,
+                    request.filter,
+                    query,
+                    list_versions_on(&sql, "list_order_versions", sources)?,
+                );
                 let WindowsRead { windows, found } = read_windows(
                     &order,
                     &request.windows,

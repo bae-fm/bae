@@ -17,7 +17,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
         StoredCandidateEdits, UserSheetBinding,
     };
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let folder = walkthrough_folder();
     let scanned = collect_release_candidate_files_with_scope(
@@ -122,7 +122,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
         StoredCandidateEdits,
     };
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let folder = two_sheet_folder();
     let scanned = collect_release_candidate_files_with_scope(

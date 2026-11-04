@@ -15,7 +15,7 @@ async fn plan(db: &crate::client::Database, statement: String) -> Vec<String> {
 
 #[tokio::test]
 async fn the_pending_list_finds_each_row_by_index() {
-    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let plan = plan(&db, pending_rows_query()).await;
     for alias in [
         "named",

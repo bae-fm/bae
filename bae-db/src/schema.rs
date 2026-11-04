@@ -1,6 +1,6 @@
 //! bae's store as every handle opens it: its page cache, the synced tables
-//! and kinds of file `super::synced` declares, its migrations, and the
-//! collation and SQL functions the schema names.
+//! and kinds of file `super::synced` declares, the schema it migrates to, and
+//! the collation and SQL functions the schema names.
 
 /// The most each connection to a library keeps in its page cache. A cache
 /// holds only pages its connection has read, so a small library stays below
@@ -12,9 +12,52 @@ const PAGE_CACHE_KIB: u32 = 64 * 1024;
 #[cfg(not(desktop))]
 const PAGE_CACHE_KIB: u32 = 16 * 1024;
 
+/// One domain's share of the schema: its SQL files, which run in the order
+/// given.
+pub struct SchemaPart {
+    sql: &'static [&'static str],
+}
+
+impl SchemaPart {
+    pub const fn new(sql: &'static [&'static str]) -> Self {
+        Self { sql }
+    }
+}
+
+/// The schema a store migrates to: each crate's parts, in crate order. They
+/// run in that order as one migration, so a trigger's part runs after the
+/// part creating the table it fires on; a view's or a trigger's body may name
+/// a table a later part creates.
+#[derive(Clone, Copy)]
+pub struct Schema {
+    parts: &'static [&'static [SchemaPart]],
+}
+
+impl Schema {
+    pub const fn new(parts: &'static [&'static [SchemaPart]]) -> Self {
+        Self { parts }
+    }
+
+    /// Every SQL file of the schema, in the order they run.
+    pub fn sql(self) -> impl Iterator<Item = &'static str> {
+        self.parts.iter().flat_map(|parts| parts.iter()).flat_map(|part| part.sql.iter().copied())
+    }
+
+    /// The store's migrations: the schema as migration 1, each SQL file run in
+    /// order inside coven's migration transaction.
+    pub fn migrations(self) -> Vec<coven::Migration> {
+        vec![coven::Migration::addition_with(1, "initial", move |context| {
+            for sql in self.sql() {
+                context.execute_batch(sql)?;
+            }
+            Ok(())
+        })]
+    }
+}
+
 /// bae's store as every handle opens it: its page cache size, its synced
-/// tables, its schema, and the collation and SQL functions the schema names.
-pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
+/// tables, `schema`, and the collation and SQL functions the schema names.
+pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::CovenBuilder {
     let builder = builder
         .sqlite_settings(coven::SqliteSettings {
             cache_size: Some(coven::CacheSize::Kibibytes(PAGE_CACHE_KIB)),
@@ -22,11 +65,11 @@ pub fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
         })
         .synced_tables(super::synced::synced_tables())
         .namespaces(super::synced::namespaces())
-        .migrations(super::migrations::all())
+        .migrations(schema.migrations())
         .collation(
-            super::migrations::NATURAL_ORDER,
-            super::migrations::NATURAL_ORDER_VERSION,
-            super::migrations::natural_order,
+            super::collation::NATURAL_ORDER,
+            super::collation::NATURAL_ORDER_VERSION,
+            super::collation::natural_order,
         );
     register_functions(builder)
 }
@@ -125,11 +168,10 @@ fn folder_relative_value(root: Vec<u8>, folder: Vec<u8>) -> rusqlite::Result<Opt
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
 }
 
-/// An in-memory database on bae's schema outside coven, with the SQL
-/// functions the schema calls: for unit tests of SQL that runs on a bare
-/// connection.
+/// An in-memory database on `schema` outside coven, with the SQL functions
+/// the schema calls: for unit tests of SQL that runs on a bare connection.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn bare_library_connection() -> rusqlite::Connection {
+pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
     use rusqlite::functions::FunctionFlags;
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
     register_functions_on(&conn);
@@ -149,7 +191,7 @@ pub fn bare_library_connection() -> rusqlite::Connection {
             .transpose()
     })
     .expect("coven_path_text registers");
-    conn.create_collation(super::migrations::NATURAL_ORDER, super::migrations::natural_order)
+    conn.create_collation(super::collation::NATURAL_ORDER, super::collation::natural_order)
         .expect("natural_order registers");
     // The schema's triggers follow coven's `coven_files`, `coven_pins`,
     // `coven_upload_queue` and `coven_sync_status`, which coven creates
@@ -168,7 +210,9 @@ pub fn bare_library_connection() -> rusqlite::Connection {
          last_synced INTEGER, starts INTEGER NOT NULL) STRICT;",
     )
     .expect("the stand-in coven tables create");
-    conn.execute_batch(include_str!("../migrations/001_initial.sql")).expect("the schema applies");
+    for sql in schema.sql() {
+        conn.execute_batch(sql).expect("the schema applies");
+    }
     conn
 }
 

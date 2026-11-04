@@ -40,10 +40,13 @@ pub(super) async fn setup_test_import_over(
 ) -> (TestImport, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database =
-        Database::new_test(db_path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+    let database = Database::new_test(
+        crate::TEST_SCHEMA,
+        db_path.to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
     let parts = TestImport::new(
         database.clone(),
         providers,

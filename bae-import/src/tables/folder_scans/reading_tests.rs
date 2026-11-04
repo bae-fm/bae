@@ -74,7 +74,7 @@ fn removed_by(write: &crate::tables::FolderReadingWrite) -> Vec<crate::Candidate
 async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decision() {
     use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionAuthor};
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let scanned = scanned_box_and_sibling(&db, root).await;
@@ -137,7 +137,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
 async fn a_folder_reading_prunes_only_the_folder_and_below() {
     use crate::folder_scanner::FolderReleaseDecision;
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -182,7 +182,7 @@ async fn a_folder_reading_prunes_only_the_folder_and_below() {
 async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
     use crate::folder_scanner::FolderReleaseDecision;
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     scanned_box_and_sibling(&db, root).await;
@@ -220,7 +220,7 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
 async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
     use crate::folder_scanner::{FolderReleaseDecision, ScanItem};
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     let generation = scanned_box_and_sibling(&db, root).await;

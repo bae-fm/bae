@@ -10,7 +10,7 @@ pub const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271";
 /// An album artist's album on one release with one track, which performs a
 /// work part whose composer is credited on it, and the work it is part of.
 pub async fn composed_work_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "

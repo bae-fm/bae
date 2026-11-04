@@ -12,7 +12,7 @@ use bae_identify::{Findings, NarrowedOut, TerminalVerdict};
 /// stored, whatever the run read, and a later fetch's once one stores it.
 #[tokio::test]
 async fn a_match_reads_its_album_first_year_from_its_stored_catalog_release() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -75,7 +75,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         StatedMedia,
     };
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);

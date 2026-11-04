@@ -16,7 +16,7 @@ async fn plan(db: &crate::client::Database, statement: &'static str) -> Vec<Stri
 
 #[tokio::test]
 async fn a_releases_queued_files_are_found_by_its_files() {
-    let (db, _tmp) = crate::test_fixtures::temp_db().await;
+    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     for statement in [RELEASE_QUEUED_FILE_COUNT, RELEASE_HAS_QUEUED_FILE, RELEASE_FILE_QUEUED] {
         let plan = plan(&db, statement).await;
         assert!(

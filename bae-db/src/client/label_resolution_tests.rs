@@ -153,7 +153,10 @@ async fn give_discogs_id(db: &Database, id: &'static str, discogs: &'static str)
 /// reads the release's label as that one.
 #[test]
 fn a_catalog_id_two_devices_gave_two_labels_merges_them() {
-    crate::test_devices::run_two_store_test(check_two_devices_give_one_label_id);
+    crate::test_devices::run_two_store_test(
+        crate::test_fixtures::TEST_SCHEMA,
+        check_two_devices_give_one_label_id,
+    );
 }
 
 async fn check_two_devices_give_one_label_id(devices: &crate::test_devices::TwoStores) {

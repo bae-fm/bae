@@ -50,7 +50,7 @@ fn main() {
     };
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<String, String> = runtime.block_on(async {
-        let handle = bae_db::configure_store(installation.builder())
+        let handle = bae_db::configure_store(installation.builder(), bae_library::SCHEMA)
             .open(store_id, |_| ())
             .await
             .map_err(|e| format!("open store failed: {e}"))?;

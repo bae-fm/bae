@@ -62,7 +62,7 @@ fn a_source_with_no_image_keeps_the_stored_cover_and_its_bytes() {
 
 #[tokio::test]
 async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let hash = pane_candidate().content_hash();
 
@@ -77,7 +77,7 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
 /// identification wrote it.
 #[tokio::test]
 async fn a_verdict_that_picks_names_identification_as_the_author() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-1").await;
     let candidate =
@@ -102,7 +102,7 @@ async fn a_verdict_that_picks_names_identification_as_the_author() {
 /// it — here nobody.
 #[tokio::test]
 async fn a_verdict_that_picks_nothing_leaves_the_draft_unclaimed() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
@@ -125,7 +125,7 @@ async fn a_verdict_that_picks_nothing_leaves_the_draft_unclaimed() {
 /// settled on.
 #[tokio::test]
 async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-chosen").await;
     fetched(&db, "rel-1").await;
@@ -177,7 +177,7 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
 /// wins.
 #[tokio::test]
 async fn a_verdict_after_a_metadata_edit_replaces_it() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-first").await;
     fetched(&db, "rel-second").await;
@@ -243,7 +243,7 @@ fn found_nothing() -> TerminalVerdict {
 /// A re-run that finds nothing leaves the draft an earlier run wrote.
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "mb-rel-1").await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
@@ -270,7 +270,7 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
 /// A re-run that finds nothing leaves a person's pick in place.
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "mb-rel-chosen").await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
@@ -304,7 +304,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
 /// pick.
 #[tokio::test]
 async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "mb-rel-first").await;
     fetched(&db, "mb-rel-second").await;
@@ -333,7 +333,7 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
 
 #[tokio::test]
 async fn stale_file_revision_cannot_replace_prepared_metadata() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (files, hash) = stored_pane_candidate(&db).await;
     let stale = tables
@@ -379,7 +379,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
 
 #[tokio::test]
 async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let stale = tables
@@ -426,7 +426,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
 /// assignments owned by the prior source, while every physical decision stays.
 #[tokio::test]
 async fn metadata_apply_and_clear_preserve_every_physical_decision() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-1").await;
     fetched(&db, "rel-2").await;
@@ -541,7 +541,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
 
 #[tokio::test]
 async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (files, hash) = stored_pane_candidate(&db).await;
     assert!(store_verdict_with_signals(&db, &hash, settled_signals(),).await);
@@ -592,7 +592,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
 /// and cover land with the file decision as one candidate state.
 #[tokio::test]
 async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "rel-1").await;
     let (files, hash) = stored_pane_candidate(&db).await;
@@ -671,7 +671,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
 /// whoever applied it.
 #[tokio::test]
 async fn a_file_decision_preserves_applied_metadata_from_either_author() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     fetched(&db, "mb-rel-derived").await;
     fetched(&db, "mb-rel-chosen").await;
@@ -753,7 +753,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
         StoredCandidateEdits, UserSheetBinding,
     };
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let folder = walkthrough_folder();
     let proposed = collect_release_candidate_files_with_scope(

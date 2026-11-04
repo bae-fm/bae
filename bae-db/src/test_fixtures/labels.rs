@@ -9,13 +9,7 @@ use rusqlite::params;
 pub const RELEASE: &str = "5d1c2c9e-4f0b-4a43-9a51-0e6c1d3b7a10";
 
 pub async fn library() -> (Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let db = Database::new_test(
-        tmp.path().join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
     let album = DbAlbum::new_test("Album Title");
     let release = DbRelease::new_test(&album.id, RELEASE);
     db.insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[]).await.unwrap();

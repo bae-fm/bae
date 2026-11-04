@@ -10,7 +10,7 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
         collect_release_candidate_files_with_scope, FolderCandidate, ScanItem, StoredCandidateEdits,
     };
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let folder = tempfile::TempDir::new().unwrap();
     std::fs::copy(
@@ -74,7 +74,7 @@ async fn a_timing_refusal_survives_a_relaunch() {
         SheetBinding, StoredCandidateEdits,
     };
 
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let folder = tempfile::TempDir::new().unwrap();
     std::fs::copy(

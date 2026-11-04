@@ -136,10 +136,13 @@ impl Fixture {
         bae_util::test_logs::install();
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock::new((fixed_now()).into()));
-        let database =
-            Database::new_test(temp.path().join("test.db").to_str().unwrap(), clock.clone())
-                .await
-                .unwrap();
+        let database = Database::new_test(
+            crate::TEST_SCHEMA,
+            temp.path().join("test.db").to_str().unwrap(),
+            clock.clone(),
+        )
+        .await
+        .unwrap();
 
         let provider = bae_util::test_host::FakeHost::start().await;
         // Discogs goes to the fake too, so no test reaches the real API.

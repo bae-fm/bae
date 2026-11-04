@@ -9,7 +9,7 @@ use bae_db::Database;
 
 #[tokio::test]
 async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -74,7 +74,7 @@ async fn picked_grouping(
 /// folder decisions, groupings, and candidate state.
 #[tokio::test]
 async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &host_root("/mounted/library");
     tables.add_watched_import_folder(root).await.unwrap();
@@ -149,7 +149,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
 /// grouping again under it.
 #[tokio::test]
 async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decided() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let music = host_root("/music");
     let one = host_root("/music/one");
@@ -274,7 +274,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
 
 #[tokio::test]
 async fn shared_candidate_state_leaves_with_its_last_watched_root() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let first = host_root("/mounted/first");
     let second = host_root("/mounted/second");
@@ -308,7 +308,7 @@ async fn shared_candidate_state_leaves_with_its_last_watched_root() {
 /// skips.
 #[tokio::test]
 async fn removing_a_watched_folder_leaves_the_folder_beside_it() {
-    let (db, _tmp) = empty_db().await;
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/mounted/library");
     let beside = host_root("/mounted/library 2");
