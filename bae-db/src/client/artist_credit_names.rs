@@ -82,15 +82,7 @@ pub fn credit_names_column(row: &Row<'_>, column: &str) -> rusqlite::Result<Vec<
         key: String,
         name: String,
     }
-    let index = row.as_ref().column_index(column)?;
-    let json: String = row.get(index)?;
-    let stored: Vec<Stored> = serde_json::from_str(&json).map_err(|error| {
-        rusqlite::Error::FromSqlConversionFailure(
-            index,
-            rusqlite::types::Type::Text,
-            Box::new(error),
-        )
-    })?;
+    let stored: Vec<Stored> = super::read::json_column(row, column)?;
     Ok(stored
         .into_iter()
         .map(|stored| ArtistCreditName {

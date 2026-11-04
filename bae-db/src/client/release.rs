@@ -517,15 +517,7 @@ pub fn release_edit_tracks_on(
         layout: Option<String>,
     }
     Ok(sql.query(RELEASE_EDIT_TRACKS, params![release_id], |row| {
-        let index = row.as_ref().column_index("segments_json")?;
-        let segments: Vec<Segment> =
-            serde_json::from_str(&row.get::<_, String>(index)?).map_err(|error| {
-                rusqlite::Error::FromSqlConversionFailure(
-                    index,
-                    rusqlite::types::Type::Text,
-                    Box::new(error),
-                )
-            })?;
+        let segments: Vec<Segment> = super::read::json_column(row, "segments_json")?;
         let segments = segments
             .into_iter()
             .map(|segment| {
@@ -534,15 +526,21 @@ pub fn release_edit_tracks_on(
                         name,
                         layout: segment
                             .layout
-                            .map(|layout| super::read::source_audio_layout_value(&layout, index))
+                            .map(|layout| {
+                                super::read::source_audio_layout_value(
+                                    row,
+                                    "segments_json",
+                                    &layout,
+                                )
+                            })
                             .transpose()?,
                     }),
                     (false, _) => None,
                     (true, None) => {
-                        return Err(rusqlite::Error::FromSqlConversionFailure(
-                            index,
-                            rusqlite::types::Type::Text,
-                            format!("release file {} has no name", segment.file_id).into(),
+                        return Err(super::read::column_conversion_error(
+                            row,
+                            "segments_json",
+                            format!("release file {} has no name", segment.file_id),
                         ))
                     }
                 };

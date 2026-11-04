@@ -2,11 +2,11 @@
 //! (`coven_members`, `coven_devices`): each member with their devices that
 //! can sync and those that lost access, each list in device-id order.
 
+use super::read::column_conversion_error;
 use super::*;
 use crate::membership::{
     ActiveDevice, FormerDevice, FormerDeviceState, Membership, MembershipMember,
 };
-use rusqlite::types::Type;
 
 impl Database {
     pub async fn membership(&self) -> Result<Membership, DbError> {
@@ -62,12 +62,17 @@ pub(super) fn member_row(
     let role = match row.get::<_, String>(first + 1)?.as_str() {
         "admin" => coven::MemberRole::Admin,
         "member" => coven::MemberRole::Member,
-        other => return Err(unreadable_column(first + 1, Type::Text, "a member role", other)),
+        other => {
+            return Err(column_conversion_error(
+                row,
+                first + 1,
+                format!("{other} is not a member role"),
+            ))
+        }
     };
     let keys = coven::MemberPublicKeys {
-        signing: coven::SigningKey::from_bytes(row.get(first + 3)?).map_err(|error| {
-            rusqlite::Error::FromSqlConversionFailure(first + 3, Type::Blob, Box::new(error))
-        })?,
+        signing: coven::SigningKey::from_bytes(row.get(first + 3)?)
+            .map_err(|error| column_conversion_error(row, first + 3, error))?,
         sealing: coven::SealingKey::from_bytes(row.get(first + 4)?),
     };
     let access = match (
@@ -77,11 +82,10 @@ pub(super) fn member_row(
         (Some(account), None) => coven::MemberAccess::ProviderAccount(account),
         (None, Some(access_key_id)) => coven::MemberAccess::S3AccessKey { access_key_id },
         _ => {
-            return Err(unreadable_column(
+            return Err(column_conversion_error(
+                row,
                 first + 5,
-                Type::Text,
-                "a member's access",
-                "both or neither of an account and an S3 key id",
+                "a member's access holds both or neither of an account and an S3 key id",
             ))
         }
     };
@@ -98,7 +102,7 @@ pub(super) fn member_row(
             .into_iter()
             .map(|(id, name, device_is_self)| {
                 Ok(ActiveDevice {
-                    id: device_id(&id, first + 7)?,
+                    id: device_id(row, first + 7, &id)?,
                     name,
                     is_self: device_is_self,
                     can_remove: ActiveDevice::removable(self_is_admin, is_self, device_is_self),
@@ -111,17 +115,16 @@ pub(super) fn member_row(
             .into_iter()
             .map(|(id, name, state)| {
                 Ok(FormerDevice {
-                    id: device_id(&id, first + 8)?,
+                    id: device_id(row, first + 8, &id)?,
                     name,
                     state: match state.as_str() {
                         "removed" => FormerDeviceState::Removed,
                         "replaced" => FormerDeviceState::Replaced,
                         other => {
-                            return Err(unreadable_column(
+                            return Err(column_conversion_error(
+                                row,
                                 first + 8,
-                                Type::Text,
-                                "a device state",
-                                other,
+                                format!("{other} is not a device state"),
                             ))
                         }
                     },
@@ -131,19 +134,10 @@ pub(super) fn member_row(
     })
 }
 
-fn json_column<T: serde::de::DeserializeOwned>(row: &Row<'_>, index: usize) -> rusqlite::Result<T> {
-    serde_json::from_str(&row.get::<_, String>(index)?).map_err(|error| {
-        rusqlite::Error::FromSqlConversionFailure(index, Type::Text, Box::new(error))
-    })
-}
-
-/// A device id from the hex of its eight bytes.
-fn device_id(hex: &str, index: usize) -> rusqlite::Result<coven::DeviceId> {
-    u64::from_str_radix(hex, 16).map(coven::DeviceId).map_err(|error| {
-        rusqlite::Error::FromSqlConversionFailure(index, Type::Text, Box::new(error))
-    })
-}
-
-fn unreadable_column(index: usize, kind: Type, what: &str, value: &str) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(index, kind, format!("{value} is not {what}").into())
+/// A device id from the hex of its eight bytes, listed in `row`'s column
+/// `index`.
+fn device_id(row: &Row<'_>, index: usize, hex: &str) -> rusqlite::Result<coven::DeviceId> {
+    u64::from_str_radix(hex, 16)
+        .map(coven::DeviceId)
+        .map_err(|error| column_conversion_error(row, index, error))
 }

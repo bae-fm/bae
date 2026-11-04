@@ -197,29 +197,47 @@ pub fn get_release_records_on(
                 Ok(bae_catalogs::records::ReleaseRecord::new(&identity, row.get("album_key")?))
             }
             "album" => Ok(bae_catalogs::records::ReleaseRecord::album(&identity)),
-            kind => Err(rusqlite::Error::FromSqlConversionFailure(
-                row.as_ref().column_index("kind")?,
-                rusqlite::types::Type::Text,
-                format!("unknown record kind: {kind}").into(),
-            )),
+            kind => {
+                Err(column_conversion_error(row, "kind", format!("unknown record kind: {kind}")))
+            }
         }
     })?)
 }
 
-/// Build a column-conversion error for a named column whose stored text the
-/// mapper could not turn into its typed value, so a corrupt column surfaces like
-/// any other bad read instead of panicking or silently mis-defaulting.
-pub fn column_conversion_error(row: &Row, column: &str, message: String) -> rusqlite::Error {
+/// The error of reading column `column` (its name or index) of `row`, whose
+/// stored value the mapper could not turn into its typed value, `cause`
+/// saying why: it names the column's index and the type its value is stored
+/// as, so a corrupt column surfaces like any other bad read instead of
+/// panicking or silently mis-defaulting.
+pub fn column_conversion_error<I: rusqlite::RowIndex>(
+    row: &Row,
+    column: I,
+    cause: impl Into<Box<dyn std::error::Error + Send + Sync>>,
+) -> rusqlite::Error {
     // The column was just read, so its index resolves; if it somehow doesn't,
     // that lookup error is itself a faithful failure to return.
-    match row.as_ref().column_index(column) {
-        Ok(idx) => rusqlite::Error::FromSqlConversionFailure(
-            idx,
-            rusqlite::types::Type::Text,
-            message.into(),
-        ),
-        Err(e) => e,
+    let index = match column.idx(row.as_ref()) {
+        Ok(index) => index,
+        Err(error) => return error,
+    };
+    match row.get_ref(index) {
+        Ok(value) => {
+            rusqlite::Error::FromSqlConversionFailure(index, value.data_type(), cause.into())
+        }
+        Err(error) => error,
     }
+}
+
+/// Read column `column` (its name or index) of `row` as the JSON text of a
+/// `T`, surfacing text that isn't one as a column-conversion error.
+pub fn json_column<T, I>(row: &Row, column: I) -> rusqlite::Result<T>
+where
+    T: serde::de::DeserializeOwned,
+    I: rusqlite::RowIndex + Copy,
+{
+    let text: String = row.get(column)?;
+    serde_json::from_str(&text)
+        .map_err(|error| column_conversion_error(row, column, format!("{text:?}: {error}")))
 }
 
 /// Read a named rfc3339 timestamp column, surfacing a malformed value as a
@@ -313,11 +331,7 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
     let carrier = medium
         .map(|key| {
             bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
-                rusqlite::Error::FromSqlConversionFailure(
-                    0,
-                    rusqlite::types::Type::Text,
-                    format!("unknown release medium {key:?}").into(),
-                )
+                column_conversion_error(row, "medium", format!("unknown release medium {key:?}"))
             })
         })
         .transpose()?;
@@ -373,18 +387,19 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
     })
 }
 
-/// A stored `source_audio_layout` value, read from the column at `index`.
-pub(super) fn source_audio_layout_value(
+/// A stored `source_audio_layout` value, read from `row`'s column `column`.
+pub(super) fn source_audio_layout_value<I: rusqlite::RowIndex>(
+    row: &Row,
+    column: I,
     layout: &str,
-    index: usize,
 ) -> rusqlite::Result<crate::source_audio::SourceAudioLayout> {
     match layout {
         "file" => Ok(crate::source_audio::SourceAudioLayout::File),
         "cue" => Ok(crate::source_audio::SourceAudioLayout::Cue),
-        other => Err(rusqlite::Error::FromSqlConversionFailure(
-            index,
-            rusqlite::types::Type::Text,
-            format!("invalid source_audio_layout {other:?}").into(),
+        other => Err(column_conversion_error(
+            row,
+            column,
+            format!("invalid source_audio_layout {other:?}"),
         )),
     }
 }
@@ -392,7 +407,7 @@ pub(super) fn source_audio_layout_value(
 pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
     let layout = row
         .get::<_, Option<String>>("source_audio_layout")?
-        .map(|layout| source_audio_layout_value(&layout, 0))
+        .map(|layout| source_audio_layout_value(row, "source_audio_layout", &layout))
         .transpose()?;
     let source_audio = match (
         row.get::<_, Option<String>>("source_audio_content_type")?,
@@ -423,10 +438,10 @@ pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
             },
         }),
         columns => {
-            return Err(rusqlite::Error::FromSqlConversionFailure(
-                0,
-                rusqlite::types::Type::Text,
-                format!("inconsistent release source-audio facts: {columns:?}").into(),
+            return Err(column_conversion_error(
+                row,
+                "source_audio_content_type",
+                format!("inconsistent release source-audio facts: {columns:?}"),
             ))
         }
     };
@@ -516,11 +531,7 @@ pub(super) fn row_to_audio_format(row: &Row) -> rusqlite::Result<DbAudioFormat> 
 pub(super) fn row_to_audio_segment(row: &Row) -> rusqlite::Result<DbAudioSegment> {
     let role_text: String = row.get("role")?;
     let role = DbAudioSegmentRole::from_db_value(&role_text).ok_or_else(|| {
-        rusqlite::Error::FromSqlConversionFailure(
-            0,
-            rusqlite::types::Type::Text,
-            format!("unknown audio segment role: {role_text}").into(),
-        )
+        column_conversion_error(row, "role", format!("unknown audio segment role: {role_text}"))
     })?;
     Ok(DbAudioSegment {
         id: row.get("id")?,

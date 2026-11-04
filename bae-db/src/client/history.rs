@@ -88,8 +88,7 @@ fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>>
         let audience = if row.get::<_, Option<String>>(4)?.is_some() {
             HistoryAudience::Person { person: coven::MemberId(uuid_column(row, 4)?), audience: row.get(5)? }
         } else { HistoryAudience::DevicePrivate };
-        let started_at: String = row.get(2)?;
-        let started_at = started_at.parse::<DateTime<Utc>>().map_err(|error| rusqlite::Error::FromSqlConversionFailure(2, rusqlite::types::Type::Text, Box::new(error)))?;
+        let started_at = super::read::rfc3339_column(row, "started_at")?;
         let played_ms: i64 = row.get(3)?;
         #[expect(clippy::map_err_ignore, reason = "the out-of-range error carries the column and the value itself")]
         let played_ms = u64::try_from(played_ms).map_err(|_| rusqlite::Error::IntegralValueOutOfRange(3, played_ms))?;

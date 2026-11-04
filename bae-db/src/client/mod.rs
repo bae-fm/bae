@@ -327,11 +327,5 @@ impl Database {
 
 fn uuid_column(row: &Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
     let value: String = row.get(index)?;
-    uuid::Uuid::parse_str(&value).map_err(|error| {
-        rusqlite::Error::FromSqlConversionFailure(
-            index,
-            rusqlite::types::Type::Text,
-            Box::new(error),
-        )
-    })
+    uuid::Uuid::parse_str(&value).map_err(|error| read::column_conversion_error(row, index, error))
 }

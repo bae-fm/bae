@@ -65,10 +65,10 @@ pub(super) fn profile_request_on(
         // nothing else does: a request whose operation coven no longer
         // lists has lost what it waits for.
         if !row.get::<_, bool>(3)? {
-            return Err(rusqlite::Error::FromSqlConversionFailure(
+            return Err(super::read::column_conversion_error(
+                row,
                 0,
-                rusqlite::types::Type::Integer,
-                format!("the profile request's operation {operation:?} isn't listed").into(),
+                format!("the profile request's operation {operation:?} isn't listed"),
             ));
         }
         Ok(ProfileRequest {

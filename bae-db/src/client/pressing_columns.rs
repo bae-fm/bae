@@ -9,7 +9,7 @@
 //! and a value no vocabulary names fails the read instead of turning into
 //! nothing.
 
-use super::read::column_conversion_error;
+use super::read::{column_conversion_error, json_column};
 use bae_types::pressing::{
     Country, DiscogsDetail, MediaCount, Packaging, PressingFacts, Region, ReleaseArea,
     ReleaseLabel, ReleaseStatus,
@@ -87,10 +87,7 @@ pub(super) fn release_labels_sql(release_id: &str) -> String {
 
 /// Read a `labels` column: every label, each with its catalog number.
 pub(super) fn read_labels(row: &Row, column: &str) -> rusqlite::Result<Vec<ReleaseLabel>> {
-    let labels: String = row.get(column)?;
-    serde_json::from_str::<Vec<ReleaseLabel>>(&labels).map_err(|error| {
-        column_conversion_error(row, column, format!("labels {labels:?}: {error}"))
-    })
+    json_column(row, column)
 }
 
 /// The SQL of the library release `release_id`'s barcodes as one `barcodes`
@@ -106,10 +103,7 @@ pub(super) fn release_barcodes_sql(release_id: &str) -> String {
 /// Read a `barcodes` column, a list of barcode rows read as one JSON array of
 /// strings: every barcode, in order.
 pub fn read_barcodes(row: &Row, column: &str) -> rusqlite::Result<Vec<String>> {
-    let barcodes: String = row.get(column)?;
-    serde_json::from_str::<Vec<String>>(&barcodes).map_err(|error| {
-        column_conversion_error(row, column, format!("barcodes {barcodes:?}: {error}"))
-    })
+    json_column(row, column)
 }
 
 /// Read the facts a row's columns hold. `prefix` is what a joined query puts
@@ -139,9 +133,7 @@ pub fn release_media_sql(release_id: &str) -> String {
 
 /// Read a `media` column: the carriers and their counts.
 pub fn read_media(row: &Row, column: &str) -> rusqlite::Result<Vec<MediaCount>> {
-    let media: String = row.get(column)?;
-    serde_json::from_str::<Vec<MediaCount>>(&media)
-        .map_err(|error| column_conversion_error(row, column, format!("media {media:?}: {error}")))
+    json_column(row, column)
 }
 
 /// Read every fact but the media, for a table that keeps a record's media in
@@ -151,19 +143,10 @@ pub fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<Pre
     let country: Option<String> = row.get(column("country").as_str())?;
     let region: Option<String> = row.get(column("region").as_str())?;
     let area = area_of(country, region)
-        .map_err(|detail| column_conversion_error(row, &column("region"), detail))?;
+        .map_err(|detail| column_conversion_error(row, column("region").as_str(), detail))?;
     let status = keyed(row, &column("status"), ReleaseStatus::from_key)?;
     let packaging = keyed(row, &column("packaging"), Packaging::from_key)?;
-    let details_column = column("discogs_details");
-    let details: String = row.get(details_column.as_str())?;
-    let discogs_details =
-        serde_json::from_str::<Vec<DiscogsDetail>>(&details).map_err(|error| {
-            column_conversion_error(
-                row,
-                &details_column,
-                format!("discogs_details {details:?}: {error}"),
-            )
-        })?;
+    let discogs_details: Vec<DiscogsDetail> = json_column(row, column("discogs_details").as_str())?;
     Ok(PressingFacts { area, media: Vec::new(), status, packaging, discogs_details })
 }
 

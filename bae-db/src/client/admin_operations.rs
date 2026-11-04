@@ -5,7 +5,6 @@
 
 use super::*;
 use crate::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
-use rusqlite::types::Type;
 
 /// What an admin change changes, as its `admin_operations` row holds it.
 pub(super) enum AdminTarget {
@@ -32,21 +31,22 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
         let operation = coven::OperationId(row.get(0)?);
         // Only the write that deletes the row acknowledges its operation.
         if !row.get::<_, bool>(1)? {
-            return Err(unreadable(
+            return Err(super::read::column_conversion_error(
+                row,
                 0,
-                Type::Integer,
                 format!("the admin change's operation {operation:?} isn't listed"),
             ));
         }
         let member = || {
-            row.get::<_, Option<coven::MemberId>>(4)?
-                .ok_or_else(|| unreadable(4, Type::Text, "a member change names no member"))
+            row.get::<_, Option<coven::MemberId>>(4)?.ok_or_else(|| {
+                super::read::column_conversion_error(row, 4, "a member change names no member")
+            })
         };
         let change = match row.get::<_, coven::OperationKind>(2)? {
             coven::OperationKind::RenameStore => AdminChangeKind::RenameLibrary {
-                name: row
-                    .get::<_, Option<String>>(7)?
-                    .ok_or_else(|| unreadable(7, Type::Text, "a rename names no name"))?,
+                name: row.get::<_, Option<String>>(7)?.ok_or_else(|| {
+                    super::read::column_conversion_error(row, 7, "a rename names no name")
+                })?,
             },
             coven::OperationKind::SetRole => AdminChangeKind::SetRole {
                 member: member()?,
@@ -54,7 +54,13 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
                 role: match row.get::<_, Option<String>>(6)?.as_deref() {
                     Some("admin") => coven::MemberRole::Admin,
                     Some("member") => coven::MemberRole::Member,
-                    other => return Err(unreadable(6, Type::Text, format!("a role {other:?}"))),
+                    other => {
+                        return Err(super::read::column_conversion_error(
+                            row,
+                            6,
+                            format!("a role {other:?}"),
+                        ))
+                    }
                 },
             },
             coven::OperationKind::RemoveMember => {
@@ -70,15 +76,19 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
                 }
             }
             coven::OperationKind::RemoveDevice => AdminChangeKind::RemoveDevice {
-                device: row
-                    .get::<_, Option<coven::DeviceId>>(5)?
-                    .ok_or_else(|| unreadable(5, Type::Blob, "a removal names no device"))?,
-                name: row
-                    .get::<_, Option<String>>(9)?
-                    .ok_or_else(|| unreadable(9, Type::Text, "coven lists no such device"))?,
+                device: row.get::<_, Option<coven::DeviceId>>(5)?.ok_or_else(|| {
+                    super::read::column_conversion_error(row, 5, "a removal names no device")
+                })?,
+                name: row.get::<_, Option<String>>(9)?.ok_or_else(|| {
+                    super::read::column_conversion_error(row, 9, "coven lists no such device")
+                })?,
             },
             other => {
-                return Err(unreadable(2, Type::Text, format!("an admin change of kind {other:?}")))
+                return Err(super::read::column_conversion_error(
+                    row,
+                    2,
+                    format!("an admin change of kind {other:?}"),
+                ))
             }
         };
         let state = match row.get::<_, Option<coven::OperationOutcome>>(3)? {
@@ -91,10 +101,6 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
         };
         Ok(AdminChange { operation, change, state })
     })
-}
-
-fn unreadable(column: usize, kind: Type, what: impl Into<String>) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(column, kind, what.into().into())
 }
 
 /// Record what the change journaled as `operation` changes, in its write.
