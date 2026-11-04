@@ -396,9 +396,7 @@ fn album_links_column(links: &AlbumLinks) -> &'static str {
 }
 
 pub(super) fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
-    i64::try_from(ordinal).map_err(|error| {
-        DbError::Message(format!("a match's list is longer than SQLite counts: {error}"))
-    })
+    to_i64(ordinal, "a match's place in its list")
 }
 
 /// The stored `listing` values.
@@ -584,11 +582,10 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
                 "match {position} of {content_hash} is {listing} but names no pressing row"
             )));
         };
-        let pressing = u32::try_from(pressing).map_err(|error| {
-            DbError::Message(format!(
-                "match {position} of {content_hash} names pressing row {pressing}: {error}"
-            ))
-        })?;
+        let pressing = to_u32(
+            pressing,
+            &format!("the pressing row match {position} of {content_hash} names"),
+        )?;
         Ok(ListedMatch { pressing, named_note: None })
     };
     let listing = match listing.as_str() {
@@ -638,9 +635,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
                     DbError::Message("a listed source tracklist states no count".to_string())
                 })?;
             Some(SourceTracks::Listed {
-                count: u32::try_from(count).map_err(|error| {
-                    DbError::Message(format!("a source tracklist's count is out of range: {error}"))
-                })?,
+                count: to_u32(count, "import_candidate_match.source_tracks_count")?,
             })
         }
         Some(other) => {

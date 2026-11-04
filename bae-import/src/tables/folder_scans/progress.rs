@@ -4,7 +4,6 @@
 //! to the roots and a count of their current generation's folders — nothing a
 //! scan's write wakes here costs a read of the queue.
 
-use super::columns::to_u64;
 use super::*;
 use crate::folder_scan_status::FolderScanProgress;
 use crate::watched_folder::WatchedFolder;

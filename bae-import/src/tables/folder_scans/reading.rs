@@ -71,8 +71,8 @@ impl ImportTables {
                 };
                 let generation = next_folder_scan_generation(sql)?;
                 Ok(FolderReadingStamp {
-                    read_under: columns::to_u64(read_under, "a folder scan root's generation")?,
-                    generation: columns::to_u64(generation, "a folder scan generation")?,
+                    read_under: to_u64(read_under, "folder_scan_roots.generation")?,
+                    generation: to_u64(generation, "a folder scan generation")?,
                 })
             })
             .await

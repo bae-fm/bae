@@ -162,7 +162,7 @@ impl ImportTables {
     ) -> Result<Option<u64>, DbError> {
         self.current_scan_generation(watched_folder_path)
             .await?
-            .map(|generation| columns::to_u64(generation, "a folder scan root's generation"))
+            .map(|generation| to_u64(generation, "folder_scan_roots.generation"))
             .transpose()
     }
 
@@ -207,9 +207,7 @@ impl ImportTables {
                      volume = excluded.volume",
                     params![watched_folder_path, generation, volume],
                 )?;
-                u64::try_from(generation).map_err(|error| {
-                    DbError::Message(format!("folder scan generation is negative: {error}"))
-                })
+                to_u64(generation, "a folder scan generation")
             })
             .await
     }

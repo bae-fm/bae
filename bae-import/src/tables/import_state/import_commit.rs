@@ -194,12 +194,8 @@ fn load_committing_candidate(
     let prepared_revisions = revisions
         .map(|(edit, metadata)| {
             Ok::<_, DbError>((
-                u64::try_from(edit).map_err(|error| {
-                    DbError::Message(format!("candidate file revision is negative: {error}"))
-                })?,
-                u64::try_from(metadata).map_err(|error| {
-                    DbError::Message(format!("candidate metadata revision is negative: {error}"))
-                })?,
+                to_u64(edit, "import_candidate_state.edit_revision")?,
+                to_u64(metadata, "import_candidate_state.metadata_revision")?,
             ))
         })
         .transpose()?;

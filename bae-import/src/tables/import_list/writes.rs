@@ -106,12 +106,8 @@ impl ImportTables {
                     },
                 )?;
                 if changed > 0 {
-                    let opened_at = i64::try_from(opened_at(sql, list)?).map_err(|error| {
-                        DbError::Message(format!(
-                            "import list {} opened past any position: {error}",
-                            list.0
-                        ))
-                    })?;
+                    let opened_at =
+                        to_i64(opened_at(sql, list)?, "the place an import list opened at")?;
                     sql.execute(
                         "UPDATE import_list SET opened_at = ? WHERE id = ?",
                         params![opened_at, list.0],

@@ -163,11 +163,8 @@ impl StoredCandidate {
             verdict,
             matches,
         } = self;
-        let metadata_revision = u64::try_from(metadata_revision).map_err(|error| {
-            DbError::Message(format!(
-                "import candidate {content_hash} has a negative metadata revision: {error}"
-            ))
-        })?;
+        let metadata_revision =
+            to_u64(metadata_revision, "import_candidate_state.metadata_revision")?;
         // With no draft row a candidate holds its files' blank draft, which
         // nobody wrote; an imported candidate holds none, and nothing reads
         // its author.

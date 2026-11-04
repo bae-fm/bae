@@ -26,7 +26,6 @@ mod writes;
 use super::*;
 use crate::list::{ImportListId, ImportListView};
 use crate::PendingFilter;
-use folder_scans::columns::{to_u32, to_u64};
 use order::{Items, Shown};
 
 pub use selection::SelectionWrite;

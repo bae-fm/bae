@@ -55,7 +55,7 @@ fn load_folder_scan_snapshots_on(
         })?;
         let status = match (status.as_str(), error) {
             ("scanning", None) => crate::FolderScanStatus::Scanning {
-                found_count: columns::to_u64(found_count, "current folder-scan candidate count")?,
+                found_count: to_u64(found_count, "current folder-scan candidate count")?,
             },
             ("complete", None) => crate::FolderScanStatus::Complete,
             ("failed", Some(error)) => crate::FolderScanStatus::Failed { error },

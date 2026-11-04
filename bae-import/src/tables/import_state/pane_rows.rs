@@ -639,16 +639,17 @@ impl StoredTrack {
             "sheet_slice" => AudioFile::SheetSlice {
                 file_id: self.file_id,
                 sheet_id: self.sheet_id.ok_or_else(|| missing("sheet"))?,
-                index: u32::try_from(self.slice_index.ok_or_else(|| missing("slice"))?)
-                    .map_err(|error| missing(&format!("a readable slice ({error})")))?,
+                index: to_u32(
+                    self.slice_index.ok_or_else(|| missing("slice"))?,
+                    "import_candidate_track.slice_index",
+                )?,
             },
             other => return Err(DbError::unreadable("import_candidate_track.file_kind", other)),
         };
         let stated_length_ms = self
             .stated_length_ms
-            .map(u64::try_from)
-            .transpose()
-            .map_err(|error| missing(&format!("a readable stated length ({error})")))?;
+            .map(|length| to_u64(length, "import_candidate_track.stated_length_ms"))
+            .transpose()?;
         Ok(CandidateTrack {
             edit: RawTrackEdit { id: self.track_id, title: self.title, artist_assignments, file },
             place: bae_types::mediums::TrackPlace {

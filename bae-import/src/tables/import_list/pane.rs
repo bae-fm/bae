@@ -105,9 +105,7 @@ pub(super) fn load_candidate_detail_on(
         params![coven::path_bytes(&candidate.watched_folder_path), candidate.key()],
         |row| row.get::<_, i64>(0),
     )?;
-    let metadata_revision = u64::try_from(metadata_revision).map_err(|error| {
-        DbError::Message(format!("candidate metadata revision is negative: {error}"))
-    })?;
+    let metadata_revision = to_u64(metadata_revision, "import_candidate_state.metadata_revision")?;
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
     let stage = match imported {

@@ -441,11 +441,7 @@ pub(super) fn outcome_of(
                 DbError::Message(format!("verdict {kind} for {content_hash} counts no tracks"))
             })
             .and_then(|count| {
-                u32::try_from(count).map_err(|error| {
-                    DbError::Message(format!(
-                        "verdict {kind} for {content_hash} counts {count} tracks: {error}"
-                    ))
-                })
+                to_u32(count, &format!("the tracks verdict {kind} for {content_hash} counts"))
             })
     };
     // Only the verdicts that hold findings may list releases; a listed row

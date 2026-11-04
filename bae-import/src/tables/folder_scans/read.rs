@@ -290,9 +290,7 @@ pub(crate) fn require_current_candidate(
             "candidate changed before metadata was stored: {candidate_path} no longer names the prepared files"
         )));
     }
-    u64::try_from(generation).map_err(|error| {
-        DbError::Message(format!("candidate scan generation is negative: {error}"))
-    })
+    to_u64(generation, "scan_candidate.generation")
 }
 
 /// The files of the entry joined as `candidate`, as a JSON array in their

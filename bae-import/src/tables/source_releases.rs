@@ -74,14 +74,6 @@ fn catalog_column(value: &str) -> Result<Catalog, DbError> {
         .map_err(|_| DbError::unreadable("a source release's stored catalog", value))
 }
 
-#[expect(
-    clippy::map_err_ignore,
-    reason = "the unreadable value is named; the conversion says nothing past it"
-)]
-fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
-    u64::try_from(value).map_err(|_| DbError::unreadable(what, value))
-}
-
 /// The album year a stored release reads back with: its album's first year,
 /// else its pressing's year.
 fn derived_album_year(first_year: Option<i32>, pressing_year: Option<i32>) -> Option<i32> {

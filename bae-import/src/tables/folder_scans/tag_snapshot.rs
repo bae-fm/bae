@@ -3,7 +3,6 @@
 //! revision it was read at, replaced only while both still stand, and read
 //! back with the stamp it was read under.
 
-use super::columns::*;
 use super::*;
 use crate::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,

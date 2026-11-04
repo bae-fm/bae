@@ -62,8 +62,7 @@ fn load_runs_on(
             .ok_or_else(|| DbError::Message(format!("{key}'s run {run} reads no verdict row")))?;
         let (outcome, _) = outcome_of(verdict, matches.remove(&run).unwrap_or_default())?;
         let signals = signals.map(|stored| stored.signals()).transpose()?;
-        let number = u64::try_from(run)
-            .map_err(|error| DbError::Message(format!("{key} holds run {run}: {error}")))?;
+        let number = to_u64(run, &format!("{key}'s run number"))?;
         runs.entry(key)
             .or_default()
             .insert(IdentifyRunId::of_number(number), PublishedRun { outcome, signals });

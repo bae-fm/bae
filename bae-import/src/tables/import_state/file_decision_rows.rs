@@ -109,11 +109,7 @@ impl StoredFileEdits {
             DbError::Message(format!("{content_hash}'s stored {what} {json:?}: {error}"))
         };
         let mut edits = CandidateFileEdits {
-            revision: u64::try_from(self.revision).map_err(|error| {
-                DbError::Message(format!(
-                    "import candidate {content_hash} has a negative edit revision: {error}"
-                ))
-            })?,
+            revision: to_u64(self.revision, &format!("{content_hash}'s file edit revision"))?,
             ..CandidateFileEdits::default()
         };
         let discs: Vec<StoredSheetDisc> = serde_json::from_str(&self.sheet_discs)
@@ -129,12 +125,10 @@ impl StoredFileEdits {
                         ))
                     })?;
                     SheetDisc::Disc {
-                        number: u32::try_from(number).map_err(|error| {
-                            DbError::Message(format!(
-                                "the disc stored for {} is numbered {number}: {error}",
-                                stored.sheet_id
-                            ))
-                        })?,
+                        number: to_u32(
+                            number,
+                            &format!("the disc number stored for {}", stored.sheet_id),
+                        )?,
                     }
                 }
                 other => {
@@ -186,9 +180,7 @@ pub(super) fn settle_scanned_candidates(
     )?;
     let decided = crate::CandidateFiles {
         content_hash: content_hash.to_string(),
-        file_edit_revision: u64::try_from(next_revision).map_err(|error| {
-            DbError::Message(format!("file edit revision {next_revision}: {error}"))
-        })?,
+        file_edit_revision: to_u64(next_revision, "a file edit revision")?,
     };
     let mut updated_candidates = Vec::with_capacity(settled.len());
     for path in &settled {

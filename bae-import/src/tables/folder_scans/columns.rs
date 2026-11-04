@@ -7,8 +7,6 @@ use crate::folder_scanner::{
     AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
 };
 
-pub(crate) use bae_db::client::query::{to_u32, to_u64};
-
 pub(super) fn scope_text(scope: ReleaseFileScope) -> &'static str {
     match scope {
         ReleaseFileScope::Direct => "direct",

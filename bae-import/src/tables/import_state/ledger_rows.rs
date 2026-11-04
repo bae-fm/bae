@@ -322,9 +322,7 @@ fn store_lookup(
 }
 
 fn column(index: usize) -> Result<i64, DbError> {
-    i64::try_from(index).map_err(|error| {
-        DbError::Message(format!("a ledger list is longer than SQLite counts: {error}"))
-    })
+    to_i64(index, "a ledger row's place in its list")
 }
 
 /// A verdict's ledger as columns of a read that joins its row as `verdict`:
