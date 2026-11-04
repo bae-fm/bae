@@ -126,6 +126,7 @@ pub fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), cra
 pub mod aggregate_ordering;
 pub mod album_listing;
 pub mod chunked_tracks;
+pub mod composed_work;
 pub mod labels;
 pub mod live_query;
 pub mod storage_listing;
