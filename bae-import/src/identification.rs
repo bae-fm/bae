@@ -27,10 +27,10 @@
 
 use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
-use crate::candidates::{Admission, CandidateFiles};
 use crate::extraction::ExtractionSource;
 use crate::tables::NewImportCandidateVerdict;
 use crate::IdentifyRunId;
+use crate::{Admission, CandidateFiles};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_identify::LookupChoices;
 use bae_identify::{IdentifyState, TerminalVerdict, TitleSearch};

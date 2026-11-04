@@ -3,11 +3,11 @@
 use crate::candidate_runtime::{
     IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
 };
-use crate::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::folder_scanner::CandidateFileEdits;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::IdentifyRunId;
+use crate::{Admission, CandidateFiles, SaveFailure};
 use bae_db::test_fixtures::{empty_db, exec_batch};
 use bae_db::watched_path::host_root;
 use bae_db::Database;

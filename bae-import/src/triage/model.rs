@@ -255,3 +255,11 @@ pub enum TriageImportStatus {
         reason: crate::GroupingBlock,
     },
 }
+
+/// The release this device imported from one candidate's files, found by the
+/// folder hash it recorded (`local_release_origin`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportedRelease {
+    pub release_id: String,
+    pub album_id: String,
+}

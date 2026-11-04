@@ -3,11 +3,11 @@
 //! table names last published, a library release's re-identify run, and its
 //! typed search, each read from its own table.
 
+use super::stored_standing::{Admission, SaveFailure};
 use super::{CandidateRuntime, IdentificationStage, StoredRuntime};
-use crate::candidates::{
-    CandidateRuntimeSnapshot, IdentificationRuntime, ImportInFlight, SavingAnswer,
-};
+use crate::types::ImportStep;
 use crate::CandidateKey;
+use bae_identify::PublishedRun;
 use std::collections::HashMap;
 
 /// `key`'s snapshot from its stored runtime; `None` when nothing is in
@@ -141,6 +141,99 @@ impl ImportPercentsWatch {
     ) -> Result<(), tokio::sync::watch::error::RecvError> {
         self.0.wait_for(done).await.map(drop)
     }
+}
+
+/// What is in flight for one key. An entry exists only while one of its
+/// parts is `Some`; all of them `None` is the absence of an entry, not a
+/// value.
+///
+/// Where a folder candidate's identification and import stand is read from
+/// the standings table, the only place it is held; the state a run published,
+/// a library release's re-identify run included, from the runs table beside
+/// it; the search from the search tables.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CandidateRuntimeSnapshot {
+    pub identification: Option<IdentificationRuntime>,
+    /// The running import: claimed, preparing, or partway through a phase.
+    pub import: Option<ImportInFlight>,
+    /// The typed search a person submitted for this candidate, as its sources
+    /// land. `None` before one is submitted and after the files it was of
+    /// change.
+    ///
+    /// It is stored rather than held by the pane because its sources land one
+    /// at a time and the pane is rebuilt from stored state: a value the pane
+    /// owned would be lost on every redraw, and lost outright if the person
+    /// looked at another candidate while a provider was still answering. Each
+    /// landing is a write to the rows this is read from, so what a surface
+    /// draws cannot disagree with what a landing wrote.
+    pub search: Option<crate::candidate_search::CandidateSearch>,
+}
+
+impl CandidateRuntimeSnapshot {
+    /// What identification is doing for the key, as its pane shows it: the
+    /// run in flight or the answer being written, else the wait for a run.
+    /// `None` when nothing is identifying the key, and its pane shows the
+    /// stored verdict; a write that failed reaches the pane through the row.
+    pub fn identification_in_flight(&self) -> Option<IdentificationInFlight> {
+        match self.identification.as_ref()? {
+            IdentificationRuntime::Queued(_) => Some(IdentificationInFlight::Queued),
+            IdentificationRuntime::Running(state) => {
+                Some(IdentificationInFlight::Run(state.clone()))
+            }
+            IdentificationRuntime::Saving(answer) => {
+                Some(IdentificationInFlight::Run(answer.state.clone()))
+            }
+            IdentificationRuntime::SaveFailed(_) => None,
+        }
+    }
+}
+
+/// Where one key's identification stands right now.
+#[derive(Debug, Clone, PartialEq)]
+pub enum IdentificationRuntime {
+    /// Planned for this key and not started.
+    Queued(Admission),
+    /// The latest state the run in flight published — its answer, once it
+    /// reaches one, until the standings table says the answer is being
+    /// written.
+    Running(PublishedRun),
+    /// The answer a run reached, while it is being written.
+    Saving(SavingAnswer),
+    /// Why the last write of an answer did not land. Cleared by the next run
+    /// of this key.
+    SaveFailed(SaveFailure),
+}
+
+/// A run's answer while it is being written, and what was asked of it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SavingAnswer {
+    /// Always answered.
+    pub state: PublishedRun,
+    /// A person asked, while the release this answer picks unattended was
+    /// being read, for the candidate to be imported once the answer stores
+    /// it. Only an answer that picks unattended carries the ask, and it goes
+    /// with the answer.
+    pub import_asked: bool,
+}
+
+/// What identification is doing for a key right now.
+#[derive(Debug, Clone, PartialEq)]
+pub enum IdentificationInFlight {
+    /// On the identification queue, its run not started.
+    Queued,
+    /// The latest state a run published: in flight, or the answer being
+    /// written.
+    Run(PublishedRun),
+}
+
+/// The step a running import is at. It ends with the import: a finished one
+/// leaves the runtime and reads back off the release row it wrote, or the
+/// failure row it wrote. How far through the step it is moves many times a
+/// second, so it is the key's percent in
+/// [`CandidateRuntime::watch_import_percents`](crate::CandidateRuntime::watch_import_percents).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportInFlight {
+    pub step: ImportStep,
 }
 
 #[cfg(test)]

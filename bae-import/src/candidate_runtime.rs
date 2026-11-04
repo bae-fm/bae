@@ -46,8 +46,12 @@ mod standing_writes;
 mod stored_standing;
 mod work;
 pub(crate) use snapshots::compose;
-pub use snapshots::ImportPercentsWatch;
+pub use snapshots::{
+    CandidateRuntimeSnapshot, IdentificationInFlight, IdentificationRuntime, ImportInFlight,
+    ImportPercentsWatch, SavingAnswer,
+};
 pub(crate) use standing_writes::RunSubject;
+pub use stored_standing::{Admission, CandidateFiles, SaveFailure};
 pub(crate) use stored_standing::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredRuntime, StoredStanding,
@@ -117,7 +121,7 @@ pub(crate) mod tests;
 pub enum CandidateRuntimeChange {
     Updated {
         key: CandidateKey,
-        runtime: super::candidates::CandidateRuntimeSnapshot,
+        runtime: CandidateRuntimeSnapshot,
     },
     /// Nothing is running for the key any more.
     Removed {

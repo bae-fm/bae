@@ -8,12 +8,12 @@
 //! write as the change that moves it.
 
 use super::{CandidateRuntime, IdentificationChange, IdentificationMove, IdentificationStage};
-use crate::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::tables::ImportClaim;
 use crate::triage::TriageRuntimeFacts;
 use crate::CandidateKey;
 use crate::IdentifyRunId;
 use crate::ImportStep;
+use crate::{Admission, CandidateFiles, SaveFailure};
 use bae_db::DbError;
 
 /// What a run identifies: a folder candidate's files, whose standing the

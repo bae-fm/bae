@@ -5,13 +5,13 @@
 
 use super::*;
 use crate::candidate_runtime::tests::*;
-use crate::candidates::ImportInFlight;
-use crate::candidates::{Admission, IdentificationRuntime, SaveFailure, SavingAnswer};
 use crate::folder_scanner::InvalidCandidate;
 use crate::types::{ImportPhase, ImportProgress, PrepareStep};
 use crate::ImportEvent;
+use crate::ImportInFlight;
 use crate::ImportStep;
 use crate::ScanEvent;
+use crate::{Admission, IdentificationRuntime, SaveFailure, SavingAnswer};
 use bae_catalogs::catalog::LookupCatalog;
 
 /// An answer still being written keeps the key: only the import half ends.

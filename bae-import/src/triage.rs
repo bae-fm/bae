@@ -20,7 +20,6 @@
 
 use super::folder_scanner::FolderReleaseDecisionKey;
 use super::types::ReleaseLink;
-use super::ImportedRelease;
 use super::MetadataAuthor;
 use bae_identify::{FolderCheck, VerdictSummary};
 

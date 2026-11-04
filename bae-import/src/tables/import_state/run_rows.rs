@@ -20,7 +20,7 @@ use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_c
 use super::verdict_rows::{Outcome, Owner};
 use super::*;
 use crate::candidate_runtime::{IdentificationChange, IdentificationMove, StoredRuntime};
-use crate::candidates::CandidateFiles;
+use crate::CandidateFiles;
 use crate::IdentifyRunId;
 use bae_catalogs::source_release::SourceRelease;
 use bae_identify::signals::Signals;

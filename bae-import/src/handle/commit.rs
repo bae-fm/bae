@@ -82,6 +82,38 @@ impl ImportServiceHandle {
     }
 }
 
+/// Where a stored candidate stands in the queue, read once from the three
+/// places that each hold one fact about it: the skip table, the releases this
+/// device imported, and the standings table's import claims. Every gate that decides what
+/// may be done to a candidate reads this rather than composing the three
+/// on its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CandidateStanding {
+    /// The person set it aside.
+    pub skipped: bool,
+    /// This device imported a release from its files.
+    pub imported: bool,
+    /// An import has claimed it and is running.
+    pub claimed: bool,
+}
+
+impl CandidateStanding {
+    /// Whether identification may still answer for it: not set aside, not
+    /// imported here, not being imported.
+    pub fn answerable(&self) -> bool {
+        !self.skipped && !self.imported && !self.claimed
+    }
+
+    /// Whether its preparation may still be changed. A skipped candidate may
+    /// be: skipping sets it aside, it does not freeze it.
+    pub fn editable(&self) -> Result<(), crate::ImportError> {
+        if self.claimed {
+            return Err(crate::ImportError::CandidateImportInProgress);
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 #[path = "commit_tests.rs"]
 mod tests;

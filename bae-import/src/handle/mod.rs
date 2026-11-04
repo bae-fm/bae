@@ -32,6 +32,7 @@ mod shared_album;
 mod verdict_write;
 mod watch;
 
+pub use commit::CandidateStanding;
 pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
 #[cfg(any(test, feature = "test-utils"))]
 pub use event_bus::{ImportProgressFeed, ScanEvents};
@@ -41,9 +42,9 @@ pub use search::GroupedSearchResults;
 pub(crate) use verdict_write::VerdictWrite;
 
 use super::candidate_runtime::CandidateRuntime;
-use super::candidates::{CandidateRuntimeSnapshot, ImportCandidateSnapshot};
 use crate::folder_scan_status::WatchedFolderScanStatus;
 use crate::watching::WatcherCommand;
+use crate::CandidateRuntimeSnapshot;
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]
@@ -476,4 +477,25 @@ impl ImportServiceHandle {
             .await
             .expect("a test claims a candidate no import owns");
     }
+}
+
+/// One candidate by key, with its runtime joined: the read behind every
+/// "what is this key right now" question.
+#[derive(Debug, Clone)]
+pub enum ImportCandidateSnapshot {
+    Folder {
+        candidate: FolderCandidate,
+        /// `None` when nothing is running for this key.
+        runtime: Option<CandidateRuntimeSnapshot>,
+        actionable: bool,
+        skipped: bool,
+        is_added: bool,
+    },
+    Invalid(InvalidCandidate),
+    /// A key with runtime but no scanned folder — a library release being
+    /// re-identified.
+    Runtime {
+        key: String,
+        runtime: CandidateRuntimeSnapshot,
+    },
 }

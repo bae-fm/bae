@@ -18,7 +18,7 @@ use super::match_rows::load_search_matches_on;
 use super::match_rows::{store_match, store_picked, Listing, MatchOwner, Written};
 use super::*;
 use crate::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
-use crate::candidates::CandidateFiles;
+use crate::CandidateFiles;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SearchQuery};

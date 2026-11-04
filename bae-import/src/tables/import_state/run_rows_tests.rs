@@ -5,8 +5,8 @@ use super::*;
 use crate::candidate_runtime::tests::{
     extracted_signals, manual_only, published, run, signals_context, triangulating,
 };
-use crate::candidates::Admission;
 use crate::tables::import_state::tests::{pane_candidate_key, stored_pane_candidate};
+use crate::Admission;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_db::test_fixtures::empty_db;
 

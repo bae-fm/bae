@@ -23,9 +23,9 @@ use crate::candidate_runtime::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredStanding,
 };
-use crate::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::triage::TriageRuntimeFacts;
 use crate::IdentifyRunId;
+use crate::{Admission, CandidateFiles, SaveFailure};
 use crate::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads

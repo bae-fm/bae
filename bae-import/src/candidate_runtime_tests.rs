@@ -4,12 +4,12 @@
 //! tests share.
 
 use super::*;
-use crate::candidates::CandidateFiles;
-use crate::candidates::ImportInFlight;
 use crate::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::identification::tests::*;
 use crate::types::{ImportPhase, ImportProgress, PrepareStep};
+use crate::CandidateFiles;
 use crate::IdentifyRunId;
+use crate::ImportInFlight;
 use crate::ImportStep;
 use std::path::PathBuf;
 

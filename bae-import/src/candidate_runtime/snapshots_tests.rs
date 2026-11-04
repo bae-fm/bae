@@ -4,10 +4,10 @@
 
 use super::*;
 use crate::candidate_runtime::tests::*;
-use crate::candidates::ImportInFlight;
-use crate::candidates::{Admission, IdentificationRuntime};
 use crate::types::{ImportPhase, ImportProgress, PrepareStep};
+use crate::ImportInFlight;
 use crate::ImportStep;
+use crate::{Admission, IdentificationRuntime};
 // ── What identification is doing, as the pane shows it ──────────────────────
 
 use crate::IdentificationInFlight;

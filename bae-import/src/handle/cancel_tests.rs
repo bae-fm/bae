@@ -235,7 +235,7 @@ impl Drop for HeldProgress<'_> {
 }
 
 /// Which step an import is at, in the order an import takes them.
-fn import_position(import: &crate::candidates::ImportInFlight) -> u8 {
+fn import_position(import: &crate::ImportInFlight) -> u8 {
     use crate::{ImportPhase, ImportStep, PrepareStep};
     match import.step {
         ImportStep::Preparing(PrepareStep::Queued) => 0,
@@ -275,7 +275,7 @@ async fn assert_imports_again_from_the_start(
     }
     assert_eq!(
         shown.first(),
-        Some(&crate::candidates::ImportInFlight {
+        Some(&crate::ImportInFlight {
             step: crate::ImportStep::Preparing(crate::PrepareStep::Queued),
         }),
         "the import starts from the queue, not where the last attempt stopped"

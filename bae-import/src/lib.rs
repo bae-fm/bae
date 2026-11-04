@@ -21,8 +21,6 @@ pub(crate) mod candidate_runtime;
 #[cfg(desktop)]
 pub mod candidate_search;
 #[cfg(desktop)]
-pub(crate) mod candidates;
-#[cfg(desktop)]
 mod catalog_sessions;
 #[cfg(desktop)]
 pub mod cover_art;
@@ -219,18 +217,17 @@ pub use candidate_runtime::CandidateRuntime;
 pub(crate) use candidate_runtime::CandidateWork;
 #[cfg(desktop)]
 pub use candidate_runtime::ImportPercentsWatch;
+#[cfg(desktop)]
+pub use candidate_runtime::{
+    Admission, CandidateFiles, CandidateRuntimeSnapshot, IdentificationInFlight,
+    IdentificationRuntime, ImportInFlight, SaveFailure, SavingAnswer,
+};
 #[cfg(any(test, feature = "test-utils"))]
 pub use candidate_runtime::{
     CandidateRuntimeChange, CandidateRuntimeChanges, IdentificationCounts,
 };
 #[cfg(desktop)]
 pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
-#[cfg(desktop)]
-pub use candidates::{
-    Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateStanding, IdentificationInFlight,
-    IdentificationRuntime, ImportCandidateSnapshot, ImportInFlight, ImportedRelease, SaveFailure,
-    SavingAnswer,
-};
 #[cfg(desktop)]
 pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError};
 #[cfg(desktop)]
@@ -259,8 +256,8 @@ pub use grouping::GroupingBlock;
 pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
-    GroupedSearchResults, ImportEvent, ImportEventBus, ImportEvents, ImportServiceHandle,
-    ImportStart, ScanEvent,
+    CandidateStanding, GroupedSearchResults, ImportCandidateSnapshot, ImportEvent, ImportEventBus,
+    ImportEvents, ImportServiceHandle, ImportStart, ScanEvent,
 };
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub use handle::{ImportProgressFeed, ScanEvents};
@@ -302,9 +299,10 @@ pub use session::{
 #[cfg(desktop)]
 pub use triage::{
     BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
-    IdentifyingStep, ImportStanding, NeedsYouReason, PendingBadge, PendingStanding, PendingState,
-    StoredLookup, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
-    TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
+    IdentifyingStep, ImportStanding, ImportedRelease, NeedsYouReason, PendingBadge,
+    PendingStanding, PendingState, StoredLookup, TriageGroup, TriageImportStatus,
+    TriageMetadataSummary, TriagePlacement, TriageRow, TriageRuntimeFacts, TriageSkipAction,
+    TriageTab, TriageTabCounts,
 };
 #[cfg(desktop)]
 pub use types::ImportCommand;

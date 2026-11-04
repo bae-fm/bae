@@ -7,7 +7,7 @@
 //! its result, so a guard and the write it guards are one: no change is
 //! applied to a standing it did not read.
 
-use crate::candidates::{Admission, CandidateFiles, SaveFailure};
+use crate::folder_scanner::FolderCandidate;
 use crate::triage::{IdentificationStatus, TriageRuntimeFacts};
 use crate::IdentifyRunId;
 use crate::ImportStep;
@@ -273,6 +273,61 @@ impl IdentificationMove {
                 Some(IdentificationStage::ReadingPick { import_asked: true, .. })
             )
     }
+}
+
+/// Why a run's answer did not land, which decides whether identifying the
+/// candidate again can land it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SaveFailure {
+    /// The answer was not written; another run may write it.
+    NotWritten { error: String },
+    /// The release the answer picks could not be read into the folder's
+    /// draft. Another run reaches the same answer and fails the same way.
+    Inapplicable { error: String },
+}
+
+impl SaveFailure {
+    pub fn error(&self) -> &str {
+        match self {
+            Self::NotWritten { error } | Self::Inapplicable { error } => error,
+        }
+    }
+
+    /// Whether identifying the candidate again can land what this run could
+    /// not.
+    pub fn retryable(&self) -> bool {
+        match self {
+            Self::NotWritten { .. } => true,
+            Self::Inapplicable { .. } => false,
+        }
+    }
+}
+
+/// The files an identification is of: a candidate's content hash and its
+/// file-decision revision. Candidates sharing them are one identification
+/// job, since the answer is stored under them, and a standing recorded for
+/// other files than a candidate has now is not that candidate's.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CandidateFiles {
+    pub content_hash: String,
+    pub file_edit_revision: u64,
+}
+
+impl CandidateFiles {
+    pub fn of(candidate: &FolderCandidate) -> Self {
+        Self {
+            content_hash: candidate.files.content_hash(),
+            file_edit_revision: candidate.file_edit_revision,
+        }
+    }
+}
+
+/// How a candidate got on the identification queue: found while
+/// identification ran on its own, or asked for by a person.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Admission {
+    Automatic,
+    Requested,
 }
 
 #[cfg(test)]
