@@ -14,7 +14,6 @@ use super::release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LIN
 use super::verdict_rows::{identification_of, read_verdict_row, verdict_columns, VerdictRow};
 use super::*;
 use crate::tables::FinishRead;
-use bae_db::client::query::CandidateRows;
 
 /// One candidate's own columns and the rows joined one-to-one onto it, as
 /// SQLite hands them over: everything of the candidate but its matches.

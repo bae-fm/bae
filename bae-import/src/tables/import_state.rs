@@ -29,9 +29,9 @@ pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
 ]);
 
 use super::*;
-use bae_db::client::query::CandidateRows;
 
 mod album_pick_rows;
+mod candidate_rows;
 mod cover_rows;
 mod draft_store;
 pub(super) mod failure_rows;
@@ -54,6 +54,7 @@ mod standing_rows;
 mod verdict_rows;
 
 pub(super) use album_pick_rows::load_album_pick_on;
+pub(super) use candidate_rows::CandidateRows;
 pub(super) use cover_rows::{cover_read_columns, read_cover};
 use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use file_decision_rows::load_candidate_file_edits_on;

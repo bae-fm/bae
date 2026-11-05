@@ -30,62 +30,6 @@ pub(super) fn in_clause_placeholders(count: usize) -> String {
     (0..count).map(|_| "?").collect::<Vec<_>>().join(",")
 }
 
-/// Which candidates a loader reads the rows of, by content hash: every one's,
-/// or one candidate's, each by its own statement. The one
-/// candidate's statement names it by key, which its index reaches and which
-/// coven reruns a live query for only when that candidate's rows change.
-#[cfg(desktop)]
-#[derive(Debug, Clone, Copy)]
-pub enum CandidateRows<'a> {
-    /// Every candidate, which only the tests that read back everything a
-    /// write stored ask for.
-    #[cfg(any(test, feature = "test-utils"))]
-    All,
-    One(&'a str),
-}
-
-#[cfg(desktop)]
-impl<'a> CandidateRows<'a> {
-    /// The clause keeping these candidates' rows by `column`, and what it
-    /// binds; no clause for every candidate.
-    pub fn filter(self, column: &str) -> CandidateFilter {
-        match self {
-            #[cfg(any(test, feature = "test-utils"))]
-            Self::All => CandidateFilter { clause: String::new(), binds: CandidateBinds::None },
-            Self::One(key) => CandidateFilter {
-                clause: format!("WHERE {column} = :candidate"),
-                binds: CandidateBinds::One(key.to_string()),
-            },
-        }
-    }
-}
-
-/// A [`CandidateRows`]' clause, and the parameter it binds.
-#[cfg(desktop)]
-pub struct CandidateFilter {
-    pub clause: String,
-    binds: CandidateBinds,
-}
-
-#[cfg(desktop)]
-enum CandidateBinds {
-    #[cfg(any(test, feature = "test-utils"))]
-    None,
-    One(String),
-}
-
-#[cfg(desktop)]
-impl CandidateFilter {
-    /// What the clause binds, as a statement's parameters.
-    pub fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
-        match &self.binds {
-            #[cfg(any(test, feature = "test-utils"))]
-            CandidateBinds::None => Vec::new(),
-            CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
-        }
-    }
-}
-
 /// One-row SELECT shared by coven's write [`CovenWrite`] and its read
 /// [`SqlReadContext`], used when artist resolution runs inside either context.
 pub trait QueryOne {
