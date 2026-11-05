@@ -142,8 +142,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // What each admin change this device asked for changes, while coven
     // lists its operation.
     "admin_operations",
-    // The cast receivers discovery found.
-    "cast_device",
     // The artist each artist shows as, kept from the artists and their
     // merges by local triggers.
     "artist_shown_as",

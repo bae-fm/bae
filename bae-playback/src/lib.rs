@@ -42,7 +42,7 @@ mod volume_level;
 
 /// The playback tables' part of the library's schema.
 pub const SCHEMA_PARTS: &[bae_db::SchemaPart] =
-    &[tables::QUEUE_SCHEMA, tables::NOW_SCHEMA, tables::TIMELINE_SCHEMA];
+    &[tables::QUEUE_SCHEMA, tables::NOW_SCHEMA, tables::TIMELINE_SCHEMA, renderer::picker::SCHEMA];
 
 /// The schema this crate's tests open their stores on: bae-db's part,
 /// preferences' and playback's.

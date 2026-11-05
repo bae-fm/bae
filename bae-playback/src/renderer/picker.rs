@@ -1,7 +1,11 @@
 //! The receivers the picker lists, as the library's device-local
 //! `cast_device` table holds them: what discovery last found, written by
-//! bae-cast in one write per change. The table's SQL is here, as functions
-//! over the library's store.
+//! bae-cast in one write per change. Its table is `picker.sql`; the functions
+//! here read and write it.
+
+/// The table's part of the library's schema.
+pub(crate) const SCHEMA: bae_db::SchemaPart =
+    bae_db::SchemaPart::new(&[include_str!("picker.sql")]);
 
 use bae_db::{Database, DbError};
 use coven::{CovenError, SqlReadContext};

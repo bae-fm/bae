@@ -839,18 +839,6 @@ CREATE TABLE IF NOT EXISTS audio_segment_scrub_points (
     FOREIGN KEY (audio_format_segment_id) REFERENCES audio_format_segments (id) ON DELETE CASCADE
 ) STRICT;
 
--- ── Cast receivers ─────────────────────────────────────────────────────────────
-
--- A receiver the cast picker lists: what discovery last found on the network,
--- or what a host's browser reported, merged into one list and written whole
--- in one write per change. Never synced. Discovery doesn't outlive the
--- process that ran it, so the table is emptied as the library opens.
-CREATE TABLE IF NOT EXISTS cast_device (
-    id   TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK (kind IN ('cast', 'dlna', 'airplay'))
-) STRICT;
-
 -- Profiles retain the stable member id even after membership removal.
 -- `avatar_id` is the profile picture's coven file (`coven_files`); NULL is
 -- no picture.
