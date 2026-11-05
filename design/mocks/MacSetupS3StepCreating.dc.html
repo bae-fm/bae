@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS settings: Set up sync, S3-compatible, step 4</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.side{display:block;width:100%;text-align:left;border:0;background:none;color:#F2F2F4;font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
+.box{background:#191925;border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
+.r+.r{border-top:1px solid rgba(255,255,255,0.07)}
+.sec{margin:14px 4px 6px;font-size:13px;font-weight:600;color:#F2F2F4}
+.v{color:#B1B1BB}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif;display:flex;align-items:center;gap:6px}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif}
+.foot{font-size:11px;color:#B1B1BB;padding:6px 4px 0}
+.opt{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;font-size:13px}
+.opt+.opt{border-top:1px solid rgba(255,255,255,0.07)}
+.rad{width:14px;height:14px;border-radius:7px;flex:none;margin-top:1px;box-sizing:border-box;border:1.5px solid #6A6A7A}
+.rad.on{border:4px solid #EE98C1}
+.sub{font-size:11px;color:#B1B1BB;margin-top:2px}
+.fld{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:30px;padding:3px 12px;font-size:13px}
+.fld+.fld{border-top:1px solid rgba(255,255,255,0.07)}
+.inp{width:220px;height:20px;border-radius:5px;background:#11111B;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);color:#F2F2F4;font-size:12px;line-height:20px;padding:0 6px;box-sizing:border-box;white-space:nowrap;overflow:hidden}
+.pri{background:#EE98C1 !important;color:#11111B !important}
+</style>
+</helmet>
+<div style="position: relative; width: 690px; height: 600px; overflow: hidden; border-radius: 10px; background: #11111B; color: #F2F2F4; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; display: flex; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08)">
+<nav aria-label="Settings panes" style="width: 190px; flex: none; background: #191925; padding: 40px 10px 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative">
+<div aria-hidden="true" style="position: absolute; top: 14px; left: 14px; display: flex; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+<button class="side" style="">Appearance</button><button class="side" style="background: rgba(238,152,193,0.22); font-weight: 600;">Library</button><button class="side" style="">Playback</button><button class="side" style="">Transfers</button><button class="side" style="">Import</button><button class="side" style="">Formats</button><button class="side" style="">Casting</button><button class="side" style="">Subsonic</button><button class="side" style="">Automation</button><button class="side" style="">About</button>
+</nav>
+<main style="flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column">
+<h1 style="margin: 0 0 12px; font-size: 15px; font-weight: 700">Library</h1>
+<div class="box"><div class="r"><span>Name</span><span style="display: flex; align-items: center; gap: 10px"><span class="v">Library Name</span><button class="btn">Rename…</button></span></div><div class="r"><span>Library folder</span><button class="btn">Show in Finder</button></div></div>
+<div style="height: 14px"></div>
+<div class="box"><div class="r" style="cursor: pointer"><span>Sync</span><span style="display: flex; align-items: center; gap: 8px; color: #B1B1BB">Not synced<svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" style="fill: #B1B1BB"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span></div><div class="r" style="border-top: 0; padding-top: 0; padding-bottom: 8px"><span style="font-size: 12px; color: #B1B1BB">This library is only on this Mac.</span><button class="btn">Set up sync…</button></div></div>
+</main>
+<div style="position: absolute; inset: 0; background: rgba(0,0,0,0.35); display: flex; justify-content: center; align-items: flex-start"><div role="dialog" aria-label="Set up sync: S3-compatible" style="width: 460px; border-radius: 0 0 10px 10px; background: #232333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column"><div style="padding: 14px 16px; font-size: 15px; font-weight: 700">Set up sync: S3-compatible</div><div style="height: 1px; background: rgba(255,255,255,0.08)"></div><div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 13px"><div style="color: #F2F2F4; line-height: 17px">Creating the library in storage…</div><div style="position: relative; height: 6px; border-radius: 3px; background: #11111B; overflow: hidden"><div style="position: absolute; left: 38%; width: 30%; height: 100%; border-radius: 3px; background: #EE98C1"></div></div></div><div style="padding: 0 16px 16px; display: flex; justify-content: flex-end; gap: 8px"><button class="btn">Cancel</button></div></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

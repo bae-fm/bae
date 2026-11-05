@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Restore code</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#11111B}
+</style>
+</helmet>
+<div style="width: 100%; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #F2F2F4; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif"><div style="background: #191925; border-radius: 8px; padding: 10px 12px; font: 13px/20px ui-monospace, Menlo, monospace; word-break: break-all"><span aria-label="Restore code, partly hidden" style="user-select: none; -webkit-user-select: none; color: #B1B1BB">{{masked}}</span><button aria-label="{{copyLabel}}" onClick="{{copy}}" style="display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; width: 20px; height: 20px; margin-left: 6px; padding: 0; border: 0; border-radius: 4px; background: none; color: #B1B1BB; cursor: pointer"><sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg></sc-if></button></div><div style="margin: 0 4px; font-size: 12px; line-height: 16px; color: #B1B1BB">Save this code. You can use it to regain access to your library if you lose all your devices.</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":460,"height":130}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const code = 'CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const copied = !!(this.state && this.state.copied);
+    return {
+      code,
+      masked: code.slice(0, 9) + '•'.repeat(code.length - 13) + code.slice(-4),
+      copied,
+      notCopied: !copied,
+      copyLabel: copied ? 'Copied' : 'Copy',
+      copy: () => {
+        try { navigator.clipboard.writeText(code); } catch (e) {}
+        this.setState({ copied: true });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

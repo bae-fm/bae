@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Storage inspector with file details</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#e8a3c7}a:hover{color:#f2c1da}
+</style>
+</helmet>
+<div style="width: 440px; height: 614px; box-sizing: border-box; background: #1e1e1e; color: #e6e6e6; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #333; font-size: 12px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="color: #7fd6cf; font-weight: 600">3 uploading</span>
+<span style="color: #9b9b9b">·</span>
+<span style="color: #c9c9c9">4 queued</span>
+<span style="color: #9b9b9b">·</span>
+<span style="color: #9b9b9b">105 stored</span>
+<span style="flex-grow: 1"></span>
+<button type="button" style="font: inherit; color: #e8a3c7; background: #2c2a2c; border: 0; border-radius: 6px; padding: 3px 10px">Cancel</button>
+</div>
+<div style="display: flex; align-items: baseline; color: #9b9b9b; font-variant-numeric: tabular-nums">
+<span>1.71 GB of 1.92 GB</span>
+<span style="flex-grow: 1"></span>
+<span>6.4 MB/s</span>
+</div>
+<div style="height: 4px; border-radius: 2px; background: #3a3a3a; overflow: hidden"><div style="width: 89%; height: 4px; background: #7fd6cf"></div></div>
+</div>
+<div style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden">
+<sc-for list="{{rows}}" as="row" hint-placeholder-count="10">
+<div style="position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; padding: 8px 16px; border-bottom: 1px solid #2e2e2e; background: {{row.fill}}">
+<sc-if value="{{row.isStored}}" hint-placeholder-val="{{true}}">
+<span style="width: 16px; height: 16px"></span>
+</sc-if>
+<sc-if value="{{row.isQueued}}" hint-placeholder-val="{{false}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="3 3" role="img" aria-label="Queued"><circle cx="12" cy="12" r="8"></circle></svg>
+</sc-if>
+<sc-if value="{{row.isUploading}}" hint-placeholder-val="{{false}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" role="img" aria-label="Uploading"><circle cx="12" cy="12" r="8" stroke="#3a3a3a"></circle><circle cx="12" cy="12" r="8" stroke="#7fd6cf" pathLength="100" stroke-dasharray="{{row.dash}}" transform="rotate(-90 12 12)"></circle></svg>
+</sc-if>
+<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: {{row.nameColor}}">{{row.name}}</span>
+<span style="color: #9b9b9b; font-variant-numeric: tabular-nums; text-align: right; min-width: 56px">{{row.size}}</span>
+</div>
+</sc-for>
+</div>
+<div style="position: relative; flex-shrink: 0; border-top: 1px solid #0f0f0f; background: #232323; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: flex-start; gap: 8px">
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">07 Copper Wire.flac</span>
+</div>
+<button type="button" aria-label="Close file details" style="width: 22px; height: 22px; border: 0; border-radius: 11px; background: #333; color: #9b9b9b; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6"></path></svg></button>
+</div>
+<div style="display: grid; grid-template-columns: 84px minmax(0, 1fr); row-gap: 7px; column-gap: 12px; font-size: 12px">
+<span style="color: #9b9b9b">Folder</span><span>Disc 1</span>
+<span style="color: #9b9b9b">Kind</span><span>FLAC audio</span>
+<span style="color: #9b9b9b">Format</span><span>44.1 kHz · 16-bit · stereo · 912 kbps</span>
+<span style="color: #9b9b9b">Size</span><span style="font-variant-numeric: tabular-nums">32.9 MB</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":440,"height":614}}'>
+class Component extends DCLogic {
+renderVals() {
+const flac = 'FLAC · 44.1 kHz · 16-bit · stereo';
+const stored = { isStored: true, isQueued: false, isUploading: false, dash: '0 100', nameColor: '#e6e6e6' };
+const queued = { isStored: false, isQueued: true, isUploading: false, dash: '0 100', nameColor: '#8a8a8a' };
+const up = (p, rate) => ({ isStored: false, isQueued: false, isUploading: true, dash: parseInt(p, 10) + ' 100', nameColor: '#9fe0da' });
+return {
+rows: [
+{ name: 'Disc 1/05 Paper Lanterns.flac', size: '23.7 MB', kind: flac, ...stored },
+{ name: 'Disc 1/06 Low Tide Radio.flac', size: '22.6 MB', kind: flac, ...queued },
+{ name: 'Disc 1/07 Copper Wire.flac', size: '32.9 MB', kind: flac, ...up('38%', '2.1 MB/s'), fill: '#2a3d63' },
+{ name: 'Disc 1/08 North of the Yard.flac', size: '27.4 MB', kind: flac, ...up('71%', '2.3 MB/s') },
+{ name: 'Disc 1/09 Glass Orchard.flac', size: '25.7 MB', kind: flac, ...up('12%', '2.0 MB/s') },
+{ name: 'Disc 1/10 Saltmarsh.flac', size: '29.6 MB', kind: flac, ...queued },
+{ name: 'Disc 1/foo_dr.txt', size: '4 kB', kind: 'Text', ...queued },
+{ name: 'Disc 1/front.jpg', size: '58 kB', kind: 'JPEG image', ...stored },
+{ name: 'Disc 1/Lantern Season.log', size: '20 kB', kind: 'Rip log', ...stored },
+{ name: 'Disc 1/Lantern Season.cue', size: '4 kB', kind: 'Cue sheet', ...queued },
+{ name: 'Disc 2/01 Weathervane.flac', size: '17.4 MB', kind: flac, ...stored },
+{ name: 'Disc 2/02 Tin Roof.flac', size: '31.1 MB', kind: flac, ...stored }
+].map((r) => ({ fill: 'transparent', ...r }))
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS settings: Listening history changed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.side{display:block;width:100%;text-align:left;border:0;background:none;color:#F2F2F4;font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
+.box{background:#191925;border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
+.r+.r{border-top:1px solid rgba(255,255,255,0.07)}
+.sec{margin:14px 4px 6px;font-size:13px;font-weight:600;color:#F2F2F4}
+.v{color:#B1B1BB}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif;display:flex;align-items:center;gap:6px}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif}
+.foot{font-size:11px;color:#B1B1BB;padding:6px 4px 0}
+</style>
+</helmet>
+<div style="width: 690px; height: 600px; overflow: hidden; border-radius: 10px; background: #11111B; color: #F2F2F4; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; display: flex; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08)">
+<nav aria-label="Settings panes" style="width: 190px; flex: none; background: #191925; padding: 40px 10px 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative">
+<div aria-hidden="true" style="position: absolute; top: 14px; left: 14px; display: flex; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+<button class="side" style="">Appearance</button><button class="side" style="background: rgba(238,152,193,0.22); font-weight: 600;">Library</button><button class="side" style="">Playback</button><button class="side" style="">Transfers</button><button class="side" style="">Import</button><button class="side" style="">Formats</button><button class="side" style="">Casting</button><button class="side" style="">Subsonic</button><button class="side" style="">Automation</button><button class="side" style="">About</button>
+</nav>
+<main style="flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; margin: 0 0 12px"><button aria-label="Back to Library" style="width: 22px; height: 22px; border-radius: 5px; border: 0; background: #2D2D40; display: flex; align-items: center; justify-content: center; padding: 0"><svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" style="fill: #F2F2F4"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"></path></svg></button><h1 style="margin: 0; font-size: 15px; font-weight: 700">People and devices</h1></div>
+<div class="sec" style="margin-top: 4px">You</div>
+<div class="box"><div class="r"><span style="display: flex; align-items: center; gap: 6px">Name</span><span style="display: flex; align-items: center; gap: 8px"><span class="v">Your Name</span><button class="btn">Change…</button></span></div><div class="r"><span style="display: flex; align-items: center; gap: 6px">Role</span><span style="display: flex; align-items: center; gap: 8px"><span class="v">Admin</span></span></div><div class="r"><span style="display: flex; align-items: center; gap: 6px">Listening history</span><span style="display: flex; align-items: center; gap: 8px"><button class="pop">Everyone<svg width="9" height="9" viewBox="0 0 24 24" aria-hidden="true" style="fill: #B1B1BB"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button></span></div></div>
+<div class="foot">Who sees what you play, or Off to keep no record. Applies to new plays; earlier plays keep who could see them.</div>
+<div class="sec">Devices</div>
+<div class="box"><div class="r"><span style="display: flex; align-items: center; gap: 6px">This Mac</span><span style="display: flex; align-items: center; gap: 8px"><span class="v">This device</span><button class="btn" style="color: #F29C9F">Remove…</button></span></div><div class="r"><span style="display: flex; align-items: center; gap: 6px">Phone</span><span style="display: flex; align-items: center; gap: 8px"><button class="btn" style="color: #F29C9F">Remove…</button></span></div><div class="r"><span style="display: flex; align-items: center; gap: 6px"><span style="color: #EE98C1">Add device…</span></span><span style="display: flex; align-items: center; gap: 8px"></span></div></div>
+<div class="sec">People</div>
+<div class="box"><div class="r"><span style="display: flex; align-items: center; gap: 6px"><span style="font-weight: 600">Person Name</span><span style="font-size: 11px; line-height: 16px; padding: 0 6px; border-radius: 4px; background: #2D2D40; color: #B1B1BB">Member</span></span><span style="display: flex; align-items: center; gap: 8px"><button class="btn">Make admin</button><button class="btn" style="color: #F29C9F">Remove…</button></span></div><div class="r"><span style="display: flex; align-items: center; gap: 6px">Tablet</span><span style="display: flex; align-items: center; gap: 8px"><button class="btn" style="color: #F29C9F">Remove…</button></span></div></div>
+<div style="display: flex; justify-content: flex-end; margin-top: 10px"><button class="btn">Invite…</button></div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

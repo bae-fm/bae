@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Storage inspector today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#e8a3c7}a:hover{color:#f2c1da}
+</style>
+</helmet>
+<div style="width: 440px; height: 900px; box-sizing: border-box; background: #1e1e1e; color: #e6e6e6; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #333; color: #9b9b9b">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9 7v10M9 7l-2.5 2.5M9 7l2.5 2.5M15 17V7M15 17l-2.5-2.5M15 17l2.5-2.5"></path></svg>
+<span style="font-size: 15px; font-weight: 600">Sync queue</span>
+<span style="flex-grow: 1"></span>
+<button type="button" style="font: inherit; font-size: 12px; color: #e8a3c7; background: #2c2a2c; border: 0; border-radius: 6px; padding: 3px 10px">Pause</button>
+<span style="width: 84px" aria-hidden="true"></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 16px; border-bottom: 1px solid #333; font-size: 12px">
+<div style="display: flex; align-items: center">
+<span style="display: inline-flex; align-items: center; gap: 5px; color: #7fd6cf; background: #1f3533; border-radius: 5px; padding: 2px 7px; font-weight: 600">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 7l-4 4h3v6h2v-6h3z" fill="#1f3533"></path></svg>3 uploading</span>
+<span style="flex-grow: 1"></span>
+<button type="button" style="font: inherit; color: #e8a3c7; background: #2c2a2c; border: 0; border-radius: 6px; padding: 3px 10px">Cancel</button>
+</div>
+<span style="color: #9b9b9b">Zero kB of Zero kB</span>
+<div style="height: 4px; border-radius: 2px; background: #3a3a3a"></div>
+</div>
+<div style="display: flex; flex-direction: column; overflow: hidden">
+<sc-for list="{{rows}}" as="row" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 8px 16px 8px 16px">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9b9b9b" stroke-width="1.6" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4"></path></svg>
+<span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{row.name}}</span>
+<span style="color: #9b9b9b">{{row.size}}</span>
+</div>
+<span style="padding-left: 24px; color: #9b9b9b; font-size: 12px; min-height: 15px">{{row.format}}</span>
+<sc-if value="{{row.hasStatus}}" hint-placeholder-val="{{false}}">
+<div style="padding-left: 24px; display: flex; flex-direction: column; gap: 4px">
+<span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 5px; padding: 2px 7px; color: {{row.chipColor}}; background: {{row.chipFill}}">{{row.status}}</span>
+<div style="height: 4px"></div>
+</div>
+</sc-if>
+</div>
+<div style="height: 1px; background: #333; margin-left: 40px"></div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const flac = 'FLAC · 44.1 kHz · 16-bit · stereo';
+const queued = { hasStatus: true, status: 'Queued', chipColor: '#c9c9c9', chipFill: '#2f2f2f' };
+const uploading = { hasStatus: true, status: 'Uploading', chipColor: '#7fd6cf', chipFill: '#1f3533' };
+const none = { hasStatus: false };
+return {
+rows: [
+{ name: 'Disc 1/05 Paper Lanterns.flac', size: '23.7 MB', format: flac, ...none },
+{ name: 'Disc 1/06 Low Tide Radio.flac', size: '22.6 MB', format: flac, ...queued },
+{ name: 'Disc 1/07 Copper Wire.flac', size: '32.9 MB', format: flac, ...none },
+{ name: 'Disc 1/08 North of the Yard.flac', size: '27.4 MB', format: flac, ...uploading },
+{ name: 'Disc 1/09 Glass Orchard.flac', size: '25.7 MB', format: flac, ...queued },
+{ name: 'Disc 1/foo_dr.txt', size: '4 kB', format: '', ...queued },
+{ name: 'Disc 1/front.jpg', size: '58 kB', format: '', ...none },
+{ name: 'Disc 1/Lantern Season.log', size: '20 kB', format: '', ...none },
+{ name: 'Disc 1/Lantern Season.cue', size: '4 kB', format: '', ...queued },
+{ name: 'Disc 2/01 Weathervane.flac', size: '17.4 MB', format: flac, ...none }
+]
+};
+}
+}
+</script>
+</body>
+</html>

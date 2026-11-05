@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Welcome: removing failed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.side{display:block;width:100%;text-align:left;border:0;background:none;color:#F2F2F4;font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
+.box{background:#191925;border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
+.r+.r{border-top:1px solid rgba(255,255,255,0.07)}
+.sec{margin:14px 4px 6px;font-size:13px;font-weight:600;color:#F2F2F4}
+.v{color:#B1B1BB}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif;display:flex;align-items:center;gap:6px}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif}
+.foot{font-size:11px;color:#B1B1BB;padding:6px 4px 0}
+</style>
+</helmet>
+<div style="position: relative; width: 690px; height: 600px; overflow: hidden; border-radius: 10px; background: #11111B; color: #F2F2F4; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; display: flex; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08)">
+<div aria-hidden="true" style="position: absolute; top: 14px; left: 14px; display: flex; gap: 8px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 56px 0 24px"><div style="font-size: 34px; font-weight: 700; letter-spacing: -1px">bae</div><div style="margin-top: 6px; font-size: 15px">Get started with your music library.</div><div style="width: 420px; margin-top: 28px; display: flex; flex-direction: column; gap: 8px"><div style="font-size: 12px; font-weight: 600; color: #B1B1BB">Your libraries</div><div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05)"><div style="flex: 1; min-width: 0"><div style="font-size: 13px; font-weight: 600">Library Name</div><div style="font-size: 11px; color: #F29C9F">Couldn’t remove the library: [why it failed]</div></div><button class="btn">Retry</button><button class="btn" style="color: #F29C9F">Remove</button></div><div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05)"><div style="flex: 1; min-width: 0"><div style="font-size: 13px; font-weight: 600">Local Library</div><div style="font-size: 11px; color: #B1B1BB">Not synced</div></div><button class="btn">Open</button><button class="btn" style="color: #F29C9F">Remove</button></div></div><div style="flex: 1"></div><div style="display: flex; gap: 8px"><button class="btn">Create new library</button><button class="btn">Join library</button><button class="btn">Add device</button></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

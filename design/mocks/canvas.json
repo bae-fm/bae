@@ -1,0 +1,2204 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "About.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "About",
+      "w": 412,
+      "x": 0,
+      "y": 6740
+    },
+    "AddDevice.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Add device: the code",
+      "w": 412,
+      "x": 0,
+      "y": 16456
+    },
+    "AddDeviceAdded.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Add device: joined",
+      "w": 412,
+      "x": 492,
+      "y": 16456
+    },
+    "Appearance.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "Appearance",
+      "w": 412,
+      "x": 0,
+      "y": 1556
+    },
+    "Casting.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "Casting",
+      "w": 412,
+      "x": 0,
+      "y": 5444
+    },
+    "CloudHome.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Sync: S3",
+      "w": 412,
+      "x": 0,
+      "y": 8612
+    },
+    "FolderPicker.dc.html": {
+      "h": 300,
+      "page": "library",
+      "title": "Folder picker (shared)",
+      "w": 460,
+      "x": 1650,
+      "y": 2852
+    },
+    "HistoryChanged.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Listening history: changed",
+      "w": 412,
+      "x": 492,
+      "y": 13864
+    },
+    "HistoryChoice.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Listening history: choosing",
+      "w": 412,
+      "x": 0,
+      "y": 13864
+    },
+    "HomeMenu.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Home: ⋮ menu with Libraries",
+      "w": 412,
+      "x": 0,
+      "y": 20324
+    },
+    "InviteForm.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Invite: the form",
+      "w": 412,
+      "x": 0,
+      "y": 15160
+    },
+    "InviteShown.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Invite: the code",
+      "w": 412,
+      "x": 492,
+      "y": 15160
+    },
+    "Libraries.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Libraries (from ⋮)",
+      "w": 412,
+      "x": 492,
+      "y": 20324
+    },
+    "Library.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Library (admin)",
+      "w": 412,
+      "x": 0,
+      "y": 260
+    },
+    "LibraryMember.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Library (member)",
+      "w": 412,
+      "x": 492,
+      "y": 260
+    },
+    "LibraryProblem.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Library: sync problem (admin)",
+      "w": 412,
+      "x": 984,
+      "y": 260
+    },
+    "MacAbout.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: About",
+      "w": 690,
+      "x": 652,
+      "y": 6740
+    },
+    "MacAddDevice.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Add device: the code",
+      "w": 690,
+      "x": 1144,
+      "y": 16456
+    },
+    "MacAddDeviceAdded.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Add device: joined",
+      "w": 690,
+      "x": 1914,
+      "y": 16456
+    },
+    "MacAppearance.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: Appearance",
+      "w": 690,
+      "x": 652,
+      "y": 1556
+    },
+    "MacCasting.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: Casting",
+      "w": 690,
+      "x": 652,
+      "y": 5444
+    },
+    "MacCloudHome.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Sync: S3",
+      "w": 690,
+      "x": 3604,
+      "y": 8612
+    },
+    "MacHistoryChanged.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Listening history: changed",
+      "w": 690,
+      "x": 1914,
+      "y": 13864
+    },
+    "MacHistoryChoice.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Listening history: choosing",
+      "w": 690,
+      "x": 1144,
+      "y": 13864
+    },
+    "MacInviteCode.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Invite: the code",
+      "w": 690,
+      "x": 2406,
+      "y": 15160
+    },
+    "MacInviteForm.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Invite: the form",
+      "w": 690,
+      "x": 1636,
+      "y": 15160
+    },
+    "MacLibrary.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Library (admin)",
+      "w": 690,
+      "x": 2246,
+      "y": 260
+    },
+    "MacLibraryMember.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Library (member)",
+      "w": 690,
+      "x": 3016,
+      "y": 260
+    },
+    "MacLibraryNotSynced.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Library: not synced",
+      "w": 690,
+      "x": 1476,
+      "y": 260
+    },
+    "MacLibraryProblem.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Library: sync problem (admin)",
+      "w": 690,
+      "x": 3786,
+      "y": 260
+    },
+    "MacMakeAdminDone.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Make admin: done",
+      "w": 690,
+      "x": 1914,
+      "y": 17752
+    },
+    "MacMakeAdminWaiting.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Make admin: waiting to sync",
+      "w": 690,
+      "x": 1144,
+      "y": 17752
+    },
+    "MacPeople.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: People and devices (admin)",
+      "w": 690,
+      "x": 2128,
+      "y": 11272
+    },
+    "MacPeopleInvited.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Invite: in the list",
+      "w": 690,
+      "x": 3176,
+      "y": 15160
+    },
+    "MacPeopleMember.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: People and devices (member)",
+      "w": 690,
+      "x": 2898,
+      "y": 11272
+    },
+    "MacPlayback.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: Playback",
+      "w": 690,
+      "x": 652,
+      "y": 2852
+    },
+    "MacProfileRename.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Your name: editing",
+      "w": 690,
+      "x": 2128,
+      "y": 12568
+    },
+    "MacProfileRenameBlank.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Your name: blank, Save off",
+      "w": 690,
+      "x": 2898,
+      "y": 12568
+    },
+    "MacProfileRenameFailed.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Your name: save failed",
+      "w": 690,
+      "x": 3668,
+      "y": 12568
+    },
+    "MacProfileRenamed.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Your name: after Save",
+      "w": 690,
+      "x": 4438,
+      "y": 12568
+    },
+    "MacRecovery.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Restore code: shown",
+      "w": 690,
+      "x": 1754,
+      "y": 19048
+    },
+    "MacRecoveryHidden.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Restore code: hidden",
+      "w": 690,
+      "x": 984,
+      "y": 19048
+    },
+    "MacRenameLibrary.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Rename library (admin)",
+      "w": 690,
+      "x": 1144,
+      "y": 1556
+    },
+    "MacRenamed.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: After Rename (admin)",
+      "w": 690,
+      "x": 1914,
+      "y": 1556
+    },
+    "MacSettingsOffline.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: Settings: library offline",
+      "w": 690,
+      "x": 1636,
+      "y": 260
+    },
+    "MacSettingsProblem.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: Settings: library sync problem",
+      "w": 690,
+      "x": 2406,
+      "y": 260
+    },
+    "MacSetupChoose.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: choose storage",
+      "w": 690,
+      "x": 0,
+      "y": 2852
+    },
+    "MacSetupDropboxChecking.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, checking the folder",
+      "w": 690,
+      "x": 3080,
+      "y": 4772
+    },
+    "MacSetupDropboxChoose.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, choose storage",
+      "w": 690,
+      "x": 0,
+      "y": 4772
+    },
+    "MacSetupDropboxCode.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, restore code",
+      "w": 690,
+      "x": 9240,
+      "y": 4772
+    },
+    "MacSetupDropboxDone.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, done",
+      "w": 690,
+      "x": 10010,
+      "y": 4772
+    },
+    "MacSetupDropboxFolder.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, choose a shared folder",
+      "w": 690,
+      "x": 2310,
+      "y": 4772
+    },
+    "MacSetupDropboxFolderMade.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, new folder made",
+      "w": 690,
+      "x": 6160,
+      "y": 4772
+    },
+    "MacSetupDropboxListing.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, reading folders",
+      "w": 690,
+      "x": 1540,
+      "y": 4772
+    },
+    "MacSetupDropboxMakingFolder.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, making the folder",
+      "w": 690,
+      "x": 5390,
+      "y": 4772
+    },
+    "MacSetupDropboxNewFolder.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, naming a new folder",
+      "w": 690,
+      "x": 4620,
+      "y": 4772
+    },
+    "MacSetupDropboxNone.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, no shared folders",
+      "w": 690,
+      "x": 10780,
+      "y": 4772
+    },
+    "MacSetupDropboxNotEmpty.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, folder not empty",
+      "w": 690,
+      "x": 3850,
+      "y": 4772
+    },
+    "MacSetupDropboxSignIn.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, signing in",
+      "w": 690,
+      "x": 770,
+      "y": 4772
+    },
+    "MacSetupDropboxStepConnecting.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, step 2 of 3",
+      "w": 690,
+      "x": 7700,
+      "y": 4772
+    },
+    "MacSetupDropboxStepCreating.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, step 3 of 3",
+      "w": 690,
+      "x": 8470,
+      "y": 4772
+    },
+    "MacSetupDropboxStepReadingAccount.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: Dropbox, step 1 of 3",
+      "w": 690,
+      "x": 6930,
+      "y": 4772
+    },
+    "MacSetupFailed.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: failed",
+      "w": 690,
+      "x": 6930,
+      "y": 6692
+    },
+    "MacSetupICloud.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: iCloud",
+      "w": 690,
+      "x": 770,
+      "y": 3812
+    },
+    "MacSetupICloudChoose.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: iCloud, choose storage",
+      "w": 690,
+      "x": 0,
+      "y": 3812
+    },
+    "MacSetupICloudCode.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: iCloud, restore code",
+      "w": 690,
+      "x": 3850,
+      "y": 3812
+    },
+    "MacSetupICloudDone.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: iCloud, done",
+      "w": 690,
+      "x": 4620,
+      "y": 3812
+    },
+    "MacSetupICloudStepConnecting.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: iCloud, step 2 of 3",
+      "w": 690,
+      "x": 2310,
+      "y": 3812
+    },
+    "MacSetupICloudStepCreating.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: iCloud, step 3 of 3",
+      "w": 690,
+      "x": 3080,
+      "y": 3812
+    },
+    "MacSetupICloudStepPreparing.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: iCloud, step 1 of 3",
+      "w": 690,
+      "x": 1540,
+      "y": 3812
+    },
+    "MacSetupOneDrive.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, choose a folder",
+      "w": 690,
+      "x": 2310,
+      "y": 5732
+    },
+    "MacSetupOneDriveChecking.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, checking the folder",
+      "w": 690,
+      "x": 3080,
+      "y": 5732
+    },
+    "MacSetupOneDriveChoose.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, choose storage",
+      "w": 690,
+      "x": 0,
+      "y": 5732
+    },
+    "MacSetupOneDriveCode.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, restore code",
+      "w": 690,
+      "x": 9240,
+      "y": 5732
+    },
+    "MacSetupOneDriveDone.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, done",
+      "w": 690,
+      "x": 10010,
+      "y": 5732
+    },
+    "MacSetupOneDriveFolderMade.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, new folder made",
+      "w": 690,
+      "x": 6160,
+      "y": 5732
+    },
+    "MacSetupOneDriveListing.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, reading folders",
+      "w": 690,
+      "x": 1540,
+      "y": 5732
+    },
+    "MacSetupOneDriveMakingFolder.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, making the folder",
+      "w": 690,
+      "x": 5390,
+      "y": 5732
+    },
+    "MacSetupOneDriveNewFolder.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, naming a new folder",
+      "w": 690,
+      "x": 4620,
+      "y": 5732
+    },
+    "MacSetupOneDriveNone.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, no folders",
+      "w": 690,
+      "x": 10780,
+      "y": 5732
+    },
+    "MacSetupOneDriveNotEmpty.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, folder not empty",
+      "w": 690,
+      "x": 3850,
+      "y": 5732
+    },
+    "MacSetupOneDriveSignIn.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, signing in",
+      "w": 690,
+      "x": 770,
+      "y": 5732
+    },
+    "MacSetupOneDriveStepConnecting.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, step 2 of 3",
+      "w": 690,
+      "x": 7700,
+      "y": 5732
+    },
+    "MacSetupOneDriveStepCreating.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, step 3 of 3",
+      "w": 690,
+      "x": 8470,
+      "y": 5732
+    },
+    "MacSetupOneDriveStepReadingAccount.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: OneDrive, step 1 of 3",
+      "w": 690,
+      "x": 6930,
+      "y": 5732
+    },
+    "MacSetupS3.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible",
+      "w": 690,
+      "x": 770,
+      "y": 6692
+    },
+    "MacSetupS3Advanced.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, Advanced open",
+      "w": 690,
+      "x": 1540,
+      "y": 6692
+    },
+    "MacSetupS3Choose.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, choose storage",
+      "w": 690,
+      "x": 0,
+      "y": 6692
+    },
+    "MacSetupS3Code.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, restore code",
+      "w": 690,
+      "x": 5390,
+      "y": 6692
+    },
+    "MacSetupS3Done.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, done",
+      "w": 690,
+      "x": 6160,
+      "y": 6692
+    },
+    "MacSetupS3StepCheckingBucket.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, step 1 of 4",
+      "w": 690,
+      "x": 2310,
+      "y": 6692
+    },
+    "MacSetupS3StepConnecting.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, step 3 of 4",
+      "w": 690,
+      "x": 3850,
+      "y": 6692
+    },
+    "MacSetupS3StepCreating.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, step 4 of 4",
+      "w": 690,
+      "x": 4620,
+      "y": 6692
+    },
+    "MacSetupS3StepDetecting.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Set up sync: S3-compatible, step 2 of 4",
+      "w": 690,
+      "x": 3080,
+      "y": 6692
+    },
+    "MacSyncDropbox.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Sync: Dropbox",
+      "w": 690,
+      "x": 4374,
+      "y": 8612
+    },
+    "MacSyncFailedCauses.dc.html": {
+      "h": 900,
+      "page": "library",
+      "title": "macOS: Sync failed: every cause",
+      "w": 690,
+      "x": 9764,
+      "y": 8612
+    },
+    "MacSyncICloud.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Sync: iCloud",
+      "w": 690,
+      "x": 5914,
+      "y": 8612
+    },
+    "MacSyncOneDrive.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Sync: OneDrive",
+      "w": 690,
+      "x": 5144,
+      "y": 8612
+    },
+    "MacSyncSignedOut.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Sync: signed out (Dropbox)",
+      "w": 690,
+      "x": 6684,
+      "y": 8612
+    },
+    "MacSyncSignedOutICloud.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Sync: signed out (iCloud)",
+      "w": 690,
+      "x": 7454,
+      "y": 8612
+    },
+    "MacSyncSignedOutS3.dc.html": {
+      "h": 600,
+      "page": "library",
+      "title": "macOS: Sync: signed out (S3)",
+      "w": 690,
+      "x": 8224,
+      "y": 8612
+    },
+    "MacSyncStates.dc.html": {
+      "h": 1900,
+      "page": "library",
+      "title": "macOS: Sync row: every state",
+      "w": 690,
+      "x": 8994,
+      "y": 8612
+    },
+    "MacTransfers.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: Transfers",
+      "w": 690,
+      "x": 652,
+      "y": 4148
+    },
+    "MacTransfersPaused.dc.html": {
+      "h": 600,
+      "page": "settings",
+      "title": "macOS: Transfers, uploads paused",
+      "w": 690,
+      "x": 1422,
+      "y": 4148
+    },
+    "MacWelcome.dc.html": {
+      "h": 600,
+      "page": "welcome",
+      "title": "macOS: Welcome: your libraries",
+      "w": 690,
+      "x": 2620,
+      "y": 260
+    },
+    "MacWelcomeDelete.dc.html": {
+      "h": 600,
+      "page": "welcome",
+      "title": "macOS: Delete: never synced",
+      "w": 690,
+      "x": 4930,
+      "y": 260
+    },
+    "MacWelcomeRemove.dc.html": {
+      "h": 600,
+      "page": "welcome",
+      "title": "macOS: Remove: confirm",
+      "w": 690,
+      "x": 3390,
+      "y": 260
+    },
+    "MacWelcomeRemoveFailed.dc.html": {
+      "h": 600,
+      "page": "welcome",
+      "title": "macOS: Remove: failed",
+      "w": 690,
+      "x": 6470,
+      "y": 260
+    },
+    "MacWelcomeRemoveUnsent.dc.html": {
+      "h": 600,
+      "page": "welcome",
+      "title": "macOS: Remove: confirm, unsent changes",
+      "w": 690,
+      "x": 4160,
+      "y": 260
+    },
+    "MacWelcomeRemoving.dc.html": {
+      "h": 600,
+      "page": "welcome",
+      "title": "macOS: Remove: removing",
+      "w": 690,
+      "x": 5700,
+      "y": 260
+    },
+    "Main.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "Settings",
+      "w": 412,
+      "x": 0,
+      "y": 260
+    },
+    "MakeAdminDone.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Make admin: done",
+      "w": 412,
+      "x": 492,
+      "y": 17752
+    },
+    "MakeAdminWaiting.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Make admin: waiting to sync",
+      "w": 412,
+      "x": 0,
+      "y": 17752
+    },
+    "People.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "People and devices (admin)",
+      "w": 412,
+      "x": 0,
+      "y": 11272
+    },
+    "PeopleInvited.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Invite: in the list",
+      "w": 412,
+      "x": 984,
+      "y": 15160
+    },
+    "PeopleMember.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "People and devices (member)",
+      "w": 412,
+      "x": 984,
+      "y": 11272
+    },
+    "Person.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "A person (admin)",
+      "w": 412,
+      "x": 492,
+      "y": 11272
+    },
+    "PersonForMember.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "A person (member)",
+      "w": 412,
+      "x": 1476,
+      "y": 11272
+    },
+    "Playback.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "Playback",
+      "w": 412,
+      "x": 0,
+      "y": 2852
+    },
+    "ProfileRename.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Your name: editing",
+      "w": 412,
+      "x": 0,
+      "y": 12568
+    },
+    "ProfileRenameBlank.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Your name: blank, Save off",
+      "w": 412,
+      "x": 492,
+      "y": 12568
+    },
+    "ProfileRenameFailed.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Your name: save failed",
+      "w": 412,
+      "x": 984,
+      "y": 12568
+    },
+    "ProfileRenamed.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Your name: after Save",
+      "w": 412,
+      "x": 1476,
+      "y": 12568
+    },
+    "Recovery.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Restore code: shown",
+      "w": 412,
+      "x": 492,
+      "y": 19048
+    },
+    "RecoveryHidden.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Restore code: hidden",
+      "w": 412,
+      "x": 0,
+      "y": 19048
+    },
+    "RenameLibrary.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Rename library (admin)",
+      "w": 412,
+      "x": 0,
+      "y": 1556
+    },
+    "Renamed.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "After Rename (admin)",
+      "w": 412,
+      "x": 492,
+      "y": 1556
+    },
+    "RestoreCode.dc.html": {
+      "h": 130,
+      "is_interactive": true,
+      "page": "library",
+      "title": "Restore code (shared)",
+      "w": 460,
+      "x": 3850,
+      "y": 3532
+    },
+    "S3Form.dc.html": {
+      "h": 400,
+      "page": "library",
+      "title": "S3-compatible form (shared)",
+      "w": 460,
+      "x": 2190,
+      "y": 2852
+    },
+    "S3FormAdvanced.dc.html": {
+      "h": 440,
+      "page": "library",
+      "title": "S3 form: Advanced open",
+      "w": 460,
+      "x": 2160,
+      "y": 7652
+    },
+    "S3FormBlank.dc.html": {
+      "h": 400,
+      "page": "library",
+      "title": "S3 form: Nothing typed yet",
+      "w": 460,
+      "x": 0,
+      "y": 7652
+    },
+    "S3FormGCS.dc.html": {
+      "h": 400,
+      "page": "library",
+      "title": "S3 form: Google Cloud Storage endpoint",
+      "w": 460,
+      "x": 1080,
+      "y": 7652
+    },
+    "S3FormR2.dc.html": {
+      "h": 400,
+      "page": "library",
+      "title": "S3 form: Cloudflare R2 endpoint",
+      "w": 460,
+      "x": 540,
+      "y": 7652
+    },
+    "S3FormSelfHosted.dc.html": {
+      "h": 400,
+      "page": "library",
+      "title": "S3 form: Another service (RustFS, SeaweedFS, Ceph RGW, Versity Gateway or one bae doesn’t know)",
+      "w": 460,
+      "x": 1620,
+      "y": 7652
+    },
+    "S3FormStacked.dc.html": {
+      "h": 520,
+      "page": "library",
+      "title": "S3 form: labels above, two groups (option)",
+      "w": 460,
+      "x": 2700,
+      "y": 7652
+    },
+    "S3FormStackedEmpty.dc.html": {
+      "h": 520,
+      "page": "library",
+      "title": "S3 form: labels above, two groups, empty (option)",
+      "w": 460,
+      "x": 3240,
+      "y": 7652
+    },
+    "SettingsOffline.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "Settings: library offline",
+      "w": 412,
+      "x": 492,
+      "y": 260
+    },
+    "SettingsProblem.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "Settings: library sync problem",
+      "w": 412,
+      "x": 984,
+      "y": 260
+    },
+    "SyncDropbox.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Sync: Dropbox",
+      "w": 412,
+      "x": 492,
+      "y": 8612
+    },
+    "SyncFailedCauses.dc.html": {
+      "h": 1260,
+      "page": "library",
+      "title": "Sync failed: every cause",
+      "w": 412,
+      "x": 2952,
+      "y": 8612
+    },
+    "SyncOneDrive.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Sync: OneDrive",
+      "w": 412,
+      "x": 984,
+      "y": 8612
+    },
+    "SyncSignedOut.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Sync: signed out (Dropbox)",
+      "w": 412,
+      "x": 1476,
+      "y": 8612
+    },
+    "SyncSignedOutS3.dc.html": {
+      "h": 916,
+      "page": "library",
+      "title": "Sync: signed out (S3)",
+      "w": 412,
+      "x": 1968,
+      "y": 8612
+    },
+    "SyncStates.dc.html": {
+      "h": 2220,
+      "page": "library",
+      "title": "Sync row: every state",
+      "w": 412,
+      "x": 2460,
+      "y": 8612
+    },
+    "Transfers.dc.html": {
+      "h": 916,
+      "page": "settings",
+      "title": "Transfers",
+      "w": 412,
+      "x": 0,
+      "y": 4148
+    },
+    "Welcome.dc.html": {
+      "h": 916,
+      "page": "welcome",
+      "title": "Welcome: your libraries",
+      "w": 412,
+      "x": 0,
+      "y": 260
+    },
+    "WelcomeRemove.dc.html": {
+      "h": 916,
+      "page": "welcome",
+      "title": "Remove: confirm",
+      "w": 412,
+      "x": 492,
+      "y": 260
+    },
+    "WelcomeRemoveFailed.dc.html": {
+      "h": 916,
+      "page": "welcome",
+      "title": "Remove: failed",
+      "w": 412,
+      "x": 1968,
+      "y": 260
+    },
+    "WelcomeRemoveUnsent.dc.html": {
+      "h": 916,
+      "page": "welcome",
+      "title": "Remove: confirm, unsent changes",
+      "w": 412,
+      "x": 984,
+      "y": 260
+    },
+    "WelcomeRemoving.dc.html": {
+      "h": 916,
+      "page": "welcome",
+      "title": "Remove: removing",
+      "w": 412,
+      "x": 1476,
+      "y": 260
+    },
+    "controls/Button.dc.html": {
+      "h": 40,
+      "page": "controls",
+      "title": "Button (shared)",
+      "w": 120,
+      "x": 560,
+      "y": 880
+    },
+    "controls/Buttons.dc.html": {
+      "h": 260,
+      "page": "controls",
+      "title": "macOS controls: Buttons",
+      "w": 560,
+      "x": 0,
+      "y": 1060
+    },
+    "controls/Lists.dc.html": {
+      "h": 420,
+      "page": "controls",
+      "title": "macOS controls: Boxes and lists",
+      "w": 560,
+      "x": 0,
+      "y": 2620
+    },
+    "controls/Menus.dc.html": {
+      "h": 260,
+      "page": "controls",
+      "title": "macOS controls: Menus and disclosure",
+      "w": 560,
+      "x": 0,
+      "y": 3440
+    },
+    "controls/Messages.dc.html": {
+      "h": 300,
+      "page": "controls",
+      "title": "macOS controls: Waiting and messages",
+      "w": 560,
+      "x": 0,
+      "y": 4100
+    },
+    "controls/Row.dc.html": {
+      "h": 40,
+      "page": "controls",
+      "title": "Row (shared)",
+      "w": 420,
+      "x": 560,
+      "y": 80
+    },
+    "controls/Rows.dc.html": {
+      "h": 400,
+      "page": "controls",
+      "title": "macOS controls: Rows in a box",
+      "w": 560,
+      "x": 0,
+      "y": 260
+    },
+    "controls/SheetFooter.dc.html": {
+      "h": 140,
+      "page": "controls",
+      "title": "macOS controls: Sheet footer",
+      "w": 560,
+      "x": 640,
+      "y": 1060
+    },
+    "controls/TextField.dc.html": {
+      "h": 50,
+      "page": "controls",
+      "title": "Text field (shared)",
+      "w": 360,
+      "x": 560,
+      "y": 1540
+    },
+    "controls/TextFieldHiddenLabel.dc.html": {
+      "h": 160,
+      "page": "controls",
+      "title": "macOS controls: Text field, label as placeholder",
+      "w": 520,
+      "x": 640,
+      "y": 1720
+    },
+    "controls/TextFieldRows.dc.html": {
+      "h": 240,
+      "page": "controls",
+      "title": "macOS controls: Text fields in a box",
+      "w": 520,
+      "x": 1240,
+      "y": 1720
+    },
+    "controls/TextFieldStates.dc.html": {
+      "h": 500,
+      "page": "controls",
+      "title": "macOS controls: Text field states, with label",
+      "w": 560,
+      "x": 0,
+      "y": 1720
+    },
+    "home/GroupedByArtist.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Grouped by artist: today",
+      "w": 412,
+      "x": 1968,
+      "y": 0
+    },
+    "home/GroupedHeader.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Grouped: artist header over a grid",
+      "w": 412,
+      "x": 2460,
+      "y": 0
+    },
+    "home/GroupedSticky.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Grouped: scrolled, artist pinned",
+      "w": 412,
+      "x": 2952,
+      "y": 0
+    },
+    "home/HeadingFull.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Like macOS: top of the list",
+      "w": 412,
+      "x": 492,
+      "y": 0
+    },
+    "home/HeadingMenu.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "The ⋮ menu open",
+      "w": 412,
+      "x": 1476,
+      "y": 0
+    },
+    "home/HeadingScrolled.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Like macOS: scrolled",
+      "w": 412,
+      "x": 984,
+      "y": 0
+    },
+    "home/Main.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Today",
+      "w": 412,
+      "x": 0,
+      "y": 0
+    },
+    "loading/Main.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "loading",
+      "title": "Today: the download bar swaps in",
+      "w": 928,
+      "x": 0,
+      "y": 0
+    },
+    "loading/ScrubFill.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "loading",
+      "title": "C: the scrub bar shows what has arrived",
+      "w": 928,
+      "x": 1008,
+      "y": 0
+    },
+    "storage/Main.dc.html": {
+      "h": 900,
+      "page": "storage",
+      "radius": 10,
+      "title": "Today",
+      "w": 440,
+      "x": 0,
+      "y": 0
+    },
+    "storage/PanelFile.dc.html": {
+      "h": 614,
+      "page": "storage",
+      "radius": 10,
+      "title": "Proposed, file selected",
+      "w": 440,
+      "x": 1040,
+      "y": 0
+    },
+    "storage/PanelPin.dc.html": {
+      "h": 614,
+      "page": "storage",
+      "radius": 10,
+      "title": "Proposed, pinning",
+      "w": 440,
+      "x": 1560,
+      "y": 0
+    },
+    "storage/Proposed.dc.html": {
+      "h": 900,
+      "page": "storage",
+      "radius": 10,
+      "title": "Proposed",
+      "w": 440,
+      "x": 520,
+      "y": 0
+    },
+    "storage/Window.dc.html": {
+      "h": 654,
+      "page": "storage",
+      "radius": 10,
+      "title": "Window today",
+      "w": 1040,
+      "x": 0,
+      "y": 1340
+    },
+    "storage/WindowBoth.dc.html": {
+      "h": 654,
+      "page": "storage",
+      "radius": 10,
+      "title": "Uploads and downloads",
+      "w": 1040,
+      "x": 1120,
+      "y": 2114
+    },
+    "storage/WindowFilter.dc.html": {
+      "h": 654,
+      "page": "storage",
+      "radius": 10,
+      "title": "All / Local / Cloud, sorted by Storage",
+      "w": 1040,
+      "x": 0,
+      "y": 2114
+    },
+    "storage/WindowProposed.dc.html": {
+      "h": 654,
+      "page": "storage",
+      "radius": 10,
+      "title": "Window proposed",
+      "w": 1040,
+      "x": 1120,
+      "y": 1340
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-02T04:40:00Z",
+    "v": 1
+  },
+  "designSystems": [
+    {
+      "title": "bae",
+      "namespace": "bae",
+      "artifact": "https://claude.ai/artifact/MUbLkiU63y27pSuFTgm8CE",
+      "version": "1793895372-ec4d",
+      "copiedAt": "2026-11-05T16:16:23Z"
+    }
+  ],
+  "launch": {
+    "page": "library",
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "work-folder-name",
+    "work-history-off",
+    "work-wifi-only",
+    "row-settings-0",
+    "row-settings-1",
+    "row-settings-2",
+    "row-settings-3",
+    "row-settings-4",
+    "row-settings-5",
+    "row-library-0",
+    "row-library-1",
+    "row-library-setup",
+    "row-library-setup-icloud",
+    "row-library-setup-dropbox",
+    "row-library-setup-onedrive",
+    "row-library-setup-s3",
+    "row-library-2",
+    "row-library-3",
+    "row-library-4",
+    "row-library-5",
+    "row-library-6",
+    "row-library-7",
+    "row-library-8",
+    "row-library-9",
+    "row-welcome-0",
+    "row-library-10",
+    "sync-rules",
+    "transfers-rules",
+    "welcome-rules",
+    "switch-rules",
+    "storage-today",
+    "storage-proposed",
+    "setup-rules",
+    "setup-code-gaps",
+    "code-settings",
+    "code-appearance",
+    "code-transfers",
+    "code-library",
+    "code-sync",
+    "code-people",
+    "code-name",
+    "code-welcome",
+    "canvas-key-settings",
+    "canvas-key-library",
+    "canvas-key-welcome",
+    "row-library-setup-s3form",
+    "controls-buttons-rule",
+    "row-controls-0",
+    "row-controls-1",
+    "row-controls-2",
+    "row-controls-3",
+    "row-controls-4",
+    "row-controls-rows"
+  ],
+  "notes": {
+    "canvas-key-library": {
+      "bold": true,
+      "fill": "purple",
+      "page": "library",
+      "size": 40,
+      "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs.",
+      "w": 720,
+      "x": 0,
+      "y": -320
+    },
+    "canvas-key-settings": {
+      "bold": true,
+      "fill": "purple",
+      "page": "settings",
+      "size": 40,
+      "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs.",
+      "w": 720,
+      "x": 0,
+      "y": -320
+    },
+    "canvas-key-welcome": {
+      "bold": true,
+      "fill": "purple",
+      "page": "welcome",
+      "size": 40,
+      "text": "Key\nBoards: bae as it should work.\nYellow notes: what the code needs.",
+      "w": 720,
+      "x": 0,
+      "y": -320
+    },
+    "code-appearance": {
+      "page": "settings",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- Order Mode, Background, Accent. Today both apps show Mode, Accent, Background (AppearanceSection.kt:82-91, AppearanceControls.swift:15-59). bae change.\n- “Accent” and “Background” in every locale. Today “Accent color” and “Background tone” (strings.xml:235-236, AppearanceControls.swift:21, :59). bae change.",
+      "w": 420,
+      "x": 1422,
+      "y": 1556
+    },
+    "code-library": {
+      "page": "library",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- Library is five rows, with Sync and People and devices on their own pages. Today both apps show everything inline (LibrarySettingsTab.swift:43-105, SettingsScreen.kt:103-198). bae change.\n- macOS: Library folder with Show in Finder replaces the Path row (LibrarySettingsTab.swift:45). bae change.\n- Removing the library leaves this page for the welcome list. Today it's here (LibrarySettingsTab.swift:95, SettingsScreen.kt:192). bae change.\n- A sync problem shows its cause and fix right under the Sync row. bae change.",
+      "w": 420,
+      "x": 4556,
+      "y": 260
+    },
+    "code-name": {
+      "page": "library",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- The Name row renames your profile. The bridge has rename_profile, but no app calls it. bae change.",
+      "w": 420,
+      "x": 5208,
+      "y": 12568
+    },
+    "code-people": {
+      "page": "library",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- Three sections: You, Devices, People, with a read-only Role row under You. Today one People section with a You marker (MembersSection.swift:61, :292). bae change.\n- “Invite”. Today “Invite a person…” (MembersSection.swift:100) and “Invite a person” (strings.xml:345). bae change.\n- Android: “Remove”. Today “Remove person” (strings.xml:333). bae change.\n- Android: each person opens their own page. Today they're rows in one list (MembersScreen.kt:439). bae change.",
+      "w": 420,
+      "x": 3668,
+      "y": 11272
+    },
+    "code-settings": {
+      "page": "settings",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- Android: Settings is one long page today (SettingsScreen.kt:103). Here it's a list of rows that open pages, on cards, in macOS's order. bae change.\n- macOS: Transfers sits after Playback in the sidebar. Today it's after Formats (SettingsView.swift:9). bae change.\n- macOS: an amber Paused beside Transfers while uploads are paused. Not built. bae change.",
+      "w": 420,
+      "x": 3176,
+      "y": 260
+    },
+    "code-sync": {
+      "page": "library",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- Synced is green with a dot. Today the status line has no color (SyncStatusLine.swift:197). bae change.\n- S3 rows read Provider, Endpoint, Region, Bucket, Key prefix, with “None” when empty. Today macOS shows Bucket, Region, Endpoint, and hides Key prefix when empty (CloudProviderConnectedSection.swift:12-22); Android shows Bucket, Region, Endpoint (SettingsSyncSection.kt:131-133). bae change.\n- No raw ids. Today macOS shows a Dropbox shared folder's or OneDrive folder's id under Folder, and iCloud's container (CloudProviderConnectedSection.swift:27-30). bae change; the folder's name needs coven too (the Folder note).\n- Signed out names the storage: “Sign in to Dropbox…”. Today the button reads “Sign in” (StorageSignIn.swift:32). bae change.",
+      "w": 420,
+      "x": 11534,
+      "y": 8612
+    },
+    "code-transfers": {
+      "page": "settings",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- macOS: Pause uploads moves here from the Library pane (LibrarySettingsTab.swift:78). bae change.\n- Android: no Transfers page today. It gets one, with Simultaneous downloads. bae change.\n- Android: Pause uploads goes (SyncUploadPauseControl.kt, shown from SettingsSyncSection.kt). bae change.\n- “Uploads paused” shows here, not on the Sync row. bae change.",
+      "w": 420,
+      "x": 3112,
+      "y": 4148
+    },
+    "code-welcome": {
+      "page": "welcome",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- Android: the welcome screen has no library list (ui/onboarding). It gets one, with Remove. bae change.\n- macOS: “Remove library from this Mac?” / “The library will remain in storage and on your other devices.” Today “Remove this library from this Mac?” (LibrarySettingsTab.swift:123) and “This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage. …” (LibraryRemovalConfirmation.swift:22). bae change.",
+      "w": 420,
+      "x": 7700,
+      "y": 260
+    },
+    "controls-buttons-rule": {
+      "fill": "blue",
+      "page": "controls",
+      "size": 24,
+      "text": "Buttons:\nOne primary button per screen, on the right of the footer. Everything else is secondary.",
+      "w": 380,
+      "x": 1280,
+      "y": 1060
+    },
+    "row-controls-0": {
+      "kind": "title1",
+      "maxW": 480,
+      "page": "controls",
+      "text": "Buttons",
+      "w": 240,
+      "x": 0,
+      "y": 820
+    },
+    "row-controls-1": {
+      "kind": "title1",
+      "maxW": 480,
+      "page": "controls",
+      "text": "Text fields",
+      "w": 240,
+      "x": 0,
+      "y": 1480
+    },
+    "row-controls-2": {
+      "kind": "title1",
+      "maxW": 800,
+      "page": "controls",
+      "text": "Boxes and lists",
+      "w": 240,
+      "x": 0,
+      "y": 2380
+    },
+    "row-controls-3": {
+      "kind": "title1",
+      "maxW": 800,
+      "page": "controls",
+      "text": "Menus and disclosure",
+      "w": 240,
+      "x": 0,
+      "y": 3200
+    },
+    "row-controls-4": {
+      "kind": "title1",
+      "maxW": 800,
+      "page": "controls",
+      "text": "Waiting and messages",
+      "w": 240,
+      "x": 0,
+      "y": 3860
+    },
+    "row-controls-rows": {
+      "kind": "title1",
+      "maxW": 480,
+      "page": "controls",
+      "text": "Rows",
+      "w": 240,
+      "x": 0,
+      "y": 20
+    },
+    "row-library-0": {
+      "kind": "title1",
+      "maxW": 4476,
+      "page": "library",
+      "text": "Library: admin and member",
+      "w": 240,
+      "x": 0,
+      "y": 20
+    },
+    "row-library-1": {
+      "kind": "title1",
+      "maxW": 2604,
+      "page": "library",
+      "text": "Rename the library",
+      "w": 240,
+      "x": 0,
+      "y": 1316
+    },
+    "row-library-10": {
+      "kind": "title1",
+      "maxW": 1364,
+      "page": "library",
+      "text": "Switch library (Android)",
+      "w": 240,
+      "x": 0,
+      "y": 20084
+    },
+    "row-library-2": {
+      "kind": "title1",
+      "maxW": 8000,
+      "page": "library",
+      "text": "Sync",
+      "w": 240,
+      "x": 0,
+      "y": 8372
+    },
+    "row-library-3": {
+      "kind": "title1",
+      "maxW": 3588,
+      "page": "library",
+      "text": "People and devices: admin and member",
+      "w": 240,
+      "x": 0,
+      "y": 11032
+    },
+    "row-library-4": {
+      "kind": "title1",
+      "maxW": 5128,
+      "page": "library",
+      "text": "Change your name",
+      "w": 240,
+      "x": 0,
+      "y": 12328
+    },
+    "row-library-5": {
+      "kind": "title1",
+      "maxW": 2604,
+      "page": "library",
+      "text": "Listening history",
+      "w": 240,
+      "x": 0,
+      "y": 13624
+    },
+    "row-library-6": {
+      "kind": "title1",
+      "maxW": 3866,
+      "page": "library",
+      "text": "Invite (admin)",
+      "w": 240,
+      "x": 0,
+      "y": 14920
+    },
+    "row-library-7": {
+      "kind": "title1",
+      "maxW": 2604,
+      "page": "library",
+      "text": "Add a device",
+      "w": 240,
+      "x": 0,
+      "y": 16216
+    },
+    "row-library-8": {
+      "kind": "title1",
+      "maxW": 2604,
+      "page": "library",
+      "text": "Make admin (admin)",
+      "w": 240,
+      "x": 0,
+      "y": 17512
+    },
+    "row-library-9": {
+      "kind": "title1",
+      "maxW": 2444,
+      "page": "library",
+      "text": "Restore code",
+      "w": 240,
+      "x": 0,
+      "y": 18808
+    },
+    "row-library-setup": {
+      "kind": "title1",
+      "maxW": 1570,
+      "page": "library",
+      "text": "Set up sync (macOS)",
+      "w": 240,
+      "x": 0,
+      "y": 2612
+    },
+    "row-library-setup-dropbox": {
+      "kind": "title1",
+      "maxW": 8000,
+      "page": "library",
+      "text": "Set up sync: Dropbox (macOS)",
+      "w": 240,
+      "x": 0,
+      "y": 4532
+    },
+    "row-library-setup-icloud": {
+      "kind": "title1",
+      "maxW": 5310,
+      "page": "library",
+      "text": "Set up sync: iCloud (macOS)",
+      "w": 240,
+      "x": 0,
+      "y": 3572
+    },
+    "row-library-setup-onedrive": {
+      "kind": "title1",
+      "maxW": 8000,
+      "page": "library",
+      "text": "Set up sync: OneDrive (macOS)",
+      "w": 240,
+      "x": 0,
+      "y": 5492
+    },
+    "row-library-setup-s3": {
+      "kind": "title1",
+      "maxW": 7620,
+      "page": "library",
+      "text": "Set up sync: S3 (macOS)",
+      "w": 240,
+      "x": 0,
+      "y": 6452
+    },
+    "row-library-setup-s3form": {
+      "kind": "title1",
+      "maxW": 3700,
+      "page": "library",
+      "text": "S3-compatible form (macOS)",
+      "w": 240,
+      "x": 0,
+      "y": 7412
+    },
+    "row-settings-0": {
+      "kind": "title1",
+      "maxW": 3096,
+      "page": "settings",
+      "text": "Settings",
+      "w": 240,
+      "x": 0,
+      "y": 20
+    },
+    "row-settings-1": {
+      "kind": "title1",
+      "maxW": 1342,
+      "page": "settings",
+      "text": "Appearance",
+      "w": 240,
+      "x": 0,
+      "y": 1316
+    },
+    "row-settings-2": {
+      "kind": "title1",
+      "maxW": 1342,
+      "page": "settings",
+      "text": "Playback",
+      "w": 240,
+      "x": 0,
+      "y": 2612
+    },
+    "row-settings-3": {
+      "kind": "title1",
+      "maxW": 3032,
+      "page": "settings",
+      "text": "Transfers",
+      "w": 240,
+      "x": 0,
+      "y": 3908
+    },
+    "row-settings-4": {
+      "kind": "title1",
+      "maxW": 1342,
+      "page": "settings",
+      "text": "Casting",
+      "w": 240,
+      "x": 0,
+      "y": 5204
+    },
+    "row-settings-5": {
+      "kind": "title1",
+      "maxW": 1342,
+      "page": "settings",
+      "text": "About",
+      "w": 240,
+      "x": 0,
+      "y": 6500
+    },
+    "row-welcome-0": {
+      "kind": "title1",
+      "maxW": 7620,
+      "page": "welcome",
+      "text": "Your libraries and removing one",
+      "w": 240,
+      "x": 0,
+      "y": 20
+    },
+    "setup-code-gaps": {
+      "page": "library",
+      "size": 24,
+      "text": "What the code needs for these boards:\n- Restore code at the end of setup: the bridge already returns it (BridgeStorageSetup.restore_code), but the macOS sheet drops it (SyncSetupWizard.swift connected). bae change.\n- Done lands on the Sync page with Restore code on it: bae change. The code can be fetched again any time (generate_restore_code).\n- Cancel while setup runs: coven can't stop a setup once it starts. Journaling setup (coven list) makes this Cancel real, and lets a crash resume or undo. coven change, then bae.\n- Not synced page, Sync page and their states: bae change, over coven's sync state, as the Sync row's boards and their note show.\n- Choose then Continue, and the browser opening on Continue: today each provider is a row that opens its form, and Dropbox and OneDrive wait for Sign in…. bae change.\n- S3 row reads “A bucket you manage.” Today the app says “Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, …)” (BridgeCloudProvider+Setup.swift:13), naming Backblaze, which setup refuses (coven notes/providers.md). bae change.\n- Choose an empty folder: after Set up, setup checks the folder first (Checking the folder…) and, if it holds anything, stops and returns to the list saying so. Setup refuses a Dropbox or OneDrive folder that already holds files, as it refuses an occupied S3 bucket. Today only S3 is checked (coven bucket_claim.rs:17-26). coven change.\n- New folder… on Dropbox (makes the folder and shares it): coven can't make and share a Dropbox folder; it calls sharing/share_folder only in its live tests (dropbox_live.rs:122). coven change, then bae.\n- One folder picker for Dropbox and OneDrive, the same view on each platform: the list, the empty-folder line, New folder… and its naming row, checking, not empty. Only the provider's facts differ: OneDrive folders open into others (where you are, ›), Dropbox's shared folders are one flat list and a new one is shared. Today macOS keeps one state for both (StorageFolderBrowser.swift) but draws two different lists (OAuthFolderSetup.swift:78-119), and Android has OneDriveBrowser.kt beside ProviderFolderChoice.kt. bae change.\n- S3 form: Endpoint, Region, Bucket, the key, in the Sync page's order; no service menu. Under Endpoint a line names what coven recognizes from the host (Cloudflare R2, Google Cloud Storage; coven config.rs:52-57), or says bae will detect the settings during setup, which it does for every other endpoint. Advanced holds only Key prefix (“None” when empty); Profile and Detect settings go. Today the form is Bucket, Region, Endpoint, keys, with Profile and Detect settings in Advanced (S3SetupForm.swift:42-97). bae change; coven needs a call that names the service an endpoint matches.\n- Everything else, the steps and their words, the folder pickers, the S3 fields and the failure line, is what the code does today.",
+      "w": 380,
+      "x": 1190,
+      "y": 2852
+    },
+    "setup-rules": {
+      "fill": "blue",
+      "page": "library",
+      "size": 24,
+      "text": "Set up sync:\nmacOS only, from Set up sync… on a library that isn't synced. The baeium edition offers S3 only, so it opens on the S3 form. Each step that waits says so: signing in in the browser, listing folders, then setup's own steps over a bar. When storage refuses, bae says why and offers Try again. Every screen has Cancel and no Back: Cancel takes you back one screen, and on Choose it closes the sheet. The sheet ends on the restore code, for every provider: bae can’t tell whether iCloud Keychain carries it off this Mac. Done lands on the Sync page, which reads Syncing… while the library uploads, then Synced, and holds the Restore code section.\n\nEach provider's row below shows every step coven reports, in order, with the words bae shows. No step has a count, so the bar moves without filling. S3 runs Detecting the service's settings… again even after Detect settings.",
+      "w": 380,
+      "x": 770,
+      "y": 2852
+    },
+    "storage-proposed": {
+      "fill": "teal",
+      "page": "storage",
+      "text": "Proposed: the panel is this release only: its upload summary with Cancel, then one line per file. A dashed circle marks a queued file, a filling ring an uploading one; stored files show nothing. Pause for the whole sync queue moves to the window's footer.",
+      "w": 440,
+      "x": 520,
+      "y": 960
+    },
+    "storage-today": {
+      "fill": "orange",
+      "page": "storage",
+      "text": "Today: Pause floats mid-header (a hidden Cancel All still holds its space). Bytes read Zero kB of Zero kB while 3 upload. A file with no audio format keeps an empty second line. A status chip adds a third line plus an invisible bar's height, so rows jump between three heights.",
+      "w": 440,
+      "x": 0,
+      "y": 960
+    },
+    "switch-rules": {
+      "fill": "blue",
+      "page": "library",
+      "size": 24,
+      "text": "macOS keeps switching libraries from the main window's menu.",
+      "w": 380,
+      "x": 984,
+      "y": 20324
+    },
+    "sync-rules": {
+      "fill": "blue",
+      "page": "library",
+      "size": 24,
+      "text": "How the sync states behave:\n- coven gives the state; bae picks the words and the fix.\n- When several hold, the first shows: Not synced, Removed from the library, Device needs reset, Update needed, Signed out, No access, Folder missing, Clock is wrong, Storage full, Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync, Synced.\n- Not synced is macOS only: a phone joins a library and never makes one.\n- Syncing… only while something is sent or received, not on quiet passes.\n- Waiting to sync: online, with changes held back. Gray when uploads are paused or an upload waits to retry; amber when the provider asked bae to wait, saying when it resumes. Android never uploads files, so its only reason is the provider's wait.\n- Synced means data and files both: a file still uploading is Syncing….\n- Offline with changes waiting is Offline · unsent changes, with no count.\n- Signed out names the provider and its sign-in: Dropbox and OneDrive sign in from bae; iCloud from System Settings. S3 has no sign-in: it reads Access key not accepted and asks for a new key for the same bucket. An expired sign-in reads the same as none saved.\n- Sync failed: any failure with no state of its own, its cause in plain words, always with Retry now; it also retries by itself. A file that can't be uploaded (missing, or changed since import) names the file until it's back as it was; nothing skips it. Phones never upload, so their causes are local ones, a provider error or a damaged change.\n- The Library page's Sync row and the top of the Sync page show the same block: the state, Last synced under a problem state (never under Synced), the cause and the fix. The Sync page adds the storage details under it.\n- Settings' Library row (Android) and the settings sidebar's Library item (macOS) show the state only when it's amber or red.\n- No Sync stopped, no Checking sync… and no Disconnect anywhere.\n- No raw ids on the Sync page: a row shows a name or isn't there. S3's Key prefix always shows, \"None\" when empty.",
+      "w": 460,
+      "x": 10994,
+      "y": 8612
+    },
+    "transfers-rules": {
+      "fill": "blue",
+      "page": "settings",
+      "size": 24,
+      "text": "Transfers:\nno upload or download speed limits on any platform (CloudKit can't be paced). Android has no Pause uploads: a phone never uploads files. On macOS, while uploads are paused the sidebar shows an amber Paused beside Transfers.",
+      "w": 380,
+      "x": 2652,
+      "y": 4148
+    },
+    "welcome-rules": {
+      "fill": "blue",
+      "page": "welcome",
+      "size": 24,
+      "text": "Removing and deleting:\nneither asks for device authentication. A library that was never synced offers Delete instead of Remove, on Android and macOS.",
+      "w": 380,
+      "x": 7240,
+      "y": 260
+    },
+    "work-folder-name": {
+      "fill": "blue",
+      "page": "library",
+      "size": 24,
+      "text": "Folder (OneDrive, Dropbox):\ncoven records the picked folder's name and web address at setup, as labels only, never to reach storage. The Sync page shows Folder and Open in browser for those two; S3 and iCloud get neither.",
+      "w": 380,
+      "x": 10534,
+      "y": 8612
+    },
+    "work-history-off": {
+      "fill": "blue",
+      "page": "library",
+      "size": 24,
+      "text": "Listening history:\nOff records no new plays; plays recorded before stay as they were. Everyone shares your plays with the library's people.",
+      "w": 380,
+      "x": 2684,
+      "y": 13864
+    },
+    "work-wifi-only": {
+      "fill": "blue",
+      "page": "settings",
+      "size": 24,
+      "text": "Download over Wi-Fi only (Android), off by default:\nwhile on, coven holds downloads and uploads on a metered network. coven watches the network itself. Playing a track that isn't pinned still streams.",
+      "w": 380,
+      "x": 2192,
+      "y": 4148
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "SettingsOffline.dc.html",
+    "SettingsProblem.dc.html",
+    "MacSettingsOffline.dc.html",
+    "MacSettingsProblem.dc.html",
+    "Appearance.dc.html",
+    "Playback.dc.html",
+    "Casting.dc.html",
+    "About.dc.html",
+    "MacAppearance.dc.html",
+    "MacPlayback.dc.html",
+    "MacCasting.dc.html",
+    "MacAbout.dc.html",
+    "MacTransfers.dc.html",
+    "Transfers.dc.html",
+    "MacTransfersPaused.dc.html",
+    "Welcome.dc.html",
+    "WelcomeRemove.dc.html",
+    "WelcomeRemoveUnsent.dc.html",
+    "WelcomeRemoving.dc.html",
+    "WelcomeRemoveFailed.dc.html",
+    "MacWelcome.dc.html",
+    "MacWelcomeRemove.dc.html",
+    "MacWelcomeRemoveUnsent.dc.html",
+    "MacWelcomeDelete.dc.html",
+    "MacWelcomeRemoving.dc.html",
+    "MacWelcomeRemoveFailed.dc.html",
+    "storage/Main.dc.html",
+    "storage/Proposed.dc.html",
+    "storage/PanelFile.dc.html",
+    "storage/PanelPin.dc.html",
+    "storage/Window.dc.html",
+    "storage/WindowProposed.dc.html",
+    "storage/WindowFilter.dc.html",
+    "storage/WindowBoth.dc.html",
+    "home/Main.dc.html",
+    "home/HeadingFull.dc.html",
+    "home/HeadingScrolled.dc.html",
+    "home/HeadingMenu.dc.html",
+    "home/GroupedByArtist.dc.html",
+    "home/GroupedHeader.dc.html",
+    "home/GroupedSticky.dc.html",
+    "loading/Main.dc.html",
+    "loading/ScrubFill.dc.html",
+    "Library.dc.html",
+    "MacLibraryNotSynced.dc.html",
+    "MacLibrary.dc.html",
+    "CloudHome.dc.html",
+    "People.dc.html",
+    "MacCloudHome.dc.html",
+    "MacPeople.dc.html",
+    "RecoveryHidden.dc.html",
+    "Recovery.dc.html",
+    "MacRecoveryHidden.dc.html",
+    "MacRecovery.dc.html",
+    "RenameLibrary.dc.html",
+    "LibraryMember.dc.html",
+    "LibraryProblem.dc.html",
+    "MacRenameLibrary.dc.html",
+    "MacLibraryMember.dc.html",
+    "MacLibraryProblem.dc.html",
+    "Renamed.dc.html",
+    "MacRenamed.dc.html",
+    "MacSetupChoose.dc.html",
+    "FolderPicker.dc.html",
+    "S3Form.dc.html",
+    "MacSetupDropboxChoose.dc.html",
+    "MacSetupDropboxSignIn.dc.html",
+    "MacSetupDropboxListing.dc.html",
+    "MacSetupDropboxFolder.dc.html",
+    "MacSetupDropboxChecking.dc.html",
+    "MacSetupDropboxNotEmpty.dc.html",
+    "MacSetupDropboxNewFolder.dc.html",
+    "MacSetupDropboxMakingFolder.dc.html",
+    "MacSetupDropboxFolderMade.dc.html",
+    "MacSetupDropboxStepReadingAccount.dc.html",
+    "MacSetupDropboxStepConnecting.dc.html",
+    "MacSetupDropboxStepCreating.dc.html",
+    "MacSetupDropboxCode.dc.html",
+    "MacSetupDropboxDone.dc.html",
+    "MacSetupDropboxNone.dc.html",
+    "MacSetupOneDriveChoose.dc.html",
+    "MacSetupOneDriveSignIn.dc.html",
+    "MacSetupOneDriveListing.dc.html",
+    "MacSetupOneDrive.dc.html",
+    "MacSetupOneDriveChecking.dc.html",
+    "MacSetupOneDriveNotEmpty.dc.html",
+    "MacSetupOneDriveNewFolder.dc.html",
+    "MacSetupOneDriveMakingFolder.dc.html",
+    "MacSetupOneDriveFolderMade.dc.html",
+    "MacSetupOneDriveStepReadingAccount.dc.html",
+    "MacSetupOneDriveStepConnecting.dc.html",
+    "MacSetupOneDriveStepCreating.dc.html",
+    "MacSetupOneDriveCode.dc.html",
+    "MacSetupOneDriveDone.dc.html",
+    "MacSetupOneDriveNone.dc.html",
+    "MacSetupICloudChoose.dc.html",
+    "MacSetupICloud.dc.html",
+    "MacSetupICloudStepPreparing.dc.html",
+    "MacSetupICloudStepConnecting.dc.html",
+    "MacSetupICloudStepCreating.dc.html",
+    "RestoreCode.dc.html",
+    "MacSetupICloudCode.dc.html",
+    "MacSetupICloudDone.dc.html",
+    "MacSetupS3Choose.dc.html",
+    "MacSetupS3.dc.html",
+    "MacSetupS3Advanced.dc.html",
+    "MacSetupS3StepCheckingBucket.dc.html",
+    "MacSetupS3StepDetecting.dc.html",
+    "MacSetupS3StepConnecting.dc.html",
+    "MacSetupS3StepCreating.dc.html",
+    "MacSetupS3Code.dc.html",
+    "MacSetupS3Done.dc.html",
+    "MacSetupFailed.dc.html",
+    "SyncStates.dc.html",
+    "SyncFailedCauses.dc.html",
+    "MacSyncStates.dc.html",
+    "MacSyncFailedCauses.dc.html",
+    "InviteForm.dc.html",
+    "InviteShown.dc.html",
+    "PeopleInvited.dc.html",
+    "MacInviteForm.dc.html",
+    "MacInviteCode.dc.html",
+    "MacPeopleInvited.dc.html",
+    "AddDevice.dc.html",
+    "AddDeviceAdded.dc.html",
+    "MacAddDevice.dc.html",
+    "MacAddDeviceAdded.dc.html",
+    "MakeAdminWaiting.dc.html",
+    "MakeAdminDone.dc.html",
+    "MacMakeAdminWaiting.dc.html",
+    "MacMakeAdminDone.dc.html",
+    "ProfileRename.dc.html",
+    "ProfileRenamed.dc.html",
+    "MacProfileRename.dc.html",
+    "MacProfileRenamed.dc.html",
+    "ProfileRenameBlank.dc.html",
+    "ProfileRenameFailed.dc.html",
+    "MacProfileRenameBlank.dc.html",
+    "MacProfileRenameFailed.dc.html",
+    "PeopleMember.dc.html",
+    "MacPeopleMember.dc.html",
+    "HistoryChoice.dc.html",
+    "HistoryChanged.dc.html",
+    "MacHistoryChoice.dc.html",
+    "MacHistoryChanged.dc.html",
+    "SyncDropbox.dc.html",
+    "MacSyncDropbox.dc.html",
+    "SyncOneDrive.dc.html",
+    "MacSyncOneDrive.dc.html",
+    "MacSyncICloud.dc.html",
+    "Person.dc.html",
+    "PersonForMember.dc.html",
+    "SyncSignedOut.dc.html",
+    "SyncSignedOutS3.dc.html",
+    "MacSyncSignedOut.dc.html",
+    "MacSyncSignedOutICloud.dc.html",
+    "MacSyncSignedOutS3.dc.html",
+    "HomeMenu.dc.html",
+    "Libraries.dc.html",
+    "S3FormBlank.dc.html",
+    "S3FormR2.dc.html",
+    "S3FormGCS.dc.html",
+    "S3FormSelfHosted.dc.html",
+    "S3FormAdvanced.dc.html",
+    "S3FormStacked.dc.html",
+    "S3FormStackedEmpty.dc.html",
+    "controls/Row.dc.html",
+    "controls/Rows.dc.html",
+    "controls/Button.dc.html",
+    "controls/Buttons.dc.html",
+    "controls/SheetFooter.dc.html",
+    "controls/TextField.dc.html",
+    "controls/TextFieldStates.dc.html",
+    "controls/TextFieldHiddenLabel.dc.html",
+    "controls/TextFieldRows.dc.html",
+    "controls/Lists.dc.html",
+    "controls/Menus.dc.html",
+    "controls/Messages.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "settings",
+      "name": "Settings"
+    },
+    {
+      "id": "library",
+      "name": "Settings/Library"
+    },
+    {
+      "id": "welcome",
+      "name": "Welcome"
+    },
+    {
+      "id": "storage",
+      "name": "Storage inspector"
+    },
+    {
+      "id": "home",
+      "name": "Android home screen"
+    },
+    {
+      "id": "loading",
+      "name": "Track loading states"
+    },
+    {
+      "id": "controls",
+      "name": "Controls (macOS)"
+    }
+  ],
+  "title": "bae mocks"
+}

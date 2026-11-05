@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>S3-compatible form</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#232333}
+.box{background:#191925;border-radius:8px;display:flex;flex-direction:column}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif}
+.fld{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:30px;padding:3px 12px;font-size:13px}
+.fld+.fld{border-top:1px solid rgba(255,255,255,0.07)}
+.fld>span:first-child{flex:none;width:120px}
+.inp{flex:1;min-width:0;width:auto;height:20px;border-radius:5px;background:#11111B;color:#F2F2F4;font-size:12px;line-height:20px;padding:0 6px;box-sizing:border-box;white-space:nowrap;overflow:hidden}
+.pri{background:#EE98C1 !important;color:#11111B !important}
+</style>
+</helmet>
+<div style="width: 100%; color: #F2F2F4; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif">
+<div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 13px">
+<div style="font-weight: 600">Location</div>
+<div class="box">
+<div class="fld" style="flex-wrap: wrap; row-gap: 2px"><span>Endpoint</span><span class="inp" style="{{endpointStyle}}">{{endpoint}}</span><sc-if value="{{hasService}}" hint-placeholder-val="{{ false }}"><span style="width: 100%; text-align: right; font-size: 11px; line-height: 15px; color: #B1B1BB; padding-bottom: 2px">{{serviceLine}}</span></sc-if></div>
+<div class="fld"><span>Region</span><span class="inp" style="{{regionStyle}}">{{region}}</span></div>
+<div class="fld"><span>Bucket</span><span class="inp" style="{{typedStyle}}">{{bucket}}</span></div>
+</div>
+<div style="font-weight: 600; margin-top: 6px">Key</div>
+<div class="box">
+<div class="fld"><span>Access key ID</span><span class="inp" style="{{typedStyle}}">{{keyId}}</span></div>
+<div class="fld"><span>Secret access key</span><span class="inp" style="{{typedStyle}}">{{secret}}</span></div>
+</div>
+<sc-if value="{{closed}}" hint-placeholder-val="{{ true }}"><div style="color: #B1B1BB">▸ Advanced</div></sc-if>
+<sc-if value="{{open}}" hint-placeholder-val="{{ false }}"><div style="color: #B1B1BB">▾ Advanced</div><div class="box"><div class="fld"><span>Key prefix</span><span class="inp" style="color: #6A6A7A">None</span></div></div></sc-if>
+</div>
+<div style="padding: 0 16px 16px; display: flex; justify-content: flex-end; gap: 8px"><button class="btn">Cancel</button><button class="btn pri" disabled="{{setUpOff}}" style="{{setUpStyle}}">Set up</button></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"endpoint":{"editor":"enum","options":["blank","r2","gcs","custom"],"default":"r2"},"advanced":{"editor":"boolean","default":false},"$preview":{"width":460,"height":400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const kind = this.props.endpoint ?? 'r2';
+    const open = !!this.props.advanced;
+    const hint = 'color: #6A6A7A;';
+    const blank = kind === 'blank';
+    const ends = {
+      blank: ['', '', ''],
+      r2: ['https://account-id.r2.cloudflarestorage.com', 'auto', 'Cloudflare R2'],
+      gcs: ['https://storage.googleapis.com', 'us-central1', 'Google Cloud Storage'],
+      custom: ['https://s3.home.lan', 'us-east-1', 'bae will detect this service’s settings during setup.']
+    }[kind];
+    return {
+      endpoint: ends[0],
+      region: ends[1],
+      endpointStyle: blank ? hint : '',
+      regionStyle: blank ? hint : '',
+      typedStyle: blank ? hint : '',
+      hasService: !blank,
+      serviceLine: ends[2],
+      bucket: blank ? '' : 'my-bucket',
+      keyId: blank ? '' : 'a1b2c3…',
+      secret: blank ? '' : '••••••••••••',
+      open, closed: !open,
+      setUpOff: blank,
+      setUpStyle: blank ? 'opacity: 0.4;' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

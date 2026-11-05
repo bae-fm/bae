@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS controls: Rows in a box</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:13px -apple-system,system-ui,sans-serif}
+.pri{background:#EE98C1;color:#11111B}
+.off{opacity:0.4}
+.inp{height:22px;border-radius:5px;background:#11111B;color:#F2F2F4;font:12px/22px -apple-system,system-ui,sans-serif;padding:0 6px;box-sizing:border-box;white-space:nowrap;overflow:hidden}
+.focus{box-shadow:0 0 0 1.5px #EE98C1}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:#2D2D40;color:#F2F2F4;font:12px -apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:space-between;gap:8px;box-sizing:border-box}
+.box{background:#191925;border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:7px 12px;font-size:13px;box-sizing:border-box}
+.r+.r{border-top:1px solid rgba(255,255,255,0.07)}
+.cap{font:11px/15px ui-monospace,Menlo,monospace;color:#7E9CC9}
+.h{font-size:15px;font-weight:700;margin:0 0 4px}
+.sec{font-size:13px;font-weight:600}
+.cell{display:flex;flex-direction:column;gap:6px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px}
+</style>
+</helmet>
+<div style="width: 560px; height: 400px; box-sizing: border-box; padding: 28px; background: #232333; color: #F2F2F4; font: 13px -apple-system, 'SF Pro Text', system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+<div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:20px 20px;align-items:start"><div class="cap" style="padding-top:11px">Value</div><div class="box" style="overflow:hidden"><dc-import name="Row" kind="text" label="Provider" value="iCloud" first="{{ true }}" hint-size="100%,36px"></dc-import><dc-import name="Row" kind="text" label="Status" value="Syncing…" first="{{ false }}" hint-size="100%,36px"></dc-import></div><div class="cap" style="padding-top:11px">Opens</div><div class="box" style="overflow:hidden"><dc-import name="Row" kind="chevron" label="Albums" first="{{ true }}" hint-size="100%,36px"></dc-import><dc-import name="Row" kind="chevron" label="Mixes" first="{{ false }}" hint-size="100%,36px"></dc-import></div><div class="cap" style="padding-top:11px">Choice</div><div class="box" style="overflow:hidden"><dc-import name="Row" kind="choice" label="Family" first="{{ true }}" hint-size="100%,36px"></dc-import><dc-import name="Row" kind="choice" label="Music" first="{{ false }}" selected="{{ true }}" hint-size="100%,36px"></dc-import><dc-import name="Row" kind="choice" label="Photos" first="{{ false }}" hint-size="100%,36px"></dc-import></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":400}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

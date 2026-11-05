@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today: the download bar swaps in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;family=Roboto+Mono&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#EE98C1}a:hover{color:#F6BFD9}
+.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:#F2F2F4;cursor:pointer}
+.ib svg{fill:currentColor}
+.tl{width:48px;flex:none;text-align:center;font-family:'Roboto Mono',monospace;font-size:11px;color:#B1B1BB}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</helmet>
+<div style="width: 928px; height: 960px; box-sizing: border-box; padding: 32px; background: #151517; color: #F2F2F4; font-family: Roboto, system-ui, sans-serif; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: center; gap: 16px">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 22px; font-weight: 700">Today: the download bar swaps in</h1>
+<p style="margin: 0; font-size: 13px; color: #B1B1BB">The bar takes the seek bar&#39;s place until the first 4 MiB arrive, then the seek bar comes back. You see it twice per load; the log hasn&#39;t shown why yet.</p>
+</div>
+<button onClick="{{replay}}" style="height: 40px; padding: 0 20px; border-radius: 20px; border: 0; background: #EE98C1; color: #2A1420; font: 600 14px Roboto, sans-serif; cursor: pointer">Play again</button>
+</div>
+<div style="display: flex; gap: 40px; align-items: flex-start">
+<div style="width: 412px; display: flex; flex-direction: column; gap: 16px">
+<div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #B1B1BB">Mini player</div>
+<div style="width: 412px; height: 260px; background: #201B25; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column">
+<div style="flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="height: 14px; width: 60%; border-radius: 4px; background: #2D2535"></div>
+<div style="height: 14px; width: 45%; border-radius: 4px; background: #2D2535"></div>
+<div style="height: 14px; width: 52%; border-radius: 4px; background: #2D2535"></div>
+</div>
+<div style="background: #2F2836; padding: 8px 12px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center">
+<div style="width: 48px; height: 48px; flex: none; border-radius: 6px; background: #40364A; display: flex; align-items: center; justify-content: center">
+</div>
+<div style="width: 12px; flex: none"></div>
+<div style="flex: 1; min-width: 0">
+<div class="ell" style="font-size: 16px; font-weight: 500">Track Title</div>
+<div class="ell" style="font-size: 12px; color: #B1B1BB">Artist Name</div>
+</div>
+<button class="ib" aria-label="Previous track"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></svg></button>
+<button class="ib" aria-label="Pause"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg></button>
+<button class="ib" aria-label="Next track"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg></button>
+<button class="ib" aria-label="Cast"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11z"></path></svg></button>
+<button class="ib" aria-label="Queue"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"></path></svg></button>
+<button class="ib" aria-label="Repeat" style="color: #B1B1BB"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button>
+</div>
+<sc-if value="{{showStep}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 4px 0 6px">
+<div style="font-size: 14px; color: #B1B1BB">Downloading the track…</div>
+<div style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); overflow: hidden"><div style="height: 4px; width: {{stepPct}}%; background: #EE98C1"></div></div>
+</div>
+</sc-if>
+<sc-if value="{{showSeek}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; height: 36px">
+<div class="tl">{{leading}}</div>
+<div style="flex: 1; position: relative; height: 16px; display: flex; align-items: center">
+<div style="position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1)"></div>
+<div style="position: absolute; left: 0; height: 4px; border-radius: 2px; width: {{seekPct}}%; background: #EE98C1"></div>
+<div style="position: absolute; left: {{seekPct}}%; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; background: #EE98C1"></div>
+</div>
+<div class="tl">{{trailing}}</div>
+</div>
+</sc-if>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #B1B1BB">The load, from the phone&#39;s log</div>
+<div style="position: relative; height: 64px; border-radius: 8px; background: #1D1D1F">
+<div style="position: absolute; top: 8px; height: 18px; left: 0%; width: {{tl.first}}%; background: rgba(128,204,206,0.35); border-radius: 4px; font-size: 11px; line-height: 18px; padding-left: 6px; box-sizing: border-box; overflow: hidden; white-space: nowrap">first 4 MiB</div>
+<div style="position: absolute; top: 30px; height: 18px; left: 0%; width: {{tl.whole}}%; background: rgba(128,204,206,0.18); border-radius: 4px; font-size: 11px; line-height: 18px; padding-left: 6px; box-sizing: border-box; overflow: hidden; white-space: nowrap">whole file · 23.6 MB · 9.4 s</div>
+<div style="position: absolute; top: 4px; bottom: 4px; left: {{tl.sound}}%; width: 2px; background: #8BCBA4"></div>
+<div style="position: absolute; top: 50px; left: {{tl.sound}}%; font-size: 10px; color: #8BCBA4; padding-left: 4px">sound · 1.6 s</div>
+<div style="position: absolute; top: 0; bottom: 0; left: {{tl.cursor}}%; width: 2px; background: #F2F2F4"></div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #B1B1BB"><span>{{phase}}</span><span style="font-family: 'Roboto Mono', monospace">{{clock}}</span></div>
+</div>
+</div>
+<div style="width: 412px; display: flex; flex-direction: column; gap: 16px">
+<div style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #B1B1BB">Full player</div>
+<div style="width: 412px; height: 800px; background: #292330; border-radius: 28px 28px 0 0; overflow: hidden; box-sizing: border-box; padding: 0 24px; display: flex; flex-direction: column">
+<div style="height: 22px; display: flex; align-items: center; justify-content: center; flex: none"><div style="width: 32px; height: 4px; border-radius: 2px; background: rgba(177,177,187,0.4)"></div></div>
+<div style="height: 8px; flex: none"></div>
+<button class="ib" aria-label="Collapse"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button>
+<div style="height: 8px; flex: none"></div>
+<div style="width: 364px; height: 364px; flex: none; border-radius: 10px; background: #40364A; display: flex; align-items: center; justify-content: center">
+</div>
+<div style="height: 24px; flex: none"></div>
+<div class="ell" style="font-size: 24px; font-weight: 700">Track Title</div>
+<div class="ell" style="font-size: 16px; font-weight: 600; color: #B1B1BB">Artist Name</div>
+<div style="height: 24px; flex: none"></div>
+<div style="height: 40px; flex: none; display: flex; flex-direction: column; justify-content: center">
+<sc-if value="{{showStep}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 14px; color: #B1B1BB; text-align: center">Downloading the track…</div>
+<div style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); overflow: hidden"><div style="height: 4px; width: {{stepPct}}%; background: #EE98C1"></div></div>
+</div>
+</sc-if>
+<sc-if value="{{showSeek}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center">
+<div class="tl">{{leading}}</div>
+<div style="flex: 1; position: relative; height: 16px; display: flex; align-items: center">
+<div style="position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1)"></div>
+<div style="position: absolute; left: 0; height: 4px; border-radius: 2px; width: {{seekPct}}%; background: #EE98C1"></div>
+<div style="position: absolute; left: {{seekPct}}%; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; background: #EE98C1"></div>
+</div>
+<div class="tl">{{trailing}}</div>
+</div>
+</sc-if>
+</div>
+<div style="height: 16px; flex: none"></div>
+<div style="display: flex; align-items: center; justify-content: center; gap: 24px; height: 72px; flex: none">
+<button class="ib" aria-label="Previous track"><svg width="36" height="36" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></svg></button>
+<button class="ib" aria-label="Pause" style="width: 72px; height: 72px"><svg width="48" height="48" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg></button>
+<button class="ib" aria-label="Next track"><svg width="36" height="36" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg></button>
+</div>
+<div style="height: 16px; flex: none"></div>
+<div style="display: flex; justify-content: center"><button class="ib" aria-label="Repeat" style="color: #B1B1BB"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button></div>
+<div style="height: 8px; flex: none"></div>
+<div style="display: flex; align-items: center">
+<button class="ib" aria-label="Mute" style="color: #B1B1BB"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg></button>
+<div style="flex: 1; margin: 0 8px; position: relative; height: 20px; display: flex; align-items: center">
+<div style="position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1)"></div>
+<div style="position: absolute; left: 0; width: 70%; height: 4px; border-radius: 2px; background: #EE98C1"></div>
+<div style="position: absolute; left: 70%; width: 20px; height: 20px; margin-left: -10px; border-radius: 10px; background: #EE98C1"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"network":{"editor":"enum","options":["fast","slow"],"default":"fast"},"$preview":{"width":928,"height":960}}'>
+class Component extends DCLogic {
+  componentDidMount() { this.restart(); }
+  componentWillUnmount() { clearInterval(this.timer); }
+  restart() {
+    clearInterval(this.timer);
+    this.start = Date.now();
+    this.setState({ t: 0 });
+    this.timer = setInterval(() => {
+      const t = Date.now() - this.start;
+      this.setState({ t: t });
+      if (t > 20000) clearInterval(this.timer);
+    }, 33);
+  }
+  renderVals() {
+    const f = this.props.network === 'slow' ? 2.5 : 1;
+    const t = (this.state && this.state.t) || 0;
+    const sound = 1600 * f, whole = 9400 * f, end = whole + 1500;
+    const total = 23638386, first = 4194304;
+    const clamp = (x) => Math.max(0, Math.min(1, x));
+    const loading = t < sound;
+    const posMs = Math.max(0, t - sound), dur = 252000;
+    const fmt = (ms) => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+    const pct = (x) => (x * 100).toFixed(2);
+    return {
+      replay: () => this.restart(),
+      clock: (t / 1000).toFixed(1) + ' s',
+      phase: loading ? 'Waiting on the first 4 MiB' : t < whole ? 'Playing; the rest of the file still arriving' : 'Playing; the whole file is here',
+      showStep: loading,
+      showSeek: !loading,
+      stepPct: pct(clamp(t / sound)),
+      seekPct: pct(posMs / dur),
+      leading: fmt(posMs),
+      trailing: fmt(dur),
+      tl: { first: pct(sound / end), whole: pct(whole / end), sound: pct(sound / end), cursor: pct(Math.min(t, end) / end) }
+    };
+  }
+}
+</script>
+</body>
+</html>
