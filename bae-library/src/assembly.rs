@@ -23,6 +23,8 @@ pub async fn open_library_manager(
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
 ) -> Result<LibraryManager, DbError> {
     let downloads = bae_transfers::Downloads::new(database.clone());
+    let make_local_transfers = bae_transfers::ReleaseTransfers::new();
+    let detach_cancels = crate::detach_cancels::DetachCancels::default();
     #[cfg(desktop)]
     let outputs = bae_transfers::Outputs::new(database.clone());
     LibraryManager::open(
@@ -39,6 +41,8 @@ pub async fn open_library_manager(
         downloads,
         #[cfg(desktop)]
         outputs,
+        make_local_transfers,
+        detach_cancels,
         closing,
     )
     .await

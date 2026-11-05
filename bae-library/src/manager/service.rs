@@ -49,6 +49,8 @@ impl LibraryManager {
         #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
         downloads: bae_transfers::Downloads,
         #[cfg(desktop)] outputs: bae_transfers::Outputs,
+        make_local_transfers: bae_transfers::ReleaseTransfers<crate::MakeLocalTransferProgress>,
+        detach_cancels: crate::detach_cancels::DetachCancels,
         closing: tokio_util::sync::CancellationToken,
     ) -> Result<Self, bae_db::DbError> {
         // The store opens running one transfer per direction, the least any
@@ -74,8 +76,8 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             tasks: BackgroundTasks::new(closing),
-            detach_cancels: Default::default(),
-            make_local_transfers: bae_transfers::ReleaseTransfers::new(),
+            detach_cancels,
+            make_local_transfers,
             downloads,
             #[cfg(desktop)]
             outputs,
