@@ -1,12 +1,15 @@
-<!-- @dsCard group="macOS" height=72 -->
+<!-- @dsCard group="macOS" height=270 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacButton</title></head>
-<body class="bae-preview" style="flex-direction: row; align-items: center; flex-wrap: wrap;">
+<body class="bae-preview" style="">
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacButton, { kind: 'primary' }, 'Set up'), h(B.MacButton, null, 'Cancel'), h(B.MacButton, { destructive: true }, 'Remove…'), h(B.MacButton, { kind: 'icon', label: 'Copy' }), h(B.MacButton, { kind: 'primary', off: true }, 'Set up')));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Sizes', h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } }, h(B.MacButton, { kind: 'primary', size: 'small' }, 'Small'), h(B.MacButton, { kind: 'primary' }, 'Regular'), h(B.MacButton, { kind: 'primary', size: 'large' }, 'Large'))), h('div', { className: 'bae-divider' }), N('Primary', h(B.MacButton, { kind: 'primary' }, 'Set up')), N('Secondary', h(B.MacButton, null, 'Set up')), N('Destructive', h(B.MacButton, { destructive: true }, 'Set up')), N('Off', h(B.MacButton, { kind: 'primary', off: true }, 'Set up')), N('Icon', h(B.MacButton, { kind: 'icon', label: 'Copy' }))));
 </script>
 </body>
 </html>

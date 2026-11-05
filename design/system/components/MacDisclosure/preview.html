@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS" height=130 -->
+<!-- @dsCard group="macOS" height=170 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacDisclosure</title></head>
@@ -6,7 +6,10 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacDisclosure, { label: 'Advanced' }), h(B.MacDisclosure, { label: 'Advanced', open: true }, h(B.MacBox, null, h(B.MacTextField, { label: 'Key prefix', row: true, placeholder: 'None' })))));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Closed', h(B.MacDisclosure, { label: 'Advanced' })), W('Open', h(B.MacDisclosure, { label: 'Advanced', open: true }, slot()))));
 </script>
 </body>
 </html>

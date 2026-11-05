@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS" height=110 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSegmentedControl</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Two choices', h(B.MacSegmentedControl, { options: 'In person,Send', selected: 'Send' })), N('Three choices', h(B.MacSegmentedControl, { options: 'Off,Only me,Everyone', selected: 'Only me' }))));
+</script>
+</body>
+</html>

@@ -15,8 +15,8 @@ export interface MacAlertProps { title: string; message?: string; children?: Rea
 export declare function MacAlert(props: MacAlertProps): React.ReactElement;
 
 /** A segmented control; options is comma-separated, selected names the chosen one. */
-export interface MacSegmentedProps { options: string; selected?: string }
-export declare function MacSegmented(props: MacSegmentedProps): React.ReactElement;
+export interface MacSegmentedControlProps { options: string; selected?: string }
+export declare function MacSegmentedControl(props: MacSegmentedControlProps): React.ReactElement;
 
 /** A heading over what follows it, usually one MacBox. */
 export interface MacSectionProps { title?: string; children?: React.ReactNode }
@@ -27,15 +27,15 @@ export interface MacBoxProps { elevated?: boolean; empty?: string; children?: Re
 export declare function MacBox(props: MacBoxProps): React.ReactElement;
 
 /** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Add device…"). */
-export interface MacRowProps { label: string; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; waiting?: boolean; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacRowProps { label?: string; labelWidth?: number; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; waiting?: boolean; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 
-/** kind: primary is the one action a screen is for; secondary is everything else; icon is a glyph-only button (label is its accessible name). destructive colours the words danger. */
-export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'icon'; label?: string; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+/** kind: primary is the one action a screen is for; secondary is everything else; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
+export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'icon'; size?: 'small' | 'regular' | 'large'; label?: string; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
-/** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. row draws it as a row of a MacBox. Children sit after the field (a Create button). */
-export interface MacTextFieldProps { label: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number; row?: boolean; children?: React.ReactNode }
+/** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacRow holds the field and gives the label. Children sit after the field. */
+export interface MacTextFieldProps { label?: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number; children?: React.ReactNode }
 export declare function MacTextField(props: MacTextFieldProps): React.ReactElement;
 
 /** One choice of several, as a row of a MacBox. */
@@ -43,8 +43,8 @@ export interface MacRadioProps { label: string; note?: string; checked?: boolean
 export declare function MacRadio(props: MacRadioProps): React.ReactElement;
 
 /** A pop-up menu showing its current choice. */
-export interface MacPopUpProps { value?: string; width?: number; off?: boolean; children?: React.ReactNode }
-export declare function MacPopUp(props: MacPopUpProps): React.ReactElement;
+export interface MacPopUpButtonProps { value?: string; width?: number; off?: boolean; children?: React.ReactNode }
+export declare function MacPopUpButton(props: MacPopUpButtonProps): React.ReactElement;
 
 /** A ▸ label that shows its children when opened. open sets how it starts. */
 export interface MacDisclosureProps { label?: string; open?: boolean; children?: React.ReactNode }

@@ -1,4 +1,4 @@
-<!-- @dsCard group="Android" height=220 -->
+<!-- @dsCard group="Android" height=330 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidTextField</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -6,7 +6,10 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { background: 'var(--elevated)', padding: 16, display: 'flex', flexDirection: 'column', gap: 20 } }, h(B.AndroidTextField, { label: 'Name', value: 'New Name', state: 'focused', helper: 'People in this library see this name.' }), h(B.AndroidTextField, { label: 'Name', value: '', state: 'error', error: 'Enter a name.' }))));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.AndroidTextField, { label: 'Name', value: 'Library Name' })), W('Focused', h(B.AndroidTextField, { label: 'Name', value: 'Library Name', state: 'focused' })), W('Helper', h(B.AndroidTextField, { label: 'Name', value: 'Library Name', helper: 'People in this library see this name.' })), W('Error', h(B.AndroidTextField, { label: 'Name', state: 'error', error: 'Enter a name.' }))));
 </script>
 </body>
 </html>

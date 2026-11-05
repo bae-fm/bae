@@ -18,20 +18,20 @@ body{margin:0;background:var(--elevated)}
 <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); font: 13px var(--font-sans)">
 <x-import component-from-global-scope="Bae.MacSection" title="Location">
 <x-import component-from-global-scope="Bae.MacBox">
-<x-import component-from-global-scope="Bae.MacTextField" label="Endpoint" value="{{endpoint}}" note="{{serviceLine}}" label-width="120" row="{{yes}}"></x-import>
-<x-import component-from-global-scope="Bae.MacTextField" label="Region" value="{{region}}" label-width="120" row="{{yes}}"></x-import>
-<x-import component-from-global-scope="Bae.MacTextField" label="Bucket" value="{{bucket}}" label-width="120" row="{{yes}}"></x-import>
+<x-import component-from-global-scope="Bae.MacRow" label="Endpoint" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{endpoint}}" note="{{serviceLine}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacRow" label="Region" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{region}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacRow" label="Bucket" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{bucket}}"></x-import></x-import>
 </x-import>
 </x-import>
 <x-import component-from-global-scope="Bae.MacSection" title="Key">
 <x-import component-from-global-scope="Bae.MacBox">
-<x-import component-from-global-scope="Bae.MacTextField" label="Access key ID" value="{{keyId}}" label-width="120" row="{{yes}}"></x-import>
-<x-import component-from-global-scope="Bae.MacTextField" label="Secret access key" value="{{secret}}" secret="{{yes}}" label-width="120" row="{{yes}}"></x-import>
+<x-import component-from-global-scope="Bae.MacRow" label="Access key ID" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{keyId}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacRow" label="Secret access key" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{secret}}" secret="{{yes}}"></x-import></x-import>
 </x-import>
 </x-import>
 <x-import component-from-global-scope="Bae.MacDisclosure" label="Advanced" open="{{open}}">
 <x-import component-from-global-scope="Bae.MacBox">
-<x-import component-from-global-scope="Bae.MacTextField" label="Key prefix" placeholder="None" label-width="120" row="{{yes}}"></x-import>
+<x-import component-from-global-scope="Bae.MacRow" label="Key prefix" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" placeholder="None"></x-import></x-import>
 </x-import>
 </x-import>
 <x-import component-from-global-scope="Bae.MacSheetFooter">

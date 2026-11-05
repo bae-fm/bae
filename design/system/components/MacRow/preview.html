@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS" height=260 -->
+<!-- @dsCard group="macOS" height=600 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacRow</title></head>
@@ -6,7 +6,10 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacBox, null, h(B.MacRow, { label: 'Name', value: 'Library Name' }, h(B.MacButton, null, 'Rename…')), h(B.MacRow, { label: 'Sync', value: 'Synced', tone: 'success', chevron: true }), h(B.MacRow, { label: 'Music', selected: true }), h(B.MacRow, { label: 'Person Name', strong: true }, h(B.StatusChip, null, 'Member')), h(B.MacRow, { label: 'Add device…', action: true }), h(B.MacRow, { label: 'Sync', note: 'This library is only on this Mac.', value: 'Not synced', chevron: true }))));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Label', h(B.MacBox, null, h(B.MacRow, { label: 'Sync' }))), W('Value', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', value: 'Synced' }))), W('Tone', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', value: 'Synced', tone: 'success' }))), W('Note', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', note: 'This library is only on this Mac.' }))), W('Waiting', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', waiting: true }))), W('Opens something', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', chevron: true }))), W('Controls', h(B.MacBox, null, h(B.MacRow, { label: 'Sync' }, h(B.MacButton, null, 'Set up')))), W('Field', h(B.MacBox, null, h(B.MacRow, { label: 'Sync' }, h(B.MacTextField, { value: 'Library Name' })))), W('Strong', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', strong: true }))), W('Tag', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', tag: 'Member' }))), W('Action', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', action: true }))), W('Selected', h(B.MacBox, null, h(B.MacRow, { label: 'Sync', selected: true })))));
 </script>
 </body>
 </html>

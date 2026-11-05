@@ -1,5 +1,5 @@
 # AndroidCardHeading
 
-A small heading inside an `AndroidCard`, over the rows it names: "Devices". No hairline under it.
+Names the rows under it inside a card: "Devices".
 
 **In the code:** Android: none yet; the code needs one.

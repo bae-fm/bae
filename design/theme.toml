@@ -1,9 +1,9 @@
-# The apps' colours, read by every platform through code theme-gen generates
+# The apps' colors, read by every platform through code theme-gen generates
 # from this file (see notes/appearance.md). Tones and accents are listed in the
 # order the appearance settings offer them.
 
 # The tone and accent a new installation shows until the person chooses, each
-# one listed below. The standard tone also colours Android's launch window
+# one listed below. The standard tone also colors Android's launch window
 # before the app has read the chosen one.
 [standard]
 tone = "plum"
@@ -195,7 +195,7 @@ light = "#1F7274"
 dark = "#80CCCE"
 fill = "#277A7C"
 
-# Colours that mean the same in every tone. `activity` marks work in progress,
+# Colors that mean the same in every tone. `activity` marks work in progress,
 # such as a transfer, an upload among them; `pinning` marks files downloading
 # to stay on this device; `onFill` and `onFillSecondary` sit on accent and
 # status fills, on artwork and on the image viewer's `backdrop`.
@@ -237,7 +237,7 @@ backdrop = "#D9000000"
 onFill = "#FFFFFF"
 onFillSecondary = "#B3FFFFFF"
 
-# A colour laid over a surface: `tint` behind that colour's own text, as in a
+# A color laid over a surface: `tint` behind that color's own text, as in a
 # status chip, a notice or a selection; `tintStrong` where it must read stronger,
 # as under the pointer.
 [opacity]

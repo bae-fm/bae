@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Bae","components":[{"name":"MacWindow"},{"name":"MacSettingsWindow"},{"name":"MacAlert"},{"name":"MacSection"},{"name":"MacBox"},{"name":"MacRow"},{"name":"MacButton"},{"name":"MacTextField"},{"name":"MacRadio"},{"name":"MacPopUp"},{"name":"MacSegmented"},{"name":"MacDisclosure"},{"name":"MacSheet"},{"name":"MacSheetFooter"},{"name":"MacProgress"},{"name":"MacErrorText"},{"name":"MacNote"},{"name":"AndroidScreen"},{"name":"AndroidSection"},{"name":"AndroidCard"},{"name":"AndroidCardHeading"},{"name":"AndroidRow"},{"name":"AndroidButton"},{"name":"AndroidIconButton"},{"name":"AndroidSwitch"},{"name":"AndroidTextField"},{"name":"AndroidRadio"},{"name":"AndroidDialog"},{"name":"AndroidDialogActions"},{"name":"AndroidNote"},{"name":"StatusChip"},{"name":"Notice"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Bae","components":[{"name":"MacButton"},{"name":"MacTextField"},{"name":"MacRadio"},{"name":"MacPopUpButton"},{"name":"MacSegmentedControl"},{"name":"MacDisclosure"},{"name":"MacProgress"},{"name":"MacErrorText"},{"name":"MacNote"},{"name":"MacRow"},{"name":"MacBox"},{"name":"MacSection"},{"name":"MacSheetFooter"},{"name":"MacSheet"},{"name":"MacAlert"},{"name":"MacSettingsWindow"},{"name":"MacWindow"},{"name":"AndroidButton"},{"name":"AndroidIconButton"},{"name":"AndroidSwitch"},{"name":"AndroidTextField"},{"name":"AndroidRadio"},{"name":"AndroidNote"},{"name":"AndroidRow"},{"name":"AndroidCardHeading"},{"name":"AndroidCard"},{"name":"AndroidSection"},{"name":"AndroidDialogActions"},{"name":"AndroidDialog"},{"name":"AndroidScreen"},{"name":"StatusChip"},{"name":"Notice"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -31,6 +31,12 @@
   }
 
   function never() { return false; }
+
+  // A right-pointing chevron; a class turns it to point down.
+  function Chevron(props) {
+    return h('svg', { className: props.className, width: 7, height: 12, viewBox: '0 0 7 12', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' },
+      h('path', { d: 'M1.5 1.5 5.5 6l-4 4.5' }));
+  }
 
   // Glyphs: the few the components draw. Stroke icons for macOS, Material paths for Android.
   function CopyGlyph() {
@@ -99,16 +105,18 @@
     return h('div', { className: cx('bae-m-box', props.elevated && 'bae-m-box-elevated') }, out);
   }
 
+  // A row holding a field is a form row: the label takes a column and the field fills the rest.
   function MacRow(props) {
     var trail = kids(props.children);
-    return h('div', { className: cx('bae-m-row', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action'), onClick: props.onClick },
-      h('span', { className: 'bae-m-row-label' },
+    var form = trail.some(function (c) { return c && c.type === MacTextField; });
+    return h('div', { className: cx('bae-m-row', form && 'bae-m-row-form', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action'), onClick: props.onClick },
+      props.label == null ? null : h('span', { className: 'bae-m-row-label', style: form ? { width: Number(props.labelWidth || 90) } : null },
         h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null),
         props.note ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) }, props.note) : null,
         props.waiting ? h('div', { className: 'bae-m-row-waiting bae-progress-track' }, h('div', { className: 'bae-progress-fill bae-progress-moving' })) : null),
       props.value != null && props.value !== '' ? h('span', { className: cx('bae-m-row-value', props.tone && 'bae-tone-' + props.tone) }, props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.value) : null,
-      trail.length ? h('span', { className: 'bae-m-row-trail' }, trail) : null,
-      props.chevron ? h('span', { className: 'bae-m-row-chevron', 'aria-hidden': true }, '›') : null);
+      trail.length ? h('span', { className: cx('bae-m-row-trail', form && 'bae-m-row-trail-fill') }, trail) : null,
+      props.chevron ? h(Chevron, { className: 'bae-m-row-chevron' }) : null);
   }
 
   function MacButton(props) {
@@ -117,7 +125,7 @@
       type: 'button',
       disabled: !!props.off,
       onClick: props.onClick,
-      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.destructive && 'bae-m-btn-destructive')
+      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive')
     };
     if (kind === 'icon') {
       rest['aria-label'] = props.label || 'Copy';
@@ -129,6 +137,7 @@
   function MacTextField(props) {
     var state = props.state || 'normal';
     var hidden = !!props.labelHidden;
+    var bare = hidden || props.label == null;
     var lw = props.labelWidth != null ? Number(props.labelWidth) : 90;
     var isError = state === 'error';
     var line = isError ? props.error : props.note;
@@ -141,12 +150,12 @@
       disabled: state === 'off',
       spellCheck: false
     });
-    return h('div', { className: cx('bae-m-field', props.row && 'bae-m-field-row', state === 'off' && 'bae-off') },
+    return h('div', { className: cx('bae-m-field', state === 'off' && 'bae-off') },
       h('div', { className: 'bae-m-field-line' },
-        hidden ? null : h('span', { className: 'bae-m-field-label', style: { width: lw } }, props.label),
+        bare ? null : h('span', { className: 'bae-m-field-label', style: { width: lw } }, props.label),
         input,
         props.children),
-      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: { paddingLeft: hidden ? 0 : lw + 12 } }, line) : null);
+      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: { paddingLeft: bare ? 0 : lw + 12 } }, line) : null);
   }
 
   function MacRadio(props) {
@@ -157,13 +166,13 @@
         props.note ? h('span', { className: 'bae-m-row-note' }, props.note) : null));
   }
 
-  function MacPopUp(props) {
-    return h('button', { type: 'button', className: 'bae-m-popup', disabled: !!props.off, style: props.width ? { width: Number(props.width) } : null },
+  function MacPopUpButton(props) {
+    return h('button', { type: 'button', className: 'bae-m-popupbutton', disabled: !!props.off, style: props.width ? { width: Number(props.width) } : null },
       h('span', null, props.children != null ? props.children : props.value),
-      h('span', { className: 'bae-m-popup-mark', 'aria-hidden': true }, '⌄'));
+      h('svg', { className: 'bae-m-popupbutton-mark', width: 8, height: 12, viewBox: '0 0 8 12', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M1.5 4.5 4 2l2.5 2.5M1.5 7.5 4 10l2.5-2.5' })));
   }
 
-  function MacSegmented(props) {
+  function MacSegmentedControl(props) {
     var options = String(props.options || '').split(',').map(function (o) { return o.trim(); }).filter(Boolean);
     return h('span', { className: 'bae-m-segmented', role: 'radiogroup' },
       options.map(function (o) {
@@ -176,7 +185,7 @@
     var open = s[0];
     return h('div', { className: 'bae-m-disclosure' },
       h('button', { type: 'button', className: 'bae-m-disclosure-toggle', 'aria-expanded': open, onClick: function () { s[1](!open); } },
-        h('span', { 'aria-hidden': true }, open ? '▾' : '▸'),
+        h(Chevron, { className: cx('bae-m-disclosure-mark', open && 'bae-m-disclosure-mark-open') }),
         props.label || 'Advanced'),
       open ? props.children : null);
   }
@@ -311,7 +320,7 @@
 
   window.Bae = Object.assign(window.Bae || {}, {
     MacWindow: MacWindow, MacAlert: MacAlert, MacSettingsWindow: MacSettingsWindow, MacSection: MacSection, MacBox: MacBox, MacRow: MacRow, MacButton: MacButton,
-    MacTextField: MacTextField, MacRadio: MacRadio, MacPopUp: MacPopUp, MacSegmented: MacSegmented, MacDisclosure: MacDisclosure, MacSheet: MacSheet,
+    MacTextField: MacTextField, MacRadio: MacRadio, MacPopUpButton: MacPopUpButton, MacSegmentedControl: MacSegmentedControl, MacDisclosure: MacDisclosure, MacSheet: MacSheet,
     MacSheetFooter: MacSheetFooter, MacProgress: MacProgress, MacErrorText: MacErrorText, MacNote: MacNote,
     AndroidScreen: AndroidScreen, AndroidSection: AndroidSection, AndroidCard: AndroidCard, AndroidCardHeading: AndroidCardHeading,
     AndroidRow: AndroidRow, AndroidButton: AndroidButton, AndroidIconButton: AndroidIconButton, AndroidSwitch: AndroidSwitch,

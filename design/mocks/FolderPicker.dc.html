@@ -20,7 +20,7 @@ body{margin:0;background:var(--elevated)}
 <sc-if value="{{showPath}}" hint-placeholder-val="{{ false }}"><div style="color: var(--text-secondary)">{{rootName}} › <span style="color: var(--text-primary)">Music</span></div></sc-if>
 <x-import component-from-global-scope="Bae.MacBox" empty="{{emptyText}}">
 <sc-for list="{{rows}}" as="row" hint-placeholder-count="3"><x-import component-from-global-scope="Bae.MacRow" label="{{row.name}}" selected="{{row.selected}}" chevron="{{row.caret}}"></x-import></sc-for>
-<sc-if value="{{naming}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacTextField" label="Folder name" label-hidden="{{yes}}" value="bae" state="focused" row="{{yes}}"><x-import component-from-global-scope="Bae.MacButton">Create</x-import></x-import></sc-if>
+<sc-if value="{{naming}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacRow"><x-import component-from-global-scope="Bae.MacTextField" label="Folder name" label-hidden="{{yes}}" value="bae" state="focused"></x-import><x-import component-from-global-scope="Bae.MacButton">Create</x-import></x-import></sc-if>
 </x-import>
 <sc-if value="{{notEmpty}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacErrorText">“{{selectedName}}” isn’t empty. Choose an empty folder, or make a new one.</x-import></sc-if>
 <sc-if value="{{showShareNote}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNote">A shared folder is required to invite people to the library.</x-import></sc-if>

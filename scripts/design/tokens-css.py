@@ -2,7 +2,7 @@
 """Write design/system/tokens.css from design/system/tokens.json.
 
 The stylesheet the design system's previews and the canvas load: one custom
-property per token (colours per theme, the first theme on :root) and one class
+property per token (colors per theme, the first theme on :root) and one class
 per text style, laid out as the claude.ai Design System page compiles it.
 
 Usage: scripts/design/tokens-css.py

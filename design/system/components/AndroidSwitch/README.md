@@ -1,5 +1,5 @@
 # AndroidSwitch
 
-An on/off switch at the end of an `AndroidRow`. On is `accent` with a `background` thumb. `label` is read aloud.
+At the end of an `AndroidRow`, for a setting that is on or off.
 
 **In the code:** Android: Material's `Switch`.

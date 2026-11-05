@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS" height=230 -->
+<!-- @dsCard group="macOS" height=380 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacTextField</title></head>
@@ -6,7 +6,10 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacTextField, { label: 'Endpoint', value: 'https://s3.home.lan' }), h(B.MacTextField, { label: 'Region', state: 'focused', value: 'us-east-1' }), h(B.MacTextField, { label: 'Secret', secret: true, value: 'abcdefghijkl' }), h(B.MacTextField, { label: 'Endpoint', value: 's3.home.lan', state: 'error', error: 'Not a valid address.' }), h(B.MacTextField, { label: 'Folder name', labelHidden: true }), h(B.MacTextField, { label: 'Bucket', state: 'off' })));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacTextField, { label: 'Name', value: 'Library Name' })), W('Focused', h(B.MacTextField, { label: 'Name', state: 'focused', value: 'Library Name' })), W('Empty', h(B.MacTextField, { label: 'Name' })), W('Note', h(B.MacTextField, { label: 'Name', value: 'Library Name', note: 'People in this library see this name.' })), W('Error', h(B.MacTextField, { label: 'Name', state: 'error', error: 'Enter a name.' })), W('Off', h(B.MacTextField, { label: 'Name', state: 'off', value: 'Library Name' })), W('Secret', h(B.MacTextField, { label: 'Name', secret: true, value: 'Library Name' })), W('Label inside', h('div', { style: { paddingLeft: 102 } }, h(B.MacTextField, { label: 'Name', labelHidden: true })))));
 </script>
 </body>
 </html>

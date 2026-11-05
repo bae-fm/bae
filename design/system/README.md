@@ -1,4 +1,6 @@
-bae is a music library app for macOS, Android, iOS, Windows and Linux. Its screens are quiet: dark surfaces in a chosen tone, one accent colour, native controls, short words.
+bae is a music library app for macOS, Android, iOS, Windows and Linux. Its screens are quiet: dark surfaces in a chosen tone, one accent color, native controls, short words.
+
+Everything here is drawn at each platform's regular size, the one the apps use by default. Other sizes, such as macOS's small and large controls, are variants to add later.
 
 ## Words
 
@@ -9,29 +11,17 @@ bae is a music library app for macOS, Android, iOS, Windows and Linux. Its scree
 - Error lines say what is wrong and what to do: "“Music” isn’t empty. Choose an empty folder, or make a new one."
 - Name no storage company where the choice isn't the person's to make. No exclamation marks, no emoji, no marketing words.
 
-## Colour
+## Color
 
-The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight accents and light and dark modes. This system holds the midnight tone and the pink accent, in Dark (first) and Light.
+The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight accents and light and dark modes. This system holds the midnight tone and the pink accent, in Dark (first) and Light. Each color's use is beside it under Colors.
 
-- Surfaces by role: `background` is the window; `surface` holds content (boxes of rows, the sidebar); `elevated` floats (sheets); `field` fills text fields; `tile` raises a control; `well` recesses one; `placeholder` stands in for missing artwork.
-- Text is `text-primary`, with `text-secondary` for values and notes, on any surface. `text-tertiary` is only for placeholders and unchosen marks.
-- `accent` is for accent text, glyphs, the focus ring and a chosen radio. The primary button is `accent-fill` with `on-fill` text, in both modes.
-- A colour behind its own text uses its tint (`opacity-tint`): `accent-tint` for a selected row, `success-tint` behind a Synced chip.
-- Status: `success` for Synced, `warning` for routine states that need nothing (Offline), `danger` for what broke, `activity` for transfers, `pinning` for files kept on a device. Each status carries a word, never colour alone.
-- `hairline` divides rows and edges a box. `scrim` dims the window under a sheet.
+- Each status carries a word, never color alone.
 
 ## Type
 
-The platform's own face: SF Pro on Apple (`--font-sans`), SF Mono for codes (`--font-mono`), Roboto on Android (`--font-android`, from Google Fonts). No font files ship. The text styles are macOS points; iOS follows Dynamic Type, and the Android components set Android's sizes (rows 16 over 14, notes 12, the top bar's title 22).
+The text styles are macOS points. iOS follows Dynamic Type, and the Android components set Android's sizes. No font files ship: each platform uses its own face.
 
-- `body` (13) for labels, values and buttons; `small` (12) for text in a field; error lines in `body`; `strong` for a section heading; `heading` (15) for a sheet's title and a pane's heading; `detail` (11.5) for a note under a control; `mono` for a restore code.
 - `title`, `hero`, `display` and `wordmark` are for pages and the welcome screen, not settings.
-
-## Space and shape
-
-- Spacing is named by meaning: `space-inline` between a glyph and its text, `space-related` between related items, `space-group` for a row's inset, `space-edge` for a sheet's, `space-section` between sections.
-- `radius-control` for fields, buttons, pop-ups, notices and row highlights; `radius-card` for boxes and a sheet's lower corners; `radius-chip` for chips; `radius-bar` for progress bars.
-- Controls are `size-control` (22px) tall; rows at least `size-row` (36px). Fields have a fill and no outline.
 
 ## Screens
 
@@ -44,7 +34,16 @@ The platform's own face: SF Pro on Apple (`--font-sans`), SF Mono for codes (`--
 
 ## Iconography
 
-Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Apple platforms use SF Symbols and Android Material icons. The macOS components draw the few glyphs they need as inline strokes; the Android ones draw Material's paths (back, edit, chevron, expand, more, search, refresh). `Notice` has no leading glyph.
+Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Apple platforms use SF Symbols and Android Material icons.
+
+## Samples
+
+A component's sample is a set of named rows, each changing one thing.
+
+- Hold the content still. Every row shows the same example with the same words, so the only difference is the state or option the row is named for. No exceptions for a field or a word that seems a better fit.
+- One row per state or option, named the way you'd ask for it in code: Resting, Focused, Error, Off.
+- When an axis is done, look for the next among the component's other props. Show each value once; don't multiply axes into combinations.
+- A container holds a plain stand-in, a dashed box, so the container is the only real thing on show.
 
 ## Using this system
 

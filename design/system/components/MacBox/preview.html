@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS" height=170 -->
+<!-- @dsCard group="macOS" height=330 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacBox</title></head>
@@ -6,7 +6,10 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacBox, null, h(B.MacRow, { label: 'Provider', value: 'iCloud' }), h(B.MacRow, { label: 'Status', value: 'Syncing…' }), h(B.MacRow, { label: 'People', chevron: true })), h(B.MacBox, { empty: 'No shared folders yet' })));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Rows', h(B.MacBox, null, h(B.MacRow, { label: 'This Mac' }), h(B.MacRow, { label: 'Phone' }), h(B.MacRow, { label: 'Laptop' }))), W('Empty', h(B.MacBox, { empty: 'No shared folders yet' })), W('Elevated', h(B.MacBox, { elevated: true }, h(B.MacRow, { label: 'This Mac' }), h(B.MacRow, { label: 'Phone' })))));
 </script>
 </body>
 </html>

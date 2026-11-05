@@ -1,4 +1,4 @@
-<!-- @dsCard group="Android" height=150 -->
+<!-- @dsCard group="Android" height=130 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidRadio</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -6,7 +6,10 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { background: 'var(--elevated)', padding: '0 16px' } }, h(B.AndroidRadio, { label: 'Off' }), h(B.AndroidRadio, { label: 'Only me', checked: true }), h(B.AndroidRadio, { label: 'Everyone' }))));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Checked', h(B.AndroidRadio, { label: 'Only me', checked: true })), N('Unchecked', h(B.AndroidRadio, { label: 'Only me' }))));
 </script>
 </body>
 </html>

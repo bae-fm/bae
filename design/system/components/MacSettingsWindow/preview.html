@@ -1,12 +1,15 @@
-<!-- @dsCard group="macOS" height=420 -->
+<!-- @dsCard group="macOS" height=760 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacSettingsWindow</title></head>
-<body class="bae-preview" style="padding: 0;">
+<body class="bae-preview" style="">
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacSettingsWindow, { pane: 'Library', title: 'Library', height: 360 }, h(B.MacSection, { title: 'Sync' }, h(B.MacBox, null, h(B.MacRow, { label: 'Sync', value: 'Synced', tone: 'success', chevron: true }), h(B.MacRow, { label: 'People and devices', value: '2 people', chevron: true }))))));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('A pane', h(B.MacSettingsWindow, { pane: 'Library', title: 'Library', height: 320, width: 600 }, slot())), W('A page in a pane', h(B.MacSettingsWindow, { pane: 'Library', title: 'Sync', back: 'Library', height: 320, width: 600 }, slot()))));
 </script>
 </body>
 </html>

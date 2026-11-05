@@ -1,12 +1,15 @@
-<!-- @dsCard group="Status" height=72 -->
+<!-- @dsCard group="Status" height=300 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>StatusChip</title></head>
-<body class="bae-preview" style="flex-direction: row; align-items: center; flex-wrap: wrap;">
+<body class="bae-preview" style="">
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.StatusChip, { tone: 'success' }, 'Synced'), h(B.StatusChip, { tone: 'warning' }, 'Offline'), h(B.StatusChip, { tone: 'danger' }, 'Storage full'), h(B.StatusChip, null, 'Member')));
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Neutral', h(B.StatusChip, null, 'Synced')), N('Accent', h(B.StatusChip, { tone: 'accent' }, 'Synced')), N('Info', h(B.StatusChip, { tone: 'info' }, 'Synced')), N('Success', h(B.StatusChip, { tone: 'success' }, 'Synced')), N('Warning', h(B.StatusChip, { tone: 'warning' }, 'Synced')), N('Danger', h(B.StatusChip, { tone: 'danger' }, 'Synced')), N('Activity', h(B.StatusChip, { tone: 'activity' }, 'Synced'))));
 </script>
 </body>
 </html>
