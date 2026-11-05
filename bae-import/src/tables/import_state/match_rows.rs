@@ -5,38 +5,25 @@
 
 pub(super) const SQL: &str = include_str!("match_rows.sql");
 
-#[cfg(desktop)]
 use super::verdict_rows::Owner;
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::tables::album_link_rows::AlbumLinkRow;
-#[cfg(desktop)]
 use bae_catalogs::album_links::AlbumLinks;
-#[cfg(desktop)]
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
-#[cfg(desktop)]
 use bae_catalogs::records::MetadataRef;
-#[cfg(desktop)]
 use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
-#[cfg(desktop)]
 use bae_catalogs::search::{MetadataResult, SourceTracks};
-#[cfg(desktop)]
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
-#[cfg(desktop)]
 use std::str::FromStr;
 
-#[cfg(desktop)]
 fn source_of(stored: &str) -> Result<LookupCatalog, DbError> {
     LookupCatalog::from_str(stored).map_err(DbError::Message)
 }
 
-#[cfg(desktop)]
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored).map_err(DbError::Message)
 }
 
-#[cfg(desktop)]
 fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
     CoverStanding::from_column(stored)
         .ok_or_else(|| DbError::unreadable("import_candidate_match.cover_standing", stored))
@@ -45,14 +32,12 @@ fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
 /// Whose match rows these are: a verdict-shaped owner's — a candidate's
 /// verdict or a run in flight — or a typed search's, whose rows hang off the
 /// catalog part that returned them.
-#[cfg(desktop)]
 #[derive(Clone, Copy, Debug)]
 pub(super) enum MatchOwner<'a> {
     Verdict(Owner<'a>),
     Search(i64),
 }
 
-#[cfg(desktop)]
 impl MatchOwner<'_> {
     /// The column that names this owner on every row it owns.
     pub(super) fn column(self) -> &'static str {
@@ -88,7 +73,6 @@ impl MatchOwner<'_> {
 /// one carries: its pressing row, and for an offered one the note the
 /// folder's text names its row by. A search's release is returned, and no
 /// pick has read it when it lands.
-#[cfg(desktop)]
 #[derive(Clone, Copy)]
 pub(super) enum Written<'a> {
     Offered(u32, Option<&'a str>),
@@ -104,7 +88,6 @@ pub(super) enum Written<'a> {
 /// Delete the rows below every match the verdict `owner` holds, which name
 /// each match by its owner and position, so the matches a write stores next
 /// carry only their own.
-#[cfg(desktop)]
 pub(super) fn delete_verdict_match_entries(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -125,7 +108,6 @@ pub(super) fn delete_verdict_match_entries(
 
 /// Delete the verdict `owner`'s matches from `position` on: those an earlier
 /// verdict held past the ones a write just stored.
-#[cfg(desktop)]
 pub(super) fn delete_verdict_matches_from(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -140,7 +122,6 @@ pub(super) fn delete_verdict_matches_from(
 }
 
 /// Delete every release a search part asking `catalog` returned.
-#[cfg(desktop)]
 pub(super) fn delete_search_matches_of(
     sql: &CovenWrite<'_>,
     catalog: LookupCatalog,
@@ -152,7 +133,6 @@ pub(super) fn delete_search_matches_of(
     Ok(())
 }
 
-#[cfg(desktop)]
 pub(super) fn store_match(
     sql: &CovenWrite<'_>,
     owner: MatchOwner<'_>,
@@ -354,7 +334,6 @@ pub(super) fn store_match(
 }
 
 /// The album link rows of the match at `position`, which holds none yet.
-#[cfg(desktop)]
 fn store_album_link_rows(
     sql: &CovenWrite<'_>,
     owner: MatchOwner<'_>,
@@ -383,7 +362,6 @@ fn store_album_link_rows(
 /// Mark every row of `release` the search `search_run` holds picked, each
 /// stating `links` as its album on the other catalog, in place of what it
 /// stated.
-#[cfg(desktop)]
 pub(super) fn store_picked(
     sql: &CovenWrite<'_>,
     search_run: i64,
@@ -412,7 +390,6 @@ pub(super) fn store_picked(
 }
 
 /// The stored `album_links` value of `links`.
-#[cfg(desktop)]
 fn album_links_column(links: &AlbumLinks) -> &'static str {
     match links {
         AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
@@ -421,44 +398,31 @@ fn album_links_column(links: &AlbumLinks) -> &'static str {
     }
 }
 
-#[cfg(desktop)]
 pub(super) fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
     to_i64(ordinal, "a match's place in its list")
 }
 
 /// The stored `listing` values.
-#[cfg(desktop)]
 const LISTING_OFFERED: &str = "offered";
-#[cfg(desktop)]
 const LISTING_NARROWED_OUT: &str = "narrowed_out";
-#[cfg(desktop)]
 const LISTING_UNLISTED: &str = "unlisted";
-#[cfg(desktop)]
 const LISTING_RETURNED: &str = "returned";
 
 /// The `search_state` a search's release names its answered part by.
-#[cfg(desktop)]
 const SEARCH_STATE_DONE: &str = "done";
 
 /// The stored `album_links` values, one per [`AlbumLinks`] shape.
-#[cfg(desktop)]
 const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
-#[cfg(desktop)]
 const ALBUM_LINKS_READ: &str = "read";
-#[cfg(desktop)]
 const ALBUM_LINKS_UNREAD: &str = "unread";
 
 /// The stored `media_kind` values, one per [`StatedMedia`] shape.
-#[cfg(desktop)]
 pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";
-#[cfg(desktop)]
 pub(super) const MEDIA_PER_MEDIUM: &str = "per_medium";
-#[cfg(desktop)]
 pub(super) const MEDIA_FORMATS: &str = "formats";
 
 /// One medium row of a match: the media kind it was written for, the carrier
 /// it names and how many of it.
-#[cfg(desktop)]
 pub(super) struct StoredMedium {
     pub(super) kind: String,
     pub(super) medium: Option<Medium>,
@@ -467,7 +431,6 @@ pub(super) struct StoredMedium {
 
 /// The ordinal-ordered rows the child tables hold for one match, read on its
 /// row and handed to [`match_of`].
-#[cfg(desktop)]
 pub(super) struct MatchEntries {
     pub(super) labels: Vec<bae_types::pressing::ReleaseLabel>,
     pub(super) barcodes: Vec<String>,
@@ -483,7 +446,6 @@ pub(super) struct MatchEntries {
 
 /// Where a stored release is listed, with what an offered or narrowed-out
 /// one carries.
-#[cfg(desktop)]
 pub(super) enum Listing {
     Offered(ListedMatch),
     NarrowedOut(ListedMatch),
@@ -499,7 +461,6 @@ pub(super) enum Listing {
 
 /// What a release a verdict lists carries beside the release: which pressing
 /// row of its list the run put it in.
-#[cfg(desktop)]
 pub(super) struct ListedMatch {
     /// The row's number within this list, as the run numbered it. Rows are
     /// read, never re-formed: a list of a run's answers does not hold what
@@ -511,7 +472,6 @@ pub(super) struct ListedMatch {
 }
 
 /// One stored release of a verdict, at its position, and where it is listed.
-#[cfg(desktop)]
 pub(super) struct MatchRow {
     pub(super) position: i64,
     pub(super) result: MetadataResult,
@@ -521,7 +481,6 @@ pub(super) struct MatchRow {
 /// One candidate's stored releases, in position order: the verdict's
 /// matches, the lead first, the releases its signals' agreement narrowed
 /// out, and the ones only its ledger's cells list.
-#[cfg(desktop)]
 #[derive(Default)]
 pub(crate) struct StoredMatches {
     pub(super) rows: Vec<MatchRow>,
@@ -529,7 +488,6 @@ pub(crate) struct StoredMatches {
 
 /// One match row's own columns, before the child tables' rows are joined
 /// to it.
-#[cfg(desktop)]
 pub(super) struct MatchColumns {
     pub(super) content_hash: String,
     pub(super) position: i64,
@@ -549,7 +507,6 @@ pub(super) struct MatchColumns {
 /// medium rows have to agree: a kind with no entries is `undescribed`, a
 /// `per_medium` row counts one medium, and a row of another kind is a
 /// different match's.
-#[cfg(desktop)]
 pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<MatchRow, DbError> {
     let MatchColumns {
         content_hash,
@@ -656,7 +613,6 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     Ok(MatchRow { position, result, listing })
 }
 
-#[cfg(desktop)]
 pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
     let cover_url: Option<String> = row.get("cover_url")?;
     let cover_source: Option<String> = row.get("cover_source")?;
@@ -734,7 +690,6 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
 
 /// A match's own columns joined as `found`, and its album's first year from
 /// the stored catalog release it names, joined as `fetched`.
-#[cfg(desktop)]
 pub(super) const MATCH_COLUMNS: &str =
     "found.position, found.pressing, found.source, found.release_id, \
      found.title, found.artist, found.year, found.country, found.region, \
@@ -747,7 +702,6 @@ pub(super) const MATCH_COLUMNS: &str =
 /// What hangs off a match joined as `found`, each list a JSON array in its
 /// stored order: its labels, its barcodes, its cover's copies, its media, its
 /// links and its album links.
-#[cfg(desktop)]
 pub(super) fn match_entries_columns() -> String {
     let child = |table: &str, value: &str, order: &str| {
         format!(
@@ -795,7 +749,6 @@ pub(super) fn match_entries_columns() -> String {
 }
 
 /// One match's child lists as SQLite hands them over, still JSON.
-#[cfg(desktop)]
 pub(super) struct StoredMatchEntries {
     labels: String,
     barcodes: String,
@@ -805,7 +758,6 @@ pub(super) struct StoredMatchEntries {
     album_links: String,
 }
 
-#[cfg(desktop)]
 pub(super) fn read_match_entries(row: &Row<'_>) -> rusqlite::Result<StoredMatchEntries> {
     Ok(StoredMatchEntries {
         labels: row.get("match_labels")?,
@@ -818,7 +770,6 @@ pub(super) fn read_match_entries(row: &Row<'_>) -> rusqlite::Result<StoredMatchE
 }
 
 /// One medium of a match as [`match_entries_columns`] holds it.
-#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredMatchMedium {
     kind: String,
@@ -826,7 +777,6 @@ struct StoredMatchMedium {
     quantity: u32,
 }
 
-#[cfg(desktop)]
 impl StoredMatchEntries {
     pub(super) fn entries(self) -> Result<MatchEntries, DbError> {
         fn list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
@@ -866,7 +816,6 @@ impl StoredMatchEntries {
 
 /// The releases of every run in flight, or of `key`'s runs alone, by run,
 /// each run's in position order.
-#[cfg(desktop)]
 pub(super) fn load_run_matches_on(
     sql: &impl bae_db::client::query::QueryRows,
     key: Option<&crate::CandidateKey>,
@@ -904,7 +853,6 @@ pub(super) fn load_run_matches_on(
 /// The releases every typed search holds, or `key`'s search alone, by search,
 /// each search's under its catalog parts in their order, each part's in the
 /// order it returned them.
-#[cfg(desktop)]
 pub(super) fn load_search_matches_on(
     sql: &impl bae_db::client::query::QueryRows,
     key: Option<&crate::CandidateKey>,

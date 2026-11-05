@@ -6,23 +6,16 @@
 
 pub(super) const SQL: &str = include_str!("release_link_rows.sql");
 
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::ReleaseLink;
-#[cfg(desktop)]
 use bae_catalogs::catalog::Catalog;
-#[cfg(desktop)]
 use bae_catalogs::records::MetadataRef;
-#[cfg(desktop)]
 use bae_identify::{AlbumLink, PressingLink};
-#[cfg(desktop)]
 use std::str::FromStr;
 
 /// Make the candidate's release link `link`, or remove it. A link that
 /// stays is written in place, so the candidate never reads as unlinked on
 /// its way from one link to another.
-#[cfg(desktop)]
 pub(super) fn store_release_link(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -89,7 +82,6 @@ pub(super) fn store_release_link(
 /// `link`: a pressing's partners in the other catalogs, by catalog, and an
 /// album's album in each catalog, in catalog order, riding on it as JSON
 /// arrays. A candidate with no link reads `link_row` as NULL.
-#[cfg(desktop)]
 pub(crate) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
      link.kind AS link_kind, link.source AS link_source, link.release_id AS link_release_id, \
      (SELECT json_group_array(json_array(partner.source, partner.release_id) \
@@ -103,7 +95,6 @@ pub(crate) const RELEASE_LINK_COLUMNS: &str = "link.content_hash AS link_row, \
 
 /// One candidate's [`RELEASE_LINK_COLUMNS`] as SQLite hands them over, its
 /// lists still JSON.
-#[cfg(desktop)]
 pub(crate) struct StoredReleaseLink {
     content_hash: String,
     kind: String,
@@ -114,7 +105,6 @@ pub(crate) struct StoredReleaseLink {
 }
 
 /// The [`RELEASE_LINK_COLUMNS`] of `row`; none for an unlinked candidate.
-#[cfg(desktop)]
 pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<StoredReleaseLink>> {
     let Some(content_hash) = row.get::<_, Option<String>>("link_row")? else {
         return Ok(None);
@@ -129,7 +119,6 @@ pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<Stored
     }))
 }
 
-#[cfg(desktop)]
 impl StoredReleaseLink {
     pub(crate) fn link(self) -> Result<ReleaseLink, DbError> {
         let Self { content_hash, kind, source, release_id, partners, albums } = self;
@@ -166,7 +155,6 @@ impl StoredReleaseLink {
     }
 }
 
-#[cfg(desktop)]
 fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
     Ok(MetadataRef::new(Catalog::from_str(&catalog).map_err(DbError::Message)?, key))
 }

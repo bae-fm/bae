@@ -15,69 +15,43 @@
 pub(super) const SCHEMA: bae_db::SchemaPart =
     bae_db::SchemaPart::new(&[include_str!("folder_scans.sql")]);
 
-#[cfg(desktop)]
 pub(super) mod columns;
-#[cfg(desktop)]
 mod dates;
-#[cfg(desktop)]
 mod file_decisions;
-#[cfg(desktop)]
 mod file_reads;
-#[cfg(desktop)]
 mod progress;
-#[cfg(desktop)]
 pub(super) mod read;
-#[cfg(desktop)]
 mod reading;
-#[cfg(desktop)]
 mod sidecar;
-#[cfg(desktop)]
 pub(super) mod tag_snapshot;
-#[cfg(desktop)]
 mod write;
 
-#[cfg(desktop)]
 use super::release_groupings::{store_folder_reading, validate_decision_key_ownership};
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::folder_scanner::ScanItem;
-#[cfg(desktop)]
 use crate::CandidateKey;
-#[cfg(desktop)]
 use bae_db::client::query::{QueryOne, QueryRows};
-#[cfg(desktop)]
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
-#[cfg(desktop)]
 pub(super) use self::read::{
     load_item_by_key, require_current_candidate, scanned_file_version, RowSources,
 };
 /// Named only by a test that commits a reading under a stamp it took.
 #[cfg(test)]
 pub(crate) use self::reading::FolderReadingStamp;
-#[cfg(desktop)]
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
-#[cfg(desktop)]
 pub(crate) use self::tag_snapshot::DbCandidateFileTagSnapshot;
-#[cfg(desktop)]
 pub(super) use self::tag_snapshot::{load_candidate_file_tag_snapshot, stored_embedded_cover};
 
-#[cfg(desktop)]
 pub(super) use self::dates::forget_discovery_at_or_below;
-#[cfg(desktop)]
 pub(super) use self::file_decisions::settle_candidate_files;
-#[cfg(desktop)]
 pub(super) use self::sidecar::load_sidecar;
-#[cfg(desktop)]
 use self::sidecar::load_sidecars;
-#[cfg(desktop)]
 pub(super) use self::write::{delete_entry, insert_candidate_files};
 
 /// What finishing a scan generation removed: the entries it did not see, and
 /// the releases groupings rebuilt without them.
-#[cfg(desktop)]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FinishedScan {
     pub pruned: Vec<CandidateKey>,
@@ -86,7 +60,6 @@ pub struct FinishedScan {
 
 /// What one scan item's write did. A re-read of an unchanged folder is all
 /// `Unchanged`, so it announces nothing.
-#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScanItemWrite {
     /// The stored row already said this; it only took this generation's
@@ -102,7 +75,6 @@ pub enum ScanItemWrite {
     },
 }
 
-#[cfg(desktop)]
 impl ScanItemWrite {
     /// Whether the row now says something it did not say before.
     pub fn changed(&self) -> bool {
@@ -134,7 +106,6 @@ impl ScanItemWrite {
 
 /// The generation `watched_folder_path` was last scanned under, `None` for a
 /// root never scanned.
-#[cfg(desktop)]
 pub(super) fn root_generation_on(
     sql: &impl QueryOne,
     watched_folder_path: &Path,
@@ -151,7 +122,6 @@ pub(super) fn root_generation_on(
 /// Refuse to write under a generation the root has moved past. Runs inside the
 /// write transaction, so a scan that lost the root after the caller's check
 /// cannot write over its successor.
-#[cfg(desktop)]
 fn ensure_generation(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
@@ -169,7 +139,6 @@ fn ensure_generation(
 
 /// Whether `snapshot` was taken from the audio `item` holds. Only a
 /// tentative or valid candidate holds audio.
-#[cfg(desktop)]
 fn item_was_read_for(
     item: &ScanItem,
     snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
@@ -182,12 +151,10 @@ fn item_was_read_for(
     }
 }
 
-#[cfg(desktop)]
 fn generation_column(generation: u64) -> Result<i64, DbError> {
     to_i64(generation, "folder scan generation")
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// The root's generation, for a caller that records a failure against
     /// whichever generation stands now.
@@ -452,7 +419,6 @@ impl ImportTables {
 /// files, since two readings of one folder cannot both stand. A tentative
 /// candidate replaces nothing; it is seen before the folders around it are
 /// read, and the reading that settles them does the replacing.
-#[cfg(desktop)]
 fn superseded_keys(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
@@ -472,13 +438,11 @@ fn superseded_keys(
 
 /// What a pass hands the store for one folder, in the order the walk
 /// yielded it.
-#[cfg(desktop)]
 pub(crate) enum FolderEntryToWrite {
     Release(ScanItemToWrite),
     Sidecar(crate::folder_scanner::FolderSidecar),
 }
 
-#[cfg(desktop)]
 impl FolderEntryToWrite {
     /// The entry this writes.
     pub(crate) fn into_entry(self) -> crate::folder_scanner::FolderEntry {
@@ -490,7 +454,6 @@ impl FolderEntryToWrite {
 }
 
 /// One release entry as a pass hands it to the store.
-#[cfg(desktop)]
 pub(crate) struct ScanItemToWrite {
     pub(crate) item: ScanItem,
     pub(crate) seed: ScanItemSeed,
@@ -498,7 +461,6 @@ pub(crate) struct ScanItemToWrite {
 }
 
 /// What one scan item is stored with, taken before the write.
-#[cfg(desktop)]
 pub(crate) enum ScanItemSeed {
     /// The reading of the folder's own tags, which its scan row keeps, and
     /// the draft and cover they project, which seed only a candidate with no
@@ -513,7 +475,6 @@ pub(crate) enum ScanItemSeed {
 
 /// Write one scan item under `generation`, inside the caller's transaction,
 /// deleting the entries it supersedes. The caller has checked `generation`.
-#[cfg(desktop)]
 fn write_scan_item(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
@@ -549,7 +510,6 @@ fn write_scan_item(
 }
 
 /// Who writes an entry.
-#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntrySource {
     /// A scan, which replaces every other reading of its files and records
@@ -562,7 +522,6 @@ pub(super) enum EntrySource {
 }
 
 /// What makes a valid release a scan stores found.
-#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Finding {
     /// Its folder had not been read as a release or as broken while a watched
@@ -574,7 +533,6 @@ pub(super) enum Finding {
 }
 
 /// What writing one entry did.
-#[cfg(desktop)]
 pub(super) enum EntryWrite {
     /// The stored row already said exactly this.
     Unchanged,
@@ -588,7 +546,6 @@ pub(super) enum EntryWrite {
 }
 
 /// Write one entry under `generation`, inside the caller's transaction.
-#[cfg(desktop)]
 pub(super) fn write_entry(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
@@ -711,7 +668,6 @@ pub(super) fn write_entry(
     })
 }
 
-#[cfg(desktop)]
 pub(super) fn load_folder_scan_items_on(
     sql: &SqlReadContext<'_>,
     watched_folder_path: &Path,
@@ -730,7 +686,6 @@ pub(super) fn load_folder_scan_items_on(
     })
 }
 
-#[cfg(desktop)]
 pub(super) fn validate_scan_item_ownership(
     watched_folder_path: &Path,
     entry_key: &CandidateKey,
@@ -782,7 +737,6 @@ pub(super) fn validate_scan_item_ownership(
 
 /// The next scan generation. An upsert, so a missing seed row is created
 /// rather than failing the scan.
-#[cfg(desktop)]
 pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, DbError> {
     let generation: i64 = sql.query_row(
         "INSERT INTO folder_scan_generation_sequence (singleton, last_generation) \

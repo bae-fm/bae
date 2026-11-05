@@ -7,24 +7,16 @@
 
 pub(super) const SQL: &str = include_str!("cover_rows.sql");
 
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::cover_art::PreparedCover;
-#[cfg(desktop)]
 use crate::tables::downscaled_copies::{copies_json_sql, copies_of};
-#[cfg(desktop)]
 use crate::CoverSelection;
-#[cfg(desktop)]
 use bae_catalogs::remote_image::RemoteImageSet;
-#[cfg(desktop)]
 use bae_util::content_type::ContentType;
 
-#[cfg(desktop)]
 const COVER_COLUMNS: &str = "content_hash, kind, file_id, url, source";
 
 /// Refuse a cover for a candidate with no state row: the row it hangs off.
-#[cfg(desktop)]
 fn require_state_row(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     let present = sql
         .query_row(
@@ -42,7 +34,6 @@ fn require_state_row(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbE
 
 /// One cover selection as its row states it: the kind, and whichever of the
 /// file it names or the address and catalog it names that kind carries.
-#[cfg(desktop)]
 fn cover_columns(
     cover: &CoverSelection,
 ) -> (&'static str, Option<&str>, Option<&str>, Option<&str>) {
@@ -59,7 +50,6 @@ fn cover_columns(
 
 /// Store `cover` as the candidate's: its row, the copies a catalog serves of
 /// a remote one, and the bytes a remote one was fetched with.
-#[cfg(desktop)]
 pub(super) fn save_cover(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -109,7 +99,6 @@ pub(super) fn save_cover(
 }
 
 /// Remove the candidate's cover choice.
-#[cfg(desktop)]
 pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_cover WHERE content_hash = ?", [content_hash])?;
     Ok(())
@@ -118,7 +107,6 @@ pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(
 /// A candidate's cover choice as columns of a read that joins its row as
 /// `cover`, with the copies the catalog serves of a remote one as a JSON
 /// array. A candidate with no choice reads `cover_row` as NULL.
-#[cfg(desktop)]
 pub(crate) fn cover_read_columns() -> String {
     // Only a remote choice has an address for copies to reference.
     let copies = copies_json_sql(
@@ -133,7 +121,6 @@ pub(crate) fn cover_read_columns() -> String {
 }
 
 /// One candidate's [`cover_read_columns`] as SQLite hands them over.
-#[cfg(desktop)]
 pub(crate) struct StoredCover {
     kind: String,
     file_id: Option<String>,
@@ -144,7 +131,6 @@ pub(crate) struct StoredCover {
 
 /// The [`cover_read_columns`] of `row`; none for a candidate that chose no
 /// cover.
-#[cfg(desktop)]
 pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>> {
     if row.get::<_, Option<String>>("cover_row")?.is_none() {
         return Ok(None);
@@ -158,7 +144,6 @@ pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>>
     }))
 }
 
-#[cfg(desktop)]
 impl StoredCover {
     pub(crate) fn selection(self) -> Result<CoverSelection, DbError> {
         match self.kind.as_str() {
@@ -189,7 +174,6 @@ impl StoredCover {
 }
 
 /// The cover the candidate `content_hash` chose, if it chose one.
-#[cfg(desktop)]
 pub(super) fn load_cover_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
@@ -213,7 +197,6 @@ pub(super) fn load_cover_on(
 /// The cover's save writes the two together, so a remote cover stored
 /// without its bytes, or bytes stored beside a cover of the folder, is a
 /// damaged row, and the read fails naming it.
-#[cfg(desktop)]
 pub(super) fn load_prepared_cover_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,

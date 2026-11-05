@@ -11,7 +11,7 @@
 //! a mix.
 //!
 //! Their tables are `source_releases.sql`, `source_releases/tracklist.sql` and
-//! `album_link_rows.sql`, which every device's library holds.
+//! `album_link_rows.sql`.
 
 /// The source releases' part of the library's schema. The release tables come
 /// first; the triggers that delete a release when no row names it fire on
@@ -22,27 +22,18 @@ pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
     super::album_link_rows::SQL,
 ]);
 
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use bae_catalogs::album_links::AlbumLinks;
-#[cfg(desktop)]
 use bae_catalogs::catalog::LookupCatalog;
-#[cfg(desktop)]
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
-#[cfg(desktop)]
 use bae_catalogs::release_metadata::{AlbumMetadata, ReleaseMetadata};
-#[cfg(desktop)]
 use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
-#[cfg(desktop)]
 use bae_catalogs::source_release::{
     ArchiveRelease, CatalogFacts, DisplayCredit, EntryKind, PartDirection, PerformedWork,
     PreparedRelease, ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork,
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
-#[cfg(desktop)]
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
-#[cfg(desktop)]
 use tracklist::{insert_entry, load_mediums, Numbering};
 
 mod tracklist;
@@ -50,7 +41,6 @@ mod tracklist;
 /// The tables under `source_release`, children before the tables they hang
 /// off. Deleting a release's mediums takes its entries, and with them their
 /// credits, roles and works.
-#[cfg(desktop)]
 const CHILD_TABLES: [&str; 13] = [
     "source_release_label",
     "source_release_barcode",
@@ -68,14 +58,11 @@ const CHILD_TABLES: [&str; 13] = [
 ];
 
 /// The stored `album_links` values of a MusicBrainz release.
-#[cfg(desktop)]
 const ALBUM_LINKS_READ: &str = "read";
-#[cfg(desktop)]
 const ALBUM_LINKS_UNREAD: &str = "unread";
 
 /// The `album_links` column a release's facts are stored with: a MusicBrainz
 /// release's reading, none for a Discogs release.
-#[cfg(desktop)]
 fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbError> {
     match facts {
         CatalogFacts::MusicBrainz { album_links, .. } => match album_links {
@@ -94,7 +81,6 @@ fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbEr
     clippy::map_err_ignore,
     reason = "the unreadable value is named; the parse says nothing past it"
 )]
-#[cfg(desktop)]
 fn catalog_column(value: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(value)
         .map_err(|_| DbError::unreadable("a source release's stored catalog", value))
@@ -102,7 +88,6 @@ fn catalog_column(value: &str) -> Result<Catalog, DbError> {
 
 /// The album year a stored release reads back with: its album's first year,
 /// else its pressing's year.
-#[cfg(desktop)]
 fn derived_album_year(first_year: Option<i32>, pressing_year: Option<i32>) -> Option<i32> {
     first_year.or(pressing_year)
 }
@@ -111,7 +96,6 @@ fn derived_album_year(first_year: Option<i32>, pressing_year: Option<i32>) -> Op
 /// other facts give, which is all the store keeps of them: an extraction
 /// derives both that way, and storing one that doesn't would read back as
 /// another release.
-#[cfg(desktop)]
 fn check_derived_facts(release: &SourceRelease) -> Result<(), DbError> {
     let metadata = &release.metadata;
     let derived = derived_album_year(metadata.album.first_year, metadata.pressing.year);
@@ -132,7 +116,6 @@ fn check_derived_facts(release: &SourceRelease) -> Result<(), DbError> {
 }
 
 /// Write `release`, replacing whatever was stored for it.
-#[cfg(desktop)]
 pub(super) fn replace_source_release_on(
     sql: &CovenWrite<'_>,
     release: &SourceRelease,
@@ -375,7 +358,6 @@ pub(super) fn replace_source_release_on(
     Ok(())
 }
 
-#[cfg(desktop)]
 fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<bae_catalogs::credits::ArtistCredit> {
     Ok(bae_catalogs::credits::ArtistCredit {
         name: row.get(first)?,
@@ -389,7 +371,6 @@ fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<bae_catalogs::cred
 /// The stored release `release` names as its rows hold it — what its own
 /// documents state, which is what a write that names it stores — or `None`
 /// when no row names it.
-#[cfg(desktop)]
 fn load_source_release_rows_on<S: QueryOne + QueryRows>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
@@ -678,7 +659,6 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
 
 /// What the other catalogs say the stored release `release`, or its album,
 /// is, as its rows hold it.
-#[cfg(desktop)]
 fn own_records_on<S: QueryRows>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
@@ -709,7 +689,6 @@ fn own_records_on<S: QueryRows>(
 }
 
 /// `own` and the `joined` albums, in the order surfaces list catalogs.
-#[cfg(desktop)]
 fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> Vec<ReleaseRecord> {
     own.extend(joined.iter().map(ReleaseRecord::album));
     own.sort_by_key(|record| bae_catalogs::source_release::catalog_rank(record.catalog()));
@@ -727,7 +706,6 @@ fn with_joined_records(mut own: Vec<ReleaseRecord>, joined: &[MetadataRef]) -> V
 /// later reading stops stating it. The album's own text — its title, credits
 /// and year — lives in documents a statement does not carry, so a joined
 /// album contributes none; the release's own album documents state those.
-#[cfg(desktop)]
 fn with_joined_albums_on<S: QueryRows>(
     sql: &S,
     stored: &SourceRelease,
@@ -756,7 +734,6 @@ fn with_joined_albums_on<S: QueryRows>(
 
 /// The stored release `release` names, as import surfaces read it, or
 /// `None` when no row names it.
-#[cfg(desktop)]
 pub(crate) fn load_source_release_on<S: QueryOne + QueryRows>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
@@ -772,7 +749,6 @@ pub(crate) fn load_source_release_on<S: QueryOne + QueryRows>(
 /// before the stored one was would otherwise overwrite a fuller read. A
 /// release no row names is not stored: a catalog release is stored only while
 /// something names it.
-#[cfg(desktop)]
 pub(crate) fn store_named_releases_on(
     sql: &CovenWrite<'_>,
     releases: &[SourceRelease],
@@ -824,7 +800,6 @@ pub(crate) fn store_named_releases_on(
 /// [`SourceRelease::records`] answers of it — read without the rest of the
 /// release: its tracklist, covers and credits stay unread. `None` when
 /// nothing stored it.
-#[cfg(desktop)]
 pub(crate) fn load_release_records_on<S: QueryOne + QueryRows>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
@@ -853,7 +828,6 @@ pub(crate) fn load_release_records_on<S: QueryOne + QueryRows>(
     )))
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// The stored release `release` names, as import surfaces read it, or
     /// `None` when no row names it.

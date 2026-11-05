@@ -4,11 +4,9 @@
 
 pub(super) const SQL: &str = include_str!("album_pick_rows.sql");
 
-#[cfg(desktop)]
 use super::*;
 
 /// The album picked for the candidate `content_hash`, if one is.
-#[cfg(desktop)]
 pub(crate) fn load_album_pick_on(
     sql: &impl bae_db::client::query::QueryOne,
     content_hash: &str,
@@ -23,13 +21,11 @@ pub(crate) fn load_album_pick_on(
 }
 
 /// Leave the candidate `content_hash` to the album its records name.
-#[cfg(desktop)]
 pub(super) fn delete_album_pick(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_album_pick WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// The album picked for the candidate `content_hash`, if one is.
     pub(crate) async fn candidate_album_pick(

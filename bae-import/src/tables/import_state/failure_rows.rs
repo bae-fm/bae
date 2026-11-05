@@ -3,22 +3,17 @@
 
 pub(super) const SQL: &str = include_str!("failure_rows.sql");
 
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::{ImportFailure, ImportFailureReason};
 
 /// The diagnostic column read by both the list and the candidate pane.
-#[cfg(desktop)]
 pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";
 
-#[cfg(desktop)]
 pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> rusqlite::Result<ImportFailureReason> {
     Ok(ImportFailureReason { detail: row.get("failure_error")? })
 }
 
 /// The failure the last import of `content_hash` left.
-#[cfg(desktop)]
 pub(super) fn load_failure_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -41,7 +36,6 @@ pub(super) fn load_failure_on(
 }
 
 /// Drop the failure the last import of `content_hash` left.
-#[cfg(desktop)]
 pub(crate) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [content_hash])?;
     Ok(())
@@ -49,7 +43,6 @@ pub(crate) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Res
 
 /// Record that an import of `content_hash` at `edit_revision` failed, inside
 /// the caller's write.
-#[cfg(desktop)]
 fn save_failure_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -84,7 +77,6 @@ fn save_failure_on(
     Ok(())
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// Record that an import of this candidate failed, so the pane still
     /// offers Retry after a relaunch.

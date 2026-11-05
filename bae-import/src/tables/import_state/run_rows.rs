@@ -15,38 +15,23 @@
 
 pub(super) const SQL: &str = include_str!("run_rows.sql");
 
-#[cfg(desktop)]
 use super::match_rows::load_run_matches_on;
-#[cfg(desktop)]
 use super::search_rows::{load_search_on, load_searches_on};
-#[cfg(desktop)]
 use super::signal_rows::{read_signals, signals_read_columns, store_signals};
-#[cfg(desktop)]
 use super::standing_rows::{change_identification_on, load_standing_on, load_standings_on};
-#[cfg(desktop)]
 use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_columns};
-#[cfg(desktop)]
 use super::verdict_rows::{Outcome, Owner};
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::candidate_runtime::{IdentificationChange, IdentificationMove, StoredRuntime};
-#[cfg(desktop)]
 use crate::CandidateFiles;
-#[cfg(desktop)]
 use crate::IdentifyRunId;
-#[cfg(desktop)]
 use bae_catalogs::source_release::SourceRelease;
-#[cfg(desktop)]
 use bae_identify::signals::Signals;
-#[cfg(desktop)]
 use bae_identify::{IdentifyState, PublishedRun, RunOutcome};
-#[cfg(desktop)]
 use std::collections::BTreeMap;
 
 /// What every run in flight, or `key`'s runs alone, last published, with the
 /// signals each last read, by key and run.
-#[cfg(desktop)]
 fn load_runs_on(
     sql: &impl bae_db::client::query::QueryRows,
     key: Option<&CandidateKey>,
@@ -93,7 +78,6 @@ fn load_runs_on(
 
 /// Where `key` stands, what each of its runs in flight last published, and
 /// its typed search.
-#[cfg(desktop)]
 pub(crate) fn load_stored_runtime_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     key: &CandidateKey,
@@ -109,13 +93,11 @@ pub(crate) fn load_stored_runtime_on(
 /// runs in flight last published, and its typed search.
 /// Delete every run's published state: nothing a run published outlives
 /// the process that ran it.
-#[cfg(desktop)]
 pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_identify_run", [])?;
     Ok(())
 }
 
-#[cfg(desktop)]
 fn load_stored_runtimes_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {
@@ -135,7 +117,6 @@ fn load_stored_runtimes_on(
 /// Store `outcome` as how `run` of `key` stands, with each of `releases`
 /// its rows name, and `signals`, where given, as what extraction last read
 /// for it.
-#[cfg(desktop)]
 fn store_run_on(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
@@ -168,7 +149,6 @@ fn store_run_on(
 
 /// How `state`, which `run` of `key` published, stands; a run publishes no
 /// `Idle` while it runs.
-#[cfg(desktop)]
 fn published_outcome(
     key: &CandidateKey,
     run: IdentifyRunId,
@@ -181,7 +161,6 @@ fn published_outcome(
 /// Store how `run` of the library release whose re-identify key is `key`
 /// stands, with each of the `releases` it read that its rows name, and the
 /// signals it last read where it read new ones.
-#[cfg(desktop)]
 pub(crate) fn store_release_run_on(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
@@ -197,7 +176,6 @@ pub(crate) fn store_release_run_on(
 /// Store how `run` of the folder candidate `key` stands, with the releases
 /// its rows name, and the signals it last read, if its standing names that
 /// run; whether it did.
-#[cfg(desktop)]
 fn publish_candidate_run_on(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
@@ -219,7 +197,6 @@ fn publish_candidate_run_on(
     Ok(named)
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// Where `key` stands and what each of its runs in flight last published.
     pub(crate) async fn load_candidate_runtime(

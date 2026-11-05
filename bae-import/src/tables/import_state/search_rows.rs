@@ -16,38 +16,25 @@
 
 pub(super) const SQL: &str = include_str!("search_rows.sql");
 
-#[cfg(desktop)]
 use super::lookup_failure_columns::{failure_columns, failure_of};
-#[cfg(desktop)]
 use super::match_rows::load_search_matches_on;
-#[cfg(desktop)]
 use super::match_rows::{store_match, store_picked, Listing, MatchOwner, Written};
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
-#[cfg(desktop)]
 use crate::CandidateFiles;
-#[cfg(desktop)]
 use bae_catalogs::album_links::AlbumLinks;
-#[cfg(desktop)]
 use bae_catalogs::catalog::LookupCatalog;
-#[cfg(desktop)]
 use bae_catalogs::search::{MetadataResult, SearchQuery};
-#[cfg(desktop)]
 use bae_catalogs::{Failure, InternalFailure};
-#[cfg(desktop)]
 use std::str::FromStr;
 
 /// Delete every typed search: none outlives the process that asked it.
-#[cfg(desktop)]
 pub(super) fn delete_every_search_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_search", [])?;
     Ok(())
 }
 
 /// A query as its row's columns: the mode, and the values that mode asks.
-#[cfg(desktop)]
 struct QueryColumns<'a> {
     mode: &'static str,
     artist: Option<&'a str>,
@@ -56,7 +43,6 @@ struct QueryColumns<'a> {
     barcode: Option<&'a str>,
 }
 
-#[cfg(desktop)]
 fn query_columns(query: &SearchQuery) -> QueryColumns<'_> {
     let none =
         QueryColumns { mode: "", artist: None, album: None, catalog_number: None, barcode: None };
@@ -74,7 +60,6 @@ fn query_columns(query: &SearchQuery) -> QueryColumns<'_> {
 }
 
 /// The query a search row's columns hold.
-#[cfg(desktop)]
 fn query_of(row: &Row<'_>) -> Result<SearchQuery, DbError> {
     let mode: String = row.get("mode")?;
     let value = |column: &str| {
@@ -91,7 +76,6 @@ fn query_of(row: &Row<'_>) -> Result<SearchQuery, DbError> {
 
 /// A part's state as its columns: the state, a catalog's failure and its
 /// HTTP status, or the error chain of bae breaking.
-#[cfg(desktop)]
 struct PartColumns<'a> {
     state: &'static str,
     failure: Option<&'static str>,
@@ -99,7 +83,6 @@ struct PartColumns<'a> {
     error_detail: Option<&'a str>,
 }
 
-#[cfg(desktop)]
 fn part_columns(part: &SourceSearch) -> PartColumns<'_> {
     let settled =
         |state| PartColumns { state, failure: None, failure_status: None, error_detail: None };
@@ -123,7 +106,6 @@ fn part_columns(part: &SourceSearch) -> PartColumns<'_> {
 }
 
 /// One part as its row holds it, its results still to be joined to it.
-#[cfg(desktop)]
 struct StoredPart {
     catalog: String,
     state: String,
@@ -132,7 +114,6 @@ struct StoredPart {
     error_detail: Option<String>,
 }
 
-#[cfg(desktop)]
 impl StoredPart {
     /// The part, with `results` the releases it returned in order; a part
     /// that has not answered holds none.
@@ -174,7 +155,6 @@ impl StoredPart {
 }
 
 /// Every search, or `key`'s alone, by key, each with the run it is on.
-#[cfg(desktop)]
 fn load_on(
     sql: &impl bae_db::client::query::QueryRows,
     key: Option<&CandidateKey>,
@@ -260,7 +240,6 @@ fn load_on(
 }
 
 /// `key`'s search; `None` when it has none.
-#[cfg(desktop)]
 pub(super) fn load_search_on(
     sql: &impl bae_db::client::query::QueryRows,
     key: &CandidateKey,
@@ -269,7 +248,6 @@ pub(super) fn load_search_on(
 }
 
 /// Every key's search.
-#[cfg(desktop)]
 pub(super) fn load_searches_on(
     sql: &impl bae_db::client::query::QueryRows,
 ) -> Result<HashMap<CandidateKey, CandidateSearch>, DbError> {
@@ -279,7 +257,6 @@ pub(super) fn load_searches_on(
 /// End, inside the caller's scan write, `key`'s search unless it is of
 /// `held` — the files the write leaves the candidate with, `None` for a write
 /// that leaves the scan without it. Every row it owns goes with it.
-#[cfg(desktop)]
 pub(super) fn end_search_unless_of_on(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
@@ -304,7 +281,6 @@ pub(super) fn end_search_unless_of_on(
 
 /// Store `search`, just started, as `key`'s, of `files`, in place of any
 /// search it had; the run its parts' answers land on.
-#[cfg(desktop)]
 fn start_on(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
@@ -359,7 +335,6 @@ fn start_on(
 
 /// Land `catalog`'s answer on its part of the search `run`, if that part is
 /// still searching; whether it landed.
-#[cfg(desktop)]
 fn land_on(
     sql: &CovenWrite<'_>,
     run: SearchRun,
@@ -414,7 +389,6 @@ fn land_on(
     Ok(true)
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// Store `search`, just started, as `key`'s in place of any search it
     /// had: a folder candidate's of the files the scan holds it with now, a

@@ -9,31 +9,25 @@
 //! album carries the other among its records — a Discogs release whose own
 //! documents never reach the release group still names it.
 //!
-//! Its table is `album_link_rows.sql`, which every device's library holds.
+//! Its table is `album_link_rows.sql`.
 
 pub(super) const SQL: &str = include_str!("album_link_rows.sql");
 
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use bae_catalogs::album_links::GroupAlbum;
-#[cfg(desktop)]
 use bae_catalogs::records::MetadataRef;
 
-#[cfg(desktop)]
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored).map_err(DbError::Message)
 }
 
 /// One stored album link row's columns, as read.
-#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 pub(crate) struct AlbumLinkRow {
     pub(super) catalog: String,
     pub(super) key: String,
 }
 
-#[cfg(desktop)]
 impl AlbumLinkRow {
     /// The album the row names.
     pub(crate) fn album(self) -> Result<MetadataRef, DbError> {
@@ -41,10 +35,8 @@ impl AlbumLinkRow {
     }
 }
 
-#[cfg(desktop)]
 const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key";
 
-#[cfg(desktop)]
 fn read_group_link(row: &Row<'_>) -> rusqlite::Result<(String, String, String)> {
     Ok((row.get(0)?, row.get(1)?, row.get(2)?))
 }
@@ -52,7 +44,6 @@ fn read_group_link(row: &Row<'_>) -> rusqlite::Result<(String, String, String)> 
 /// Every album kept for any of `albums`: one a MusicBrainz release group
 /// among them was found to be, or one of the other catalogs' albums among
 /// them some group was found to be.
-#[cfg(desktop)]
 pub(super) fn group_albums_on<S: QueryRows>(
     sql: &S,
     albums: &[MetadataRef],
@@ -92,7 +83,6 @@ pub(super) fn group_albums_on<S: QueryRows>(
 /// its group, and the albums its records name — on a catalog none of its
 /// records reaches. The release's own catalog is never one: its album is its
 /// group.
-#[cfg(desktop)]
 pub(super) fn joined_albums_on<S: QueryRows>(
     sql: &S,
     catalog: Catalog,
@@ -121,7 +111,6 @@ pub(super) fn joined_albums_on<S: QueryRows>(
     Ok(joined)
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// Keep the albums reading these release groups found each to be,
     /// replacing whatever an earlier reading of the same group found. A group
@@ -137,7 +126,6 @@ impl ImportTables {
 /// Keep, inside the caller's write, the albums reading these release groups
 /// found each to be, replacing whatever an earlier reading of the same group
 /// found.
-#[cfg(desktop)]
 pub(super) fn replace_group_album_links_on(
     sql: &CovenWrite<'_>,
     read: &[(String, Vec<MetadataRef>)],

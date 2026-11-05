@@ -17,36 +17,27 @@ pub(super) const PROVENANCE_SQL: &str = provenance::SQL;
 mod provenance;
 mod values;
 
-#[cfg(desktop)]
 pub(crate) use provenance::{
     insert_provenance, read_provenance, store_provenance, StoredProvenance, PROVENANCE_COLUMNS,
 };
 
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::cover_art::PreparedCover;
-#[cfg(desktop)]
 use crate::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
     MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
-#[cfg(desktop)]
 use bae_catalogs::credits::ArtistCredit;
-#[cfg(desktop)]
 use std::str::FromStr;
 
-#[cfg(desktop)]
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
      country, region, media, status, packaging, discogs_details";
 
-#[cfg(desktop)]
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, medium, side, track_number, stated_length_ms, \
      file_kind, file_id, sheet_id, slice_index";
 
 /// The column a draft's author is stored as.
-#[cfg(desktop)]
 fn author_column(author: MetadataAuthor) -> &'static str {
     match author {
         MetadataAuthor::Nobody => "nobody",
@@ -56,7 +47,6 @@ fn author_column(author: MetadataAuthor) -> &'static str {
     }
 }
 
-#[cfg(desktop)]
 pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
     match stored {
         "nobody" => Ok(MetadataAuthor::Nobody),
@@ -69,7 +59,6 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
 
 /// Delete the draft of `content_hash`: its source and every row below it
 /// hang off the draft row and go with it.
-#[cfg(desktop)]
 pub(super) fn delete_draft(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_edit WHERE content_hash = ?", [content_hash])?;
     Ok(())
@@ -77,7 +66,6 @@ pub(super) fn delete_draft(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(
 
 /// The draft row of a candidate that has none yet, with everything hanging
 /// off it: its album artists, its mediums, its tracks and their values.
-#[cfg(desktop)]
 pub(super) fn insert_draft(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -99,7 +87,6 @@ pub(super) fn insert_draft(
 
 /// The draft row's columns, in [`EDIT_COLUMNS`] order and then its author
 /// and whether it is blank and would import.
-#[cfg(desktop)]
 pub(super) fn edit_row_values(
     content_hash: &str,
     draft: &CandidateDraft,
@@ -128,7 +115,6 @@ pub(super) fn edit_row_values(
 }
 
 /// The draft's label rows, as the form holds them, where none are stored.
-#[cfg(desktop)]
 pub(super) fn insert_label_rows(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -153,7 +139,6 @@ pub(super) fn insert_label_rows(
 }
 
 /// The draft's barcode rows, as the form holds them, where none are stored.
-#[cfg(desktop)]
 pub(super) fn insert_barcode_rows(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -171,7 +156,6 @@ pub(super) fn insert_barcode_rows(
 
 /// The draft's mediums, tracks and the values hanging off them: the rows
 /// below the draft row besides its album artists.
-#[cfg(desktop)]
 pub(super) fn insert_draft_body(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -199,7 +183,6 @@ pub(super) fn insert_draft_body(
 
 /// The track at `position` with the rows hanging off it, where none is
 /// stored.
-#[cfg(desktop)]
 fn insert_track(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -211,7 +194,6 @@ fn insert_track(
 }
 
 /// The track's own row at `position`, in place of the one stored with its id.
-#[cfg(desktop)]
 pub(super) fn store_track_row(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -256,7 +238,6 @@ pub(super) fn store_track_row(
 }
 
 /// The rows hanging off a track: its own artists, its roles and its works.
-#[cfg(desktop)]
 pub(super) fn insert_track_rows(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -268,7 +249,6 @@ pub(super) fn insert_track_rows(
     values::insert_track_values(sql, content_hash, track)
 }
 
-#[cfg(desktop)]
 fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str {
     match assignments {
         TrackArtistAssignments::AlbumArtists => "album_artists",
@@ -276,7 +256,6 @@ fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str 
     }
 }
 
-#[cfg(desktop)]
 fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i64>) {
     match file {
         AudioFile::Standalone { file_id } => ("standalone", file_id.as_str(), None, None),
@@ -288,7 +267,6 @@ fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i
 
 /// Everything one candidate's pane settled: its cover, its album fields, its
 /// row edits, the failure its last import left, and where the pane was.
-#[cfg(desktop)]
 pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -302,7 +280,6 @@ pub(crate) fn load_pane_rows_on(
     })
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// Everything a person settled about one candidate through its pane.
     pub async fn load_import_candidate_pane_rows(
@@ -315,7 +292,6 @@ impl ImportTables {
 }
 
 /// Whether the candidate `content_hash` holds a draft row.
-#[cfg(desktop)]
 pub(super) fn has_draft_row_on(
     sql: &impl bae_db::client::query::QueryOne,
     content_hash: &str,
@@ -336,7 +312,6 @@ pub(super) fn has_draft_row_on(
 /// device deleted holds no draft row, and reads as that until a write stores
 /// one. A candidate this device imported holds no draft, so reading one
 /// fails.
-#[cfg(desktop)]
 pub(super) fn load_draft_and_cover_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
@@ -372,7 +347,6 @@ pub(super) fn load_draft_and_cover_on(
 
 /// Every candidate's complete stored draft, or the one `only` names: one row
 /// per draft, its lists riding on it as JSON arrays in their stored order.
-#[cfg(desktop)]
 pub(crate) fn load_drafts_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     only: CandidateRows<'_>,
@@ -455,7 +429,6 @@ pub(crate) fn load_drafts_on(
 }
 
 /// A stored JSON column of `what`, decoded.
-#[cfg(desktop)]
 fn decoded<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<T, DbError> {
     serde_json::from_str(json)
         .map_err(|error| DbError::Message(format!("a draft's stored {what} {json:?}: {error}")))
@@ -463,7 +436,6 @@ fn decoded<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<T, 
 
 /// One `import_candidate_edit` row as SQLite hands it over, its lists still
 /// the JSON arrays [`load_drafts_on`] reads them as.
-#[cfg(desktop)]
 struct StoredDraftRow {
     content_hash: String,
     album_title: String,
@@ -480,7 +452,6 @@ struct StoredDraftRow {
     parts: String,
 }
 
-#[cfg(desktop)]
 impl StoredDraftRow {
     fn draft(&self) -> Result<CandidateDraft, DbError> {
         let album_artist_assignments =
@@ -528,13 +499,11 @@ impl StoredDraftRow {
 }
 
 /// The draft's label rows as typed, as the read's `labels` array holds them.
-#[cfg(desktop)]
 fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
     bae_db::client::read::json_column(row, "labels")
 }
 
 /// One `import_candidate_medium` row as the draft's read holds it.
-#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredMedium {
     carrier: Option<String>,
@@ -543,7 +512,6 @@ struct StoredMedium {
 
 /// One `import_candidate_track` row as the draft's read holds it, with its
 /// artist assignments, roles and works.
-#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredTrack {
     track_id: String,
@@ -562,7 +530,6 @@ struct StoredTrack {
     works: Vec<String>,
 }
 
-#[cfg(desktop)]
 impl StoredTrack {
     fn track(self) -> Result<CandidateTrack, DbError> {
         let missing = |what: &str| {
@@ -608,7 +575,6 @@ impl StoredTrack {
     }
 }
 
-#[cfg(desktop)]
 struct AssignmentColumns<'a> {
     kind: &'static str,
     artist_id: Option<&'a str>,
@@ -621,7 +587,6 @@ struct AssignmentColumns<'a> {
     join_phrase: Option<&'a str>,
 }
 
-#[cfg(desktop)]
 fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
     let join_phrase = credited.join.as_deref();
     match &credited.artist {
@@ -653,7 +618,6 @@ fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
 /// One stored assignment row, the picked artist's fields read from the
 /// library and its credit name, if it names one still there, as
 /// [`assignments_json_sql`] holds it.
-#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredAssignment {
     kind: String,
@@ -671,7 +635,6 @@ struct StoredAssignment {
 /// The assignments `table`, aliased `assignment`, holds where `belongs`
 /// holds, as a JSON array in their order: each joined to its picked artist
 /// and that artist's credit name.
-#[cfg(desktop)]
 fn assignments_json_sql(table: &str, belongs: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
@@ -698,7 +661,6 @@ fn assignments_json_sql(table: &str, belongs: &str) -> String {
     )
 }
 
-#[cfg(desktop)]
 impl StoredAssignment {
     /// The draft's credit. A picked artist's credit name another device
     /// removed since prints the artist's own name.
@@ -738,7 +700,6 @@ impl StoredAssignment {
     }
 }
 
-#[cfg(desktop)]
 fn insert_album_artist_assignments(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -752,7 +713,6 @@ fn insert_album_artist_assignments(
 
 /// Make the album artist at `position` `assignment`, in place when one is
 /// there.
-#[cfg(desktop)]
 pub(super) fn store_album_artist_assignment(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -788,7 +748,6 @@ pub(super) fn store_album_artist_assignment(
     Ok(())
 }
 
-#[cfg(desktop)]
 fn insert_track_artist_assignments(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -823,7 +782,6 @@ fn insert_track_artist_assignments(
 
 /// Seed a candidate's draft from the folder's file tags, authored by the
 /// pre-fill, with provenance naming the tags as its source.
-#[cfg(desktop)]
 pub(super) fn insert_file_tags_draft(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -841,7 +799,6 @@ pub(super) fn insert_file_tags_draft(
 /// cover and the mapping table from them at once. Kept off
 /// [`DbImportCandidateState`] because that one is read for the whole queue and
 /// none of these are.
-#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbCandidatePaneRows {
     /// The cover the user chose. `None` leaves the picked release's default

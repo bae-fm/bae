@@ -6,14 +6,10 @@
 
 pub(super) const SQL: &str = include_str!("file_decision_rows.sql");
 
-#[cfg(desktop)]
 use super::*;
-#[cfg(desktop)]
 use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
-#[cfg(desktop)]
 use crate::tables::FinishRead;
 
-#[cfg(desktop)]
 pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_sheet_reference WHERE content_hash = ?",
@@ -25,7 +21,6 @@ pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Res
 
 /// Write every decision `edits` holds. The caller has already cleared what
 /// stood under this hash, so this is always writing into empty space.
-#[cfg(desktop)]
 pub(super) fn insert_file_edits(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -58,7 +53,6 @@ pub(super) fn insert_file_edits(
 /// A candidate's file decisions as columns of a read that joins its state
 /// row as `state`: the revision they stand at, and the sheet discs and the
 /// `FILE` reference bindings riding on it as JSON arrays.
-#[cfg(desktop)]
 pub(super) const FILE_EDITS_COLUMNS: &str = "state.edit_revision AS edits_revision, \
      (SELECT json_group_array(json_object( \
           'sheet_id', disc.sheet_id, 'disc', disc.disc, 'disc_number', disc.disc_number) \
@@ -73,7 +67,6 @@ pub(super) const FILE_EDITS_COLUMNS: &str = "state.edit_revision AS edits_revisi
 
 /// One candidate's [`FILE_EDITS_COLUMNS`] as SQLite hands them over, its
 /// decisions still JSON.
-#[cfg(desktop)]
 pub(super) struct StoredFileEdits {
     content_hash: String,
     revision: i64,
@@ -82,7 +75,6 @@ pub(super) struct StoredFileEdits {
 }
 
 /// The [`FILE_EDITS_COLUMNS`] of `row`, whose state row is `content_hash`.
-#[cfg(desktop)]
 pub(super) fn read_file_edits(row: &Row<'_>) -> rusqlite::Result<StoredFileEdits> {
     Ok(StoredFileEdits {
         content_hash: row.get("content_hash")?,
@@ -93,7 +85,6 @@ pub(super) fn read_file_edits(row: &Row<'_>) -> rusqlite::Result<StoredFileEdits
 }
 
 /// One sheet's disc as [`FILE_EDITS_COLUMNS`] holds it.
-#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredSheetDisc {
     sheet_id: String,
@@ -102,7 +93,6 @@ struct StoredSheetDisc {
 }
 
 /// One `FILE` reference binding as [`FILE_EDITS_COLUMNS`] holds it.
-#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredSheetReference {
     sheet_id: String,
@@ -110,7 +100,6 @@ struct StoredSheetReference {
     file_id: Option<String>,
 }
 
-#[cfg(desktop)]
 impl StoredFileEdits {
     /// The candidate the decisions are of.
     pub(super) fn content_hash(&self) -> &str {
@@ -165,7 +154,6 @@ impl StoredFileEdits {
 }
 
 /// Replace every file decision held for `content_hash` with `edits`.
-#[cfg(desktop)]
 pub(super) fn store_file_edits(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -179,7 +167,6 @@ pub(super) fn store_file_edits(
 /// end the file work of each, which was of other files, and rebuild every
 /// grouping built from one of them. Every row must still be at the revision
 /// the caller prepared against.
-#[cfg(desktop)]
 pub(super) fn settle_scanned_candidates(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -218,7 +205,6 @@ pub(super) fn settle_scanned_candidates(
     Ok(updated_candidates)
 }
 
-#[cfg(desktop)]
 impl ImportTables {
     /// Every candidate's user-set file decisions, keyed by `content_hash`, so a
     /// folder scan reports the roles the user settled.
@@ -247,7 +233,6 @@ impl ImportTables {
 /// revision: the candidates whose decisions stand, and those whose revision
 /// moved past zero though none stands now. Any other candidate has none at
 /// revision zero, which is what a scan reads where nothing is stored.
-#[cfg(desktop)]
 pub(crate) fn load_stored_candidate_edits_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
 ) -> Result<FinishRead<crate::folder_scanner::StoredCandidateEdits>, DbError> {
@@ -277,7 +262,6 @@ pub(crate) fn load_stored_candidate_edits_on(
 /// for a candidate with no state row. Progressive scans call this after they
 /// compute a content hash, so each emitted row performs one indexed lookup
 /// instead of rereading the whole table.
-#[cfg(desktop)]
 pub(crate) fn load_candidate_file_edits_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,

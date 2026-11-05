@@ -2,11 +2,10 @@
 //! the drafts a person shapes, identification against the catalogs, and the
 //! import that writes a candidate's release into the library's store.
 
-// Every module but `error`, `session`, `tables` and `types` is the import
-// pipeline (scanning, transcoding, identification), which only the desktop
-// builds carry: mobile is a sync and playback client. Of `tables`, only import's
-// part of the library's schema compiles on mobile, since every device opens the
-// same library; of `types`, only the shared domain types.
+// Every module but `error`, `session` and `types` is the import pipeline
+// (scanning, transcoding, identification) and its tables, which only the
+// desktop builds carry: mobile is a sync and playback client, and a phone's
+// library holds no import tables. Of `types`, only the shared domain types.
 #[cfg(desktop)]
 pub mod apply_steps;
 #[cfg(desktop)]
@@ -94,6 +93,7 @@ pub mod service;
 pub mod session;
 #[cfg(desktop)]
 pub(crate) mod shared_album;
+#[cfg(desktop)]
 pub mod tables;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_fixtures;
@@ -289,11 +289,12 @@ pub use session::{
     CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
     PaneOutcome, SearchForm, SearchTab,
 };
+#[cfg(desktop)]
 pub use tables::SCHEMA_PARTS;
 
 /// The schema this crate's tests open their stores on: bae-db's part and
 /// import's.
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, SCHEMA_PARTS]);
 
 #[cfg(desktop)]

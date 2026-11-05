@@ -4085,7 +4085,7 @@ bindings export none of their symbols.
 | Crate | Holds |
 |---|---|
 | bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it, and the live reads the screens pull over the library and its views |
-| bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives, and the library's schema, assembled from each crate's parts of it |
+| bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives, and the library's schema, assembled from each crate's parts of it (a phone's without import's) |
 | bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in |
 | bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
@@ -4205,7 +4205,8 @@ The schema is one migration, which coven applies as migration 1: each
 crate's parts of it, in crate order, each part a domain's SQL files beside its
 code. bae-library assembles it from bae-db's part,
 `bae-db/migrations/001_initial.sql`, which holds every table no other part
-does, and bae-import's, under `bae-import/src/tables/`: the watched folders'
+does, and, on a desktop, bae-import's, under `bae-import/src/tables/`: the
+watched folders'
 (`watched_folders.sql`), the skipped candidates' (`skipped_candidates.sql`),
 the folder scans' (`folder_scans.sql`), the release groupings'
 (`release_groupings.sql`), the candidate state's (the `.sql` files beside the
@@ -4215,6 +4216,8 @@ row files in `import_state/`), the source releases' (`source_releases.sql`,
 after the parts creating the tables its triggers fire on. Every table is
 `STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
 stays on the device.
+A phone's library holds no import tables: they never sync (§6.1), and a phone
+imports nothing (§1.1).
 
 A list is stored as rows, one per item, when its items have an identity of
 their own, when a query filters, sorts, joins, counts or indexes them, or when

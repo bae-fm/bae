@@ -5,11 +5,9 @@
 
 pub(super) const SQL: &str = include_str!("seed_rows.sql");
 
-#[cfg(desktop)]
 use super::*;
 
 /// What a new candidate's draft and cover are created from.
-#[cfg(desktop)]
 pub(crate) enum CandidateStateSeed<'a> {
     /// As many empty track slots as the folder has audio units, and the
     /// folder's own cover: what a candidate holding no draft row reads as.
@@ -24,7 +22,6 @@ pub(crate) enum CandidateStateSeed<'a> {
 /// those folders. The write that creates the state seeds its draft and cover,
 /// unless this device imported the files, whose candidate holds neither; a
 /// state that already exists keeps what it holds, its draft row or none.
-#[cfg(desktop)]
 pub(crate) fn ensure_candidate_state(
     sql: &CovenWrite<'_>,
     path: &CandidateKey,
@@ -82,7 +79,6 @@ pub(crate) fn ensure_candidate_state(
 /// Start the state of the files hashed `content_hash` over, under `key`: drop
 /// the state an undone grouping of the same files left, and when `inherited`
 /// holds file decisions, store a state row carrying them.
-#[cfg(desktop)]
 pub(crate) fn restart_state_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -102,7 +98,6 @@ pub(crate) fn restart_state_on(
 
 /// Forget every folder at or below `folders` that files were found at, and
 /// the state of every candidate found only there.
-#[cfg(desktop)]
 pub(crate) fn forget_at_or_below(
     sql: &CovenWrite<'_>,
     folders: &crate::tables::watched_folders::FoldersAtOrBelow,
