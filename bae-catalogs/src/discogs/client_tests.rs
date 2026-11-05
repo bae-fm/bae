@@ -436,6 +436,7 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
     let (url, request_count) = discogs_response_server(vec![RATE_LIMITED_HALF_A_MINUTE]).await;
     let discogs = served_by(&url);
     let client = DiscogsClient::new(discogs.clone(), "token".to_string());
+    let asked_at = tokio::time::Instant::now();
     let asked = tokio::spawn(async move {
         client.search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive).await
     });
@@ -450,9 +451,13 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
     })
     .await
     .expect("the refusal reaches the limiter");
+    let seen_at = tokio::time::Instant::now();
     asked.abort();
 
-    assert!(opens_at >= tokio::time::Instant::now() + Duration::from_secs(25));
+    // The limiter held itself for the stated wait when the refusal settled,
+    // which was after the request was asked and before the hold was seen.
+    assert!(opens_at >= asked_at + Duration::from_secs(30));
+    assert!(opens_at <= seen_at + Duration::from_secs(30));
     assert_eq!(request_count.load(Ordering::SeqCst), 1);
 }
 

@@ -62,11 +62,18 @@ async fn a_503_without_a_zone_is_a_failure() {
 /// over, so every other MusicBrainz request waits with the refused one.
 #[tokio::test]
 async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
-    let reset = chrono::Utc::now().timestamp() + 30;
-    let (url, requests, _) =
-        mb_raw_server(vec![rate_refusal(&format!("x-ratelimit-reset: {reset}\r\n"))]).await;
+    // The reset is measured from the refusal's own `Date`, so the wait is
+    // thirty seconds whatever this machine's clock says.
+    const DATE: &str = "Sat, 26 Sep 2026 06:51:00 GMT";
+    let reset =
+        chrono::DateTime::parse_from_rfc2822(DATE).expect("the date parses").timestamp() + 30;
+    let (url, requests, _) = mb_raw_server(vec![rate_refusal(&format!(
+        "Date: {DATE}\r\nx-ratelimit-reset: {reset}\r\n"
+    ))])
+    .await;
     let musicbrainz = Arc::new(served_by(&url));
     let asking = Arc::clone(&musicbrainz);
+    let asked_at = tokio::time::Instant::now();
     let asked = tokio::spawn(async move {
         asking.fetch_release_group_json("rg-held", CallPriority::Interactive).await
     });
@@ -81,9 +88,13 @@ async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
     })
     .await
     .expect("the refusal reaches the limiter");
+    let seen_at = tokio::time::Instant::now();
     asked.abort();
 
-    assert!(opens_at >= tokio::time::Instant::now() + Duration::from_secs(25));
+    // The limiter held itself for thirty seconds when the refusal settled,
+    // which was after the request was asked and before the hold was seen.
+    assert!(opens_at >= asked_at + Duration::from_secs(30));
+    assert!(opens_at <= seen_at + Duration::from_secs(30));
     assert_eq!(requests.load(Ordering::SeqCst), 1);
 }
 
