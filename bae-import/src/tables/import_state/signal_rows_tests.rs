@@ -2,10 +2,10 @@
 
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::tables::NewImportCandidateVerdict;
 use bae_catalogs::InternalFailure;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
 /// Every settled shape of every signal comes back as it went in, including

@@ -4092,7 +4092,7 @@ bindings export none of their symbols.
 | bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it, and the live reads the screens pull over the library and its views |
 | bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives, and the library's schema, assembled from each crate's parts of it (a phone's without import's) |
 | bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in, with the tables those lists read, kept by triggers in the write that changes what they come from |
-| bae-import | import, desktop only: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
+| bae-import | import, desktop only: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables and the watched folders' paths as the store keys them |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local path, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |
@@ -4255,7 +4255,9 @@ rebuilds the indexes that use it when the library next opens for writing.
 It also gives coven the function `bae_catalog_rank`, a catalog's place in the
 order surfaces list catalogs (MusicBrainz, Discogs, then the rest by name),
 which indexes order records by, and bae's other SQL functions; each is
-deterministic, with a version that works the same way.
+deterministic, with a version that works the same way. Each part of the
+schema declares the functions and the collation its SQL names, and the store
+registers each once.
 
 Each connection coven opens to a library keeps a page cache of up to 64 MiB on
 desktop and 16 MiB on phones, against SQLite's default of 2 MiB. A cache holds

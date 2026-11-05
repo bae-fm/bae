@@ -13,10 +13,10 @@
 //! caused, and of those, the ones whose result was unchanged.
 
 use bae_db::LibraryPageWindow;
-use bae_db::RelativeFolder;
 use bae_import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
 };
+use bae_import::RelativeFolder;
 use bae_import::{
     CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
 };

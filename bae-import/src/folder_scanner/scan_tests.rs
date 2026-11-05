@@ -189,7 +189,7 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Group")
+        } if key.relative_folder == crate::RelativeFolder::test("Group")
     )));
     assert!(
         scan.says_while_held(|item| matches!(
@@ -226,7 +226,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Group")
+        } if key.relative_folder == crate::RelativeFolder::test("Group")
     )));
 
     scan.finish();
@@ -364,7 +364,7 @@ fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
                 key,
                 decision: FolderReleaseDecision::KeepAsSeparateReleases,
                 ..
-            } if key.relative_folder == bae_db::RelativeFolder::test("Group/Artist")
+            } if key.relative_folder == crate::RelativeFolder::test("Group/Artist")
         )));
 }
 
@@ -461,7 +461,7 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Collection/Release Wrapper")
+        } if key.relative_folder == crate::RelativeFolder::test("Collection/Release Wrapper")
     )));
     let releases: Vec<_> = items
         .iter()

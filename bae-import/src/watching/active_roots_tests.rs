@@ -3,8 +3,8 @@
 //! and a folder taking over the watched folders inside it.
 
 use super::*;
+use crate::tables::watched_path::host_root;
 use crate::watching::tests::*;
-use bae_db::watched_path::host_root;
 use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
@@ -281,7 +281,7 @@ async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
     harness.scans.wait_for_count(2).await;
     assert_eq!(
         harness.scans.reading(1).map(|(key, _)| key.relative_folder),
-        Some(bae_db::RelativeFolder::test("Group")),
+        Some(crate::RelativeFolder::test("Group")),
         "the pass after the cancelled one is the folder reading"
     );
     // The reading is the fake pass's to answer now, and it has not.

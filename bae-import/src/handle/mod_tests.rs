@@ -240,7 +240,7 @@ pub(super) fn twin_of(original: &FolderCandidate, name: &str) -> FolderCandidate
     twin.path = folder.clone();
     twin.file_root = folder;
     twin.name = name.to_string();
-    twin.relative_folder = bae_db::RelativeFolder::test(name);
+    twin.relative_folder = crate::RelativeFolder::test(name);
     assert_eq!(twin.files.content_hash(), original.files.content_hash());
     twin
 }
@@ -425,7 +425,7 @@ pub(super) async fn unscanned_candidate(
         watched_folder_path: root.clone(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: bae_db::RelativeFolder::test(folder_name),
+        relative_folder: crate::RelativeFolder::test(folder_name),
         grouping: None,
     };
 

@@ -321,7 +321,7 @@ async fn rescan_seeded_root(
             path: root.join("old-key"),
             name: "Old Candidate".to_string(),
             watched_folder_path: root.to_path_buf(),
-            relative_folder: bae_db::RelativeFolder::test("old-key"),
+            relative_folder: crate::RelativeFolder::test("old-key"),
             grouping: None,
             files: Vec::new(),
             tags: None,

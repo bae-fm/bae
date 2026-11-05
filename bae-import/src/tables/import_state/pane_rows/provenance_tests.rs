@@ -2,9 +2,9 @@
 
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::tables::ImportTables;
 use bae_db::test_fixtures::fixed_now;
-use bae_db::watched_path::host_root;
 use bae_db::Database;
 use coven::FixedClock;
 use std::sync::Arc;

@@ -5,7 +5,7 @@
 use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::service::tests::{setup_import_service, TestService};
-use bae_db::watched_path::host_root;
+use crate::tables::watched_path::host_root;
 use bae_db::Database;
 use bae_util::test_channels::HANG_GUARD;
 use std::sync::Mutex;
@@ -287,7 +287,7 @@ impl CoordinatorHarness {
                     path: root_path.join("Group/Release"),
                     name: "Release".to_string(),
                     watched_folder_path: std::path::PathBuf::from(&root),
-                    relative_folder: bae_db::RelativeFolder::test("Group/Release"),
+                    relative_folder: crate::RelativeFolder::test("Group/Release"),
                     grouping: None,
                     files: Vec::new(),
                     tags: None,
@@ -405,7 +405,7 @@ pub(crate) fn request_group_decision(
             target: (
                 crate::FolderReleaseDecisionKey {
                     watched_folder_path: root.to_path_buf(),
-                    relative_folder: bae_db::RelativeFolder::test("Group"),
+                    relative_folder: crate::RelativeFolder::test("Group"),
                 },
                 crate::FolderReleaseDecision::CombineAsOneRelease,
             ),

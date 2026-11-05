@@ -205,7 +205,7 @@ pub(super) async fn store_scan_items(
     items: Vec<FolderEntry>,
     reads: &Arc<crate::folder_scanner::FileReads>,
     services: &crate::ImportServices,
-    written_keys: &mut Vec<bae_db::RelativeFolder>,
+    written_keys: &mut Vec<crate::RelativeFolder>,
     displaced_keys: &mut Vec<crate::CandidateKey>,
 ) -> Result<bool, crate::ImportError> {
     if items.is_empty() {

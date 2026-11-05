@@ -4,9 +4,9 @@
 use super::read::RowSources;
 use super::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::tables::ImportTables;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 use bae_db::Database;
 use rusqlite::params;
 
@@ -123,7 +123,7 @@ pub(crate) async fn commit_reading_under(
             decision: Some((
                 crate::folder_scanner::FolderReleaseDecisionKey {
                     watched_folder_path: root.to_path_buf(),
-                    relative_folder: bae_db::RelativeFolder::test(folder),
+                    relative_folder: crate::RelativeFolder::test(folder),
                 },
                 crate::folder_scanner::FolderReading {
                     decision,

@@ -1,6 +1,6 @@
 use super::*;
 use crate::folder_scanner::{CandidateFile, CandidateFileEdits, ScannedFile, SheetDisc};
-use bae_db::watched_path::host_root;
+use crate::tables::watched_path::host_root;
 
 /// A folder of two FLAC tracks at `relative` under the watched root `root`.
 fn folder_at(root: &str, relative: &str) -> FolderCandidate {
@@ -13,7 +13,7 @@ fn folder_at(root: &str, relative: &str) -> FolderCandidate {
         watched_folder_path: host_root(root),
         scope: ReleaseFileScope::Direct,
         file_edit_revision: 0,
-        relative_folder: bae_db::RelativeFolder::test(relative),
+        relative_folder: crate::RelativeFolder::test(relative),
         grouping: None,
         files: CategorizedFiles {
             files: ["01.flac", "02.flac"]

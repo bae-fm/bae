@@ -380,7 +380,7 @@ async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
             watched_folder_path: folder.to_path_buf(),
             scope: crate::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            relative_folder: bae_db::RelativeFolder::test(name),
+            relative_folder: crate::RelativeFolder::test(name),
             grouping: None,
         }),
     )

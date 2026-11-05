@@ -100,7 +100,7 @@ impl DecisionFixture {
             write_disc(&root.join("Artist").join("Album").join(disc), tracks);
         }
         write_disc(&root.join("Other").join("Record"), 1);
-        let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+        let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
         test.tables().add_watched_import_folder(&root).await.unwrap();
         let listing = Arc::new(RecordingListing::default());
         let (scan, _) =
@@ -113,7 +113,7 @@ impl DecisionFixture {
     pub(crate) fn album_key(&self) -> crate::FolderReleaseDecisionKey {
         crate::FolderReleaseDecisionKey {
             watched_folder_path: self.root.clone(),
-            relative_folder: bae_db::RelativeFolder::test("Artist/Album"),
+            relative_folder: crate::RelativeFolder::test("Artist/Album"),
         }
     }
 

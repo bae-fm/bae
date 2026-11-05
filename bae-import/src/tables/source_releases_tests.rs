@@ -5,6 +5,7 @@
 
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::IdentifyRunId;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
@@ -19,7 +20,6 @@ use bae_catalogs::test_documents::{
 };
 use bae_db::test_fixtures::empty_db;
 use bae_db::test_fixtures::{exec, exec_batch};
-use bae_db::watched_path::host_root;
 use bae_db::Database;
 use bae_identify::{RunOutcome, TerminalVerdict};
 

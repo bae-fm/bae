@@ -20,7 +20,7 @@ pub(super) fn empty_categorized() -> CategorizedFiles {
 pub(super) fn folder_candidate(key: &crate::CandidateKey, watched: &str) -> FolderCandidate {
     let path = key.test_folder();
     FolderCandidate {
-        relative_folder: bae_db::RelativeFolder::of(path.strip_prefix(watched).unwrap()).unwrap(),
+        relative_folder: crate::RelativeFolder::of(path.strip_prefix(watched).unwrap()).unwrap(),
         name: format!("Candidate {}", path.display()),
         file_root: path.clone(),
         path,
@@ -152,7 +152,7 @@ pub(super) async fn scanned_at(
                      X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
             key = hex::encode(key.as_bytes()),
             relative = hex::encode(
-                bae_db::RelativeFolder::of(key.test_folder().strip_prefix("/watch").unwrap())
+                crate::RelativeFolder::of(key.test_folder().strip_prefix("/watch").unwrap())
                     .unwrap()
                     .as_bytes()
             ),
@@ -389,7 +389,7 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
         path: candidate.path.clone(),
         name: "rel1".to_string(),
         watched_folder_path: candidate.watched_folder_path.clone(),
-        relative_folder: bae_db::RelativeFolder::test("rel1"),
+        relative_folder: crate::RelativeFolder::test("rel1"),
         grouping: candidate.grouping.clone(),
         files: Vec::new(),
         tags: None,

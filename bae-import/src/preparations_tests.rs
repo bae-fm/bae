@@ -5,12 +5,12 @@ use crate::cover_art::PreparedCover;
 use crate::folder_scanner::{CandidateFileEdits, SheetDisc};
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::tables::NewImportCandidateVerdict;
 use crate::CandidateEditField;
 use crate::CoverSelection;
 use bae_catalogs::catalog::Catalog;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 use bae_identify::TerminalVerdict;
 
 fn image(byte: u8) -> bae_catalogs::remote_image::RemoteImage {

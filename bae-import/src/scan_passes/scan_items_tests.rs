@@ -34,7 +34,7 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
             tracks.push(path);
         }
     }
-    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, _) = test.scan();
@@ -116,7 +116,7 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
     let sheet = album.join("album.cue");
     std::fs::write(&sheet, "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n")
         .unwrap();
-    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     ReadableFiles {
         album: root.join("Album"),
@@ -200,7 +200,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
             std::fs::write(folder.join(format!("0{n}.flac")), flac()).unwrap();
         }
     }
-    let root = bae_db::watched_path::canonical_absolute_root(&watched).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
     tables.add_watched_import_folder(std::path::Path::new(&root_key)).await.unwrap();
     let tracks: Vec<PathBuf> = ["Disc 1/01", "Disc 1/02", "Disc 2/01", "Disc 2/02"]
@@ -332,7 +332,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
             .set_times(std::fs::FileTimes::new().set_modified(modified))
             .unwrap();
     }
-    let root = bae_db::watched_path::canonical_absolute_root(&watched).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
     tables.add_watched_import_folder(std::path::Path::new(&root_key)).await.unwrap();
     let tags = Arc::new(CountingTagReader::default());
@@ -398,7 +398,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     }
     let picture_path = test.temp.path().join("picture.jpg");
     write_test_jpeg(&picture_path);
-    let root = bae_db::watched_path::canonical_absolute_root(&watched).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
     tables.add_watched_import_folder(std::path::Path::new(&root_key)).await.unwrap();
     let tags = Arc::new(EmbeddingTagReader {

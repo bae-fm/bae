@@ -3,9 +3,9 @@
 
 use crate::cover_art::PreparedCover;
 use crate::tables::import_state::tests::*;
+use crate::tables::watched_path::host_root;
 use bae_catalogs::catalog::Catalog;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 
 fn remote_with_copies(url: &str) -> PreparedCover {
     use bae_catalogs::remote_image::{DownscaledCopy, RemoteImageSet};

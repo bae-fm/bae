@@ -1,6 +1,6 @@
 //! Watched folders.
 
-use bae_db::WatchedPathError;
+use crate::WatchedPathError;
 use std::path::{Path, PathBuf};
 use tracing::warn;
 

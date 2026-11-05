@@ -3,8 +3,8 @@
 use crate::tables::folder_scans::tests::*;
 use crate::tables::release_groupings::tests::{scanned, sidecar_in, sidecar_of};
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 use bae_db::Database;
 
 /// Reading one folder again prunes the sidecars it no longer yields at and
@@ -96,7 +96,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
             .load_folder_release_decisions(root)
             .await
             .unwrap()
-            .get(&bae_db::RelativeFolder::test("Box"))
+            .get(&crate::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::CombineAsOneRelease, FolderReleaseDecisionAuthor::User))
     );
@@ -124,7 +124,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
             .load_folder_release_decisions(root)
             .await
             .unwrap()
-            .get(&bae_db::RelativeFolder::test("Box"))
+            .get(&crate::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::KeepAsSeparateReleases, FolderReleaseDecisionAuthor::User))
     );
@@ -205,7 +205,7 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
         .load_folder_release_decisions(root)
         .await
         .unwrap()
-        .get(&bae_db::RelativeFolder::test("Box"))
+        .get(&crate::RelativeFolder::test("Box"))
         .is_none());
     assert_eq!(tables.load_folder_scan_snapshots().await.unwrap()[0].generation, moved);
     assert_eq!(
@@ -242,7 +242,7 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
         .load_folder_release_decisions(root)
         .await
         .unwrap()
-        .get(&bae_db::RelativeFolder::test("Box"))
+        .get(&crate::RelativeFolder::test("Box"))
         .is_none());
     assert_eq!(tables.load_folder_scan_snapshots().await.unwrap()[0].generation, generation);
     assert_eq!(

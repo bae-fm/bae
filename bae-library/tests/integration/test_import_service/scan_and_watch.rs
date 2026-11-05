@@ -454,7 +454,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
         .handle
         .combine_folder(bae_import::FolderReleaseDecisionKey {
             watched_folder_path: other.clone(),
-            relative_folder: bae_db::RelativeFolder::of(Path::new("Box")).unwrap(),
+            relative_folder: bae_import::RelativeFolder::of(Path::new("Box")).unwrap(),
         })
         .await
         .unwrap();

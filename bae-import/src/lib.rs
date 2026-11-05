@@ -111,6 +111,8 @@ pub mod watched_folder;
 mod watching;
 
 #[cfg(desktop)]
+pub use tables::watched_path::{RelativeFolder, WatchedPathError};
+#[cfg(desktop)]
 pub use volume::check_period_minutes;
 #[cfg(desktop)]
 pub use volume::VolumeKind;

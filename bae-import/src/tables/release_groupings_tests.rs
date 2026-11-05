@@ -8,8 +8,8 @@ use crate::folder_scanner::{
 };
 use crate::grouping::GroupingBlock;
 use crate::tables::tests::{candidate, candidate_with, folder_below};
+use crate::tables::watched_path::host_root;
 use bae_db::test_fixtures::{empty_db, temp_db};
-use bae_db::watched_path::host_root;
 
 /// `names` under one watched root, scanned to completion.
 pub(crate) async fn scanned(names: &[&str]) -> (Database, tempfile::TempDir, Vec<FolderCandidate>) {
@@ -146,7 +146,7 @@ async fn folders_whose_names_show_the_same_combine_into_no_importable_release() 
         folder.path = root.join(name);
         folder.file_root = folder.path.clone();
         folder.name = coven::path_text(name);
-        folder.relative_folder = bae_db::RelativeFolder::of(name).unwrap();
+        folder.relative_folder = crate::RelativeFolder::of(name).unwrap();
         folder
     };
     let (db, _temp, members) = scanned_folders(vec![

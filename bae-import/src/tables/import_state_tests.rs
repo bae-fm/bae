@@ -3,6 +3,7 @@
 
 use crate::folder_scanner::CategorizedFiles;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::tables::NewImportCandidateVerdict;
 use crate::{
     ArtistAssignment, AudioFile, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
@@ -13,7 +14,6 @@ use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::search::MetadataResult;
 use bae_db::test_fixtures::empty_db;
 use bae_db::test_fixtures::fixed_now;
-use bae_db::watched_path::host_root;
 use bae_db::{Database, DbArtist};
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::{

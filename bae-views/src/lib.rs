@@ -103,7 +103,11 @@ pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[bae_db::SchemaPart::new(&[
     storage::SQL,
     search::SQL,
     versions::SQL,
-])];
+])
+.functions(SQL_FUNCTIONS)];
+
+/// The SQL functions the views' SQL names.
+const SQL_FUNCTIONS: &[&bae_db::SchemaFunction] = &[&bae_db::FOLD_CASE];
 
 /// The schema this crate's tests open their stores on: bae-db's part,
 /// playback's (the tables its tests read), the transfers' (the queues the

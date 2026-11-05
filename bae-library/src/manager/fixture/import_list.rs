@@ -73,8 +73,9 @@ impl LibraryManager {
         let tables = bae_import::tables::ImportTables::new(self.database.clone());
         let mut file_count = 0;
         for folder in folders {
-            let root = bae_db::watched_path::canonical_absolute_root(Path::new(&folder.path))
-                .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
+            let root =
+                bae_import::tables::watched_path::canonical_absolute_root(Path::new(&folder.path))
+                    .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
             tables.add_watched_import_folder(&root).await.map_err(LibraryError::from)?;
             let generation = tables
                 .begin_folder_scan(&root, bae_import::VolumeKind::Local)
@@ -268,7 +269,7 @@ fn fixture_candidate(
 ) -> Result<FolderCandidate, LibraryFixtureError> {
     let path =
         candidate.folder.split('/').fold(root.to_path_buf(), |folder, part| folder.join(part));
-    let relative_folder = bae_db::RelativeFolder::of(Path::new(&candidate.folder))
+    let relative_folder = bae_import::RelativeFolder::of(Path::new(&candidate.folder))
         .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
     let files = candidate
         .tracks

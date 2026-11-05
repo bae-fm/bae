@@ -87,7 +87,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
@@ -106,7 +106,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         Some(crate::tables::GroupingFacts::Anchored {
             folder: crate::FolderReleaseDecisionKey {
                 watched_folder_path: root.clone(),
-                relative_folder: bae_db::RelativeFolder::test("Artist"),
+                relative_folder: crate::RelativeFolder::test("Artist"),
             },
             decision: crate::FolderReleaseDecision::CombineAsOneRelease,
         })
@@ -146,7 +146,7 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
@@ -188,7 +188,7 @@ async fn album_of_discs(
         std::fs::copy(&fixture, album.join("00.flac")).unwrap();
     }
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
@@ -196,7 +196,7 @@ async fn album_of_discs(
         .load_folder_release_decisions(&root)
         .await
         .unwrap()
-        .get(&bae_db::RelativeFolder::test("Album"))
+        .get(&crate::RelativeFolder::test("Album"))
         .cloned()
         .expect("the scan read the album folder");
     if reading.decision == crate::FolderReleaseDecision::CombineAsOneRelease {

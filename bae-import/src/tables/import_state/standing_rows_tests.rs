@@ -6,10 +6,10 @@ use crate::candidate_runtime::{
 use crate::folder_scanner::CandidateFileEdits;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles, SaveFailure};
 use bae_db::test_fixtures::{empty_db, exec_batch};
-use bae_db::watched_path::host_root;
 use bae_db::Database;
 
 /// Store `key` as a candidate the scan holds with `files`, as the scan would.
@@ -28,7 +28,7 @@ async fn scanned(db: &Database, key: &crate::CandidateKey, files: &CandidateFile
                      X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
             key = hex::encode(key.as_bytes()),
             relative = hex::encode(
-                bae_db::RelativeFolder::of(
+                crate::RelativeFolder::of(
                     key.test_folder().strip_prefix("/music").unwrap()
                 )
                 .unwrap()

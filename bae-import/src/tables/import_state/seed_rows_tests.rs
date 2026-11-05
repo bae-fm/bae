@@ -2,8 +2,8 @@
 
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 
 /// A candidate discovery stored with a blank draft: nobody wrote it.
 #[tokio::test]

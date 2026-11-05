@@ -112,7 +112,7 @@ pub(super) fn readings(
             .iter()
             .map(|(folder, decision, author)| {
                 (
-                    bae_db::RelativeFolder::test(folder),
+                    crate::RelativeFolder::test(folder),
                     FolderReading {
                         decision: *decision,
                         author: *author,

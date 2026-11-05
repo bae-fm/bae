@@ -48,7 +48,7 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
                 watched_folder_path: std::path::PathBuf::from(&root),
                 scope: crate::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
-                relative_folder: bae_db::RelativeFolder::root(),
+                relative_folder: crate::RelativeFolder::root(),
                 grouping: None,
             }),
         )
@@ -118,7 +118,7 @@ async fn a_timing_refusal_survives_a_relaunch() {
                 watched_folder_path: std::path::PathBuf::from(&root),
                 scope: crate::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
-                relative_folder: bae_db::RelativeFolder::root(),
+                relative_folder: crate::RelativeFolder::root(),
                 grouping: None,
             }),
         )

@@ -1,8 +1,8 @@
 //! A draft's roles and works as stored values.
 
 use crate::tables::import_state::tests::*;
+use crate::tables::watched_path::host_root;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 
 /// A draft's roles and works are values it stores: they read back as they
 /// were written.

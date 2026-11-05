@@ -31,7 +31,7 @@ pub(crate) struct Library {
 impl Library {
     pub(crate) async fn new() -> Self {
         let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
-        let root = bae_db::watched_path::host_root("/music");
+        let root = crate::tables::watched_path::host_root("/music");
         let library = Self { db, _tmp: tmp, root };
         library.run(&library.watch(&library.root, 0)).await;
         library
@@ -76,7 +76,7 @@ impl Library {
     /// folder as `kind`.
     pub(crate) fn scan_folder(&self, relative: &std::path::Path, kind: &str) -> String {
         let folder = self.folder(relative);
-        let relative = bae_db::RelativeFolder::of(relative).unwrap();
+        let relative = crate::RelativeFolder::of(relative).unwrap();
         let name = coven::path_text(std::path::Path::new(folder.file_name().unwrap()));
         let hash = match kind {
             "invalid" => "NULL".to_string(),
@@ -96,9 +96,9 @@ impl Library {
 
     /// The folder `relative` below the watched folder.
     pub(crate) fn folder(&self, relative: &std::path::Path) -> std::path::PathBuf {
-        bae_db::watched_path::folder_below(
+        crate::tables::watched_path::folder_below(
             &self.root,
-            &bae_db::RelativeFolder::of(relative).unwrap(),
+            &crate::RelativeFolder::of(relative).unwrap(),
         )
     }
 
@@ -436,7 +436,7 @@ impl Library {
     pub(crate) fn group_key(&self, name: &str) -> FolderReleaseDecisionKey {
         FolderReleaseDecisionKey {
             watched_folder_path: self.root.clone(),
-            relative_folder: bae_db::RelativeFolder::test(name),
+            relative_folder: crate::RelativeFolder::test(name),
         }
     }
 
@@ -477,7 +477,7 @@ pub(crate) fn sql_blob(bytes: &[u8]) -> String {
 /// The folder at `display_path` below a watched folder as a SQL literal of its
 /// `RelativeFolder` bytes.
 pub(crate) fn sql_relative(display_path: &str) -> String {
-    sql_blob(bae_db::RelativeFolder::test(display_path).as_bytes())
+    sql_blob(crate::RelativeFolder::test(display_path).as_bytes())
 }
 
 /// The content hash the fixtures give the release at `display_path`.

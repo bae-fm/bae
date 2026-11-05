@@ -131,7 +131,7 @@ async fn a_folder_whose_name_is_not_utf8_is_skipped_by_its_own_path() {
         .load_skipped_import_candidates(&collection)
         .await
         .unwrap();
-    let expected = bae_db::RelativeFolder::of(Path::new(&latin1_name(""))).unwrap();
+    let expected = bae_import::RelativeFolder::of(Path::new(&latin1_name(""))).unwrap();
     assert_eq!(skipped, std::collections::HashSet::from([expected]));
     match f.handle.get_candidate(&key).await.unwrap() {
         Some(bae_import::ImportCandidateSnapshot::Folder { skipped, .. }) => {
@@ -169,7 +169,7 @@ async fn the_releases_in_a_folder_whose_name_is_not_utf8_combine_into_it() {
     let reading = bae_import::tables::ImportTables::new(f.library.database().clone())
         .folder_reading_grouping(&bae_import::FolderReleaseDecisionKey {
             watched_folder_path: collection.clone(),
-            relative_folder: bae_db::RelativeFolder::of(Path::new(&latin1_name(""))).unwrap(),
+            relative_folder: bae_import::RelativeFolder::of(Path::new(&latin1_name(""))).unwrap(),
         })
         .await
         .unwrap();

@@ -350,7 +350,7 @@ pub(super) fn prune_sidecars(
             |row| path_column::get(row, 0),
         )?,
         Some(under) => {
-            let (below_first, below_past) = bae_db::watched_path::paths_below(under);
+            let (below_first, below_past) = crate::tables::watched_path::paths_below(under);
             let under = coven::path_bytes(under);
             sql.query(
                 "SELECT folder FROM scan_sidecar \

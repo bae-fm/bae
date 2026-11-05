@@ -8,8 +8,8 @@
 use super::order::{sorted_terms, tab_of, unit_join, uploading_cte, Item};
 use super::*;
 use crate::list::{ImportCandidateListLocation, NarrowedCount};
+use crate::RelativeFolder;
 use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
-use bae_db::RelativeFolder;
 
 /// Every tab's count, how many of Found's releases each filter entry holds,
 /// and whether Found has any group.

@@ -345,7 +345,7 @@ async fn an_import_outlives_its_candidate_leaving_the_scan() {
             path: key.test_folder(),
             name: "rel1".to_string(),
             watched_folder_path: std::path::PathBuf::from("/watch/a"),
-            relative_folder: bae_db::RelativeFolder::test("rel1"),
+            relative_folder: crate::RelativeFolder::test("rel1"),
             grouping: None,
             files: Vec::new(),
             tags: None,

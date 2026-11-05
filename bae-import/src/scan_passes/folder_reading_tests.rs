@@ -63,7 +63,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
-            .get(&bae_db::RelativeFolder::test("Artist/Album"))
+            .get(&crate::RelativeFolder::test("Artist/Album"))
             .map(|reading| (reading.decision, reading.author)),
         Some((
             crate::FolderReleaseDecision::KeepAsSeparateReleases,
@@ -131,7 +131,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
         .load_folder_release_decisions(&fixture.root)
         .await
         .unwrap()
-        .get(&bae_db::RelativeFolder::test("Artist/Album"))
+        .get(&crate::RelativeFolder::test("Artist/Album"))
         .cloned();
 
     // Hold the commit lock, so the reading waits at it with its walk done,
@@ -170,7 +170,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
-            .get(&bae_db::RelativeFolder::test("Artist/Album"))
+            .get(&crate::RelativeFolder::test("Artist/Album"))
             .cloned(),
         decisions_before
     );
@@ -286,7 +286,7 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
     for release in releases {
         write_disc(&root.join(release), 1);
     }
-    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
@@ -296,7 +296,7 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
 fn folder_key(root: &Path, relative: &str) -> crate::FolderReleaseDecisionKey {
     crate::FolderReleaseDecisionKey {
         watched_folder_path: root.to_path_buf(),
-        relative_folder: bae_db::RelativeFolder::test(relative),
+        relative_folder: crate::RelativeFolder::test(relative),
     }
 }
 
@@ -362,7 +362,7 @@ async fn a_folders_release_keeps_its_key_across_readings() {
             .load_folder_release_decisions(&root)
             .await
             .unwrap()
-            .get(&bae_db::RelativeFolder::test("Album"))
+            .get(&crate::RelativeFolder::test("Album"))
             .map(|reading| reading.grouping.clone())
             .expect("the scan read the album's discs as one")
     };
@@ -408,7 +408,7 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
         write_disc(&root.join(disc), 2);
     }
     std::fs::write(root.join("Album/notes.txt"), "notes").unwrap();
-    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();

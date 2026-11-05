@@ -196,7 +196,7 @@ pub(super) fn folder_source(folder: PathBuf) -> ExtractionSource {
     ExtractionSource::Candidate {
         candidate: crate::FolderCandidate {
             name: folder.file_name().unwrap().to_string_lossy().into_owned(),
-            relative_folder: bae_db::RelativeFolder::root(),
+            relative_folder: crate::RelativeFolder::root(),
             watched_folder_path: folder.clone(),
             file_root: folder.clone(),
             path: folder,

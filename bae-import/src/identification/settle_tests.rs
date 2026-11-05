@@ -36,7 +36,7 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
         watched_folder_path: std::path::PathBuf::from("/"),
         scope: crate::folder_scanner::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: bae_db::RelativeFolder::test(path.trim_start_matches('/')),
+        relative_folder: crate::RelativeFolder::test(path.trim_start_matches('/')),
         grouping: None,
     }
 }

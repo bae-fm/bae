@@ -1,10 +1,10 @@
 //! A draft's rows and the artist assignments as stored and read back.
 
 use crate::tables::import_state::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::{ArtistAssignment, RawTrackEdit, TrackArtistAssignments};
 use bae_catalogs::credits::ArtistCredit;
 use bae_db::test_fixtures::{empty_db, exec, exec_batch, temp_db, ARTIST_A, ARTIST_B};
-use bae_db::watched_path::host_root;
 use bae_db::ExistingArtist;
 
 #[tokio::test]

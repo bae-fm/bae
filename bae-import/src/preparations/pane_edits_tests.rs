@@ -3,10 +3,10 @@
 use crate::cover_art::PreparedCover;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::{AudioFile, CandidateEditField};
 use bae_catalogs::catalog::Catalog;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 
 /// A pane edit with no candidate row under it is a defect, not a state to
 /// absorb: the form is drawn only under a pick, and a pick writes that row.

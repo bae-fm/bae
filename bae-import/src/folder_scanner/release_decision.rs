@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::CandidateKey;
-use bae_db::RelativeFolder;
+use crate::RelativeFolder;
 
 /// The stable address of one folder-boundary decision.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

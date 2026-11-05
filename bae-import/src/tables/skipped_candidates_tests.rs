@@ -1,7 +1,7 @@
 //! The candidates set aside as the store keeps them.
 
+use crate::tables::watched_path::host_root;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 
 /// A skipped folder's key below the root that is not canonical — a doubled
 /// separator — is refused when set aside, and fails the read of the root's

@@ -2,10 +2,10 @@
 
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
+use crate::tables::watched_path::host_root;
 use crate::ImportFailure;
 use bae_db::test_fixtures::empty_db;
 use bae_db::test_fixtures::fixed_now;
-use bae_db::watched_path::host_root;
 
 /// A failed import is recorded on the discovered candidate, and a later one
 /// replaces it.

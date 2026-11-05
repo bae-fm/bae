@@ -4,10 +4,11 @@
 //! Its table is `watched_folders.sql`.
 
 use super::*;
-use bae_db::RelativeFolder;
+use crate::RelativeFolder;
 use std::path::{Path, PathBuf};
 
 mod removal;
+pub mod watched_path;
 pub use removal::WatchedFoldersRemoved;
 
 /// The watched folders' part of the library's schema.
@@ -25,7 +26,7 @@ pub(crate) struct FoldersAtOrBelow {
 
 impl FoldersAtOrBelow {
     pub(crate) fn of(folder: &Path) -> Self {
-        let (below_first, below_past) = bae_db::watched_path::paths_below(folder);
+        let (below_first, below_past) = crate::tables::watched_path::paths_below(folder);
         Self { folder: coven::path_bytes(folder), below_first, below_past }
     }
 
@@ -47,7 +48,7 @@ impl FoldersAtOrBelow {
 /// `folder`, a stored folder under the watched folder `root`, as the folder
 /// below it.
 pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {
-    bae_db::watched_path::candidate_relative_path(root, folder)
+    crate::tables::watched_path::candidate_relative_path(root, folder)
         .map_err(|error| DbError::Message(error.to_string()))
 }
 
@@ -96,7 +97,7 @@ pub(super) fn watched_folders_on(
 /// root that is not canonical, or overlaps another, fails the read.
 fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, DbError> {
     for (index, root) in roots.iter().enumerate() {
-        bae_db::watched_path::validate_absolute_root(root)?;
+        crate::tables::watched_path::validate_absolute_root(root)?;
         if let Some(conflict) = roots[index + 1..]
             .iter()
             .find(|other| crate::watched_folder::paths_overlap(root, other))
@@ -145,7 +146,7 @@ impl ImportTables {
     /// The watched folders inside `path`, not `path` itself, in their order:
     /// those whose key lies in the range of paths below it.
     pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {
-        let (first, past) = bae_db::watched_path::paths_below(path);
+        let (first, past) = crate::tables::watched_path::paths_below(path);
         let path = coven::path_bytes(path);
         self.database
             .read(move |sql| {
@@ -176,7 +177,7 @@ impl ImportTables {
         &self,
         path: &Path,
     ) -> Result<Option<Vec<crate::WatchedFolder>>, DbError> {
-        let path = bae_db::watched_path::canonical_absolute_root(path)?;
+        let path = crate::tables::watched_path::canonical_absolute_root(path)?;
         if self.is_watched_import_folder(&path).await? {
             return Ok(None);
         }

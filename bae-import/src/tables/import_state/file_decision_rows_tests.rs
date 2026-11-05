@@ -41,7 +41,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
         watched_folder_path: std::path::PathBuf::from(&root),
         scope: crate::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: bae_db::RelativeFolder::root(),
+        relative_folder: crate::RelativeFolder::root(),
         grouping: None,
     };
     tables
@@ -145,7 +145,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
         watched_folder_path: std::path::PathBuf::from(&root),
         scope: crate::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: bae_db::RelativeFolder::root(),
+        relative_folder: crate::RelativeFolder::root(),
         grouping: None,
     };
     tables

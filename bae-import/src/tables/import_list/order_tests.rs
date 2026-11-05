@@ -40,7 +40,7 @@ impl Library {
 #[tokio::test]
 async fn rows_order_by_watched_root_then_natural_path() {
     let lib = Library::new().await;
-    let second = bae_db::watched_path::host_root("/second");
+    let second = crate::tables::watched_path::host_root("/second");
     lib.run(&format!(
         "{}{}{}",
         lib.scan("Release 10"),
@@ -275,7 +275,7 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
 #[tokio::test]
 async fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
     let lib = Library::new().await;
-    let second = bae_db::watched_path::host_root("/second");
+    let second = crate::tables::watched_path::host_root("/second");
     lib.run(&format!(
         "{}{}INSERT INTO folder_discovery (folder, first_seen_at, settled)
              VALUES ({}, 20, 1);",

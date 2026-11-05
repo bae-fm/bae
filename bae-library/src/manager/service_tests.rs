@@ -68,7 +68,7 @@ async fn done_with_two_uploading(
     let c = insert_release_with_queued_uploads(manager, &dir.join("c"), "C", files).await;
     let b = insert_release_with_queued_uploads(manager, &dir.join("b"), "B", files).await;
     let d = insert_local_release_with_files(manager, &dir.join("d"), "D", files).await;
-    let root = bae_db::watched_path::host_root("/music");
+    let root = bae_import::tables::watched_path::host_root("/music");
     let root_sql = format!("X'{}'", hex::encode(coven::path_bytes(&root)));
     let mut sql = format!(
         "INSERT INTO watched_import_folders (path, position) VALUES ({root_sql}, 0);

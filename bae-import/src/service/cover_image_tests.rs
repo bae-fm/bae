@@ -241,7 +241,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
             watched_folder_path: std::path::PathBuf::from(&watched_folder_path),
             scope: crate::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            relative_folder: bae_db::RelativeFolder::test("Candidate"),
+            relative_folder: crate::RelativeFolder::test("Candidate"),
             grouping: None,
         }),
     )

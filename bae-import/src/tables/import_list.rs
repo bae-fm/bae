@@ -64,7 +64,20 @@ pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
     follows_candidates::SQL,
     follows_library::SQL,
     versions::SQL,
-]);
+])
+.functions(SQL_FUNCTIONS)
+.collations(SQL_COLLATIONS);
+
+/// The SQL functions the import list's SQL names.
+const SQL_FUNCTIONS: &[&bae_db::SchemaFunction] = &[
+    &bae_db::FOLD_CASE,
+    &bae_db::SEARCH_PATTERN,
+    &super::watched_path::FOLDER_BELOW,
+    &super::watched_path::FOLDER_RELATIVE,
+];
+
+/// The collations the import list's SQL names.
+const SQL_COLLATIONS: &[&bae_db::SchemaCollation] = &[&bae_db::NATURAL_ORDER];
 
 /// One list's row as its reads take it: its view, its revisions, and whether
 /// its view narrows its tab or keeps every row of it.

@@ -32,10 +32,10 @@ impl ImportTables {
         // Spelled the way the add keyed them.
         let roots = roots
             .iter()
-            .map(|root| bae_db::watched_path::canonical_absolute_root(root))
+            .map(|root| crate::tables::watched_path::canonical_absolute_root(root))
             .collect::<Result<Vec<_>, _>>()?;
         let parent = parent
-            .map(|parent| bae_db::watched_path::canonical_absolute_root(&parent))
+            .map(|parent| crate::tables::watched_path::canonical_absolute_root(&parent))
             .transpose()?;
         if roots.is_empty() {
             return Err(DbError::Message("removing watched folders requires at least one".into()));

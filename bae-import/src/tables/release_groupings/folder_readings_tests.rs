@@ -3,8 +3,8 @@
 //! a corrupt key failing the read.
 
 use crate::tables::folder_scans::tests::*;
+use crate::tables::watched_path::host_root;
 use bae_db::test_fixtures::empty_db;
-use bae_db::watched_path::host_root;
 use bae_db::Database;
 
 /// Store the person's answer for how one folder reads, alone: the row a
@@ -70,7 +70,7 @@ async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
     scanned_box_and_sibling(&db, root).await;
     let key = |folder: &str| FolderReleaseDecisionKey {
         watched_folder_path: root.clone(),
-        relative_folder: bae_db::RelativeFolder::test(folder),
+        relative_folder: crate::RelativeFolder::test(folder),
     };
     let offered = |folder: &'static str, decision| {
         let db = db.clone();
@@ -103,7 +103,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
     let other = host_root("/other/library");
     let key = FolderReleaseDecisionKey {
         watched_folder_path: host_root("/mounted/library"),
-        relative_folder: bae_db::RelativeFolder::test("Collection/Release Wrapper"),
+        relative_folder: crate::RelativeFolder::test("Collection/Release Wrapper"),
     };
     tables.add_watched_import_folder(&key.watched_folder_path).await.unwrap();
     tables.add_watched_import_folder(&other).await.unwrap();

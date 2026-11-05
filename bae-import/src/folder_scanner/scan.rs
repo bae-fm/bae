@@ -1,6 +1,6 @@
 use super::*;
 use crate::CandidateKey;
-use bae_db::RelativeFolder;
+use crate::RelativeFolder;
 use std::collections::HashSet;
 
 mod listing;

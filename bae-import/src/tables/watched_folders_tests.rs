@@ -1,9 +1,9 @@
 //! The watched folders as the store keeps them: each by its own key, in the
 //! order they were added, never overlapping.
 
+use crate::tables::watched_path::host_root;
 use bae_db::test_fixtures::empty_db;
 use bae_db::test_fixtures::temp_db;
-use bae_db::watched_path::host_root;
 use rusqlite::params;
 use std::path::PathBuf;
 

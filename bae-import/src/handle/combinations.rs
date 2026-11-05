@@ -111,7 +111,7 @@ impl ImportServiceHandle {
         }
         Ok(Some(FolderReleaseDecisionKey {
             watched_folder_path: root.clone(),
-            relative_folder: bae_db::watched_path::candidate_relative_path(root, &folder)?,
+            relative_folder: crate::tables::watched_path::candidate_relative_path(root, &folder)?,
         }))
     }
 

@@ -30,7 +30,8 @@ pub(crate) fn store_folder_reading(
     };
     let combined =
         matches!(decision, crate::folder_scanner::FolderReleaseDecision::CombineAsOneRelease);
-    let anchor = bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
+    let anchor =
+        crate::tables::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
     let covering = crate::tables::watched_folders::require_watched(sql, &anchor)?;
     if covering.as_os_str() != key.watched_folder_path.as_os_str() {
         return Err(DbError::Message(format!(
@@ -127,7 +128,7 @@ impl ImportTables {
         &self,
         folder: &FolderReleaseDecisionKey,
     ) -> Result<Option<CandidateKey>, DbError> {
-        let anchor = coven::path_bytes(&bae_db::watched_path::folder_below(
+        let anchor = coven::path_bytes(&crate::tables::watched_path::folder_below(
             &folder.watched_folder_path,
             &folder.relative_folder,
         ));
@@ -153,9 +154,11 @@ impl ImportTables {
         key: &FolderReleaseDecisionKey,
         decision: crate::folder_scanner::FolderReleaseDecision,
     ) -> Result<bool, DbError> {
-        let folder =
-            bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
-        let (below_first, below_past) = bae_db::watched_path::paths_below(&folder);
+        let folder = crate::tables::watched_path::folder_below(
+            &key.watched_folder_path,
+            &key.relative_folder,
+        );
+        let (below_first, below_past) = crate::tables::watched_path::paths_below(&folder);
         let folder = coven::path_bytes(&folder);
         let root = coven::path_bytes(&key.watched_folder_path);
         self.database
@@ -196,7 +199,7 @@ impl ImportTables {
         watched_folder_path: &Path,
         folder: &Path,
     ) -> Result<std::collections::BTreeSet<CandidateKey>, DbError> {
-        let (below_first, below_past) = bae_db::watched_path::paths_below(folder);
+        let (below_first, below_past) = crate::tables::watched_path::paths_below(folder);
         let (root, folder) = (coven::path_bytes(watched_folder_path), coven::path_bytes(folder));
         self.database
             .read(move |sql| {
@@ -226,7 +229,8 @@ impl ImportTables {
         watched_folder_path: &Path,
     ) -> Result<FolderReleaseDecisions, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
-        let (below_first, below_past) = bae_db::watched_path::paths_below(&watched_folder_path);
+        let (below_first, below_past) =
+            crate::tables::watched_path::paths_below(&watched_folder_path);
         self.database
             .read(move |sql| {
                 let rows = sql.query(
@@ -249,7 +253,7 @@ impl ImportTables {
                 )?;
                 let mut readings = HashMap::new();
                 for (folder, combined, author, grouping) in rows {
-                    bae_db::watched_path::validate_stored_folder(&folder)?;
+                    crate::tables::watched_path::validate_stored_folder(&folder)?;
                     let path = relative_below(&watched_folder_path, &folder)?;
                     let author = match author.as_str() {
                         "user" => FolderReleaseDecisionAuthor::User,

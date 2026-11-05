@@ -162,7 +162,7 @@ pub enum ImportError {
     /// one canonical spelling.
     #[cfg(desktop)]
     #[error(transparent)]
-    WatchedFolder(bae_db::WatchedPathError),
+    WatchedFolder(crate::WatchedPathError),
 
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a

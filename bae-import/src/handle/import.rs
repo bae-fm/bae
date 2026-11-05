@@ -288,7 +288,7 @@ impl ImportServiceHandle {
             scope,
             &crate::folder_scanner::StoredCandidateEdits::none(),
         )?;
-        let watched_folder = bae_db::watched_path::canonical_absolute_root(&folder)?;
+        let watched_folder = crate::tables::watched_path::canonical_absolute_root(&folder)?;
         let candidate_key = crate::CandidateKey::folder(&watched_folder);
         let candidate_name =
             coven::path_text(std::path::Path::new(folder.file_name().ok_or_else(|| {
@@ -310,7 +310,7 @@ impl ImportServiceHandle {
             watched_folder_path: watched_folder.clone(),
             scope,
             file_edit_revision: 0,
-            relative_folder: bae_db::RelativeFolder::root(),
+            relative_folder: crate::RelativeFolder::root(),
             grouping: None,
         };
         let item = crate::folder_scanner::ScanItem::Valid(candidate.clone());

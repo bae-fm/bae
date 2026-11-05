@@ -189,7 +189,7 @@ async fn walk_and_reconcile(
     // What this pass wrote and what it displaced, for the log line at the
     // end. Two passes over an unchanged folder should displace nothing;
     // one that keeps rewriting the same entry names it here.
-    let mut written_keys: Vec<bae_db::RelativeFolder> = Vec::new();
+    let mut written_keys: Vec<crate::RelativeFolder> = Vec::new();
     let mut displaced_keys: Vec<crate::CandidateKey> = Vec::new();
     // Bound the duplicate candidate payloads waiting on the store's writes.
     // The blocking producer naturally pauses when the async consumer falls

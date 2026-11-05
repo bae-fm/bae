@@ -449,7 +449,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Collection/Release Wrapper")
+        } if key.relative_folder == crate::RelativeFolder::test("Collection/Release Wrapper")
     )));
 
     let combined = read_by_the_scan
@@ -512,7 +512,7 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
             key,
             decision: FolderReleaseDecision::CombineAsOneRelease,
             ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Collection/Release Wrapper")
+        } if key.relative_folder == crate::RelativeFolder::test("Collection/Release Wrapper")
     )));
     let releases: Vec<_> = items
         .iter()
@@ -546,7 +546,7 @@ fn a_part_with_no_number_makes_it_several_releases() {
             key,
             decision: FolderReleaseDecision::KeepAsSeparateReleases,
             ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Collection/Release Wrapper")
+        } if key.relative_folder == crate::RelativeFolder::test("Collection/Release Wrapper")
     )));
     let releases: Vec<_> = items
         .iter()

@@ -43,7 +43,7 @@ pub(super) async fn change_folder_reading(
             ),
         });
     }
-    let decided = bae_db::watched_path::folder_below(root, &key.relative_folder);
+    let decided = crate::tables::watched_path::folder_below(root, &key.relative_folder);
     let Some(std::path::Component::Normal(folder)) =
         decided.strip_prefix(root).ok().and_then(|below| below.components().next())
     else {

@@ -25,7 +25,8 @@ pub mod people;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 pub mod schema;
 pub use schema::{
-    configure_store, Schema, SchemaCollation, SchemaFunction, SchemaPart, SqlArguments,
+    configure_store, Schema, SchemaCollation, SchemaFunction, SchemaPart, SqlArguments, FOLD_CASE,
+    NATURAL_ORDER, SEARCH_PATTERN,
 };
 
 /// bae-db's part of the schema: `001_initial.sql`, which holds every table
@@ -36,17 +37,13 @@ pub const SCHEMA_PARTS: &[SchemaPart] =
         .collations(SQL_COLLATIONS)
         .synced(synced::synced_tables, synced::namespaces)];
 
-/// The SQL functions `001_initial.sql` names.
-const SQL_FUNCTIONS: &[&SchemaFunction] = &[
-    &schema::FOLD_CASE,
-    &schema::SEARCH_PATTERN,
-    &client::CATALOG_RANK,
-    &watched_path::FOLDER_BELOW,
-    &watched_path::FOLDER_RELATIVE,
-];
+/// The SQL functions `001_initial.sql` names. The text functions and the
+/// folder paths' are the parts' that read them: the import list's and the
+/// views'.
+const SQL_FUNCTIONS: &[&SchemaFunction] = &[&client::CATALOG_RANK];
 
 /// The collations `001_initial.sql` names.
-const SQL_COLLATIONS: &[&SchemaCollation] = &[&schema::NATURAL_ORDER];
+const SQL_COLLATIONS: &[&SchemaCollation] = &[&NATURAL_ORDER];
 mod resolved_track_audio;
 pub use resolved_track_audio::{
     ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError, TrackAudioMeta,
@@ -67,11 +64,9 @@ pub use upload_progress::{UploadActivity, UploadProgress};
 pub mod test_devices;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
-pub mod watched_path;
 pub use client::list_windows::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 #[cfg(any(test, feature = "test-utils"))]
 pub use client::resolved_in_an_empty_library;
-pub use watched_path::{RelativeFolder, WatchedPathError};
 // Only an import names its own artist credits from outside bae-db.
 pub use client::AlbumFields;
 #[cfg(desktop)]

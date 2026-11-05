@@ -155,7 +155,7 @@ async fn a_moved_release_changes_group() {
 #[test]
 fn a_member_costs_the_same_however_large_its_group() {
     let conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
-    let root = bae_db::watched_path::host_root("/music");
+    let root = crate::tables::watched_path::host_root("/music");
     let root_bytes = coven::path_bytes(&root);
     conn.execute(
         "INSERT INTO watched_import_folders (path, position) VALUES (?1, 0)",
@@ -171,7 +171,7 @@ fn a_member_costs_the_same_however_large_its_group() {
     let place = |n: i64| -> i32 {
         let display_path = format!("Collection/Album {n}");
         let path = coven::path_bytes(&folder_below(&root, &display_path));
-        let relative = bae_db::RelativeFolder::test(&display_path);
+        let relative = crate::RelativeFolder::test(&display_path);
         conn.execute(
             "INSERT INTO folder_discovery (folder, first_seen_at, settled) VALUES (?, ?, 1)",
             rusqlite::params![path, n],

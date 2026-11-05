@@ -10,7 +10,7 @@ use bae_util::test_channels::HANG_GUARD;
 async fn folder_scan_progress_follows_the_walk_in_flight() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &bae_db::watched_path::host_root("/music");
+    let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
@@ -55,7 +55,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
 async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &bae_db::watched_path::host_root("/music");
+    let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Network).await.unwrap();
     tables.finish_folder_scan(root, generation, None).await.unwrap();
@@ -76,7 +76,7 @@ async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
 async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &bae_db::watched_path::host_root("/music");
+    let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let old_generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     for name in ["retained", "encountered"] {
@@ -113,8 +113,10 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
 async fn folder_scan_progress_lists_the_folders_in_their_order() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let roots =
-        [bae_db::watched_path::host_root("/zeta"), bae_db::watched_path::host_root("/alpha")];
+    let roots = [
+        crate::tables::watched_path::host_root("/zeta"),
+        crate::tables::watched_path::host_root("/alpha"),
+    ];
     for root in &roots {
         tables.add_watched_import_folder(root).await.unwrap();
     }

@@ -30,7 +30,7 @@ pub(crate) fn candidate_with(
         watched_folder_path: std::path::PathBuf::from(root),
         scope,
         file_edit_revision: 0,
-        relative_folder: bae_db::RelativeFolder::test(name),
+        relative_folder: crate::RelativeFolder::test(name),
         grouping: None,
     }
 }

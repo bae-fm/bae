@@ -333,7 +333,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 async fn the_pane_of_an_imported_candidate_is_placed_done() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &bae_db::watched_path::host_root("/music");
+    let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scan_finished(&db, root, "release").await;
     let key = candidate.key();
@@ -450,7 +450,7 @@ async fn the_pane_s_import_status_says_the_step_the_import_is_at() {
 async fn import_candidate_moves_between_candidates_on_one_subscription() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &bae_db::watched_path::host_root("/music");
+    let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     let mut keys = Vec::new();
@@ -503,7 +503,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         path: folder.clone(),
         name: "Half Copied".to_string(),
         watched_folder_path: root.clone(),
-        relative_folder: bae_db::RelativeFolder::test("Half Copied"),
+        relative_folder: crate::RelativeFolder::test("Half Copied"),
         grouping: None,
         files: vec![
             SkippedFile {

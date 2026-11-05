@@ -35,12 +35,13 @@ impl ImportTables {
     pub async fn load_skipped_import_candidates(
         &self,
         watched_folder_path: &Path,
-    ) -> Result<std::collections::HashSet<bae_db::RelativeFolder>, DbError> {
+    ) -> Result<std::collections::HashSet<crate::RelativeFolder>, DbError> {
         use super::watched_folders::relative_below;
         use std::collections::HashSet;
         use std::path::PathBuf;
 
-        let (below_first, below_past) = bae_db::watched_path::paths_below(watched_folder_path);
+        let (below_first, below_past) =
+            crate::tables::watched_path::paths_below(watched_folder_path);
         let paths: Vec<PathBuf> = self
             .database
             .read(move |sql| {
@@ -54,7 +55,7 @@ impl ImportTables {
             .await?;
         let mut below = HashSet::new();
         for path in &paths {
-            bae_db::watched_path::validate_stored_folder(path)?;
+            crate::tables::watched_path::validate_stored_folder(path)?;
             below.insert(relative_below(watched_folder_path, path)?);
         }
         Ok(below)
@@ -68,7 +69,7 @@ impl ImportTables {
         candidate_path: &Path,
         skipped: bool,
     ) -> Result<bool, DbError> {
-        bae_db::watched_path::validate_stored_folder(candidate_path)?;
+        crate::tables::watched_path::validate_stored_folder(candidate_path)?;
         let candidate_path = candidate_path.to_path_buf();
         // The store refuses a write that changes nothing, so read first.
         let stored = {

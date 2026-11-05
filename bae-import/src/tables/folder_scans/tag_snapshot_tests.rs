@@ -33,7 +33,7 @@ pub(crate) fn tagged_candidate(root: &std::path::Path) -> FolderCandidate {
         watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: bae_db::RelativeFolder::test("candidate-a"),
+        relative_folder: crate::RelativeFolder::test("candidate-a"),
         grouping: None,
     }
 }

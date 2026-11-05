@@ -18,7 +18,7 @@ use crate::folder_scanner::{
 };
 use crate::tables::FinishRead;
 use crate::CandidateKey;
-use bae_db::RelativeFolder;
+use crate::RelativeFolder;
 use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
 use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
@@ -217,7 +217,8 @@ pub(crate) fn entries_reading(
             .skip(1)
             .take_while(|above| above.starts_with(watched_folder_path)),
     );
-    let below = coverage.whole_subtree.then(|| bae_db::watched_path::paths_below(&coverage.folder));
+    let below =
+        coverage.whole_subtree.then(|| crate::tables::watched_path::paths_below(&coverage.folder));
     let mut params: Vec<(&str, &dyn rusqlite::ToSql)> =
         vec![(":root", &root), (":folder", &folder), (":above", &above)];
     let readers_clause = match &readers {
