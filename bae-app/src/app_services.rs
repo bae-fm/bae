@@ -1,6 +1,6 @@
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use bae_import::IdentificationHandle;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use bae_import::ImportServiceHandle;
 use bae_library::LibraryManager;
 use bae_playback::PlaybackHandle;
@@ -64,17 +64,17 @@ struct AppServicesInner {
     cast_picker: bae_playback::renderer::CastPicker,
     /// The import service, which also owns the identify driver and the
     /// extraction feeding it: one of each per library, reached through it.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     import: ImportServiceHandle,
     /// Queue-wide identification, started as the library's services start:
     /// the queue runs whether or not anyone has the Import section open, and
     /// opening a view is not what starts it.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     identification: IdentificationHandle,
     /// What each library release being identified again asks about, by its
     /// session's candidate key. A release has no candidate row to store them
     /// on, so they are held here from the session's first run to its end.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     release_lookup_choices: std::sync::Mutex<
         std::collections::HashMap<bae_import::CandidateKey, bae_identify::LookupChoices>,
     >,
@@ -92,7 +92,7 @@ impl Drop for AppServicesInner {
     /// already ran: each join handle is taken once.
     fn drop(&mut self) {
         self.playback.stop_and_join();
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         {
             // Before the import worker's join: the queue's in-flight
             // candidates are cancelled here, and a cancelled candidate writes
@@ -121,9 +121,8 @@ impl AppServices {
         views: bae_views::LibraryViews,
         playback: PlaybackHandle,
         cast_picker: bae_playback::renderer::CastPicker,
-        #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        identification: IdentificationHandle,
+        #[cfg(desktop)] import: ImportServiceHandle,
+        #[cfg(desktop)] identification: IdentificationHandle,
     ) -> Self {
         AppServices {
             inner: Arc::new(AppServicesInner {
@@ -131,11 +130,11 @@ impl AppServices {
                 views,
                 playback,
                 cast_picker,
-                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                #[cfg(desktop)]
                 import,
-                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                #[cfg(desktop)]
                 identification,
-                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                #[cfg(desktop)]
                 release_lookup_choices: Default::default(),
             }),
         }
@@ -199,7 +198,7 @@ impl AppServices {
     ) -> Result<(), bae_library::LibraryError> {
         steps(bae_library::ClosingStep::StoppingPlayback);
         self.inner.playback.shutdown().await;
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         {
             steps(bae_library::ClosingStep::StoppingImports);
             let identification = self.inner.identification.clone();
@@ -384,7 +383,7 @@ impl AppServices {
         enabled: bool,
     ) -> Result<(), MetadataSourceSwitchError> {
         self.inner.manager.set_metadata_source_enabled(source, enabled).await?;
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         {
             if !enabled {
                 // Searches first: a landing that races the switch then finds a
@@ -507,35 +506,35 @@ impl AppServices {
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, dropbox_shared_folders => dropbox_shared_folders() -> Result<Vec<coven::StorageFolder>, bae_library::LibraryError>);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<bae_library::ReleaseEdit, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &bae_library::ReleaseEdit, link: &bae_identify::PressingLink, steps: &bae_import::CatalogApplySteps) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, save_release_edit => save_release_edit(session: &bae_library::ReleaseEdit) -> Result<(), bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &bae_library::ReleaseEdit, album_id: Option<String>) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, release_edit_draft => release_edit_draft(session: &bae_library::ReleaseEdit) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, edit_release_edit_field => edit_release_edit_field(session: &bae_library::ReleaseEdit, edit: bae_import::DraftFieldEdit) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, set_release_edit_album_artists => set_release_edit_album_artists(session: &bae_library::ReleaseEdit, assignments: Vec<bae_import::Credited>) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, set_release_edit_track => set_release_edit_track(session: &bae_library::ReleaseEdit, track: bae_import::RawTrackEdit) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, enqueue_release_save => enqueue_release_save(release_id: &str, target_dir: std::path::PathBuf, preset_id: &str) -> Result<(), bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, save_track => save_track(track_id: &str, output_path: &std::path::Path, preset_id: &str) -> Result<(), bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, bae_library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::LibraryError>);
     delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> Result<(), bae_library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), bae_library::LibraryError>);
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -708,18 +707,18 @@ impl AppServices {
 }
 
 mod detail_reads;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod import;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod pane;
 mod playback_reads;
 mod queue_reads;
 #[cfg(desktop)]
 mod release_files_reads;
 mod release_queue_reads;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod selection;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod storage_inspector_reads;
 mod storage_reads;
 #[cfg(test)]

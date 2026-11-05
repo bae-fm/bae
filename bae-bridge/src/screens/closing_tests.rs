@@ -29,7 +29,7 @@ fn a_close_writes_each_step_it_runs() {
     #[cfg(feature = "desktop")]
     expected.push(Some(BridgeClosingStep::StoppingServers));
     expected.push(Some(BridgeClosingStep::StoppingPlayback));
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     expected.push(Some(BridgeClosingStep::StoppingImports));
     expected.extend([
         Some(BridgeClosingStep::StoppingSync),
@@ -70,7 +70,7 @@ fn a_removal_writes_each_step_it_runs() {
     #[cfg(feature = "desktop")]
     expected.push(Some(BridgeClosingStep::StoppingServers));
     expected.push(Some(BridgeClosingStep::StoppingPlayback));
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     expected.push(Some(BridgeClosingStep::StoppingImports));
     expected.extend([
         Some(BridgeClosingStep::FinishingWork),

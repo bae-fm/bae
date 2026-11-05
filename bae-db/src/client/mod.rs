@@ -43,7 +43,7 @@ use artist_resolution::{relink_album_artists, relink_track_artists};
 use label_resolution::label_write;
 pub use label_resolution::LabelWrite;
 // Only the import write resolves credits inside a release's own write.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use artist_resolution::{identity_write_failure, relink};
 mod file_row;
 pub(crate) mod identity_merges;
@@ -59,7 +59,7 @@ mod database_read;
 pub mod files;
 pub mod records;
 // Only identifying a release, a desktop operation, changes its records.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use records::RecordsChange;
 mod admin_operations;
 mod collections;
@@ -72,12 +72,12 @@ mod release;
 pub use release::release_edit_tracks_on;
 pub use release::ReleaseMetadataRows;
 // Only saving a release edit session writes metadata alongside records.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use release::write_release_metadata_on;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod release_edit_save;
 pub use release::AlbumFields;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use release_edit_save::ReleaseEditWrite;
 mod release_deletion;
 mod release_detail;
@@ -85,15 +85,9 @@ pub use release_detail::{release_detail_rows_on, unstored_audio_in_row, DbReleas
 mod release_file;
 mod release_locality;
 pub use release_deletion::ReleaseDeletion;
-#[cfg(all(
-    any(test, feature = "test-utils", debug_assertions),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;
-#[cfg(all(
-    any(test, feature = "test-utils", debug_assertions),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use seeded_albums::{SeededAlbum, SeededAudio};
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;

@@ -20,7 +20,7 @@ pub mod manager;
 mod outbox_watch;
 pub mod people;
 mod queue_upcoming;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod save;
 mod saved_restore_codes;
 mod schema;
@@ -68,7 +68,7 @@ pub use tokio_util::sync::CancellationToken;
 /// One track of a save: its tags, its stored audio, and which of its audio
 /// the saved file carries. Holds no open source; a save opens the files a
 /// plan reads only while that track is being saved.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) struct SaveTrackPlan {
     resolved: manager::ResolvedSaveTags,
     audio_meta: bae_db::TrackAudioMeta,

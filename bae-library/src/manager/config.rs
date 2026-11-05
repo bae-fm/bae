@@ -269,7 +269,7 @@ impl LibraryManager {
 
     /// The save preset `preset_id` names, where it is offered for saves of
     /// `level`.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     pub(crate) async fn save_preset_for(
         &self,
         preset_id: &str,

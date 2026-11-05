@@ -9,7 +9,7 @@
 //! shows of the library is `bae_views`', which reads the same store.
 
 use std::future::Future;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 use crate::save::SaveService;
 use crate::sync::S3ConfigData;
 use crate::sync_controller::SyncController;
@@ -40,15 +40,9 @@ mod collections;
 mod config;
 mod coven_files;
 mod downloads;
-#[cfg(all(
-    any(test, feature = "test-utils", debug_assertions),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod fixture;
-#[cfg(all(
-    any(test, feature = "test-utils", debug_assertions),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use fixture::{
     FixtureAlbum, FixtureCandidate, FixtureCandidateState, FixturePlaying, FixtureWatchedFolder,
     LibraryFixture, LibraryFixtureError, FIXTURE_IMPORT_FAILURE, FIXTURE_LOOKUP_FAILURE,
@@ -60,27 +54,27 @@ pub use fixture::{
 /// and the preset half of it needs the desktop-only encoder in `crate::save`.
 /// Compiling the producers out with the worker is what makes a mobile export call
 /// a compile error rather than a release that sits `Queued` with nothing to run it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod export;
 mod image;
 mod lifecycle;
 mod locality;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod output;
 mod people;
 mod pin;
 mod playback_state;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod records;
 mod release;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod release_edit;
 mod release_metadata;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use release_edit::ReleaseEdit;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod save;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub(crate) use save::SaveWindow;
 mod storage;
 mod sync;
@@ -95,7 +89,7 @@ mod uploads;
 /// land after a `set_records` call. `new_album` carries the album row
 /// to insert when the target is brand-new; otherwise the target is an
 /// existing album and `new_album` is `None`.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 struct RecordsTargetAlbum {
     album_id: String,
     new_album: Option<DbAlbum>,
@@ -342,7 +336,7 @@ impl LibraryError {
 /// caller has reported), or its runtime is shutting down under it.
 /// A catalog session that could not be had failed on the library's own
 /// store: its preferences or its keyring.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 impl From<bae_import::CatalogSessionError> for LibraryError {
     fn from(error: bae_import::CatalogSessionError) -> Self {
         match error {
@@ -377,7 +371,7 @@ impl From<Bug> for LibraryError {
 impl From<bae_import::ImportError> for LibraryError {
     fn from(error: bae_import::ImportError) -> Self {
         match error {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             bae_import::ImportError::Database(error) => LibraryError::Database(error),
             other => LibraryError::Import(Box::new(other)),
         }
@@ -385,7 +379,7 @@ impl From<bae_import::ImportError> for LibraryError {
 }
 
 /// Tag fields to embed on an exported track file.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub struct SaveTags {
     pub title: String,
     /// The track's line: its own credits, else the album's (ARTIST).
@@ -403,7 +397,7 @@ pub struct SaveTags {
 /// tag writer needs, before applying the user's metadata selection. Resolved
 /// from the database alone: no audio or cover read, so the filename-suggestion
 /// path can build it without touching a whole file or the cloud.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub struct ResolvedSaveTags {
     pub tags: SaveTags,
     /// The track's number on its side.
@@ -469,14 +463,14 @@ pub struct LibraryManager {
     /// as the library opens. An output changes no release state — it only
     /// reads, and writes to a user directory. Desktop-only: see the `output`
     /// module.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     outputs: bae_transfers::Outputs,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
     /// The catalogs as this library may ask them, which import's services
     /// hold too.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     catalogs: bae_import::CatalogSessions,
     /// Held by every edit session's save and every field edit of a release,
     /// so a save compares the release with what its session opened on and

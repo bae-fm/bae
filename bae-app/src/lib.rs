@@ -235,10 +235,7 @@ where
 /// on the state the fixture names: what a debug UI test opens the app on.
 /// The store's open reports its steps to `on_open_progress`, as for
 /// [`bootstrap`].
-#[cfg(all(
-    any(test, feature = "test-utils", debug_assertions),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub fn bootstrap_on_fixture<T, F>(
     fixture: std::path::PathBuf,
     app_dir: bae_app_dir::AppDir,
@@ -321,10 +318,7 @@ enum Opening {
     Stored,
     /// What it stored with the fixture at this path written over it first.
     /// No watched folder is read: the fixture states what each one holds.
-    #[cfg(all(
-        any(test, feature = "test-utils", debug_assertions),
-        not(any(target_os = "ios", target_os = "android"))
-    ))]
+    #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
     Fixture(std::path::PathBuf),
 }
 
@@ -427,7 +421,7 @@ where
     // as this library is open.
     let http = bae_util::http::Http::new()
         .map_err(|e| BootstrapError::Internal(format!("Failed to build the HTTP client: {e}")))?;
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     let providers = bae_catalogs::providers::Providers::new(http.clone());
 
     // The library's store, opened once; each part of the open library is
@@ -441,7 +435,7 @@ where
         &app_dir.registered_library(&library_id),
         http,
     );
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     let catalogs = bae_import::CatalogSessions::new(
         providers,
         database.clone(),
@@ -455,7 +449,7 @@ where
         .stage(&library_id, "open library manager", || {
             runtime.block_on(bae_library::open_library_manager(
                 database.clone(),
-                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                #[cfg(desktop)]
                 catalogs.clone(),
                 closing.clone(),
                 app_dir.clone(),
@@ -498,14 +492,11 @@ where
 
         // A fixture states what its watched folders hold, and nothing on disk
         // backs it, so reading them would replace it with what is there.
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         let reads_watched_folders = matches!(opening, Opening::Stored);
         match opening {
             Opening::Stored => {}
-            #[cfg(all(
-                any(test, feature = "test-utils", debug_assertions),
-                not(any(target_os = "ios", target_os = "android"))
-            ))]
+            #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
             Opening::Fixture(path) => timing.stage(&library_id, "write the fixture", || {
                 let fixture = bae_library::LibraryFixture::read(&path)
                     .map_err(|error| BootstrapError::Internal(error.to_string()))?;
@@ -523,16 +514,16 @@ where
                 runtime.block_on(start_library_services(
                     library_manager,
                     database,
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    #[cfg(desktop)]
                     catalogs,
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    #[cfg(desktop)]
                     closing,
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    #[cfg(desktop)]
                     Arc::clone(&clock),
                     ids,
                     diagnostics.clone(),
                     runtime.handle().clone(),
-                    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                    #[cfg(desktop)]
                     remote_images,
                     position_update_interval_ms,
                     restore_playback,
@@ -545,7 +536,7 @@ where
         info!("Application services initialized for library '{library_id}'");
         diagnostics.event(TelemetryEvent::AppStarted {});
 
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        #[cfg(desktop)]
         if reads_watched_folders {
             timing
                 .stage(&library_id, "request watched-folder scan", || {

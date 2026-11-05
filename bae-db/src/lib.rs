@@ -58,20 +58,17 @@ pub use client::resolved_in_an_empty_library;
 pub use watched_path::{RelativeFolder, WatchedPathError};
 // Only an import names its own artist credits from outside bae-db.
 pub use client::AlbumFields;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use client::ArtistCredits;
 pub use client::FileRow;
 pub use client::PendingRow;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use client::RecordsChange;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use client::ReleaseEditWrite;
 pub use client::ReleaseMetadataRows;
 pub use client::{Database, IdentityWriteError, ReleaseDeletion, StorageSetupSteps};
-#[cfg(all(
-    any(test, feature = "test-utils", debug_assertions),
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use client::{SeededAlbum, SeededAudio};
 pub use models::*;
 

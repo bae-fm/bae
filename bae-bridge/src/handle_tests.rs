@@ -683,7 +683,7 @@ mod candidate_runtime {
 /// runtime ends: sync stops, the manager's tasks end and the store closes, so
 /// nothing of the library is left running for the runtime's shutdown to cancel
 /// under it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[test]
 fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     let runtime = tokio::runtime::Builder::new_multi_thread()

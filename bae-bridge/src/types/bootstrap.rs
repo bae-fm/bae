@@ -251,7 +251,7 @@ impl BridgeClosingStep {
     pub(crate) fn from_core(step: bae_library::ClosingStep) -> Self {
         match step {
             bae_library::ClosingStep::StoppingPlayback => Self::StoppingPlayback,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            #[cfg(desktop)]
             bae_library::ClosingStep::StoppingImports => Self::StoppingImports,
             bae_library::ClosingStep::StoppingSync => Self::StoppingSync,
             bae_library::ClosingStep::FinishingWork => Self::FinishingWork,

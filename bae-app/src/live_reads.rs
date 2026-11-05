@@ -7,14 +7,14 @@ mod detail;
 #[cfg(desktop)]
 mod release_files;
 mod storage;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 mod storage_inspector;
 
 pub use detail::*;
 #[cfg(desktop)]
 pub use release_files::*;
 pub use storage::*;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub use storage_inspector::*;
 
 use bae_library::live_query_events::reconfigurable_live_query_events;

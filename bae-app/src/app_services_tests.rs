@@ -217,7 +217,7 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
 /// A library release's re-identify session keeps its choices in core: each
 /// change is made to the ones before it, a run started afterwards reads them
 /// without being handed them, and ending the session forgets them.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_session_keeps_its_choices_in_core() {
     use bae_identify::LookupChoiceEdit;
@@ -249,7 +249,7 @@ async fn a_release_session_keeps_its_choices_in_core() {
 
 /// Wait until the storage inspector, set to one release, shows its export
 /// entry as `matches` looks for.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 async fn inspected_export_until(
     inspector: &bae_library::LiveDetail<bae_views::storage_inspector::StorageInspector>,
     matches: impl Fn(&bae_transfers::OutputPhaseRow) -> bool,
@@ -276,7 +276,7 @@ async fn inspected_export_until(
 /// A queued export names its release by id only, so an album title edited
 /// while it waits shows on its row: the inspector's read delivers the row
 /// with the new title, and a fresh read of the queue agrees.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[tokio::test(flavor = "multi_thread")]
 async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
     let (services, _track_ids, temp_dir) = playing_app_services(1).await;
@@ -338,7 +338,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
 
 /// The inspector reads the release it is set to in core: its entry in each
 /// queue, and nothing of a release the library does not hold.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[tokio::test(flavor = "multi_thread")]
 async fn the_storage_inspector_reads_the_release_it_is_set_to() {
     use bae_views::storage_inspector::StorageInspectorTransfer;
@@ -431,7 +431,7 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
 /// The Storage sheet's read of a release's files answers the request it is
 /// set to, naming it: the release's files in the order asked for, and none
 /// for a release the library does not hold.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 #[tokio::test(flavor = "multi_thread")]
 async fn the_release_files_read_answers_the_request_it_is_set_to() {
     use bae_views::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};

@@ -14,7 +14,7 @@ mod read_error;
 pub mod scrub_points;
 mod storage_wait;
 // Whole-release passes (import loudness, release saves) are desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(desktop)]
 pub mod track_sources;
 
 pub use decode::{SegmentDecodeParams, SegmentStart, StreamDecodeParams};

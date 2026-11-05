@@ -9,7 +9,7 @@ pub enum ClosingStep {
     /// Stopping playback, saving where it was.
     StoppingPlayback,
     /// Stopping identification and import, waiting for the file each is on.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(desktop)]
     StoppingImports,
     /// Stopping sync, once the pass that runs has ended.
     StoppingSync,
