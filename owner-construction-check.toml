@@ -74,14 +74,13 @@ capability_types = [
     "DiscogsValidationObserver",
     "DiskImageCache",
     "ExtractionService",
-    "ExtractionServiceHandle",
     "FetchArbiter",
     "FileStream",
     "FolderWatcher",
     "Handle",
     "IdSource",
     "IdSourceRef",
-    "IdentifyServiceHandle",
+    "IdentifyService",
     "ImportService",
     "ImportServiceHandle",
     "LibraryManager",
@@ -321,7 +320,7 @@ ScanEvents = "ImportEventBus"
 ImportPercentsWatch = "CandidateRuntime"
 CandidateRuntimeChanges = "CandidateRuntime"
 IdentificationCounts = "CandidateRuntime"
-ExtractionWatch = "ExtractionServiceHandle"
+ExtractionWatch = "ExtractionService"
 # One pin, unpin or audio detachment's progress.
 TransferProgressFeed = "LibraryManager"
 # One request a rate limiter let through, settled against the limiter.

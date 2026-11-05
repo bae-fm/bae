@@ -4,9 +4,7 @@
 //! analyzer, and checked for which catalog numbers and free text survive.
 
 use bae_identify::signals::TextSignal;
-use bae_import::extraction::service::{
-    ExtractionService, ExtractionServiceHandle, ExtractionSource,
-};
+use bae_import::extraction::service::{ExtractionService, ExtractionSource};
 use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_import::ImportEventBus;
 use serde::Deserialize;
@@ -184,7 +182,7 @@ async fn drive_fixture(
     let candidates = bae_import::CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let (database, _lib_tmp) = make_database().await;
-    let handle: ExtractionServiceHandle = ExtractionService::start(
+    let handle: ExtractionService = ExtractionService::new(
         tokio::runtime::Handle::current(),
         tx,
         candidates,

@@ -1,5 +1,5 @@
 //! Stateful identify driver. Wraps identify's pure reducer with I/O, runtime, and
-//! per-candidate cancellation. One `IdentifyServiceHandle` per app; each
+//! per-candidate cancellation. One `IdentifyService` per library; each
 //! candidate runs in its own spawned driver task.
 
 use crate::candidate_runtime::RunSubject;
@@ -41,7 +41,7 @@ async fn run_providers(database: &bae_db::Database) -> Result<Vec<LookupCatalog>
 
 /// Thread-safe handle to the running identify service.
 #[derive(Clone)]
-pub struct IdentifyServiceHandle {
+pub struct IdentifyService {
     inner: Arc<IdentifyServiceInner>,
 }
 
@@ -99,7 +99,7 @@ impl IdentifyRunId {
     }
 }
 
-impl IdentifyServiceHandle {
+impl IdentifyService {
     /// `candidates` is the runtime `event_tx` records into, which ends a
     /// removed or rebound candidate's run in the send that says so.
     pub fn new(
@@ -110,7 +110,7 @@ impl IdentifyServiceHandle {
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
         diagnostics: bae_diagnostics::Diagnostics,
-    ) -> IdentifyServiceHandle {
+    ) -> IdentifyService {
         let inner = Arc::new(IdentifyServiceInner {
             tables: crate::tables::ImportTables::new(database.clone()),
             database,
@@ -124,7 +124,7 @@ impl IdentifyServiceHandle {
             #[cfg(test)]
             driver_tasks: tokio_util::task::TaskTracker::new(),
         });
-        IdentifyServiceHandle { inner }
+        IdentifyService { inner }
     }
 
     /// Allocate the id for a run about to be started. Separate from starting

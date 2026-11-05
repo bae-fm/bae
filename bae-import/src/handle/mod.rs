@@ -83,8 +83,8 @@ pub struct ImportServiceHandle {
     /// The identify driver and the extraction feeding it, held here because
     /// the commands that decide a candidate end its identification as part of
     /// their own write.
-    identify: crate::IdentifyServiceHandle,
-    extraction: crate::extraction::ExtractionServiceHandle,
+    identify: crate::IdentifyService,
+    extraction: crate::extraction::ExtractionService,
     folder_state_commit: crate::FolderStateCommit,
     import_cancels: crate::import_cancel::ImportCancels,
     watcher: WorkerThread<WatcherCommand>,
@@ -147,7 +147,7 @@ impl ImportServiceHandle {
             closing,
         } = services;
         let release_reads = crate::ReleaseReads::new(database.clone(), catalogs.clone());
-        let identify = crate::IdentifyServiceHandle::new(
+        let identify = crate::IdentifyService::new(
             database.clone(),
             catalogs.clone(),
             release_reads.clone(),
@@ -156,7 +156,7 @@ impl ImportServiceHandle {
             runtime.clone(),
             diagnostics.clone(),
         );
-        let extraction = crate::extraction::ExtractionService::start(
+        let extraction = crate::extraction::ExtractionService::new(
             runtime_handle.clone(),
             event_tx.clone(),
             runtime.clone(),

@@ -11,6 +11,4 @@ pub mod release;
 pub mod service;
 
 pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
-pub use service::{
-    ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch, SignalsSnapshot,
-};
+pub use service::{ExtractionService, ExtractionSource, ExtractionWatch, SignalsSnapshot};

@@ -124,12 +124,12 @@ pub(super) async fn make_database() -> (bae_db::Database, TempDir) {
 
 /// Start a service; the bus sender comes back so a test can inject events.
 pub(super) async fn make_service(
-) -> (ExtractionServiceHandle, ImportEventBus, crate::ImportEvents, TempDir) {
+) -> (ExtractionService, ImportEventBus, crate::ImportEvents, TempDir) {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
     let (database, lib_tmp) = make_database().await;
-    let handle = ExtractionService::start(
+    let handle = ExtractionService::new(
         tokio::runtime::Handle::current(),
         tx.clone(),
         candidates,
@@ -145,7 +145,7 @@ pub(super) async fn make_service(
 pub(super) async fn start_signals(
     folder: PathBuf,
     analyzer: Arc<dyn ArtworkAnalyzer>,
-) -> (ExtractionServiceHandle, crate::ImportEvents, crate::extraction::ExtractionWatch, TempDir) {
+) -> (ExtractionService, crate::ImportEvents, crate::extraction::ExtractionWatch, TempDir) {
     let (handle, _tx, rx, lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
     let run = handle.start(
@@ -211,7 +211,7 @@ pub(super) fn folder_source(folder: PathBuf) -> ExtractionSource {
 /// Start an extraction over `folder` as `"cand-1"` and return the watch its
 /// run holds open until it ends.
 pub(super) fn start(
-    handle: &ExtractionServiceHandle,
+    handle: &ExtractionService,
     folder: PathBuf,
 ) -> crate::extraction::ExtractionWatch {
     handle.start(

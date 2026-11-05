@@ -43,7 +43,7 @@ pub(super) async fn setup_inner_reporting_to(
     let release_reads = crate::ReleaseReads::new(database.clone(), catalogs.clone());
     let candidates = CandidateRuntime::for_test().await;
     let event_tx = ImportEventBus::new(candidates.clone());
-    let handle = IdentifyServiceHandle::new(
+    let handle = IdentifyService::new(
         database,
         catalogs,
         release_reads,
@@ -169,7 +169,7 @@ fn scanning_snapshot() -> SignalsSnapshot {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle { inner: inner.clone() };
+    let handle = IdentifyService { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
@@ -215,7 +215,7 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle { inner: inner.clone() };
+    let handle = IdentifyService { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
@@ -250,7 +250,7 @@ async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_extraction_ending_does_not_end_the_run() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle { inner: inner.clone() };
+    let handle = IdentifyService { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
@@ -288,7 +288,7 @@ async fn an_extraction_ending_does_not_end_the_run() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cancel_mid_run_reports_idle_and_deregisters() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle { inner: inner.clone() };
+    let handle = IdentifyService { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (_snapshots, watch) = tokio::sync::watch::channel(None);
@@ -430,7 +430,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
 /// that replaces it is what a switched-off source reaches — the replacement
 /// asks what is left, and the source nobody asks any more is not asked again.
 /// This is the restart `AppServices::set_metadata_source_enabled` starts for
-/// every key `IdentifyServiceHandle::running_keys` names.
+/// every key `IdentifyService::running_keys` names.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     let fixture = Fixture::new("restart-drops-a-source").await;

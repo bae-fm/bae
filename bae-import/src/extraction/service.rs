@@ -49,7 +49,7 @@ pub struct SignalsSnapshot {
 }
 
 /// The latest snapshot of the extraction feeding a run, from the extraction
-/// service handle that started it; closed once the extraction is over.
+/// service that started it; closed once the extraction is over.
 pub struct ExtractionWatch(watch::Receiver<Option<SignalsSnapshot>>);
 
 impl ExtractionWatch {
@@ -83,9 +83,9 @@ impl ExtractionWatch {
     }
 }
 
-/// Thread-safe handle to the running signal-extraction service.
+/// The signal-extraction service.
 #[derive(Clone)]
-pub struct ExtractionServiceHandle {
+pub struct ExtractionService {
     inner: Arc<ExtractionServiceInner>,
 }
 
@@ -152,17 +152,15 @@ const SETTLED_CAPACITY: usize = 1024;
 /// its own.
 pub(crate) const IMAGES_IN_FLIGHT: usize = 4;
 
-pub struct ExtractionService;
-
 impl ExtractionService {
     /// `candidates` is the runtime `event_tx` records into.
-    pub fn start(
+    pub fn new(
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
         database: bae_db::Database,
         diagnostics: bae_diagnostics::Diagnostics,
-    ) -> ExtractionServiceHandle {
+    ) -> ExtractionService {
         let inner = Arc::new(ExtractionServiceInner {
             runtime_handle,
             event_tx,
@@ -173,11 +171,11 @@ impl ExtractionService {
             candidates,
             image_reads: Arc::new(Semaphore::new(IMAGES_IN_FLIGHT)),
         });
-        ExtractionServiceHandle { inner }
+        ExtractionService { inner }
     }
 }
 
-impl ExtractionServiceHandle {
+impl ExtractionService {
     /// Register the platform's artwork analyzer, once at boot.
     pub fn register_analyzer(&self, analyzer: Arc<dyn ArtworkAnalyzer>) {
         *self.inner.analyzer.lock().expect("analyzer lock poisoned") = Some(analyzer);

@@ -258,7 +258,7 @@ pub use handle::{
 #[cfg(desktop)]
 pub use identification::IdentificationHandle;
 #[cfg(desktop)]
-pub use identify_service::{IdentifyRunId, IdentifyServiceHandle};
+pub use identify_service::{IdentifyRunId, IdentifyService};
 #[cfg(desktop)]
 pub use import_failure::{ImportFailure, ImportFailureReason};
 #[cfg(desktop)]
