@@ -88,7 +88,6 @@ capability_types = [
     "LocalSessionManager",
     "LruCache",
     "McpServerController",
-    "McpTokenProvider",
     "MediaUrlProvider",
     "MonotonicClock",
     "PcmSource",
