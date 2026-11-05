@@ -64,7 +64,7 @@ fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
         "/tests/fixtures/cue_flac/Test Album.flac"
     ));
     let probe = probe_audio_from_path(path).expect("probe fixture");
-    let sr = probe.sample_rate as u64;
+    let sr = u64::from(probe.sample_rate.get());
     let total_samples = (probe.duration.as_secs_f64() * sr as f64) as u64;
     let file_size = std::fs::metadata(path).unwrap().len();
 
@@ -161,7 +161,7 @@ fn probe_reads_the_file_through_its_handle() {
     let probe = probe_audio_from_path(&path).expect("probe");
 
     assert_eq!(probe.content_type, ContentType::Pcm);
-    assert_eq!((probe.sample_rate, probe.channels), (44_100, 2));
+    assert_eq!((probe.sample_rate.get(), probe.channels.get()), (44_100, 2));
     assert_eq!(probe.duration, std::time::Duration::from_secs(1));
     assert!(probe_audio_from_path(&dir.path().join("Absent.wav")).is_none());
 }
@@ -330,5 +330,5 @@ fn a_count_ffmpeg_states_as_zero_or_less_states_none() {
     assert_eq!(stated_count(-1), None);
     assert_eq!(stated_count(i32::MIN), None);
     assert_eq!(stated_count(0), None);
-    assert_eq!(stated_count(44_100), Some(44_100));
+    assert_eq!(stated_count(44_100).map(std::num::NonZeroU32::get), Some(44_100));
 }

@@ -416,12 +416,9 @@ pub(crate) fn categorize_library_files(
 }
 
 /// What a file's audio is, as `probe` read it: `None` for audio bae does
-/// not play — no sample rate or channels, a codec bae does not decode, or a
+/// not play — a codec bae does not decode, or a
 /// lossy stream whose bitrate could not be read.
 pub fn scanned_audio(probe: &bae_audio::ProbeResult) -> Option<ScannedAudio> {
-    if probe.sample_rate == 0 || probe.channels == 0 {
-        return None;
-    }
     if !probe.content_type.is_supported_audio() {
         return None;
     }
@@ -435,10 +432,10 @@ pub fn scanned_audio(probe: &bae_audio::ProbeResult) -> Option<ScannedAudio> {
         duration_ms: probe.duration.as_millis() as u64,
         format: bae_types::audio_format::AudioFormat {
             codec: probe.content_type.display_name().to_string(),
-            sample_rate_hz: i64::from(probe.sample_rate),
+            sample_rate_hz: i64::from(probe.sample_rate.get()),
             bits_per_sample,
             bitrate_kbps,
-            channels: i64::from(probe.channels),
+            channels: i64::from(probe.channels.get()),
         },
     })
 }

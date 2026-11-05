@@ -49,8 +49,9 @@ async fn switching_previews_keeps_the_main_player_resume() {
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
     let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
-    let sample_rate =
-        u64::from(bae_audio::probe_audio_from_path(&path).expect("probe fixture").sample_rate);
+    let sample_rate = u64::from(
+        bae_audio::probe_audio_from_path(&path).expect("probe fixture").sample_rate.get(),
+    );
 
     let first = PreviewTarget::sample_range(path.clone(), 0, Some(sample_rate));
     assert!(player.play(first, &device).await.started());
@@ -68,7 +69,7 @@ async fn preview_plays_only_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
     let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
-    let sample_rate = u64::from(probe.sample_rate);
+    let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
 
@@ -102,7 +103,7 @@ async fn preview_plays_only_the_requested_sample_window() {
     let captured = captured.samples();
     assert_eq!(
         captured.len(),
-        probe.sample_rate as usize * probe.channels as usize,
+        probe.sample_rate.get() as usize * probe.channels.get() as usize,
         "a one-second source window emits exactly one second of samples"
     );
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
@@ -127,7 +128,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
     let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
-    let sample_rate = u64::from(probe.sample_rate);
+    let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
@@ -151,7 +152,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
-    let half_second = probe.sample_rate as usize * probe.channels as usize / 2;
+    let half_second = probe.sample_rate.get() as usize * probe.channels.get() as usize / 2;
     let expected: Vec<f32> =
         samples_as_f32(&reference).into_iter().skip(half_second).take(1_000).collect();
     assert!(captured.len() >= expected.len());
@@ -219,7 +220,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
     let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
-    let sample_rate = u64::from(probe.sample_rate);
+    let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
@@ -266,7 +267,8 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
-    let played_samples = restarted_at.frames(probe.sample_rate) as usize * probe.channels as usize;
+    let played_samples =
+        restarted_at.frames(probe.sample_rate.get()) as usize * probe.channels.get() as usize;
     let expected: Vec<f32> =
         samples_as_f32(&reference).into_iter().skip(played_samples).take(1_000).collect();
     assert!(captured.len() >= expected.len());
@@ -400,39 +402,25 @@ async fn resolve_preview_probe_rejects_absent_or_failed_probe() {
 }
 
 fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
+    let count = |count| std::num::NonZeroU32::new(count).expect("a test count");
     bae_audio::ProbeResult {
         content_type: bae_util::content_type::ContentType::Flac,
         duration: Duration::from_secs(1),
-        sample_rate,
+        sample_rate: count(sample_rate),
         bits_per_sample: Some(16),
         bitrate_kbps: None,
-        channels,
+        channels: count(channels),
     }
 }
 
-/// A usable probe (positive sample rate and channels) resolves to the probe.
+/// A probe resolves to itself.
 #[test]
 fn resolve_preview_probe_accepts_usable_format() {
     let result: Result<_, TaskFailed> = Ok(Some(probe(44100, 2)));
     let resolved = resolve_preview_probe(std::path::Path::new("path"), result)
         .expect("a usable format passes");
-    assert_eq!(resolved.sample_rate, 44100);
-    assert_eq!(resolved.channels, 2);
-}
-
-/// A probe reporting a zero sample rate is an unusable format and is
-/// rejected rather than driving a decoder with a nonsense rate.
-#[test]
-fn resolve_preview_probe_rejects_zero_sample_rate() {
-    let result: Result<_, TaskFailed> = Ok(Some(probe(0, 2)));
-    assert!(resolve_preview_probe(std::path::Path::new("path"), result).is_none());
-}
-
-/// A probe reporting zero channels is likewise unusable.
-#[test]
-fn resolve_preview_probe_rejects_zero_channels() {
-    let result: Result<_, TaskFailed> = Ok(Some(probe(44100, 0)));
-    assert!(resolve_preview_probe(std::path::Path::new("path"), result).is_none());
+    assert_eq!(resolved.sample_rate.get(), 44100);
+    assert_eq!(resolved.channels.get(), 2);
 }
 
 /// A preview holds its file open while it plays; stopping it, or switching

@@ -19,16 +19,16 @@ use tracing::{debug, warn};
 pub struct ProbeResult {
     pub content_type: ContentType,
     pub duration: std::time::Duration,
-    /// The stream's sample rate in Hz, never zero.
-    pub sample_rate: u32,
+    /// The stream's sample rate in Hz.
+    pub sample_rate: std::num::NonZeroU32,
     /// Source bit depth for lossless audio. Perceptual codecs are `None` even
     /// when FFmpeg exposes a coded-word width.
     pub bits_per_sample: Option<u32>,
     /// Average coded-stream bitrate for perceptual codecs. Container metadata,
     /// embedded artwork, and other non-audio bytes are excluded.
     pub bitrate_kbps: Option<i64>,
-    /// The stream's channel count, never zero.
-    pub channels: u32,
+    /// The stream's channel count.
+    pub channels: std::num::NonZeroU32,
 }
 
 /// Map a probe-reported `AVCodecID` to our codec-named `ContentType`.
@@ -270,8 +270,8 @@ unsafe fn probed_lossy_bitrate_kbps(
 
 /// A count FFmpeg states as a signed int — a stream's sample rate or channel
 /// count — or `None` when it states none: zero, or less.
-fn stated_count(value: c_int) -> Option<u32> {
-    u32::try_from(value).ok().filter(|count| *count > 0)
+fn stated_count(value: c_int) -> Option<std::num::NonZeroU32> {
+    u32::try_from(value).ok().and_then(std::num::NonZeroU32::new)
 }
 
 /// The audio properties of the file at `path`, read from its current bytes.

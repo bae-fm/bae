@@ -71,79 +71,15 @@ fn build_audio_formats_uses_stored_standalone_facts() {
 }
 
 pub(super) fn probe_result(sample_rate: u32, channels: u32) -> ProbeResult {
+    let count = |count| std::num::NonZeroU32::new(count).expect("a test count");
     ProbeResult {
         content_type: ContentType::Flac,
         duration: std::time::Duration::from_secs(1),
-        sample_rate,
+        sample_rate: count(sample_rate),
         bits_per_sample: Some(16),
         bitrate_kbps: None,
-        channels,
+        channels: count(channels),
     }
-}
-
-#[test]
-fn probe_audio_format_rejects_zero_channels() {
-    let path = Path::new("track.flac");
-
-    let error = ensure_probe_audio_format(path, &probe_result(44_100, 0))
-        .expect_err("zero channels should be rejected");
-
-    assert!(matches!(
-        &error,
-        ImportError::UnusableFile { detail } if detail.contains("unusable audio format")
-    ));
-}
-
-#[test]
-fn probe_audio_format_rejects_zero_sample_rate() {
-    let path = Path::new("track.flac");
-
-    let error = ensure_probe_audio_format(path, &probe_result(0, 2))
-        .expect_err("zero sample rate should be rejected");
-
-    assert!(matches!(
-        &error,
-        ImportError::UnusableFile { detail } if detail.contains("unusable audio format")
-    ));
-}
-
-#[test]
-fn cue_backed_audio_format_rejects_zero_channels() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let cue_path = temp.path().join("Album.cue");
-    let audio_path = temp.path().join("test.flac");
-    std::fs::write(
-        &cue_path,
-        r#"PERFORMER "Artist Name"
-TITLE "Album Title"
-FILE "test.flac" WAVE
-  TRACK 01 AUDIO
-TITLE "Track One"
-INDEX 01 00:00:00
-"#,
-    )
-    .expect("write cue");
-    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
-    let cue_pair = CueFlacAnalysis {
-        cue_sheet,
-        audio_files: vec![CueAnalyzedAudioFile {
-            file_reference: "test.flac".to_string(),
-            path: audio_path,
-            probe: probe_result(44_100, 0),
-        }],
-    };
-    let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-
-    let error =
-        cue_backed_audio_format("track-id", &cue_pair, 0, "audio-format-id".to_string(), now)
-            .expect_err("zero-channel CUE audio format should fail");
-
-    assert!(matches!(
-        &error,
-        ImportError::UnusableFile { detail } if detail.contains("unusable audio format")
-    ));
 }
 
 /// A track's stored depth is 1 to 32 bits; audio stating a deeper one is

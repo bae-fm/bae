@@ -32,10 +32,10 @@ INDEX 01 00:00:00
     let make_probe = |seconds| ProbeResult {
         content_type: ContentType::Flac,
         duration: std::time::Duration::from_secs(seconds),
-        sample_rate: 44_100,
+        sample_rate: std::num::NonZeroU32::new(44_100).expect("a test rate"),
         bits_per_sample: Some(16),
         bitrate_kbps: None,
-        channels: 2,
+        channels: std::num::NonZeroU32::new(2).expect("a test count"),
     };
     let analysis = CueFlacAnalysis {
         cue_sheet,
@@ -348,10 +348,10 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
             probe: ProbeResult {
                 content_type: ContentType::Flac,
                 duration: std::time::Duration::from_secs(20),
-                sample_rate: 44_100,
+                sample_rate: std::num::NonZeroU32::new(44_100).expect("a test rate"),
                 bits_per_sample: Some(16),
                 bitrate_kbps: None,
-                channels: 2,
+                channels: std::num::NonZeroU32::new(2).expect("a test count"),
             },
         }],
     };

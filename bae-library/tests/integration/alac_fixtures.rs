@@ -67,8 +67,8 @@ fn probe_alac_returns_content_type_alac() {
     let probe = probe_audio_from_path(&path).expect("probe ALAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Alac);
-    assert_eq!(probe.sample_rate, 44100);
-    assert_eq!(probe.channels, 2);
+    assert_eq!(probe.sample_rate.get(), 44100);
+    assert_eq!(probe.channels.get(), 2);
     assert_eq!(probe.bits_per_sample, Some(16), "the probe states the ALAC fixture's 16-bit depth");
 }
 
@@ -81,8 +81,8 @@ fn probe_aac_returns_content_type_aac() {
     let probe = probe_audio_from_path(&path).expect("probe AAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Aac);
-    assert_eq!(probe.sample_rate, 44100);
-    assert_eq!(probe.channels, 2);
+    assert_eq!(probe.sample_rate.get(), 44100);
+    assert_eq!(probe.channels.get(), 2);
     assert_eq!(probe.bits_per_sample, None);
 }
 

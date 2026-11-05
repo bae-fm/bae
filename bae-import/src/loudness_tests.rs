@@ -665,10 +665,10 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
                 duration_ms: probe.duration.as_millis() as u64,
                 format: bae_types::audio_format::AudioFormat {
                     codec: "MP3".to_string(),
-                    sample_rate_hz: i64::from(probe.sample_rate),
+                    sample_rate_hz: i64::from(probe.sample_rate.get()),
                     bits_per_sample: probe.bits_per_sample.map(i64::from),
                     bitrate_kbps: Some(128),
-                    channels: i64::from(probe.channels),
+                    channels: i64::from(probe.channels.get()),
                 },
             },
         },
@@ -676,9 +676,9 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     let mut formats = vec![bae_db::DbAudioFormat::new(
         "track-id",
         probe.content_type,
-        std::num::NonZeroU32::new(probe.sample_rate).unwrap(),
+        probe.sample_rate,
         probe.bits_per_sample.map(|bits| std::num::NonZeroU32::new(bits).unwrap()),
-        std::num::NonZeroU32::new(probe.channels).unwrap(),
+        probe.channels,
         "format-id".to_string(),
         now,
     )];

@@ -3,6 +3,8 @@
 //! track sheet is bound to is settled in `sheet_bindings`.
 
 use super::*;
+use crate::ImportError;
+use std::num::NonZeroU32;
 
 // ── Public types ────────────────────────────────────────────────────────────
 
@@ -100,6 +102,52 @@ pub struct ScannedAudio {
     pub content_type: bae_util::content_type::ContentType,
     pub duration_ms: u64,
     pub format: bae_types::audio_format::AudioFormat,
+}
+
+impl ScannedAudio {
+    /// The probe result these stored facts state, for the file at `source`:
+    /// an error naming the file when a stored sample rate, channel count or
+    /// bit depth is one bae cannot play.
+    pub(crate) fn probe(&self, source: &Path) -> Result<bae_audio::ProbeResult, ImportError> {
+        Ok(bae_audio::ProbeResult {
+            content_type: self.content_type.clone(),
+            duration: std::time::Duration::from_millis(self.duration_ms),
+            sample_rate: track_audio_count(source, "sample rate", self.format.sample_rate_hz)?,
+            bits_per_sample: track_bit_depth(source, self.format.bits_per_sample)?
+                .map(NonZeroU32::get),
+            bitrate_kbps: self.format.bitrate_kbps,
+            channels: track_audio_count(source, "channel count", self.format.channels)?,
+        })
+    }
+}
+
+/// A track's sample rate or channel count as its audio format row stores it:
+/// above zero and within a `u32`. `source` names the file it was read from.
+fn track_audio_count(source: &Path, quantity: &str, raw: i64) -> Result<NonZeroU32, ImportError> {
+    u32::try_from(raw).ok().and_then(NonZeroU32::new).ok_or_else(|| ImportError::UnusableFile {
+        detail: format!("{} states {quantity} {raw}", source.display()),
+    })
+}
+
+/// A track's bit depth as its audio format row stores it: none for lossy
+/// audio, else 1 to 32.
+pub(crate) fn track_bit_depth(
+    source: &Path,
+    raw: Option<i64>,
+) -> Result<Option<NonZeroU32>, ImportError> {
+    raw.map(|raw| {
+        u32::try_from(raw)
+            .ok()
+            .filter(|bits| (1..=32).contains(bits))
+            .and_then(NonZeroU32::new)
+            .ok_or_else(|| ImportError::UnusableFile {
+                detail: format!(
+                    "{} states a {raw}-bit depth; bae stores 1 to 32 bits",
+                    source.display()
+                ),
+            })
+    })
+    .transpose()
 }
 
 /// The job the scan proposes for a file. Every file the scan finds carries

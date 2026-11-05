@@ -20,7 +20,6 @@ use crate::audio_layout::{audio_layout, UnitContribution};
 use crate::folder_scanner::CategorizedFiles;
 use crate::types::{AudioFile, CueAnalyzedAudioFile, CueFlacAnalysis};
 use crate::ImportError;
-use bae_audio::ProbeResult;
 
 /// One audio unit and what it plays for.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -151,14 +150,7 @@ pub(crate) fn sheet_analysis(
         audio_files.push(CueAnalyzedAudioFile {
             file_reference: (*file_reference).to_string(),
             path: file.path.clone(),
-            probe: ProbeResult {
-                content_type: source_audio.content_type.clone(),
-                duration: std::time::Duration::from_millis(source_audio.duration_ms),
-                sample_rate: source_audio.format.sample_rate_hz as u32,
-                bits_per_sample: source_audio.format.bits_per_sample.map(|bits| bits as u32),
-                bitrate_kbps: source_audio.format.bitrate_kbps,
-                channels: source_audio.format.channels as u32,
-            },
+            probe: source_audio.probe(&file.path)?,
         });
     }
 

@@ -5,9 +5,9 @@
 //! segments of the file it plays from.
 
 use std::collections::HashMap;
-use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
+use crate::folder_scanner::track_bit_depth;
 use crate::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::ImportError;
 use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
@@ -22,16 +22,6 @@ fn ensure_probe_audio_format(
     path: &Path,
     probe: &bae_audio::ProbeResult,
 ) -> Result<(), ImportError> {
-    if probe.sample_rate == 0 || probe.channels == 0 {
-        return Err(ImportError::UnusableFile {
-            detail: format!(
-                "unusable audio format in {}: sample_rate={}, channels={}",
-                path.display(),
-                probe.sample_rate,
-                probe.channels
-            ),
-        });
-    }
     if !probe.content_type.is_supported_audio() {
         return Err(ImportError::UnusableFile {
             detail: format!(
@@ -42,32 +32,6 @@ fn ensure_probe_audio_format(
         });
     }
     Ok(())
-}
-
-/// A track's sample rate or channel count as its audio format row stores it:
-/// above zero and within a `u32`. `source` names the file it was read from.
-fn track_audio_count(source: &Path, quantity: &str, raw: i64) -> Result<NonZeroU32, ImportError> {
-    u32::try_from(raw).ok().and_then(NonZeroU32::new).ok_or_else(|| ImportError::UnusableFile {
-        detail: format!("{} states {quantity} {raw}", source.display()),
-    })
-}
-
-/// A track's bit depth as its audio format row stores it: none for lossy
-/// audio, else 1 to 32.
-fn track_bit_depth(source: &Path, raw: Option<i64>) -> Result<Option<NonZeroU32>, ImportError> {
-    raw.map(|raw| {
-        u32::try_from(raw)
-            .ok()
-            .filter(|bits| (1..=32).contains(bits))
-            .and_then(NonZeroU32::new)
-            .ok_or_else(|| ImportError::UnusableFile {
-                detail: format!(
-                    "{} states a {raw}-bit depth; bae stores 1 to 32 bits",
-                    source.display()
-                ),
-            })
-    })
-    .transpose()
 }
 
 struct BuiltAudioFormat {
@@ -114,15 +78,15 @@ fn cue_backed_audio_format(
         .filter(|&samples| samples > 0);
     let generated_pregap_samples =
         cue_track.generated_pregap_frames.filter(|&frames| frames > 0).map(|frames| {
-            crate::cue_sheet::cue_frames_to_samples(frames, u64::from(probe.sample_rate))
+            crate::cue_sheet::cue_frames_to_samples(frames, u64::from(probe.sample_rate.get()))
         });
 
     Ok(DbAudioFormat::new(
         db_track_id,
         probe.content_type.clone(),
-        track_audio_count(&audio.path, "sample rate", i64::from(probe.sample_rate))?,
+        probe.sample_rate,
         track_bit_depth(&audio.path, probe.bits_per_sample.map(i64::from))?,
-        track_audio_count(&audio.path, "channel count", i64::from(probe.channels))?,
+        probe.channels,
         id,
         now,
     )
@@ -139,12 +103,13 @@ fn standalone_audio_format(
 ) -> Result<bae_db::DbAudioFormat, ImportError> {
     // A per-track file is its own whole-file source; the sample window lives in
     // its `audio_format_segments` row.
+    let probe = source_audio.probe(file_path)?;
     Ok(DbAudioFormat::new(
         db_track_id,
         source_audio.content_type.clone(),
-        track_audio_count(file_path, "sample rate", source_audio.format.sample_rate_hz)?,
+        probe.sample_rate,
         track_bit_depth(file_path, source_audio.format.bits_per_sample)?,
-        track_audio_count(file_path, "channel count", source_audio.format.channels)?,
+        probe.channels,
         id,
         now,
     ))

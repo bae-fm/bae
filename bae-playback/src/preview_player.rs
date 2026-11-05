@@ -200,7 +200,7 @@ impl PreviewPlayer {
         let Some(probe) = probe_preview_audio(&self.diagnostics, target.path()).await else {
             return PreviewPlayOutcome::SetupFailed;
         };
-        let Some(duration) = target.duration(probe.duration, probe.sample_rate) else {
+        let Some(duration) = target.duration(probe.duration, probe.sample_rate.get()) else {
             error!(
                 path = %target.path().display(),
                 start_sample = target.span().start_sample,
@@ -220,8 +220,8 @@ impl PreviewPlayer {
                 PreviewSource {
                     target: target.clone(),
                     duration,
-                    sample_rate: probe.sample_rate,
-                    channels: probe.channels,
+                    sample_rate: probe.sample_rate.get(),
+                    channels: probe.channels.get(),
                     buffer,
                 },
                 None,
@@ -643,14 +643,7 @@ fn resolve_preview_probe(
 ) -> Option<bae_audio::ProbeResult> {
     let path = path.display();
     match result {
-        Ok(Some(probe)) if probe.sample_rate > 0 && probe.channels > 0 => Some(probe),
-        Ok(Some(probe)) => {
-            error!(
-                "Preview probe returned unusable audio format for {}: sample_rate={}, channels={}",
-                path, probe.sample_rate, probe.channels
-            );
-            None
-        }
+        Ok(Some(probe)) => Some(probe),
         Ok(None) => {
             warn!("Failed to probe preview file {}", path);
             None

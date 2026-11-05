@@ -136,3 +136,31 @@ fn descending_cue_track_boundaries_are_rejected() {
         [SourceDuration { audio: AudioFile::Standalone { .. }, .. }]
     ));
 }
+
+/// A stored zero channel count is a scan fact bae cannot play: the sheet is
+/// refused, naming the file, instead of analysed with a zero-channel probe.
+#[test]
+fn a_stored_zero_channel_count_refuses_the_sheet() {
+    let tmp = TempDir::new().unwrap();
+    let dir = tmp.path();
+    let fixture = bae_audio::test_fixtures::cue_flac_dir();
+    for entry in std::fs::read_dir(fixture).unwrap() {
+        let entry = entry.unwrap();
+        std::fs::copy(entry.path(), dir.join(entry.file_name())).unwrap();
+    }
+    let mut files = categorize(dir);
+    let sheet_id = files.bound_sheets()[0].file.relative_path.clone();
+    let audio_id = files.bound_sheets()[0].audio_files[0].1.relative_path.clone();
+    let audio = files
+        .files
+        .iter_mut()
+        .find(|entry| entry.file.relative_path == audio_id)
+        .and_then(|entry| entry.file.source_audio.as_mut())
+        .expect("the sheet's audio was scanned");
+    audio.format.channels = 0;
+
+    let Err(ImportError::UnusableFile { detail }) = sheet_analysis(&files, &sheet_id) else {
+        panic!("a zero channel count refuses the sheet");
+    };
+    assert!(detail.contains(&audio_id), "the refusal names the file: {detail}");
+}

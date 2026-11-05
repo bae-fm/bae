@@ -18,7 +18,7 @@ pub(super) struct CueAudioPregap {
 }
 
 fn probe_duration_samples(probe: &ProbeResult) -> Result<u64, ImportError> {
-    u64::try_from(probe.duration.as_nanos() * u128::from(probe.sample_rate) / 1_000_000_000)
+    u64::try_from(probe.duration.as_nanos() * u128::from(probe.sample_rate.get()) / 1_000_000_000)
         .map_err(|error| ImportError::Internal {
             detail: format!("CUE audio duration exceeds the sample-count range: {error}"),
         })
@@ -39,7 +39,7 @@ pub(super) fn cue_audio_pregap(
     let audio = cue_audio_file(cue_pair, &index.file_reference)?;
     let probe = &audio.probe;
     ensure_probe_audio_format(&audio.path, probe)?;
-    let sample_rate = u64::from(probe.sample_rate);
+    let sample_rate = u64::from(probe.sample_rate.get());
     let start_sample = crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate);
     let end_sample = if index.file_reference == cue_track.file_reference {
         crate::cue_sheet::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate)
@@ -79,13 +79,13 @@ pub(super) fn cue_file_landing_bytes(
     cue_sheet: &crate::cue_sheet::CueSheet,
 ) -> Result<HashMap<u64, u64>, String> {
     ensure_probe_audio_format(&file.path, &file.probe).map_err(|error| error.to_string())?;
-    let sample_rate = file.probe.sample_rate;
+    let sample_rate = u64::from(file.probe.sample_rate.get());
     let start_samples: Vec<u64> = cue_sheet
         .playable_tracks()
         .flat_map(|track| track.indexes.iter())
         .filter(|index| index.file_reference == file.file_reference)
         .filter(|index| matches!(index.number, 0 | 1))
-        .map(|index| crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate as u64))
+        .map(|index| crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate))
         .collect();
     let landings = bae_audio::seek_landing_bytes(&file.path, &start_samples)?;
     Ok(start_samples.into_iter().zip(landings).collect())
@@ -121,7 +121,7 @@ impl ImportService {
         let main_path = main_audio.path.as_path();
         let probe = &main_audio.probe;
         ensure_probe_audio_format(main_path, probe)?;
-        let sample_rate = probe.sample_rate as u64;
+        let sample_rate = u64::from(probe.sample_rate.get());
         let mut segments = Vec::new();
 
         if let Some(pregap) = cue_audio_pregap(cue_pair, cue_index)? {
