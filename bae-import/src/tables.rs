@@ -5,7 +5,6 @@
 //! runs them through the store for everything else. Their schema is every
 //! device's, since every device opens the same library; the rest is desktop's.
 
-#[cfg(desktop)]
 mod album_link_rows;
 #[cfg(desktop)]
 mod downscaled_copies;
@@ -17,7 +16,6 @@ mod import_origin;
 pub(crate) mod import_state;
 mod release_groupings;
 mod skipped_candidates;
-#[cfg(desktop)]
 mod source_releases;
 mod watched_folders;
 
@@ -27,6 +25,7 @@ pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[
     skipped_candidates::SCHEMA,
     folder_scans::SCHEMA,
     release_groupings::SCHEMA,
+    source_releases::SCHEMA,
     import_list::SCHEMA,
 ];
 

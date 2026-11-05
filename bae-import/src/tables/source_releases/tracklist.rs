@@ -1,16 +1,23 @@
 //! A stored release's tracklist: its mediums' entries in order, with each
 //! entry's credits, roles and the works it performs — written and read back
 //! as one tree.
+//!
+//! Their tables are `tracklist.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("tracklist.sql");
+
+#[cfg(desktop)]
 use super::*;
 
 /// The next entry and work node numbers of the release being written.
+#[cfg(desktop)]
 #[derive(Default)]
 pub(super) struct Numbering {
     entry: i64,
     node: i64,
 }
 
+#[cfg(desktop)]
 pub(super) fn insert_entry(
     sql: &CovenWrite<'_>,
     catalog: &str,
@@ -97,11 +104,13 @@ pub(super) fn insert_entry(
 
 /// Where a stored work node hangs: off the track that performs it, or off
 /// the work it is a part relation of.
+#[cfg(desktop)]
 enum WorkPlace {
     Performed { entry: i64 },
     Part { parent: i64, direction: PartDirection },
 }
 
+#[cfg(desktop)]
 fn direction_column(direction: PartDirection) -> &'static str {
     match direction {
         PartDirection::Forward => "forward",
@@ -109,6 +118,7 @@ fn direction_column(direction: PartDirection) -> &'static str {
     }
 }
 
+#[cfg(desktop)]
 fn insert_work(
     sql: &CovenWrite<'_>,
     catalog: &str,
@@ -182,6 +192,7 @@ fn insert_work(
 }
 
 /// One stored entry, before its children and works are attached.
+#[cfg(desktop)]
 struct EntryRow {
     medium: i64,
     parent: Option<i64>,
@@ -189,6 +200,7 @@ struct EntryRow {
 }
 
 /// A stored artist as a tracklist's JSON lists hold it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredArtist {
     name: String,
@@ -197,6 +209,7 @@ struct StoredArtist {
     discogs_artist_id: Option<String>,
 }
 
+#[cfg(desktop)]
 impl StoredArtist {
     fn artist(self) -> bae_catalogs::credits::ArtistCredit {
         bae_catalogs::credits::ArtistCredit {
@@ -210,6 +223,7 @@ impl StoredArtist {
 }
 
 /// One entry credit as the entry's `credits` column holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredCredit {
     position: i32,
@@ -220,6 +234,7 @@ struct StoredCredit {
 }
 
 /// One entry role as the entry's `roles` column holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredRole {
     position: i32,
@@ -228,6 +243,7 @@ struct StoredRole {
 }
 
 /// A stored artist's columns under `alias`, as a JSON object.
+#[cfg(desktop)]
 fn artist_json(alias: &str) -> String {
     format!(
         "json_object('name', {alias}.name, 'sort_name', {alias}.sort_name, \
@@ -236,11 +252,13 @@ fn artist_json(alias: &str) -> String {
     )
 }
 
+#[cfg(desktop)]
 fn stored_list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
     serde_json::from_str(json)
         .map_err(|error| DbError::unreadable(what, format!("{json:?}: {error}")))
 }
 
+#[cfg(desktop)]
 pub(super) fn load_mediums<S: QueryOne + QueryRows>(
     sql: &S,
     catalog: &str,
@@ -413,6 +431,7 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
 }
 
 /// One stored work node, its events still the JSON its row holds.
+#[cfg(desktop)]
 struct WorkRow {
     node: i64,
     entry: Option<i64>,
@@ -425,6 +444,7 @@ struct WorkRow {
 
 /// One relation of a work as its node's `events` column holds it, in the
 /// order of their positions: a composer, or the node of a part.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum StoredEvent {
@@ -434,6 +454,7 @@ enum StoredEvent {
 
 /// Every work the release's tracks perform, each with its sub-graph, paired
 /// with the entry that performs it.
+#[cfg(desktop)]
 fn load_works<S: QueryOne + QueryRows>(
     sql: &S,
     catalog: &str,
