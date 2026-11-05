@@ -207,11 +207,11 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
     let hash = candidate.content_hash();
     let pool = vec![
         bae_identify::signals::TextLine {
-            text: "AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]".to_string(),
+            text: "Artist One - Album One [L1-16033]".to_string(),
             origin: bae_identify::signals::TextOrigin::FolderName,
         },
         bae_identify::signals::TextLine {
-            text: "Atlantic Records, Inc.".to_string(),
+            text: "Label One Records, Inc.".to_string(),
             origin: bae_identify::signals::TextOrigin::Artwork,
         },
     ];

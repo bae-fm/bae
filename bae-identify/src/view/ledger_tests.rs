@@ -78,11 +78,11 @@ fn card_ids(view: &IdentifyStateView) -> Vec<&str> {
 /// Striking a number out drops its agreement and re-ranks the list.
 #[test]
 fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
-    let lines = &["Dirty Deeds [16033-2]", "Atlantic 1976 US"];
+    let lines = &["Album One [L1-16033]", "Label One 1976 US"];
     let matches = || {
         vec![
-            pressing("rel-a", "rg-a", Some("16033-2"), Some("Atlantic"), Some(1976), None),
-            pressing("rel-b", "rg-b", None, Some("Atlantic"), Some(1976), Some("US")),
+            pressing("rel-a", "rg-a", Some("L1-16033"), Some("Label One"), Some(1976), None),
+            pressing("rel-b", "rg-b", None, Some("Label One"), Some(1976), Some("US")),
         ]
     };
     let counted = resumed(matches(), Vec::new(), None, folder(lines, &[]));
@@ -92,7 +92,7 @@ fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
     assert!(agreements.iter().any(|(id, a)| id == "rel-a" && a.fields.catalog));
     assert_eq!(card_ids(&counted), vec!["rel-a", "rel-b"]);
 
-    let struck = resumed(matches(), Vec::new(), None, folder(lines, &["16033-2"]));
+    let struck = resumed(matches(), Vec::new(), None, folder(lines, &["L1-16033"]));
     let IdentifyStateView::Found { agreements, .. } = &struck else {
         panic!("a settled verdict");
     };

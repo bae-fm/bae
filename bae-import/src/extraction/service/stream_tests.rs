@@ -167,7 +167,7 @@ async fn every_surface_lands_in_the_text_pool_as_it_was_read() {
         &tmp,
         "Artist Alpha - Album Title [16033-2]",
         &["Artist Alpha - Back Cover.jpg"],
-        &[("info.txt", "Atlantic Records, Inc.\n")],
+        &[("info.txt", "Label One Records, Inc.\n")],
     );
     let cue = r#"PERFORMER "Artist Alpha"
 FILE "01 - Track.flac" WAVE
@@ -199,7 +199,7 @@ FILE "01 - Track.flac" WAVE
     assert_eq!(cue_line.origin, TextOrigin::CueSheet);
 
     let text_file_line =
-        found("Atlantic Records, Inc.").unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
+        found("Label One Records, Inc.").unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
     assert_eq!(text_file_line.origin, TextOrigin::TextFile);
 
     let ocr_line =
@@ -215,14 +215,14 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
     let analyzer: Arc<dyn ArtworkAnalyzer> =
         Arc::new(StubAnalyzer::new().with(
             "front.jpg",
-            vec!["Atlantic Records".to_string(), "Atlantic Records".to_string()],
+            vec!["Label One Records".to_string(), "Label One Records".to_string()],
         ));
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     let pool = &signals[signals.len() - 1].text_pool;
     assert_eq!(
-        pool.iter().filter(|line| line.text == "Atlantic Records").count(),
+        pool.iter().filter(|line| line.text == "Label One Records").count(),
         1,
         "got {pool:?}",
     );
