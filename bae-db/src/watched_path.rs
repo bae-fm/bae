@@ -7,6 +7,10 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use rusqlite::types::Value;
+
+use crate::SchemaFunction;
+
 /// A watched root or folder path the store refuses to key by: relative,
 /// containing `..`, or not in canonical form.
 #[derive(Debug, thiserror::Error)]
@@ -144,6 +148,45 @@ pub(crate) fn folder_relative_below(
         Err(_) => Ok(None),
     }
 }
+
+/// `bae_folder_below`: the absolute path's bytes of a folder below a watched
+/// folder, from the root's bytes and the folder's [`RelativeFolder`] bytes,
+/// spelled as a scan spells it, which is how a stored reading names the
+/// folder it reads. Takes BLOBs only: rusqlite refuses TEXT for a `Vec<u8>`,
+/// so a path bound as text fails rather than matching nothing.
+pub static FOLDER_BELOW: SchemaFunction = SchemaFunction {
+    name: "bae_folder_below",
+    arguments: 2,
+    version: 2,
+    compute: |arguments| {
+        let root = coven::path_from_bytes(arguments.get::<Vec<u8>>(0)?)
+            .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
+        let relative = RelativeFolder::from_bytes(arguments.get::<Vec<u8>>(1)?)
+            .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
+        Ok(Value::Blob(coven::path_bytes(&folder_below(&root, &relative))))
+    },
+};
+
+/// `bae_folder_relative`: the [`RelativeFolder`] bytes of a folder below a
+/// watched folder, empty for the watched folder itself, NULL for one outside
+/// it. Takes BLOBs only, as `bae_folder_below` does.
+pub static FOLDER_RELATIVE: SchemaFunction = SchemaFunction {
+    name: "bae_folder_relative",
+    arguments: 2,
+    version: 2,
+    compute: |arguments| {
+        let to_error =
+            |error: coven::PathBytesError| rusqlite::Error::UserFunctionError(Box::new(error));
+        let root = coven::path_from_bytes(arguments.get::<Vec<u8>>(0)?).map_err(to_error)?;
+        let folder = coven::path_from_bytes(arguments.get::<Vec<u8>>(1)?).map_err(to_error)?;
+        let relative = folder_relative_below(&root, &folder)
+            .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
+        Ok(match relative {
+            Some(relative) => Value::Blob(relative.as_bytes().to_vec()),
+            None => Value::Null,
+        })
+    },
+};
 
 /// The range of paths below `folder`, as stored bytes: from its path and a
 /// separator up to, not including, its path and the byte after the

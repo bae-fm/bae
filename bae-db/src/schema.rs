@@ -1,6 +1,9 @@
-//! bae's store as every handle opens it: its page cache, the synced tables
-//! and kinds of file `super::synced` declares, the schema it migrates to, and
-//! the collation and SQL functions the schema names.
+//! bae's store as every handle opens it: its page cache, the schema it
+//! migrates to, and the synced tables, collations and SQL functions the
+//! schema's parts declare.
+
+mod text;
+pub(crate) use text::{FOLD_CASE, NATURAL_ORDER, SEARCH_PATTERN};
 
 /// The most each connection to a library keeps in its page cache. A cache
 /// holds only pages its connection has read, so a small library stays below
@@ -13,15 +16,96 @@ const PAGE_CACHE_KIB: u32 = 64 * 1024;
 const PAGE_CACHE_KIB: u32 = 16 * 1024;
 
 /// One domain's share of the schema: its SQL files, which run in the order
-/// given.
+/// given, the SQL functions and collations those files name, and the synced
+/// tables and namespaces of its tables.
 pub struct SchemaPart {
     sql: &'static [&'static str],
+    functions: &'static [&'static SchemaFunction],
+    collations: &'static [&'static SchemaCollation],
+    synced_tables: fn() -> Vec<coven::SyncedTable>,
+    namespaces: fn() -> Vec<coven::Namespace>,
+}
+
+fn no_synced_tables() -> Vec<coven::SyncedTable> {
+    Vec::new()
+}
+
+fn no_namespaces() -> Vec<coven::Namespace> {
+    Vec::new()
 }
 
 impl SchemaPart {
     pub const fn new(sql: &'static [&'static str]) -> Self {
-        Self { sql }
+        Self {
+            sql,
+            functions: &[],
+            collations: &[],
+            synced_tables: no_synced_tables,
+            namespaces: no_namespaces,
+        }
     }
+
+    /// The SQL functions this part's SQL names.
+    pub const fn functions(mut self, functions: &'static [&'static SchemaFunction]) -> Self {
+        self.functions = functions;
+        self
+    }
+
+    /// The collations this part's SQL names.
+    pub const fn collations(mut self, collations: &'static [&'static SchemaCollation]) -> Self {
+        self.collations = collations;
+        self
+    }
+
+    /// The synced tables and namespaces of this part's tables.
+    pub const fn synced(
+        mut self,
+        tables: fn() -> Vec<coven::SyncedTable>,
+        namespaces: fn() -> Vec<coven::Namespace>,
+    ) -> Self {
+        self.synced_tables = tables;
+        self.namespaces = namespaces;
+        self
+    }
+}
+
+/// The arguments one call of a [`SchemaFunction`] reads: coven's on every
+/// connection a store opens, and, for tests of SQL on a bare connection,
+/// rusqlite's.
+pub enum SqlArguments<'a> {
+    Store(&'a coven::FunctionArguments<'a>),
+    #[cfg(any(test, feature = "test-utils"))]
+    Bare(&'a rusqlite::functions::Context<'a>),
+}
+
+impl SqlArguments<'_> {
+    /// Argument `index`, counted from zero, converted as a row's column is.
+    pub fn get<T: rusqlite::types::FromSql>(&self, index: usize) -> rusqlite::Result<T> {
+        match self {
+            Self::Store(arguments) => arguments.get(index),
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::Bare(context) => context.get(index),
+        }
+    }
+}
+
+/// A scalar SQL function the schema names. A change to what it computes
+/// takes a new `version`, and coven rebuilds the indexes that call it on the
+/// next writable open. Declared as a `pub static`: a function is registered
+/// once however many parts list it, which is told by its address.
+pub struct SchemaFunction {
+    pub name: &'static str,
+    pub arguments: u8,
+    pub version: u32,
+    pub compute: fn(&SqlArguments<'_>) -> rusqlite::Result<rusqlite::types::Value>,
+}
+
+/// A collation the schema names. Declared as a `pub static`, as
+/// [`SchemaFunction`] is.
+pub struct SchemaCollation {
+    pub name: &'static str,
+    pub version: u32,
+    pub compare: fn(&str, &str) -> std::cmp::Ordering,
 }
 
 /// The schema a store migrates to: each crate's parts, in crate order. They
@@ -38,9 +122,45 @@ impl Schema {
         Self { parts }
     }
 
+    fn parts(self) -> impl Iterator<Item = &'static SchemaPart> {
+        self.parts.iter().flat_map(|parts| parts.iter())
+    }
+
     /// Every SQL file of the schema, in the order they run.
     pub fn sql(self) -> impl Iterator<Item = &'static str> {
-        self.parts.iter().flat_map(|parts| parts.iter()).flat_map(|part| part.sql.iter().copied())
+        self.parts().flat_map(|part| part.sql.iter().copied())
+    }
+
+    /// The SQL functions the parts name, each once however many parts list it.
+    pub fn functions(self) -> Vec<&'static SchemaFunction> {
+        let mut functions: Vec<&'static SchemaFunction> = Vec::new();
+        for function in self.parts().flat_map(|part| part.functions.iter().copied()) {
+            if !functions.iter().any(|seen| std::ptr::eq(*seen, function)) {
+                functions.push(function);
+            }
+        }
+        functions
+    }
+
+    /// The collations the parts name, each once however many parts list it.
+    pub fn collations(self) -> Vec<&'static SchemaCollation> {
+        let mut collations: Vec<&'static SchemaCollation> = Vec::new();
+        for collation in self.parts().flat_map(|part| part.collations.iter().copied()) {
+            if !collations.iter().any(|seen| std::ptr::eq(*seen, collation)) {
+                collations.push(collation);
+            }
+        }
+        collations
+    }
+
+    /// The synced tables the parts declare, in part order.
+    pub fn synced_tables(self) -> Vec<coven::SyncedTable> {
+        self.parts().flat_map(|part| (part.synced_tables)()).collect()
+    }
+
+    /// The namespaces the parts declare, in part order.
+    pub fn namespaces(self) -> Vec<coven::Namespace> {
+        self.parts().flat_map(|part| (part.namespaces)()).collect()
     }
 
     /// The store's migrations: the schema as migration 1, each SQL file run in
@@ -55,117 +175,31 @@ impl Schema {
     }
 }
 
-/// bae's store as every handle opens it: its page cache size, its synced
-/// tables, `schema`, and the collation and SQL functions the schema names.
+/// bae's store as every handle opens it: its page cache size, and the synced
+/// tables, namespaces, migrations, collations and SQL functions `schema`'s
+/// parts declare.
 pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::CovenBuilder {
-    let builder = builder
+    let mut builder = builder
         .sqlite_settings(coven::SqliteSettings {
             cache_size: Some(coven::CacheSize::Kibibytes(PAGE_CACHE_KIB)),
             ..Default::default()
         })
-        .synced_tables(super::synced::synced_tables())
-        .namespaces(super::synced::namespaces())
-        .migrations(schema.migrations())
-        .collation(
-            super::collation::NATURAL_ORDER,
-            super::collation::NATURAL_ORDER_VERSION,
-            bae_util::natural_order::compare,
+        .synced_tables(schema.synced_tables())
+        .namespaces(schema.namespaces())
+        .migrations(schema.migrations());
+    for collation in schema.collations() {
+        builder = builder.collation(collation.name, collation.version, collation.compare);
+    }
+    for function in schema.functions() {
+        let compute = function.compute;
+        builder = builder.function(
+            function.name,
+            function.arguments,
+            coven::Determinism::Deterministic { version: function.version },
+            move |arguments| compute(&SqlArguments::Store(arguments)),
         );
-    register_functions(builder)
-}
-
-/// Declares the SQL functions the schema names once, as the registration on
-/// coven's builder (which every handle opens with) and as the registration
-/// on a bare connection (`bare_library_connection`): `name, arguments,
-/// version, |args| body`, where `body` reads its arguments with `args.get(n)`.
-macro_rules! schema_functions {
-    ($($name:literal, $arguments:literal, $version:literal, |$args:ident| $body:expr;)*) => {
-        fn register_functions(builder: coven::CovenBuilder) -> coven::CovenBuilder {
-            builder$(.function(
-                $name,
-                $arguments,
-                coven::Determinism::Deterministic { version: $version },
-                |$args| $body,
-            ))*
-        }
-
-        #[cfg(any(test, feature = "test-utils"))]
-        fn register_functions_on(conn: &rusqlite::Connection) {
-            use rusqlite::functions::FunctionFlags;
-            $(
-                conn.create_scalar_function(
-                    $name,
-                    $arguments,
-                    FunctionFlags::SQLITE_UTF8
-                        | FunctionFlags::SQLITE_DETERMINISTIC
-                        | FunctionFlags::SQLITE_INNOCUOUS,
-                    |$args| $body,
-                )
-                .expect(concat!($name, " registers"));
-            )*
-        }
-    };
-}
-
-schema_functions! {
-    "bae_fold_case", 1, 1, |arguments| Ok(fold_case_value(arguments.get(0)?));
-    "bae_search_pattern", 1, 1, |arguments| Ok(search_pattern_value(arguments.get(0)?));
-    "bae_catalog_rank", 1, 1, |arguments| catalog_rank_value(arguments.get(0)?);
-    "bae_folder_below", 2, 2, |arguments| folder_below_value(arguments.get(0)?, arguments.get(1)?);
-    "bae_folder_relative", 2, 2, |arguments| {
-        folder_relative_value(arguments.get(0)?, arguments.get(1)?)
-    };
-}
-
-/// `bae_fold_case`: a text folded as library search folds it; NULL stays NULL.
-fn fold_case_value(text: Option<String>) -> Option<String> {
-    text.map(|text| bae_util::search_text::fold_case(&text))
-}
-
-/// `bae_search_pattern`: the `GLOB` pattern library search matches a query
-/// by; NULL stays NULL.
-fn search_pattern_value(query: Option<String>) -> Option<String> {
-    query.map(|query| bae_util::search_text::search_pattern(&query))
-}
-
-/// `bae_catalog_rank`: a stored catalog's place in the order surfaces list
-/// catalogs (`Catalog::ALL`). Part of the schema once an index uses it: the
-/// order must not change.
-fn catalog_rank_value(catalog: String) -> rusqlite::Result<i64> {
-    let catalog: bae_catalogs::catalog::Catalog = catalog
-        .parse()
-        .map_err(|error: String| rusqlite::Error::UserFunctionError(error.into()))?;
-    Ok(catalog.rank() as i64)
-}
-
-/// `bae_folder_below`: the absolute path's bytes of a folder below a watched
-/// folder, from the root's bytes and the folder's [`RelativeFolder`] bytes,
-/// spelled as a scan spells it, which is how a stored reading names the
-/// folder it reads. Takes BLOBs only: rusqlite refuses TEXT for a `Vec<u8>`,
-/// so a path bound as text fails rather than matching nothing.
-///
-/// [`RelativeFolder`]: crate::RelativeFolder
-fn folder_below_value(root: Vec<u8>, relative: Vec<u8>) -> rusqlite::Result<Vec<u8>> {
-    let root = coven::path_from_bytes(root)
-        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
-    let relative = crate::RelativeFolder::from_bytes(relative)
-        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
-    Ok(coven::path_bytes(&crate::watched_path::folder_below(&root, &relative)))
-}
-
-/// `bae_folder_relative`: the [`RelativeFolder`] bytes of a folder below a
-/// watched folder, empty for the watched folder itself, NULL for one outside
-/// it. Takes BLOBs only, as `bae_folder_below` does.
-///
-/// [`RelativeFolder`]: crate::RelativeFolder
-fn folder_relative_value(root: Vec<u8>, folder: Vec<u8>) -> rusqlite::Result<Option<Vec<u8>>> {
-    let to_error =
-        |error: coven::PathBytesError| rusqlite::Error::UserFunctionError(Box::new(error));
-    let root = coven::path_from_bytes(root).map_err(to_error)?;
-    let folder = coven::path_from_bytes(folder).map_err(to_error)?;
-    crate::watched_path::folder_relative_below(&root, &folder)
-        .map(|relative| relative.map(|relative| relative.as_bytes().to_vec()))
-        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
+    }
+    builder
 }
 
 /// An in-memory database on `schema` outside coven, with the SQL functions
@@ -174,7 +208,6 @@ fn folder_relative_value(root: Vec<u8>, folder: Vec<u8>) -> rusqlite::Result<Opt
 pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
     use rusqlite::functions::FunctionFlags;
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    register_functions_on(&conn);
     let deterministic = FunctionFlags::SQLITE_UTF8
         | FunctionFlags::SQLITE_DETERMINISTIC
         | FunctionFlags::SQLITE_INNOCUOUS;
@@ -191,8 +224,20 @@ pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
             .transpose()
     })
     .expect("coven_path_text registers");
-    conn.create_collation(super::collation::NATURAL_ORDER, bae_util::natural_order::compare)
-        .expect("natural_order registers");
+    for function in schema.functions() {
+        let compute = function.compute;
+        conn.create_scalar_function(
+            function.name,
+            i32::from(function.arguments),
+            deterministic,
+            move |context| compute(&SqlArguments::Bare(context)),
+        )
+        .unwrap_or_else(|error| panic!("{} registers: {error}", function.name));
+    }
+    for collation in schema.collations() {
+        conn.create_collation(collation.name, collation.compare)
+            .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
+    }
     // The schema's triggers follow coven's `coven_files`, `coven_pins`,
     // `coven_upload_queue` and `coven_sync_status`, which coven creates
     // before it migrates; these tests pin, queue and sync nothing, so tables

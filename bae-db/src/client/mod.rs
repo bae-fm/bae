@@ -30,6 +30,8 @@ macro_rules! release_file_columns {
 }
 
 mod album;
+mod catalog_rank;
+pub(crate) use catalog_rank::CATALOG_RANK;
 mod artist;
 pub mod artist_credit_names;
 use artist_credit_names::settle_credit_name;

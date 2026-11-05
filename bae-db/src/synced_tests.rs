@@ -161,7 +161,7 @@ fn every_schema_table_is_synced_or_declared_device_local() {
         .flat_map(|sql| create.captures_iter(sql))
         .map(|captures| captures.get(1).unwrap().as_str())
         .collect();
-    let tables = synced_tables();
+    let tables = crate::test_fixtures::TEST_SCHEMA.synced_tables();
     let synced: BTreeSet<&str> = tables.iter().map(SyncedTable::name).collect();
     let local: BTreeSet<&str> = DEVICE_LOCAL_TABLES.iter().copied().collect();
     assert_eq!(local.len(), DEVICE_LOCAL_TABLES.len(), "a device-local table is listed twice");

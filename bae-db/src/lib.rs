@@ -9,7 +9,6 @@
 
 pub mod admin_change;
 pub mod client;
-pub mod collation;
 pub mod collections;
 pub mod credits;
 mod entered_name;
@@ -25,12 +24,29 @@ mod pending_item;
 pub mod people;
 pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 pub mod schema;
-pub use schema::{configure_store, Schema, SchemaPart};
+pub use schema::{
+    configure_store, Schema, SchemaCollation, SchemaFunction, SchemaPart, SqlArguments,
+};
 
 /// bae-db's part of the schema: `001_initial.sql`, which holds every table
 /// no other crate's part creates.
 pub const SCHEMA_PARTS: &[SchemaPart] =
-    &[SchemaPart::new(&[include_str!("../migrations/001_initial.sql")])];
+    &[SchemaPart::new(&[include_str!("../migrations/001_initial.sql")])
+        .functions(SQL_FUNCTIONS)
+        .collations(SQL_COLLATIONS)
+        .synced(synced::synced_tables, synced::namespaces)];
+
+/// The SQL functions `001_initial.sql` names.
+const SQL_FUNCTIONS: &[&SchemaFunction] = &[
+    &schema::FOLD_CASE,
+    &schema::SEARCH_PATTERN,
+    &client::CATALOG_RANK,
+    &watched_path::FOLDER_BELOW,
+    &watched_path::FOLDER_RELATIVE,
+];
+
+/// The collations `001_initial.sql` names.
+const SQL_COLLATIONS: &[&SchemaCollation] = &[&schema::NATURAL_ORDER];
 mod resolved_track_audio;
 pub use resolved_track_audio::{
     ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError, TrackAudioMeta,
