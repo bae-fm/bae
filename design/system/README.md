@@ -22,7 +22,7 @@ The apps offer six tones (neutral, slate, plum, midnight, forest, sand), eight a
 
 ## Type
 
-The platform's own face: SF Pro on Apple (`--font-sans`), SF Mono for codes (`--font-mono`). No font files ship. Sizes are macOS points; iOS follows Dynamic Type, Android its own sizes.
+The platform's own face: SF Pro on Apple (`--font-sans`), SF Mono for codes (`--font-mono`), Roboto on Android (`--font-android`, from Google Fonts). No font files ship. The text styles are macOS points; iOS follows Dynamic Type, and the Android components set Android's sizes (rows 16 over 14, notes 12, the top bar's title 22).
 
 - `body` (13) for labels, values and buttons; `small` (12) for text in a field; error lines in `body`; `strong` for a section heading; `heading` (15) for a sheet's title and a pane's heading; `detail` (11.5) for a note under a control; `mono` for a restore code.
 - `title`, `hero`, `display` and `wordmark` are for pages and the welcome screen, not settings.
@@ -37,13 +37,15 @@ The platform's own face: SF Pro on Apple (`--font-sans`), SF Mono for codes (`--
 
 - One primary button per screen, on the right of the footer. Everything else is secondary.
 - A sheet's Cancel goes back one screen, and closes the sheet on the first one. No Back buttons.
-- Settings are `Section` headings over `Box`es of `Row`s. A row that opens something ends in a chevron.
+- Components come per platform: `Mac…` for macOS, `Android…` for Android; `StatusChip` and `Notice` serve both. Windows and Linux follow macOS; iOS will get its own.
+- On macOS, settings are `MacSection` headings over `MacBox`es of `MacRow`s inside a `MacSettingsWindow`. A row that opens something ends in a chevron.
+- On Android, a screen is an `AndroidScreen` of `AndroidSection` labels over `AndroidCard`s of `AndroidRow`s; changing a value opens an `AndroidDialog`.
 - An empty list is one sentence in the box: "No shared folders yet". No glyph above it.
 
 ## Iconography
 
-Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Apple platforms use SF Symbols and Android Material icons; neither ships here, so components draw the few glyphs they need as inline strokes, and `Notice` has no leading glyph.
+Icons appear only when they are the control (copy, a chevron, a disclosure mark) or carry meaning the words beside them don't (a status glyph). Apple platforms use SF Symbols and Android Material icons. The macOS components draw the few glyphs they need as inline strokes; the Android ones draw Material's paths (back, edit, chevron, expand, more, search, refresh). `Notice` has no leading glyph.
 
 ## Using this system
 
-Load `tokens.css`, then `components/bundle.css`, then `components/bundle.js`, which sets `window.Bae` and needs React 18 on the page. On a Design canvas, mount components as `<x-import component-from-global-scope="Bae.Button" kind="primary">Set up</x-import>`; content inside becomes children, so a `Bae.Box` holds `Bae.Row`s and a `Bae.Sheet` holds its content and a `Bae.SheetFooter`.
+Load `tokens.css`, then `components/bundle.css`, then `components/bundle.js`, which sets `window.Bae` and needs React 18 on the page. Android boards also load Roboto from Google Fonts. On a Design canvas, mount components as `<x-import component-from-global-scope="Bae.MacButton" kind="primary">Set up</x-import>`; content inside becomes children, so a `Bae.MacBox` holds `Bae.MacRow`s and a `Bae.MacSheet` holds its content and a `Bae.MacSheetFooter`.

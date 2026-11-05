@@ -1,5 +1,3 @@
 # StatusChip
 
-A short label on its tone's tint: a status, a count, a tag or a role. `tone`: `neutral`, `accent`, `info`, `success`, `warning`, `danger`, `activity`.
-
-- Synced is `success`; routine states that need nothing (Offline) are `warning`; what broke is `danger`. Every chip has a word, never colour alone.
+A short label on its tone's tint: a status, a count, a tag or a role. `tone`: `neutral`, `accent`, `info`, `success`, `warning`, `danger`, `activity`. Each chip has a word, never colour alone.

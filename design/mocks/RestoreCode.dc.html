@@ -4,15 +4,18 @@
 <meta charset="utf-8">
 <title>Restore code</title>
 <script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
 </head>
 <body>
 <x-dc>
 <helmet>
 <style>
-body{margin:0;background:#11111B}
+body{margin:0;background:var(--background)}
 </style>
 </helmet>
-<div style="width: 100%; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #F2F2F4; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif"><div style="background: #191925; border-radius: 8px; padding: 10px 12px; font: 13px/20px ui-monospace, Menlo, monospace; word-break: break-all"><span aria-label="Restore code, partly hidden" style="user-select: none; -webkit-user-select: none; color: #B1B1BB">{{masked}}</span><button aria-label="{{copyLabel}}" onClick="{{copy}}" style="display: inline-flex; align-items: center; justify-content: center; vertical-align: -3px; width: 20px; height: 20px; margin-left: 6px; padding: 0; border: 0; border-radius: 4px; background: none; color: #B1B1BB; cursor: pointer"><sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg></sc-if></button></div><div style="margin: 0 4px; font-size: 12px; line-height: 16px; color: #B1B1BB">Save this code. You can use it to regain access to your library if you lose all your devices.</div></div>
+<div style="width: 100%; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-primary); font-family: var(--font-sans)"><div style="background: var(--surface); border-radius: var(--radius-card); padding: 10px 12px; font: 13px/20px var(--font-mono); word-break: break-all"><span aria-label="Restore code, partly hidden" style="user-select: none; -webkit-user-select: none; color: var(--text-secondary)">{{masked}}</span><x-import component-from-global-scope="Bae.MacButton" kind="icon" label="{{copyLabel}}" on-click="{{copy}}" style="margin-left: 6px"><sc-if value="{{copied}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></sc-if><sc-if value="{{notCopied}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg></sc-if></x-import></div><x-import component-from-global-scope="Bae.MacNote">Save this code. You can use it to regain access to your library if you lose all your devices.</x-import></div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":460,"height":130}}'>
 class Component extends DCLogic {

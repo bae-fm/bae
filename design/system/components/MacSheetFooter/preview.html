@@ -1,0 +1,12 @@
+<!-- @dsCard group="macOS" height=100 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSheetFooter</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacSheetFooter, null, h(B.MacButton, null, 'Cancel'), h(B.MacButton, { kind: 'primary' }, 'Set up')), h(B.MacSheetFooter, { split: true }, h(B.MacButton, null, 'New folder…'), h(B.MacButton, null, 'Cancel'), h(B.MacButton, { kind: 'primary', off: true }, 'Set up'))));
+</script>
+</body>
+</html>

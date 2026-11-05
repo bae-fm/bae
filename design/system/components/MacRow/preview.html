@@ -1,0 +1,12 @@
+<!-- @dsCard group="macOS" height=260 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacRow</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacBox, null, h(B.MacRow, { label: 'Name', value: 'Library Name' }, h(B.MacButton, null, 'Rename…')), h(B.MacRow, { label: 'Sync', value: 'Synced', tone: 'success', chevron: true }), h(B.MacRow, { label: 'Music', selected: true }), h(B.MacRow, { label: 'Person Name', strong: true }, h(B.StatusChip, null, 'Member')), h(B.MacRow, { label: 'Add device…', action: true }), h(B.MacRow, { label: 'Sync', note: 'This library is only on this Mac.', value: 'Not synced', chevron: true }))));
+</script>
+</body>
+</html>

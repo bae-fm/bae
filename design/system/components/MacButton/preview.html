@@ -1,0 +1,12 @@
+<!-- @dsCard group="macOS" height=72 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacButton</title></head>
+<body class="bae-preview" style="flex-direction: row; align-items: center; flex-wrap: wrap;">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacButton, { kind: 'primary' }, 'Set up'), h(B.MacButton, null, 'Cancel'), h(B.MacButton, { destructive: true }, 'Remove…'), h(B.MacButton, { kind: 'icon', label: 'Copy' }), h(B.MacButton, { kind: 'primary', off: true }, 'Set up')));
+</script>
+</body>
+</html>

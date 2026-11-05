@@ -4,36 +4,31 @@
 <meta charset="utf-8">
 <title>Folder picker</title>
 <script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
 </head>
 <body>
 <x-dc>
 <helmet>
 <style>
-body{margin:0;background:#232333}
+body{margin:0;background:var(--elevated)}
 </style>
 </helmet>
-<div style="width: 100%; display: flex; flex-direction: column; color: #F2F2F4; font: 13px -apple-system, 'SF Pro Text', system-ui, sans-serif">
-<div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
-<div style="color: #B1B1BB; line-height: 17px">{{heading}}</div>
-<sc-if value="{{showPath}}" hint-placeholder-val="{{ false }}"><div style="color: #B1B1BB">{{rootName}} › <span style="color: #F2F2F4">Music</span></div></sc-if>
-<sc-if value="{{empty}}" hint-placeholder-val="{{ false }}"><div style="height: 108px; border-radius: 8px; background: #191925; display: flex; align-items: center; justify-content: center; color: #B1B1BB">{{emptyText}}</div></sc-if>
-<sc-if value="{{hasRows}}" hint-placeholder-val="{{ true }}">
-<div style="border-radius: 8px; background: #191925; display: flex; flex-direction: column; overflow: hidden">
-<sc-for list="{{rows}}" as="row" hint-placeholder-count="3">
-<div style="{{row.style}}"><span style="flex: 1">{{row.name}}</span><sc-if value="{{row.caret}}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; color: #B1B1BB">›</span></sc-if></div>
-</sc-for>
-<sc-if value="{{naming}}" hint-placeholder-val="{{ false }}"><div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; border-top: 1px solid rgba(255,255,255,0.07)"><input aria-label="Folder name" value="bae" style="flex: 1; min-width: 0; height: 22px; box-sizing: border-box; padding: 0 6px; margin-left: -6px; border: 0; outline: none; border-radius: 5px; background: #11111B; box-shadow: 0 0 0 1.5px #EE98C1; color: #F2F2F4; font: 13px -apple-system, 'SF Pro Text', system-ui, sans-serif"><button style="height: 22px; padding: 0 10px; border-radius: 5px; border: 0; background: #2D2D40; color: #F2F2F4; font: 13px -apple-system, system-ui, sans-serif">Create</button></div></sc-if>
-</div>
-</sc-if>
-<sc-if value="{{notEmpty}}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: #F29C9F; line-height: 16px">“{{selectedName}}” isn’t empty. Choose an empty folder, or make a new one.</div></sc-if>
-<sc-if value="{{showShareNote}}" hint-placeholder-val="{{ false }}"><div style="font-size: 11px; color: #B1B1BB; line-height: 15px">A shared folder is required to invite people to the library.</div></sc-if>
-</div>
-<div style="padding: 0 16px 16px; display: flex; gap: 8px">
-<button disabled="{{newFolderOff}}" style="{{newFolderStyle}}">New folder…</button>
-<span style="flex: 1"></span>
-<button style="height: 22px; padding: 0 10px; border-radius: 5px; border: 0; background: #2D2D40; color: #F2F2F4; font: 13px -apple-system, system-ui, sans-serif">Cancel</button>
-<button disabled="{{setUpOff}}" style="{{setUpStyle}}">Set up</button>
-</div>
+<div style="width: 100%; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); font: 13px var(--font-sans)">
+<div style="color: var(--text-secondary); line-height: 17px">{{heading}}</div>
+<sc-if value="{{showPath}}" hint-placeholder-val="{{ false }}"><div style="color: var(--text-secondary)">{{rootName}} › <span style="color: var(--text-primary)">Music</span></div></sc-if>
+<x-import component-from-global-scope="Bae.MacBox" empty="{{emptyText}}">
+<sc-for list="{{rows}}" as="row" hint-placeholder-count="3"><x-import component-from-global-scope="Bae.MacRow" label="{{row.name}}" selected="{{row.selected}}" chevron="{{row.caret}}"></x-import></sc-for>
+<sc-if value="{{naming}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacTextField" label="Folder name" label-hidden="{{yes}}" value="bae" state="focused" row="{{yes}}"><x-import component-from-global-scope="Bae.MacButton">Create</x-import></x-import></sc-if>
+</x-import>
+<sc-if value="{{notEmpty}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacErrorText">“{{selectedName}}” isn’t empty. Choose an empty folder, or make a new one.</x-import></sc-if>
+<sc-if value="{{showShareNote}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNote">A shared folder is required to invite people to the library.</x-import></sc-if>
+<x-import component-from-global-scope="Bae.MacSheetFooter" split="{{yes}}">
+<x-import component-from-global-scope="Bae.MacButton" off="{{naming}}">New folder…</x-import>
+<x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
+<x-import component-from-global-scope="Bae.MacButton" kind="primary" off="{{setUpOff}}">Set up</x-import>
+</x-import>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"provider":{"editor":"enum","options":["dropbox","onedrive"],"default":"dropbox"},"state":{"editor":"enum","options":["list","notEmpty","naming","made","empty"],"default":"list"},"$preview":{"width":460,"height":300}}'>
@@ -44,32 +39,19 @@ class Component extends DCLogic {
     const dropbox = provider === 'dropbox';
     const names = dropbox ? ['Family', 'Music', 'Photos'] : ['Live', 'Albums', 'Mixes'];
     const picked = state === 'made' ? 'bae' : (state === 'naming' ? null : names[1]);
-    const list = state === 'made' ? names.concat(['bae']) : names;
-    const rowBase = 'display: flex; align-items: center; gap: 10px; padding: 8px 12px; ';
-    const rows = list.map((name, i) => ({
-      name,
-      caret: !dropbox,
-      style: rowBase + (i > 0 ? 'border-top: 1px solid rgba(255,255,255,0.07); ' : '') + (name === picked ? 'background: rgba(238,152,193,0.18);' : '')
-    }));
-    const btn = 'height: 22px; padding: 0 10px; border-radius: 5px; border: 0; font: 13px -apple-system, system-ui, sans-serif; ';
-    const newFolderOff = state === 'naming';
-    const setUpOff = state === 'naming' || state === 'notEmpty' || state === 'empty';
+    const list = state === 'empty' ? [] : (state === 'made' ? names.concat(['bae']) : names);
     return {
+      yes: true,
       heading: dropbox ? 'Choose an empty shared folder for this library.' : 'Choose an empty folder for this library.',
       showPath: !dropbox,
       rootName: 'OneDrive',
-      empty: state === 'empty',
       emptyText: dropbox ? 'No shared folders yet' : 'No folders here yet',
-      hasRows: state !== 'empty',
-      rows,
+      rows: list.map((name) => ({ name, selected: name === picked, caret: !dropbox })),
       naming: state === 'naming',
       notEmpty: state === 'notEmpty',
       selectedName: names[1],
       showShareNote: dropbox,
-      newFolderOff,
-      newFolderStyle: btn + 'background: #2D2D40; color: #F2F2F4;' + (newFolderOff ? ' opacity: 0.4;' : ''),
-      setUpOff,
-      setUpStyle: btn + 'background: #EE98C1; color: #11111B;' + (setUpOff ? ' opacity: 0.4;' : '')
+      setUpOff: state === 'naming' || state === 'notEmpty' || state === 'empty'
     };
   }
 }

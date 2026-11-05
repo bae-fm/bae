@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <title>Home: the ⋮ menu with Libraries</title>
 <script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
 </head>
 <body>
 <x-dc>
@@ -12,31 +15,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0}
-.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:#F2F2F4;cursor:pointer}
+.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
 .ib svg{fill:currentColor}
-.tile{aspect-ratio:1;border-radius:8px;background:#232333}
-.t1{font-size:14px;line-height:20px;color:#F2F2F4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:8px}
-.t2{font-size:13px;line-height:18px;color:#B1B1BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mi{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:48px;padding:0 16px;box-sizing:border-box;background:none;border:0;color:#F2F2F4;font:16px Roboto,system-ui,sans-serif;text-align:left;cursor:pointer}
+.tile{aspect-ratio:1;border-radius:8px;background:var(--elevated)}
+.t1{font-size:14px;line-height:20px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:8px}
+.t2{font-size:13px;line-height:18px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:48px;padding:0 16px;box-sizing:border-box;background:none;border:0;color:var(--text-primary);font:16px Roboto,system-ui,sans-serif;text-align:left;cursor:pointer}
 </style>
 </helmet>
-<div style="width: 412px; height: 916px; overflow: hidden; background: #11111B; color: #F2F2F4; font-family: Roboto, system-ui, sans-serif; display: flex; flex-direction: column; position: relative">
-<header style="padding: 24px 4px 8px 16px; display: flex; align-items: center; gap: 4px; flex: none">
-<button style="flex: 1; display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: #F2F2F4; font: 700 34px Roboto, system-ui, sans-serif; letter-spacing: -0.5px; text-align: left; cursor: pointer">Albums<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="fill: #B1B1BB"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
-<button class="ib" aria-label="Search"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></button>
-<button class="ib" aria-label="More options" style="background: rgba(255,255,255,0.10); border-radius: 24px"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 8a2 2 0 100-4 2 2 0 000 4zm0 2a2 2 0 100 4 2 2 0 000-4zm0 6a2 2 0 100 4 2 2 0 000-4z"></path></svg></button>
+<x-import component-from-global-scope="Bae.AndroidScreen">
+  <header style="padding: 24px 4px 8px 16px; display: flex; align-items: center; gap: 4px; flex: none">
+<x-import component-from-global-scope="Bae.AndroidButton" kind="text">Albums</x-import>
+<x-import component-from-global-scope="Bae.AndroidIconButton" icon="search" label="Search"></x-import>
+<x-import component-from-global-scope="Bae.AndroidIconButton" icon="more" label="More options"></x-import>
 </header>
-<main style="padding: 8px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px">
-<div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-<div><div class="tile"></div><div class="t1">Another Album With a Long Title</div><div class="t2">Artist Name</div></div>
-<div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-<div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-<div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-<div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
-</main>
-<div role="menu" aria-label="More options" style="position: absolute; top: 76px; right: 12px; width: 220px; padding: 8px 0; border-radius: 12px; background: #2A2A3B; box-shadow: 0 8px 24px rgba(0,0,0,0.5)">
-<div role="heading" aria-level="2" style="padding: 8px 16px 4px; font-size: 13px; line-height: 18px; color: #B1B1BB">Sort by</div>
-<button class="mi" role="menuitemradio" aria-checked="true" style="color: #EE98C1; font-weight: 600">Title</button>
+  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
+  <div><div class="tile"></div><div class="t1">Another Album With a Long Title</div><div class="t2">Artist Name</div></div>
+  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
+  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
+  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
+  <div><div class="tile"></div><div class="t1">Album Title</div><div class="t2">Artist Name</div></div>
+  <div role="menu" aria-label="More options" style="position: absolute; top: 76px; right: 12px; width: 220px; padding: 8px 0; border-radius: 12px; background: #2A2A3B; box-shadow: 0 8px 24px rgba(0,0,0,0.5)">
+<div role="heading" aria-level="2" style="padding: 8px 16px 4px; font-size: 13px; line-height: 18px; color: var(--text-secondary)">Sort by</div>
+<button class="mi" role="menuitemradio" aria-checked="true" style="color: var(--accent); font-weight: 600">Title</button>
 <button class="mi" role="menuitemradio" aria-checked="false">Artist</button>
 <button class="mi" role="menuitemradio" aria-checked="false">Year</button>
 <button class="mi" role="menuitemradio" aria-checked="false">Date added</button>
@@ -44,10 +45,10 @@ body{margin:0}
 <button class="mi" role="menuitemcheckbox" aria-checked="false">Group by artist</button>
 <div aria-hidden="true" style="height: 1px; margin: 8px 0; background: rgba(255,255,255,0.10)"></div>
 <button class="mi" role="menuitem">Shuffle library</button>
-<button class="mi" role="menuitem" style="background: rgba(255,255,255,0.06)">Libraries</button>
+<button class="mi" role="menuitem" style="background: var(--hairline)">Libraries</button>
 <button class="mi" role="menuitem">Settings</button>
 </div>
-</div>
+</x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

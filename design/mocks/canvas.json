@@ -1203,102 +1203,6 @@
       "x": 1476,
       "y": 260
     },
-    "controls/Button.dc.html": {
-      "h": 40,
-      "page": "controls",
-      "title": "Button (shared)",
-      "w": 120,
-      "x": 560,
-      "y": 880
-    },
-    "controls/Buttons.dc.html": {
-      "h": 260,
-      "page": "controls",
-      "title": "macOS controls: Buttons",
-      "w": 560,
-      "x": 0,
-      "y": 1060
-    },
-    "controls/Lists.dc.html": {
-      "h": 420,
-      "page": "controls",
-      "title": "macOS controls: Boxes and lists",
-      "w": 560,
-      "x": 0,
-      "y": 2620
-    },
-    "controls/Menus.dc.html": {
-      "h": 260,
-      "page": "controls",
-      "title": "macOS controls: Menus and disclosure",
-      "w": 560,
-      "x": 0,
-      "y": 3440
-    },
-    "controls/Messages.dc.html": {
-      "h": 300,
-      "page": "controls",
-      "title": "macOS controls: Waiting and messages",
-      "w": 560,
-      "x": 0,
-      "y": 4100
-    },
-    "controls/Row.dc.html": {
-      "h": 40,
-      "page": "controls",
-      "title": "Row (shared)",
-      "w": 420,
-      "x": 560,
-      "y": 80
-    },
-    "controls/Rows.dc.html": {
-      "h": 400,
-      "page": "controls",
-      "title": "macOS controls: Rows in a box",
-      "w": 560,
-      "x": 0,
-      "y": 260
-    },
-    "controls/SheetFooter.dc.html": {
-      "h": 140,
-      "page": "controls",
-      "title": "macOS controls: Sheet footer",
-      "w": 560,
-      "x": 640,
-      "y": 1060
-    },
-    "controls/TextField.dc.html": {
-      "h": 50,
-      "page": "controls",
-      "title": "Text field (shared)",
-      "w": 360,
-      "x": 560,
-      "y": 1540
-    },
-    "controls/TextFieldHiddenLabel.dc.html": {
-      "h": 160,
-      "page": "controls",
-      "title": "macOS controls: Text field, label as placeholder",
-      "w": 520,
-      "x": 640,
-      "y": 1720
-    },
-    "controls/TextFieldRows.dc.html": {
-      "h": 240,
-      "page": "controls",
-      "title": "macOS controls: Text fields in a box",
-      "w": 520,
-      "x": 1240,
-      "y": 1720
-    },
-    "controls/TextFieldStates.dc.html": {
-      "h": 500,
-      "page": "controls",
-      "title": "macOS controls: Text field states, with label",
-      "w": 560,
-      "x": 0,
-      "y": 1720
-    },
     "home/GroupedByArtist.dc.html": {
       "h": 916,
       "page": "home",
@@ -1455,8 +1359,8 @@
       "title": "bae",
       "namespace": "bae",
       "artifact": "https://claude.ai/artifact/MUbLkiU63y27pSuFTgm8CE",
-      "version": "1793895372-ec4d",
-      "copiedAt": "2026-11-05T16:16:23Z"
+      "version": "1793896397-0e18",
+      "copiedAt": "2026-11-05T16:33:38Z"
     }
   ],
   "launch": {
@@ -1509,14 +1413,7 @@
     "canvas-key-settings",
     "canvas-key-library",
     "canvas-key-welcome",
-    "row-library-setup-s3form",
-    "controls-buttons-rule",
-    "row-controls-0",
-    "row-controls-1",
-    "row-controls-2",
-    "row-controls-3",
-    "row-controls-4",
-    "row-controls-rows"
+    "row-library-setup-s3form"
   ],
   "notes": {
     "canvas-key-library": {
@@ -1612,69 +1509,6 @@
       "w": 420,
       "x": 7700,
       "y": 260
-    },
-    "controls-buttons-rule": {
-      "fill": "blue",
-      "page": "controls",
-      "size": 24,
-      "text": "Buttons:\nOne primary button per screen, on the right of the footer. Everything else is secondary.",
-      "w": 380,
-      "x": 1280,
-      "y": 1060
-    },
-    "row-controls-0": {
-      "kind": "title1",
-      "maxW": 480,
-      "page": "controls",
-      "text": "Buttons",
-      "w": 240,
-      "x": 0,
-      "y": 820
-    },
-    "row-controls-1": {
-      "kind": "title1",
-      "maxW": 480,
-      "page": "controls",
-      "text": "Text fields",
-      "w": 240,
-      "x": 0,
-      "y": 1480
-    },
-    "row-controls-2": {
-      "kind": "title1",
-      "maxW": 800,
-      "page": "controls",
-      "text": "Boxes and lists",
-      "w": 240,
-      "x": 0,
-      "y": 2380
-    },
-    "row-controls-3": {
-      "kind": "title1",
-      "maxW": 800,
-      "page": "controls",
-      "text": "Menus and disclosure",
-      "w": 240,
-      "x": 0,
-      "y": 3200
-    },
-    "row-controls-4": {
-      "kind": "title1",
-      "maxW": 800,
-      "page": "controls",
-      "text": "Waiting and messages",
-      "w": 240,
-      "x": 0,
-      "y": 3860
-    },
-    "row-controls-rows": {
-      "kind": "title1",
-      "maxW": 480,
-      "page": "controls",
-      "text": "Rows",
-      "w": 240,
-      "x": 0,
-      "y": 20
     },
     "row-library-0": {
       "kind": "title1",
@@ -2156,19 +1990,7 @@
     "S3FormSelfHosted.dc.html",
     "S3FormAdvanced.dc.html",
     "S3FormStacked.dc.html",
-    "S3FormStackedEmpty.dc.html",
-    "controls/Row.dc.html",
-    "controls/Rows.dc.html",
-    "controls/Button.dc.html",
-    "controls/Buttons.dc.html",
-    "controls/SheetFooter.dc.html",
-    "controls/TextField.dc.html",
-    "controls/TextFieldStates.dc.html",
-    "controls/TextFieldHiddenLabel.dc.html",
-    "controls/TextFieldRows.dc.html",
-    "controls/Lists.dc.html",
-    "controls/Menus.dc.html",
-    "controls/Messages.dc.html"
+    "S3FormStackedEmpty.dc.html"
   ],
   "pages": [
     {
@@ -2194,10 +2016,6 @@
     {
       "id": "loading",
       "name": "Track loading states"
-    },
-    {
-      "id": "controls",
-      "name": "Controls (macOS)"
     }
   ],
   "title": "bae mocks"

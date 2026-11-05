@@ -1,0 +1,12 @@
+<!-- @dsCard group="macOS" height=140 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSection</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacSection, { title: 'Devices' }, h(B.MacBox, null, h(B.MacRow, { label: 'This Mac', value: 'This device' }), h(B.MacRow, { label: 'Phone' }, h(B.MacButton, { destructive: true }, 'Remove…'))))));
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<!-- @dsCard group="macOS" height=230 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacTextField</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacTextField, { label: 'Endpoint', value: 'https://s3.home.lan' }), h(B.MacTextField, { label: 'Region', state: 'focused', value: 'us-east-1' }), h(B.MacTextField, { label: 'Secret', secret: true, value: 'abcdefghijkl' }), h(B.MacTextField, { label: 'Endpoint', value: 's3.home.lan', state: 'error', error: 'Not a valid address.' }), h(B.MacTextField, { label: 'Folder name', labelHidden: true }), h(B.MacTextField, { label: 'Bucket', state: 'off' })));
+</script>
+</body>
+</html>

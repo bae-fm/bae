@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <title>Grouped, artist header over a grid</title>
 <script src="./support.js"></script>
+<link rel="stylesheet" href="../ds/bae/tokens.css">
+<link rel="stylesheet" href="../ds/bae/components/bundle.css">
+<script src="../ds/bae/components/bundle.js"></script>
 </head>
 <body>
 <x-dc>
@@ -12,62 +15,59 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;family=Roboto+Mono&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0}
-a{color:#EE98C1}a:hover{color:#F6BFD9}
-.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:#F2F2F4;cursor:pointer}
+a{color:var(--accent)}a:hover{color:#F6BFD9}
+.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
 .ib svg{fill:currentColor}
-.tab{height:40px;padding:0 12px;border:0;background:none;color:#EE98C1;font-family:Roboto,sans-serif;font-size:14px;cursor:pointer}
+.tab{height:40px;padding:0 12px;border:0;background:none;color:var(--accent);font-family:Roboto,sans-serif;font-size:14px;cursor:pointer}
 .cover{width:100%;aspect-ratio:1/1;border-radius:10px}
 .t1{font-size:16px;font-weight:500;line-height:22px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.t2{font-size:12px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#B1B1BB}
-.tl{width:48px;flex:none;text-align:center;font-family:Roboto,sans-serif;font-size:12px;font-variant-numeric:tabular-nums;color:#B1B1BB}
+.t2{font-size:12px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary)}
+.tl{width:48px;flex:none;text-align:center;font-family:Roboto,sans-serif;font-size:12px;font-variant-numeric:tabular-nums;color:var(--text-secondary)}
 </style>
 </helmet>
-<div style="width: 412px; height: 916px; position: relative; overflow: hidden; background: #11111B; color: #F2F2F4; font-family: Roboto, system-ui, sans-serif; display: flex; flex-direction: column">
-<header style="padding: 8px 4px 0 16px; display: flex; align-items: center; flex: none">
-<button style="flex: none; display: flex; align-items: center; background: none; border: 0; padding: 0; color: #F2F2F4; font: 800 32px Roboto, sans-serif; letter-spacing: -0.5px; cursor: pointer">Albums<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill: #B1B1BB; margin-left: 6px"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg></button>
+<x-import component-from-global-scope="Bae.AndroidScreen">
+  <header style="padding: 8px 4px 0 16px; display: flex; align-items: center; flex: none">
+<x-import component-from-global-scope="Bae.AndroidButton" kind="text">Albums</x-import>
 <div style="flex: 1"></div>
-<button class="ib" aria-label="Search"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></button>
-<button class="ib" aria-label="More"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg></button>
+<x-import component-from-global-scope="Bae.AndroidIconButton" icon="search" label="Search"></x-import>
+<button class="ib" aria-label="More"><svg width="24" height="24" viewbox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg></button>
 
 </header>
-
-<main style="flex: 1; min-height: 0; overflow: hidden; padding: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; row-gap: 12px; align-content: start">
-<a href="#" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: #F2F2F4; text-decoration: none; padding-top: 4px"><div style="width: 48px; height: 48px; flex: none; border-radius: 24px; background: #5C4A6B"></div><div style="flex: 1; min-width: 0"><div style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Artist Name</div><div style="font-size: 12px; color: #B1B1BB">2 albums</div></div></a>
-<div><div class="cover" style="background: #6B2F2A"></div><div class="t1">A Long Album Title Cut Short Here</div><div class="t2">1962</div></div>
-<div><div class="cover" style="background: #2F3B4F"></div><div class="t1">Album Title</div><div class="t2">1965 · with Another Artist</div></div>
-<a href="#" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: #F2F2F4; text-decoration: none; padding-top: 4px"><div style="width: 48px; height: 48px; flex: none; border-radius: 24px; background: #3E5A4C"></div><div style="flex: 1; min-width: 0"><div style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Another Artist</div><div style="font-size: 12px; color: #B1B1BB">1 album</div></div></a>
-<div><div class="cover" style="background: #8A6A3A"></div><div class="t1">Album Title</div><div class="t2">1971</div></div>
-<div></div>
-<a href="#" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: #F2F2F4; text-decoration: none; padding-top: 4px"><div style="width: 48px; height: 48px; flex: none; border-radius: 24px; background: #6B5A3E"></div><div style="flex: 1; min-width: 0"><div style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Third Artist</div><div style="font-size: 12px; color: #B1B1BB">2 albums</div></div></a>
-<div><div class="cover" style="background: #2E5258"></div><div class="t1">Album Title</div><div class="t2">1984</div></div>
-<div><div class="cover" style="background: #3A2E44"></div><div class="t1">Another Album Title</div><div class="t2">1988</div></div>
-</main>
-<section aria-label="Now playing" style="background: #191925; border-top: 1px solid rgba(255,255,255,0.08); padding: 8px 12px; flex: none; display: flex; flex-direction: column">
+  <a href="#" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: var(--text-primary); text-decoration: none; padding-top: 4px"><div style="width: 48px; height: 48px; flex: none; border-radius: 24px; background: #5C4A6B"></div><div style="flex: 1; min-width: 0"><div style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Artist Name</div><div style="font-size: 12px; color: var(--text-secondary)">2 albums</div></div></a>
+  <div><div class="cover" style="background: #6B2F2A"></div><div class="t1">A Long Album Title Cut Short Here</div><div class="t2">1962</div></div>
+  <div><div class="cover" style="background: #2F3B4F"></div><div class="t1">Album Title</div><div class="t2">1965 · with Another Artist</div></div>
+  <a href="#" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: var(--text-primary); text-decoration: none; padding-top: 4px"><div style="width: 48px; height: 48px; flex: none; border-radius: 24px; background: #3E5A4C"></div><div style="flex: 1; min-width: 0"><div style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Another Artist</div><div style="font-size: 12px; color: var(--text-secondary)">1 album</div></div></a>
+  <div><div class="cover" style="background: #8A6A3A"></div><div class="t1">Album Title</div><div class="t2">1971</div></div>
+  <div></div>
+  <a href="#" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: var(--text-primary); text-decoration: none; padding-top: 4px"><div style="width: 48px; height: 48px; flex: none; border-radius: 24px; background: #6B5A3E"></div><div style="flex: 1; min-width: 0"><div style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Third Artist</div><div style="font-size: 12px; color: var(--text-secondary)">2 albums</div></div></a>
+  <div><div class="cover" style="background: #2E5258"></div><div class="t1">Album Title</div><div class="t2">1984</div></div>
+  <div><div class="cover" style="background: #3A2E44"></div><div class="t1">Another Album Title</div><div class="t2">1988</div></div>
+  <section aria-label="Now playing" style="background: var(--surface); border-top: 1px solid var(--hairline); padding: 8px 12px; flex: none; display: flex; flex-direction: column">
 <div style="display: flex; align-items: center">
 <div style="width: 48px; height: 48px; flex: none; border-radius: 6px; background: #4A5A55"></div>
 <div style="width: 12px; flex: none"></div>
 <div style="flex: 1; min-width: 0">
 <div style="font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Track Title</div>
-<div style="font-size: 12px; color: #B1B1BB; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Artist Name</div>
+<div style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Artist Name</div>
 </div>
-<button class="ib" aria-label="Previous track"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></svg></button>
-<button class="ib" aria-label="Play"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></button>
-<button class="ib" aria-label="Next track"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg></button>
-<button class="ib" aria-label="Queue"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"></path></svg></button>
-<button class="ib" aria-label="Repeat" style="color: #B1B1BB"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button>
+<button class="ib" aria-label="Previous track"><svg width="24" height="24" viewbox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></svg></button>
+<button class="ib" aria-label="Play"><svg width="24" height="24" viewbox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></button>
+<button class="ib" aria-label="Next track"><svg width="24" height="24" viewbox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></svg></button>
+<button class="ib" aria-label="Queue"><svg width="24" height="24" viewbox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"></path></svg></button>
+<button class="ib" aria-label="Repeat" style="color: var(--text-secondary)"><svg width="24" height="24" viewbox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"></path></svg></button>
 </div>
 <div style="display: flex; align-items: center; height: 32px">
 <div class="tl">2:41</div>
 <div style="flex: 1; position: relative; height: 16px; display: flex; align-items: center; margin: 0 4px">
 <div style="position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: #20202C"></div>
-<div style="position: absolute; left: 0; width: 62%; height: 3px; border-radius: 2px; background: #EE98C1"></div>
-<div style="position: absolute; left: 62%; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; background: #EE98C1"></div>
+<div style="position: absolute; left: 0; width: 62%; height: 3px; border-radius: 2px; background: var(--accent)"></div>
+<div style="position: absolute; left: 62%; width: 14px; height: 14px; margin-left: -7px; border-radius: 7px; background: var(--accent)"></div>
 </div>
 <div class="tl">4:23</div>
 </div>
 </section>
-<div style="height: 24px; flex: none; display: flex; align-items: center; justify-content: center"><div style="width: 108px; height: 4px; border-radius: 2px; background: rgba(242,242,244,0.85)"></div></div>
-</div>
+  <div style="height: 24px; flex: none; display: flex; align-items: center; justify-content: center"><div style="width: 108px; height: 4px; border-radius: 2px; background: rgba(242,242,244,0.85)"></div></div>
+</x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

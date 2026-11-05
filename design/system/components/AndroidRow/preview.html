@@ -1,0 +1,12 @@
+<!-- @dsCard group="Android" height=330 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidRow</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.AndroidCard, null, h(B.AndroidRow, { title: 'Name', subtitle: 'Library Name', icon: 'edit' }), h(B.AndroidRow, { title: 'Sync', subtitle: 'Synced', tone: 'success' }), h(B.AndroidRow, { title: 'Person Name', subtitle: 'Member · 1 device', icon: 'chevron' }), h(B.AndroidRow, { title: 'Invite', action: true }), h(B.AndroidRow, { title: 'Pause between sides' }, h(B.AndroidSwitch, { on: true, label: 'Pause between sides' })))));
+</script>
+</body>
+</html>

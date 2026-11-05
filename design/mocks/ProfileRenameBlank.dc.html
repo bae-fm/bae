@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <title>Settings: Your name, blank</title>
 <script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
 </head>
 <body>
 <x-dc>
@@ -12,35 +15,51 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0}
-a{color:#EE98C1}a:hover{color:#F6BFD9}
-.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:#F2F2F4;cursor:pointer}
+a{color:var(--accent)}a:hover{color:#F6BFD9}
+.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
 .ib svg{fill:currentColor}
-.row{display:flex;flex-direction:column;justify-content:center;min-height:72px;padding:12px 16px;color:#F2F2F4;text-decoration:none;box-sizing:border-box}
+.row{display:flex;flex-direction:column;justify-content:center;min-height:72px;padding:12px 16px;color:var(--text-primary);text-decoration:none;box-sizing:border-box}
 .rt{font-size:16px;line-height:24px}
-.sec{margin:0;padding:24px 32px 8px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#B1B1BB}
+.sec{margin:0;padding:24px 32px 8px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary)}
 .sw{width:52px;height:32px;border-radius:16px;flex:none;position:relative;border:0;cursor:pointer}
-.foot{padding:0 16px 8px;font-size:12px;line-height:16px;color:#B1B1BB}
-.rs{font-size:14px;line-height:20px;color:#B1B1BB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card{margin:0 16px;border-radius:16px;background:#1A1A27;overflow:hidden}:not(h2)+.card{margin-top:8px}.card>*+*{border-top:1px solid rgba(255,255,255,0.06)}.person>.row{min-height:52px !important}.sub{padding:14px 16px 2px;font-size:12px;font-weight:600;letter-spacing:0.04em;color:#B1B1BB}.card>.sub+*{border-top:0}
+.foot{padding:0 16px 8px;font-size:12px;line-height:16px;color:var(--text-secondary)}
+.rs{font-size:14px;line-height:20px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card{margin:0 16px;border-radius:16px;background:var(--surface);overflow:hidden}:not(h2)+.card{margin-top:8px}.card>*+*{border-top:1px solid var(--hairline)}.person>.row{min-height:52px !important}.sub{padding:14px 16px 2px;font-size:12px;font-weight:600;letter-spacing:0.04em;color:var(--text-secondary)}.card>.sub+*{border-top:0}
 </style>
 </helmet>
-<div style="position: relative; width: 412px; height: 916px; overflow: hidden; background: #11111B; color: #F2F2F4; font-family: Roboto, system-ui, sans-serif; display: flex; flex-direction: column">
-<header style="background: #191925; padding: 8px 4px; display: flex; align-items: center; gap: 4px; flex: none">
-<button class="ib" aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg></button>
-<h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.3px">People and devices</h1>
-</header>
-<main style="display: flex; flex-direction: column; overflow: hidden">
-<h2 class="sec">You</h2>
-<div class="card"><a href="#" class="row" style="flex-direction: row; align-items: center; gap: 16px" aria-label="Change your name"><div style="flex: 1; min-width: 0"><div class="rt">Name</div><div class="rs">Your Name</div></div><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: #B1B1BB; flex: none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></svg></a><div class="row"><div class="rt">Role</div><div class="rs">Admin</div></div><a href="#" class="row"><div class="rt">Listening history</div><div class="rs">Only me</div></a><div class="sub">Devices</div><button class="row" style="width: 100%; min-height: 52px; border: 0; background: none; text-align: left; font: 500 16px Roboto, system-ui, sans-serif; color: #EE98C1; cursor: pointer">Add device</button><div class="row" style="flex-direction: row; align-items: center; gap: 16px; min-height: 56px"><div style="flex: 1; min-width: 0"><div class="rt">Phone</div></div><span style="display: flex; align-items: center; gap: 16px"><span style="font-size: 14px; color: #B1B1BB">This device</span><button style="background: none; border: 0; padding: 8px 0; color: #F29C9F; font: 500 14px Roboto, system-ui, sans-serif">Remove</button></span></div><div class="row" style="flex-direction: row; align-items: center; gap: 16px; min-height: 56px"><div style="flex: 1; min-width: 0"><div class="rt">Laptop</div></div><button style="background: none; border: 0; padding: 8px 0; color: #F29C9F; font: 500 14px Roboto, system-ui, sans-serif">Remove</button></div></div>
-<h2 class="sec">People</h2>
-<div class="card"><button class="row" style="width: 100%; min-height: 52px; border: 0; background: none; text-align: left; font: 500 16px Roboto, system-ui, sans-serif; color: #EE98C1; cursor: pointer">Invite</button><a href="#" class="row" style="flex-direction: row; align-items: center; gap: 16px"><div style="flex: 1; min-width: 0"><div class="rt">Person Name</div><div class="rs">Member · 1 device</div></div><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="fill: #B1B1BB; flex: none"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></a></div>
-</main>
-<div style="position: absolute; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center"><div role="dialog" aria-label="Your name" style="width: 312px; padding: 24px; border-radius: 28px; background: #232333; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px"><h2 style="margin: 0; font-size: 24px; font-weight: 400; color: #F2F2F4">Your name</h2><div style="position: relative; border: 2px solid #EE98C1; border-radius: 4px; padding: 14px; font-size: 16px; color: #F2F2F4"><span style="display: inline-block; width: 2px; height: 20px; background: #EE98C1; vertical-align: middle"></span><span style="position: absolute; top: -9px; left: 10px; padding: 0 4px; background: #232333; font-size: 12px; color: #EE98C1">Name</span></div><div style="margin-top: -10px; padding: 0 16px; font-size: 12px; line-height: 16px; color: #B1B1BB">Everyone in the library sees this name.</div><div style="display: flex; justify-content: flex-end; gap: 8px"><button style="background: none; border: 0; padding: 10px 12px; color: #EE98C1; font: 500 14px Roboto, system-ui, sans-serif">Cancel</button><button disabled="" style="background: none; border: 0; padding: 10px 12px; color: rgba(242,242,244,0.38); font: 500 14px Roboto, system-ui, sans-serif">Save</button></div></div></div>
-</div>
+<x-import component-from-global-scope="Bae.AndroidScreen" title="People and devices" back="{{yes}}">
+  <x-import component-from-global-scope="Bae.AndroidSection" title="You"></x-import>
+  <x-import component-from-global-scope="Bae.AndroidCard">
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Your Name" icon="edit"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Role" subtitle="Admin"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Listening history" subtitle="Only me"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidCardHeading" title="Devices"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Add device" action="{{yes}}"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Phone">
+      This device
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
+    </x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Laptop">
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
+    </x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.AndroidSection" title="People"></x-import>
+  <x-import component-from-global-scope="Bae.AndroidCard">
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Person Name" subtitle="Member · 1 device" icon="chevron"></x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.AndroidDialog" title="Your name">
+    <x-import component-from-global-scope="Bae.AndroidTextField" label="Name" state="focused" helper="Everyone in the library sees this name."></x-import>
+    <x-import component-from-global-scope="Bae.AndroidDialogActions">
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import>
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Save</x-import>
+    </x-import>
+  </x-import>
+</x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {
-  renderVals() { return {}; }
+  renderVals() { return { yes: true }; }
 }
 </script>
 </body>
