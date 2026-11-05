@@ -14,7 +14,7 @@ fn version(conn: &rusqlite::Connection, source: &str) -> i64 {
 /// list's read knows its last read's rows may sit elsewhere now.
 #[test]
 fn a_release_s_place_in_the_upload_queue_moving_moves_the_list_s_version() {
-    let conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
+    let conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
     conn.execute_batch(
         "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
              ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title', 0, '2026-01-01T00:00:00Z');

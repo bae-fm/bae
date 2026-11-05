@@ -3,8 +3,8 @@
 //! which reads it by its offset, and by scrolling, which reads it from the
 //! row beside it (`list_windows`), each read the median of several runs.
 
-use crate::client::list_windows::{read_windows, Keyed, ListOrder, Places, Seek};
-use crate::{Database, DbError, SortDirection};
+use crate::list_windows::{read_windows, Keyed, ListOrder, Places, Seek};
+use crate::{DbError, SortDirection, Store};
 use coven::SqlReadContext;
 use std::time::{Duration, Instant};
 /// The sizes the lists are measured at, each reached by adding rows to the
@@ -19,7 +19,7 @@ pub const RUNS: usize = 15;
 
 /// The median time `read` takes over [`RUNS`] reads, and how many rows its
 /// last read returned.
-pub async fn median<F>(db: &Database, read: F) -> (Duration, usize)
+pub async fn median<F>(db: &Store, read: F) -> (Duration, usize)
 where
     F: Fn(&SqlReadContext<'_>) -> Result<usize, DbError> + Send + Sync + Clone + 'static,
 {
@@ -65,7 +65,7 @@ pub type Rows<R> =
 /// Read one window at each measured offset of a list of `n` rows in `order`,
 /// once by a jump and once from the row beside it.
 pub async fn measure<R: Send + 'static>(
-    db: &Database,
+    db: &Store,
     list: &str,
     name: &str,
     n: u64,

@@ -7,7 +7,7 @@
 /// The candidate state's part of the library's schema. Each file runs after
 /// the ones creating the tables its triggers fire on: the standings before
 /// the runs a standing moving off deletes.
-pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
+pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     seed_rows::SQL,
     pane_rows::SQL,
     pane_rows::VALUES_SQL,
@@ -104,7 +104,7 @@ impl ImportTables {
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-        self.database
+        self.store
             .read(move |sql| load_states_rows_on(&sql, CandidateRows::All))
             .process(|process| process())
             .await
@@ -115,7 +115,7 @@ impl ImportTables {
         content_hash: &str,
     ) -> Result<Option<DbImportCandidateState>, DbError> {
         let content_hash = content_hash.to_string();
-        self.database
+        self.store
             .read(move |sql| {
                 Ok((load_states_rows_on(&sql, CandidateRows::One(&content_hash))?, content_hash))
             })

@@ -5,12 +5,12 @@
 use super::*;
 use crate::tables::{ContextFill, ReleaseStart};
 use crate::ContextSource;
-use bae_db::Database;
+use bae_store::Store;
 use std::collections::HashMap;
 
 pub(super) struct Fixture {
     pub(super) _home: tempfile::TempDir,
-    pub(super) db: Database,
+    pub(super) db: Store,
     pub(super) queue: PlaybackQueue,
     pub(super) ids: HashMap<String, String>,
     pub(super) names: HashMap<String, String>,
@@ -21,13 +21,14 @@ pub(super) struct Fixture {
 pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     use bae_db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
     let home = tempfile::TempDir::new().unwrap();
-    let db = Database::new_test(
+    let db = Store::new_test(
         crate::TEST_SCHEMA,
         home.path().join("queue.db").to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
+    let database = bae_db::test_fixtures::test_database(&db);
     let artist = DbArtist {
         id: uuid::Uuid::new_v4().to_string(),
         name: "Artist Name".to_string(),
@@ -36,21 +37,25 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
         musicbrainz_artist_id: None,
         created_at: chrono::Utc::now(),
     };
-    db.insert_artist(&artist).await.unwrap();
+    database.insert_artist(&artist).await.unwrap();
     let mut ids = HashMap::new();
     for (release_name, track_names) in releases {
         let release_id = uuid::Uuid::new_v4().to_string();
         ids.insert(release_name.to_string(), release_id.clone());
         let album = DbAlbum::new_test("Album Title");
-        db.insert_album(&album).await.unwrap();
-        db.insert_album_artist(&DbAlbumArtist::new_test(&album.id, &artist.id)).await.unwrap();
-        db.insert_release(&DbRelease::new_test(&album.id, &release_id)).await.unwrap();
-        db.insert_release_medium(&DbReleaseMedium::new_test(&release_id)).await.unwrap();
+        database.insert_album(&album).await.unwrap();
+        database
+            .insert_album_artist(&DbAlbumArtist::new_test(&album.id, &artist.id))
+            .await
+            .unwrap();
+        database.insert_release(&DbRelease::new_test(&album.id, &release_id)).await.unwrap();
+        database.insert_release_medium(&DbReleaseMedium::new_test(&release_id)).await.unwrap();
         for (index, name) in track_names.iter().enumerate() {
             let track_id = uuid::Uuid::new_v4().to_string();
             ids.insert(name.to_string(), track_id.clone());
             let number = u32::try_from(index + 1).unwrap();
-            db.insert_track(&DbTrack::new_test(&release_id, &track_id, "Track Title", number))
+            database
+                .insert_track(&DbTrack::new_test(&release_id, &track_id, "Track Title", number))
                 .await
                 .unwrap();
         }
@@ -564,10 +569,10 @@ async fn test_offset_windows_read_with_the_tail_length() {
     let mut f = release(&refs).await;
     f.play_from("t000").await;
 
-    let windows = bae_db::LibraryPageWindows::from([
-        bae_db::LibraryPageWindow { offset: 0, limit: 3 },
-        bae_db::LibraryPageWindow { offset: 100, limit: 20 },
-        bae_db::LibraryPageWindow { offset: 125, limit: 20 },
+    let windows = bae_store::LibraryPageWindows::from([
+        bae_store::LibraryPageWindow { offset: 0, limit: 3 },
+        bae_store::LibraryPageWindow { offset: 100, limit: 20 },
+        bae_store::LibraryPageWindow { offset: 125, limit: 20 },
     ]);
     let mut live = crate::tables::subscribe_queue_upcoming(&f.db, windows);
     let read = live.next().await.expect("the query stays open").result.unwrap();
@@ -607,7 +612,10 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     let mut value = crate::tables::subscribe_queue_value(&f.db);
     let mut upcoming = crate::tables::subscribe_queue_upcoming(
         &f.db,
-        bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow { offset: 0, limit: 10 }]),
+        bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
+            offset: 0,
+            limit: 10,
+        }]),
     );
     macro_rules! value_until {
         ($check:expr) => {

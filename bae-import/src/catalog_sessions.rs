@@ -4,7 +4,7 @@
 //! CatalogSessions owns the library's Discogs key and what Discogs said of
 //! it: every write of either is made here, under one lock. The client for
 //! the stored key, with its validation callback, is built here and handed
-//! out inside a session; no caller receives the database the callback
+//! out inside a session; no caller receives the store the callback
 //! writes to. Each key stored has a generation of its own, and what a check
 //! or a call says about a key is recorded only while that key is still the
 //! one stored: an answer about a key replaced since says nothing about the
@@ -14,9 +14,10 @@ use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
 use bae_catalogs::providers::{CatalogSession, DiscogsCheck, Providers};
 use bae_catalogs::rate_limiter::CallPriority;
-use bae_db::{Database, DbError};
 use bae_diagnostics::Diagnostics;
 use bae_preferences::DiscogsValidation;
+use bae_store::DbError;
+use bae_store::Store;
 use bae_util::task_failure::blocking;
 use std::future::Future;
 use std::sync::Arc;
@@ -60,7 +61,7 @@ pub struct CatalogSessions {
     providers: Providers,
     /// Where the stored key's state is read and its validation recorded, and
     /// the keyring the key is read from.
-    database: Database,
+    store: Store,
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     /// The stored key's client and generation, under the one lock every
@@ -85,16 +86,16 @@ struct DiscogsKey {
 
 impl CatalogSessions {
     /// The sessions a library asks the catalogs through: `providers`, and the
-    /// Discogs key `database` stores.
+    /// Discogs key `store` stores.
     pub fn new(
         providers: Providers,
-        database: Database,
+        store: Store,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
         Self {
             providers,
-            database,
+            store,
             diagnostics,
             runtime_handle,
             discogs: Arc::default(),
@@ -113,7 +114,7 @@ impl CatalogSessions {
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
         let mut key = self.discogs.lock().await;
-        let preferences = bae_preferences::preferences(&self.database).await?;
+        let preferences = bae_preferences::preferences(&self.store).await?;
         let asked = bae_preferences::asked_sources(&preferences.metadata_sources());
         if matches!(preferences.discogs, None | Some(DiscogsValidation::Rejected)) {
             return Ok(CatalogSession::new(None, asked, self.providers.clone()));
@@ -137,18 +138,17 @@ impl CatalogSessions {
             // is recorded under is held weakly: the client lives inside it.
             let held = Arc::downgrade(&self.discogs);
             let generation = key.generation;
-            let database = self.database.clone();
+            let store = self.store.clone();
             let diagnostics = self.diagnostics.clone();
             let runtime = self.runtime_handle.clone();
             #[cfg(test)]
             let signal_writes = self.signal_writes.clone();
             let observer = Arc::new(move |signal| {
-                let (held, database, diagnostics) =
-                    (held.clone(), database.clone(), diagnostics.clone());
+                let (held, store, diagnostics) = (held.clone(), store.clone(), diagnostics.clone());
                 let recording = async move {
                     let recorded = bae_util::task_failure::caught(
                         "record a Discogs validation signal",
-                        record_signal(&held, &database, generation, signal),
+                        record_signal(&held, &store, generation, signal),
                     )
                     .await;
                     match recorded {
@@ -166,7 +166,7 @@ impl CatalogSessions {
                 runtime.spawn(recording);
             });
             key.client = self
-                .database
+                .store
                 .host_secret(DISCOGS_API_KEY)?
                 .map(|stored| Arc::new(self.providers.discogs_client(stored, Some(observer))));
         }
@@ -216,8 +216,8 @@ impl CatalogSessions {
     /// The library's stored Discogs key, read from the keychain on a blocking
     /// thread: a keychain call can wait on the system, and on a prompt.
     pub async fn stored_discogs_key(&self) -> Result<Option<String>, DiscogsKeyError> {
-        let database = self.database.clone();
-        let key = blocking("read the Discogs key", move || database.host_secret(DISCOGS_API_KEY))
+        let store = self.store.clone();
+        let key = blocking("read the Discogs key", move || store.host_secret(DISCOGS_API_KEY))
             .await
             .map_err(|failed| self.diagnostics.bug(failed))??;
         Ok(key)
@@ -234,14 +234,14 @@ impl CatalogSessions {
         validation: DiscogsValidation,
     ) -> Result<(), DiscogsKeyError> {
         self.change_discogs_key(async {
-            let database = self.database.clone();
+            let store = self.store.clone();
             let token = token.to_string();
             blocking("store the Discogs key", move || {
-                database.set_host_secret(DISCOGS_API_KEY, &token)
+                store.set_host_secret(DISCOGS_API_KEY, &token)
             })
             .await
             .map_err(|failed| self.diagnostics.bug(failed))??;
-            bae_preferences::edit_preferences(&self.database, move |prefs| {
+            bae_preferences::edit_preferences(&self.store, move |prefs| {
                 prefs.discogs = Some(validation);
                 Ok(())
             })
@@ -256,13 +256,13 @@ impl CatalogSessions {
     /// Discogs disabled rather than half-enabled.
     pub(crate) async fn clear_discogs_key(&self) -> Result<(), DiscogsKeyError> {
         self.change_discogs_key(async {
-            bae_preferences::edit_preferences(&self.database, |prefs| {
+            bae_preferences::edit_preferences(&self.store, |prefs| {
                 prefs.discogs = None;
                 Ok(())
             })
             .await?;
-            let database = self.database.clone();
-            blocking("clear the Discogs key", move || database.delete_host_secret(DISCOGS_API_KEY))
+            let store = self.store.clone();
+            blocking("clear the Discogs key", move || store.delete_host_secret(DISCOGS_API_KEY))
                 .await
                 .map_err(|failed| self.diagnostics.bug(failed))??;
             Ok(())
@@ -304,7 +304,7 @@ impl CatalogSessions {
     ) -> Result<Option<DiscogsCheck>, DiscogsKeyError> {
         let (session, generation) = {
             let mut key = self.discogs.lock().await;
-            let preferences = bae_preferences::preferences(&self.database)
+            let preferences = bae_preferences::preferences(&self.store)
                 .await
                 .map_err(bae_preferences::PreferencesError::from)?;
             if preferences.discogs != Some(DiscogsValidation::Unvalidated) {
@@ -317,7 +317,7 @@ impl CatalogSessions {
         let key = self.discogs.lock().await;
         if key.generation == generation {
             let validation = DiscogsValidation::of(&check);
-            bae_preferences::edit_preferences(&self.database, move |prefs| {
+            bae_preferences::edit_preferences(&self.store, move |prefs| {
                 if prefs.discogs.is_some() {
                     prefs.discogs = Some(validation);
                 }
@@ -336,7 +336,7 @@ impl CatalogSessions {
 /// that key is still the one stored; nothing once the sessions are gone.
 async fn record_signal(
     held: &std::sync::Weak<tokio::sync::Mutex<DiscogsKey>>,
-    database: &Database,
+    store: &Store,
     generation: u64,
     signal: DiscogsKeySignal,
 ) -> Result<(), bae_preferences::PreferencesError> {
@@ -348,17 +348,17 @@ async fn record_signal(
         debug!("a Discogs signal about a key replaced since changes nothing");
         return Ok(());
     }
-    record_discogs_validation_signal(database, signal).await
+    record_discogs_validation_signal(store, signal).await
 }
 
 /// Fold one Discogs call's outcome into the stored key's validation: a 401
 /// rejects it, and a success confirms a key nothing had confirmed yet.
 /// Decided in the write against the state it finds.
 async fn record_discogs_validation_signal(
-    database: &Database,
+    store: &Store,
     signal: DiscogsKeySignal,
 ) -> Result<(), bae_preferences::PreferencesError> {
-    bae_preferences::edit_preferences(database, move |prefs| {
+    bae_preferences::edit_preferences(store, move |prefs| {
         let next = match (prefs.discogs, &signal) {
             (None, _) => None,
             (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),

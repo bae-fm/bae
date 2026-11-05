@@ -533,7 +533,7 @@ impl PlaybackService {
         // What the device shows is read now, as the library holds it at load,
         // so an edit made while an earlier track played reaches this one. A
         // device keeps what it was loaded with until the next load.
-        let display = match crate::tables::track_display(&self.database, track_id).await {
+        let display = match crate::tables::track_display(&self.store, track_id).await {
             Ok(Some(display)) => display,
             Ok(None) => {
                 error!("remote: track {track_id} is gone from the library");
@@ -546,7 +546,7 @@ impl PlaybackService {
                 return;
             }
         };
-        let prefs = match bae_preferences::preferences(&self.database).await {
+        let prefs = match bae_preferences::preferences(&self.store).await {
             Ok(prefs) => prefs,
             Err(e) => {
                 error!("remote: failed to read the preferences to load track {track_id}: {e}");

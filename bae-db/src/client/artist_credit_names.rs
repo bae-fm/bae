@@ -82,7 +82,7 @@ pub fn credit_names_column(row: &Row<'_>, column: &str) -> rusqlite::Result<Vec<
         key: String,
         name: String,
     }
-    let stored: Vec<Stored> = super::read::json_column(row, column)?;
+    let stored: Vec<Stored> = bae_store::read::json_column(row, column)?;
     Ok(stored
         .into_iter()
         .map(|stored| ArtistCreditName {
@@ -135,7 +135,7 @@ impl Database {
         artist_ids: &[String],
     ) -> Result<HashMap<String, Vec<ArtistCreditName>>, DbError> {
         let artist_ids = artist_ids.to_vec();
-        self.read(move |sql| credit_names_of_on(&sql, &artist_ids)).await
+        self.inner.store.read(move |sql| credit_names_of_on(&sql, &artist_ids)).await
     }
 
     /// Give `artist_id` the other printed name `name`. A name that folds to
@@ -144,15 +144,17 @@ impl Database {
     pub async fn add_artist_credit_name(
         &self,
         artist_id: &str,
-        name: &crate::EnteredName,
+        name: &bae_store::EnteredName,
     ) -> Result<(), DbError> {
         let (artist_id, name) = (artist_id.to_string(), name.as_str().to_string());
-        let now = self.now_utc().to_rfc3339();
-        self.call_sql(move |sql| {
-            settle_credit_name(&sql, &artist_id, Some(&CreditName::of(&name)), &now)?;
-            Ok(())
-        })
-        .await
+        let now = self.inner.store.now_utc().to_rfc3339();
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                settle_credit_name(&sql, &artist_id, Some(&CreditName::of(&name)), &now)?;
+                Ok(())
+            })
+            .await
     }
 
     /// Rename `artist_id`'s credit name `key` to `name`, in one write: its
@@ -164,29 +166,31 @@ impl Database {
         &self,
         artist_id: &str,
         key: &str,
-        name: &crate::EnteredName,
+        name: &bae_store::EnteredName,
     ) -> Result<(), DbError> {
         let (artist_id, key, name) =
             (artist_id.to_string(), key.to_string(), name.as_str().to_string());
-        let now = self.now_utc().to_rfc3339();
-        self.call_sql(move |sql| {
-            let renamed = CreditName::of(&name);
-            if renamed.key == key {
+        let now = self.inner.store.now_utc().to_rfc3339();
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                let renamed = CreditName::of(&name);
+                if renamed.key == key {
+                    sql.execute(
+                        "UPDATE artist_credits SET name = ? WHERE artist_id = ? AND name_key = ?",
+                        params![renamed.name, artist_id, key],
+                    )?;
+                    return Ok(());
+                }
+                let to = settle_credit_name(&sql, &artist_id, Some(&renamed), &now)?;
+                relink_credit_name(&sql, &artist_id, &key, to.as_deref())?;
                 sql.execute(
-                    "UPDATE artist_credits SET name = ? WHERE artist_id = ? AND name_key = ?",
-                    params![renamed.name, artist_id, key],
+                    "DELETE FROM artist_credits WHERE artist_id = ? AND name_key = ?",
+                    params![artist_id, key],
                 )?;
-                return Ok(());
-            }
-            let to = settle_credit_name(&sql, &artist_id, Some(&renamed), &now)?;
-            relink_credit_name(&sql, &artist_id, &key, to.as_deref())?;
-            sql.execute(
-                "DELETE FROM artist_credits WHERE artist_id = ? AND name_key = ?",
-                params![artist_id, key],
-            )?;
-            Ok(())
-        })
-        .await
+                Ok(())
+            })
+            .await
     }
 
     /// Remove `artist_id`'s credit name `key`, in one write: its links print
@@ -197,14 +201,16 @@ impl Database {
         key: &str,
     ) -> Result<(), DbError> {
         let (artist_id, key) = (artist_id.to_string(), key.to_string());
-        self.call_sql(move |sql| {
-            relink_credit_name(&sql, &artist_id, &key, None)?;
-            sql.execute(
-                "DELETE FROM artist_credits WHERE artist_id = ? AND name_key = ?",
-                params![artist_id, key],
-            )?;
-            Ok(())
-        })
-        .await
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                relink_credit_name(&sql, &artist_id, &key, None)?;
+                sql.execute(
+                    "DELETE FROM artist_credits WHERE artist_id = ? AND name_key = ?",
+                    params![artist_id, key],
+                )?;
+                Ok(())
+            })
+            .await
     }
 }

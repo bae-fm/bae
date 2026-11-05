@@ -644,6 +644,7 @@ impl ImportService {
             pictures.images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
         self.tables
             .finalize_import_atomic(
+                &*self.ids,
                 guard,
                 album,
                 release,

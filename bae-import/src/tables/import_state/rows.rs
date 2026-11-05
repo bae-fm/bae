@@ -66,7 +66,7 @@ fn read_found(row: &Row<'_>) -> Result<Option<(MatchColumns, StoredMatchEntries)
 /// Every stored candidate row, or the one `only` names, assembled with the
 /// verdict, signals, provenance, and file-decision rows that hang off it.
 pub(crate) fn load_states_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
     load_states_rows_on(sql, only)?()
@@ -76,7 +76,7 @@ pub(crate) fn load_states_on(
 /// that hang off it one-to-one joined onto it once, then joined to its
 /// matches in position order, one row per match.
 pub(crate) fn load_states_rows_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let filter = only.filter("state.content_hash");

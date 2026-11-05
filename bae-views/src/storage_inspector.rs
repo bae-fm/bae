@@ -220,7 +220,7 @@ impl LibraryViews {
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<DbStorageInspector>> {
-        self.database
+        self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let Some(release_id) = release_id else {
                     return Ok(None);

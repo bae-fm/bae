@@ -5,7 +5,7 @@ use crate::test_fixtures::storage_listing::*;
 /// by release.
 #[tokio::test]
 async fn the_uploading_releases_read_their_storage_in_queue_order() {
-    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     assert_eq!(
         plan(
             &db,
@@ -40,7 +40,7 @@ fn storage_row(
 /// upload queue after moves the row's queued count and first place.
 #[test]
 fn a_release_s_storage_counts_files_that_arrived_before_it() {
-    let conn = crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
+    let conn = bae_store::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
     conn.execute_batch(
         "PRAGMA foreign_keys = OFF;
          INSERT INTO coven_files (id, audience, size, hash, coordinates, namespace) VALUES

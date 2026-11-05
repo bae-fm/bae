@@ -37,7 +37,7 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
 struct Library {
     services: AppServices,
     import: ImportServiceHandle,
-    database: bae_db::Database,
+    db: bae_store::Store,
     provider: FakeHost,
     root: PathBuf,
     _temp: TempDir,
@@ -47,7 +47,7 @@ impl Library {
     async fn open() -> Self {
         bae_util::test_logs::install();
         let temp = TempDir::new().unwrap();
-        let database = bae_db::Database::new_test(
+        let db = bae_store::Store::new_test(
             bae_library::SCHEMA,
             temp.path().join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
@@ -66,7 +66,7 @@ impl Library {
             Arc::new(bae_catalogs::wikidata::Wikidata::new(http)),
         );
         let library = bae_library::test_libraries::TestLibrary::open(
-            database.clone(),
+            db.clone(),
             bae_app_dir::AppDir::under_home(temp.path()).unwrap(),
             providers,
             bae_util::http::Http::for_test(),
@@ -75,7 +75,7 @@ impl Library {
         let import = library.start_import().await.unwrap();
         let services = AppServices::new(
             LibraryManager::clone(&library),
-            bae_views::LibraryViews::new(library.database().clone()),
+            bae_views::LibraryViews::new(library.store().clone()),
             library.start_playback().await,
             library.cast_picker(),
             import.clone(),
@@ -83,7 +83,7 @@ impl Library {
         );
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();
-        Self { services, import, database, provider, root, _temp: temp }
+        Self { services, import, db, provider, root, _temp: temp }
     }
 
     /// A candidate folder of two FLACs and one image, so identification runs
@@ -129,7 +129,7 @@ impl Library {
 
     /// Whether identification stored a verdict for `key`.
     async fn identified(&self, key: &CandidateKey) -> bool {
-        bae_import::tables::ImportTables::new(self.database.clone())
+        bae_import::tables::ImportTables::new(self.db.clone())
             .load_import_candidate_states()
             .await
             .unwrap()

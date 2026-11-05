@@ -30,7 +30,7 @@ macro_rules! delegate_sync {
 /// cancels or the library closes.
 macro_rules! delegate_values {
     ($name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $value:ty) => {
-        pub fn $name(&self, $($arg: $ty),*) -> bae_db::live_query::LiveValues<$value> {
+        pub fn $name(&self, $($arg: $ty),*) -> bae_store::live_query::LiveValues<$value> {
             let manager = &self.inner.manager;
             manager.values_until_closed(manager.$target($($arg),*))
         }
@@ -219,7 +219,7 @@ impl AppServices {
 
     /// The library's preferences as the settings screens read them: the
     /// first value at once, then one after each write that changes them.
-    pub fn subscribe_config(&self) -> bae_db::live_query::LiveValues<bae_preferences::Config> {
+    pub fn subscribe_config(&self) -> bae_store::live_query::LiveValues<bae_preferences::Config> {
         self.inner.manager.subscribe_config()
     }
 
@@ -228,7 +228,7 @@ impl AppServices {
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
         &self,
         part: impl Fn(bae_preferences::Preferences) -> T + Send + Sync + 'static,
-    ) -> bae_db::live_query::LiveValues<T> {
+    ) -> bae_store::live_query::LiveValues<T> {
         self.inner.manager.follow_preferences(part)
     }
 
@@ -277,7 +277,7 @@ impl AppServices {
             manager.until_closed(self.inner.views.subscribe_artist_search(
                 bae_views::ArtistSearchView {
                     query: None,
-                    windows: bae_db::LibraryPageWindows::new(),
+                    windows: bae_store::LibraryPageWindows::new(),
                 },
             )),
             bae_views::artist_search::resolve_artist_search,
@@ -340,7 +340,7 @@ impl AppServices {
         self.inner.playback.subscribe_progress()
     }
 
-    delegate_async!(manager, preferences => preferences() -> Result<bae_preferences::Preferences, bae_db::DbError>);
+    delegate_async!(manager, preferences => preferences() -> Result<bae_preferences::Preferences, bae_store::DbError>);
     delegate_sync!(manager, library_path => library_path() -> std::path::PathBuf);
     delegate_sync!(manager, store_id => store_id() -> coven::StoreId);
     delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, bae_library::LibraryError>);
@@ -412,7 +412,7 @@ impl AppServices {
     delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<bae_preferences::SavePreset>) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), bae_preferences::PreferencesError>);
-    delegate_async!(manager, rename_library => rename_library(name: &bae_db::EnteredName) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, rename_library => rename_library(name: &bae_store::EnteredName) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), bae_library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
@@ -477,7 +477,9 @@ impl AppServices {
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::InviteId, bae_library::LibraryError>);
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one.
-    pub fn subscribe_invites(&self) -> bae_db::live_query::LiveValues<Vec<bae_views::OpenInvite>> {
+    pub fn subscribe_invites(
+        &self,
+    ) -> bae_store::live_query::LiveValues<Vec<bae_views::OpenInvite>> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), bae_library::LibraryError>);
@@ -666,7 +668,7 @@ impl AppServices {
     // in one go.
     pub fn subscribe_sync_activity(
         &self,
-    ) -> bae_db::live_query::LiveValues<bae_views::SyncActivity> {
+    ) -> bae_store::live_query::LiveValues<bae_views::SyncActivity> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_sync_activity())
     }
 
@@ -676,7 +678,7 @@ impl AppServices {
 
     /// Whether the person paused uploads: the first value at once, then one
     /// after each change.
-    pub fn subscribe_uploads_paused(&self) -> bae_db::live_query::LiveValues<bool> {
+    pub fn subscribe_uploads_paused(&self) -> bae_store::live_query::LiveValues<bool> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_uploads_paused())
     }
 

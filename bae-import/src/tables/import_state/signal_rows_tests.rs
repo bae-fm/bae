@@ -5,8 +5,8 @@ use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::tables::NewImportCandidateVerdict;
 use bae_catalogs::InternalFailure;
-use bae_db::test_fixtures::empty_db;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use bae_store::test_fixtures::empty_db;
 
 /// Every settled shape of every signal comes back as it went in, including
 /// each way a lookup can fail.

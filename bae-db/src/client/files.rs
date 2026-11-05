@@ -1,4 +1,5 @@
 use super::*;
+use bae_store::file_version_sql;
 
 impl Database {
     /// Replace an image's bytes and row atomically: the write stages the bytes
@@ -39,28 +40,31 @@ impl Database {
         let image = image.clone();
         let namespace = image.image_type.namespace();
         let (image_type, id) = (image.image_type.clone(), image.id.clone());
-        let planned = self.read(move |sql| image_file_on(&sql, &image_type, &id)).await?;
+        let planned =
+            self.inner.store.read(move |sql| image_file_on(&sql, &image_type, &id)).await?;
         after_planning().await;
         let bytes = bytes.to_vec();
-        self.write_staged(
-            move |w| Ok(w.put_file(namespace, bytes, coven::Place::Cloud)),
-            move |sql, file| {
-                // Refuse a replacement when another write of the image landed
-                // since planning: the row names another file than it did.
-                let current =
-                    image_file_on(&sql, &image.image_type, &image.id).map_err(CovenError::from)?;
-                if current != planned {
-                    return Err(CovenError::from(DbError::Message(format!(
-                        "{} image for {} changed after planning",
-                        namespace, image.id
-                    ))));
-                }
-                upsert_library_image_row(&sql, &image, &file).map_err(CovenError::from)?;
-                Ok(())
-            },
-        )
-        .await
-        .map_err(Self::coven_error)
+        self.inner
+            .store
+            .write_staged(
+                move |w| Ok(w.put_file(namespace, bytes, coven::Place::Cloud)),
+                move |sql, file| {
+                    // Refuse a replacement when another write of the image landed
+                    // since planning: the row names another file than it did.
+                    let current = image_file_on(&sql, &image.image_type, &image.id)
+                        .map_err(CovenError::from)?;
+                    if current != planned {
+                        return Err(CovenError::from(DbError::Message(format!(
+                            "{} image for {} changed after planning",
+                            namespace, image.id
+                        ))));
+                    }
+                    upsert_library_image_row(&sql, &image, &file).map_err(CovenError::from)?;
+                    Ok(())
+                },
+            )
+            .await
+            .map_err(DbError::from)
     }
 
     /// Find a host-provided image (cover / artist image) by its subject id. The
@@ -75,12 +79,16 @@ impl Database {
         let image_type = image_type.clone();
         let table = image_table(&image_type);
         let query = format!("SELECT * FROM {table} WHERE id = ?");
-        self.read(move |sql| {
-            sql.query_row(&query, params![id], |row| row_to_library_image(row, image_type.clone()))
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(&query, params![id], |row| {
+                    row_to_library_image(row, image_type.clone())
+                })
                 .optional()
                 .map_err(DbError::from)
-        })
-        .await
+            })
+            .await
     }
 
     /// The version of one release's cover, or `None` when it has no cover.
@@ -94,7 +102,7 @@ impl Database {
         id: &str,
     ) -> Result<Option<String>, DbError> {
         let (image_type, id) = (image_type.clone(), id.to_string());
-        self.read(move |sql| image_version_on(&sql, &image_type, &id)).await
+        self.inner.store.read(move |sql| image_version_on(&sql, &image_type, &id)).await
     }
 
     /// The original coven records on this device for a release file's coven
@@ -107,12 +115,7 @@ impl Database {
         let Some(row) = self.find_file_by_id(file_id).await? else {
             return Ok(None);
         };
-        Ok(self.inner.handle.user_file(row.file).await?)
-    }
-
-    /// coven's record of the file `file`, as this device reads it now.
-    pub async fn coven_file(&self, file: coven::FileId) -> Result<coven::FileRef, DbError> {
-        Ok(self.file_ref(file).await?)
+        self.inner.store.user_file(row.file).await
     }
 
     /// The coven file a library image's row names, as this device reads it
@@ -123,49 +126,30 @@ impl Database {
         image_type: &LibraryImageType,
     ) -> Result<Option<coven::FileRef>, DbError> {
         let (image_type, id) = (image_type.clone(), id.to_string());
-        let Some(file) = self.read(move |sql| image_file_on(&sql, &image_type, &id)).await? else {
+        let Some(file) =
+            self.inner.store.read(move |sql| image_file_on(&sql, &image_type, &id)).await?
+        else {
             return Ok(None);
         };
-        Ok(Some(self.coven_file(file).await?))
+        Ok(Some(self.inner.store.file_ref(file).await?))
     }
 
     /// The releases whose own files are queued, in upload queue order
     /// (`UPLOADING_RELEASES`). Image uploads, a release's cover among them,
     /// remain visible in the queue but are no release uploading.
     pub async fn uploading_releases(&self) -> Result<Vec<String>, DbError> {
-        self.read(|sql| {
-            sql.query(
-                &format!("SELECT release_id FROM ({UPLOADING_RELEASES}) ORDER BY position"),
-                [],
-                |row| row.get::<_, String>(0),
-            )
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(|sql| {
+                sql.query(
+                    &format!("SELECT release_id FROM ({UPLOADING_RELEASES}) ORDER BY position"),
+                    [],
+                    |row| row.get::<_, String>(0),
+                )
+                .map_err(DbError::from)
+            })
+            .await
     }
-}
-
-/// The version of a bae-own file (a cover, an artist image or an avatar):
-/// the coven file its row names, then `@` and the hex of the device that has
-/// the file while `coven_files` records it on one device only. A new image is
-/// a new file, so the version moves on every device with the write that sets
-/// it. The image's references are bound, so another device receives the row
-/// with its file stored, except when a breaking schema raise falls between
-/// the write and its upload's completion: the row then reaches other devices
-/// in the raise, naming a file on its uploader only, and the completion
-/// follows. The version moves again when the file is stored, so an app that
-/// couldn't read the image then asks for it again.
-///
-/// This is that version of the file the column `file` names (a SQL
-/// expression over it), NULL when it names none. SQLite's `hex` of NULL is an
-/// empty string, not NULL, so the device's part is chosen on
-/// `coven_file_device` itself.
-pub fn file_version_sql(file: &str) -> String {
-    format!(
-        "(SELECT {file} || CASE WHEN coven_file_device(coven.coordinates) IS NULL THEN '' \
-           ELSE '@' || lower(hex(coven_file_device(coven.coordinates))) END \
-          FROM coven_files AS coven WHERE coven.id = {file})"
-    )
 }
 
 /// The version of the cover of the release `release_id` (a SQL expression),
@@ -220,4 +204,52 @@ pub fn image_file_on<Q: QueryOne>(
             row.get::<_, coven::FileId>(0)
         })
         .optional()?)
+}
+
+/// Where each of the release `?1`'s files stands for its pin: whether this
+/// device keeps it whole, as `coven_pins` says, and while this process
+/// downloads it to be kept, the file coven downloads, as `coven_downloading`
+/// lists it.
+const RELEASE_FILE_PINS: &str = "SELECT f.id, pin.file IS NOT NULL, downloading.file \
+     FROM release_files AS f \
+     LEFT JOIN coven_pins AS pin ON pin.file = f.file \
+     LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
+     WHERE f.release_id = ?1";
+
+/// [`RELEASE_FILE_PINS`] for `release_id`, by release file id.
+fn release_file_pins_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
+    Ok(sql
+        .query(RELEASE_FILE_PINS, [release_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                DbFilePin { kept: row.get(1)?, downloading: row.get(2)? },
+            ))
+        })?
+        .into_iter()
+        .collect())
+}
+
+impl Database {
+    /// Where each of the release's files stands for its pin now, by release
+    /// file id.
+    pub async fn release_file_pins(
+        &self,
+        release_id: &str,
+    ) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
+        let release_id = release_id.to_string();
+        self.inner.store.read(move |sql| release_file_pins_on(&sql, &release_id)).await
+    }
+
+    /// Where each of the release's files stands for its pin, live: it reruns
+    /// as a file is kept and as a download to keep one starts or ends.
+    pub fn subscribe_release_file_pins(
+        &self,
+        release_id: &str,
+    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>> {
+        let release_id = release_id.to_string();
+        self.inner.store.subscribe(move |sql| Ok(release_file_pins_on(&sql, &release_id)?))
+    }
 }

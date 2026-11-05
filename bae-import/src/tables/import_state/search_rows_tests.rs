@@ -7,8 +7,8 @@ use crate::candidate_search::SourceSearch;
 use crate::tables::import_state::tests::{pane_candidate_key, stored_pane_candidate};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::MetadataRef;
-use bae_db::test_fixtures::empty_db;
 use bae_preferences::{CatalogAvailability, SourceAvailability};
+use bae_store::test_fixtures::empty_db;
 
 /// A library that asks every catalog it can — what these tests search from
 /// unless they are about a catalog that is not asked.
@@ -42,7 +42,7 @@ async fn scanned() -> (ImportTables, CandidateKey, tempfile::TempDir) {
 /// The search `key` holds, with the run it is on.
 async fn stored(tables: &ImportTables, key: &CandidateKey) -> Option<(SearchRun, CandidateSearch)> {
     let key = key.clone();
-    tables.database.read(move |sql| Ok(load_on(&sql, Some(&key))?.remove(&key))).await.unwrap()
+    tables.store.read(move |sql| Ok(load_on(&sql, Some(&key))?.remove(&key))).await.unwrap()
 }
 
 /// The search `key` holds.
@@ -386,7 +386,7 @@ async fn kept_for(
 ) -> Vec<bae_catalogs::album_links::GroupAlbum> {
     let group = MetadataRef::new(Catalog::MusicBrainz, group);
     tables
-        .database
+        .store
         .read(move |sql| crate::tables::album_link_rows::group_albums_on(&sql, &[group]))
         .await
         .unwrap()

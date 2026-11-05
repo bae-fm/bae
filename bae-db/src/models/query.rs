@@ -110,7 +110,7 @@ pub enum OtherDevice {
     /// A device that lost access to the library, by its name: removed, or
     /// replaced when it was reset. Its files stay on it, and no device can
     /// move them to the cloud any more.
-    Former { name: String, state: crate::membership::FormerDeviceState },
+    Former { name: String, state: bae_store::FormerDeviceState },
 }
 
 /// A track row with its credits.
@@ -133,10 +133,4 @@ pub struct DbReleaseUpload {
     pub sending: u32,
     /// How many of the release's files are stored: those not queued.
     pub stored: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortDirection {
-    Ascending,
-    Descending,
 }

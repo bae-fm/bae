@@ -9,7 +9,7 @@ publish = false
 # The app's services over an open library, which this crate calls.
 bae-app = { workspace = true }
 # The errors a live settings read ends with.
-bae-db = { workspace = true }
+bae-store = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The MCP and Subsonic servers' settings and the preferences they are read from.
 bae-preferences = { workspace = true }

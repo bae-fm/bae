@@ -4,8 +4,7 @@ use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::tables::ImportTables;
-use bae_db::test_fixtures::fixed_now;
-use bae_db::Database;
+use bae_store::test_fixtures::fixed_now;
 use coven::FixedClock;
 use std::sync::Arc;
 
@@ -15,13 +14,13 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
-    let handle = bae_db::configure_store(installation.builder(), crate::TEST_SCHEMA)
+    let handle = bae_store::configure_store(installation.builder(), crate::TEST_SCHEMA)
         .clock(clock.clone())
         .create_store("Test Library")
         .await
         .unwrap();
     let id = handle.store_id();
-    let db = Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let db = bae_store::Store::new(handle, clock.clone());
     fetched(&db, "release-a").await;
     let cases = [
         (
@@ -59,12 +58,12 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     db.close().await.unwrap();
     drop(db);
 
-    let handle = bae_db::configure_store(installation.builder(), crate::TEST_SCHEMA)
+    let handle = bae_store::configure_store(installation.builder(), crate::TEST_SCHEMA)
         .clock(clock.clone())
         .open(id, |_| ())
         .await
         .unwrap();
-    let reopened = Database::from_handle(handle, clock, std::sync::Arc::new(coven::UuidIds));
+    let reopened = bae_store::Store::new(handle, clock);
     let loaded = ImportTables::new(reopened).load_import_candidate_states().await.unwrap();
 
     for (content_hash, _, _, provenance) in &cases {

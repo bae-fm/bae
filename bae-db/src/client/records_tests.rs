@@ -3,12 +3,12 @@
 
 use crate::client::*;
 use crate::test_fixtures::live_query::*;
-use crate::test_fixtures::temp_db;
-use crate::test_fixtures::{exec, exec_batch};
 use crate::{identity, DbAlbumArtist};
 use crate::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::ReleaseRecord;
+use bae_store::test_fixtures::temp_db;
+use bae_store::test_fixtures::{exec, exec_batch};
 use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use std::collections::BTreeSet;
@@ -19,6 +19,7 @@ use uuid::Uuid;
 /// for inserted albums.
 async fn setup_test_db_with_artist() -> (Database, TempDir) {
     let (db, tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let artist = DbArtist {
         id: TEST_ARTIST_ID.to_string(),
         name: "Artist Name".to_string(),
@@ -27,8 +28,8 @@ async fn setup_test_db_with_artist() -> (Database, TempDir) {
         musicbrainz_artist_id: None,
         created_at: Utc::now(),
     };
-    db.insert_artist(&artist).await.unwrap();
-    (db, tmp)
+    database.insert_artist(&artist).await.unwrap();
+    (database, tmp)
 }
 
 /// The artist `setup_test_db_with_artist` inserts, which every test album
@@ -498,8 +499,9 @@ fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
     )
 }
 
-async fn ids(db: &Database, query: &'static str) -> Vec<String> {
-    db.read(move |sql| sql.query(query, [], |row| row.get::<_, String>(0)).map_err(DbError::from))
+async fn ids(store: &Store, query: &'static str) -> Vec<String> {
+    store
+        .read(move |sql| sql.query(query, [], |row| row.get::<_, String>(0)).map_err(DbError::from))
         .await
         .unwrap()
 }
@@ -510,6 +512,7 @@ async fn ids(db: &Database, query: &'static str) -> Vec<String> {
 #[tokio::test]
 async fn fact_rows_take_their_ids_from_their_facts() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let now = Utc::now();
 
     let artist = DbArtist {
@@ -520,16 +523,17 @@ async fn fact_rows_take_their_ids_from_their_facts() {
         musicbrainz_artist_id: None,
         created_at: now,
     };
-    db.insert_artist(&artist).await.unwrap();
+    database.insert_artist(&artist).await.unwrap();
 
     let mut album = DbAlbum::new_test("Album");
     album.id = ALBUM_1.to_string();
-    db.insert_album(&album).await.unwrap();
-    db.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now)).await.unwrap();
+    database.insert_album(&album).await.unwrap();
+    database.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now)).await.unwrap();
 
     let release = DbRelease::new_test(&album.id, RELEASE_1);
-    db.insert_release(&release).await.unwrap();
-    db.insert_release_records(&release.id, &[record(Catalog::Discogs, "discogs-release-1")])
+    database.insert_release(&release).await.unwrap();
+    database
+        .insert_release_records(&release.id, &[record(Catalog::Discogs, "discogs-release-1")])
         .await
         .unwrap();
     assert_eq!(
@@ -540,15 +544,16 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     // Moving the release to a fresh album copies its credits under the new
     // album's ids.
     let target = DbAlbum::new_test("Target Album");
-    db.set_records_atomic(crate::RecordsChange {
-        release_id: release.id.clone(),
-        records: vec![record(Catalog::MusicBrainz, "mb-release-1")],
-        current_album_id: album.id.clone(),
-        target_album_id: target.id.clone(),
-        new_album: Some(target.clone()),
-    })
-    .await
-    .unwrap();
+    database
+        .set_records_atomic(crate::RecordsChange {
+            release_id: release.id.clone(),
+            records: vec![record(Catalog::MusicBrainz, "mb-release-1")],
+            current_album_id: album.id.clone(),
+            target_album_id: target.id.clone(),
+            new_album: Some(target.clone()),
+        })
+        .await
+        .unwrap();
 
     let credits = ids(&db, "SELECT id FROM album_artists").await;
     assert!(
@@ -567,6 +572,7 @@ async fn fact_rows_take_their_ids_from_their_facts() {
 #[tokio::test]
 async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let offered = LibraryCheck {
         release_id: "source-release-1".to_string(),
         source: Catalog::MusicBrainz,
@@ -577,7 +583,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         source: Catalog::MusicBrainz,
         source_group_id: None,
     };
-    let mut live = db.subscribe_library_statuses(BTreeSet::new());
+    let mut live = database.subscribe_library_statuses(BTreeSet::new());
     let requests = live.requests();
     assert!(
         live.next().await.expect("the query stays open").result.unwrap().is_empty(),
@@ -645,6 +651,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
 #[tokio::test]
 async fn library_statuses_answer_every_check_in_order() {
     let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     exec_batch(
         &db,
         &format!(
@@ -660,7 +667,7 @@ async fn library_statuses_answer_every_check_in_order() {
         source: Catalog::MusicBrainz,
         source_group_id: group.map(str::to_string),
     };
-    let statuses = db
+    let statuses = database
         .check_releases_in_library(&[
             check("pressing-1", Some("group-1")),
             check("pressing-2", None),

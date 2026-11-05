@@ -5,10 +5,11 @@
 use super::*;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
-use bae_db::test_fixtures::live_query::{live_db, next_run_is_only_the_request, RELEASE_ID};
-use bae_db::test_fixtures::window_cost::{offsets, report, LIMIT, RUNS, SIZES};
-use bae_db::test_fixtures::{empty_db, exec};
-use bae_db::{LibraryPageWindow, LibraryPageWindows};
+use bae_db::test_fixtures::live_query::{live_db, RELEASE_ID};
+use bae_store::test_fixtures::live_query::next_run_is_only_the_request;
+use bae_store::test_fixtures::window_cost::{offsets, report, LIMIT, RUNS, SIZES};
+use bae_store::test_fixtures::{empty_db, exec};
+use bae_store::{LibraryPageWindow, LibraryPageWindows};
 use bae_util::test_channels::HANG_GUARD;
 use std::time::Duration;
 use std::time::Instant;
@@ -83,11 +84,12 @@ async fn overlapping_stored_roots_fail_the_list_read() {
 #[tokio::test]
 async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scan_finished(&db, root, "release").await;
-    assert!(db.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
+    assert!(database.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
 
     let projection = tables
         .load_import_list(list_request(&db, crate::TriageTab::Pending, [(0, 50)]).await)
@@ -331,7 +333,7 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
 /// The import list's items in the windows `request` names, as one read with
 /// no earlier read's rows to start from finds them.
 async fn import_items(
-    db: &Database,
+    db: &Store,
     request: crate::ImportListRequest,
 ) -> Vec<Vec<crate::list::ImportListItem>> {
     let tables = crate::tables::ImportTables::new(db.clone());
@@ -403,7 +405,7 @@ async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
 /// Scan `start..end` more folders into the import list, each its own album
 /// folder under one of 100 artist folders, in a watched folder of their own.
 pub(crate) async fn grow_import_list(
-    db: &Database,
+    db: &Store,
     tmp: &std::path::Path,
     start: u64,
     end: u64,
@@ -444,7 +446,7 @@ pub(crate) async fn grow_import_list(
 /// window's items and their rows. A jump moves the window between the offset
 /// and one far from it, so no read knows a row beside its window; a scroll
 /// moves it between the offset and the window after it.
-async fn measure_import_list(db: &Database, n: u64) {
+async fn measure_import_list(db: &Store, n: u64) {
     let tables = crate::tables::ImportTables::new(db.clone());
     use crate::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
     for order in [ImportListOrder::PathAscending, ImportListOrder::NewestFirst] {
@@ -459,7 +461,7 @@ async fn measure_import_list(db: &Database, n: u64) {
             .unwrap();
         let request = |offset| ImportListRequest {
             list,
-            windows: bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
+            windows: bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
                 offset,
                 limit: LIMIT,
             }]),

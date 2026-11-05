@@ -20,7 +20,7 @@ bae-app-dir = { workspace = true }
 # The catalogs a lookup asks and how a stored Discogs key last checked out.
 bae-catalogs = { workspace = true }
 # The store the `preferences` row and its save presets live in.
-bae-db = { workspace = true }
+bae-store = { workspace = true }
 # The error categories a failed preference write is shown as.
 bae-diagnostics = { workspace = true }
 # The store's id, its transfer limits, and its read and write contexts.
@@ -33,7 +33,7 @@ uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 # Test databases with bae's schema.
-bae-db = { workspace = true, features = ["test-utils"] }
+bae-store = { workspace = true, features = ["test-utils"] }
 # The bound on a test's wait for an event.
 bae-util = { workspace = true }
 # The HTTP status and the JSON failure a Discogs check can end with.

@@ -6,7 +6,7 @@ use bae_util::test_channels::HANG_GUARD;
 /// The first value `query` reports that `matches` accepts. Panics when none
 /// ever comes, on a failed read, and when the query ends.
 pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'static>(
-    query: &mut impl bae_db::live_query::LiveSource<T>,
+    query: &mut impl bae_store::live_query::LiveSource<T>,
     mut matches: impl FnMut(&T) -> bool,
 ) -> T {
     let mut last = None;
@@ -31,7 +31,7 @@ pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'sta
 /// pulls from one live source: the first `values` gives that `matches`
 /// accepts, panicking as `value_matching` does.
 pub async fn pulled_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'static>(
-    values: &bae_db::live_query::LiveValues<T>,
+    values: &bae_store::live_query::LiveValues<T>,
     mut matches: impl FnMut(&T) -> bool,
 ) -> T {
     let mut last = None;

@@ -3,8 +3,8 @@
 //! line it holds, and read by their live query. Its table is `timeline.sql`.
 
 /// The row's part of the library's schema.
-pub(crate) const SCHEMA: bae_db::SchemaPart =
-    bae_db::SchemaPart::new(&[include_str!("timeline.sql")]);
+pub(crate) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("timeline.sql")]);
 
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::*;
@@ -13,33 +13,33 @@ use crate::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 /// The `playback_timeline` row, as playback writes it.
 #[derive(Clone)]
 pub struct PlaybackTimelineRow {
-    db: Database,
+    store: Store,
 }
 
 impl PlaybackTimelineRow {
-    /// The row over `db`.
-    pub fn new(db: Database) -> Self {
-        Self { db }
+    /// The row over `store`.
+    pub fn new(store: Store) -> Self {
+        Self { store }
     }
 }
 
 /// Follow where playback is, as the surfaces that move the position on
 /// themselves read it.
-pub fn subscribe_playback_timeline(database: &Database) -> coven::LiveQuery<PlaybackTimeline> {
-    database.subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
+pub fn subscribe_playback_timeline(store: &Store) -> coven::LiveQuery<PlaybackTimeline> {
+    store.subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
 }
 
 /// Where playback is now, as `subscribe_playback_timeline` reads it.
 #[cfg(any(test, feature = "test-utils"))]
-pub async fn playback_timeline(database: &Database) -> Result<PlaybackTimeline, DbError> {
-    database.read(|sql| playback_timeline_on(&sql)).await
+pub async fn playback_timeline(store: &Store) -> Result<PlaybackTimeline, DbError> {
+    store.read(|sql| playback_timeline_on(&sql)).await
 }
 
 impl PlaybackTimelineRow {
     /// Write `timeline` as the row's whole value.
     pub async fn write(&self, timeline: &PlaybackTimeline) -> Result<(), DbError> {
         let timeline = timeline.clone();
-        self.db.call(move |sql| write_on(sql, &timeline).map_err(DbError::from)).await
+        self.store.call(move |sql| write_on(sql, &timeline).map_err(DbError::from)).await
     }
 }
 

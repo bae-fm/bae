@@ -94,6 +94,7 @@ impl PlaybackService {
         self.emit_state();
 
         let prepared = prepare_track_for_playback(
+            &self.store,
             &self.database,
             &self.diagnostics,
             track_id,

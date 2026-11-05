@@ -9,11 +9,11 @@ use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::IdentifyRunId;
 use crate::{Admission, CandidateFiles, SaveFailure};
-use bae_db::test_fixtures::{empty_db, exec_batch};
-use bae_db::Database;
+use bae_store::test_fixtures::{empty_db, exec_batch};
+use bae_store::Store;
 
 /// Store `key` as a candidate the scan holds with `files`, as the scan would.
-async fn scanned(db: &Database, key: &crate::CandidateKey, files: &CandidateFiles) {
+async fn scanned(db: &Store, key: &crate::CandidateKey, files: &CandidateFiles) {
     exec_batch(
         db,
         &format!(
@@ -50,7 +50,7 @@ fn run(number: u64) -> IdentifyRunId {
 }
 
 /// Apply `changes` to `key` one write each.
-async fn change(db: &Database, key: &crate::CandidateKey, changes: Vec<IdentificationChange>) {
+async fn change(db: &Store, key: &crate::CandidateKey, changes: Vec<IdentificationChange>) {
     let tables = crate::tables::ImportTables::new(db.clone());
     for change in changes {
         tables.change_candidate_identifications(vec![(key.clone(), change)]).await.unwrap();
@@ -231,7 +231,7 @@ async fn clearing_removes_every_standing() {
 }
 
 /// How many imports the import counts' live query counts in flight.
-async fn imports_in_flight(db: &Database) -> u32 {
+async fn imports_in_flight(db: &Store) -> u32 {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables
         .subscribe_import_counts()
@@ -296,7 +296,7 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
 // identification count with it. An import's claim outlives it.
 
 /// Put the candidate at `key` with `files` on the identification queue.
-async fn admitted(db: &Database, key: &crate::CandidateKey, files: crate::CandidateFiles) {
+async fn admitted(db: &Store, key: &crate::CandidateKey, files: crate::CandidateFiles) {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables
         .change_candidate_identifications(vec![(
@@ -314,7 +314,7 @@ async fn admitted(db: &Database, key: &crate::CandidateKey, files: crate::Candid
 
 /// The candidate at `key` stands with no identification, and the batch it
 /// was counted in is over.
-async fn assert_identification_ended(db: &Database, key: &crate::CandidateKey) {
+async fn assert_identification_ended(db: &Store, key: &crate::CandidateKey) {
     let tables = crate::tables::ImportTables::new(db.clone());
     assert_eq!(
         tables.load_candidate_standing(key).await.unwrap().identification,
@@ -325,7 +325,7 @@ async fn assert_identification_ended(db: &Database, key: &crate::CandidateKey) {
 }
 
 /// The pane candidate's key and files, stored and admitted.
-async fn admitted_pane_candidate(db: &Database) -> (crate::CandidateKey, crate::CandidateFiles) {
+async fn admitted_pane_candidate(db: &Store) -> (crate::CandidateKey, crate::CandidateFiles) {
     let (_, hash) = stored_pane_candidate(db).await;
     let key = pane_candidate_key();
     let files = crate::CandidateFiles { content_hash: hash, file_edit_revision: 0 };
@@ -407,7 +407,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
         )
         .await
         .unwrap());
-    let searched = |db: Database| async move {
+    let searched = |db: Store| async move {
         let tables = crate::tables::ImportTables::new(db);
         tables.load_candidate_runtime(&pane_candidate_key()).await.unwrap().search
     };

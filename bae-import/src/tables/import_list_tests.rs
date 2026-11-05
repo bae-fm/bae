@@ -16,14 +16,14 @@ use crate::{
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_db::test_fixtures::live_query::RELEASE_ID;
-use bae_db::test_fixtures::{empty_db, exec, exec_batch};
-use bae_db::LibraryPageWindow;
 use bae_identify::TerminalVerdict;
+use bae_store::test_fixtures::{empty_db, exec, exec_batch};
+use bae_store::LibraryPageWindow;
 
 /// A database with one watched folder, its scan begun, and helpers that spell
 /// the rows each test writes.
 pub(crate) struct Library {
-    pub(crate) db: bae_db::Database,
+    pub(crate) db: bae_store::Store,
     pub(crate) _tmp: tempfile::TempDir,
     pub(crate) root: std::path::PathBuf,
 }
@@ -561,7 +561,7 @@ pub(crate) async fn five_rows() -> Library {
 }
 
 /// One scanned candidate under a fresh watched root.
-pub(crate) async fn scanned(db: &Database, root: &std::path::Path, name: &str) -> FolderCandidate {
+pub(crate) async fn scanned(db: &Store, root: &std::path::Path, name: &str) -> FolderCandidate {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
@@ -613,13 +613,13 @@ pub(crate) fn verdict(
     }
 }
 
-pub(crate) async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &str) {
+pub(crate) async fn save_verdict(db: &Store, candidate: &FolderCandidate, release_id: &str) {
     save_verdict_with_ledger(db, candidate, release_id, None).await;
 }
 
 /// Store a verdict with its recorded ledger and settled signals.
 pub(crate) async fn save_verdict_with_ledger(
-    db: &Database,
+    db: &Store,
     candidate: &FolderCandidate,
     release_id: &str,
     ledger: Option<bae_identify::IdentifyRunView>,
@@ -629,7 +629,7 @@ pub(crate) async fn save_verdict_with_ledger(
 
 /// Store `verdict` with settled signals and no pick.
 pub(crate) async fn store_verdict(
-    db: &Database,
+    db: &Store,
     candidate: &FolderCandidate,
     verdict: TerminalVerdict,
 ) {
@@ -686,7 +686,7 @@ pub(crate) fn rows(projection: &crate::ImportListProjection) -> Vec<crate::Triag
 /// One read of a list: its view, its windows, and the rows it has selected.
 pub(crate) struct ListRead {
     pub(crate) view: ImportListView,
-    pub(crate) windows: bae_db::LibraryPageWindows,
+    pub(crate) windows: bae_store::LibraryPageWindows,
     pub(crate) selected: Vec<crate::CandidateKey>,
 }
 
@@ -694,7 +694,7 @@ pub(crate) struct ListRead {
 pub(crate) async fn request(tab: TriageTab) -> ListRead {
     ListRead {
         view: ImportListView { tab, ..ImportListView::default() },
-        windows: std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+        windows: std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
         selected: Vec::new(),
     }
 }
@@ -728,10 +728,10 @@ impl ImportTables {
         &self,
         list: ImportListId,
     ) -> Result<Option<(Vec<String>, Vec<String>)>, DbError> {
-        self.database
+        self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?;
-                let everything = bae_db::LibraryPageWindow { offset: 0, limit: u64::MAX };
+                let everything = bae_store::LibraryPageWindow { offset: 0, limit: u64::MAX };
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row
                         .items(shown)
@@ -771,7 +771,7 @@ impl ImportTables {
 /// below states both.
 /// A list opened on `tab` in path order, read through `windows`.
 pub(crate) async fn list_request(
-    db: &Database,
+    db: &Store,
     tab: crate::TriageTab,
     windows: impl IntoIterator<Item = (u64, u64)>,
 ) -> crate::ImportListRequest {
@@ -789,7 +789,7 @@ pub(crate) async fn list_request(
 
 /// What an import here records beside the release it writes: the folder hash
 /// of the files it read.
-pub(crate) async fn record_import(db: &Database, content_hash: &str) {
+pub(crate) async fn record_import(db: &Store, content_hash: &str) {
     exec(
         db,
         "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
@@ -801,7 +801,7 @@ pub(crate) async fn record_import(db: &Database, content_hash: &str) {
 /// Store `name`'s candidate under `root` as one finished scan of it, and
 /// return it.
 pub(crate) async fn scan_finished(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
     name: &str,
 ) -> crate::folder_scanner::FolderCandidate {
@@ -829,7 +829,7 @@ pub(crate) fn through(
         list,
         windows: windows
             .into_iter()
-            .map(|(offset, limit)| bae_db::LibraryPageWindow { offset, limit })
+            .map(|(offset, limit)| bae_store::LibraryPageWindow { offset, limit })
             .collect(),
     }
 }

@@ -2,7 +2,7 @@
 //! release with one track, which performs a work part credited to its
 //! composer, and the work it is part of.
 
-use crate::{Database, DbError};
+use bae_store::DbError;
 
 pub const WORK_CHILD_A: &str = "f63d8e66-6a81-4a67-8005-1fbe870f27eb";
 pub const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271";
@@ -10,8 +10,8 @@ pub const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271";
 /// An album artist's album on one release with one track, which performs a
 /// work part whose composer is credited on it, and the work it is part of, on
 /// `schema`.
-pub async fn composed_work_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(schema).await;
+pub async fn composed_work_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     db.call(|conn| {
         conn.execute_batch(
             "

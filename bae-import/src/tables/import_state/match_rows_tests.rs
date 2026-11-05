@@ -4,8 +4,8 @@ use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_db::test_fixtures::empty_db;
 use bae_identify::{Findings, NarrowedOut, TerminalVerdict};
+use bae_store::test_fixtures::empty_db;
 
 /// A stored verdict's match reads its album's first year from the catalog
 /// release it names, as that release is stored now: none while it is not

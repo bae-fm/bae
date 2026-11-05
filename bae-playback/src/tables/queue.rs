@@ -9,7 +9,8 @@
 //! included, are `queue.sql`.
 
 /// The queue's part of the library's schema.
-pub(crate) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[include_str!("queue.sql")]);
+pub(crate) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("queue.sql")]);
 
 use super::queue_fill::{fill_on, ContextFill, ContextFilled};
 use super::*;
@@ -86,13 +87,13 @@ pub enum ShuffleChange {
 /// The playback queue's tables, as the playback service changes them.
 #[derive(Clone)]
 pub struct PlaybackQueueTables {
-    db: Database,
+    store: Store,
 }
 
 impl PlaybackQueueTables {
-    /// The tables over `db`.
-    pub fn new(db: Database) -> Self {
-        Self { db }
+    /// The tables over `store`.
+    pub fn new(store: Store) -> Self {
+        Self { store }
     }
 }
 
@@ -104,8 +105,8 @@ impl PlaybackQueueTables {
 /// volume, `playback_timeline` holds no line, and the queue's count of
 /// additions starts at none. A bulk write, so emptying a library-sized lane
 /// takes one step.
-pub async fn settle_playback_queue(database: &Database, resume: bool) -> Result<(), DbError> {
-    database
+pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), DbError> {
+    store
         .call_bulk(move |sql| {
             let stored =
                 sql.query_row("SELECT 1 FROM playback_state", [], |_| Ok(())).optional()?.is_some();
@@ -131,7 +132,7 @@ pub async fn settle_playback_queue(database: &Database, resume: bool) -> Result<
 impl PlaybackQueueTables {
     /// How the queue repeats.
     pub async fn repeat(&self) -> Result<RepeatMode, DbError> {
-        self.db
+        self.store
             .read(|sql| {
                 Ok(sql.query_row("SELECT repeat FROM playback_queue", [], |row| {
                     repeat_from_row(row, 0)
@@ -142,7 +143,7 @@ impl PlaybackQueueTables {
 
     /// How many tracks the context lane holds, played or not.
     pub async fn context_track_count(&self) -> Result<usize, DbError> {
-        self.db
+        self.store
             .read(|sql| {
                 let count: i64 =
                     sql.query_row("SELECT count(*) FROM playback_context", [], |row| row.get(0))?;
@@ -155,7 +156,7 @@ impl PlaybackQueueTables {
     /// context lane holds the tracks in play order, playing the first. A bulk
     /// write: a play takes out and puts in up to a library's worth of rows.
     pub async fn fill(&self, fill: ContextFill) -> Result<ContextFilled, DbError> {
-        self.db.call_bulk(move |sql| fill_on(sql, fill)).await
+        self.store.call_bulk(move |sql| fill_on(sql, fill)).await
     }
 
     /// Add tracks to Up Next where `place` says, leaving out any the library
@@ -166,12 +167,12 @@ impl PlaybackQueueTables {
         track_ids: Vec<String>,
         place: ManualPlace,
     ) -> Result<usize, DbError> {
-        self.db.call(move |sql| add_manual_on(sql, &track_ids, place)).await
+        self.store.call(move |sql| add_manual_on(sql, &track_ids, place)).await
     }
 
     /// Empty Up Next, as a bulk write.
     pub async fn clear_manual(&self) -> Result<(), DbError> {
-        self.db
+        self.store
             .call_bulk(|sql| {
                 if sql.execute("DELETE FROM playback_manual", [])? > 0 {
                     sql.execute(MANUAL_CHANGED, [])?;
@@ -183,7 +184,7 @@ impl PlaybackQueueTables {
 
     /// Empty the context lane, as a bulk write; `false` when there was none.
     pub async fn clear_context(&self) -> Result<bool, DbError> {
-        self.db
+        self.store
             .call_bulk(|sql| {
                 if queue_row_on(sql)?.cursor.is_none() {
                     return Ok(false);
@@ -198,11 +199,11 @@ impl PlaybackQueueTables {
     /// or back in the order they had before it was shuffled. The playing track
     /// and the ones before it stay where they are.
     pub async fn set_shuffle(&self, on: bool) -> Result<ShuffleChange, DbError> {
-        self.db.call(move |sql| set_shuffle_on(sql, on)).await
+        self.store.call(move |sql| set_shuffle_on(sql, on)).await
     }
 
     pub async fn set_repeat(&self, mode: RepeatMode) -> Result<(), DbError> {
-        self.db
+        self.store
             .call(move |sql| {
                 sql.execute("UPDATE playback_queue SET repeat = ?", [repeat_column(mode)])?;
                 Ok(())
@@ -212,7 +213,7 @@ impl PlaybackQueueTables {
 
     /// Take the entry out of whichever lane holds it; `None` when no lane does.
     pub async fn remove(&self, id: QueueEntryId) -> Result<Option<QueueEntry>, DbError> {
-        self.db
+        self.store
             .call(move |sql| {
                 let (lane, entry) = row_key(&id);
                 let removed = sql
@@ -255,14 +256,14 @@ impl PlaybackQueueTables {
         id: QueueEntryId,
         before: Option<QueueEntryId>,
     ) -> Result<Option<u64>, DbError> {
-        self.db.call(move |sql| reorder_on(sql, id, before)).await
+        self.store.call(move |sql| reorder_on(sql, id, before)).await
     }
 
     /// Make the entry the one playing: an Up Next entry leaves the lane with
     /// the ones ahead of it, a context entry becomes the lane's playing track.
     /// `None` when no lane holds it.
     pub async fn skip_to(&self, id: QueueEntryId) -> Result<Option<QueueEntry>, DbError> {
-        self.db
+        self.store
             .call(move |sql| {
                 let Some(located) = locate_on(sql, id)? else {
                     return Ok(None);
@@ -286,13 +287,13 @@ impl PlaybackQueueTables {
     /// next track becomes its playing one. `None` when neither lane has a
     /// track after the playing one.
     pub async fn advance(&self) -> Result<Option<QueueEntry>, DbError> {
-        self.db.call(advance_on).await
+        self.store.call(advance_on).await
     }
 
     /// Play the context lane again from its first track, in a new shuffled
     /// order when it is shuffled. `None` without a context lane.
     pub async fn wrap(&self) -> Result<Option<QueueEntry>, DbError> {
-        self.db.call(wrap_on).await
+        self.store.call(wrap_on).await
     }
 
     /// Step the context lane back: to the track before its playing one when
@@ -303,13 +304,13 @@ impl PlaybackQueueTables {
         &self,
         current: Option<QueueEntryId>,
     ) -> Result<Option<QueueEntry>, DbError> {
-        self.db.call(move |sql| step_back_on(sql, current)).await
+        self.store.call(move |sql| step_back_on(sql, current)).await
     }
 
     /// The track that plays next: Up Next's first, or else the context lane's
     /// track after the playing one.
     pub async fn front(&self) -> Result<Option<String>, DbError> {
-        self.db
+        self.store
             .read(|sql| {
                 let manual = sql
                     .query_row(
@@ -338,7 +339,7 @@ impl PlaybackQueueTables {
     /// playing one: Up Next empty and the lane in its own order. The only
     /// track a side or disc pause can fall before.
     pub async fn next_in_order(&self) -> Result<Option<String>, DbError> {
-        self.db
+        self.store
             .read(|sql| {
                 Ok(sql
                     .query_row(
@@ -358,7 +359,7 @@ impl PlaybackQueueTables {
     /// Every track of the context lane, played or not, in lane order.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn context_order(&self) -> Result<Vec<String>, DbError> {
-        self.db
+        self.store
             .read(|sql| {
                 Ok(sql.query(
                     "SELECT track_id FROM playback_context ORDER BY position",

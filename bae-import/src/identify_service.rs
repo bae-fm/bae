@@ -33,9 +33,9 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 /// reach. A projection of `metadata_sources()`, read once when the run starts,
 /// so a key added or a source switched on since joins the next run rather than
 /// this one.
-async fn run_providers(database: &bae_db::Database) -> Result<Vec<LookupCatalog>, bae_db::DbError> {
+async fn run_providers(store: &bae_store::Store) -> Result<Vec<LookupCatalog>, bae_store::DbError> {
     Ok(bae_preferences::asked_sources(
-        &bae_preferences::preferences(database).await?.metadata_sources(),
+        &bae_preferences::preferences(store).await?.metadata_sources(),
     ))
 }
 
@@ -47,7 +47,7 @@ pub struct IdentifyService {
 
 struct IdentifyServiceInner {
     /// The library's store: the sources it asks.
-    database: bae_db::Database,
+    store: bae_store::Store,
     /// Import's tables: what release groups were read to be.
     tables: crate::tables::ImportTables,
     /// The catalogs a run's lookups ask.
@@ -103,7 +103,7 @@ impl IdentifyService {
     /// `candidates` is the runtime `event_tx` records into, which ends a
     /// removed or rebound candidate's run in the send that says so.
     pub fn new(
-        database: bae_db::Database,
+        store: bae_store::Store,
         catalogs: crate::CatalogSessions,
         release_reads: crate::ReleaseReads,
         runtime_handle: tokio::runtime::Handle,
@@ -112,8 +112,8 @@ impl IdentifyService {
         diagnostics: bae_diagnostics::Diagnostics,
     ) -> IdentifyService {
         let inner = Arc::new(IdentifyServiceInner {
-            tables: crate::tables::ImportTables::new(database.clone()),
-            database,
+            tables: crate::tables::ImportTables::new(store.clone()),
+            store,
             catalogs,
             release_reads,
             runtime_handle,
@@ -171,10 +171,10 @@ impl IdentifyService {
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
         snapshots: ExtractionWatch,
-    ) -> Result<bool, bae_db::DbError> {
+    ) -> Result<bool, bae_store::DbError> {
         // Read before the prior run is cancelled, so nothing comes between
         // the cancel and the start.
-        let providers = run_providers(&self.inner.database).await?;
+        let providers = run_providers(&self.inner.store).await?;
         // A restart (the user re-selects after a scan refresh, or changes what
         // the run asks about) supersedes the prior run — a candidate is
         // identified once at a time.

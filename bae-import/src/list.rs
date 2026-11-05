@@ -18,7 +18,7 @@
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::triage::{CandidateLiveState, TriageGroup, TriageRow, TriageTabCounts};
 use super::watched_folder::WatchedFolder;
-use bae_db::{LibraryPageWindow, LibraryPageWindows};
+use bae_store::{LibraryPageWindow, LibraryPageWindows};
 
 mod path_order;
 mod pending_filter;

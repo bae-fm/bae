@@ -7,6 +7,7 @@
 //! editing different places at once keep both edits.
 
 use crate::test_fixtures::*;
+use bae_store::test_fixtures::*;
 use bae_types::pressing::{MediaCount, Medium};
 
 const RELEASE: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
@@ -19,7 +20,7 @@ fn medium_id(position: u16) -> String {
 }
 
 /// The seeded release with two CDs and one track on each.
-fn seed_two_discs(conn: &coven::CovenWrite<'_>) -> Result<(), crate::DbError> {
+fn seed_two_discs(conn: &coven::CovenWrite<'_>) -> Result<(), bae_store::DbError> {
     seed_artist_album_release(conn)?;
     for position in [1u16, 2] {
         conn.execute(
@@ -39,7 +40,7 @@ fn insert_track(
     track: &str,
     position: i64,
     medium: u16,
-) -> Result<(), crate::DbError> {
+) -> Result<(), bae_store::DbError> {
     conn.execute(
         "INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, \
              duration_ms, position, created_at) \
@@ -54,6 +55,7 @@ fn insert_track(
 #[tokio::test]
 async fn a_medium_still_holding_a_track_cannot_be_removed() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     db.call(seed_two_discs).await.unwrap();
 
     let refused = db
@@ -78,14 +80,14 @@ async fn a_medium_still_holding_a_track_cannot_be_removed() {
     .await
     .unwrap();
     assert_eq!(
-        db.get_release_mediums(RELEASE).await.unwrap().0.len(),
+        database.get_release_mediums(RELEASE).await.unwrap().0.len(),
         1,
         "the emptied disc is gone"
     );
 }
 
 /// The tracks of either device that sit on no medium row its library holds.
-async fn tracks_on_missing_mediums(db: &crate::Database) -> Vec<String> {
+async fn tracks_on_missing_mediums(db: &bae_store::Store) -> Vec<String> {
     db.read(|sql| {
         sql.query(
             "SELECT t.id FROM tracks t \
@@ -94,7 +96,7 @@ async fn tracks_on_missing_mediums(db: &crate::Database) -> Vec<String> {
             [],
             |row| row.get(0),
         )
-        .map_err(crate::DbError::from)
+        .map_err(bae_store::DbError::from)
     })
     .await
     .unwrap()
@@ -105,13 +107,13 @@ async fn tracks_on_missing_mediums(db: &crate::Database) -> Vec<String> {
 /// neither holds a track on a missing medium.
 #[test]
 fn concurrent_medium_removal_and_track_write_leave_no_track_on_a_missing_medium() {
-    crate::test_devices::run_two_store_test(
+    bae_store::test_devices::run_two_store_test(
         crate::test_fixtures::TEST_SCHEMA,
         check_concurrent_medium_removal,
     );
 }
 
-async fn check_concurrent_medium_removal(devices: &crate::test_devices::TwoStores) {
+async fn check_concurrent_medium_removal(devices: &bae_store::test_devices::TwoStores) {
     devices.a().call(seed_two_discs).await.unwrap();
     let rows = "SELECT t.id || ':' || t.medium_id FROM tracks t \
          UNION ALL SELECT 'medium:' || m.id FROM release_mediums m";
@@ -147,7 +149,7 @@ fn count(medium: Medium, count: u32) -> MediaCount {
 }
 
 /// Make `RELEASE`'s media `media` on `db`.
-async fn set_media(db: &crate::Database, media: Vec<MediaCount>) {
+async fn set_media(db: &bae_store::Store, media: Vec<MediaCount>) {
     db.call(move |conn| crate::client::write::replace_release_media(conn, RELEASE, &media))
         .await
         .unwrap();
@@ -166,13 +168,13 @@ const MEDIA_ROWS: &str = "SELECT id || ':' || position || ':' || medium || ':' |
 /// release by them.
 #[test]
 fn a_media_edit_reaches_the_other_device() {
-    crate::test_devices::run_two_store_test(
+    bae_store::test_devices::run_two_store_test(
         crate::test_fixtures::TEST_SCHEMA,
         check_media_edit_reaches,
     );
 }
 
-async fn check_media_edit_reaches(devices: &crate::test_devices::TwoStores) {
+async fn check_media_edit_reaches(devices: &bae_store::test_devices::TwoStores) {
     devices.a().call(seed_artist_album_release).await.unwrap();
     set_media(devices.a(), vec![count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
@@ -180,20 +182,23 @@ async fn check_media_edit_reaches(devices: &crate::test_devices::TwoStores) {
     set_media(devices.a(), vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
-    assert_eq!(media_on(devices.b()).await, vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]);
+    assert_eq!(
+        media_on(&crate::test_fixtures::test_database(devices.b())).await,
+        vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]
+    );
 }
 
 /// Two devices, apart, each change a different place in one release's media.
 /// Once each has the other's write, both hold both changes.
 #[test]
 fn concurrent_edits_of_different_places_both_stay() {
-    crate::test_devices::run_two_store_test(
+    bae_store::test_devices::run_two_store_test(
         crate::test_fixtures::TEST_SCHEMA,
         check_concurrent_places,
     );
 }
 
-async fn check_concurrent_places(devices: &crate::test_devices::TwoStores) {
+async fn check_concurrent_places(devices: &bae_store::test_devices::TwoStores) {
     devices.a().call(seed_artist_album_release).await.unwrap();
     set_media(devices.a(), vec![count(Medium::Cd, 1), count(Medium::Dvd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
@@ -205,12 +210,12 @@ async fn check_concurrent_places(devices: &crate::test_devices::TwoStores) {
     devices.converge(MEDIA_ROWS).await;
 
     let both = vec![count(Medium::Cd, 2), count(Medium::BluRay, 1)];
-    assert_eq!(media_on(devices.a()).await, both);
-    assert_eq!(media_on(devices.b()).await, both);
+    assert_eq!(media_on(&crate::test_fixtures::test_database(devices.a())).await, both);
+    assert_eq!(media_on(&crate::test_fixtures::test_database(devices.b())).await, both);
 }
 
 /// Make `RELEASE`'s barcodes `barcodes` on `db`.
-async fn set_barcodes(db: &crate::Database, barcodes: &[&str]) {
+async fn set_barcodes(db: &bae_store::Store, barcodes: &[&str]) {
     let barcodes: Vec<String> = barcodes.iter().map(|code| code.to_string()).collect();
     db.call(move |conn| crate::client::write::replace_release_barcodes(conn, RELEASE, &barcodes))
         .await
@@ -230,10 +235,10 @@ const BARCODE_ROWS: &str = "SELECT id || ':' || position || ':' || barcode \
 /// later edit that drops one leaves only the other on both.
 #[test]
 fn barcode_edits_merge_by_place_and_reach_the_other_device() {
-    crate::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_barcodes);
+    bae_store::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_barcodes);
 }
 
-async fn check_barcodes(devices: &crate::test_devices::TwoStores) {
+async fn check_barcodes(devices: &bae_store::test_devices::TwoStores) {
     devices.a().call(seed_artist_album_release).await.unwrap();
     set_barcodes(devices.a(), &["0123456789012", "5012345678900"]).await;
     devices.converge(BARCODE_ROWS).await;
@@ -244,17 +249,20 @@ async fn check_barcodes(devices: &crate::test_devices::TwoStores) {
     devices.resume().await;
     devices.converge(BARCODE_ROWS).await;
     let both = ["0123456789029", "5012345678917"];
-    assert_eq!(barcodes_on(devices.a()).await, both);
-    assert_eq!(barcodes_on(devices.b()).await, both);
+    assert_eq!(barcodes_on(&crate::test_fixtures::test_database(devices.a())).await, both);
+    assert_eq!(barcodes_on(&crate::test_fixtures::test_database(devices.b())).await, both);
 
     set_barcodes(devices.b(), &["0123456789029"]).await;
     devices.converge(BARCODE_ROWS).await;
-    assert_eq!(barcodes_on(devices.a()).await, ["0123456789029"]);
+    assert_eq!(
+        barcodes_on(&crate::test_fixtures::test_database(devices.a())).await,
+        ["0123456789029"]
+    );
 }
 
 /// Make `RELEASE`'s labels `labels` on `db`, as an edit writes them.
-async fn set_labels(db: &crate::Database, labels: Vec<bae_types::pressing::ReleaseLabel>) {
-    let parts = db.label_parts(&labels);
+async fn set_labels(db: &bae_store::Store, labels: Vec<bae_types::pressing::ReleaseLabel>) {
+    let parts = crate::LabelParts::new(&coven::UuidIds, db.now_utc(), &labels);
     db.call(move |conn| {
         crate::client::label_resolution::write_release_labels_on(
             conn,
@@ -283,10 +291,10 @@ const LABEL_ROWS: &str = "SELECT id || ':' || name || ':' || ifnull(discogs_labe
 /// write, both read the release with the label at each place either wrote.
 #[test]
 fn label_rows_converge_on_both_devices() {
-    crate::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_labels);
+    bae_store::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_labels);
 }
 
-async fn check_labels(devices: &crate::test_devices::TwoStores) {
+async fn check_labels(devices: &bae_store::test_devices::TwoStores) {
     use bae_types::pressing::ReleaseLabel;
     let rhino = |number: &str| {
         ReleaseLabel::new(Some("Rhino".to_string()), Some(number.to_string()))
@@ -310,8 +318,8 @@ async fn check_labels(devices: &crate::test_devices::TwoStores) {
         ReleaseLabel::new(Some("Rhino".to_string()), Some("R2 1".to_string())).unwrap(),
         ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap(),
     ];
-    assert_eq!(labels_on(devices.a()).await, both);
-    assert_eq!(labels_on(devices.b()).await, both);
+    assert_eq!(labels_on(&crate::test_fixtures::test_database(devices.a())).await, both);
+    assert_eq!(labels_on(&crate::test_fixtures::test_database(devices.b())).await, both);
     let labels: i64 = devices
         .a()
         .read(|sql| Ok(sql.query_row("SELECT count(*) FROM labels", [], |row| row.get(0))?))
@@ -329,6 +337,7 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
     use crate::{DbAudioSegmentRole, NewReleaseFile};
     const TRACK_A: &str = "0482872e-d4bf-4080-8426-441a0a3e71fc";
     let (db, tmp) = aggregate_ordering::release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let mut files = Vec::new();
     for name in ["01 Track Title A.flac", "02 Track Title B.flac"] {
         let file = NewReleaseFile {
@@ -375,15 +384,16 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
             end_byte: None,
             created_at: chrono::Utc::now(),
         };
-    db.insert_audio_format_with_segments_for_test(
-        &format,
-        &[
-            segment(0, DbAudioSegmentRole::AudioPregap, &files[0]),
-            segment(1, DbAudioSegmentRole::Main, &files[1]),
-        ],
-    )
-    .await
-    .unwrap();
+    database
+        .insert_audio_format_with_segments_for_test(
+            &format,
+            &[
+                segment(0, DbAudioSegmentRole::AudioPregap, &files[0]),
+                segment(1, DbAudioSegmentRole::Main, &files[1]),
+            ],
+        )
+        .await
+        .unwrap();
 
     let tracks = db.read(|sql| crate::client::release_edit_tracks_on(&sql, RELEASE)).await.unwrap();
 

@@ -10,8 +10,8 @@ use crate::tables::NewImportCandidateVerdict;
 use crate::CandidateEditField;
 use crate::CoverSelection;
 use bae_catalogs::catalog::Catalog;
-use bae_db::test_fixtures::empty_db;
 use bae_identify::TerminalVerdict;
+use bae_store::test_fixtures::empty_db;
 
 fn image(byte: u8) -> bae_catalogs::remote_image::RemoteImage {
     bae_catalogs::remote_image::RemoteImage {

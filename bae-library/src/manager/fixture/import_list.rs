@@ -70,7 +70,7 @@ impl LibraryManager {
         &self,
         folders: &[FixtureWatchedFolder],
     ) -> Result<(), LibraryFixtureError> {
-        let tables = bae_import::tables::ImportTables::new(self.database.clone());
+        let tables = bae_import::tables::ImportTables::new(self.store.clone());
         let mut file_count = 0;
         for folder in folders {
             let root =
@@ -110,7 +110,7 @@ impl LibraryManager {
         candidate: &FolderCandidate,
         state: FixtureCandidateState,
     ) -> Result<(), LibraryFixtureError> {
-        let tables = bae_import::tables::ImportTables::new(self.database.clone());
+        let tables = bae_import::tables::ImportTables::new(self.store.clone());
         let content_hash = candidate.files.content_hash();
         let track_count = candidate.files.files.len() as u32;
         match state {
@@ -177,7 +177,7 @@ impl LibraryManager {
                     .draft
                     .release_edit();
                 draft.album_title = candidate.name.clone();
-                let preparations = bae_import::CandidatePreparations::new(self.database.clone());
+                let preparations = bae_import::CandidatePreparations::new(self.store.clone());
                 preparations
                     .replace_metadata(
                         &content_hash,
@@ -211,7 +211,7 @@ impl LibraryManager {
                             reason: bae_import::ImportFailureReason {
                                 detail: FIXTURE_IMPORT_FAILURE.to_string(),
                             },
-                            failed_at: bae_db::client::utc_now(self.clock.as_ref()),
+                            failed_at: bae_store::utc_now(self.clock.as_ref()),
                         },
                     )
                     .await
@@ -228,7 +228,7 @@ impl LibraryManager {
         candidate: &FolderCandidate,
         verdict: TerminalVerdict,
     ) -> Result<(), LibraryFixtureError> {
-        let stored = bae_import::CandidatePreparations::new(self.database.clone())
+        let stored = bae_import::CandidatePreparations::new(self.store.clone())
             .store_verdict(&bae_import::tables::NewImportCandidateVerdict {
                 content_hash: candidate.files.content_hash(),
                 file_edit_revision: candidate.file_edit_revision,

@@ -28,7 +28,7 @@ impl Home {
         runtime.block_on(async {
             let handle = bae_library::create_library(
                 self.builder(),
-                bae_db::EnteredName::parse(name).unwrap(),
+                bae_store::EnteredName::parse(name).unwrap(),
             )
             .await
             .unwrap();
@@ -177,7 +177,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
     let id = runtime.block_on(async {
         let handle = bae_library::create_library(
             home.builder().storage_connector(storage.clone()),
-            bae_db::EnteredName::parse("Locked Library").unwrap(),
+            bae_store::EnteredName::parse("Locked Library").unwrap(),
         )
         .await
         .unwrap();

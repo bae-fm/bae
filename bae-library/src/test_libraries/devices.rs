@@ -1,15 +1,16 @@
 //! Isolated installations of one person's library over shared memory
 //! storage, each running the library: the device that created it, and
 //! devices restored from its code. The stores under them are made, synced
-//! and compared by `bae_db::test_devices`.
+//! and compared by `bae_store::test_devices`.
 use std::sync::Arc;
 
 use tempfile::TempDir;
 
 use crate::LibraryManager;
 use bae_app_dir::AppDir;
-use bae_db::test_devices::{self as stores, SyncCycles};
 use bae_db::Database;
+use bae_store::test_devices::{self as stores, SyncCycles};
+use bae_store::Store;
 
 pub struct TestDevice {
     library: RunningLibrary,
@@ -25,6 +26,7 @@ pub struct TestDevice {
 /// sync cycles.
 struct RunningLibrary {
     manager: LibraryManager,
+    store: Store,
     database: Database,
     cycles: SyncCycles,
 }
@@ -34,6 +36,10 @@ impl TestDevice {
         &self.library.manager
     }
 
+    pub fn store(&self) -> &Store {
+        &self.library.store
+    }
+
     pub fn database(&self) -> &Database {
         &self.library.database
     }
@@ -41,7 +47,7 @@ impl TestDevice {
     /// Stop the device's sync loop: the pass running ends first, and once
     /// this returns no pass or upload runs until sync starts again.
     pub async fn stop_sync(&self) {
-        stores::stop_sync(self.database()).await;
+        stores::stop_sync(self.store()).await;
     }
 
     /// This device's connection to the shared storage; taking it offline
@@ -58,7 +64,7 @@ impl TestDevice {
         F: Fn() -> Fut,
         Fut: std::future::Future<Output = bool>,
     {
-        stores::wait_until(self.database(), &self.library.cycles, what, condition).await;
+        stores::wait_until(self.store(), &self.library.cycles, what, condition).await;
     }
 }
 
@@ -150,7 +156,7 @@ impl DeviceLibrary {
         let handle =
             stores::restore_store(crate::SCHEMA, &installation, storage.clone(), code, name).await;
         let device = device(dir, app, handle, installation, storage).await;
-        device.database().start_sync().await.unwrap();
+        device.store().start_sync().await.unwrap();
         device
     }
 }
@@ -158,7 +164,7 @@ impl DeviceLibrary {
 impl TwoDevices {
     async fn new() -> Self {
         let library = DeviceLibrary::new().await;
-        let code = library.first.database().generate_restore_code().await.unwrap();
+        let code = library.first.store().generate_restore_code().await.unwrap();
         let b = library.restore(&code, "Device B").await;
         Self { library, b }
     }
@@ -179,16 +185,16 @@ impl TwoDevices {
 
     pub async fn resume(&self) {
         for device in [self.a(), &self.b] {
-            device.database().start_sync().await.unwrap();
+            device.store().start_sync().await.unwrap();
         }
     }
 
     /// Run cycles on both devices until `settled` holds for both and neither
     /// holds anything back, or fail with what each device's last cycle
     /// reported.
-    pub async fn settle(&self, what: &str, settled: impl AsyncFn(&'static str, &Database) -> bool) {
+    pub async fn settle(&self, what: &str, settled: impl AsyncFn(&'static str, &Store) -> bool) {
         stores::settle(synced(self.a()), synced(&self.b), what, || async {
-            settled("A", self.a().database()).await && settled("B", self.b.database()).await
+            settled("A", self.a().store()).await && settled("B", self.b.store()).await
         })
         .await;
     }
@@ -216,19 +222,19 @@ impl TestDevice {
             crate::SCHEMA,
             &self.installation,
             self.storage.clone(),
-            self.database().store_id(),
+            self.store().store_id(),
             migrations,
         )
         .await;
         self.library = RunningLibrary::new(self.app.clone(), handle).await;
-        self.database().start_sync().await.unwrap();
+        self.store().start_sync().await.unwrap();
     }
 }
 
 /// The store a device runs and the record of its sync cycles, which the
 /// stores' sync helpers read together.
-fn synced(device: &TestDevice) -> (&Database, &SyncCycles) {
-    (&device.library.database, &device.library.cycles)
+fn synced(device: &TestDevice) -> (&Store, &SyncCycles) {
+    (&device.library.store, &device.library.cycles)
 }
 
 async fn device(
@@ -249,17 +255,17 @@ async fn device(
 
 impl RunningLibrary {
     async fn new(app_dir: AppDir, handle: coven::CovenHandle) -> Self {
-        let database = stores::device_database(handle);
+        let store = stores::device_store(handle);
         let library = crate::test_libraries::TestLibrary::open(
-            database.clone(),
+            store.clone(),
             app_dir,
             bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
         )
         .await;
         let manager = LibraryManager::clone(&library);
-        let cycles = SyncCycles::follow(&database);
-        Self { manager, database, cycles }
+        let cycles = SyncCycles::follow(&store);
+        Self { manager, store, database: library.database().clone(), cycles }
     }
 }
 

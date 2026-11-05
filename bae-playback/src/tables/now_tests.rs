@@ -11,7 +11,7 @@ use crate::{
 };
 use bae_track_audio::PreviewTarget;
 
-async fn now(db: &Database) -> crate::NowPlayingValues {
+async fn now(db: &Store) -> crate::NowPlayingValues {
     now_playing(db).await.unwrap().expect("the library holds the track the row names")
 }
 
@@ -84,11 +84,11 @@ async fn each_change_reads_back_as_written() {
         }),
         PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Former {
             name: "Device B".to_string(),
-            state: bae_db::membership::FormerDeviceState::Removed,
+            state: bae_store::FormerDeviceState::Removed,
         }),
         PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Former {
             name: "Device C".to_string(),
-            state: bae_db::membership::FormerDeviceState::Replaced,
+            state: bae_store::FormerDeviceState::Replaced,
         }),
         PlaybackErrorReason::OriginalMissing,
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::DeviceUnavailable },

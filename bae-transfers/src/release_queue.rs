@@ -135,7 +135,7 @@ pub struct ReleaseQueueSnapshot<Extra, Progress> {
 /// the order queued, each beside its release.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueWindows<Extra> {
-    pub windows: Vec<bae_db::LibraryBrowseWindow<ReleaseQueueRow<Extra, ()>>>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<ReleaseQueueRow<Extra, ()>>>,
     pub total_count: u64,
 }
 

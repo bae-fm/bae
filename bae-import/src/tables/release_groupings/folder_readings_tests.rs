@@ -4,18 +4,18 @@
 
 use crate::tables::folder_scans::tests::*;
 use crate::tables::watched_path::host_root;
-use bae_db::test_fixtures::empty_db;
-use bae_db::Database;
+use bae_store::test_fixtures::empty_db;
+use bae_store::Store;
 
 /// Store the person's answer for how one folder reads, alone: the row a
 /// fixture needs beside the entries it writes itself. The service never stores
 /// a decision without the candidates it gives — that is
 /// `commit_folder_reading`.
 pub(crate) async fn store_user_folder_decision(
-    db: &Database,
+    db: &Store,
     key: &crate::folder_scanner::FolderReleaseDecisionKey,
     decision: crate::folder_scanner::FolderReleaseDecision,
-) -> Result<(), bae_db::DbError> {
+) -> Result<(), bae_store::DbError> {
     let key = key.clone();
     let grouping = crate::CandidateKey::grouping(&format!(
         "{}/{}",

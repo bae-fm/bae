@@ -22,7 +22,7 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     .await;
     std::fs::remove_file(temp.path().join("second/b.flac")).unwrap();
     manager.cancel_all_release_uploads().await.unwrap();
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     for release in [&first, &second] {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
@@ -94,7 +94,7 @@ async fn check_upload_offered(
     .await;
 
     let offered = |release_id: String| async move {
-        let detail = bae_views::LibraryViews::new(manager.database.clone())
+        let detail = bae_views::LibraryViews::new(manager.store.clone())
             .find_release_detail(&release_id)
             .await
             .unwrap()
@@ -134,11 +134,11 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     )
     .await;
     let row = |manager: LibraryManager, release_id: String| async move {
-        bae_views::LibraryViews::new(manager.database.clone())
+        bae_views::LibraryViews::new(manager.store.clone())
             .get_storage_page(
                 &bae_views::StorageSortCriterion {
                     field: bae_views::StorageSortField::AlbumTitle,
-                    direction: bae_db::SortDirection::Ascending,
+                    direction: bae_store::SortDirection::Ascending,
                 },
                 bae_views::StorageFilter::All,
                 0,
@@ -191,17 +191,17 @@ async fn a_storage_row_counts_the_file_being_sent() {
     let mut browse = views(&manager).subscribe_storage_browse(bae_views::StorageBrowseRequest {
         sort: bae_views::StorageSortCriterion {
             field: bae_views::StorageSortField::AlbumTitle,
-            direction: bae_db::SortDirection::Ascending,
+            direction: bae_store::SortDirection::Ascending,
         },
         filter: bae_views::StorageFilter::All,
         search: String::new(),
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        coven::ObjectPrefix::files(manager.store.store_id_for_test()),
         started,
         resumed,
     )
@@ -249,7 +249,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        coven::ObjectPrefix::files(manager.store.store_id_for_test()),
         started,
         resumed,
     )
@@ -382,7 +382,7 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     let album_id = release.album_id.clone();
 
     // Grid and count include the album.
-    let views = bae_views::LibraryViews::new(manager.database.clone());
+    let views = bae_views::LibraryViews::new(manager.store.clone());
     let page = views.get_album_page(&[], 0, 10).await.unwrap();
     assert_eq!(page.len(), 1);
     assert_eq!(page[0].release_ids, vec![release.id.clone()]);
@@ -394,7 +394,7 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     assert_eq!(detail_ids, vec![release.id.clone()]);
 
     // The release-level resolver returns it.
-    assert!(bae_views::LibraryViews::new(manager.database.clone())
+    assert!(bae_views::LibraryViews::new(manager.store.clone())
         .find_release_detail(&release.id)
         .await
         .unwrap()
@@ -421,7 +421,7 @@ async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
     assert!(!manager.pending().await.unwrap().is_empty());
     manager.cancel_release_upload(&release.id).await.unwrap();
     assert!(!manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().stored);
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.pending().await.unwrap().is_empty());
 }
 
@@ -437,7 +437,7 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     .await;
     manager.cancel_all_release_uploads().await.unwrap();
     // Cancelling retires each move, so its uploads leave the queue.
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.pending().await.unwrap().is_empty());
     for release in [first, second] {
         for file in release_files(&manager, &release.id).await {
@@ -464,11 +464,11 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
 async fn an_upload_whose_row_is_deleted_leaves_the_queue() {
     let (manager, _temp, _release, file_id) = queued_upload_fixture("changed").await;
     manager
-        .database
+        .store
         .execute_for_test("DELETE FROM release_files WHERE id = ?1", vec![file_id])
         .await
         .unwrap();
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.pending().await.unwrap().is_empty());
 }
 
@@ -636,7 +636,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     .await;
     assert!(
         bae_transfers::release_storage_action::begin_release_storage_action(
-            &manager.database,
+            &manager.store,
             &active_release.id,
             bae_transfers::StoredTransition::Unpin
         )
@@ -713,10 +713,10 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     // file.
     let before = manager.storage.request_trace().len();
     assert!(matches!(
-        manager.database.retry_uploads_now().await.unwrap(),
+        manager.store.retry_uploads_now().await.unwrap(),
         coven::DrainOutcome::Paused
     ));
-    let files = coven::ObjectPrefix::files(manager.database.store_id_for_test());
+    let files = coven::ObjectPrefix::files(manager.store.store_id_for_test());
     let sent: Vec<_> = manager.storage.request_trace()[before..]
         .iter()
         .filter(
@@ -728,7 +728,7 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     assert!(manager.is_sync_paused().await.unwrap());
     manager.set_sync_paused(false).await.unwrap();
     manager.retry_outbox_now().await.unwrap();
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -738,10 +738,10 @@ async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
     manager.set_sync_paused(false).await.unwrap();
     manager.retry_outbox_now().await.unwrap();
     assert!(!manager.pending().await.unwrap().is_empty());
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 1);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 1);
     manager.storage.set_online(true);
     manager.retry_outbox_now().await.unwrap();
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
 }
 
 /// A move to the cloud keeps the release here as the stored import storage
@@ -775,7 +775,7 @@ async fn upload_pins_as_the_stored_choice_says() {
     let pinned = |release_id: String| {
         let manager = manager.library.clone();
         async move {
-            bae_views::LibraryViews::new(manager.database.clone())
+            bae_views::LibraryViews::new(manager.store.clone())
                 .find_release_detail(&release_id)
                 .await
                 .unwrap()

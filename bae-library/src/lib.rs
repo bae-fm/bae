@@ -41,7 +41,7 @@ pub use bootstrap::{
 pub use closing_step::ClosingStep;
 pub use track_decode::TrackDecode;
 
-pub use bae_db::StorageSetupSteps;
+pub use bae_store::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
 pub use file_transfers::{FileTransferChange, FileTransfersWatch};
 pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus};

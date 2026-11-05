@@ -178,7 +178,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let choices = choices.clone();
-        self.database.call(move |sql| replace_lookup_choices_on(sql, &content_hash, &choices)).await
+        self.store.call(move |sql| replace_lookup_choices_on(sql, &content_hash, &choices)).await
     }
 }
 

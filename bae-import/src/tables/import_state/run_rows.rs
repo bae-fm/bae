@@ -33,7 +33,7 @@ use std::collections::BTreeMap;
 /// What every run in flight, or `key`'s runs alone, last published, with the
 /// signals each last read, by key and run.
 fn load_runs_on(
-    sql: &impl bae_db::client::query::QueryRows,
+    sql: &impl bae_store::query::QueryRows,
     key: Option<&CandidateKey>,
 ) -> Result<HashMap<CandidateKey, BTreeMap<IdentifyRunId, PublishedRun>>, DbError> {
     let mut matches = load_run_matches_on(sql, key)?;
@@ -79,7 +79,7 @@ fn load_runs_on(
 /// Where `key` stands, what each of its runs in flight last published, and
 /// its typed search.
 pub(crate) fn load_stored_runtime_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     key: &CandidateKey,
 ) -> Result<StoredRuntime, DbError> {
     Ok(StoredRuntime {
@@ -204,7 +204,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> Result<StoredRuntime, DbError> {
         let key = key.clone();
-        self.database.read(move |sql| load_stored_runtime_on(&sql, &key)).await
+        self.store.read(move |sql| load_stored_runtime_on(&sql, &key)).await
     }
 
     /// Every key something is running for, as [`Self::load_candidate_runtime`]
@@ -212,7 +212,7 @@ impl ImportTables {
     pub(crate) async fn load_candidate_runtimes(
         &self,
     ) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {
-        self.database.read(|sql| load_stored_runtimes_on(&sql)).await
+        self.store.read(|sql| load_stored_runtimes_on(&sql)).await
     }
 
     /// The signals `run` of `key` last read, as its rows hold them; `None`
@@ -224,7 +224,7 @@ impl ImportTables {
     ) -> Result<Option<Signals>, DbError> {
         let key = key.clone();
         let run = to_i64(run.number(), "an identify run")?;
-        self.database
+        self.store
             .read(move |sql| {
                 let stored = sql.query(
                     &format!(
@@ -250,7 +250,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>> {
         let key = key.clone();
-        self.database.subscribe(move |sql| {
+        self.store.subscribe(move |sql| {
             load_stored_runtime_on(&sql, &key)
                 .map(|stored| crate::candidate_runtime::compose(&key, &stored))
                 .map_err(CovenError::from)
@@ -271,7 +271,7 @@ impl ImportTables {
         let releases = state.read_releases();
         let key = key.clone();
         let change = IdentificationChange::RunStarted { files: files.clone(), run };
-        self.database
+        self.store
             .call(move |sql| {
                 let moved = change_identification_on(sql, &key, &change)?;
                 publish_candidate_run_on(sql, &key, run, &outcome, &releases, None)?;
@@ -295,7 +295,7 @@ impl ImportTables {
         let releases = state.read_releases();
         let key = key.clone();
         let signals = signals.cloned();
-        self.database
+        self.store
             .call(move |sql| {
                 publish_candidate_run_on(sql, &key, run, &outcome, &releases, signals.as_ref())
             })
@@ -317,7 +317,7 @@ impl ImportTables {
         let releases = state.read_releases();
         let key = key.clone();
         let signals = signals.cloned();
-        self.database
+        self.store
             .call(move |sql| match outcome {
                 Some(outcome) => {
                     store_release_run_on(sql, &key, run, &outcome, &releases, signals.as_ref())
@@ -341,7 +341,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> Result<IdentificationMove, DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 let moved = change_identification_on(sql, &key, &IdentificationChange::Cancelled)?;
                 sql.execute("DELETE FROM import_identify_run WHERE candidate_key = ?", [&key])?;

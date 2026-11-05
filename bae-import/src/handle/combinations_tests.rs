@@ -20,7 +20,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
                 order: crate::ImportListOrder::PathAscending,
                 ..crate::ImportListView::default()
             },
-            [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         )
         .await
         .unwrap();
@@ -39,8 +39,8 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
 /// brings them back as they were, drafts and all.
 #[tokio::test(flavor = "multi_thread")]
 async fn separating_picked_folders_returns_them_as_they_were() {
-    let (parts, database, _library) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, _library) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
     let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume A").await;
@@ -76,8 +76,8 @@ async fn separating_picked_folders_returns_them_as_they_were() {
 /// keeps the folder's releases apart.
 #[tokio::test(flavor = "multi_thread")]
 async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
-    let (parts, database, _library) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, _library) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let tmp = TempDir::new().unwrap();
     let root = tmp.path().join("music");
     let fixture =
@@ -135,8 +135,8 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
 /// read as numbers.
 #[tokio::test(flavor = "multi_thread")]
 async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
-    let (parts, database, _library) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, _library) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let tmp = TempDir::new().unwrap();
     let root = tmp.path().join("music");
     let fixture =
@@ -228,8 +228,8 @@ async fn files_of(handle: &ImportServiceHandle, key: &crate::CandidateKey) -> Ve
 /// discs hold only their own files again.
 #[tokio::test(flavor = "multi_thread")]
 async fn two_discs_of_three_take_the_album_folders_cover() {
-    let (parts, database, _library) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, _library) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let tmp = TempDir::new().unwrap();
     let (handle, album) =
         album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2", "Disc 3"], false).await;
@@ -256,8 +256,8 @@ async fn two_discs_of_three_take_the_album_folders_cover() {
 /// with one of its discs holds it once, as its own.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_folder_that_is_a_release_keeps_its_cover() {
-    let (parts, database, _library) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, _library) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let tmp = TempDir::new().unwrap();
     let (handle, album) = album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2"], true).await;
     assert_eq!(files_of(&handle, &key_of(&album)).await, ["00.flac", "cover.jpg"]);

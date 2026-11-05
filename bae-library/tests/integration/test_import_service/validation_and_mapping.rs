@@ -51,7 +51,7 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         "the failure must name the broken track, got: {err}",
     );
     assert!(
-        bae_views::LibraryViews::new(f.library.database().clone())
+        bae_views::LibraryViews::new(f.library.store().clone())
             .get_albums(&[])
             .await
             .unwrap()

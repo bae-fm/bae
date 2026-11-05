@@ -7,7 +7,9 @@ use bae_db::test_fixtures::aggregate_ordering::*;
 use bae_db::test_fixtures::composed_work::*;
 use bae_db::test_fixtures::live_query::*;
 use bae_db::test_fixtures::*;
-use bae_db::test_fixtures::{exec, exec_batch};
+use bae_store::test_fixtures::live_query::*;
+use bae_store::test_fixtures::*;
+use bae_store::test_fixtures::{exec, exec_batch};
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
 
@@ -43,8 +45,8 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
 /// since its last page in one run, so a change it should not follow, committed
 /// before the rename, would show in that page too.
 async fn next_album_page_is_only_a_rename(
-    db: &Database,
-    live: &mut coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, AlbumBrowseProjection>,
+    db: &Store,
+    live: &mut coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, AlbumBrowseProjection>,
     shown: AlbumBrowseProjection,
     title: &str,
 ) -> AlbumBrowseProjection {
@@ -65,6 +67,7 @@ async fn next_album_page_is_only_a_rename(
 #[tokio::test]
 async fn album_browse_delivers_rows_count_and_cover_versions() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     let mut live =
         crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
 
@@ -73,7 +76,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
     assert_eq!(initial.windows[0].rows[0].album.title, "Album Title");
     assert_eq!(initial.windows[0].rows[0].album.cover_version, None);
 
-    let cover = bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "cover bytes").await;
+    let cover = bae_db::test_fixtures::write_cover(&database, RELEASE_ID, "cover bytes").await;
 
     let updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
@@ -90,6 +93,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
 #[tokio::test]
 async fn album_browse_reads_only_the_primary_releases_cover() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     exec(
         &db,
         "INSERT INTO releases (id, album_id, created_at, album_order) VALUES (?1, ?2, '2026-01-02T00:00:00Z', 0)",
@@ -100,9 +104,11 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
     live.next().await.expect("the query stays open").result.unwrap();
 
-    bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
+    bae_db::test_fixtures::write_cover(&database, OTHER_RELEASE_ID, "other release cover bytes")
+        .await;
     let primary =
-        bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
+        bae_db::test_fixtures::write_cover(&database, RELEASE_ID, "primary release cover bytes")
+            .await;
     let updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("the primary release's cover wakes the browse")
@@ -115,6 +121,7 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
 #[tokio::test]
 async fn album_browse_subscription_reconfigures_bounded_windows() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     let sort = [AlbumSortCriterion {
         field: AlbumSortField::DateAdded,
         direction: SortDirection::Ascending,
@@ -222,7 +229,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let shown = shown_again;
 
     let other_cover =
-        bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "other cover bytes").await;
+        bae_db::test_fixtures::write_cover(&database, OTHER_RELEASE_ID, "other cover bytes").await;
     // Only the requested rows' covers are read, so a cover on the album
     // outside the window changes nothing the browse delivers.
     next_album_page_is_only_a_rename(&db, &mut live, shown, "Album Title Shown Again").await;
@@ -236,9 +243,12 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         Some(other_cover.as_str())
     );
 
-    let replaced_other_cover =
-        bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "replaced other cover bytes")
-            .await;
+    let replaced_other_cover = bae_db::test_fixtures::write_cover(
+        &database,
+        OTHER_RELEASE_ID,
+        "replaced other cover bytes",
+    )
+    .await;
     let cover_updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a requested album's cover version wakes album browse")
@@ -319,7 +329,8 @@ async fn album_browse_ignores_an_unread_table() {
 #[tokio::test]
 async fn album_detail_subscription_ignores_an_unread_column() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "cover bytes").await;
+    let database = bae_db::test_fixtures::test_database(&db);
+    bae_db::test_fixtures::write_cover(&database, RELEASE_ID, "cover bytes").await;
     let mut live =
         crate::LibraryViews::new(db.clone()).subscribe_album_detail(Some(ALBUM_ID.to_string()));
     live.next().await.expect("the query stays open").result.unwrap();
@@ -350,7 +361,7 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
 
 #[test]
 fn album_page_subscription_delivers_a_write_materialized_by_sync() {
-    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let writer = devices.a();
         let reader = devices.b();
         let mut live = crate::LibraryViews::new(reader.clone()).subscribe_album_browse(
@@ -368,7 +379,11 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
         )).await;
         devices
             .settle("the remote album", async |_, db| {
-                db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
+                bae_db::test_fixtures::test_database(db)
+                    .find_album_by_id(ALBUM_ID)
+                    .await
+                    .unwrap()
+                    .is_some()
             })
             .await;
         let updated = tokio::time::timeout(HANG_GUARD, live.next())
@@ -386,7 +401,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
 /// turn.
 #[test]
 fn library_search_finds_rows_applied_from_another_device() {
-    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let writer = devices.a();
         let reader = devices.b();
         exec_batch(writer, &format!(
@@ -398,7 +413,11 @@ fn library_search_finds_rows_applied_from_another_device() {
         )).await;
         devices
             .settle("the remote album", async |_, db| {
-                db.find_album_by_id(ALBUM_ID).await.unwrap().is_some()
+                bae_db::test_fixtures::test_database(db)
+                    .find_album_by_id(ALBUM_ID)
+                    .await
+                    .unwrap()
+                    .is_some()
             })
             .await;
         let found =
@@ -412,7 +431,13 @@ fn library_search_finds_rows_applied_from_another_device() {
             .await;
         devices
             .settle("the remote rename", async |_, db| {
-                db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap().title == "Renamed Album Title"
+                bae_db::test_fixtures::test_database(db)
+                    .find_album_by_id(ALBUM_ID)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .title
+                    == "Renamed Album Title"
             })
             .await;
         assert!(crate::LibraryViews::new(reader.clone())
@@ -486,8 +511,10 @@ async fn search_library_returns_artist_hits() {
 #[tokio::test]
 async fn search_library_finds_an_artist_by_another_printed_name() {
     let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     for (artist, name) in [(ARTIST_ALBUM, "Printed Alias"), (ARTIST_COMPOSER, "Composer Alias")] {
-        db.add_artist_credit_name(artist, &bae_db::EnteredName::parse(name).unwrap())
+        database
+            .add_artist_credit_name(artist, &bae_store::EnteredName::parse(name).unwrap())
             .await
             .unwrap();
     }
@@ -601,13 +628,13 @@ const SEARCHED_LIBRARY: &str = "
         ('d2239bd6-e0b8-491c-8383-f444078a0cf1', 'b2140894-e938-4143-9c9a-5e054c2d7dde', 'cef1d7ca-5e1b-4144-9e95-3ece6a68725e', 0, 'musicbrainz', '2026-01-01T00:00:00Z');
 ";
 
-async fn exec_searched(db: &Database, sql: &'static str) {
+async fn exec_searched(db: &Store, sql: &'static str) {
     db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from)).await.unwrap();
 }
 
 /// What a search for `query` finds: the ids of its albums, tracks, artists,
 /// composers and works.
-async fn found(db: &Database, query: &str) -> [Vec<String>; 5] {
+async fn found(db: &Store, query: &str) -> [Vec<String>; 5] {
     let results = crate::LibraryViews::new(db.clone()).search_rows(query, 10).await.unwrap();
     [
         results.albums.into_iter().map(|album| album.id).collect(),

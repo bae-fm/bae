@@ -32,7 +32,7 @@ impl LibraryManager {
         action: bae_transfers::StoredTransition,
     ) -> Result<(), LibraryError> {
         match bae_transfers::release_storage_action::begin_release_storage_action(
-            &self.database,
+            &self.store,
             release_id,
             action,
         )
@@ -55,7 +55,7 @@ impl LibraryManager {
         operation: LibraryError,
     ) -> LibraryError {
         let Err(error) = bae_transfers::release_storage_action::end_release_storage_action(
-            &self.database,
+            &self.store,
             release_id,
         )
         .await
@@ -100,7 +100,7 @@ impl LibraryManager {
                             // Listed until the transition ends, however it
                             // ends.
                             let report = manager.make_local_transfers.report(&release_id);
-                            let call = manager.database.prepare_device_only(
+                            let call = manager.store.prepare_device_only(
                                 &folder,
                                 files,
                                 &stopped,
@@ -125,7 +125,7 @@ impl LibraryManager {
                             }
                             .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
                             Ok(bae_transfers::release_storage_action::make_release_local(
-                                &manager.database,
+                                &manager.store,
                                 &release_id,
                                 prepared,
                             )

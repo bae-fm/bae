@@ -38,13 +38,13 @@ const MUSICIANS: &str = concat!(
 );
 
 /// Generate a fun default library name like "groovin-coltrane" or "boppin-beethoven".
-pub fn generate_library_name() -> bae_db::EnteredName {
+pub fn generate_library_name() -> bae_store::EnteredName {
     let mut rng = rand::rng();
     let mut word = |list: &str| {
         list.split_whitespace().choose(&mut rng).expect("the word lists are not empty").to_string()
     };
     let verb = word(VERBS);
     let musician = word(MUSICIANS);
-    bae_db::EnteredName::parse(&format!("{verb}-{musician}"))
+    bae_store::EnteredName::parse(&format!("{verb}-{musician}"))
         .expect("generated library names are always non-blank")
 }

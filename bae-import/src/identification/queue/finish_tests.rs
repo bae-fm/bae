@@ -237,7 +237,7 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
     );
     assert_eq!(
         fixture
-            .database
+            .db
             .query_texts_for_test("SELECT catalog || ' ' || key FROM release_records")
             .await
             .unwrap(),

@@ -563,7 +563,7 @@ impl ImportTables {
     ) -> Result<bool, DbError> {
         let content_hash = content_hash.to_string();
         let edit_revision = to_i64(edit_revision, "a candidate's file edit revision")?;
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(sql.query_row(
                     "SELECT EXISTS (SELECT 1 FROM import_candidate_state AS state \

@@ -110,8 +110,8 @@ pub(crate) mod import {
 
     use crate::{CatalogSessions, ImportServiceHandle};
     use bae_catalogs::remote_image::RemoteImageCache;
-    use bae_db::Database;
     use bae_diagnostics::Diagnostics;
+    use bae_store::Store;
     use coven::{ClockRef, IdSourceRef};
     use tokio_util::sync::CancellationToken;
 
@@ -119,7 +119,7 @@ pub(crate) mod import {
     /// started from it shares its catalog sessions, so a Discogs key one stores
     /// is the next one's too.
     pub(crate) struct TestImport {
-        database: Database,
+        db: Store,
         catalogs: CatalogSessions,
         remote_images: RemoteImageCache,
         clock: ClockRef,
@@ -132,7 +132,7 @@ pub(crate) mod import {
         /// Over `database` on `clock` and `ids`, asking `providers`, which were
         /// built on `http`, reporting to `diagnostics`.
         pub(crate) fn new(
-            database: Database,
+            db: Store,
             providers: bae_catalogs::providers::Providers,
             http: bae_util::http::Http,
             clock: ClockRef,
@@ -142,12 +142,12 @@ pub(crate) mod import {
             let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
             let catalogs = CatalogSessions::new(
                 providers,
-                database.clone(),
+                db.clone(),
                 diagnostics.clone(),
                 tokio::runtime::Handle::current(),
             );
             Self {
-                database,
+                db,
                 catalogs,
                 remote_images,
                 clock,
@@ -166,11 +166,12 @@ pub(crate) mod import {
         pub(crate) async fn start(&self) -> Result<ImportServiceHandle, crate::ImportError> {
             crate::ImportService::start(
                 tokio::runtime::Handle::current(),
-                self.database.clone(),
+                self.db.clone(),
+                bae_db::test_fixtures::test_database(&self.db),
                 self.catalogs.clone(),
                 self.remote_images.clone(),
                 self.diagnostics.clone(),
-                crate::CandidatePreparations::new(self.database.clone()),
+                crate::CandidatePreparations::new(self.db.clone()),
                 self.clock.clone(),
                 self.ids.clone(),
                 self.closing.child_token(),
@@ -185,11 +186,12 @@ pub(crate) mod import {
         ) -> Result<ImportServiceHandle, crate::ImportError> {
             crate::ImportService::start_reading_tags_through(
                 tokio::runtime::Handle::current(),
-                self.database.clone(),
+                self.db.clone(),
+                bae_db::test_fixtures::test_database(&self.db),
                 self.catalogs.clone(),
                 self.remote_images.clone(),
                 self.diagnostics.clone(),
-                crate::CandidatePreparations::new(self.database.clone()),
+                crate::CandidatePreparations::new(self.db.clone()),
                 self.clock.clone(),
                 self.ids.clone(),
                 self.closing.child_token(),
@@ -204,7 +206,7 @@ pub(crate) mod import {
             &self,
             edit: impl FnOnce(&mut bae_preferences::Preferences) + Send + 'static,
         ) {
-            bae_preferences::edit_preferences(&self.database, move |prefs| {
+            bae_preferences::edit_preferences(&self.db, move |prefs| {
                 edit(prefs);
                 Ok(())
             })

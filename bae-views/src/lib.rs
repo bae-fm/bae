@@ -76,16 +76,18 @@ use release::{build_release_detail_on, ReleaseDetailRows};
 
 use album_search::*;
 use bae_db::client::files::{artist_image_version_sql, cover_version_sql};
-use bae_db::client::list_windows::{
-    list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
-};
 use bae_db::client::pressing_columns::{read_media, release_media_sql};
 use bae_db::client::query::*;
 use bae_db::client::read::*;
-use bae_db::client::sync_status::cloud_home_on;
 use bae_db::client::{release_detail_rows_on, unstored_audio_in_row, DbReleaseDetailRows};
 use bae_db::credits::LibraryCredit;
 use bae_db::*;
+use bae_store::cloud_home_on;
+use bae_store::list_windows::{
+    list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
+};
+use bae_store::read::*;
+use bae_store::*;
 use bae_transfers::release_storage_action::{transfer_action_column, transfer_action_sql};
 use bae_util::search_text::search_pattern;
 use chrono::{DateTime, Utc};
@@ -96,7 +98,7 @@ use std::collections::BTreeSet;
 /// The library views' part of the library's schema: one domain, its files in
 /// the order each runs after the files creating the tables its triggers fire
 /// on.
-pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[bae_db::SchemaPart::new(&[
+pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(&[
     album::LISTING_SQL,
     artist::SQL,
     composer::SQL,
@@ -108,13 +110,13 @@ pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[bae_db::SchemaPart::new(&[
 .functions(SQL_FUNCTIONS)];
 
 /// The SQL functions the views' SQL names.
-const SQL_FUNCTIONS: &[&bae_db::SchemaFunction] = &[&bae_db::FOLD_CASE];
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::FOLD_CASE];
 
 /// The schema this crate's tests open their stores on: bae-db's part,
 /// playback's (the tables its tests read), the transfers' (the queues the
 /// release listing's pin triggers fire on) and the views'.
 #[cfg(test)]
-const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[
+const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
     bae_db::SCHEMA_PARTS,
     bae_playback::SCHEMA_PARTS,
     bae_transfers::SCHEMA_PARTS,
@@ -124,13 +126,13 @@ const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[
 /// The library's store, as the library's views read it.
 #[derive(Clone, Debug)]
 pub struct LibraryViews {
-    database: Database,
+    store: Store,
 }
 
 impl LibraryViews {
-    /// The views over the library's store, `database`.
-    pub fn new(database: Database) -> Self {
-        Self { database }
+    /// The views over the library's store.
+    pub fn new(store: Store) -> Self {
+        Self { store }
     }
 }
 

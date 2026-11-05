@@ -23,10 +23,10 @@ async fn release_memory_keeps_the_library_readable_and_writable() {
 #[tokio::test]
 async fn removal_releases_custody_and_preferences() {
     let (manager, _temp) = setup_test_manager().await;
-    let id = manager.database.store_id().to_string();
+    let id = manager.store.store_id().to_string();
     manager.ensure_mcp_token().await.unwrap();
     manager.set_mcp_config(bae_preferences::McpConfig::disabled_default()).await.unwrap();
-    manager.app_dir.save_active_library(manager.database.store_id()).unwrap();
+    manager.app_dir.save_active_library(manager.store.store_id()).unwrap();
     manager.remove_library(&manager.installation, &|_| ()).await.unwrap();
     assert!(manager.get_mcp_token().await.is_err());
     assert!(!manager.app_dir.registered_library(&id).exists());
@@ -48,7 +48,7 @@ async fn removal_discards_the_unsent_work_it_reports() {
         &[("01.flac", b"audio")],
     )
     .await;
-    let id = manager.database.store_id().to_string();
+    let id = manager.store.store_id().to_string();
 
     let work = manager.unsent_before_removal().await.unwrap();
     assert!(work.writes > 0, "{work:?}");

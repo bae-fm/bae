@@ -156,7 +156,7 @@ impl StoredPart {
 
 /// Every search, or `key`'s alone, by key, each with the run it is on.
 fn load_on(
-    sql: &impl bae_db::client::query::QueryRows,
+    sql: &impl bae_store::query::QueryRows,
     key: Option<&CandidateKey>,
 ) -> Result<HashMap<CandidateKey, (SearchRun, CandidateSearch)>, DbError> {
     let searches = sql.query(
@@ -241,7 +241,7 @@ fn load_on(
 
 /// `key`'s search; `None` when it has none.
 pub(super) fn load_search_on(
-    sql: &impl bae_db::client::query::QueryRows,
+    sql: &impl bae_store::query::QueryRows,
     key: &CandidateKey,
 ) -> Result<Option<CandidateSearch>, DbError> {
     Ok(load_on(sql, Some(key))?.remove(key).map(|(_, search)| search))
@@ -249,7 +249,7 @@ pub(super) fn load_search_on(
 
 /// Every key's search.
 pub(super) fn load_searches_on(
-    sql: &impl bae_db::client::query::QueryRows,
+    sql: &impl bae_store::query::QueryRows,
 ) -> Result<HashMap<CandidateKey, CandidateSearch>, DbError> {
     Ok(load_on(sql, None)?.into_iter().map(|(key, (_, search))| (key, search)).collect())
 }
@@ -401,7 +401,7 @@ impl ImportTables {
     ) -> Result<SearchRun, DbError> {
         let key = key.clone();
         let search = search.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 let files = if key.names_release() {
                     None
@@ -426,7 +426,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> Result<Option<(SearchRun, SearchQuery, Vec<LookupCatalog>)>, DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 let Some((run, query)) = sql
                     .query_row(
@@ -469,7 +469,7 @@ impl ImportTables {
         &self,
         catalog: LookupCatalog,
     ) -> Result<(), DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 // A part holds releases only while it stands answered, so they go
                 // first.
@@ -493,7 +493,7 @@ impl ImportTables {
         catalog: LookupCatalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
     ) -> Result<bool, DbError> {
-        self.database.call(move |sql| land_on(sql, run, catalog, &outcome)).await
+        self.store.call(move |sql| land_on(sql, run, catalog, &outcome)).await
     }
 
     /// Land what the documents of `release`, which a pick read, state its
@@ -509,7 +509,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let key = key.clone();
         let release = release.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 let Some((run, mut search)) = load_on(sql, Some(&key))?.remove(&key) else {
                     return Ok(());

@@ -2,7 +2,7 @@
 
 use rusqlite::types::Value;
 
-use crate::SchemaFunction;
+use bae_store::SchemaFunction;
 
 /// `bae_catalog_rank`: a stored catalog's place in the order surfaces list
 /// catalogs (`Catalog::ALL`). Part of the schema once an index uses it: the

@@ -2,7 +2,7 @@
 //! opening the library empties it.
 
 use super::*;
-use bae_db::test_fixtures::temp_db;
+use bae_store::test_fixtures::temp_db;
 
 fn device(id: &str, name: &str, kind: RendererKind) -> CastDevice {
     CastDevice { id: id.to_string(), name: name.to_string(), kind }

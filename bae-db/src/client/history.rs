@@ -57,8 +57,8 @@ impl Database {
             }
             HistoryAudience::Person { .. } => {}
         }
-        let played_ms = super::query::to_i64(entry.played.as_millis(), "played_ms")?;
-        self.call(move |sql| {
+        let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
+        self.inner.store.call(move |sql| {
             match entry.audience {
                 HistoryAudience::DevicePrivate => {
                     sql.execute("INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(local_history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms])?;
@@ -76,7 +76,7 @@ impl Database {
     /// recording a play read back. No surface lists plays.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn history(&self) -> Result<Vec<HistoryEntry>, DbError> {
-        self.read(|sql| Ok(history_rows(&sql)?)).await
+        self.inner.store.read(|sql| Ok(history_rows(&sql)?)).await
     }
 }
 
@@ -86,7 +86,7 @@ fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>>
         let audience = if row.get::<_, Option<String>>(4)?.is_some() {
             HistoryAudience::Person { person: coven::MemberId(uuid_column(row, 4)?), audience: row.get(5)? }
         } else { HistoryAudience::DevicePrivate };
-        let started_at = super::read::rfc3339_column(row, "started_at")?;
+        let started_at = bae_store::read::rfc3339_column(row, "started_at")?;
         let played_ms: i64 = row.get(3)?;
         #[expect(clippy::map_err_ignore, reason = "the out-of-range error carries the column and the value itself")]
         let played_ms = u64::try_from(played_ms).map_err(|_| rusqlite::Error::IntegralValueOutOfRange(3, played_ms))?;

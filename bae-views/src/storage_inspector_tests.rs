@@ -4,6 +4,7 @@ use super::*;
 use crate::album_detail::FilePin;
 use bae_db::test_fixtures::*;
 use bae_db::UploadProgress;
+use bae_store::test_fixtures::*;
 use bae_transfers::ReleaseQueueEntries;
 use bae_transfers::{OutputKind, OutputRequest, ReleaseQueueEntry};
 use bae_transfers::{ReleaseQueueOp, ReleaseQueueRow, ReleaseQueueState};

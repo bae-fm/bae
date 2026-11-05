@@ -3,7 +3,8 @@
 //! playing track's display and the queue's repeat mode. Its table is `now.sql`.
 
 /// The row's part of the library's schema.
-pub(crate) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[include_str!("now.sql")]);
+pub(crate) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("now.sql")]);
 
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::queue::repeat_from_row;
@@ -19,37 +20,37 @@ use crate::{
 /// The `playback_now` row, as playback writes it.
 #[derive(Clone)]
 pub struct PlaybackNowRow {
-    db: Database,
+    store: Store,
 }
 
 impl PlaybackNowRow {
-    /// The row over `db`.
-    pub fn new(db: Database) -> Self {
-        Self { db }
+    /// The row over `store`.
+    pub fn new(store: Store) -> Self {
+        Self { store }
     }
 }
 
 /// Follow what playback is doing as its screens show it. `None` while the
 /// row names a track the library no longer holds: the track was deleted, and
 /// playback has yet to move off it.
-pub fn subscribe_now_playing(database: &Database) -> coven::LiveQuery<Option<NowPlayingValues>> {
-    database.subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
+pub fn subscribe_now_playing(store: &Store) -> coven::LiveQuery<Option<NowPlayingValues>> {
+    store.subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
 }
 
 /// What playback is doing now, as `subscribe_now_playing` reads it.
 #[cfg(any(test, feature = "test-utils"))]
-pub async fn now_playing(database: &Database) -> Result<Option<NowPlayingValues>, DbError> {
-    database.read(|sql| now_playing_on(&sql)).await
+pub async fn now_playing(store: &Store) -> Result<Option<NowPlayingValues>, DbError> {
+    store.read(|sql| now_playing_on(&sql)).await
 }
 
 /// The volume and mute the row holds, which resuming playback restores.
-pub async fn playback_level(database: &Database) -> Result<(crate::Volume, bool), DbError> {
-    database
+pub async fn playback_level(store: &Store) -> Result<(crate::Volume, bool), DbError> {
+    store
         .read(|sql| {
             Ok(sql.query_row("SELECT volume, is_muted FROM playback_now", [], |row| {
                 let stored: f32 = row.get("volume")?;
                 let volume = crate::Volume::new(stored).ok_or_else(|| {
-                    bae_db::client::read::column_conversion_error(
+                    bae_store::read::column_conversion_error(
                         row,
                         "volume",
                         format!("volume {stored} is no level"),
@@ -66,7 +67,7 @@ impl PlaybackNowRow {
     /// failure; a failure counts up the row's failures.
     pub async fn apply(&self, change: &PlaybackChange) -> Result<(), DbError> {
         let change = change.clone();
-        self.db.call(move |sql| apply_on(sql, &change).map_err(DbError::from)).await
+        self.store.call(move |sql| apply_on(sql, &change).map_err(DbError::from)).await
     }
 }
 
@@ -293,8 +294,8 @@ impl<'a> FailureColumns<'a> {
                     bae_db::OtherDevice::Former { name, state } => (
                         name,
                         match state {
-                            bae_db::membership::FormerDeviceState::Removed => "removed",
-                            bae_db::membership::FormerDeviceState::Replaced => "replaced",
+                            bae_store::FormerDeviceState::Removed => "removed",
+                            bae_store::FormerDeviceState::Replaced => "replaced",
                         },
                     ),
                 };
@@ -424,11 +425,11 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
                 "active" => bae_db::OtherDevice::Active { name },
                 "removed" => bae_db::OtherDevice::Former {
                     name,
-                    state: bae_db::membership::FormerDeviceState::Removed,
+                    state: bae_store::FormerDeviceState::Removed,
                 },
                 "replaced" => bae_db::OtherDevice::Former {
                     name,
-                    state: bae_db::membership::FormerDeviceState::Replaced,
+                    state: bae_store::FormerDeviceState::Replaced,
                 },
                 other => return Err(unknown(row, "failure_device_state", other)),
             })

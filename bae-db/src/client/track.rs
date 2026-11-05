@@ -46,29 +46,31 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release_medium(&self, medium: &DbReleaseMedium) -> Result<(), DbError> {
         let medium = medium.clone();
-        self.call_sql(move |sql| insert_release_medium_row(&sql, &medium)).await
+        self.inner.store.call_sql(move |sql| insert_release_medium_row(&sql, &medium)).await
     }
 
     pub async fn insert_track(&self, track: &DbTrack) -> Result<(), DbError> {
         let track = track.clone();
-        self.call_sql(move |sql| insert_track_row(&sql, &track)).await
+        self.inner.store.call_sql(move |sql| insert_track_row(&sql, &track)).await
     }
 
     /// A release's mediums, in order.
     pub async fn get_release_mediums(&self, release_id: &str) -> Result<DbReleaseMediums, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| release_mediums_on(&sql, &release_id)).await
+        self.inner.store.read(move |sql| release_mediums_on(&sql, &release_id)).await
     }
 
     /// Find track by ID. Caller-provided ID — may not exist.
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
-        self.read(move |sql| {
-            sql.query_row("SELECT * FROM tracks WHERE id = ?", params![track_id], row_to_track)
-                .optional()
-                .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row("SELECT * FROM tracks WHERE id = ?", params![track_id], row_to_track)
+                    .optional()
+                    .map_err(DbError::from)
+            })
+            .await
     }
     /// Ordered track IDs for a release — cheaper than `get_tracks_for_release`
     /// when the caller only needs IDs (queue building, play context).
@@ -77,15 +79,17 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<String>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| {
-            sql.query(
-                "SELECT id FROM tracks WHERE release_id = ? ORDER BY position, id",
-                params![release_id],
-                |row| row.get::<_, String>("id"),
-            )
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query(
+                    "SELECT id FROM tracks WHERE release_id = ? ORDER BY position, id",
+                    params![release_id],
+                    |row| row.get::<_, String>("id"),
+                )
+                .map_err(DbError::from)
+            })
+            .await
     }
 
     /// Every track id in the library, in a deterministic base order (the same
@@ -93,13 +97,15 @@ impl Database {
     /// release, then stored position, id — the order the playback queue's
     /// library play unshuffles into.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
-        self.read(move |sql| {
-            sql.query("SELECT id FROM tracks ORDER BY release_id, position, id", [], |row| {
-                row.get::<_, String>("id")
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query("SELECT id FROM tracks ORDER BY release_id, position, id", [], |row| {
+                    row.get::<_, String>("id")
+                })
+                .map_err(DbError::from)
             })
-            .map_err(DbError::from)
-        })
-        .await
+            .await
     }
 
     /// The subset of `track_ids` that exist in the tracks table. The returned
@@ -112,33 +118,37 @@ impl Database {
             return Ok(Vec::new());
         }
         let track_ids = track_ids.to_vec();
-        self.read(move |sql| {
-            let mut existing = Vec::new();
-            for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
-                let placeholders = in_clause_placeholders(chunk.len());
-                let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
-                existing.extend(sql.query(
-                    &query,
-                    rusqlite::params_from_iter(chunk.iter()),
-                    |row| row.get::<_, String>("id"),
-                )?);
-            }
-            Ok(existing)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                let mut existing = Vec::new();
+                for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
+                    let placeholders = in_clause_placeholders(chunk.len());
+                    let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
+                    existing.extend(sql.query(
+                        &query,
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| row.get::<_, String>("id"),
+                    )?);
+                }
+                Ok(existing)
+            })
+            .await
     }
 
     /// How many tracks the release has, counted on its tracks' index.
     pub async fn count_tracks_for_release(&self, release_id: &str) -> Result<usize, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| {
-            Ok(sql.query_row(
-                "SELECT COUNT(*) FROM tracks WHERE release_id = ?",
-                params![release_id],
-                |row| row.get(0),
-            )?)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT COUNT(*) FROM tracks WHERE release_id = ?",
+                    params![release_id],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
     }
 
     /// Where the track `track_id` sits in its release's order: whether it is
@@ -146,28 +156,32 @@ impl Database {
     /// track. Read on the index of each release's track positions.
     pub async fn track_neighbors(&self, track_id: &str) -> Result<Option<TrackNeighbors>, DbError> {
         let track_id = track_id.to_string();
-        self.read(move |sql| {
-            Ok(sql
-                .query_row(TRACK_NEIGHBORS, params![track_id], |row| {
-                    Ok(TrackNeighbors { is_first: row.get(0)?, next: row.get(1)? })
-                })
-                .optional()?)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                Ok(sql
+                    .query_row(TRACK_NEIGHBORS, params![track_id], |row| {
+                        Ok(TrackNeighbors { is_first: row.get(0)?, next: row.get(1)? })
+                    })
+                    .optional()?)
+            })
+            .await
     }
 
     /// Ordered by the release’s stored track positions.
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| {
-            sql.query(
-                "SELECT * FROM tracks WHERE release_id = ? ORDER BY position, id",
-                params![release_id],
-                row_to_track,
-            )
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query(
+                    "SELECT * FROM tracks WHERE release_id = ? ORDER BY position, id",
+                    params![release_id],
+                    row_to_track,
+                )
+                .map_err(DbError::from)
+            })
+            .await
     }
     /// Find audio format by track ID. Caller-provided ID — may not exist.
     pub async fn find_audio_format_by_track_id(
@@ -175,16 +189,18 @@ impl Database {
         track_id: &str,
     ) -> Result<Option<DbAudioFormat>, DbError> {
         let track_id = track_id.to_string();
-        self.read(move |sql| {
-            sql.query_row(
-                "SELECT * FROM audio_formats WHERE track_id = ?",
-                params![track_id],
-                row_to_audio_format,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(
+                    "SELECT * FROM audio_formats WHERE track_id = ?",
+                    params![track_id],
+                    row_to_audio_format,
+                )
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await
     }
 
     /// Every segment of the audio format `audio_format_id`, in segment
@@ -195,29 +211,31 @@ impl Database {
         audio_format_id: &str,
     ) -> Result<Vec<DbTrackAudioSegment>, DbError> {
         let audio_format_id = audio_format_id.to_string();
-        self.read(move |sql| {
-            let rows: Vec<(DbAudioSegment, Option<u64>, Option<Vec<u8>>)> =
-                sql.query(TRACK_AUDIO_SEGMENTS, params![audio_format_id], |row| {
-                    Ok((
-                        row_to_audio_segment(row)?,
-                        row.get("file_size")?,
-                        row.get("scrub_points")?,
-                    ))
-                })?;
-            rows.into_iter()
-                .map(|(segment, file_size, points)| {
-                    Ok(DbTrackAudioSegment {
-                        segment,
-                        file_size,
-                        scrub_points: match points {
-                            Some(blob) => super::scrub_points_column::decode(&blob)?,
-                            None => Vec::new(),
-                        },
+        self.inner
+            .store
+            .read(move |sql| {
+                let rows: Vec<(DbAudioSegment, Option<u64>, Option<Vec<u8>>)> =
+                    sql.query(TRACK_AUDIO_SEGMENTS, params![audio_format_id], |row| {
+                        Ok((
+                            row_to_audio_segment(row)?,
+                            row.get("file_size")?,
+                            row.get("scrub_points")?,
+                        ))
+                    })?;
+                rows.into_iter()
+                    .map(|(segment, file_size, points)| {
+                        Ok(DbTrackAudioSegment {
+                            segment,
+                            file_size,
+                            scrub_points: match points {
+                                Some(blob) => super::scrub_points_column::decode(&blob)?,
+                                None => Vec::new(),
+                            },
+                        })
                     })
-                })
-                .collect()
-        })
-        .await
+                    .collect()
+            })
+            .await
     }
 
     /// The release files the segments of the audio format `audio_format_id`
@@ -228,20 +246,22 @@ impl Database {
         audio_format_id: &str,
     ) -> Result<Vec<DbFile>, DbError> {
         let audio_format_id = audio_format_id.to_string();
-        self.read(move |sql| {
-            Ok(sql.query(
-                concat!(
-                    "SELECT ",
-                    release_file_columns!(),
-                    " FROM release_files AS f WHERE f.id IN \
+        self.inner
+            .store
+            .read(move |sql| {
+                Ok(sql.query(
+                    concat!(
+                        "SELECT ",
+                        release_file_columns!(),
+                        " FROM release_files AS f WHERE f.id IN \
                      (SELECT file_id FROM audio_format_segments WHERE audio_format_id = ?1) \
                      ORDER BY f.id"
-                ),
-                params![audio_format_id],
-                row_to_file,
-            )?)
-        })
-        .await
+                    ),
+                    params![audio_format_id],
+                    row_to_file,
+                )?)
+            })
+            .await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -250,17 +270,19 @@ impl Database {
         audio_format_id: &str,
     ) -> Result<Vec<DbAudioSegment>, DbError> {
         let audio_format_id = audio_format_id.to_string();
-        self.read(move |sql| {
-            sql.query(
-                "SELECT * FROM audio_format_segments \
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query(
+                    "SELECT * FROM audio_format_segments \
                  WHERE audio_format_id = ? \
                  ORDER BY segment_index",
-                params![audio_format_id],
-                row_to_audio_segment,
-            )
-            .map_err(DbError::from)
-        })
-        .await
+                    params![audio_format_id],
+                    row_to_audio_segment,
+                )
+                .map_err(DbError::from)
+            })
+            .await
     }
 
     /// The scrub points of every segment of an audio format that has any,
@@ -272,28 +294,30 @@ impl Database {
         audio_format_id: &str,
     ) -> Result<Vec<DbScrubPoints>, DbError> {
         let audio_format_id = audio_format_id.to_string();
-        self.read(move |sql| {
-            let rows: Vec<(String, Vec<u8>)> = sql
-                .query(
-                    "SELECT p.audio_format_segment_id, p.points \
+        self.inner
+            .store
+            .read(move |sql| {
+                let rows: Vec<(String, Vec<u8>)> = sql
+                    .query(
+                        "SELECT p.audio_format_segment_id, p.points \
                      FROM audio_segment_scrub_points p \
                      JOIN audio_format_segments s ON s.id = p.audio_format_segment_id \
                      WHERE s.audio_format_id = ? \
                      ORDER BY s.segment_index",
-                    params![audio_format_id],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
-                )
-                .map_err(DbError::from)?;
-            rows.into_iter()
-                .map(|(audio_segment_id, blob)| {
-                    Ok(DbScrubPoints {
-                        audio_segment_id,
-                        points: super::scrub_points_column::decode(&blob)?,
+                        params![audio_format_id],
+                        |row| Ok((row.get(0)?, row.get(1)?)),
+                    )
+                    .map_err(DbError::from)?;
+                rows.into_iter()
+                    .map(|(audio_segment_id, blob)| {
+                        Ok(DbScrubPoints {
+                            audio_segment_id,
+                            points: super::scrub_points_column::decode(&blob)?,
+                        })
                     })
-                })
-                .collect()
-        })
-        .await
+                    .collect()
+            })
+            .await
     }
 }
 

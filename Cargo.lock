@@ -743,6 +743,7 @@ dependencies = [
  "bae-library",
  "bae-playback",
  "bae-preferences",
+ "bae-store",
  "bae-track-audio",
  "bae-transfers",
  "bae-types",
@@ -800,6 +801,7 @@ dependencies = [
  "bae-library",
  "bae-mirror",
  "bae-preferences",
+ "bae-store",
  "bae-transfers",
  "bae-types",
  "bae-util",
@@ -832,6 +834,7 @@ dependencies = [
  "bae-mirror",
  "bae-playback",
  "bae-preferences",
+ "bae-store",
  "bae-track-audio",
  "bae-transfers",
  "bae-types",
@@ -865,6 +868,7 @@ dependencies = [
  "bae-library",
  "bae-playback",
  "bae-preferences",
+ "bae-store",
  "bae-subsonic",
  "bae-util",
  "base64 0.22.1",
@@ -917,9 +921,9 @@ dependencies = [
 name = "bae-db"
 version = "0.0.0-dev"
 dependencies = [
- "bae-app-dir",
  "bae-catalogs",
  "bae-diagnostics",
+ "bae-store",
  "bae-types",
  "bae-util",
  "chrono",
@@ -932,7 +936,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
- "tokio-util",
  "tracing",
  "uuid",
 ]
@@ -942,10 +945,10 @@ name = "bae-desktop"
 version = "0.1.0"
 dependencies = [
  "bae-app",
- "bae-db",
  "bae-diagnostics",
  "bae-mcp",
  "bae-preferences",
+ "bae-store",
  "bae-subsonic",
  "bae-util",
  "thiserror 2.0.18",
@@ -994,6 +997,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-identify",
  "bae-preferences",
+ "bae-store",
  "bae-track-audio",
  "bae-types",
  "bae-util",
@@ -1041,6 +1045,7 @@ dependencies = [
  "bae-import",
  "bae-playback",
  "bae-preferences",
+ "bae-store",
  "bae-track-audio",
  "bae-transfers",
  "bae-types",
@@ -1109,6 +1114,7 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "bae-preferences",
+ "bae-store",
  "bae-track-audio",
  "bae-types",
  "bae-util",
@@ -1137,8 +1143,8 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-app-dir",
  "bae-catalogs",
- "bae-db",
  "bae-diagnostics",
+ "bae-store",
  "bae-util",
  "coven",
  "reqwest",
@@ -1148,6 +1154,25 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "bae-store"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-app-dir",
+ "bae-util",
+ "chrono",
+ "coven",
+ "hex",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -1164,6 +1189,7 @@ dependencies = [
  "bae-import",
  "bae-library",
  "bae-preferences",
+ "bae-store",
  "bae-track-audio",
  "bae-types",
  "bae-util",
@@ -1195,6 +1221,7 @@ dependencies = [
  "bae-audio",
  "bae-db",
  "bae-diagnostics",
+ "bae-store",
  "bae-util",
  "coven",
  "tempfile",
@@ -1209,6 +1236,7 @@ version = "0.0.0-dev"
 dependencies = [
  "bae-db",
  "bae-preferences",
+ "bae-store",
  "bae-types",
  "bae-util",
  "coven",
@@ -1270,6 +1298,7 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "bae-playback",
+ "bae-store",
  "bae-transfers",
  "bae-types",
  "bae-util",

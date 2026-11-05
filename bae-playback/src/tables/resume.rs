@@ -16,12 +16,9 @@ pub struct PlaybackResumeRow {
 
 /// Write the single device-local `playback_state` row (id = 'current'),
 /// replacing any existing one. Never synced.
-pub async fn save_playback_state(
-    database: &Database,
-    state: &PlaybackResumeRow,
-) -> Result<(), DbError> {
+pub async fn save_playback_state(store: &Store, state: &PlaybackResumeRow) -> Result<(), DbError> {
     let state = state.clone();
-    database
+    store
         .call(move |conn| {
             let (current_entry, current_track_id) = match &state.current {
                 Some(current) => (Some(current.id.to_string()), Some(current.track_id.clone())),
@@ -44,19 +41,15 @@ pub async fn save_playback_state(
 }
 
 /// Read the device-local `playback_state` row, `None` when none is stored.
-pub async fn load_playback_state(
-    database: &Database,
-) -> Result<Option<PlaybackResumeRow>, DbError> {
-    database.read(|sql| playback_state_on(&sql)).await
+pub async fn load_playback_state(store: &Store) -> Result<Option<PlaybackResumeRow>, DbError> {
+    store.read(|sql| playback_state_on(&sql)).await
 }
 
 /// Follow the device-local `playback_state` row as `load_playback_state`
 /// reads it.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn subscribe_playback_state(
-    database: &Database,
-) -> coven::LiveQuery<Option<PlaybackResumeRow>> {
-    database.subscribe(|sql| playback_state_on(&sql).map_err(CovenError::from))
+pub fn subscribe_playback_state(store: &Store) -> coven::LiveQuery<Option<PlaybackResumeRow>> {
+    store.subscribe(|sql| playback_state_on(&sql).map_err(CovenError::from))
 }
 
 /// The `playback_state` row `sql` reads, `None` when none is stored.
@@ -95,8 +88,8 @@ fn playback_state_on(sql: &SqlReadContext<'_>) -> Result<Option<PlaybackResumeRo
 /// calls arrive with the row already gone. That case is read, not written:
 /// a delete over an empty table is a transaction that changes nothing, and
 /// those belong off the sync journal.
-pub async fn clear_playback_state(database: &Database) -> Result<(), DbError> {
-    let stored = database
+pub async fn clear_playback_state(store: &Store) -> Result<(), DbError> {
+    let stored = store
         .read(move |sql| {
             Ok(sql.query_row("SELECT 1 FROM playback_state", [], |_| Ok(())).optional()?.is_some())
         })
@@ -104,7 +97,7 @@ pub async fn clear_playback_state(database: &Database) -> Result<(), DbError> {
     if !stored {
         return Ok(());
     }
-    database
+    store
         .call(move |conn| {
             conn.execute("DELETE FROM playback_state", []).map(|_| ()).map_err(DbError::from)
         })

@@ -11,7 +11,7 @@ use crate::people::{Avatar, Person, PersonProfile, ProfileError, Sharing};
 fn profile_columns() -> String {
     format!(
         "p.id, p.name, p.private_circle, p.history_sharing, p.avatar_id, {avatar_version}",
-        avatar_version = super::files::file_version_sql("p.avatar_id"),
+        avatar_version = bae_store::file_version_sql("p.avatar_id"),
     )
 }
 
@@ -32,28 +32,30 @@ impl Database {
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile once they made one.
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        Ok(self.read(|sql| Ok(people_on(&sql, &own_person_sql())?)).await?.pop())
+        Ok(self.inner.store.read(|sql| Ok(people_on(&sql, &own_person_sql())?)).await?.pop())
     }
 
     pub async fn profiles(&self) -> Result<Vec<PersonProfile>, DbError> {
-        self.read(|sql| Ok(profile_rows(&sql)?)).await
+        self.inner.store.read(|sql| Ok(profile_rows(&sql)?)).await
     }
 
     /// Everyone in the library, in member-id order: each member, with
     /// their profile once they made one.
     pub async fn people(&self) -> Result<Vec<Person>, DbError> {
-        self.read(|sql| Ok(people_on(&sql, &everyone_sql())?)).await
+        self.inner.store.read(|sql| Ok(people_on(&sql, &everyone_sql())?)).await
     }
 
     pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>> {
-        self.inner.handle.subscribe(|sql| Ok(profile_rows(&sql)?))
+        self.inner.store.subscribe(|sql| Ok(profile_rows(&sql)?))
     }
 
     pub async fn profile(&self, member: coven::MemberId) -> Result<Option<PersonProfile>, DbError> {
-        self.read(move |sql| {
-            Ok(sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                Ok(sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?)
+            })
+            .await
     }
 
     pub(crate) async fn own_profile(&self) -> Result<PersonProfile, ProfileError> {
@@ -73,7 +75,7 @@ impl Database {
     /// or one this device stopped before, is acknowledged and replaced by
     /// this one; one still running refuses another with `CirclePending`.
     pub async fn create_profile(&self, name: &str) -> Result<(), ProfileError> {
-        let name = crate::EnteredName::parse(name)?.into_string();
+        let name = bae_store::EnteredName::parse(name)?.into_string();
         let _creation = self.inner.profile_creation.lock().await;
         let member = self.current_member().await?.ok_or(ProfileError::NotRegistered)?;
         if let Some(profile) = self.profile(member).await? {
@@ -81,11 +83,13 @@ impl Database {
                 return Err(ProfileError::AlreadyExists);
             }
             let _registration = self.inner.history_registration.lock().await;
-            self.call(move |sql| {
-                history::adopt_local_history(sql, &profile)?;
-                Ok(())
-            })
-            .await?;
+            self.inner
+                .store
+                .call(move |sql| {
+                    history::adopt_local_history(sql, &profile)?;
+                    Ok(())
+                })
+                .await?;
             return Ok(());
         }
         // History can keep recording locally while the circle is made.
@@ -93,6 +97,8 @@ impl Database {
         // history writes.
         let _registration = self.inner.history_registration.lock().await;
         let made = self
+            .inner
+            .store
             .call(move |sql| {
                 if let Some(request) = profile_request_on(sql)? {
                     match request.state()? {
@@ -157,58 +163,66 @@ impl Database {
     async fn finish_profile(&self, request: ProfileRequest) -> Result<(), DbError> {
         let _creation = self.inner.profile_creation.lock().await;
         let _registration = self.inner.history_registration.lock().await;
-        self.call(move |sql| {
-            // Only this write ends a request whose circle has landed.
-            if profile_request_on(sql)?.as_ref() != Some(&request) {
-                return Err(DbError::Message(format!(
+        self.inner
+            .store
+            .call(move |sql| {
+                // Only this write ends a request whose circle has landed.
+                if profile_request_on(sql)?.as_ref() != Some(&request) {
+                    return Err(DbError::Message(format!(
                     "the profile request for operation {:?} changed before its profile was written",
                     request.operation
                 )));
-            }
-            let member: coven::MemberId = sql.query_row(
-                "SELECT member FROM coven_members WHERE is_self AND NOT removed",
-                [],
-                |row| row.get(0),
-            )?;
-            end_profile_request(sql, &request)?;
-            let existing =
-                sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?;
-            match existing {
-                Some(profile) => history::adopt_local_history(sql, &profile)?,
-                None => insert_profile(sql, &new_profile(member, request.name, request.circle))?,
-            }
-            Ok(())
-        })
-        .await?;
+                }
+                let member: coven::MemberId = sql.query_row(
+                    "SELECT member FROM coven_members WHERE is_self AND NOT removed",
+                    [],
+                    |row| row.get(0),
+                )?;
+                end_profile_request(sql, &request)?;
+                let existing =
+                    sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?;
+                match existing {
+                    Some(profile) => history::adopt_local_history(sql, &profile)?,
+                    None => {
+                        insert_profile(sql, &new_profile(member, request.name, request.circle))?
+                    }
+                }
+                Ok(())
+            })
+            .await?;
         Ok(())
     }
 
     pub async fn rename_profile(&self, name: &str) -> Result<(), ProfileError> {
-        let name = crate::EnteredName::parse(name)?.into_string();
+        let name = bae_store::EnteredName::parse(name)?.into_string();
         let person = self.own_profile().await?.id;
-        self.call(move |sql| {
-            update_profile(
-                sql,
-                "UPDATE people SET name = ? WHERE id = ?",
-                params![name, person.to_string()],
-            )?;
-            Ok(())
-        })
-        .await?;
+        self.inner
+            .store
+            .call(move |sql| {
+                update_profile(
+                    sql,
+                    "UPDATE people SET name = ? WHERE id = ?",
+                    params![name, person.to_string()],
+                )?;
+                Ok(())
+            })
+            .await?;
         Ok(())
     }
 
     pub async fn set_history_sharing(&self, sharing: Sharing) -> Result<(), ProfileError> {
         let person = self.own_profile().await?.id;
-        self.call(move |sql| {
-            update_profile(
-                sql,
-                "UPDATE people SET history_sharing = ? WHERE id = ?",
-                params![sharing.as_str(), person.to_string()],
-            )?;
-            Ok(())
-        })
-        .await?;
+        self.inner
+            .store
+            .call(move |sql| {
+                update_profile(
+                    sql,
+                    "UPDATE people SET history_sharing = ? WHERE id = ?",
+                    params![sharing.as_str(), person.to_string()],
+                )?;
+                Ok(())
+            })
+            .await?;
         Ok(())
     }
 
@@ -219,35 +233,39 @@ impl Database {
         let person = self.own_profile().await?.id.to_string();
         match avatar {
             Some(bytes) => {
-                self.write_staged(
-                    move |batch| {
-                        Ok(batch.put_file(
-                            crate::synced::AVATARS_NAMESPACE,
-                            bytes,
-                            coven::Place::Cloud,
-                        ))
-                    },
-                    move |sql, file| {
-                        update_profile(
-                            &sql,
-                            "UPDATE people SET avatar_id = ? WHERE id = ?",
-                            params![file, person],
-                        )?;
-                        Ok(())
-                    },
-                )
-                .await?;
+                self.inner
+                    .store
+                    .write_staged(
+                        move |batch| {
+                            Ok(batch.put_file(
+                                crate::synced::AVATARS_NAMESPACE,
+                                bytes,
+                                coven::Place::Cloud,
+                            ))
+                        },
+                        move |sql, file| {
+                            update_profile(
+                                &sql,
+                                "UPDATE people SET avatar_id = ? WHERE id = ?",
+                                params![file, person],
+                            )?;
+                            Ok(())
+                        },
+                    )
+                    .await?;
             }
             None => {
-                self.call_sql(move |sql| {
-                    update_profile(
-                        &sql,
-                        "UPDATE people SET avatar_id = NULL WHERE id = ?",
-                        [person],
-                    )?;
-                    Ok(())
-                })
-                .await?
+                self.inner
+                    .store
+                    .call_sql(move |sql| {
+                        update_profile(
+                            &sql,
+                            "UPDATE people SET avatar_id = NULL WHERE id = ?",
+                            [person],
+                        )?;
+                        Ok(())
+                    })
+                    .await?
             }
         }
         Ok(())
@@ -260,8 +278,8 @@ impl Database {
         let Some(avatar) = profile.avatar else {
             return Ok(None);
         };
-        let file = self.coven_file(avatar.file).await?;
-        Ok(Some(self.inner.handle.read_file(&file).await.map_err(DbError::from)?))
+        let file = self.inner.store.file_ref(avatar.file).await?;
+        Ok(Some(self.inner.store.read_file(&file).await.map_err(DbError::from)?))
     }
 }
 

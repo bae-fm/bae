@@ -14,13 +14,13 @@ impl AppServices {
     delegate_async!(manager, people => people() -> Result<Vec<bae_db::people::Person>, LibraryError>);
     delegate_async!(manager, own_person => own_person() -> Result<Option<bae_db::people::Person>, LibraryError>);
     delegate_async!(manager, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
-    delegate_async!(manager, ratings => ratings() -> Result<Vec<Rating>, bae_db::DbError>);
+    delegate_async!(manager, ratings => ratings() -> Result<Vec<Rating>, bae_store::DbError>);
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing) -> Result<Playlist, CollectionError>);
-    delegate_async!(manager, playlists => playlists() -> Result<Vec<Playlist>, bae_db::DbError>);
+    delegate_async!(manager, playlists => playlists() -> Result<Vec<Playlist>, bae_store::DbError>);
     delegate_async!(manager, rename_playlist => rename_playlist(id: uuid::Uuid, name: &str) -> Result<(), CollectionError>);
     delegate_async!(manager, set_playlist_sharing => set_playlist_sharing(id: uuid::Uuid, sharing: Sharing) -> Result<(), CollectionError>);
     delegate_async!(manager, delete_playlist => delete_playlist(id: uuid::Uuid) -> Result<(), CollectionError>);
-    delegate_async!(manager, playlist_entries => playlist_entries(id: uuid::Uuid) -> Result<Vec<PlaylistEntry>, bae_db::DbError>);
+    delegate_async!(manager, playlist_entries => playlist_entries(id: uuid::Uuid) -> Result<Vec<PlaylistEntry>, bae_store::DbError>);
     delegate_async!(manager, append_playlist_entry => append_playlist_entry(playlist: uuid::Uuid, track: String) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(manager, remove_playlist_entry => remove_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid) -> Result<(), CollectionError>);
     delegate_async!(manager, reorder_playlist => reorder_playlist(playlist: uuid::Uuid, order: Vec<uuid::Uuid>) -> Result<(), CollectionError>);

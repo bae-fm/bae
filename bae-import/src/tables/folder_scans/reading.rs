@@ -54,7 +54,7 @@ impl ImportTables {
         watched_folder_path: &Path,
     ) -> Result<FolderReadingStamp, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
-        self.database
+        self.store
             .call(move |sql| {
                 let Some(read_under) = root_generation_on(sql, &watched_folder_path)? else {
                     return Err(DbError::Message(format!(
@@ -132,8 +132,8 @@ impl ImportTables {
         let read_under = generation_column(stamp.read_under)?;
         let generation = generation_column(stamp.generation)?;
         let observed_at =
-            chrono::DateTime::<chrono::Utc>::from(self.database.now()).timestamp_millis();
-        self.database
+            chrono::DateTime::<chrono::Utc>::from(self.store.now()).timestamp_millis();
+        self.store
             .call(move |sql| {
                 let root = coven::path_bytes(&watched_folder_path);
                 if root_generation_on(sql, &watched_folder_path)? != Some(read_under) {

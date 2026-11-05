@@ -4,22 +4,22 @@
 use super::*;
 impl LibraryManager {
     pub async fn is_sync_configured(&self) -> Result<bool, LibraryError> {
-        Ok(self.database.storage_config().await?.is_some())
+        Ok(self.store.storage_config().await?.is_some())
     }
 
     /// Whether storage is set up on this device, as coven's sync status
     /// says now.
     pub async fn has_cloud_home(&self) -> Result<bool, LibraryError> {
-        Ok(self.database.cloud_home().await?)
+        Ok(self.store.cloud_home().await?)
     }
 
     pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
-        self.database.set_uploads_paused(paused).await?;
+        self.store.set_uploads_paused(paused).await?;
         Ok(())
     }
 
     pub async fn is_sync_paused(&self) -> Result<bool, LibraryError> {
-        Ok(self.database.uploads_paused().await?)
+        Ok(self.store.uploads_paused().await?)
     }
 
     /// Whether coven's sync loop is running now: storage is set up and
@@ -31,30 +31,30 @@ impl LibraryManager {
     /// The sync status now, as [`Self::subscribe_sync_status`] makes each.
     pub async fn sync_status(&self) -> Result<bae_db::SyncStatusSnapshot, LibraryError> {
         Ok(self
-            .database
+            .store
             .read_with_sync_state(bae_db::sync_status_rows_on, bae_db::SyncStatusSnapshot::read)
             .await?)
     }
 
     pub async fn pending(&self) -> Result<Vec<coven::PendingRecord>, LibraryError> {
-        Ok(self.database.pending().await?)
+        Ok(self.store.pending().await?)
     }
 
     pub async fn retry_pending_operation(
         &self,
         id: coven::OperationId,
     ) -> Result<(), LibraryError> {
-        self.database.retry_pending_operation(id).await?;
+        self.store.retry_pending_operation(id).await?;
         Ok(())
     }
 
     /// Stop the sync loop: returns once no pass runs.
     pub async fn stop_sync(&self) -> Result<(), LibraryError> {
-        Ok(self.database.stop_sync().await?)
+        Ok(self.store.stop_sync().await?)
     }
 
     pub fn trigger_sync(&self) {
-        self.database.sync_now();
+        self.store.sync_now();
     }
 
     /// The person asked to retry everything now, such as by pulling to
@@ -73,7 +73,7 @@ impl LibraryManager {
         impl std::future::Future<Output = bae_db::SyncRetryOutcome> + Send + 'static,
         LibraryError,
     > {
-        let answer = self.database.retry_now().await?;
+        let answer = self.store.retry_now().await?;
         Ok(async move { answer.await.into() })
     }
 
@@ -89,7 +89,7 @@ impl LibraryManager {
             .into_location()
             .map_err(|error| LibraryError::Validation(format!("invalid S3 endpoint: {error}")))?;
         let setup = self
-            .database
+            .store
             .setup_s3_storage(
                 storage,
                 device_name,
@@ -117,7 +117,7 @@ impl LibraryManager {
                 return Err(LibraryError::Internal(format!("{provider:?} has no account sign-in")))
             }
         };
-        self.database.authenticate(access).await?;
+        self.store.authenticate(access).await?;
         Ok(())
     }
 
@@ -130,7 +130,7 @@ impl LibraryManager {
         device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        let storage = self.database.storage_config().await?.ok_or_else(|| {
+        let storage = self.store.storage_config().await?.ok_or_else(|| {
             LibraryError::Internal("signing in again needs a library with storage".into())
         })?;
         let access = storage.oauth_access().ok_or_else(|| {
@@ -139,7 +139,7 @@ impl LibraryManager {
                 storage.provider()
             ))
         })?;
-        self.database.authenticate(access).await?;
+        self.store.authenticate(access).await?;
         self.setup_oauth_storage(storage, device_name, steps).await
     }
 
@@ -151,14 +151,14 @@ impl LibraryManager {
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let provider = storage.provider();
-        let setup = self.database.setup_oauth_storage(storage, device_name, steps).await?;
+        let setup = self.store.setup_oauth_storage(storage, device_name, steps).await?;
         self.diagnostics.event(TelemetryEvent::CloudProviderConnected { provider });
         Ok(setup)
     }
 
     #[cfg(feature = "oauth-providers")]
     pub async fn onedrive_root(&self) -> Result<coven::StorageFolder, LibraryError> {
-        Ok(self.database.onedrive_root().await?)
+        Ok(self.store.onedrive_root().await?)
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -166,7 +166,7 @@ impl LibraryManager {
         &self,
         parent: &coven::StorageConfig,
     ) -> Result<Vec<coven::StorageFolder>, LibraryError> {
-        Ok(self.database.onedrive_folders(parent).await?)
+        Ok(self.store.onedrive_folders(parent).await?)
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -175,12 +175,12 @@ impl LibraryManager {
         parent: &coven::StorageConfig,
         name: &str,
     ) -> Result<coven::StorageFolder, LibraryError> {
-        Ok(self.database.create_onedrive_folder(parent, name).await?)
+        Ok(self.store.create_onedrive_folder(parent, name).await?)
     }
 
     #[cfg(feature = "oauth-providers")]
     pub async fn dropbox_shared_folders(&self) -> Result<Vec<coven::StorageFolder>, LibraryError> {
-        Ok(self.database.dropbox_shared_folders().await?)
+        Ok(self.store.dropbox_shared_folders().await?)
     }
 
     pub async fn use_cloudkit(
@@ -188,7 +188,7 @@ impl LibraryManager {
         device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        let setup = self.database.setup_cloudkit_storage(device_name, steps).await?;
+        let setup = self.store.setup_cloudkit_storage(device_name, steps).await?;
         self.diagnostics.event(TelemetryEvent::CloudProviderConnected {
             provider: coven::CloudProvider::CloudKit,
         });
@@ -196,7 +196,7 @@ impl LibraryManager {
     }
 
     pub async fn unlock_store_key(&self) -> Result<(), LibraryError> {
-        self.database.unlock_store_key().await?;
+        self.store.unlock_store_key().await?;
         Ok(())
     }
 
@@ -205,7 +205,7 @@ impl LibraryManager {
     /// retries like any other; starting fails only when the session lacks a
     /// store key or custody can't be read.
     pub async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
-        self.database.start_sync().await?;
+        self.store.start_sync().await?;
         Ok(())
     }
 
@@ -312,10 +312,10 @@ impl LibraryManager {
         storage: coven::StorageConfig,
         credentials: coven::S3Credentials,
     ) -> Result<coven::S3Detection, LibraryError> {
-        Ok(self.database.detect_s3_settings(storage, credentials).await?)
+        Ok(self.store.detect_s3_settings(storage, credentials).await?)
     }
     pub async fn storage_location(&self) -> Result<Option<coven::StorageConfig>, LibraryError> {
-        Ok(self.database.storage_config().await?)
+        Ok(self.store.storage_config().await?)
     }
 }
 

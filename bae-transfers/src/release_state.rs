@@ -4,7 +4,7 @@
 use crate::queued_releases::tables::download_phase_on;
 use crate::release_storage_action::release_transfer_action_on;
 use crate::DownloadPhase;
-use bae_db::DbError;
+use bae_store::DbError;
 use bae_types::release_storage::ReleaseStorageAction;
 use coven::SqlReadContext;
 

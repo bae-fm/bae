@@ -391,7 +391,7 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
     let first_url = format!("http://renderer.local/stream?id={FIRST}");
     let second_url = format!("http://renderer.local/stream?id={SECOND}");
 
-    bae_db::test_fixtures::exec(
+    bae_store::test_fixtures::exec(
         &library,
         "UPDATE tracks SET title = 'Renamed Track' WHERE id = ?1",
         &[SECOND],

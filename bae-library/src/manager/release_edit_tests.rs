@@ -23,7 +23,7 @@ async fn stored_for(
     catalog: LookupCatalog,
     release_id: &str,
 ) -> Option<bae_catalogs::source_release::SourceRelease> {
-    bae_import::tables::ImportTables::new(manager.database.clone())
+    bae_import::tables::ImportTables::new(manager.store.clone())
         .load_source_release(&bae_catalogs::records::LookupRef::new(catalog, release_id))
         .await
         .unwrap()
@@ -285,7 +285,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
             vec![track.id.clone(), composer.id.clone()],
         ),
     ] {
-        manager.database.execute_for_test(statement, params).await.unwrap();
+        manager.store.execute_for_test(statement, params).await.unwrap();
     }
 
     let discogs_release_id = "80000201";
@@ -322,9 +322,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
 
     let mut left = Vec::new();
     for table in ["track_works", "track_artist_roles"] {
-        left.push(
-            manager.database.count_rows_for_test(table, "track_id", &track.id).await.unwrap(),
-        );
+        left.push(manager.store.count_rows_for_test(table, "track_id", &track.id).await.unwrap());
     }
     assert_eq!(left, [0, 0]);
     assert_eq!(

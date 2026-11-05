@@ -13,8 +13,8 @@
 //! `release_groupings.sql`.
 
 /// The release groupings' part of the library's schema.
-pub(super) const SCHEMA: bae_db::SchemaPart =
-    bae_db::SchemaPart::new(&[include_str!("release_groupings.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("release_groupings.sql")]);
 
 use super::folder_scans::{self, EntrySource, RowSources};
 use super::*;
@@ -554,7 +554,7 @@ impl ImportTables {
         skipped: bool,
     ) -> Result<bool, DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 let changed = sql.execute(
                     "UPDATE release_grouping SET skipped = ? WHERE key = ? AND skipped != ?",
@@ -580,7 +580,7 @@ impl ImportTables {
         candidate: &FolderCandidate,
     ) -> Result<bool, DbError> {
         let candidate = candidate.clone();
-        self.database.read(move |sql| skipped_on(&sql, &candidate)).await
+        self.store.read(move |sql| skipped_on(&sql, &candidate)).await
     }
 
     /// The release stored at `key`, whatever its standing: a candidate being
@@ -590,7 +590,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> Result<Option<FolderCandidate>, DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .read(move |sql| Ok(load_candidate_on(&sql, &key)?.map(|stored| stored.candidate)))
             .await
     }
@@ -602,7 +602,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> Result<Result<Option<FolderCandidate>, GroupingBlock>, DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .read(move |sql| {
                 let Some(stored) = load_candidate_on(&sql, &key)? else {
                     return Ok(Ok(None));
@@ -621,7 +621,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> Result<Option<GroupingFacts>, DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .read(move |sql| {
                 let stored: Option<(Option<PathBuf>, bool)> = sql
                     .query_row(
@@ -682,7 +682,7 @@ impl ImportTables {
         );
         let refusal_key = key.clone();
         let refused = self
-            .database
+            .store
             .read(move |sql| {
                 Ok(parent_files_on(&sql, &refusal_key, sits_in.as_deref(), false)?.err())
             })
@@ -690,7 +690,7 @@ impl ImportTables {
         if let Some(block) = refused {
             return Ok(Err(block));
         }
-        self.database
+        self.store
             .call(move |sql| {
                 // Each folder's file decisions, which the release starts from.
                 let mut with_edits = Vec::with_capacity(members.len());
@@ -816,7 +816,7 @@ impl ImportTables {
         key: &CandidateKey,
     ) -> Result<(Vec<ScanItem>, GroupingChanges), DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 let members: Vec<CandidateKey> = sql.query(
                     "SELECT member_key FROM release_grouping_member \

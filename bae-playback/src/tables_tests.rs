@@ -3,10 +3,11 @@
 
 use super::*;
 pub(super) use bae_db::test_fixtures::*;
+pub(super) use bae_store::test_fixtures::*;
 
 /// The queue rows of `track_ids` queued in Up Next, as the queue value shows
 /// them.
-pub(super) async fn queue_items(db: &Database, track_ids: &[&str]) -> Vec<crate::QueueItem> {
+pub(super) async fn queue_items(db: &Store, track_ids: &[&str]) -> Vec<crate::QueueItem> {
     PlaybackQueueTables::new(db.clone())
         .add_manual(track_ids.iter().map(|id| id.to_string()).collect(), ManualPlace::End)
         .await
@@ -15,7 +16,7 @@ pub(super) async fn queue_items(db: &Database, track_ids: &[&str]) -> Vec<crate:
 }
 
 /// `RELEASE_A` holding `count` tracks, in order, and their ids.
-pub(super) async fn release_db(count: usize) -> (Database, tempfile::TempDir, Vec<String>) {
+pub(super) async fn release_db(count: usize) -> (Store, tempfile::TempDir, Vec<String>) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let track_ids: Vec<String> = (0..count)
         .map(|index| bae_util::test_ids::test_uuid(&format!("queue-track-{index}")))

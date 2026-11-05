@@ -48,7 +48,7 @@ pub struct LibrarySearchSnapshot {
 /// query for as long as the search field is open, instead of a new live query
 /// per keystroke.
 pub struct LiveLibrarySearch {
-    query: bae_db::live_query::CancellableLiveQuery<
+    query: bae_store::live_query::CancellableLiveQuery<
         Option<LibrarySearchQuery>,
         crate::LibrarySearchProjection,
     >,
@@ -59,7 +59,7 @@ pub struct LiveLibrarySearch {
 
 impl LiveLibrarySearch {
     pub fn new(
-        query: bae_db::live_query::CancellableLiveQuery<
+        query: bae_store::live_query::CancellableLiveQuery<
             Option<LibrarySearchQuery>,
             crate::LibrarySearchProjection,
         >,
@@ -73,14 +73,16 @@ impl LiveLibrarySearch {
 
     /// Search for `raw`, parsed as every surface parses a query: a blank one is
     /// no search. Returns the revision the answer will carry.
-    pub fn set_query(&self, raw: &str) -> Result<u64, bae_db::live_query::LiveQueryError> {
+    pub fn set_query(&self, raw: &str) -> Result<u64, bae_store::live_query::LiveQueryError> {
         self.query
             .set(LibrarySearchQuery::parse(raw))
-            .map_err(bae_db::live_query::LiveQueryError::from)
+            .map_err(bae_store::live_query::LiveQueryError::from)
     }
 
-    pub async fn next(&self) -> Result<LibrarySearchSnapshot, bae_db::live_query::LiveQueryError> {
-        let event = self.query.next().await.map_err(bae_db::live_query::LiveQueryError::from)?;
+    pub async fn next(
+        &self,
+    ) -> Result<LibrarySearchSnapshot, bae_store::live_query::LiveQueryError> {
+        let event = self.query.next().await.map_err(bae_store::live_query::LiveQueryError::from)?;
         let request_revision = event.revision.0;
         let query = event.request.clone();
         let projection = event.result?;

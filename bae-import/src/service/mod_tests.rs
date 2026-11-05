@@ -6,7 +6,7 @@ use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::scan_passes::tests::{test_scan_services, TestScan};
 use crate::watching::FolderWatcher;
-use bae_db::Database;
+use bae_store::Store;
 use tempfile::TempDir;
 
 /// A worker for a test, with the candidate-preparations writer over the same
@@ -16,7 +16,7 @@ pub(crate) struct TestService {
     pub(crate) preparations: crate::CandidatePreparations,
     /// The library the service imports into, for a test that reads or seeds
     /// rows no call reads or writes on its own.
-    pub(crate) database: Database,
+    pub(crate) db: Store,
     pub(crate) temp: TempDir,
 }
 
@@ -50,7 +50,8 @@ impl TestService {
         let service = &self.service;
         crate::ImportServices {
             event_tx,
-            database: self.database.clone(),
+            store: self.db.clone(),
+            database: bae_db::test_fixtures::test_database(&self.db),
             tables: service.tables.clone(),
             catalogs: service.catalogs.clone(),
             remote_images: service.remote_images.clone(),
@@ -102,7 +103,7 @@ impl TestService {
 pub(crate) async fn setup_import_service() -> TestService {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
+    let db = Store::new_test(
         crate::TEST_SCHEMA,
         db_path.to_str().unwrap(),
         Arc::new(coven::SystemClock),
@@ -110,15 +111,15 @@ pub(crate) async fn setup_import_service() -> TestService {
     .await
     .unwrap();
 
-    let preparations = crate::CandidatePreparations::new(database.clone());
+    let preparations = crate::CandidatePreparations::new(db.clone());
     // The runtime writes its standings into the library the import commits
     // into.
-    let tables = crate::tables::ImportTables::new(database.clone());
+    let tables = crate::tables::ImportTables::new(db.clone());
     let runtime =
         crate::CandidateRuntime::new(tables.clone(), bae_diagnostics::Diagnostics::noop());
     let catalogs = crate::CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
-        database.clone(),
+        db.clone(),
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
@@ -129,7 +130,7 @@ pub(crate) async fn setup_import_service() -> TestService {
             commands_rx,
             event_tx,
             runtime,
-            database: database.clone(),
+            database: bae_db::test_fixtures::test_database(&db),
             tables,
             catalogs,
             remote_images: bae_catalogs::remote_image::RemoteImageCache::for_test(
@@ -142,7 +143,7 @@ pub(crate) async fn setup_import_service() -> TestService {
             diagnostics: bae_diagnostics::Diagnostics::noop(),
         },
         preparations,
-        database,
+        db,
         temp: temp_dir,
     }
 }

@@ -7,7 +7,8 @@
 /// The SQL creating this part's table.
 pub(crate) const SQL: &str = include_str!("release_storage_action.sql");
 
-use bae_db::{Database, DbError};
+use bae_store::DbError;
+use bae_store::Store;
 use bae_types::release_storage::ReleaseStorageAction;
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, Row};
@@ -60,7 +61,7 @@ pub fn transfer_action_column(
     };
     match ReleaseStorageAction::from_key(&action) {
         Some(action) => Ok(Some(action)),
-        None => Err(bae_db::client::read::column_conversion_error(
+        None => Err(bae_store::read::column_conversion_error(
             row,
             column,
             format!("storage action {action} names no transition"),
@@ -91,13 +92,13 @@ impl StoredTransition {
 /// Record that `release_id` enters the transition `action`, in one write.
 /// `false`, writing nothing, when the release is in one already.
 pub async fn begin_release_storage_action(
-    database: &Database,
+    store: &Store,
     release_id: &str,
     action: StoredTransition,
 ) -> Result<bool, DbError> {
     let action = action.column();
     let release_id = release_id.to_string();
-    database
+    store
         .call(move |sql| {
             let written = sql.execute(
                 "INSERT INTO release_storage_action (release_id, action) VALUES (?1, ?2) \
@@ -111,12 +112,9 @@ pub async fn begin_release_storage_action(
 
 /// End `release_id`'s transition, in one write of its own, after its work
 /// failed. A release in none is passed over.
-pub async fn end_release_storage_action(
-    database: &Database,
-    release_id: &str,
-) -> Result<(), DbError> {
+pub async fn end_release_storage_action(store: &Store, release_id: &str) -> Result<(), DbError> {
     let release_id = release_id.to_string();
-    database
+    store
         .call(move |sql| {
             sql.execute(END_RELEASE_STORAGE_ACTION, [release_id])?;
             Ok(())
@@ -139,11 +137,11 @@ pub fn release_transfer_action_on(
 /// [`release_transfer_action_on`] on its own read.
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn release_transfer_action(
-    database: &Database,
+    store: &Store,
     release_id: &str,
 ) -> Result<Option<ReleaseStorageAction>, DbError> {
     let release_id = release_id.to_string();
-    database.read(move |sql| release_transfer_action_on(&sql, &release_id)).await
+    store.read(move |sql| release_transfer_action_on(&sql, &release_id)).await
 }
 
 /// Move every file of a release on this device only to the cloud, as one
@@ -154,12 +152,17 @@ pub async fn release_transfer_action(
 /// then each file is read from its original here. The write that queues the
 /// files ends the release's storage transition, the move's admission.
 pub async fn attach_release_files(
-    database: &Database,
+    store: &Store,
     release_id: &str,
     keep_here: bool,
 ) -> Result<(), DbError> {
     let release_id = release_id.to_string();
-    let files = database.get_files_for_release(&release_id).await?;
+    let files = store
+        .read({
+            let release_id = release_id.clone();
+            move |sql| bae_db::client::read::get_files_for_release_on(&sql, &release_id)
+        })
+        .await?;
     if files.is_empty() {
         return Err(DbError::Message("release has no files".into()));
     }
@@ -170,7 +173,7 @@ pub async fn attach_release_files(
             false => coven::MoveFile::User(file.file),
         })
         .collect();
-    database
+    store
         .call_sql(move |sql| {
             sql.move_to_cloud(moving)?;
             end_transition_on(&sql, &release_id, StoredTransition::Upload)
@@ -183,12 +186,12 @@ pub async fn attach_release_files(
 /// are evictable and never after. coven evicts each namespace down to its
 /// budget in the same write.
 pub async fn unpin_release(
-    database: &Database,
+    store: &Store,
     release_id: &str,
     files: Vec<coven::FileId>,
 ) -> Result<(), DbError> {
     let release_id = release_id.to_string();
-    database
+    store
         .call_sql(move |sql| {
             sql.unpin(&files)?;
             end_transition_on(&sql, &release_id, StoredTransition::Unpin)
@@ -202,12 +205,12 @@ pub async fn unpin_release(
 /// transition until its files are here and never after. A write that fails
 /// switches nothing, and coven removes the copies.
 pub async fn make_release_local(
-    database: &Database,
+    store: &Store,
     release_id: &str,
     prepared: coven::PreparedDeviceOnly,
 ) -> Result<(), DbError> {
     let release_id = release_id.to_string();
-    database
+    store
         .call_sql(move |sql| {
             sql.make_device_only(prepared)?;
             end_transition_on(&sql, &release_id, StoredTransition::DetachAudio)

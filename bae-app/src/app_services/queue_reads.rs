@@ -9,7 +9,7 @@ impl AppServices {
     /// after each write that changes it.
     pub fn subscribe_queue_values(
         &self,
-    ) -> bae_db::live_query::LiveValues<bae_playback::ResolvedQueueSnapshot> {
+    ) -> bae_store::live_query::LiveValues<bae_playback::ResolvedQueueSnapshot> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_queue_value())
     }
@@ -20,7 +20,7 @@ impl AppServices {
     /// library.
     pub fn subscribe_queue_additions(
         &self,
-    ) -> bae_db::live_query::LiveValues<Option<bae_playback::QueueAddition>> {
+    ) -> bae_store::live_query::LiveValues<Option<bae_playback::QueueAddition>> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_queue_addition())
     }

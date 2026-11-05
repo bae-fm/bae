@@ -1,5 +1,6 @@
 use super::*;
 use crate::tables::tests::*;
+use bae_db::LibraryImageType;
 const RELEASE_LONELY: &str = "fcf4be32-159f-4790-87a1-697700a74462";
 const RELEASE_OTHER: &str = "ce596bd7-be97-4416-8b6d-47f315bae466";
 const TRACK_LONELY: &str = "03c41035-ce18-4fa0-8e83-c446df26a551";
@@ -7,8 +8,9 @@ const TRACK_OTHER: &str = "69e67928-545a-4dcf-8ae7-ef7778331231";
 
 /// One album holds one release; the other holds two, and the queued track is
 /// on the one that is NOT its primary.
-async fn cover_db() -> (Database, tempfile::TempDir) {
+async fn cover_db() -> (Store, tempfile::TempDir) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     db.call(move |conn| {
         conn.execute_batch(
             "
@@ -35,12 +37,12 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
     })
     .await
     .unwrap();
-    write_cover(&db, RELEASE_LONELY, "lonely release cover").await;
-    write_cover(&db, RELEASE_OTHER, "other release cover").await;
+    write_cover(&database, RELEASE_LONELY, "lonely release cover").await;
+    write_cover(&database, RELEASE_OTHER, "other release cover").await;
     (db, tmp)
 }
 
-async fn cover_of(db: &Database, track_id: &str) -> Option<bae_db::ImageRef> {
+async fn cover_of(db: &Store, track_id: &str) -> Option<bae_db::ImageRef> {
     PlaybackQueueTables::new(db.clone()).clear_manual().await.unwrap();
     let items = queue_items(db, &[track_id]).await;
     assert_eq!(items.len(), 1);
@@ -48,10 +50,12 @@ async fn cover_of(db: &Database, track_id: &str) -> Option<bae_db::ImageRef> {
 }
 
 /// The release's cover reference, carrying the version of the cover stored for it.
-async fn cover_ref(db: &Database, release_id: &str) -> Option<bae_db::ImageRef> {
+async fn cover_ref(db: &Store, release_id: &str) -> Option<bae_db::ImageRef> {
+    let database = bae_db::test_fixtures::test_database(db);
     Some(bae_db::ImageRef {
         id: release_id.to_string(),
-        version: stored_image_version(db, bae_db::synced::COVERS_NAMESPACE, release_id).await,
+        version: stored_image_version(&database, bae_db::synced::COVERS_NAMESPACE, release_id)
+            .await,
         image_type: LibraryImageType::Cover,
     })
 }
@@ -75,15 +79,16 @@ async fn queue_row_covers_the_track_s_own_release_not_the_album_s_primary() {
 #[tokio::test]
 async fn replacing_a_cover_changes_its_version() {
     let (db, _tmp) = cover_db().await;
+    let database = bae_db::test_fixtures::test_database(&db);
     let before = cover_of(&db, TRACK_LONELY).await.expect("the release has a cover");
-    let listed_before = db.cover_version(RELEASE_LONELY).await.unwrap();
+    let listed_before = database.cover_version(RELEASE_LONELY).await.unwrap();
 
-    write_cover(&db, RELEASE_LONELY, "replacement cover").await;
+    write_cover(&database, RELEASE_LONELY, "replacement cover").await;
 
     let after = cover_of(&db, TRACK_LONELY).await.expect("the release has a cover");
     assert_ne!(after.version, before.version, "the queue's cover version moves");
     assert_ne!(
-        db.cover_version(RELEASE_LONELY).await.unwrap(),
+        database.cover_version(RELEASE_LONELY).await.unwrap(),
         listed_before,
         "the listed cover version moves"
     );

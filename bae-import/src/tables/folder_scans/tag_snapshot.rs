@@ -156,7 +156,7 @@ impl ImportTables {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let candidate_path = candidate_path.clone();
         let file_root = coven::path_bytes(file_root);
-        self.database
+        self.store
             .read(move |sql| {
                 let stored_root: Option<Vec<u8>> = sql
                     .query_row(
@@ -188,7 +188,7 @@ impl ImportTables {
     ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let candidate_path = candidate_path.clone();
-        self.database
+        self.store
             .read(move |sql| {
                 load_candidate_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
             })
@@ -206,7 +206,7 @@ impl ImportTables {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let candidate_path = candidate_path.clone();
         let snapshot = snapshot.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 replace_candidate_file_tag_snapshot_on(
                     sql,

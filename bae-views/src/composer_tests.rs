@@ -6,7 +6,9 @@ use bae_db::test_fixtures::aggregate_ordering::*;
 use bae_db::test_fixtures::composed_work::*;
 use bae_db::test_fixtures::live_query::*;
 use bae_db::test_fixtures::*;
-use bae_db::test_fixtures::{exec, exec_batch};
+use bae_store::test_fixtures::live_query::*;
+use bae_store::test_fixtures::*;
+use bae_store::test_fixtures::{exec, exec_batch};
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
 
@@ -197,13 +199,13 @@ const LISTED_RELEASES: &str = "
         ('85682757-e082-494e-b93f-c5bbb776363d', 'f3dbd598-48d1-44e8-9608-94db537ec89c', 'Track Title Two', 1, 1, 1000, '2026-01-01T00:00:00Z', 'd0fb26fe-9cc5-4116-909d-5376f603c5b7');
 ";
 
-async fn exec_listed(db: &Database, sql: &'static str) {
+async fn exec_listed(db: &Store, sql: &'static str) {
     db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from)).await.unwrap();
 }
 
 /// The composer list by name: each composer's id and its work, linked release
 /// and unlinked credit counts.
-async fn listed_composers(db: &Database) -> Vec<(String, i64, i64, i64)> {
+async fn listed_composers(db: &Store) -> Vec<(String, i64, i64, i64)> {
     let sort = [ComposerSortCriterion {
         field: ComposerSortField::Name,
         direction: SortDirection::Ascending,
@@ -312,7 +314,7 @@ fn composer_listing_rows(conn: &rusqlite::Connection) -> Vec<(String, i64, i64, 
 fn a_composer_merged_before_it_arrived_is_listed_with_what_was_counted_under_it() {
     // Rows from another device can arrive before the rows they name: here a
     // merge and a work credit before either artist.
-    let conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
+    let conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
     conn.execute_batch(
         "PRAGMA foreign_keys = OFF;
          INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES
@@ -468,8 +470,11 @@ async fn composer_page_sorts_names_descending_with_ids_ascending() {
 /// [`next_album_page_is_only_a_rename`] for the composer grid: rename the one
 /// composer `shown` holds.
 async fn next_composer_page_is_only_a_rename(
-    db: &Database,
-    live: &mut coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, ComposerBrowseProjection>,
+    db: &Store,
+    live: &mut coven::ReconfigurableLiveQuery<
+        bae_store::LibraryPageWindows,
+        ComposerBrowseProjection,
+    >,
     shown: ComposerBrowseProjection,
     name: &str,
 ) -> ComposerBrowseProjection {
@@ -490,6 +495,7 @@ async fn next_composer_page_is_only_a_rename(
 #[tokio::test]
 async fn composer_browse_subscription_reconfigures_bounded_windows() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     exec_batch(
         &db,
         &format!(
@@ -567,7 +573,8 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     )
     .await;
 
-    let composer_image = write_artist_image(&db, OTHER_COMPOSER_ID, "composer image bytes").await;
+    let composer_image =
+        write_artist_image(&database, OTHER_COMPOSER_ID, "composer image bytes").await;
     // Only the requested rows' images are read, so an image on the composer
     // outside the window changes nothing the browse delivers.
     next_composer_page_is_only_a_rename(&db, &mut live, shown, "Composer Name First Again").await;
@@ -582,7 +589,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     );
 
     let replaced_composer_image =
-        write_artist_image(&db, OTHER_COMPOSER_ID, "replaced composer image bytes").await;
+        write_artist_image(&database, OTHER_COMPOSER_ID, "replaced composer image bytes").await;
     let image_updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a requested composer's image version wakes composer browse")
@@ -624,7 +631,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
 /// under the survivor alone.
 #[test]
 fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
-    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let writer = devices.a();
         let reader = devices.b();
         let sort = [ComposerSortCriterion {
@@ -635,7 +642,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
             crate::LibraryViews::new(reader.clone()).subscribe_composer_browse(&sort, first_page());
         assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
         let listed = async |live: &mut coven::ReconfigurableLiveQuery<
-            bae_db::LibraryPageWindows,
+            bae_store::LibraryPageWindows,
             ComposerBrowseProjection,
         >,
                             expected: Vec<(&str, i64)>| {
@@ -721,7 +728,7 @@ async fn work_summary_orders_composer_names_inside_the_aggregate() {
 /// Beta` performs it on its only release's first track; `album alpha`, first
 /// by title compared without case, holds a primary release that doesn't
 /// perform it, then two that do, the later of them on its first track.
-async fn work_across_albums_db() -> (Database, tempfile::TempDir) {
+async fn work_across_albums_db() -> (Store, tempfile::TempDir) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_batch(
         &db,
@@ -765,7 +772,7 @@ const WORK_ACROSS_ALBUMS: &str = "55555555-0000-4000-8000-000000000001";
 const RELEASE_ALPHA_PRIMARY: &str = "22222222-0000-4000-8000-000000000002";
 const RELEASE_ALPHA_SECOND: &str = "22222222-0000-4000-8000-000000000004";
 
-async fn representative_release(db: &Database) -> Option<String> {
+async fn representative_release(db: &Store) -> Option<String> {
     crate::LibraryViews::new(db.clone())
         .find_work_detail(WORK_ACROSS_ALBUMS)
         .await

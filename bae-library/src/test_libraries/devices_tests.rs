@@ -10,7 +10,7 @@ fn a_two_device_test_closes_both_devices_before_its_runtime_ends() {
     run_two_device_test(async move |devices| {
         kept.lock()
             .expect("kept databases")
-            .extend([devices.a().database().clone(), devices.b().database().clone()]);
+            .extend([devices.a().store().clone(), devices.b().store().clone()]);
     });
     let databases = std::mem::take(&mut *databases.lock().expect("kept databases"));
     assert_eq!(databases.len(), 2);
@@ -18,12 +18,12 @@ fn a_two_device_test_closes_both_devices_before_its_runtime_ends() {
         .enable_all()
         .build()
         .expect("build a runtime to read the devices from");
-    for database in databases {
-        let read = runtime.block_on(database.unsent_writes_for_test());
+    for db in databases {
+        let read = runtime.block_on(db.unsent_writes_for_test());
         assert!(
             matches!(
                 read,
-                Err(bae_db::DbError::Coven(coven::CovenError::Database(
+                Err(bae_store::DbError::Coven(coven::CovenError::Database(
                     coven::DbError::StoreClosed
                 )))
             ),

@@ -2,19 +2,18 @@
 //! (`coven_members`, `coven_devices`): each member with their devices that
 //! can sync and those that lost access, each list in device-id order.
 
-use super::read::column_conversion_error;
 use super::*;
-use crate::membership::{
-    ActiveDevice, FormerDevice, FormerDeviceState, Membership, MembershipMember,
-};
+use crate::membership::{ActiveDevice, FormerDevice, Membership, MembershipMember};
+use bae_store::read::column_conversion_error;
+use bae_store::FormerDeviceState;
 
 impl Database {
     pub async fn membership(&self) -> Result<Membership, DbError> {
-        self.read(|sql| Ok(membership_on(&sql)?)).await
+        self.inner.store.read(|sql| Ok(membership_on(&sql)?)).await
     }
 
     pub fn subscribe_membership(&self) -> coven::LiveQuery<Membership> {
-        self.inner.handle.subscribe(|sql| Ok(membership_on(&sql)?))
+        self.inner.store.subscribe(|sql| Ok(membership_on(&sql)?))
     }
 }
 

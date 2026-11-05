@@ -75,7 +75,7 @@ impl LibraryManager {
     /// distinct name; then its watched folders, each write the one the scan or
     /// identification makes; then where playback resumes.
     pub async fn write_fixture(&self, fixture: &LibraryFixture) -> Result<(), LibraryFixtureError> {
-        let now = bae_db::client::utc_now(self.clock.as_ref());
+        let now = bae_store::utc_now(self.clock.as_ref());
         let count = (fixture.albums.len() + usize::from(fixture.playing.is_some())) as i64;
         let added = |index: usize| now - chrono::Duration::seconds(count - 1 - index as i64);
         let mut artists: Vec<DbArtist> = Vec::new();

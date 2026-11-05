@@ -134,7 +134,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert_eq!(release.pressing.year, None, "the tags state no year");
     assert!(release.pressing.facts.media.is_empty(), "and no medium");
 
-    let album_detail = bae_views::LibraryViews::new(f.library.database().clone())
+    let album_detail = bae_views::LibraryViews::new(f.library.store().clone())
         .find_album_detail(&album_id)
         .await
         .unwrap()
@@ -150,7 +150,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         bae_import::Credited::plain_list(committed_album_artist_assignments)
     );
 
-    let release_detail = bae_views::LibraryViews::new(f.library.database().clone())
+    let release_detail = bae_views::LibraryViews::new(f.library.store().clone())
         .find_db_release_detail(&release_id)
         .await
         .unwrap()

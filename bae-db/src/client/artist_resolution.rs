@@ -45,7 +45,7 @@ pub enum IdentityWriteError {
 }
 
 /// Carry an [`IdentityWriteError`] out of a coven write closure with its type
-/// intact, so [`Database::identity_write_error`] can hand it back.
+/// intact, so [`identity_write_error`] can hand it back.
 pub fn identity_write_failure(error: IdentityWriteError) -> CovenError {
     match error {
         IdentityWriteError::Db(error) => CovenError::from(error),
@@ -53,40 +53,54 @@ pub fn identity_write_failure(error: IdentityWriteError) -> CovenError {
     }
 }
 
+/// A write that resolves artist credits: [`Store::call_sql`], with an
+/// [`IdentityWriteError`] the closure fails with handed back as itself.
+pub async fn write_resolving_identities<R>(
+    store: &Store,
+    f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
+) -> Result<R, IdentityWriteError>
+where
+    R: Send + 'static,
+{
+    store
+        .write(move |sql| f(sql).map_err(identity_write_failure))
+        .await
+        .map_err(identity_write_error)
+}
+
+/// A read that resolves artist credits: [`Store::read`], with an
+/// [`IdentityWriteError`] the closure fails with handed back as itself.
+#[cfg(desktop)]
+pub async fn read_resolving_identities<R>(
+    store: &Store,
+    f: impl for<'ctx> FnOnce(SqlReadContext<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
+) -> Result<R, IdentityWriteError>
+where
+    R: Send + 'static,
+{
+    store
+        .read_coven(move |sql| f(sql).map_err(identity_write_failure))
+        .await
+        .map_err(identity_write_error)
+}
+
+/// The [`IdentityWriteError`] a coven write closure failed with, or the
+/// database error it failed with otherwise.
+pub fn identity_write_error(error: CovenError) -> IdentityWriteError {
+    match error {
+        CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(host))) => {
+            match host.downcast::<IdentityWriteError>() {
+                Ok(error) => *error,
+                Err(other) => IdentityWriteError::Db(DbError::from(CovenError::from(
+                    rusqlite::Error::UserFunctionError(other),
+                ))),
+            }
+        }
+        other => IdentityWriteError::Db(DbError::from(other)),
+    }
+}
+
 impl Database {
-    /// A write that resolves artist credits: [`Self::call_sql`], with an
-    /// [`IdentityWriteError`] the closure fails with handed back as itself.
-    pub async fn write_resolving_identities<R>(
-        &self,
-        f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
-    ) -> Result<R, IdentityWriteError>
-    where
-        R: Send + 'static,
-    {
-        self.inner
-            .handle
-            .write(move |sql| f(sql).map_err(identity_write_failure))
-            .await
-            .map_err(Self::identity_write_error)
-    }
-
-    /// A read that resolves artist credits: [`Self::read`], with an
-    /// [`IdentityWriteError`] the closure fails with handed back as itself.
-    #[cfg(desktop)]
-    pub async fn read_resolving_identities<R>(
-        &self,
-        f: impl for<'ctx> FnOnce(SqlReadContext<'ctx>) -> Result<R, IdentityWriteError> + Send + 'static,
-    ) -> Result<R, IdentityWriteError>
-    where
-        R: Send + 'static,
-    {
-        self.inner
-            .handle
-            .read(move |sql| f(sql).map_err(identity_write_failure))
-            .await
-            .map_err(Self::identity_write_error)
-    }
-
     /// Resolve `credits` and write the rows the resolution inserts and fills
     /// in, in one transaction: the artist step of an import or edit, without
     /// the release around it.
@@ -96,7 +110,7 @@ impl Database {
         credits: &[DbArtist],
     ) -> Result<Vec<String>, IdentityWriteError> {
         let credits = credits.to_vec();
-        self.write_resolving_identities(move |sql| {
+        write_resolving_identities(&self.inner.store, move |sql| {
             let resolved = ArtistCredits { credits: &credits, picked: &[] }.resolve_on(&sql)?;
             resolved.write_on(&sql)?;
             Ok(resolved.ids)
@@ -110,23 +124,7 @@ impl Database {
         credits: &[bae_catalogs::credits::ArtistCredit],
     ) -> Result<Vec<crate::ResolvedCredit>, DbError> {
         let credits = credits.to_vec();
-        self.read(move |sql| resolve_credits_on(&sql, &credits)).await
-    }
-
-    /// The [`IdentityWriteError`] a coven write closure failed with, or the
-    /// database error it failed with otherwise.
-    pub fn identity_write_error(error: CovenError) -> IdentityWriteError {
-        match error {
-            CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(
-                host,
-            ))) => match host.downcast::<IdentityWriteError>() {
-                Ok(error) => *error,
-                Err(other) => IdentityWriteError::Db(Self::coven_error(
-                    rusqlite::Error::UserFunctionError(other).into(),
-                )),
-            },
-            other => IdentityWriteError::Db(Self::coven_error(other)),
-        }
+        self.inner.store.read(move |sql| resolve_credits_on(&sql, &credits)).await
     }
 }
 
@@ -341,7 +339,7 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
 /// the commit makes one artist.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
-    let conn = crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
+    let conn = bae_store::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
     resolve_artists_on(&conn, credits, &HashSet::new())
         .expect("credits resolve in an empty library")
         .ids

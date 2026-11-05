@@ -28,6 +28,6 @@ pub(crate) fn member(member_id: &str) -> Result<coven::MemberId, BridgeError> {
 
 /// A name the person typed in the app, refused as a configuration error when
 /// it is blank.
-pub(crate) fn name(name: &str) -> Result<bae_db::EnteredName, BridgeError> {
-    bae_db::EnteredName::parse(name).map_err(BridgeError::config)
+pub(crate) fn name(name: &str) -> Result<bae_store::EnteredName, BridgeError> {
+    bae_store::EnteredName::parse(name).map_err(BridgeError::config)
 }

@@ -174,21 +174,23 @@ impl Database {
     /// or on no one device, fails the read naming the file.
     pub async fn release_file_other_device(&self, file_id: &str) -> Result<OtherDevice, DbError> {
         let file_id = file_id.to_string();
-        self.read(move |sql| {
-            let mut rows = unstored_rows_on(&sql, "f.id = ?", &file_id)?;
-            let (Some(row), None) = (rows.pop(), rows.pop()) else {
-                return Err(DbError::Message(format!(
-                    "coven lists release file {file_id} on no one device"
-                )));
-            };
-            match row.into_unstored_audio()? {
-                DbUnstoredAudio::Elsewhere(device) => Ok(device),
-                DbUnstoredAudio::Original => Err(DbError::Message(format!(
-                    "release file {file_id} read as on another device, with its original here"
-                ))),
-            }
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                let mut rows = unstored_rows_on(&sql, "f.id = ?", &file_id)?;
+                let (Some(row), None) = (rows.pop(), rows.pop()) else {
+                    return Err(DbError::Message(format!(
+                        "coven lists release file {file_id} on no one device"
+                    )));
+                };
+                match row.into_unstored_audio()? {
+                    DbUnstoredAudio::Elsewhere(device) => Ok(device),
+                    DbUnstoredAudio::Original => Err(DbError::Message(format!(
+                        "release file {file_id} read as on another device, with its original here"
+                    ))),
+                }
+            })
+            .await
     }
 }
 
@@ -259,8 +261,8 @@ impl UnstoredRow {
 /// library (`member_removed`), replaced when it was reset. `None` for a state
 /// coven doesn't write.
 fn other_device(name: String, state: &str, member_removed: bool) -> Option<crate::OtherDevice> {
-    use crate::membership::FormerDeviceState;
     use crate::OtherDevice;
+    use bae_store::FormerDeviceState;
     Some(match state {
         "replaced" => OtherDevice::Former { name, state: FormerDeviceState::Replaced },
         "removed" => OtherDevice::Former { name, state: FormerDeviceState::Removed },

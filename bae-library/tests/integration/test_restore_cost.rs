@@ -123,7 +123,7 @@ async fn restore_cost(library: Library) {
     let owner_dir = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
     let installation = Coven::in_memory(app_dir.coven_app_dir());
-    let handle = bae_db::configure_store(installation.builder(), bae_library::SCHEMA)
+    let handle = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
         .clock(clock.clone())
         .storage_connector(storage.clone())
         .create_store("Library")
@@ -140,11 +140,7 @@ async fn restore_cost(library: Library) {
         .await
         .unwrap();
     handle.start_sync().await.unwrap();
-    let database = bae_db::Database::from_handle(
-        handle.clone(),
-        clock.clone(),
-        std::sync::Arc::new(coven::UuidIds),
-    );
+    let database = bae_store::Store::new(handle.clone(), clock.clone());
     let opened = bae_library::test_libraries::TestLibrary::open_with(
         database,
         app_dir.clone(),

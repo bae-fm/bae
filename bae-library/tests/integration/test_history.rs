@@ -14,10 +14,11 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     )
     .await;
     let db = library.database().clone();
+    let store = library.store().clone();
     let release = test_uuid("history-release");
     let track = test_uuid("history-track");
     let medium = test_uuid("history-medium");
-    db.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('history-album','Listening','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','history-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{track}','{release}','Interlude','{medium}',1,1,0,40000,'2026-01-01');")).await.unwrap();
+    store.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('history-album','Listening','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','history-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{track}','{release}','Interlude','{medium}',1,1,0,40000,'2026-01-01');")).await.unwrap();
     let started = "2026-10-18T16:30:00Z".parse().unwrap();
     let mut local = db
         .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(40)), started)
@@ -40,7 +41,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert_eq!(rows[0].id, local.entry().id);
     assert_eq!(rows[0].audience, private);
     assert_eq!(rows[0].started_at, started);
-    assert!(db.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
+    assert!(store.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
     library.set_history_sharing(Sharing::Household).await.unwrap();
     local.set_played(Duration::from_secs(24));
     db.record_play(&local).await.unwrap();
@@ -74,10 +75,10 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     // A profile can arrive from another device while this device still has
     // listening from before registration. Retrying profile setup adopts it too.
     let awaiting_profile = uuid::Uuid::new_v4();
-    db.execute_local_sql_for_test(&format!("INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{awaiting_profile}', '{track}', '2026-10-18T16:00:00Z', 30000)")).await.unwrap();
+    store.execute_local_sql_for_test(&format!("INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{awaiting_profile}', '{track}', '2026-10-18T16:00:00Z', 30000)")).await.unwrap();
     library.create_profile("Robin").await.unwrap();
     let rows = db.history().await.unwrap();
     assert_eq!(rows.iter().find(|row| row.id == awaiting_profile).unwrap().audience, private);
-    assert!(db.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
+    assert!(store.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
     library.close().await.unwrap();
 }

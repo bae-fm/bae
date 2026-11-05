@@ -7,11 +7,11 @@ use crate::tables::tests::*;
 use crate::FolderCandidate;
 use crate::TriageTab;
 use crate::{folder_scanner::FolderDate, ImportListOrder};
-use bae_db::test_fixtures::fixed_now;
+use bae_store::test_fixtures::fixed_now;
 use coven::FixedClock;
 use std::sync::Arc;
 
-async fn dates(db: &Database) -> Vec<(String, i64, Option<i64>, Option<String>)> {
+async fn dates(db: &Store) -> Vec<(String, i64, Option<i64>, Option<String>)> {
     db.read(|sql| {
         Ok(sql.query(
             "SELECT c.name, d.first_seen_at, d.source_date, d.source_date_kind \
@@ -123,14 +123,14 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
 }
 
 /// `db` under a clock `days` after the fixtures' pinned instant.
-fn days_later(db: &Database, days: i64) -> Database {
+fn days_later(db: &Store, days: i64) -> Store {
     db.under_clock_for_test(Arc::new(FixedClock::new(
         (fixed_now() + chrono::Duration::days(days)).into(),
     )))
 }
 
 /// One completed scan of `root` finding `folders`.
-async fn scan(db: &Database, root: &std::path::Path, folders: &[&FolderCandidate]) {
+async fn scan(db: &Store, root: &std::path::Path, folders: &[&FolderCandidate]) {
     let tables = crate::tables::ImportTables::new(db.clone());
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     for folder in folders {
@@ -155,7 +155,7 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
     scan(&days_later(&db, 1), &root, &[&older, &middle]).await;
     scan(&days_later(&db, 2), &root, &[&older, &middle, &newest]).await;
 
-    let listed = |db: Database, order: ImportListOrder| async move {
+    let listed = |db: Store, order: ImportListOrder| async move {
         let mut request = request(TriageTab::Pending).await;
         request.view.order = order;
         let tables = crate::tables::ImportTables::new(db);

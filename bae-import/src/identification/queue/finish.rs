@@ -85,7 +85,7 @@ pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished)
 /// person asked for it does not matter.
 async fn import_when_identified(context: &Context, key: &crate::CandidateKey, import_asked: bool) {
     if !import_asked {
-        match bae_preferences::preferences(&context.database).await {
+        match bae_preferences::preferences(&context.store).await {
             Ok(prefs) if prefs.identification.import_when_identified => {}
             Ok(_) => return,
             Err(error) => {

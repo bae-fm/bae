@@ -7,7 +7,7 @@ use bae_util::test_channels::HANG_GUARD;
 async fn a_follow_ends_once_its_store_closes() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database = bae_db::Database::new_test(
+    let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
@@ -16,14 +16,14 @@ async fn a_follow_ends_once_its_store_closes() {
     .unwrap();
     let (heard, mut reports) = tokio::sync::mpsc::unbounded_channel();
     let mut follow = LibraryFollow::new(
-        crate::tables::subscribe_playback_track_infos(&database, Vec::new()),
+        crate::tables::subscribe_playback_track_infos(&db, Vec::new()),
         Vec::new(),
         "the tracks' sides",
         &bae_diagnostics::Diagnostics::noop()
             .reporting_bugs_to(std::sync::Arc::new(HeardBugs(heard))),
     );
 
-    database.close().await.unwrap();
+    db.close().await.unwrap();
 
     follow_ends(&mut follow).await;
     assert_eq!(reports.try_recv().ok(), None, "closing the store is no bug");
@@ -45,7 +45,7 @@ async fn follow_ends<Request, Value>(follow: &mut LibraryFollow<Request, Value>)
 async fn an_ended_follow_takes_a_new_request() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database = bae_db::Database::new_test(
+    let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
@@ -53,12 +53,12 @@ async fn an_ended_follow_takes_a_new_request() {
     .await
     .unwrap();
     let mut follow = LibraryFollow::new(
-        crate::tables::subscribe_playback_track_infos(&database, Vec::new()),
+        crate::tables::subscribe_playback_track_infos(&db, Vec::new()),
         Vec::new(),
         "the tracks' sides",
         &bae_diagnostics::Diagnostics::noop(),
     );
-    database.close().await.unwrap();
+    db.close().await.unwrap();
     follow_ends(&mut follow).await;
 
     follow.follow(vec!["another track".to_string()]);
@@ -83,7 +83,7 @@ impl bae_diagnostics::BugReporter for HeardBugs {
 async fn a_failed_read_is_reported_as_a_bug() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database = bae_db::Database::new_test(
+    let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
@@ -93,10 +93,10 @@ async fn a_failed_read_is_reported_as_a_bug() {
     let (heard, mut reports) = tokio::sync::mpsc::unbounded_channel();
     let diagnostics = bae_diagnostics::Diagnostics::noop()
         .reporting_bugs_to(std::sync::Arc::new(HeardBugs(heard)));
-    let query = database.subscribe_reconfigurable(Vec::<String>::new(), |_, sql| {
+    let query = db.subscribe_reconfigurable(Vec::<String>::new(), |_, sql| {
         Ok(sql
             .query_row("SELECT id FROM no_such_table", [], |row| row.get::<_, String>(0))
-            .map_err(bae_db::DbError::from)?)
+            .map_err(bae_store::DbError::from)?)
     });
     let _follow = LibraryFollow::new(query, Vec::new(), "the missing table", &diagnostics);
 
@@ -106,5 +106,5 @@ async fn a_failed_read_is_reported_as_a_bug() {
         .expect("the reporter stays open");
     assert_eq!(operation, "read the missing table for playback");
     assert!(detail.contains("no_such_table"), "{detail}");
-    database.close().await.unwrap();
+    db.close().await.unwrap();
 }

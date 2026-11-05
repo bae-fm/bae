@@ -1,5 +1,5 @@
 use super::*;
-use crate::membership::FormerDeviceState;
+use bae_store::FormerDeviceState;
 
 /// The line naming the device a release's audio is on follows coven's
 /// registration of that device: active, removed, replaced when it was reset,

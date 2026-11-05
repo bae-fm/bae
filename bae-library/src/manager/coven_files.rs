@@ -56,7 +56,7 @@ impl LibraryManager {
 
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn evict_file_for_test(&self, file: coven::FileId) -> Result<(), LibraryError> {
-        Ok(self.database.evict_file(file).await?)
+        Ok(self.store.evict_file(file).await?)
     }
 
     /// coven's record of the file a release file's row references, as this
@@ -72,7 +72,7 @@ impl LibraryManager {
             .await?
             .map(|row| row.file)
             .ok_or_else(|| LibraryError::Storage(format!("no release file {file_id}")))?;
-        self.database.coven_file(file).await.map_err(|e| {
+        self.store.file_ref(file).await.map_err(|e| {
             LibraryError::Storage(format!("file reference for release file {file_id}: {e}"))
         })
     }
@@ -116,7 +116,7 @@ impl LibraryManager {
             return Ok(None);
         };
         let bytes = self
-            .database
+            .store
             .read_file(&file)
             .await
             .map_err(|e| LibraryError::file_read(format!("read image {id}"), e))?;
@@ -145,7 +145,7 @@ impl LibraryManager {
             pinnable.push(PinnableFile {
                 row_id: file.id.clone(),
                 file: self.release_file_ref(&file.id).await?,
-                bytes: bae_db::client::query::to_u64(file.file_size, "release_files.file_size")?,
+                bytes: bae_store::query::to_u64(file.file_size, "release_files.file_size")?,
             });
         }
         Ok(pinnable)
@@ -178,12 +178,8 @@ impl LibraryManager {
                 .iter()
                 .map(|entry| entry.file.id())
                 .collect();
-            Ok(bae_transfers::release_storage_action::unpin_release(
-                &self.database,
-                release_id,
-                files,
-            )
-            .await?)
+            Ok(bae_transfers::release_storage_action::unpin_release(&self.store, release_id, files)
+                .await?)
         })
         .await
     }

@@ -78,7 +78,7 @@ impl LibraryManager {
         let mut offset = 0;
         while offset < size {
             let len = EXPORT_WINDOW.min(size - offset);
-            let window = stream.read_at(offset, len).await.map_err(bae_db::DbError::from)?;
+            let window = stream.read_at(offset, len).await.map_err(bae_store::DbError::from)?;
             output = blocking("write an exported file", move || {
                 std::io::Write::write_all(&mut output, &window).map(|()| output)
             })

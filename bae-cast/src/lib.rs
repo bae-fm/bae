@@ -136,7 +136,7 @@ pub enum CastError {
     Internal(TaskFailed),
     /// Whether casting is on couldn't be read.
     #[error("couldn't read whether casting is on: {0}")]
-    Setting(bae_db::DbError),
+    Setting(bae_store::DbError),
 }
 
 /// Where the ephemeral server listens, and the address its URLs name.
@@ -408,10 +408,10 @@ impl CastController {
                         #[cfg(test)]
                         controller.setting_applied.send_replace(Some(enabled));
                     }
-                    Err(bae_db::live_query::LiveQueryError::Query(error)) => {
+                    Err(bae_store::live_query::LiveQueryError::Query(error)) => {
                         warn!("couldn't read whether casting is on: {error}");
                     }
-                    Err(bae_db::live_query::LiveQueryError::Cancelled) => {
+                    Err(bae_store::live_query::LiveQueryError::Cancelled) => {
                         debug!("cast setting watcher stopped: the library closed");
                         break;
                     }

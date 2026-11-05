@@ -92,7 +92,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let key = key.clone();
         let grouping = grouping.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 store_folder_reading(
                     sql,
@@ -115,7 +115,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let key = key.clone();
         let reading = reading.clone();
-        self.database
+        self.store
             .call(move |sql| {
                 store_folder_reading(sql, &key, reading.decision, reading.author, &reading.grouping)
             })
@@ -132,7 +132,7 @@ impl ImportTables {
             &folder.watched_folder_path,
             &folder.relative_folder,
         ));
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(sql
                     .query_row(
@@ -161,7 +161,7 @@ impl ImportTables {
         let (below_first, below_past) = crate::tables::watched_path::paths_below(&folder);
         let folder = coven::path_bytes(&folder);
         let root = coven::path_bytes(&key.watched_folder_path);
-        self.database
+        self.store
             .read(move |sql| match decision {
                 crate::folder_scanner::FolderReleaseDecision::CombineAsOneRelease => Ok(sql
                     .query_row(
@@ -201,7 +201,7 @@ impl ImportTables {
     ) -> Result<std::collections::BTreeSet<CandidateKey>, DbError> {
         let (below_first, below_past) = crate::tables::watched_path::paths_below(folder);
         let (root, folder) = (coven::path_bytes(watched_folder_path), coven::path_bytes(folder));
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(sql
                     .query(
@@ -231,7 +231,7 @@ impl ImportTables {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let (below_first, below_past) =
             crate::tables::watched_path::paths_below(&watched_folder_path);
-        self.database
+        self.store
             .read(move |sql| {
                 let rows = sql.query(
                     "SELECT anchor_folder, combined, author, key FROM release_grouping \

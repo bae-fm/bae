@@ -43,7 +43,7 @@ pub struct PersonProfile {
 
 /// A person's avatar: the coven file the row references, and its version,
 /// which the apps cache the image by as they do covers
-/// ([`crate::client::files::file_version_sql`]).
+/// ([`bae_store::file_version_sql`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Avatar {
     pub file: coven::FileId,
@@ -96,7 +96,7 @@ pub enum ProfileError {
     #[error("private circle creation is waiting for operation {0:?}")]
     CirclePending(coven::OperationId),
     #[error(transparent)]
-    Database(#[from] crate::DbError),
+    Database(#[from] bae_store::DbError),
     #[error(transparent)]
     Sync(#[from] coven::SyncError),
 }
@@ -107,8 +107,8 @@ impl From<coven::CovenError> for ProfileError {
     }
 }
 
-impl From<crate::BlankName> for ProfileError {
-    fn from(_: crate::BlankName) -> Self {
+impl From<bae_store::BlankName> for ProfileError {
+    fn from(_: bae_store::BlankName) -> Self {
         Self::EmptyName
     }
 }

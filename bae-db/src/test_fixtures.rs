@@ -3,7 +3,12 @@
 
 /// The schema this crate's tests open their stores on, and the tests of the
 /// crates above it that hold no part of the schema: bae-db's part.
-pub const TEST_SCHEMA: crate::Schema = crate::Schema::new(&[crate::SCHEMA_PARTS]);
+pub const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[crate::SCHEMA_PARTS]);
+
+/// The database over `store`, with its ids drawn at random.
+pub fn test_database(store: &bae_store::Store) -> crate::Database {
+    crate::Database::new(store.clone(), std::sync::Arc::new(coven::UuidIds))
+}
 
 // Fixture row ids, UUIDs because coven refuses any other synced primary key.
 pub const ALBUM_A: &str = "a67c03ad-425f-45e9-8279-0144c852aaa5";
@@ -23,89 +28,26 @@ pub const TRACK_ROLE_A: &str = "fa0c8483-f09a-4b69-8903-b1ebcdc31322";
 pub const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015";
 pub const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4";
 
-/// A database on `schema` in a fresh temp directory, under the real clock.
-/// The `TempDir` owns the file, so it must outlive the handle.
-pub async fn temp_db(schema: crate::Schema) -> (crate::Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let db = crate::Database::new_test(
-        schema,
-        tmp.path().join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
-    (db, tmp)
-}
-
-/// The instant the import fixtures pin their clock to.
-pub fn fixed_now() -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc)
-}
-
-/// `temp_db` under that pinned clock instead of the system one.
-pub async fn empty_db(schema: crate::Schema) -> (crate::Database, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let db = crate::Database::new_test(
-        schema,
-        tmp.path().join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::FixedClock::new((fixed_now()).into())),
-    )
-    .await
-    .unwrap();
-    (db, tmp)
-}
-
-/// Run one statement against the test database, panicking if it fails.
-pub async fn exec(db: &crate::Database, sql: &str, args: &[&str]) {
-    let sql = sql.to_string();
-    let args: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
-    db.call(move |conn| {
-        conn.execute(&sql, rusqlite::params_from_iter(args))
-            .map(|_| ())
-            .map_err(crate::DbError::from)
-    })
-    .await
-    .unwrap();
-}
-
-/// How many rows `table` holds.
-pub async fn row_count(db: &crate::Database, table: &str) -> usize {
-    let query = format!("SELECT COUNT(*) FROM \"{table}\"");
-    let count: i64 = db
-        .read(move |sql| sql.query_row(&query, [], |row| row.get(0)).map_err(crate::DbError::from))
-        .await
-        .unwrap();
-    usize::try_from(count).expect("a row count is never negative")
-}
-
-/// `exec` for a multi-statement script, which takes no bound parameters.
-pub async fn exec_batch(db: &crate::Database, sql: &str) {
-    let sql = sql.to_string();
-    db.call(move |conn| conn.execute_batch(&sql).map_err(crate::DbError::from)).await.unwrap();
-}
-
 /// Store a real cover holding `content` as a coven file its row references,
 /// and return the version reads report for it.
-pub async fn write_cover(db: &crate::Database, release: &str, content: &str) -> String {
+pub async fn write_cover(database: &crate::Database, release: &str, content: &str) -> String {
     let bytes = content.as_bytes();
     let image = crate::DbLibraryImage::cover(release);
-    db.write_library_image(&image, bytes).await.unwrap();
-    stored_image_version(db, crate::synced::COVERS_NAMESPACE, release).await
+    database.write_library_image(&image, bytes).await.unwrap();
+    stored_image_version(database, crate::synced::COVERS_NAMESPACE, release).await
 }
 
 /// The version reads should report for the image on `table`'s row `id`: the
 /// coven file its row references, then `@` and the device that has it while
 /// it is on one device only, read from coven's own record of the file rather
 /// than from the version query.
-pub async fn stored_image_version(db: &crate::Database, table: &str, id: &str) -> String {
+pub async fn stored_image_version(database: &crate::Database, table: &str, id: &str) -> String {
     let image_type = match table {
         crate::synced::COVERS_NAMESPACE => crate::LibraryImageType::Cover,
         crate::synced::ARTIST_IMAGES_NAMESPACE => crate::LibraryImageType::Artist,
         other => panic!("{other} holds no library images"),
     };
-    let file = db.library_image_file(id, &image_type).await.unwrap().expect("the image row");
+    let file = database.library_image_file(id, &image_type).await.unwrap().expect("the image row");
     match file.place() {
         coven::FilePlace::Cloud { .. } => file.id().0.to_string(),
         coven::FilePlace::DeviceOnly { device } => {
@@ -115,7 +57,7 @@ pub async fn stored_image_version(db: &crate::Database, table: &str, id: &str) -
 }
 
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.
-pub fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), crate::DbError> {
+pub fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), bae_store::DbError> {
     conn.execute_batch(
         "
         INSERT INTO artists (id, name, name_key, created_at) VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', '2026-01-01T00:00:00Z');
@@ -135,6 +77,4 @@ pub mod chunked_tracks;
 pub mod composed_work;
 pub mod labels;
 pub mod live_query;
-pub mod schema_checks;
 pub mod storage_listing;
-pub mod window_cost;

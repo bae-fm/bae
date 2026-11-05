@@ -9,10 +9,10 @@ use crate::folder_scanner::{
 use crate::grouping::GroupingBlock;
 use crate::tables::tests::{candidate, candidate_with, folder_below};
 use crate::tables::watched_path::host_root;
-use bae_db::test_fixtures::{empty_db, temp_db};
+use bae_store::test_fixtures::{empty_db, temp_db};
 
 /// `names` under one watched root, scanned to completion.
-pub(crate) async fn scanned(names: &[&str]) -> (Database, tempfile::TempDir, Vec<FolderCandidate>) {
+pub(crate) async fn scanned(names: &[&str]) -> (Store, tempfile::TempDir, Vec<FolderCandidate>) {
     let root = host_root("/music");
     scanned_folders(names.iter().map(|name| candidate(&root, name)).collect()).await
 }
@@ -20,7 +20,7 @@ pub(crate) async fn scanned(names: &[&str]) -> (Database, tempfile::TempDir, Vec
 /// `folders`, under the watched root `/music`, scanned to completion.
 async fn scanned_folders(
     folders: Vec<FolderCandidate>,
-) -> (Database, tempfile::TempDir, Vec<FolderCandidate>) {
+) -> (Store, tempfile::TempDir, Vec<FolderCandidate>) {
     let (db, temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
@@ -43,7 +43,7 @@ async fn scanned_folders(
     (db, temp, candidates)
 }
 
-async fn stored(db: &Database, key: &crate::CandidateKey) -> Option<ScanItem> {
+async fn stored(db: &Store, key: &crate::CandidateKey) -> Option<ScanItem> {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.load_folder_scan_item(key).await.unwrap()
 }
@@ -231,7 +231,7 @@ pub(crate) fn sidecar_of(folder: &str, names: &[&str]) -> FolderSidecar {
 
 /// Store `item` under a scan generation opened for it, and say what the
 /// write rebuilt.
-pub(crate) async fn scan_in(db: &Database, item: ScanItem) -> crate::tables::ScanItemWrite {
+pub(crate) async fn scan_in(db: &Store, item: ScanItem) -> crate::tables::ScanItemWrite {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
@@ -243,10 +243,7 @@ pub(crate) async fn scan_in(db: &Database, item: ScanItem) -> crate::tables::Sca
 }
 
 /// Store `sidecar` under `/music` as a scan stores a folder's sidecar files.
-pub(crate) async fn sidecar_in(
-    db: &Database,
-    sidecar: FolderSidecar,
-) -> crate::tables::ScanItemWrite {
+pub(crate) async fn sidecar_in(db: &Store, sidecar: FolderSidecar) -> crate::tables::ScanItemWrite {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
@@ -259,7 +256,7 @@ pub(crate) async fn sidecar_in(
 
 /// The relative paths of the files the release at `key` holds, when it can be
 /// imported.
-async fn release_files(db: &Database, key: &crate::CandidateKey) -> Vec<String> {
+async fn release_files(db: &Store, key: &crate::CandidateKey) -> Vec<String> {
     let Some(ScanItem::Valid(release)) = stored(db, key).await else {
         panic!("{key} is a release that can be imported");
     };
@@ -537,7 +534,7 @@ async fn the_folder_files_reader_is_found_by_its_index() {
                 ["/music/Album", "grouping"],
                 |row| row.get::<_, String>(3),
             )
-            .map_err(bae_db::DbError::from)
+            .map_err(bae_store::DbError::from)
         })
         .await
         .unwrap();

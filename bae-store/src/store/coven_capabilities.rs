@@ -1,36 +1,23 @@
-use super::*;
+use crate::store::Store;
+use crate::DbError;
+use coven::{CovenError, SqlReadContext};
+use std::sync::Arc;
+
+/// Whether the person paused uploads, as coven's one row says.
+pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
+
+/// Whether storage is set up on this device, as coven's sync status says:
+/// what a release's storage choices and markers are read against, beside the
+/// library's own rows.
+pub fn cloud_home_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
+    Ok(sql.query_row("SELECT storage = 'connected' FROM coven_sync_status", [], |row| row.get(0))?)
+}
 
 /// Where a storage setup reports each step coven runs, as coven reports it.
 pub type StorageSetupSteps<'a> =
     &'a (dyn Fn(coven::Progress<coven::StorageSetupStep>) + Send + Sync);
 
-/// Where each of the release `?1`'s files stands for its pin: whether this
-/// device keeps it whole, as `coven_pins` says, and while this process
-/// downloads it to be kept, the file coven downloads, as `coven_downloading`
-/// lists it.
-const RELEASE_FILE_PINS: &str = "SELECT f.id, pin.file IS NOT NULL, downloading.file \
-     FROM release_files AS f \
-     LEFT JOIN coven_pins AS pin ON pin.file = f.file \
-     LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
-     WHERE f.release_id = ?1";
-
-/// [`RELEASE_FILE_PINS`] for `release_id`, by release file id.
-fn release_file_pins_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
-    Ok(sql
-        .query(RELEASE_FILE_PINS, [release_id], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                DbFilePin { kept: row.get(1)?, downloading: row.get(2)? },
-            ))
-        })?
-        .into_iter()
-        .collect())
-}
-
-impl Database {
+impl Store {
     pub fn store_id(&self) -> coven::StoreId {
         self.inner.handle.store_id()
     }
@@ -41,17 +28,6 @@ impl Database {
 
     pub fn subscribe_store_name(&self) -> coven::LiveQuery<String> {
         self.inner.handle.subscribe_store_name()
-    }
-
-    /// Rename the store as an admin: the write journals the rename, which
-    /// a pass claims, and records it to show (§5.6).
-    pub async fn rename_store(&self, name: &str) -> Result<(), coven::SyncError> {
-        let name = name.to_owned();
-        let renamed = name.clone();
-        self.admin_change(super::admin_operations::AdminTarget::LibraryName(renamed), move |sql| {
-            Ok((sql.rename_store(&name)?, ()))
-        })
-        .await
     }
 
     /// Delete the store, discarding what this device hasn't uploaded; the
@@ -120,7 +96,7 @@ impl Database {
     }
 
     /// One read of the store, its failure as coven reports it.
-    pub(crate) async fn read_coven<R>(
+    pub async fn read_coven<R>(
         &self,
         read: impl FnOnce(SqlReadContext<'_>) -> Result<R, CovenError> + Send + 'static,
     ) -> Result<R, CovenError>
@@ -286,15 +262,24 @@ impl Database {
         self.inner.handle.device_id()
     }
 
-    pub async fn file_ref(&self, file: coven::FileId) -> Result<coven::FileRef, coven::DbError> {
-        self.inner.handle.file_ref(file).await
+    /// coven's record of the file `file`, as this device reads it now.
+    pub async fn file_ref(&self, file: coven::FileId) -> Result<coven::FileRef, DbError> {
+        Ok(self.inner.handle.file_ref(file).await?)
+    }
+
+    /// The original coven records on this device for `file`: the person's
+    /// file it was imported from, or the copy making a release local again
+    /// wrote.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn user_file(&self, file: coven::FileId) -> Result<Option<coven::UserFile>, DbError> {
+        Ok(self.inner.handle.user_file(file).await?)
     }
 
     pub async fn read_file(&self, file: &coven::FileRef) -> Result<Vec<u8>, coven::FileReadError> {
         self.inner.handle.read_file(file).await
     }
 
-    pub(crate) async fn open_file_stream(
+    pub async fn open_file_stream(
         &self,
         file: &coven::FileRef,
     ) -> Result<coven::FileStream, coven::FileReadError> {
@@ -318,26 +303,6 @@ impl Database {
 
     pub async fn pin(&self, files: &[coven::FileRef]) -> Result<(), coven::FileReadError> {
         self.inner.handle.pin(files).await
-    }
-
-    /// Where each of the release's files stands for its pin now, by release
-    /// file id.
-    pub async fn release_file_pins(
-        &self,
-        release_id: &str,
-    ) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |sql| release_file_pins_on(&sql, &release_id)).await
-    }
-
-    /// Where each of the release's files stands for its pin, live: it reruns
-    /// as a file is kept and as a download to keep one starts or ends.
-    pub fn subscribe_release_file_pins(
-        &self,
-        release_id: &str,
-    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>> {
-        let release_id = release_id.to_string();
-        self.inner.handle.subscribe(move |sql| Ok(release_file_pins_on(&sql, &release_id)?))
     }
 
     /// How far each file this process is downloading to keep whole has got,
@@ -368,6 +333,23 @@ impl Database {
         self.inner.handle.uploads().await.map_err(DbError::from)
     }
 
+    /// Whether the person paused uploads now.
+    pub async fn uploads_paused(&self) -> Result<bool, DbError> {
+        self.read(|sql| sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0)).map_err(DbError::from))
+            .await
+    }
+
+    /// How far each file this process is sending has got, by file, from
+    /// coven's upload watch.
+    pub fn subscribe_upload_transfers(&self) -> coven::TransferWatch {
+        self.inner.handle.subscribe_upload_transfers()
+    }
+
+    /// Whether storage is set up on this device now.
+    pub async fn cloud_home(&self) -> Result<bool, DbError> {
+        self.read(|sql| cloud_home_on(&sql)).await
+    }
+
     pub async fn set_uploads_paused(&self, paused: bool) -> Result<(), DbError> {
         self.inner.handle.set_uploads_paused(paused).await.map_err(DbError::from)
     }
@@ -382,41 +364,6 @@ impl Database {
 
     pub async fn restore_code_for_transfer(&self) -> Result<String, coven::SyncError> {
         self.inner.handle.restore_code_for_transfer().await
-    }
-
-    /// Remove a member: the write journals the removal, which a pass
-    /// claims, and records it to show (§5.6).
-    pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), coven::SyncError> {
-        let member = *member;
-        self.admin_change(super::admin_operations::AdminTarget::Person(member), move |sql| {
-            Ok((sql.remove_member(&member)?, ()))
-        })
-        .await
-    }
-
-    /// Remove a device, journaled and recorded as a removal is, and say
-    /// what is left to do at the provider.
-    pub async fn remove_device(
-        &self,
-        device: coven::DeviceId,
-    ) -> Result<Option<coven::ProviderSignOut>, coven::SyncError> {
-        self.admin_change(super::admin_operations::AdminTarget::Device(device), move |sql| {
-            sql.remove_device(device)
-        })
-        .await
-    }
-
-    /// Change a member's role, journaled and recorded as a removal is.
-    pub async fn set_member_role(
-        &self,
-        member: &coven::MemberId,
-        role: coven::MemberRole,
-    ) -> Result<(), coven::SyncError> {
-        let member = *member;
-        self.admin_change(super::admin_operations::AdminTarget::Role(member, role), move |sql| {
-            Ok((sql.set_member_role(&member, role)?, ()))
-        })
-        .await
     }
 
     /// Invite a new person: the write journals the invite, offline too,
@@ -436,30 +383,6 @@ impl Database {
         Ok(invite)
     }
 
-    /// Approve a sent invite's request: the write journals the approval,
-    /// which a pass binds, and records it to show by the name the invite
-    /// gave its person (§5.6).
-    pub async fn approve_join_request(
-        &self,
-        request: &coven::JoinRequest,
-    ) -> Result<(), coven::SyncError> {
-        let invite = request.invite;
-        let invitee = self
-            .inner
-            .handle
-            .read(coven::Invite::list)
-            .await?
-            .into_iter()
-            .find(|open| open.id == invite)
-            .and_then(|open| open.invitee);
-        let request = request.clone();
-        self.admin_change(
-            super::admin_operations::AdminTarget::Approval(request.member, invitee),
-            move |sql| Ok((Some(sql.approve_join_request(&request)?), ())),
-        )
-        .await
-    }
-
     pub async fn decline_join_request(
         &self,
         request: &coven::JoinRequest,
@@ -470,9 +393,7 @@ impl Database {
     pub async fn cancel_invite(&self, invite: &coven::InviteId) -> Result<(), coven::SyncError> {
         self.inner.handle.cancel_invite(invite).await
     }
-}
 
-impl Database {
     pub async fn detect_s3_settings(
         &self,
         storage: coven::StorageConfig,

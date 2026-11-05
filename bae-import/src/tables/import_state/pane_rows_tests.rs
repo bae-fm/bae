@@ -4,16 +4,18 @@ use crate::tables::import_state::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::{ArtistAssignment, RawTrackEdit, TrackArtistAssignments};
 use bae_catalogs::credits::ArtistCredit;
-use bae_db::test_fixtures::{empty_db, exec, exec_batch, temp_db, ARTIST_A, ARTIST_B};
+use bae_db::test_fixtures::{ARTIST_A, ARTIST_B};
 use bae_db::ExistingArtist;
+use bae_store::test_fixtures::{empty_db, exec, exec_batch, temp_db};
 
 #[tokio::test]
 async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let existing = existing_artist();
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let assignments = crate::Credited::plain_list(vec![
         ArtistAssignment::picked(existing.into()),

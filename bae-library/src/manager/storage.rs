@@ -15,7 +15,7 @@ impl LibraryManager {
 
     /// This device's id in the store.
     pub(crate) fn device_id(&self) -> coven::DeviceId {
-        self.database.device_id()
+        self.store.device_id()
     }
 }
 

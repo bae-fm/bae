@@ -287,13 +287,13 @@ impl ImportTables {
         content_hash: &str,
     ) -> Result<DbCandidatePaneRows, DbError> {
         let content_hash = content_hash.to_string();
-        self.database.read(move |sql| load_pane_rows_on(&sql, &content_hash)).await
+        self.store.read(move |sql| load_pane_rows_on(&sql, &content_hash)).await
     }
 }
 
 /// Whether the candidate `content_hash` holds a draft row.
 pub(super) fn has_draft_row_on(
-    sql: &impl bae_db::client::query::QueryOne,
+    sql: &impl bae_store::query::QueryOne,
     content_hash: &str,
 ) -> Result<bool, DbError> {
     Ok(sql
@@ -313,7 +313,7 @@ pub(super) fn has_draft_row_on(
 /// one. A candidate this device imported holds no draft, so reading one
 /// fails.
 pub(super) fn load_draft_and_cover_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     content_hash: &str,
 ) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
     if let Some(draft) = load_drafts_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
@@ -348,7 +348,7 @@ pub(super) fn load_draft_and_cover_on(
 /// Every candidate's complete stored draft, or the one `only` names: one row
 /// per draft, its lists riding on it as JSON arrays in their stored order.
 pub(crate) fn load_drafts_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, CandidateDraft>, DbError> {
     let filter = only.filter("edit.content_hash");
@@ -500,7 +500,7 @@ impl StoredDraftRow {
 
 /// The draft's label rows as typed, as the read's `labels` array holds them.
 fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
-    bae_db::client::read::json_column(row, "labels")
+    bae_store::read::json_column(row, "labels")
 }
 
 /// One `import_candidate_medium` row as the draft's read holds it.

@@ -10,9 +10,9 @@ use crate::TriageTab;
 use crate::{CandidateAction, TriageImportStatus, TriagePlacement};
 use crate::{NeedsYouReason, PendingStanding};
 use bae_catalogs::InternalFailure;
-use bae_db::test_fixtures::fixed_now;
 use bae_identify::MediumConflict;
 use bae_identify::TerminalVerdict;
+use bae_store::test_fixtures::fixed_now;
 
 /// Whether the row, with what is running for it, offers to import.
 fn offers_import(live: &crate::CandidateLiveState) -> bool {

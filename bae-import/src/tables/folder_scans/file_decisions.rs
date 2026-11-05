@@ -107,7 +107,7 @@ impl ImportTables {
     ) -> Result<Vec<(CandidateKey, crate::folder_scanner::CategorizedFiles)>, DbError> {
         let content_hash = content_hash.to_string();
         let file_edit_revision = to_i64(file_edit_revision, "a file decision revision")?;
-        self.database
+        self.store
             .read(move |sql| {
                 let keys = sql.query(
                     "SELECT path FROM scan_candidate \

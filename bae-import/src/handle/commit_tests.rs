@@ -6,7 +6,7 @@ use super::*;
 use crate::handle::tests::*;
 use crate::tests::import::TestImport;
 use crate::ImportError;
-use bae_db::Database;
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
@@ -15,7 +15,7 @@ use tempfile::TempDir;
 /// [`setup_test_import`] reporting its bugs to `diagnostics`.
 async fn setup_test_import_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (TestImport, Database, TempDir) {
+) -> (TestImport, Store, TempDir) {
     setup_test_import_over(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -167,8 +167,8 @@ async fn retitle(handle: &ImportServiceHandle, key: &crate::CandidateKey) {
 /// query delivers it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
-    let (parts, database, tmp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, tmp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let (_candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
     let slow_root = tmp.path().join("slow share");
     audio_folder(&slow_root, "Other Album");
@@ -202,8 +202,8 @@ async fn two_candidates() -> (
     crate::CandidateKey,
     [TempDir; 2],
 ) {
-    let (parts, database, tmp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, tmp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let other = TempDir::new().unwrap();
     let (mut held_candidate, held_key, _) = unscanned_candidate(&tables, &tmp, "Held Album").await;
     std::fs::write(held_candidate.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();

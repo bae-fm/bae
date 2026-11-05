@@ -6,7 +6,7 @@ use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::service::tests::{setup_import_service, TestService};
 use crate::tables::watched_path::host_root;
-use bae_db::Database;
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use std::sync::Mutex;
 use tempfile::TempDir;
@@ -172,7 +172,7 @@ pub(crate) struct FakeRemovalBackend {
     pub(crate) calls: Mutex<Vec<&'static str>>,
     /// A store the removal leaves unreadable as a list of watched folders,
     /// as a read that fails after the removal's write would find it.
-    pub(crate) unreadable_after_remove: Mutex<Option<Database>>,
+    pub(crate) unreadable_after_remove: Mutex<Option<Store>>,
     /// The folders the removal's write leaves watched.
     pub(crate) leaves_watched: Mutex<Vec<PathBuf>>,
 }
@@ -206,8 +206,8 @@ impl RootRemovalBackend for FakeRemovalBackend {
     ) -> Result<crate::tables::WatchedFoldersRemoved, String> {
         self.calls.lock().unwrap().push("remove");
         let unreadable = self.unreadable_after_remove.lock().unwrap().take();
-        if let Some(database) = unreadable {
-            make_watched_folders_unreadable(&database).await;
+        if let Some(db) = unreadable {
+            make_watched_folders_unreadable(&db).await;
         }
         match self.remove_error.lock().unwrap().clone() {
             Some(error) => Err(error),
@@ -228,18 +228,14 @@ impl RootRemovalBackend for FakeRemovalBackend {
 
 /// Store a watched folder inside another, which every read of the watched
 /// folders refuses.
-async fn make_watched_folders_unreadable(database: &Database) {
+async fn make_watched_folders_unreadable(db: &Store) {
     let inner = coven::path_bytes(&root_path("/music/inner"));
-    database
-        .call(move |sql| {
-            sql.execute(
-                "INSERT INTO watched_import_folders (path, position) VALUES (?, 99)",
-                [inner],
-            )?;
-            Ok(())
-        })
-        .await
-        .unwrap();
+    db.call(move |sql| {
+        sql.execute("INSERT INTO watched_import_folders (path, position) VALUES (?, 99)", [inner])?;
+        Ok(())
+    })
+    .await
+    .unwrap();
 }
 
 pub(crate) struct CoordinatorHarness {
@@ -247,7 +243,7 @@ pub(crate) struct CoordinatorHarness {
     pub(crate) fs_events: tokio::sync::mpsc::UnboundedSender<WatchReport>,
     pub(crate) scans: FakeScanStarter,
     /// The store the coordinator reads which folders are watched from.
-    pub(crate) database: Database,
+    pub(crate) db: Store,
     pub(crate) folder_state_commit: crate::FolderStateCommit,
     pub(crate) removal_backend: Arc<FakeRemovalBackend>,
     /// Every event the coordinator sent.
@@ -313,12 +309,12 @@ impl CoordinatorHarness {
             starter,
             removal_backend.clone(),
         );
-        let TestService { database, temp, .. } = test;
+        let TestService { db, temp, .. } = test;
         Self {
             commands,
             fs_events,
             scans,
-            database,
+            db,
             folder_state_commit,
             removal_backend,
             events,

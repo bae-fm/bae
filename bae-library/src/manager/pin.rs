@@ -100,7 +100,7 @@ impl LibraryManager {
             .collect();
         let files = pinnable.into_iter().map(|entry| entry.file).collect::<Vec<_>>();
         let previous = self
-            .database
+            .store
             .files_pinned(&files.iter().map(coven::FileRef::id).collect::<Vec<_>>())
             .await?;
         let changed = files
@@ -134,9 +134,9 @@ impl LibraryManager {
                     })
                 };
                 let mut pins = pins;
-                let mut transfers = manager.database.subscribe_download_file_transfers();
+                let mut transfers = manager.store.subscribe_download_file_transfers();
                 let mut count = PinCount::default();
-                let pin = manager.database.pin(&files);
+                let pin = manager.store.pin(&files);
                 tokio::pin!(pin);
                 let mut rate: Option<bae_transfers::DownloadRate> = None;
                 loop {
@@ -178,7 +178,7 @@ impl LibraryManager {
             .await
             .unwrap_or_else(|bug| Err(manager.panicked(bug).into()));
             if let Err(operation) = result {
-                return match manager.database.unpin(&changed).await {
+                return match manager.store.unpin(&changed).await {
                     Ok(()) => Err(operation),
                     Err(error) => {
                         let error = LibraryError::Cleanup { operation: Box::new(operation), cleanup: Box::new(error.into()) };

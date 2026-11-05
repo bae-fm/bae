@@ -5,7 +5,7 @@
 use super::*;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;
-use bae_db::Database;
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 
 /// Every list the live query delivered shows the folder one way or the
@@ -245,8 +245,8 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
 
 /// Each Pending group header with whether it can combine, and each row with
 /// whether it can separate.
-async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
-    let tables = crate::tables::ImportTables::new(database.clone());
+async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
+    let tables = crate::tables::ImportTables::new(db.clone());
     let list = tables
         .open_import_list(crate::ImportListView {
             order: crate::ImportListOrder::PathAscending,
@@ -257,7 +257,7 @@ async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)
     let projection = tables
         .load_import_list(crate::ImportListRequest {
             list,
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         })
         .await
         .unwrap();
@@ -305,7 +305,7 @@ fn folder_key(root: &Path, relative: &str) -> crate::FolderReleaseDecisionKey {
 #[tokio::test]
 async fn one_grouped_album_under_an_artist_offers_no_combine() {
     let (test, _scan, _root) = scanned_root(&["Artist/Album/Disc 1", "Artist/Album/Disc 2"]).await;
-    let (headers, rows) = offers(&test.database).await;
+    let (headers, rows) = offers(&test.db).await;
     assert_eq!(headers, vec![("Artist".to_string(), false)]);
     assert_eq!(rows, vec![("Artist/Album".to_string(), true)]);
 }
@@ -315,7 +315,7 @@ async fn one_grouped_album_under_an_artist_offers_no_combine() {
 #[tokio::test]
 async fn two_albums_under_an_artist_offer_to_combine() {
     let (test, _scan, _root) = scanned_root(&["Artist/Album A", "Artist/Album B"]).await;
-    let (headers, rows) = offers(&test.database).await;
+    let (headers, rows) = offers(&test.db).await;
     assert_eq!(headers, vec![("Artist".to_string(), true)]);
     assert_eq!(
         rows,
@@ -331,7 +331,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         let discs = [format!("{album}/Disc 1"), format!("{album}/Disc 2")];
         let discs: Vec<&str> = discs.iter().map(String::as_str).collect();
         let (test, scan, root) = scanned_root(&discs).await;
-        let (_, rows) = offers(&test.database).await;
+        let (_, rows) = offers(&test.db).await;
         assert_eq!(rows, vec![(album.to_string(), true)], "{album}");
 
         change_folder_reading(
@@ -342,7 +342,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         )
         .await
         .unwrap();
-        let (headers, rows) = offers(&test.database).await;
+        let (headers, rows) = offers(&test.db).await;
         assert_eq!(headers, vec![(header.to_string(), true)], "{album}");
         assert_eq!(
             rows,

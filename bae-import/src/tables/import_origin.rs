@@ -6,8 +6,8 @@
 //! Its table is `import_origin.sql`.
 
 /// The import origin's part of the library's schema.
-pub(super) const SCHEMA: bae_db::SchemaPart =
-    bae_db::SchemaPart::new(&[include_str!("import_origin.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("import_origin.sql")]);
 
 use super::*;
 
@@ -50,7 +50,7 @@ pub(super) fn record_on(
 /// The release this device imported from the files hashed `content_hash`,
 /// if it imported one.
 pub(super) fn imported_release_on(
-    sql: &impl bae_db::client::query::QueryOne,
+    sql: &impl bae_store::query::QueryOne,
     content_hash: &str,
 ) -> Result<Option<String>, DbError> {
     Ok(sql
@@ -67,7 +67,7 @@ impl ImportTables {
     /// imported one.
     pub async fn release_imported_from(&self, hash: &str) -> Result<Option<String>, DbError> {
         let hash = hash.to_string();
-        self.database.read(move |sql| imported_release_on(&sql, &hash)).await
+        self.store.read(move |sql| imported_release_on(&sql, &hash)).await
     }
 }
 

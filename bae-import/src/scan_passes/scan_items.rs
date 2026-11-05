@@ -180,7 +180,7 @@ async fn announce_item(
     let actionable = matches!(item, ScanItem::Valid(_));
     let automatic = found
         && actionable
-        && bae_preferences::preferences(&services.database).await?.identification.automatic;
+        && bae_preferences::preferences(&services.store).await?.identification.automatic;
     match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
             event_tx.send(crate::ImportEvent::Scan(if actionable {

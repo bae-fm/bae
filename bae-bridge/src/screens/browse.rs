@@ -158,12 +158,12 @@ browse_subscription! {
 }
 
 impl crate::types::BridgeLibraryPageWindow {
-    pub(crate) fn from_core(window: bae_db::LibraryPageWindow) -> Self {
+    pub(crate) fn from_core(window: bae_store::LibraryPageWindow) -> Self {
         Self { offset: window.offset, limit: window.limit }
     }
 
-    pub(crate) fn into_core(self) -> bae_db::LibraryPageWindow {
-        bae_db::LibraryPageWindow { offset: self.offset, limit: self.limit }
+    pub(crate) fn into_core(self) -> bae_store::LibraryPageWindow {
+        bae_store::LibraryPageWindow { offset: self.offset, limit: self.limit }
     }
 }
 

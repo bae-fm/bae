@@ -4,10 +4,11 @@
 //! here read and write it.
 
 /// The table's part of the library's schema.
-pub(crate) const SCHEMA: bae_db::SchemaPart =
-    bae_db::SchemaPart::new(&[include_str!("picker.sql")]);
+pub(crate) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("picker.sql")]);
 
-use bae_db::{Database, DbError};
+use bae_store::DbError;
+use bae_store::Store;
 use coven::{CovenError, SqlReadContext};
 use rusqlite::{params, Row};
 
@@ -46,7 +47,7 @@ fn kind_from_column(row: &Row<'_>, column: usize) -> rusqlite::Result<RendererKi
         "cast" => Ok(RendererKind::Cast),
         "dlna" => Ok(RendererKind::Dlna),
         "airplay" => Ok(RendererKind::AirPlay),
-        other => Err(bae_db::client::read::column_conversion_error(
+        other => Err(bae_store::read::column_conversion_error(
             row,
             column,
             format!("cast device kind {other} names no renderer"),
@@ -65,18 +66,18 @@ fn cast_devices_on(sql: &SqlReadContext<'_>) -> Result<Vec<CastDevice>, DbError>
 /// found, which the picker shows.
 #[derive(Clone)]
 pub struct CastPicker {
-    database: Database,
+    store: Store,
 }
 
 impl CastPicker {
-    /// The picker's list over the library's store, `database`.
-    pub fn new(database: Database) -> Self {
-        Self { database }
+    /// The picker's list over the library's store, `store`.
+    pub fn new(store: Store) -> Self {
+        Self { store }
     }
 
     /// List `devices` in place of every receiver listed, in one write.
     pub async fn show(&self, devices: Vec<CastDevice>) -> Result<(), DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 sql.execute("DELETE FROM cast_device", [])?;
                 for device in &devices {
@@ -92,13 +93,13 @@ impl CastPicker {
 
     /// Follow the receivers the picker lists.
     pub fn subscribe(&self) -> coven::LiveQuery<Vec<CastDevice>> {
-        self.database.subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
+        self.store.subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
     }
 
     /// Empty the list: what the library opens with, since no discovery
     /// outlives the process that ran it.
     pub async fn clear(&self) -> Result<(), DbError> {
-        self.database
+        self.store
             .call(|sql| {
                 sql.execute("DELETE FROM cast_device", [])?;
                 Ok(())
@@ -109,7 +110,7 @@ impl CastPicker {
     /// The receivers the picker lists now.
     #[cfg(test)]
     async fn devices(&self) -> Result<Vec<CastDevice>, DbError> {
-        self.database.read(|sql| cast_devices_on(&sql)).await
+        self.store.read(|sql| cast_devices_on(&sql)).await
     }
 }
 

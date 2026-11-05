@@ -14,7 +14,10 @@ impl Database {
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let records = records.to_vec();
-        self.call_sql(move |sql| write_release_records(&sql, &release_id, &records)).await
+        self.inner
+            .store
+            .call_sql(move |sql| write_release_records(&sql, &release_id, &records))
+            .await
     }
 
     /// Every record for a release. Empty if no catalog describes it.
@@ -23,7 +26,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| get_release_records_on(&sql, &release_id)).await
+        self.inner.store.read(move |sql| get_release_records_on(&sql, &release_id)).await
     }
 
     /// The library album `records` file a release under, leaving out the
@@ -40,7 +43,7 @@ impl Database {
     ) -> Result<Option<String>, DbError> {
         let records = records.to_vec();
         let excluding = excluding.to_vec();
-        self.read(move |sql| album_records_name_on(&sql, &records, &excluding)).await
+        self.inner.store.read(move |sql| album_records_name_on(&sql, &records, &excluding)).await
     }
 
     /// Where an album stands for a release whose records are about to be
@@ -62,32 +65,38 @@ impl Database {
         )
         .to_string();
         let (album_id, release_id) = (album_id.to_string(), release_id.to_string());
-        self.read(move |sql| {
-            Ok(sql.query_row(
-                ALBUM_BESIDE_RELEASE,
-                rusqlite::named_params! {
-                    ":album": album_id,
-                    ":release": release_id,
-                    ":album_refs": album_refs,
-                },
-                |row| Ok(AlbumBesideRelease { holds_others: row.get(0)?, disagrees: row.get(1)? }),
-            )?)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    ALBUM_BESIDE_RELEASE,
+                    rusqlite::named_params! {
+                        ":album": album_id,
+                        ":release": release_id,
+                        ":album_refs": album_refs,
+                    },
+                    |row| {
+                        Ok(AlbumBesideRelease { holds_others: row.get(0)?, disagrees: row.get(1)? })
+                    },
+                )?)
+            })
+            .await
     }
 
     /// Whether the album `album_id` holds any release, by the albums'
     /// releases index.
     pub async fn album_holds_releases(&self, album_id: &str) -> Result<bool, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |sql| {
-            Ok(sql.query_row(
-                "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?1)",
-                [album_id],
-                |row| row.get(0),
-            )?)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?1)",
+                    [album_id],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
     }
 
     /// Replace a release's record rows and move the release between albums
@@ -95,8 +104,8 @@ impl Database {
     /// `set_records_on`).
     #[cfg(all(desktop, any(test, feature = "test-utils")))]
     pub async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
-        let now = self.now_utc();
-        self.call_sql(move |sql| set_records_on(&sql, &change, now)).await
+        let now = self.inner.store.now_utc();
+        self.inner.store.call_sql(move |sql| set_records_on(&sql, &change, now)).await
     }
 
     /// Check, for each candidate in `checks`, whether the library already
@@ -112,7 +121,7 @@ impl Database {
         checks: &[LibraryCheck],
     ) -> Result<Vec<LibraryStatus>, DbError> {
         let checks = checks.to_vec();
-        self.read(move |sql| check_releases_in_library_on(&sql, &checks)).await
+        self.inner.store.read(move |sql| check_releases_in_library_on(&sql, &checks)).await
     }
 
     /// Follow the library membership of every release `initial` checks, in
@@ -123,7 +132,7 @@ impl Database {
         initial: BTreeSet<LibraryCheck>,
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>> {
         self.inner
-            .handle
+            .store
             .subscribe_reconfigurable(initial, |checks, sql| {
                 let checks: Vec<LibraryCheck> = checks.iter().cloned().collect();
                 check_releases_in_library_on(&sql, &checks).map_err(CovenError::from)
@@ -335,7 +344,7 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
 /// `idx_release_records_catalog_album` — and the rows come back in check
 /// order, each check's albums holding its pressing first, then by age.
 pub fn check_releases_in_library_on(
-    sql: &(impl super::query::QueryOne + super::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
     let mut statuses = checks

@@ -10,7 +10,7 @@ pub(super) const SQL: &str = include_str!("artist.sql");
 
 impl LibraryViews {
     pub async fn get_artist_count(&self) -> Result<u64, DbError> {
-        self.database.read(|sql| artist_count_on(&sql)).await
+        self.store.read(|sql| artist_count_on(&sql)).await
     }
 
     pub async fn get_artist_page(
@@ -21,7 +21,7 @@ impl LibraryViews {
     ) -> Result<Vec<ArtistSummary>, DbError> {
         let order = artist_order(sort);
         let rows: Vec<DbArtistSummary> = self
-            .database
+            .store
             .read(move |sql| {
                 Ok(artist_rows_on(&sql, &order, &order.everything(), limit, offset)?
                     .into_iter()
@@ -38,11 +38,11 @@ impl LibraryViews {
     pub fn subscribe_artist_browse(
         &self,
         sort: &[ArtistSortCriterion],
-        initial_windows: bae_db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, ArtistBrowseProjection> {
+        initial_windows: bae_store::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, ArtistBrowseProjection> {
         let order = artist_order(sort);
         let places = KnownPlaces::new();
-        self.database.subscribe_reconfigurable(initial_windows, move |requested, sql| {
+        self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
             let versions = list_versions_on(&sql, crate::versions::TABLE, &["artist_listing"])?;
             let total_count = artist_count_on(&sql).map_err(CovenError::from)?;
             let WindowsRead { windows, found } =
@@ -53,7 +53,7 @@ impl LibraryViews {
             Ok(ArtistBrowseProjection {
                 windows: windows
                     .into_iter()
-                    .map(|(window, rows)| bae_db::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| bae_store::LibraryBrowseWindow { window, rows })
                     .collect(),
                 total_count,
             })
@@ -79,7 +79,7 @@ impl LibraryViews {
         artist_id: &str,
     ) -> Result<Option<DbArtistDetail>, DbError> {
         let artist_id = artist_id.to_string();
-        self.database
+        self.store
             .read(move |sql| find_artist_detail_on(&sql, &artist_id))
             .process(|rows| rows.map(ArtistDetailRows::process).transpose())
             .await
@@ -91,7 +91,7 @@ impl LibraryViews {
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection> {
-        self.database
+        self.store
             .subscribe_reconfigurable(initial, |artist_id, sql| {
                 let Some(artist_id) = artist_id else {
                     return Ok(None);
@@ -116,7 +116,7 @@ pub fn resolve_artist_browse(
         windows: projection
             .windows
             .into_iter()
-            .map(|window| bae_db::LibraryBrowseWindow {
+            .map(|window| bae_store::LibraryBrowseWindow {
                 window: window.window,
                 rows: window.rows.into_iter().map(ArtistSummary::from_raw).collect(),
             })
@@ -285,7 +285,7 @@ pub(crate) fn artist_order(sort: &[ArtistSortCriterion]) -> ListOrder {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistBrowseProjection {
-    pub windows: Vec<bae_db::LibraryBrowseWindow<DbArtistSummary>>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<DbArtistSummary>>,
     pub total_count: u64,
 }
 

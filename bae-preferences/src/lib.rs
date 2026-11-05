@@ -35,12 +35,11 @@ pub use server::{
 use save::default_save_presets;
 
 /// The preferences' part of the library's schema.
-pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[row::SCHEMA];
+pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[row::SCHEMA];
 
-/// The schema this crate's tests open their stores on: bae-db's part and the
-/// preferences'.
+/// The schema this crate's tests open their stores on: the preferences' part.
 #[cfg(test)]
-const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, SCHEMA_PARTS]);
+const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[SCHEMA_PARTS]);
 
 /// The largest transfer concurrency the UI offers and the setters accept.
 pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
@@ -234,7 +233,7 @@ pub enum PreferencesError {
     Invalid(String),
     /// The preferences row could not be read or written.
     #[error(transparent)]
-    Database(#[from] bae_db::DbError),
+    Database(#[from] bae_store::DbError),
 }
 
 impl PreferencesError {

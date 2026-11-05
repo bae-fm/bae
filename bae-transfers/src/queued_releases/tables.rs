@@ -17,11 +17,11 @@ use crate::release_queue::{
     QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress,
     ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
-use bae_db::client::list_windows::{
+use bae_store::list_windows::{
     list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
 };
-use bae_db::client::read::column_conversion_error;
-use bae_db::{DbError, LibraryBrowseWindow, LibraryPageWindows};
+use bae_store::read::column_conversion_error;
+use bae_store::{DbError, LibraryBrowseWindow, LibraryPageWindows};
 use coven::{CovenWrite, SqlReadContext};
 #[cfg(desktop)]
 use rusqlite::types::Value;
@@ -84,7 +84,7 @@ impl QueuedPayload for OutputRequest {
     }
 
     fn from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<Self> {
-        let target_dir = bae_db::client::path_column::get(row, at)?;
+        let target_dir = bae_store::path_column::get(row, at)?;
         let kind: String = row.get(at + 1)?;
         let preset: Option<String> = row.get(at + 2)?;
         let kind = match (kind.as_str(), preset) {

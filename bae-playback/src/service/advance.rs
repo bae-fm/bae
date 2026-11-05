@@ -4,12 +4,12 @@ use super::*;
 /// still holds, reading nothing until it is pointed at some. `what` names the
 /// tracks in the log of a failed read.
 pub(super) fn track_infos_follow(
-    database: &bae_db::Database,
+    store: &bae_store::Store,
     what: &'static str,
     diagnostics: &Diagnostics,
 ) -> LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>> {
     LibraryFollow::new(
-        crate::tables::subscribe_playback_track_infos(database, Vec::new()),
+        crate::tables::subscribe_playback_track_infos(store, Vec::new()),
         Vec::new(),
         what,
         diagnostics,
@@ -120,6 +120,7 @@ impl PlaybackService {
         // A preload is a natural transition, so no pregap is skipped: decode from
         // the track's first sample to its end.
         let prepared = prepare_track_for_playback(
+            &self.store,
             &self.database,
             &self.diagnostics,
             track_id,
@@ -253,9 +254,9 @@ impl PlaybackService {
     /// setting — `None` when it waits for Play.
     async fn side_pause_countdown_from_now(
         &self,
-    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, bae_db::DbError> {
+    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, bae_store::DbError> {
         let Some(length) =
-            bae_preferences::preferences(&self.database).await?.side_pause_countdown.duration()
+            bae_preferences::preferences(&self.store).await?.side_pause_countdown.duration()
         else {
             return Ok(None);
         };
@@ -290,8 +291,8 @@ impl PlaybackService {
             .ok_or_else(|| PlaybackError::not_found("Track", track_id))
     }
 
-    pub(super) async fn side_pause_enabled(&self) -> Result<bool, bae_db::DbError> {
-        Ok(bae_preferences::preferences(&self.database).await?.pause_between_sides
+    pub(super) async fn side_pause_enabled(&self) -> Result<bool, bae_store::DbError> {
+        Ok(bae_preferences::preferences(&self.store).await?.pause_between_sides
             && self.playback_queue.repeat_mode() != RepeatMode::Track)
     }
 

@@ -1,8 +1,6 @@
 //! A library of two artists and three albums, for the album and artist
 //! listings' tests.
 
-use crate::Database;
-
 pub const BRAVO: &str = "f392a38b-f264-41a0-a225-c6935b8a8262";
 pub const ALPHA: &str = "4309b580-a6bf-455e-92ea-ec58ee7129e7";
 pub const ALBUM_ONE: &str = "07d22f7d-3980-4c81-9d27-8fcd50ee3464";
@@ -32,8 +30,8 @@ pub const LIBRARY: &str = "
 ";
 
 /// `LIBRARY` on `schema`.
-pub async fn listed_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(schema).await;
-    super::exec_batch(&db, LIBRARY).await;
+pub async fn listed_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
+    bae_store::test_fixtures::exec_batch(&db, LIBRARY).await;
     (db, tmp)
 }

@@ -23,7 +23,7 @@ impl ImportServiceHandle {
         candidate_key: crate::CandidateKey,
         query: SearchQuery,
     ) -> Result<(), crate::ImportError> {
-        let sources = bae_preferences::preferences(&self.database).await?.metadata_sources();
+        let sources = bae_preferences::preferences(&self.store).await?.metadata_sources();
         let search = CandidateSearch::started(query.clone(), &sources);
         let run = self.tables.start_candidate_search(&candidate_key, &search).await?;
         for source in search.searching_sources() {
@@ -57,7 +57,10 @@ impl ImportServiceHandle {
     ///
     /// Called after the preference is written, so every search started from
     /// here on is started without the source and has nothing to close.
-    pub async fn stop_asking_source(&self, source: LookupCatalog) -> Result<(), bae_db::DbError> {
+    pub async fn stop_asking_source(
+        &self,
+        source: LookupCatalog,
+    ) -> Result<(), bae_store::DbError> {
         self.tables.switch_search_source_off(source).await
     }
 

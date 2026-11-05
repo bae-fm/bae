@@ -13,7 +13,7 @@ use crate::selection::{
 use crate::tables::import_state::{RuntimeFactColumns, RUNTIME_FACT_COLUMNS};
 use crate::triage::{selection_offers, SelectionPart};
 use crate::CandidateKey;
-use bae_db::client::query::{QueryOne, QueryRows};
+use bae_store::query::{QueryOne, QueryRows};
 
 /// What the list's selection holds and offers. The offers are worked out
 /// once for each set of selected rows alike in everything their commands are
@@ -122,7 +122,7 @@ impl ImportTables {
         &self,
         list: ImportListId,
     ) -> Result<crate::selection::SelectedRows, DbError> {
-        self.database.read(move |sql| selected(&sql, list)).await
+        self.store.read(move |sql| selected(&sql, list)).await
     }
 
     /// Apply a change a person made by pointing at rows of `list`. A row the
@@ -132,7 +132,7 @@ impl ImportTables {
         list: ImportListId,
         change: SelectionChange,
     ) -> Result<SelectionWrite, DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 match change {
                     SelectionChange::Replace { keys } => {
@@ -179,7 +179,7 @@ impl ImportTables {
         &self,
         list: ImportListId,
     ) -> Result<u64, DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 sql.execute(
                     "INSERT INTO import_list_selection (list_id, key) \

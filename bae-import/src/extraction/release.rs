@@ -3,8 +3,9 @@
 //! artwork paths for the OCR pass. Reading the rip artifacts themselves lives
 //! in `import::discid`.
 
-use bae_db::{Database, DbError, LibraryImageType};
+use bae_db::{Database, LibraryImageType};
 use bae_diagnostics::Diagnostics;
+use bae_store::DbError;
 use bae_util::task_failure::TaskFailed;
 use std::path::PathBuf;
 use tracing::{debug, warn};
@@ -134,6 +135,7 @@ fn local_file(
 /// release has no cover. A panic staging the cover is reported to
 /// `diagnostics`.
 pub(crate) async fn resolve_release_artwork_paths(
+    store: &bae_store::Store,
     database: &Database,
     diagnostics: &Diagnostics,
     release_id: &str,
@@ -148,7 +150,7 @@ pub(crate) async fn resolve_release_artwork_paths(
         .library_image_file(release_id, &LibraryImageType::Cover)
         .await
     {
-        Ok(Some(file)) => match database.read_file(&file).await {
+        Ok(Some(file)) => match store.read_file(&file).await {
             Ok(bytes) => {
                 let staging_release = release_id.to_string();
                 match bae_util::task_failure::blocking("stage a cover for reading", move || {

@@ -27,7 +27,7 @@ pub(super) const TRACK_A: &str = "0482872e-d4bf-4080-8426-441a0a3e71fc"; // was 
 /// The library's views over `library`'s store, which the tests read its
 /// state back through.
 pub(super) fn views(library: &LibraryManager) -> bae_views::LibraryViews {
-    bae_views::LibraryViews::new(library.database.clone())
+    bae_views::LibraryViews::new(library.store.clone())
 }
 
 pub(super) struct TestManager {
@@ -63,14 +63,13 @@ pub(super) async fn setup_test_manager_with(
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let handle = bae_db::configure_store(installation.builder(), crate::SCHEMA)
+    let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
         .clock(clock.clone())
         .storage_connector(storage.clone())
         .create_store("Test Library")
         .await
         .unwrap();
-    let database =
-        Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let database = bae_store::Store::new(handle, clock.clone());
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let manager = TestLibrary::open_with(
         database,
@@ -177,7 +176,7 @@ pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, Db
 /// uploads only while it is, so the test's own drain sends what it seeds.
 pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     connect_test_cloud_uploading(manager).await;
-    manager.database.set_uploads_paused(true).await.unwrap();
+    manager.store.set_uploads_paused(true).await.unwrap();
     manager.storage.clone()
 }
 
@@ -185,7 +184,7 @@ pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStora
 /// and uploads run.
 pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<MemoryStorage> {
     manager
-        .database
+        .store
         .setup_s3_storage(
             manager.storage.config(),
             "Test Device",
@@ -244,7 +243,7 @@ impl ReleaseRef {
 /// Wait for the current file's upload to leave coven's durable queue.
 pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
     let mut queued = manager.database.subscribe_row_file_queued_for_test(table, row_id);
-    manager.database.sync_now();
+    manager.store.sync_now();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while queued.next().await.expect("the query stays open").unwrap() {}
     })
@@ -436,7 +435,7 @@ pub(super) async fn store_test_cover(manager: &LibraryManager, release_id: &str,
 /// this joins that upload rather than racing it. A retry while uploads are
 /// paused tries only bound uploads, so the paused queue stays as it was.
 pub(super) async fn finish_bound_uploads(manager: &LibraryManager) {
-    manager.database.retry_uploads_now().await.unwrap();
+    manager.store.retry_uploads_now().await.unwrap();
 }
 
 /// Whether coven keeps the coven file a row references in the pinned cache.
@@ -449,7 +448,7 @@ pub(super) async fn file_pinned(manager: &LibraryManager, namespace: &str, row_i
         other => panic!("no pinned files in {other}"),
     };
     manager
-        .database
+        .store
         .files_pinned(&[file.id()])
         .await
         .expect("read the file's pin state")
@@ -522,8 +521,9 @@ pub(super) fn an_import_error_keeps_its_kind_through_a_library_error() {
         UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 }
     );
 
-    let from_db =
-        LibraryError::from(ImportError::Database(bae_db::DbError::Message("read failed".into())));
+    let from_db = LibraryError::from(ImportError::Database(bae_store::DbError::Message(
+        "read failed".into(),
+    )));
     assert!(matches!(from_db, LibraryError::Database(_)), "{from_db:?}");
 }
 
@@ -533,7 +533,7 @@ pub(super) async fn offered(
     manager: &LibraryManager,
     release_id: &str,
 ) -> (Vec<ReleaseStorageAction>, Option<bae_views::album_detail::ReleaseDownloadStatus>) {
-    let detail = bae_views::LibraryViews::new(manager.database.clone())
+    let detail = bae_views::LibraryViews::new(manager.store.clone())
         .find_release_detail(release_id)
         .await
         .unwrap()
@@ -545,7 +545,7 @@ pub(super) async fn offered(
 pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
     for tick in 0..2_000 {
         if tick % 50 == 0 {
-            manager.database.sync_now();
+            manager.store.sync_now();
         }
         if !has_pending_uploads(manager, release_id).await {
             return;
@@ -562,7 +562,7 @@ pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_i
 /// Follow the pending list as the running library does, and wait for the
 /// first list `matches` accepts.
 pub(super) async fn pending_list_until(
-    values: &mut impl bae_db::live_query::LiveSource<bae_db::SyncStatusSnapshot>,
+    values: &mut impl bae_store::live_query::LiveSource<bae_db::SyncStatusSnapshot>,
     matches: impl Fn(&[bae_db::PendingItem]) -> bool,
 ) -> Vec<bae_db::PendingItem> {
     crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending
@@ -576,7 +576,7 @@ pub(super) async fn inspector_rows_until(
     release_id: &str,
     accept: impl Fn(&bae_views::DbStorageInspector) -> bool,
 ) -> bae_views::DbStorageInspector {
-    let mut rows = bae_views::LibraryViews::new(manager.database.clone())
+    let mut rows = bae_views::LibraryViews::new(manager.store.clone())
         .subscribe_storage_inspector(Some(release_id.to_string()));
     rows_until(&mut rows, accept).await
 }
@@ -788,7 +788,7 @@ pub(super) fn release_only_image_preset() -> bae_preferences::SavePreset {
 pub(super) fn sort_by_album_title_asc() -> bae_views::StorageSortCriterion {
     bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::AlbumTitle,
-        direction: bae_db::SortDirection::Ascending,
+        direction: bae_store::SortDirection::Ascending,
     }
 }
 
@@ -800,7 +800,7 @@ pub(super) async fn storage_page(
     offset: u64,
     limit: u64,
 ) -> bae_views::album_detail::StoragePage {
-    bae_views::LibraryViews::new(manager.database.clone())
+    bae_views::LibraryViews::new(manager.store.clone())
         .get_storage_page(&sort_by_album_title_asc(), filter, offset, limit)
         .await
         .unwrap()
@@ -811,11 +811,11 @@ pub(super) async fn storage_page(
 pub(super) async fn by_storage(
     manager: &LibraryManager,
     filter: bae_views::StorageFilter,
-    direction: bae_db::SortDirection,
+    direction: bae_store::SortDirection,
 ) -> Vec<String> {
     let sort =
         bae_views::StorageSortCriterion { field: bae_views::StorageSortField::Storage, direction };
-    bae_views::LibraryViews::new(manager.database.clone())
+    bae_views::LibraryViews::new(manager.store.clone())
         .get_storage_page(&sort, filter, 0, 10)
         .await
         .unwrap()

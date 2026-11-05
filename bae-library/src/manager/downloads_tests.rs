@@ -382,7 +382,7 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
     let kept = |value: &bae_views::DbStorageInspector| {
         value.files.iter().all(|file| file.pin == Some(FilePin::Kept))
     };
-    let mut rows = bae_views::LibraryViews::new(manager.database.clone())
+    let mut rows = bae_views::LibraryViews::new(manager.store.clone())
         .subscribe_storage_inspector(Some(cloud.clone()));
 
     // The release as it stands before any pin: unpinned, out of the queue.
@@ -481,7 +481,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     let first = uploaded_release(&manager, &dir("first"), "Album Title A", false).await;
     let second = uploaded_release(&manager, &dir("second"), "Album Title B", false).await;
     let ascending =
-        || by_storage(&manager, bae_views::StorageFilter::All, bae_db::SortDirection::Ascending);
+        || by_storage(&manager, bae_views::StorageFilter::All, bae_store::SortDirection::Ascending);
     let resting = vec![first.clone(), second.clone()];
     let second_pinning = vec![second.clone(), first.clone()];
     assert_eq!(ascending().await, resting);
@@ -503,7 +503,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
 
     // Rewriting the release's listing row reads the queue again.
     manager
-        .database
+        .store
         .execute_for_test(
             "UPDATE releases SET created_at = created_at WHERE id = ?1",
             vec![second.clone()],
@@ -528,17 +528,18 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
 /// The queues the Storage Manager's list value carries, as one read of it
 /// finds them.
 async fn listed_queues(manager: &LibraryManager) -> bae_views::StorageQueues {
-    let mut browse = bae_views::LibraryViews::new(manager.database.clone())
-        .subscribe_storage_browse(bae_views::StorageBrowseRequest {
+    let mut browse = bae_views::LibraryViews::new(manager.store.clone()).subscribe_storage_browse(
+        bae_views::StorageBrowseRequest {
             sort: bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::Storage,
-                direction: bae_db::SortDirection::Ascending,
+                direction: bae_store::SortDirection::Ascending,
             },
             filter: bae_views::StorageFilter::All,
             search: String::new(),
             windows: Default::default(),
             selected: Default::default(),
-        });
+        },
+    );
     browse.next().await.expect("the browse query answers").result.unwrap().queues
 }
 
@@ -577,7 +578,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
 
     assert!(activate_download(&manager, &pinning).await.unwrap());
     manager
-        .database
+        .store
         .execute_for_test(
             "INSERT INTO output_queue (release_id, created_at, state, target_dir, kind) \
              VALUES (?1, 0, 'queued', CAST('/exports' AS BLOB), 'export')",
@@ -609,10 +610,10 @@ async fn the_storage_list_carries_the_queues_holding_work() {
 async fn activate_download(
     manager: &LibraryManager,
     release_id: &str,
-) -> Result<bool, bae_db::DbError> {
+) -> Result<bool, bae_store::DbError> {
     let release_id = release_id.to_string();
     manager
-        .database
+        .store
         .call(move |sql| bae_transfers::tables::worker_moves::activate_on::<()>(sql, &release_id))
         .await
 }
@@ -621,10 +622,10 @@ async fn activate_download(
 async fn finish_download(
     manager: &LibraryManager,
     release_id: &str,
-) -> Result<bool, bae_db::DbError> {
+) -> Result<bool, bae_store::DbError> {
     let release_id = release_id.to_string();
     manager
-        .database
+        .store
         .call(move |sql| bae_transfers::tables::worker_moves::finish_on::<()>(sql, &release_id))
         .await
 }
@@ -634,10 +635,10 @@ async fn fail_download(
     manager: &LibraryManager,
     release_id: &str,
     error: String,
-) -> Result<bool, bae_db::DbError> {
+) -> Result<bool, bae_store::DbError> {
     let release_id = release_id.to_string();
     manager
-        .database
+        .store
         .call(move |sql| {
             bae_transfers::tables::worker_moves::fail_on::<()>(sql, &release_id, &error)
         })
@@ -645,8 +646,8 @@ async fn fail_download(
 }
 
 /// Empty the transfer queues as opening the library does.
-async fn clear_transfers_as_opening(manager: &LibraryManager) -> Result<(), bae_db::DbError> {
-    manager.database.call(bae_transfers::tables::clear_transfers_on).await
+async fn clear_transfers_as_opening(manager: &LibraryManager) -> Result<(), bae_store::DbError> {
+    manager.store.call(bae_transfers::tables::clear_transfers_on).await
 }
 
 /// Wait until the download queue's live read holds what `done` looks for.

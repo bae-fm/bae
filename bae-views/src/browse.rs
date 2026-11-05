@@ -1,5 +1,5 @@
-use bae_db::live_query::{CancellableLiveQuery, LiveQueryError};
-use bae_db::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
+use bae_store::live_query::{CancellableLiveQuery, LiveQueryError};
+use bae_store::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 use std::sync::Arc;
 
 /// One artist's group in the album grid grouped by artist. Its range includes

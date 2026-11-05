@@ -34,12 +34,16 @@ impl Database {
         write: ReleaseEditWrite,
         album_fields: AlbumFields,
     ) -> Result<(), IdentityWriteError> {
-        let now_dt = self.now_utc();
-        let labels = self.label_parts(match &write {
-            ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing.labels,
-            ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing.labels,
-        });
-        self.write_resolving_identities(move |sql| {
+        let now_dt = self.inner.store.now_utc();
+        let labels = LabelParts::new(
+            &*self.inner.ids,
+            self.inner.store.now_utc(),
+            match &write {
+                ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing.labels,
+                ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing.labels,
+            },
+        );
+        artist_resolution::write_resolving_identities(&self.inner.store, move |sql| {
             if let Some(change) = &change {
                 super::records::set_records_on(&sql, change, now_dt)?;
             }

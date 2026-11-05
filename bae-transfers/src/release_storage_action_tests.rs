@@ -3,6 +3,7 @@
 
 use super::*;
 use bae_db::test_fixtures::*;
+use bae_store::test_fixtures::*;
 
 const LIBRARY: &str = "
     INSERT INTO albums (id, title, is_compilation, created_at) VALUES
@@ -12,7 +13,7 @@ const LIBRARY: &str = "
         ('64e79a1f-404a-4c34-809a-a3cb44bf1942', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 1);
 ";
 
-async fn library() -> (Database, tempfile::TempDir) {
+async fn library() -> (Store, tempfile::TempDir) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|sql| sql.execute_batch(LIBRARY).map_err(DbError::from)).await.unwrap();
     (db, tmp)

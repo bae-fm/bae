@@ -19,7 +19,7 @@ impl LibraryManager {
             manager
                 .run_storage_action(&release_id, bae_transfers::StoredTransition::Upload, async {
                     Ok(bae_transfers::release_storage_action::attach_release_files(
-                        &manager.database,
+                        &manager.store,
                         &release_id,
                         pin,
                     )
@@ -135,7 +135,7 @@ impl LibraryManager {
                 "upload retry cannot run while cloud sync is paused".to_string(),
             ));
         }
-        let outcome = self.database.retry_uploads_now().await?;
+        let outcome = self.store.retry_uploads_now().await?;
         self.trigger_sync();
         match outcome {
             coven::DrainOutcome::Paused => Err(LibraryError::Storage(
@@ -183,10 +183,10 @@ impl LibraryManager {
     /// A file leaves it unstored too, when its move failed.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn drain_uploads_for_test(&self) -> Result<coven::DrainOutcome, String> {
-        let before = self.database.uploads().await.map_err(|error| error.to_string())?;
-        self.database.set_uploads_paused(false).await.map_err(|error| error.to_string())?;
-        let drained = self.database.retry_uploads_now().await;
-        let restored = self.database.set_uploads_paused(before.paused).await;
+        let before = self.store.uploads().await.map_err(|error| error.to_string())?;
+        self.store.set_uploads_paused(false).await.map_err(|error| error.to_string())?;
+        let drained = self.store.retry_uploads_now().await;
+        let restored = self.store.set_uploads_paused(before.paused).await;
         restored.map_err(|error| {
             format!("restoring the upload pause setting failed: {error}; drain: {drained:?}")
         })?;
@@ -202,7 +202,7 @@ impl LibraryManager {
             }
             coven::DrainOutcome::Drained { .. } | coven::DrainOutcome::QueueEmpty => {}
         }
-        let after = self.database.uploads().await.map_err(|error| error.to_string())?;
+        let after = self.store.uploads().await.map_err(|error| error.to_string())?;
         if before.files.is_empty() {
             Ok(coven::DrainOutcome::QueueEmpty)
         } else {
@@ -212,7 +212,7 @@ impl LibraryManager {
                     continue;
                 }
                 let file =
-                    self.database.file_ref(queued.file).await.map_err(|error| error.to_string())?;
+                    self.store.file_ref(queued.file).await.map_err(|error| error.to_string())?;
                 if matches!(file.place(), coven::FilePlace::Cloud { .. }) {
                     uploaded += 1;
                 }

@@ -588,11 +588,9 @@ pub(super) async fn restore_test_library() -> RestoreTestLibrary {
     library.import_folder(album_dir, release_id_key).await;
     let releases = library
         .get_releases_for_album(
-            &bae_views::LibraryViews::new(library.database().clone())
-                .get_albums(&[])
-                .await
-                .unwrap()[0]
-                .id,
+            &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
+                [0]
+            .id,
         )
         .await
         .unwrap();

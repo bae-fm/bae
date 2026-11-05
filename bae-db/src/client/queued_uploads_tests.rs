@@ -4,19 +4,23 @@
 use crate::client::queued_uploads::{
     RELEASE_FILE_QUEUED, RELEASE_HAS_QUEUED_FILE, RELEASE_QUEUED_FILE_COUNT,
 };
+use bae_store::Store;
 
-async fn plan(db: &crate::client::Database, statement: &'static str) -> Vec<String> {
-    db.read(move |sql| {
-        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), ["id"], |row| row.get::<_, String>(3))
+async fn plan(store: &Store, statement: &'static str) -> Vec<String> {
+    store
+        .read(move |sql| {
+            sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), ["id"], |row| {
+                row.get::<_, String>(3)
+            })
             .map_err(crate::client::DbError::from)
-    })
-    .await
-    .unwrap()
+        })
+        .await
+        .unwrap()
 }
 
 #[tokio::test]
 async fn a_releases_queued_files_are_found_by_its_files() {
-    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     for statement in [RELEASE_QUEUED_FILE_COUNT, RELEASE_HAS_QUEUED_FILE, RELEASE_FILE_QUEUED] {
         let plan = plan(&db, statement).await;
         assert!(

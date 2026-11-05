@@ -100,10 +100,11 @@ pub(super) const TRACK_B: &str = "36a9322d-0c07-4223-9c0b-2110a1fdc622";
 /// inserted, and so played, in slice order, on the release's one CD. Each
 /// stores `track_length_ms` as its length.
 pub(super) async fn seed_test_releases(
-    database: &bae_db::Database,
+    db: &bae_store::Store,
     releases: &[(&str, &[&str])],
     track_length_ms: u64,
 ) {
+    let database = bae_db::test_fixtures::test_database(db);
     use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
     if releases.is_empty() {
         return;
@@ -162,14 +163,14 @@ pub(super) async fn fill_test_release(service: &mut PlaybackService, release_id:
 /// A store seeded with releases, and the directory holding it, which
 /// outlives it.
 pub(super) struct SeededStore {
-    database: bae_db::Database,
+    db: bae_store::Store,
     home: TempDir,
 }
 
 impl std::ops::Deref for SeededStore {
-    type Target = bae_db::Database;
-    fn deref(&self) -> &bae_db::Database {
-        &self.database
+    type Target = bae_store::Store;
+    fn deref(&self) -> &bae_store::Store {
+        &self.db
     }
 }
 
@@ -183,15 +184,15 @@ pub(super) async fn seeded_store_with_track_length(
 ) -> SeededStore {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
-    let database = bae_db::Database::new_test(
+    let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         db_path.to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
-    seed_test_releases(&database, releases, track_length_ms).await;
-    SeededStore { database, home }
+    seed_test_releases(&db, releases, track_length_ms).await;
+    SeededStore { db, home }
 }
 
 pub(super) async fn test_playback_service(
@@ -243,21 +244,19 @@ pub(super) async fn seeded_playback_service(
 /// stub audio output), reporting to `diagnostics`, for tests that call its
 /// handlers without the actor loop.
 pub(super) fn playback_service_over(
-    database: &bae_db::Database,
+    db: &bae_store::Store,
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview =
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
-    let playback_queue =
-        PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(database.clone()));
-    let staged_sides =
-        advance::track_infos_follow(database, "the staged crossing's sides", &diagnostics);
-    let held_tracks =
-        advance::track_infos_follow(database, "the tracks playback holds", &diagnostics);
+    let playback_queue = PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(db.clone()));
+    let staged_sides = advance::track_infos_follow(db, "the staged crossing's sides", &diagnostics);
+    let held_tracks = advance::track_infos_follow(db, "the tracks playback holds", &diagnostics);
     let service = PlaybackService {
-        database: database.clone(),
+        store: db.clone(),
+        database: bae_db::test_fixtures::test_database(db),
         ids: Arc::new(coven::UuidIds),
         diagnostics,
         command_tx,
@@ -550,7 +549,10 @@ pub(super) async fn seed_track_window(
         end_byte: None,
         created_at: now,
     };
-    store.insert_audio_format_with_segments_for_test(&audio_format, &[segment]).await.unwrap();
+    bae_db::test_fixtures::test_database(&store.db)
+        .insert_audio_format_with_segments_for_test(&audio_format, &[segment])
+        .await
+        .unwrap();
 }
 
 /// A playback service over releases whose every track is resolvable to remote

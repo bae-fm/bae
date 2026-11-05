@@ -18,6 +18,7 @@ bae-app-dir = { workspace = true }
 bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }
 bae-db = { workspace = true }
+bae-store = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The identify reducer, its view and its verdicts, which only the desktop
 # import pipeline drives; the crate is empty on mobile.
@@ -77,6 +78,7 @@ bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 # Test databases with bae's schema and the rows db's fixtures seed them with.
 bae-db = { workspace = true, features = ["test-utils"] }
+bae-store = { workspace = true, features = ["test-utils"] }
 # The capture devices and manual clock the playback tests run on.
 bae-playback = { workspace = true, features = ["test-utils"] }
 # A new library's preferences, built without a library.
@@ -153,7 +155,7 @@ default = []
 # by default → S3-only, matching the baeium build; the bae build turns it
 # on. bae-library's own oauth call sites (provider sign-in and setup) gate on this,
 # and bae-db's store calls they make.
-oauth-providers = ["bae-db/oauth-providers"]
+oauth-providers = ["bae-store/oauth-providers"]
 # A debug app's dev reset: the profile it recreates its library from. Debug
 # macOS bridge builds turn it on; release builds leave it out.
 dev-reset = ["bae-app-dir/dev-reset"]
@@ -170,7 +172,7 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # service's test seams, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
 # and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-store/test-utils", "bae-import/test-utils", "bae-playback/test-utils", "bae-preferences/test-utils", "bae-track-audio/test-utils", "bae-transfers/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

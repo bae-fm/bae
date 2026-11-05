@@ -40,25 +40,25 @@ impl LibraryManager {
 
     /// Follow the queue as its screens show it.
     pub fn subscribe_queue_value(&self) -> coven::LiveQuery<bae_playback::ResolvedQueueSnapshot> {
-        bae_playback::tables::subscribe_queue_value(&self.database)
+        bae_playback::tables::subscribe_queue_value(&self.store)
     }
 
     /// Follow the queue's last addition to Up Next.
     pub fn subscribe_queue_addition(
         &self,
     ) -> coven::LiveQuery<Option<bae_playback::QueueAddition>> {
-        bae_playback::tables::subscribe_queue_addition(&self.database)
+        bae_playback::tables::subscribe_queue_addition(&self.store)
     }
 
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
     pub fn subscribe_queue_upcoming(
         &self,
-        initial: bae_db::LibraryPageWindows,
+        initial: bae_store::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        bae_db::LibraryPageWindows,
+        bae_store::LibraryPageWindows,
         bae_playback::tables::QueueUpcomingRead,
     > {
-        bae_playback::tables::subscribe_queue_upcoming(&self.database, initial)
+        bae_playback::tables::subscribe_queue_upcoming(&self.store, initial)
     }
 
     /// The file record for a file id — streaming looks the id up on the track's
@@ -103,7 +103,7 @@ impl LibraryManager {
         &self,
         track_id: &str,
     ) -> Result<bae_playback::TrackDisplay, LibraryError> {
-        bae_playback::tables::track_display(&self.database, track_id)
+        bae_playback::tables::track_display(&self.store, track_id)
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
     }
@@ -111,7 +111,7 @@ impl LibraryManager {
     /// Follow where playback is, as the surfaces that move the position on
     /// themselves read it.
     pub fn subscribe_playback_timeline(&self) -> coven::LiveQuery<bae_playback::PlaybackTimeline> {
-        bae_playback::tables::subscribe_playback_timeline(&self.database)
+        bae_playback::tables::subscribe_playback_timeline(&self.store)
     }
 
     /// Follow what playback is doing as its screens show it; `None` while it
@@ -119,7 +119,7 @@ impl LibraryManager {
     pub fn subscribe_now_playing(
         &self,
     ) -> coven::LiveQuery<Option<bae_playback::NowPlayingValues>> {
-        bae_playback::tables::subscribe_now_playing(&self.database)
+        bae_playback::tables::subscribe_now_playing(&self.store)
     }
 }
 

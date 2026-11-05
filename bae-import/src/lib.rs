@@ -130,6 +130,9 @@ pub use volume::VolumeKind;
 pub(crate) struct ImportServices {
     event_tx: ImportEventBus,
     /// The library's store, which import reads and writes directly.
+    store: bae_store::Store,
+    /// The library's records, which import reads where it links a candidate to
+    /// the library.
     database: bae_db::Database,
     /// Import's own tables in that store.
     tables: tables::ImportTables,
@@ -165,6 +168,7 @@ pub(crate) struct ImportServices {
 impl ImportServices {
     pub(crate) fn new(
         event_tx: ImportEventBus,
+        store: bae_store::Store,
         database: bae_db::Database,
         catalogs: CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -177,7 +181,8 @@ impl ImportServices {
     ) -> Self {
         Self {
             event_tx,
-            tables: tables::ImportTables::new(database.clone()),
+            tables: tables::ImportTables::new(store.clone()),
+            store,
             database,
             catalogs,
             remote_images,
@@ -294,8 +299,8 @@ pub use tables::SCHEMA_PARTS;
 /// The schema this crate's tests open their stores on: bae-db's part,
 /// preferences' and import's.
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
-pub const TEST_SCHEMA: bae_db::Schema =
-    bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, bae_preferences::SCHEMA_PARTS, SCHEMA_PARTS]);
+pub const TEST_SCHEMA: bae_store::Schema =
+    bae_store::Schema::new(&[bae_db::SCHEMA_PARTS, bae_preferences::SCHEMA_PARTS, SCHEMA_PARTS]);
 
 #[cfg(desktop)]
 pub use triage::{

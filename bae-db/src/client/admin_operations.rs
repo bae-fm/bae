@@ -31,7 +31,7 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
         let operation = coven::OperationId(row.get(0)?);
         // Only the write that deletes the row acknowledges its operation.
         if !row.get::<_, bool>(1)? {
-            return Err(super::read::column_conversion_error(
+            return Err(bae_store::read::column_conversion_error(
                 row,
                 0,
                 format!("the admin change's operation {operation:?} isn't listed"),
@@ -39,13 +39,13 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
         }
         let member = || {
             row.get::<_, Option<coven::MemberId>>(4)?.ok_or_else(|| {
-                super::read::column_conversion_error(row, 4, "a member change names no member")
+                bae_store::read::column_conversion_error(row, 4, "a member change names no member")
             })
         };
         let change = match row.get::<_, coven::OperationKind>(2)? {
             coven::OperationKind::RenameStore => AdminChangeKind::RenameLibrary {
                 name: row.get::<_, Option<String>>(7)?.ok_or_else(|| {
-                    super::read::column_conversion_error(row, 7, "a rename names no name")
+                    bae_store::read::column_conversion_error(row, 7, "a rename names no name")
                 })?,
             },
             coven::OperationKind::SetRole => AdminChangeKind::SetRole {
@@ -55,7 +55,7 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
                     Some("admin") => coven::MemberRole::Admin,
                     Some("member") => coven::MemberRole::Member,
                     other => {
-                        return Err(super::read::column_conversion_error(
+                        return Err(bae_store::read::column_conversion_error(
                             row,
                             6,
                             format!("a role {other:?}"),
@@ -77,14 +77,14 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
             }
             coven::OperationKind::RemoveDevice => AdminChangeKind::RemoveDevice {
                 device: row.get::<_, Option<coven::DeviceId>>(5)?.ok_or_else(|| {
-                    super::read::column_conversion_error(row, 5, "a removal names no device")
+                    bae_store::read::column_conversion_error(row, 5, "a removal names no device")
                 })?,
                 // coven journals the removal of a device this device
                 // hasn't read, which it lists only once it has.
                 name: row.get(9)?,
             },
             other => {
-                return Err(super::read::column_conversion_error(
+                return Err(bae_store::read::column_conversion_error(
                     row,
                     2,
                     format!("an admin change of kind {other:?}"),
@@ -141,7 +141,7 @@ impl Database {
             + 'static,
     ) -> Result<R, coven::SyncError> {
         self.inner
-            .handle
+            .store
             .write(move |sql| {
                 let (operation, value) = change(&sql)?;
                 if let Some(operation) = operation {
@@ -156,7 +156,7 @@ impl Database {
     /// The admin changes this device asked for, live: each until its outcome
     /// is acknowledged.
     pub fn subscribe_admin_changes(&self) -> coven::LiveQuery<Vec<AdminChange>> {
-        self.inner.handle.subscribe(|sql| Ok(admin_changes_on(&sql)?))
+        self.inner.store.subscribe(|sql| Ok(admin_changes_on(&sql)?))
     }
 
     /// Acknowledge a finished admin change's outcome, so it leaves the list:
@@ -166,16 +166,86 @@ impl Database {
         &self,
         operation: coven::OperationId,
     ) -> Result<(), DbError> {
-        self.call(move |sql| {
-            sql.acknowledge_operation(operation)?;
-            let deleted =
-                sql.execute("DELETE FROM admin_operations WHERE operation = ?1", [operation.0])?;
-            if deleted != 1 {
-                return Err(DbError::Message(format!(
-                    "operation {operation:?} is no admin change of this device's"
-                )));
-            }
-            Ok(())
+        self.inner
+            .store
+            .call(move |sql| {
+                sql.acknowledge_operation(operation)?;
+                let deleted = sql
+                    .execute("DELETE FROM admin_operations WHERE operation = ?1", [operation.0])?;
+                if deleted != 1 {
+                    return Err(DbError::Message(format!(
+                        "operation {operation:?} is no admin change of this device's"
+                    )));
+                }
+                Ok(())
+            })
+            .await
+    }
+}
+
+impl Database {
+    /// Rename the store as an admin: the write journals the rename, which
+    /// a pass claims, and records it to show (§5.6).
+    pub async fn rename_store(&self, name: &str) -> Result<(), coven::SyncError> {
+        let name = name.to_owned();
+        let renamed = name.clone();
+        self.admin_change(AdminTarget::LibraryName(renamed), move |sql| {
+            Ok((sql.rename_store(&name)?, ()))
+        })
+        .await
+    }
+
+    /// Remove a member: the write journals the removal, which a pass
+    /// claims, and records it to show (§5.6).
+    pub async fn remove_member(&self, member: &coven::MemberId) -> Result<(), coven::SyncError> {
+        let member = *member;
+        self.admin_change(AdminTarget::Person(member), move |sql| {
+            Ok((sql.remove_member(&member)?, ()))
+        })
+        .await
+    }
+
+    /// Remove a device, journaled and recorded as a removal is, and say
+    /// what is left to do at the provider.
+    pub async fn remove_device(
+        &self,
+        device: coven::DeviceId,
+    ) -> Result<Option<coven::ProviderSignOut>, coven::SyncError> {
+        self.admin_change(AdminTarget::Device(device), move |sql| sql.remove_device(device)).await
+    }
+
+    /// Change a member's role, journaled and recorded as a removal is.
+    pub async fn set_member_role(
+        &self,
+        member: &coven::MemberId,
+        role: coven::MemberRole,
+    ) -> Result<(), coven::SyncError> {
+        let member = *member;
+        self.admin_change(AdminTarget::Role(member, role), move |sql| {
+            Ok((sql.set_member_role(&member, role)?, ()))
+        })
+        .await
+    }
+
+    /// Approve a sent invite's request: the write journals the approval,
+    /// which a pass binds, and records it to show by the name the invite
+    /// gave its person (§5.6).
+    pub async fn approve_join_request(
+        &self,
+        request: &coven::JoinRequest,
+    ) -> Result<(), coven::SyncError> {
+        let invite = request.invite;
+        let invitee = self
+            .inner
+            .store
+            .read_coven(coven::Invite::list)
+            .await?
+            .into_iter()
+            .find(|open| open.id == invite)
+            .and_then(|open| open.invitee);
+        let request = request.clone();
+        self.admin_change(AdminTarget::Approval(request.member, invitee), move |sql| {
+            Ok((Some(sql.approve_join_request(&request)?), ()))
         })
         .await
     }

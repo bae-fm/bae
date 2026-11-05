@@ -10,7 +10,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
         installation.builder(),
-        bae_db::EnteredName::parse("Created Library").unwrap(),
+        bae_store::EnteredName::parse("Created Library").unwrap(),
     )
     .await
     .unwrap();
@@ -55,7 +55,7 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
         installation.builder(),
-        bae_db::EnteredName::parse("Cached Library").unwrap(),
+        bae_store::EnteredName::parse("Cached Library").unwrap(),
     )
     .await
     .unwrap();
@@ -78,7 +78,7 @@ async fn failed_creation_removes_the_partial_library() {
     installation.fail_next_keychain_operation();
     let error = create_library(
         installation.builder(),
-        bae_db::EnteredName::parse("Failed Library").unwrap(),
+        bae_store::EnteredName::parse("Failed Library").unwrap(),
     )
     .await
     .err()
@@ -95,7 +95,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
         installation.builder(),
-        bae_db::EnteredName::parse("Local Library").unwrap(),
+        bae_store::EnteredName::parse("Local Library").unwrap(),
     )
     .await
     .unwrap();
@@ -539,11 +539,7 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
 /// a new library's.
 async fn change_settings(builder: coven::CovenBuilder, store: coven::StoreId) {
     let handle = configure_store(builder, crate::SCHEMA).open(store, |_| ()).await.unwrap();
-    let database = bae_db::Database::from_handle(
-        handle.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-    );
+    let database = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock));
     bae_preferences::edit_preferences(&database, |preferences| {
         preferences.max_concurrent_uploads = std::num::NonZeroU32::new(5).unwrap();
         preferences.replay_gain_mode = bae_preferences::ReplayGainMode::Album;
@@ -557,11 +553,7 @@ async fn change_settings(builder: coven::CovenBuilder, store: coven::StoreId) {
 
 /// The settings `handle`'s copy holds.
 async fn settings(handle: &coven::CovenHandle) -> bae_preferences::Preferences {
-    let database = bae_db::Database::from_handle(
-        handle.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-    );
+    let database = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock));
     bae_preferences::preferences(&database).await.unwrap()
 }
 

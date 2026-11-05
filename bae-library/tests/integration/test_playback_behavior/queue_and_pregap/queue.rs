@@ -897,7 +897,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     let a_release_id = lib
         .library
         .get_releases_for_album(
-            &bae_views::LibraryViews::new(lib.library.database().clone())
+            &bae_views::LibraryViews::new(lib.library.store().clone())
                 .get_albums(&[])
                 .await
                 .unwrap()[0]

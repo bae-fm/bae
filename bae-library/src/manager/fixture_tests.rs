@@ -36,7 +36,7 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
     let newest_first = views(&manager)
         .get_albums(&[bae_views::AlbumSortCriterion {
             field: bae_views::AlbumSortField::DateAdded,
-            direction: bae_db::SortDirection::Descending,
+            direction: bae_store::SortDirection::Descending,
         }])
         .await
         .unwrap();
@@ -85,7 +85,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
     let mut browse = views(&manager).subscribe_album_browse(
         &[],
         true,
-        [bae_db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let grouped = browse.next().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.windows[0].rows;
@@ -165,12 +165,13 @@ fn fixture_candidate(folder: &str, state: crate::FixtureCandidateState) -> crate
 
 /// Found's rows the import list reads, by display path, newest first.
 async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListProjection {
-    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
+    let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let list = tables.open_import_list(bae_import::ImportListView::default()).await.unwrap();
     tables
         .load_import_list(bae_import::ImportListRequest {
             list,
-            windows: std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+            windows: std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 })
+                .collect(),
         })
         .await
         .unwrap()
@@ -184,7 +185,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
     use crate::FixtureCandidateState as State;
     use bae_import::PendingStanding;
     let (manager, temp_dir) = setup_test_manager().await;
-    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
+    let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let root = temp_dir.path().join("watched").to_path_buf();
     let states = [
         ("Not Looked Up", State::NotLookedUp),

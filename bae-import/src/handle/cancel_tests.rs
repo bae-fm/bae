@@ -14,8 +14,8 @@ use tempfile::TempDir;
 /// have one import running while another waits behind it.
 async fn two_importable(
 ) -> (ImportServiceHandle, [TempDir; 2], crate::CandidateKey, crate::CandidateKey) {
-    let (parts, database, tmp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, tmp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let other = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&tables, &tmp, "First Album").await;
     let (_, second, _) = picked_candidate(&tables, &other, "Second Album").await;
@@ -85,7 +85,7 @@ async fn assert_imports_again(handle: &ImportServiceHandle, key: &crate::Candida
 }
 
 async fn album_count(handle: &ImportServiceHandle) -> usize {
-    bae_db::test_fixtures::row_count(&handle.database, "albums").await
+    bae_store::test_fixtures::row_count(&handle.store, "albums").await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -185,7 +185,7 @@ async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreS
         }
     }
     files.sort();
-    let mut rows = handle.database.every_row_for_test().await.unwrap();
+    let mut rows = handle.store.every_row_for_test().await.unwrap();
     rows.remove("import_list_versions").expect("the store holds the import list's move count");
     StoreState { rows, files }
 }

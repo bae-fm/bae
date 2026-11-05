@@ -16,7 +16,7 @@
 /// The source releases' part of the library's schema. The release tables come
 /// first; the triggers that delete a release when no row names it fire on
 /// candidate state's tables, so the part runs after candidate state's.
-pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
+pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     include_str!("source_releases.sql"),
     tracklist::SQL,
     super::album_link_rows::SQL,
@@ -836,7 +836,7 @@ impl ImportTables {
         release: &bae_catalogs::records::LookupRef,
     ) -> Result<Option<SourceRelease>, DbError> {
         let release = release.clone();
-        self.database.read(move |sql| load_source_release_on(&sql, &release)).await
+        self.store.read(move |sql| load_source_release_on(&sql, &release)).await
     }
 
     /// The stored release `release` names, as its rows hold it beside how
@@ -846,7 +846,7 @@ impl ImportTables {
         release: &bae_catalogs::records::LookupRef,
     ) -> Result<Option<PreparedRelease>, DbError> {
         let release = release.clone();
-        self.database
+        self.store
             .read(move |sql| {
                 load_source_release_rows_on(&sql, &release)?
                     .map(|stored| {
@@ -865,7 +865,7 @@ impl ImportTables {
         &self,
         stored: SourceRelease,
     ) -> Result<PreparedRelease, DbError> {
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(PreparedRelease { release: with_joined_albums_on(&sql, &stored)?, stored })
             })
@@ -877,7 +877,7 @@ impl ImportTables {
     #[cfg(test)]
     pub async fn save_source_release(&self, release: &SourceRelease) -> Result<(), DbError> {
         let release = release.clone();
-        self.database.call(move |sql| replace_source_release_on(sql, &release)).await
+        self.store.call(move |sql| replace_source_release_on(sql, &release)).await
     }
 }
 

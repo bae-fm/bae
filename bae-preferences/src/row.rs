@@ -11,34 +11,35 @@ use super::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
     SidePauseCountdown, SubsonicConfig,
 };
-use bae_db::{Database, DbError};
+use bae_store::{DbError, Store};
 use coven::{BulkSqlContext, CovenError, CovenWrite, SqlRead};
 use rusqlite::{params, Params, Row};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 
 /// The preferences' part of the library's schema.
-pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[include_str!("row.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("row.sql")]);
 
 /// This device's preferences for the library.
-pub async fn preferences(database: &Database) -> Result<Preferences, DbError> {
-    database.read(|sql| Ok(preferences_on(&sql)?)).await
+pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
+    store.read(|sql| Ok(preferences_on(&sql)?)).await
 }
 
 /// Follow this device's preferences: the first value at once, then one
 /// after each write that changes them.
-pub fn subscribe_preferences(database: &Database) -> coven::LiveQuery<Preferences> {
-    database.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
+pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences> {
+    store.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
 }
 
 /// Edit the preferences in one write. `edit` is handed the stored
 /// preferences and may refuse the change, which then writes nothing; a
 /// change that leaves them as they were writes nothing either.
 pub async fn edit_preferences(
-    database: &Database,
+    store: &Store,
     edit: impl FnOnce(&mut Preferences) -> Result<(), PreferencesError> + Send + 'static,
 ) -> Result<(), PreferencesError> {
-    database
+    store
         .call(move |sql| {
             let stored = preferences_on(sql)?;
             let mut edited = stored.clone();
@@ -359,7 +360,7 @@ fn filename_token_column(token: SaveFilenameToken) -> &'static str {
 
 /// A stored value the schema's checks should have refused.
 fn invalid(row: &Row<'_>, column: &str, value: impl std::fmt::Display) -> rusqlite::Error {
-    bae_db::client::read::column_conversion_error(
+    bae_store::read::column_conversion_error(
         row,
         column,
         format!("preferences hold {value} in {column}"),

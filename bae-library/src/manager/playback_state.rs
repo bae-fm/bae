@@ -68,7 +68,7 @@ impl LibraryManager {
     /// resumed (`resume`, and a resume row stored), emptied with the resume
     /// row otherwise.
     pub async fn settle_playback_queue(&self, resume: bool) -> Result<(), LibraryError> {
-        Ok(bae_playback::tables::settle_playback_queue(&self.database, resume).await?)
+        Ok(bae_playback::tables::settle_playback_queue(&self.store, resume).await?)
     }
 }
 

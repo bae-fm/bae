@@ -570,11 +570,11 @@ mirror_enum! {
 /// person can fix, or a write that never finished.
 /// A subscription's end is the caller's cancellation; a failed read is a
 /// database query's failure.
-impl From<bae_db::live_query::LiveQueryError> for BridgeError {
-    fn from(error: bae_db::live_query::LiveQueryError) -> Self {
+impl From<bae_store::live_query::LiveQueryError> for BridgeError {
+    fn from(error: bae_store::live_query::LiveQueryError) -> Self {
         match error {
-            bae_db::live_query::LiveQueryError::Cancelled => Self::Cancelled,
-            bae_db::live_query::LiveQueryError::Query(error) => Self::database_query(error),
+            bae_store::live_query::LiveQueryError::Cancelled => Self::Cancelled,
+            bae_store::live_query::LiveQueryError::Query(error) => Self::database_query(error),
         }
     }
 }
@@ -710,7 +710,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeStorageSortDirection = bae_db::SortDirection,
+    BridgeStorageSortDirection = bae_store::SortDirection,
     from_core: fn,
     into_core: fn,
     variants: { Ascending, Descending },
@@ -764,7 +764,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeSortDirection = bae_db::SortDirection,
+    BridgeSortDirection = bae_store::SortDirection,
     into_core: pub(crate) fn,
     variants: { Ascending, Descending },
 }

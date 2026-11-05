@@ -18,10 +18,10 @@ use bae_catalogs::test_documents::{
     linked_release_group, musicbrainz_release_with_relations, wikidata_item,
     wikidata_linked_release_group,
 };
-use bae_db::test_fixtures::empty_db;
-use bae_db::test_fixtures::{exec, exec_batch};
-use bae_db::Database;
 use bae_identify::{RunOutcome, TerminalVerdict};
+use bae_store::test_fixtures::empty_db;
+use bae_store::test_fixtures::{exec, exec_batch};
+use bae_store::Store;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
 /// medium and a CD medium, a credit that names no artist, composer
@@ -512,8 +512,8 @@ async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
 /// nothing asked of the network.
 #[tokio::test]
 async fn an_items_records_are_stored_with_the_release() {
-    let (database, _dir) = empty_db(crate::TEST_SCHEMA).await;
-    let tables = crate::tables::ImportTables::new(database.clone());
+    let (db, _dir) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
     let fetched = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::MusicBrainz, "offline-mb-release"),
         musicbrainz_release_with_relations("offline-mb-release", "offline-mb-group", &[])
@@ -643,7 +643,7 @@ fn match_naming(owner: &str, release: &str) -> String {
 
 /// Whether MusicBrainz release `release` is stored, and how many rows hang
 /// off it.
-async fn stored(db: &Database, release: &str) -> (bool, i64) {
+async fn stored(db: &Store, release: &str) -> (bool, i64) {
     let release = release.to_string();
     db.call(move |sql| {
         Ok(sql.query_row(
@@ -811,7 +811,7 @@ async fn a_verdict_stores_only_the_releases_its_rows_name() {
 /// Store `releases` as what `run` of the library release `key` read, its
 /// answer the sample verdict, as a release run's publish stores them.
 async fn store_release_run(
-    db: &Database,
+    db: &Store,
     key: &crate::CandidateKey,
     run: IdentifyRunId,
     releases: Vec<SourceRelease>,

@@ -51,6 +51,7 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
 async fn test_delete_album_integration() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let database = library.database().clone();
+    let db = library.store().clone();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     let track1 = create_test_track(&release.id, 1);
@@ -65,7 +66,7 @@ async fn test_delete_album_integration() {
     library.delete_album(&album.id).await.unwrap();
 
     let album_result =
-        bae_views::LibraryViews::new(database.clone()).find_album_detail(&album.id).await.unwrap();
+        bae_views::LibraryViews::new(db.clone()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
     let releases = library.get_releases_for_album(&album.id).await.unwrap();
@@ -113,6 +114,7 @@ async fn test_delete_release_integration() {
 async fn test_delete_last_release_empties_album() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let database = library.database().clone();
+    let db = library.store().clone();
     let album = create_test_album();
     let release = create_test_release(&album.id);
 
@@ -123,7 +125,7 @@ async fn test_delete_last_release_empties_album() {
     library.delete_release(&release.id).await.unwrap();
 
     let album_result =
-        bae_views::LibraryViews::new(database.clone()).find_album_detail(&album.id).await.unwrap();
+        bae_views::LibraryViews::new(db.clone()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
     let releases = library.get_releases_for_album(&album.id).await.unwrap();
@@ -131,8 +133,8 @@ async fn test_delete_last_release_empties_album() {
 }
 
 /// The album's primary release, as its detail names it.
-async fn primary_release_of(database: &bae_db::Database, album_id: &str) -> String {
-    bae_views::LibraryViews::new(database.clone())
+async fn primary_release_of(db: &bae_store::Store, album_id: &str) -> String {
+    bae_views::LibraryViews::new(db.clone())
         .find_album_detail(album_id)
         .await
         .unwrap()
@@ -146,6 +148,7 @@ async fn primary_release_of(database: &bae_db::Database, album_id: &str) -> Stri
 async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let database = library.database().clone();
+    let db = library.store().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -160,17 +163,17 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
             .unwrap();
     }
     assert_eq!(
-        primary_release_of(&database, &album.id).await,
+        primary_release_of(&db, &album.id).await,
         release1.id,
         "an album's first release is its primary"
     );
     library.set_album_primary_release(&album.id, &release3.id).await.unwrap();
-    assert_eq!(primary_release_of(&database, &album.id).await, release3.id);
+    assert_eq!(primary_release_of(&db, &album.id).await, release3.id);
 
     library.delete_release(&release3.id).await.unwrap();
 
     assert_eq!(
-        primary_release_of(&database, &album.id).await,
+        primary_release_of(&db, &album.id).await,
         release1.id,
         "the lowest-ordered release left is the primary"
     );
@@ -180,6 +183,7 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
 async fn test_deleting_another_release_keeps_the_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let database = library.database().clone();
+    let db = library.store().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -194,7 +198,7 @@ async fn test_deleting_another_release_keeps_the_primary() {
 
     library.delete_release(&release1.id).await.unwrap();
 
-    assert_eq!(primary_release_of(&database, &album.id).await, release2.id);
+    assert_eq!(primary_release_of(&db, &album.id).await, release2.id);
 }
 
 /// Making a release primary that is not one of the album's is refused.
@@ -202,6 +206,7 @@ async fn test_deleting_another_release_keeps_the_primary() {
 async fn test_a_release_of_another_album_cannot_be_made_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let database = library.database().clone();
+    let db = library.store().clone();
     let album = create_test_album();
     let other = create_test_album();
     let release = create_test_release(&album.id);
@@ -220,5 +225,5 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
         .set_album_primary_release(&album.id, &elsewhere.id)
         .await
         .expect_err("another album's release is not this album's to make primary");
-    assert_eq!(primary_release_of(&database, &album.id).await, release.id);
+    assert_eq!(primary_release_of(&db, &album.id).await, release.id);
 }

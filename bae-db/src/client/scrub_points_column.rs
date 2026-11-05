@@ -8,7 +8,8 @@
 //! One writer and one reader. A blob that doesn't decode to whole points is a
 //! damaged database, never read as fewer or other points.
 
-use crate::{DbError, ScrubPoint};
+use crate::ScrubPoint;
+use bae_store::DbError;
 
 /// `points` as their blob. Points not each past the one before, or one
 /// whose `exact_from` is before its own sample, are a bug in their maker:

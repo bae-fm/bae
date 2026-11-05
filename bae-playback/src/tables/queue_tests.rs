@@ -5,7 +5,7 @@
 use super::*;
 use crate::tables::tests::*;
 /// Play `RELEASE_A` from `start`, returning the entry playing.
-async fn play(db: &Database, start: ReleaseStart) -> crate::QueueEntry {
+async fn play(db: &Store, start: ReleaseStart) -> crate::QueueEntry {
     match PlaybackQueueTables::new(db.clone())
         .fill(ContextFill::Release { release_id: RELEASE_A.to_string(), start })
         .await
@@ -16,12 +16,12 @@ async fn play(db: &Database, start: ReleaseStart) -> crate::QueueEntry {
     }
 }
 
-async fn upcoming(db: &Database) -> Vec<String> {
+async fn upcoming(db: &Store) -> Vec<String> {
     let manual = queue_value(db).await.unwrap().manual;
     manual.into_iter().chain(queue_upcoming(db).await.unwrap()).map(|item| item.track_id).collect()
 }
 
-async fn rejects(db: &Database, sql: &str) -> bool {
+async fn rejects(db: &Store, sql: &str) -> bool {
     let sql = sql.to_string();
     db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await.is_err()
 }
@@ -126,9 +126,7 @@ async fn deleting_the_playing_track_keeps_the_lane_s_place() {
 
 /// What the `playback_queue` row says the context lane plays from: its
 /// source's kind and release, whether it is shuffled, and its cursor.
-async fn context_head(
-    db: &Database,
-) -> (Option<String>, Option<String>, Option<bool>, Option<i64>) {
+async fn context_head(db: &Store) -> (Option<String>, Option<String>, Option<bool>, Option<i64>) {
     db.read(|sql| {
         Ok(sql.query_row(
             "SELECT source_kind, source_release_id, shuffled, cursor FROM playback_queue",
@@ -313,7 +311,7 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
     );
 }
 
-async fn plan(db: &Database, sql: &str, args: Vec<rusqlite::types::Value>) -> String {
+async fn plan(db: &Store, sql: &str, args: Vec<rusqlite::types::Value>) -> String {
     let sql = format!("EXPLAIN QUERY PLAN {sql}");
     db.read(move |read| {
         Ok(read
@@ -556,7 +554,7 @@ mod playback_queue_bench {
     /// The tracks go in through a plain connection with triggers off: through
     /// coven every synced row's write is captured whole, which would take
     /// minutes, and the queue tables read nothing of `tracks` but its rows.
-    async fn library_db() -> (Database, tempfile::TempDir, std::path::PathBuf) {
+    async fn library_db() -> (Store, tempfile::TempDir, std::path::PathBuf) {
         let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
         db.call(move |conn| {
             seed_artist_album_release(conn)?;
@@ -595,7 +593,7 @@ mod playback_queue_bench {
 
     /// A library play through bae's writes: into an empty lane, replacing a full
     /// one, and the two writes that empty it.
-    async fn bae_writes(db: &Database, label: &str) {
+    async fn bae_writes(db: &Store, label: &str) {
         let tables = PlaybackQueueTables::new(db.clone());
         let mut runs: [Vec<f64>; 4] = Default::default();
         for _ in 0..RUNS {
@@ -713,7 +711,10 @@ mod playback_queue_bench {
         let mut value = subscribe_queue_value(&db);
         let mut upcoming = subscribe_queue_upcoming(
             &db,
-            bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow { offset: 0, limit: 100 }]),
+            bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
+                offset: 0,
+                limit: 100,
+            }]),
         );
         value.next().await.unwrap().unwrap();
         upcoming.next().await.unwrap();

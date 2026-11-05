@@ -105,7 +105,7 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
 async fn test_library_play_unshuffles_into_the_library_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let (rel1, _rel2) = seed_two_release_library(&manager).await;
-    let tables = bae_playback::tables::PlaybackQueueTables::new(manager.database.clone());
+    let tables = bae_playback::tables::PlaybackQueueTables::new(manager.store.clone());
     let library_order = [
         "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
         "48ae03a1-d7a5-4955-8240-fc99fc4de4e5",
@@ -156,7 +156,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
 
 /// Play the seeded release from its first track.
 async fn play_seeded(manager: &LibraryManager, first_track: &str) {
-    let tables = bae_playback::tables::PlaybackQueueTables::new(manager.database.clone());
+    let tables = bae_playback::tables::PlaybackQueueTables::new(manager.store.clone());
     let release_id =
         manager.database.find_track_by_id(first_track).await.unwrap().unwrap().release_id;
     tables
@@ -176,9 +176,9 @@ async fn the_context_tail_reads_in_order_after_the_playing_track() {
     let track_ids = seed_release_tracks(&manager, 151).await;
     play_seeded(&manager, &track_ids[0]).await;
 
-    let value = bae_playback::tables::queue_value(manager.database()).await.unwrap();
+    let value = bae_playback::tables::queue_value(manager.store()).await.unwrap();
     assert!(value.context.is_some() && value.has_next);
-    let upcoming: Vec<String> = bae_playback::tables::queue_upcoming(manager.database())
+    let upcoming: Vec<String> = bae_playback::tables::queue_upcoming(manager.store())
         .await
         .unwrap()
         .into_iter()
@@ -194,13 +194,13 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 110).await;
     let manual_count = 103;
-    bae_playback::tables::PlaybackQueueTables::new(manager.database.clone())
+    bae_playback::tables::PlaybackQueueTables::new(manager.store.clone())
         .add_manual(track_ids[..manual_count].to_vec(), bae_playback::tables::ManualPlace::End)
         .await
         .unwrap();
 
     assert_eq!(
-        bae_playback::tables::queue_value(manager.database()).await.unwrap().manual.len(),
+        bae_playback::tables::queue_value(manager.store()).await.unwrap().manual.len(),
         manual_count,
         "the manual lane is never windowed"
     );
@@ -212,11 +212,11 @@ async fn queue_value_resolves_manual_lane_in_full_regardless_of_window() {
 async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let track_ids = seed_release_tracks(&manager, 3).await;
-    let tables = bae_playback::tables::PlaybackQueueTables::new(manager.database.clone());
+    let tables = bae_playback::tables::PlaybackQueueTables::new(manager.store.clone());
     let mut queued = track_ids.clone();
     queued.push(track_ids[0].clone());
     tables.add_manual(queued, bae_playback::tables::ManualPlace::End).await.unwrap();
-    let entries: Vec<String> = bae_playback::tables::queue_value(manager.database())
+    let entries: Vec<String> = bae_playback::tables::queue_value(manager.store())
         .await
         .unwrap()
         .manual
@@ -226,7 +226,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let id = |index: usize| entries[index].parse::<bae_playback::QueueEntryId>().unwrap();
     tables.reorder(id(2), Some(id(0))).await.unwrap();
 
-    let shown: Vec<(String, String)> = bae_playback::tables::queue_value(manager.database())
+    let shown: Vec<(String, String)> = bae_playback::tables::queue_value(manager.store())
         .await
         .unwrap()
         .manual

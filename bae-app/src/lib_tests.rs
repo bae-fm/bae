@@ -7,7 +7,7 @@ async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
-    let failure = bae_db::configure_store(installation.builder(), bae_library::SCHEMA)
+    let failure = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
         .create_store("Unavailable Keychain")
         .await
         .err()
@@ -26,7 +26,7 @@ async fn opening_with_a_locked_keychain_remains_retryable() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
-    let failure = bae_db::configure_store(installation.builder(), bae_library::SCHEMA)
+    let failure = bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
         .create_store("Keychain test")
         .await
         .err()
@@ -53,7 +53,7 @@ fn a_missing_keychain_entitlement_is_reported_as_itself() {
         BootstrapError::KeychainEntitlementMissing(_)
     ));
     assert!(matches!(
-        super::classify_open_error(bae_db::DbError::Coven(coven::CovenError::Key(
+        super::classify_open_error(bae_store::DbError::Coven(coven::CovenError::Key(
             missing_entitlement()
         ))),
         BootstrapError::KeychainEntitlementMissing(_)
@@ -76,7 +76,7 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = runtime
         .block_on(
-            bae_db::configure_store(installation.builder(), bae_library::SCHEMA)
+            bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
                 .create_store("Failing Bootstrap"),
         )
         .unwrap();
@@ -120,7 +120,7 @@ fn every_other_keyring_failure_still_reads_as_config() {
 /// the bootstrap says which call finishes it.
 #[test]
 fn an_unfinished_replacement_names_the_call_that_finishes_it() {
-    let error = bae_db::DbError::Coven(coven::CovenError::Lock(
+    let error = bae_store::DbError::Coven(coven::CovenError::Lock(
         coven::StoreLockError::ReplacementUnfinished {
             store: coven::StoreId(uuid::Uuid::from_u128(1)),
             by: coven::ReplacedBy::Restore,

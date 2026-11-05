@@ -16,8 +16,8 @@
 
 use super::*;
 use crate::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
-use bae_db::client::query::{QueryOne, QueryRows};
-use bae_db::LibraryPageWindow;
+use bae_store::query::{QueryOne, QueryRows};
+use bae_store::LibraryPageWindow;
 use rusqlite::ToSql;
 
 /// What one item of the list is, by the placement's `item` column.
@@ -664,7 +664,7 @@ impl<'a> Items<'a> {
                 .collect();
             let WindowsRead { windows: read, found: places } = read_windows(
                 &order,
-                &bae_db::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
+                &bae_store::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
                 in_part,
                 |seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset),
             )?;

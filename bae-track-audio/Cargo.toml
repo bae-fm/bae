@@ -18,6 +18,7 @@ path = "src/lib.rs"
 bae-audio = { workspace = true }
 # The stored files a track's audio is read from, and what was resolved of it.
 bae-db = { workspace = true }
+bae-store = { workspace = true }
 # The bugs a failed fill reports.
 bae-diagnostics = { workspace = true }
 # Work whose panic comes back as a value.

@@ -6,7 +6,7 @@ use bae_catalogs::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_catalogs::records::LookupRef;
 use bae_catalogs::source_release::PreparedRelease;
-use bae_db::Database;
+use bae_store::Store;
 
 /// Where import reads a catalog release: the store holding releases already
 /// read, and the catalogs to fetch one from.
@@ -17,8 +17,8 @@ pub struct ReleaseReads {
 }
 
 impl ReleaseReads {
-    pub fn new(database: Database, catalogs: CatalogSessions) -> Self {
-        Self { tables: crate::tables::ImportTables::new(database), catalogs }
+    pub fn new(store: Store, catalogs: CatalogSessions) -> Self {
+        Self { tables: crate::tables::ImportTables::new(store), catalogs }
     }
 
     /// The release `release_ref` names, read to `depth`, from storage or

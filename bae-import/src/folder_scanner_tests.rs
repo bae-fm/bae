@@ -29,7 +29,7 @@ pub(super) fn scan_projected_items_with_decisions(
 /// finished.
 pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<ScanItem> {
     let store = tempfile::TempDir::new().unwrap();
-    let db = bae_db::Database::new_test(
+    let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         store.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),

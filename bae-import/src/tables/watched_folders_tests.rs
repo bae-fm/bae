@@ -2,8 +2,8 @@
 //! order they were added, never overlapping.
 
 use crate::tables::watched_path::host_root;
-use bae_db::test_fixtures::empty_db;
-use bae_db::test_fixtures::temp_db;
+use bae_store::test_fixtures::empty_db;
+use bae_store::test_fixtures::temp_db;
 use rusqlite::params;
 use std::path::PathBuf;
 

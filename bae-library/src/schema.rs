@@ -4,7 +4,7 @@
 /// The library's schema: bae-db's part, then preferences', playback's,
 /// import's, the transfers' and the library views'.
 #[cfg(desktop)]
-pub const SCHEMA: bae_db::Schema = bae_db::Schema::new(&[
+pub const SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
     bae_db::SCHEMA_PARTS,
     bae_preferences::SCHEMA_PARTS,
     bae_playback::SCHEMA_PARTS,
@@ -17,7 +17,7 @@ pub const SCHEMA: bae_db::Schema = bae_db::Schema::new(&[
 /// transfers' and the library views'. A phone's library holds no import tables, since they never sync and
 /// nothing on a phone reads them.
 #[cfg(not(desktop))]
-pub const SCHEMA: bae_db::Schema = bae_db::Schema::new(&[
+pub const SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
     bae_db::SCHEMA_PARTS,
     bae_preferences::SCHEMA_PARTS,
     bae_playback::SCHEMA_PARTS,

@@ -18,7 +18,7 @@ impl LibraryViews {
         limit: u64,
     ) -> Result<Vec<DbComposerSummary>, DbError> {
         let order = composer_order(sort);
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(composer_rows_on(&sql, &order, &order.everything(), limit, offset)?
                     .into_iter()
@@ -34,11 +34,12 @@ impl LibraryViews {
     pub fn subscribe_composer_browse(
         &self,
         sort: &[ComposerSortCriterion],
-        initial_windows: bae_db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, ComposerBrowseProjection> {
+        initial_windows: bae_store::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, ComposerBrowseProjection>
+    {
         let order = composer_order(sort);
         let places = KnownPlaces::new();
-        self.database.subscribe_reconfigurable(initial_windows, move |requested, sql| {
+        self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
             let versions = list_versions_on(&sql, crate::versions::TABLE, &["composer_listing"])?;
             let total_count = composer_count_on(&sql).map_err(CovenError::from)?;
             let WindowsRead { windows, found } =
@@ -49,7 +50,7 @@ impl LibraryViews {
             Ok(ComposerBrowseProjection {
                 windows: windows
                     .into_iter()
-                    .map(|(window, rows)| bae_db::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| bae_store::LibraryBrowseWindow { window, rows })
                     .collect(),
                 total_count,
             })
@@ -62,7 +63,7 @@ impl LibraryViews {
         work_id: &str,
     ) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
-        self.database.read(move |sql| find_work_detail_on(&sql, &work_id)).await
+        self.store.read(move |sql| find_work_detail_on(&sql, &work_id)).await
     }
 
     /// The work's page as its view shows it; `None` for an unknown work.
@@ -77,7 +78,7 @@ impl LibraryViews {
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection> {
-        self.database.subscribe_reconfigurable(initial, |work_id, sql| {
+        self.store.subscribe_reconfigurable(initial, |work_id, sql| {
             let Some(work_id) = work_id else {
                 return Ok(WorkDetailProjection { detail: None });
             };
@@ -98,7 +99,7 @@ pub fn resolve_composer_browse(
         windows: projection
             .windows
             .into_iter()
-            .map(|window| bae_db::LibraryBrowseWindow {
+            .map(|window| bae_store::LibraryBrowseWindow {
                 window: window.window,
                 rows: window.rows.into_iter().map(ComposerSummary::from_raw).collect(),
             })
@@ -434,7 +435,7 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerBrowseProjection {
-    pub windows: Vec<bae_db::LibraryBrowseWindow<DbComposerSummary>>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<DbComposerSummary>>,
     pub total_count: u64,
 }
 

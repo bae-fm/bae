@@ -6,8 +6,8 @@ use super::search::LibrarySearchQuery;
 use super::*;
 use crate::album_detail::ArtistSearchResult;
 use bae_db::client::artist_credit_names::{credit_names_column, credit_names_json_sql};
-use bae_db::live_query::LiveQueryError;
-use bae_db::{LibraryBrowseWindow, LibraryPageWindows};
+use bae_store::live_query::LiveQueryError;
+use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 
 /// What an artist picker reads: the artists its text finds, parsed as every
 /// library search parses a query (`None` is no search), in the windows of its
@@ -30,8 +30,10 @@ pub struct ArtistSearchSnapshot {
 
 /// A live artist search whose text and windows change in place.
 pub struct LiveArtistSearch {
-    query:
-        bae_db::live_query::CancellableLiveQuery<ArtistSearchView, crate::ArtistSearchProjection>,
+    query: bae_store::live_query::CancellableLiveQuery<
+        ArtistSearchView,
+        crate::ArtistSearchProjection,
+    >,
     /// The snapshot a projection read for a request revision resolves to.
     resolve: std::sync::Arc<
         dyn Fn(crate::ArtistSearchProjection, u64) -> ArtistSearchSnapshot + Send + Sync,
@@ -40,7 +42,7 @@ pub struct LiveArtistSearch {
 
 impl LiveArtistSearch {
     pub fn new(
-        query: bae_db::live_query::CancellableLiveQuery<
+        query: bae_store::live_query::CancellableLiveQuery<
             ArtistSearchView,
             crate::ArtistSearchProjection,
         >,
@@ -76,7 +78,7 @@ impl LiveArtistSearch {
 /// found.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistSearchProjection {
-    pub windows: Vec<bae_db::LibraryBrowseWindow<DbArtistSearchRow>>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<DbArtistSearchRow>>,
     pub total_count: u64,
 }
 
@@ -96,10 +98,10 @@ impl LibraryViews {
     pub async fn search_artists(
         &self,
         query: &crate::LibrarySearchQuery,
-        window: bae_db::LibraryPageWindow,
+        window: bae_store::LibraryPageWindow,
     ) -> Result<Vec<DbArtist>, DbError> {
         let query = query.clone();
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(artist_search_rows_on(&sql, &query, &window)?
                     .into_iter()
@@ -117,13 +119,13 @@ impl LibraryViews {
         &self,
         initial: crate::ArtistSearchView,
     ) -> coven::ReconfigurableLiveQuery<crate::ArtistSearchView, ArtistSearchProjection> {
-        self.database.subscribe_reconfigurable(initial, |view, sql| {
+        self.store.subscribe_reconfigurable(initial, |view, sql| {
             let Some(query) = &view.query else {
                 return Ok(ArtistSearchProjection {
                     windows: view
                         .windows
                         .iter()
-                        .map(|window| bae_db::LibraryBrowseWindow {
+                        .map(|window| bae_store::LibraryBrowseWindow {
                             window: window.clone(),
                             rows: Vec::new(),
                         })
@@ -136,7 +138,7 @@ impl LibraryViews {
                 .windows
                 .iter()
                 .map(|window| {
-                    Ok(bae_db::LibraryBrowseWindow {
+                    Ok(bae_store::LibraryBrowseWindow {
                         window: window.clone(),
                         rows: artist_search_rows_on(&sql, query, window)?,
                     })
@@ -158,7 +160,7 @@ pub fn resolve_artist_search(
     crate::ArtistSearchSnapshot {
         windows: windows
             .into_iter()
-            .map(|window| bae_db::LibraryBrowseWindow {
+            .map(|window| bae_store::LibraryBrowseWindow {
                 window: window.window,
                 rows: window
                     .rows
@@ -215,7 +217,7 @@ fn artist_search_count_on(
 fn artist_search_rows_on(
     sql: &SqlReadContext<'_>,
     query: &crate::LibrarySearchQuery,
-    window: &bae_db::LibraryPageWindow,
+    window: &bae_store::LibraryPageWindow,
 ) -> Result<Vec<DbArtistSearchRow>, DbError> {
     sql.query(
         &format!(

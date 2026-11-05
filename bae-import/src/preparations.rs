@@ -5,7 +5,7 @@
 //! source a person applied, a field they typed, a file decision — comes
 //! through here. Each operation loads the candidate whole, applies the rule
 //! that governs it in Rust, and saves it whole against the revisions it
-//! loaded. The database beneath knows how to store the value and nothing
+//! loaded. The store beneath knows how to store the value and nothing
 //! about when it may change.
 
 mod pane_edits;
@@ -21,9 +21,9 @@ use crate::tables::{
 };
 use crate::tables::{DbCandidateIdentifyResult, NewImportCandidateVerdict};
 use crate::ImportError;
-use bae_db::Database;
+use bae_store::Store;
 
-/// The writer, over the database it writes through. The import service
+/// The writer, over the store it writes through. The import service
 /// holds one; the import handle resolves keys, holds the commit lock, and
 /// fetches the cover bytes a change needs, then hands the change here.
 #[derive(Clone)]
@@ -32,8 +32,8 @@ pub struct CandidatePreparations {
 }
 
 impl CandidatePreparations {
-    pub fn new(database: Database) -> Self {
-        Self { tables: crate::tables::ImportTables::new(database) }
+    pub fn new(store: Store) -> Self {
+        Self { tables: crate::tables::ImportTables::new(store) }
     }
 
     /// One candidate's whole stored state, or `None` for a hash no scan has

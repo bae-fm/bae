@@ -262,7 +262,7 @@ async fn whole_library(
     // Artists.
     let sort = [bae_views::ArtistSortCriterion {
         field: bae_views::ArtistSortField::Name,
-        direction: bae_db::SortDirection::Ascending,
+        direction: bae_store::SortDirection::Ascending,
     }];
     let artist_page = services
         .get_artist_page(&sort, artists.offset as u64, artists.count as u64)

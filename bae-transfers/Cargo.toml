@@ -17,6 +17,7 @@ path = "src/lib.rs"
 # The store the queues' tables and the transitions live in, and the list
 # windows a queue's pane reads.
 bae-db = { workspace = true }
+bae-store = { workspace = true }
 # The save preset a queued save carries whole.
 bae-preferences = { workspace = true }
 # The storage transition a release's reads show.
@@ -35,6 +36,7 @@ tracing = { workspace = true }
 [dev-dependencies]
 # Test databases with bae's schema and the rows db's fixtures seed them with.
 bae-db = { workspace = true, features = ["test-utils"] }
+bae-store = { workspace = true, features = ["test-utils"] }
 # A new library's save presets, for the queued save the tests store.
 bae-preferences = { workspace = true, features = ["test-utils"] }
 # Fresh release ids for the window tests.

@@ -3,7 +3,8 @@
 
 use crate::followed::value_matching;
 use crate::LibraryManager;
-use bae_db::{people::PersonProfile, Database};
+use bae_db::people::PersonProfile;
+use bae_db::Database;
 
 /// Ask for this device's person's profile named `name`, and sync until the
 /// manager has written it.

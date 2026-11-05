@@ -4,7 +4,7 @@ use tracing::warn;
 
 use super::RepeatMode;
 use crate::tables::{ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ShuffleChange};
-use bae_db::DbError;
+use bae_store::DbError;
 use bae_types::track_time::TrackTime;
 
 mod context;

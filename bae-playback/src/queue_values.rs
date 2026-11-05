@@ -53,6 +53,6 @@ pub struct QueueAddition {
 /// in it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueUpcomingWindow {
-    pub window: bae_db::LibraryPageWindow,
+    pub window: bae_store::LibraryPageWindow,
     pub items: Vec<QueueItem>,
 }

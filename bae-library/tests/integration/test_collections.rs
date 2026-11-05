@@ -13,13 +13,14 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     )
     .await;
     let db = library.database().clone();
+    let store = library.store().clone();
     connect_storage(&library, &storage).await;
     let person = made_profile(&library, "Robin").await;
     let release = test_uuid("collection-release");
     let first = test_uuid("collection-first");
     let second = test_uuid("collection-second");
     let medium = test_uuid("collection-medium");
-    db.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('collection-album','Collection','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','collection-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{first}','{release}','First','{medium}',1,1,0,180000,'2026-01-01'), ('{second}','{release}','Second','{medium}',1,2,1,180000,'2026-01-01');")).await.unwrap();
+    store.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('collection-album','Collection','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','collection-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{first}','{release}','First','{medium}',1,1,0,180000,'2026-01-01'), ('{second}','{release}','Second','{medium}',1,2,1,180000,'2026-01-01');")).await.unwrap();
     let target = RatingTarget::Track(first.clone());
     db.set_rating(target.clone(), Some(Stars::Three)).await.unwrap();
     db.set_rating(target.clone(), Some(Stars::Five)).await.unwrap();

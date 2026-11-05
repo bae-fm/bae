@@ -2,7 +2,7 @@
 //! `preview_path` and the stretch of it in `preview_start_sample` and
 //! `preview_end_sample`.
 
-use bae_db::client::path_column;
+use bae_store::path_column;
 use bae_track_audio::PreviewTarget;
 use rusqlite::Row;
 

@@ -20,8 +20,8 @@ pub enum PlaybackError {
     #[error("the audio output didn't start: {0}")]
     AudioOutput(#[source] crate::AudioError),
 }
-impl From<bae_db::DbError> for PlaybackError {
-    fn from(error: bae_db::DbError) -> Self {
+impl From<bae_store::DbError> for PlaybackError {
+    fn from(error: bae_store::DbError) -> Self {
         Self::database(error)
     }
 }

@@ -159,7 +159,7 @@ const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
 /// files move are not read, so a confirmed part reruns nothing.
 fn upload_queue_counts_on(
     sql: &coven::SqlReadContext<'_>,
-) -> Result<UploadQueueCounts, bae_db::DbError> {
+) -> Result<UploadQueueCounts, bae_store::DbError> {
     Ok(sql.query_row(UPLOAD_QUEUE_COUNTS, [], |row| {
         Ok(UploadQueueCounts { queued: row.get(0)?, sending: row.get(1)?, paused: row.get(2)? })
     })?)
@@ -171,7 +171,7 @@ impl LibraryViews {
     /// moving change none of what it reads, so they send nothing.
     pub fn subscribe_sync_activity(
         &self,
-    ) -> bae_db::WithSyncState<SyncActivityRows, crate::SyncActivity> {
-        self.database.with_sync_state(sync_activity_rows_on, sync_activity)
+    ) -> bae_store::WithSyncState<SyncActivityRows, crate::SyncActivity> {
+        self.store.with_sync_state(sync_activity_rows_on, sync_activity)
     }
 }

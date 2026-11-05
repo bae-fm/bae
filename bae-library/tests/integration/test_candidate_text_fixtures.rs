@@ -168,10 +168,10 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
 }
 
 /// A throwaway library database over a temp dir, which must outlive it.
-async fn make_database() -> (bae_db::Database, TempDir) {
+async fn make_database() -> (bae_store::Store, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
     let library = bae_library::test_libraries::open_test_library(tmp.path()).await;
-    (library.database().clone(), tmp)
+    (library.store().clone(), tmp)
 }
 
 async fn drive_fixture(
@@ -181,12 +181,13 @@ async fn drive_fixture(
 ) -> (Vec<String>, Vec<String>) {
     let candidates = bae_import::CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
-    let (database, _lib_tmp) = make_database().await;
+    let (db, _lib_tmp) = make_database().await;
     let handle: ExtractionService = ExtractionService::new(
         tokio::runtime::Handle::current(),
         tx,
         candidates,
-        database,
+        db.clone(),
+        bae_db::test_fixtures::test_database(&db),
         bae_diagnostics::Diagnostics::noop(),
     );
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));

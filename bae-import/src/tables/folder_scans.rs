@@ -12,8 +12,8 @@
 //! device's library holds.
 
 /// The folder scans' part of the library's schema.
-pub(super) const SCHEMA: bae_db::SchemaPart =
-    bae_db::SchemaPart::new(&[include_str!("folder_scans.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("folder_scans.sql")]);
 
 pub(super) mod columns;
 mod dates;
@@ -30,7 +30,7 @@ use super::release_groupings::{store_folder_reading, validate_decision_key_owner
 use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::CandidateKey;
-use bae_db::client::query::{QueryOne, QueryRows};
+use bae_store::query::{QueryOne, QueryRows};
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
@@ -175,7 +175,7 @@ impl ImportTables {
         watched_folder_path: &Path,
     ) -> Result<Option<i64>, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
-        self.database.read(move |sql| root_generation_on(&sql, &watched_folder_path)).await
+        self.store.read(move |sql| root_generation_on(&sql, &watched_folder_path)).await
     }
 
     /// Open a new scan generation for `watched_folder_path`, recording the
@@ -187,7 +187,7 @@ impl ImportTables {
     ) -> Result<u64, DbError> {
         let watched_folder_path = coven::path_bytes(watched_folder_path);
         let volume = columns::volume_text(volume);
-        self.database
+        self.store
             .call(move |sql| {
                 let generation = next_folder_scan_generation(sql)?;
                 sql.execute(
@@ -217,11 +217,11 @@ impl ImportTables {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
         let observed_at =
-            chrono::DateTime::<chrono::Utc>::from(self.database.now()).timestamp_millis();
+            chrono::DateTime::<chrono::Utc>::from(self.store.now()).timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }
-        self.database
+        self.store
             .call(move |sql| {
                 ensure_generation(sql, &watched_folder_path, generation)?;
                 let mut writes = Vec::with_capacity(items.len());
@@ -302,7 +302,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let watched_folder_path = coven::path_bytes(watched_folder_path);
         let directories = directories.to_vec();
-        self.database
+        self.store
             .call(move |sql| {
                 sql.execute(
                     "DELETE FROM folder_scan_directory WHERE watched_folder_path = ?",
@@ -326,7 +326,7 @@ impl ImportTables {
         watched_folder_path: &Path,
     ) -> Result<Vec<(PathBuf, i64)>, DbError> {
         let watched_folder_path = coven::path_bytes(watched_folder_path);
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(sql.query(
                     "SELECT path, modified_at FROM folder_scan_directory \
@@ -354,7 +354,7 @@ impl ImportTables {
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }
-        self.database
+        self.store
             .call(move |sql| {
                 ensure_generation(sql, &watched_folder_path, generation)?;
                 if let Some(error) = error {
@@ -386,7 +386,7 @@ impl ImportTables {
         watched_folder_path: &Path,
     ) -> Result<Vec<ScanItem>, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
-        self.database
+        self.store
             .read(move |sql| {
                 load_folder_scan_items_on(&sql, &watched_folder_path, RowSources::Scanned)
             })
@@ -400,7 +400,7 @@ impl ImportTables {
         entry_key: &CandidateKey,
     ) -> Result<Option<ScanItem>, DbError> {
         let entry_key = entry_key.clone();
-        self.database
+        self.store
             .read(move |sql| read::load_item_by_key_rows(&sql, &entry_key, RowSources::Any))
             .process(|process| {
                 process

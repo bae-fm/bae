@@ -5,8 +5,8 @@ use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_db::test_fixtures::empty_db;
 use bae_identify::{Findings, NarrowedOut, TerminalVerdict};
+use bae_store::test_fixtures::empty_db;
 
 /// `release` as one catalog's record of its own.
 fn release_on(source: bae_catalogs::catalog::LookupCatalog, release_id: &str) -> MetadataResult {

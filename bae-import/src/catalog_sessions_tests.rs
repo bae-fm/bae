@@ -3,9 +3,9 @@ use tempfile::TempDir;
 
 /// Sessions over a fresh library whose keyring is in memory, asking
 /// providers that reach nothing.
-pub(crate) async fn test_sessions() -> (CatalogSessions, Database, TempDir) {
+pub(crate) async fn test_sessions() -> (CatalogSessions, Store, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let database = Database::new_test(
+    let db = Store::new_test(
         crate::TEST_SCHEMA,
         temp_dir.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
@@ -14,15 +14,15 @@ pub(crate) async fn test_sessions() -> (CatalogSessions, Database, TempDir) {
     .unwrap();
     let sessions = CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
-        database.clone(),
+        db.clone(),
         Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
-    (sessions, database, temp_dir)
+    (sessions, db, temp_dir)
 }
 
-async fn stored_validation(database: &Database) -> Option<DiscogsValidation> {
-    bae_preferences::preferences(database).await.unwrap().discogs
+async fn stored_validation(db: &Store) -> Option<DiscogsValidation> {
+    bae_preferences::preferences(db).await.unwrap().discogs
 }
 
 async fn asks_discogs(sessions: &CatalogSessions) -> bool {
@@ -30,8 +30,8 @@ async fn asks_discogs(sessions: &CatalogSessions) -> bool {
 }
 
 /// Record what Discogs said of the stored key, as a check of it does.
-async fn record_validation(database: &Database, validation: DiscogsValidation) {
-    bae_preferences::edit_preferences(database, move |prefs| {
+async fn record_validation(db: &Store, validation: DiscogsValidation) {
+    bae_preferences::edit_preferences(db, move |prefs| {
         prefs.discogs = Some(validation);
         Ok(())
     })
@@ -41,7 +41,7 @@ async fn record_validation(database: &Database, validation: DiscogsValidation) {
 
 #[tokio::test]
 async fn discogs_is_not_asked_with_a_rejected_key() {
-    let (sessions, database, _temp_dir) = test_sessions().await;
+    let (sessions, db, _temp_dir) = test_sessions().await;
     sessions
         .store_discogs_key("f7228aaf-52b3-40ea-8526-a7e8aa0bf5da", DiscogsValidation::Valid)
         .await
@@ -49,10 +49,10 @@ async fn discogs_is_not_asked_with_a_rejected_key() {
 
     assert!(asks_discogs(&sessions).await, "a Valid key is served");
 
-    record_validation(&database, DiscogsValidation::Unvalidated).await;
+    record_validation(&db, DiscogsValidation::Unvalidated).await;
     assert!(asks_discogs(&sessions).await, "an Unvalidated key is served optimistically");
 
-    record_validation(&database, DiscogsValidation::Rejected).await;
+    record_validation(&db, DiscogsValidation::Rejected).await;
     assert!(!asks_discogs(&sessions).await, "a Rejected key is withheld");
 }
 
@@ -60,10 +60,10 @@ async fn discogs_is_not_asked_with_a_rejected_key() {
 /// the library holds; switching it back on asks it again.
 #[tokio::test]
 async fn a_switched_off_catalog_is_not_asked() {
-    let (sessions, database, _temp_dir) = test_sessions().await;
+    let (sessions, db, _temp_dir) = test_sessions().await;
     sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
     let switch = |catalog, enabled| {
-        bae_preferences::edit_preferences(&database, move |prefs| {
+        bae_preferences::edit_preferences(&db, move |prefs| {
             prefs.identification.catalogs.set(catalog, enabled);
             Ok(())
         })
@@ -82,50 +82,50 @@ async fn a_switched_off_catalog_is_not_asked() {
 /// key requires both stores to agree it exists.
 #[tokio::test]
 async fn discogs_is_not_asked_with_a_key_the_preferences_do_not_claim() {
-    let (sessions, database, _temp_dir) = test_sessions().await;
+    let (sessions, db, _temp_dir) = test_sessions().await;
 
-    database.set_host_secret(DISCOGS_API_KEY, "orphan-key").unwrap();
+    db.set_host_secret(DISCOGS_API_KEY, "orphan-key").unwrap();
 
-    assert_eq!(stored_validation(&database).await, None);
+    assert_eq!(stored_validation(&db).await, None);
     assert!(!asks_discogs(&sessions).await, "a keyring key with no preference is not served");
 }
 
 /// Storing and clearing the key move both durable stores together.
 #[tokio::test]
 async fn storing_and_clearing_the_key_move_both_stores() {
-    let (sessions, database, _temp_dir) = test_sessions().await;
+    let (sessions, db, _temp_dir) = test_sessions().await;
 
     sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
-    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
-    assert_eq!(database.host_secret(DISCOGS_API_KEY).unwrap().as_deref(), Some("the-key"),);
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
+    assert_eq!(db.host_secret(DISCOGS_API_KEY).unwrap().as_deref(), Some("the-key"),);
     assert!(asks_discogs(&sessions).await);
 
     sessions.clear_discogs_key().await.unwrap();
-    assert_eq!(stored_validation(&database).await, None);
-    assert_eq!(database.host_secret(DISCOGS_API_KEY).unwrap(), None);
+    assert_eq!(stored_validation(&db).await, None);
+    assert_eq!(db.host_secret(DISCOGS_API_KEY).unwrap(), None);
     assert!(!asks_discogs(&sessions).await);
 }
 
 #[tokio::test]
 async fn discogs_validation_signals_confirm_and_reject() {
-    let (_sessions, database, _temp_dir) = test_sessions().await;
+    let (_sessions, db, _temp_dir) = test_sessions().await;
     // A success confirms a stored Unvalidated key.
-    record_validation(&database, DiscogsValidation::Unvalidated).await;
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await.unwrap();
-    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
+    record_validation(&db, DiscogsValidation::Unvalidated).await;
+    record_discogs_validation_signal(&db, DiscogsKeySignal::Accepted).await.unwrap();
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
 
     // A 401 rejects, from any prior state.
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Rejected).await.unwrap();
-    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Rejected));
+    record_discogs_validation_signal(&db, DiscogsKeySignal::Rejected).await.unwrap();
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Rejected));
 
     // A success does NOT flip an already-Rejected key back to Valid.
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await.unwrap();
-    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Rejected));
+    record_discogs_validation_signal(&db, DiscogsKeySignal::Accepted).await.unwrap();
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Rejected));
 
     // A success while already Valid is a no-op (only Unvalidated -> Valid).
-    record_validation(&database, DiscogsValidation::Valid).await;
-    record_discogs_validation_signal(&database, DiscogsKeySignal::Accepted).await.unwrap();
-    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
+    record_validation(&db, DiscogsValidation::Valid).await;
+    record_discogs_validation_signal(&db, DiscogsKeySignal::Accepted).await.unwrap();
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
 }
 
 /// Sessions over a fresh library asking a Discogs that `host` stands in for,
@@ -133,9 +133,9 @@ async fn discogs_validation_signals_confirm_and_reject() {
 async fn sessions_over(
     host: &bae_util::test_host::FakeHost,
     bugs: Arc<bae_diagnostics::RecordingBugReporter>,
-) -> (CatalogSessions, Database, TempDir) {
+) -> (CatalogSessions, Store, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let database = Database::new_test(
+    let db = Store::new_test(
         crate::TEST_SCHEMA,
         temp_dir.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
@@ -151,11 +151,11 @@ async fn sessions_over(
     );
     let sessions = CatalogSessions::new(
         providers,
-        database.clone(),
+        db.clone(),
         Diagnostics::noop().reporting_bugs_to(bugs),
         tokio::runtime::Handle::current(),
     );
-    (sessions, database, temp_dir)
+    (sessions, db, temp_dir)
 }
 
 const REJECTED: &str = r#"{"message": "Invalid consumer token."}"#;
@@ -166,7 +166,7 @@ const REJECTED: &str = r#"{"message": "Invalid consumer token."}"#;
 #[tokio::test(flavor = "multi_thread")]
 async fn a_revalidation_answered_after_the_key_changed_leaves_the_new_key_alone() {
     let host = bae_util::test_host::FakeHost::start().await;
-    let (sessions, database, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    let (sessions, db, _temp_dir) = sessions_over(&host, Arc::default()).await;
     sessions.store_discogs_key("old-key", DiscogsValidation::Unvalidated).await.unwrap();
     host.route("/database/search", 401, REJECTED);
     host.hold("/database/search");
@@ -181,7 +181,7 @@ async fn a_revalidation_answered_after_the_key_changed_leaves_the_new_key_alone(
 
     let check = revalidating.await.unwrap().unwrap();
     assert!(matches!(check, Some(DiscogsCheck::Rejected)), "{check:?}");
-    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
 }
 
 /// What a call made with a replaced key proves is recorded nowhere: a 401 a
@@ -190,7 +190,7 @@ async fn a_revalidation_answered_after_the_key_changed_leaves_the_new_key_alone(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_signal_about_a_replaced_key_leaves_the_new_key_alone() {
     let host = bae_util::test_host::FakeHost::start().await;
-    let (sessions, database, _temp_dir) = sessions_over(&host, Arc::default()).await;
+    let (sessions, db, _temp_dir) = sessions_over(&host, Arc::default()).await;
     sessions.store_discogs_key("old-key", DiscogsValidation::Valid).await.unwrap();
     let old = sessions.session().await.unwrap();
     sessions.store_discogs_key("new-key", DiscogsValidation::Valid).await.unwrap();
@@ -200,7 +200,7 @@ async fn a_signal_about_a_replaced_key_leaves_the_new_key_alone() {
     sessions.signals_recorded().await;
 
     assert_eq!(host.count_containing("/masters/"), 1, "the old client asked");
-    assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
+    assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
 }
 
 /// A call's signal is recorded with no caller waiting on it, so a write of

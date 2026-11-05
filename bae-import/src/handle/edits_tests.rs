@@ -25,7 +25,7 @@ async fn a_picked_album_shows_over_what_the_records_name() {
     let artist = make_artist("Artist Name", None, None);
     handle.database.insert_artist(&artist).await.unwrap();
     let (album, _release) =
-        insert_library_release(&handle.database, &artist.id, "Library Album").await;
+        insert_library_release(&handle.store, &artist.id, "Library Album").await;
 
     handle.set_candidate_album(&key, Some(album.id.clone())).await.unwrap();
     assert_eq!(

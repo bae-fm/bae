@@ -62,11 +62,11 @@ pub enum CollectionError {
     #[error(transparent)]
     Profile(#[from] crate::people::ProfileError),
     #[error(transparent)]
-    Database(#[from] crate::DbError),
+    Database(#[from] bae_store::DbError),
 }
 
-impl From<crate::BlankName> for CollectionError {
-    fn from(_: crate::BlankName) -> Self {
+impl From<bae_store::BlankName> for CollectionError {
+    fn from(_: bae_store::BlankName) -> Self {
         Self::EmptyName
     }
 }

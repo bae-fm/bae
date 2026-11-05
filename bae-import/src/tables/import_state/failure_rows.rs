@@ -88,7 +88,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let failure = failure.clone();
-        self.database
+        self.store
             .call(move |sql| save_failure_on(sql, &content_hash, edit_revision, &failure))
             .await
     }
@@ -109,7 +109,7 @@ impl ImportTables {
         let failure = failure.clone();
         let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
-        self.database
+        self.store
             .call(move |sql| {
                 save_failure_on(sql, &content_hash, edit_revision, &failure)?;
                 super::move_import_on(sql, &candidate_key, &import_id, None)

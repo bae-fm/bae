@@ -164,7 +164,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             };
             // The embedded artwork is no image the store reads, so a stored
             // cover is the folder's front.jpg.
-            test.database
+            bae_db::test_fixtures::test_database(&test.db)
                 .find_library_image(&release_id, &bae_db::LibraryImageType::Cover)
                 .await
                 .unwrap()
@@ -204,8 +204,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService { service, preparations, database: _, temp: tmp } =
-        setup_import_service().await;
+    let TestService { service, preparations, db: _, temp: tmp } = setup_import_service().await;
     let tables = service.tables.clone();
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();

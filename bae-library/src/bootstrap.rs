@@ -4,7 +4,7 @@
 
 mod auth;
 
-use bae_db::configure_store;
+use bae_store::configure_store;
 use tokio::sync::watch;
 
 #[derive(Debug, thiserror::Error)]
@@ -69,7 +69,7 @@ fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
 /// Create a store and retain its open handle, including its identity custody.
 pub async fn create_library(
     builder: coven::CovenBuilder,
-    name: bae_db::EnteredName,
+    name: bae_store::EnteredName,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
     Ok(configure_store(builder, crate::SCHEMA).create_store(name.as_str()).await?)
 }
@@ -277,9 +277,8 @@ async fn with_profile(
 ) -> JoinedLibrary {
     let profile = match invitee {
         Some(name) => Some(
-            bae_db::Database::from_handle(
-                handle.clone(),
-                clock,
+            bae_db::Database::new(
+                bae_store::Store::new(handle.clone(), clock),
                 std::sync::Arc::new(coven::UuidIds),
             )
             .create_profile(name)
@@ -387,14 +386,10 @@ async fn settings_of_this_copy(
             by: coven::ReplacedBy::Restore,
             ..
         })) => return Ok(None),
-        Err(error) => return Err(unread(bae_db::DbError::from(error).into())),
+        Err(error) => return Err(unread(bae_store::DbError::from(error).into())),
     };
-    let database = bae_db::Database::from_handle(
-        handle.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-    );
-    let settings = bae_preferences::preferences(&database).await;
+    let store = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock));
+    let settings = bae_preferences::preferences(&store).await;
     let closed = handle.close().await;
     let settings = settings.map_err(|error| unread(error.into()))?;
     closed.map_err(|error| unread(error.into()))?;

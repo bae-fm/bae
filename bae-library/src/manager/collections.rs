@@ -11,7 +11,7 @@ impl LibraryManager {
         self.database.set_rating(target, stars).await
     }
 
-    pub async fn ratings(&self) -> Result<Vec<Rating>, bae_db::DbError> {
+    pub async fn ratings(&self) -> Result<Vec<Rating>, bae_store::DbError> {
         self.database.ratings().await
     }
 
@@ -23,7 +23,7 @@ impl LibraryManager {
         self.database.create_playlist(self.ids.new_id(), name, sharing).await
     }
 
-    pub async fn playlists(&self) -> Result<Vec<Playlist>, bae_db::DbError> {
+    pub async fn playlists(&self) -> Result<Vec<Playlist>, bae_store::DbError> {
         self.database.playlists().await
     }
 
@@ -46,7 +46,7 @@ impl LibraryManager {
     pub async fn playlist_entries(
         &self,
         id: uuid::Uuid,
-    ) -> Result<Vec<PlaylistEntry>, bae_db::DbError> {
+    ) -> Result<Vec<PlaylistEntry>, bae_store::DbError> {
         self.database.playlist_entries(id).await
     }
 

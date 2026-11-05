@@ -5,9 +5,9 @@
 //! serve every list's tests.
 
 use crate::*;
-use bae_db::client::list_windows::OrderKey;
-use bae_db::client::list_windows::{Keyed, ListOrder, Seek};
-use bae_db::test_fixtures::{exec_batch, temp_db};
+use bae_store::list_windows::OrderKey;
+use bae_store::list_windows::{Keyed, ListOrder, Seek};
+use bae_store::test_fixtures::{exec_batch, temp_db};
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
 const ARTIST_B: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a02";
@@ -23,7 +23,7 @@ const ALBUM_VARIOUS: &str = "5a7c2e10-91b3-4f6d-8e2a-1c0b9d8e7f04";
 /// sort the albums the way their credits do), and a compilation credited to
 /// Various Artists whose one track carries its own credit, C, and whose other
 /// track has none. Each album holds one release.
-async fn credited_library() -> (Database, tempfile::TempDir) {
+async fn credited_library() -> (Store, tempfile::TempDir) {
     let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     exec_batch(
         &db,
@@ -129,7 +129,7 @@ async fn sorting_by_artist_compares_every_credit_in_order() {
 /// The plan of `statement` under `seek`'s parameters and `extra`, one line
 /// per step.
 pub(super) async fn plan(
-    db: &Database,
+    db: &Store,
     statement: String,
     seek: Seek,
     extra: Vec<(&'static str, rusqlite::types::Value)>,
@@ -157,7 +157,7 @@ pub(super) const LIST_ALIASES: &[&str] = &["listing", "artist", "link", "a", "r"
 /// reaches it (`LAST … TERMS`), or, holding the artist's sort key and id (the
 /// first `sorted_within` terms) equal, that artist's alone.
 pub(super) async fn assert_seeks_search(
-    db: &Database,
+    db: &Store,
     what: &str,
     order: &ListOrder,
     key: OrderKey,
@@ -168,7 +168,7 @@ pub(super) async fn assert_seeks_search(
 }
 
 pub(super) async fn assert_seeks_search_sorting(
-    db: &Database,
+    db: &Store,
     what: &str,
     order: &ListOrder,
     key: OrderKey,
@@ -196,7 +196,7 @@ pub(super) async fn assert_seeks_search_sorting(
 
 /// A library of 300 albums, each with an artist, a release, files and a
 /// work, every release queued to download and every track in the lane.
-pub(super) async fn library() -> (Database, tempfile::TempDir) {
+pub(super) async fn library() -> (Store, tempfile::TempDir) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     window_cost::seed(&db, &tmp.path().join("originals"), 0, 300).await;
     (db, tmp)
@@ -208,7 +208,7 @@ pub(super) fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
 
 /// The key of row `at` of `order`, read by `rows`.
 pub(super) async fn key_at<R: Send + 'static>(
-    db: &Database,
+    db: &Store,
     order: &ListOrder,
     rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>
         + Send
@@ -223,7 +223,7 @@ pub(super) async fn key_at<R: Send + 'static>(
 
 #[tokio::test]
 async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
-    let (db, _tmp) = bae_db::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -332,7 +332,7 @@ async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
 ///     window_cost --ignored --nocapture --test-threads 1
 /// ```
 mod window_cost {
-    use bae_db::test_fixtures::window_cost::*;
+    use bae_store::test_fixtures::window_cost::*;
 
     use crate::*;
     use std::time::{Duration, Instant};
@@ -385,13 +385,13 @@ mod window_cost {
         )
     }
 
-    async fn grow_to(db: &Database, originals: &std::path::Path, from: u64, to: u64) -> Duration {
+    async fn grow_to(db: &Store, originals: &std::path::Path, from: u64, to: u64) -> Duration {
         let started = Instant::now();
         seed(db, originals, from, to).await;
         started.elapsed()
     }
 
-    async fn measure_albums(db: &Database, n: u64) {
+    async fn measure_albums(db: &Store, n: u64) {
         let mut sorts: Vec<(String, Vec<AlbumSortCriterion>)> =
             vec![("default".into(), Vec::new())];
         for field in [
@@ -440,7 +440,7 @@ mod window_cost {
         }
     }
 
-    async fn measure_artists(db: &Database, n: u64) {
+    async fn measure_artists(db: &Store, n: u64) {
         let mut sorts = vec![("default".to_string(), Vec::new())];
         for field in [ArtistSortField::Name, ArtistSortField::AlbumCount] {
             for (field, direction) in both_ways(field) {
@@ -463,7 +463,7 @@ mod window_cost {
         }
     }
 
-    async fn measure_composers(db: &Database, n: u64) {
+    async fn measure_composers(db: &Store, n: u64) {
         let mut sorts = vec![("default".to_string(), Vec::new())];
         for field in [
             ComposerSortField::Name,
@@ -490,7 +490,7 @@ mod window_cost {
         }
     }
 
-    async fn measure_storage(db: &Database, n: u64) {
+    async fn measure_storage(db: &Store, n: u64) {
         for (filter, rows) in [
             (
                 StorageFilter::All,
@@ -541,7 +541,7 @@ mod window_cost {
     /// finds, which every read of it does first, and then each window, read as
     /// the search's counts decide. `album` is in every title; `album 123` is in
     /// about one title in a thousand.
-    async fn measure_storage_search(db: &Database, n: u64) {
+    async fn measure_storage_search(db: &Store, n: u64) {
         for (name, text) in [("broad", "album"), ("rare", "album 123")] {
             let query = crate::LibrarySearchQuery::parse(text).unwrap();
             let counted = query.clone();
@@ -600,7 +600,7 @@ mod window_cost {
     #[tokio::test(flavor = "multi_thread")]
     #[ignore = "measurement: run in release with --ignored --nocapture"]
     async fn window_cost() {
-        let (db, tmp) = bae_db::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
+        let (db, tmp) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
         let mut held = 0;
         for n in SIZES {
             let took = grow_to(&db, &tmp.path().join("originals"), held, n).await;
@@ -621,7 +621,8 @@ mod window_cost {
     /// [`seed_sql`]'s rows `start..end`, then each release's zero to three
     /// files, staged on this device only from originals under `originals`, one
     /// original for each size, which every file of that size names.
-    pub(crate) async fn seed(db: &Database, originals: &std::path::Path, start: u64, end: u64) {
+    pub(crate) async fn seed(db: &Store, originals: &std::path::Path, start: u64, end: u64) {
+        let database = bae_db::test_fixtures::test_database(db);
         let sql = seed_sql(start, end);
         db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await.unwrap();
         std::fs::create_dir_all(originals).unwrap();
@@ -651,11 +652,11 @@ mod window_cost {
                 ));
             }
         }
-        db.insert_files_for_test(files).await.unwrap();
+        database.insert_files_for_test(files).await.unwrap();
     }
 
     /// What the download queue's windows cost to read.
-    async fn measure_downloads(db: &Database, n: u64) {
+    async fn measure_downloads(db: &Store, n: u64) {
         measure(
             db,
             "downloads",

@@ -12,13 +12,14 @@ use crate::{
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::search::MetadataResult;
-use bae_db::test_fixtures::empty_db;
-use bae_db::test_fixtures::fixed_now;
-use bae_db::{Database, DbArtist};
+use bae_db::DbArtist;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
+use bae_store::test_fixtures::empty_db;
+use bae_store::test_fixtures::fixed_now;
+use bae_store::Store;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -36,10 +37,7 @@ pub(crate) fn as_read(content_hash: &str, metadata_revision: u64) -> crate::Cand
 
 /// The stored draft and the metadata revision it stands at: what a file
 /// decision that reshapes no track lays over the folder.
-pub(crate) async fn current_draft(
-    db: &Database,
-    content_hash: &str,
-) -> (u64, crate::CandidateDraft) {
+pub(crate) async fn current_draft(db: &Store, content_hash: &str) -> (u64, crate::CandidateDraft) {
     let tables = crate::tables::ImportTables::new(db.clone());
     let preparation = tables
         .load_candidate_preparation(content_hash)
@@ -175,7 +173,7 @@ pub(crate) fn new_candidate_row(
 
 /// Store MusicBrainz release `release_id` as the setup of a write that names
 /// it, which then finds it stored.
-pub(crate) async fn fetched(db: &Database, release_id: &str) {
+pub(crate) async fn fetched(db: &Store, release_id: &str) {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.save_source_release(&fetched_release(release_id)).await.unwrap();
 }
@@ -245,11 +243,7 @@ pub(crate) fn settled_signals() -> Signals {
 }
 
 /// Store a verdict for `hash` carrying `signals`, and say whether it landed.
-pub(crate) async fn store_verdict_with_signals(
-    db: &Database,
-    hash: &str,
-    signals: Signals,
-) -> bool {
+pub(crate) async fn store_verdict_with_signals(db: &Store, hash: &str, signals: Signals) -> bool {
     crate::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
@@ -298,7 +292,7 @@ pub(crate) fn existing_artist() -> DbArtist {
     }
 }
 
-pub(crate) async fn stored_pane_candidate(db: &Database) -> (CategorizedFiles, String) {
+pub(crate) async fn stored_pane_candidate(db: &Store) -> (CategorizedFiles, String) {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
     let item = scanned_candidate(&root, "Album");
@@ -318,7 +312,7 @@ pub(crate) async fn stored_pane_candidate(db: &Database) -> (CategorizedFiles, S
 }
 
 pub(crate) async fn store_candidate_state(
-    db: &Database,
+    db: &Store,
     files: &CategorizedFiles,
     folder_path: &Path,
 ) -> String {
@@ -421,7 +415,7 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
                 [hash],
                 |row| row.get::<_, String>(0),
             )
-            .map_err(bae_db::DbError::from)
+            .map_err(bae_store::DbError::from)
         })
         .await
         .unwrap();
@@ -431,8 +425,8 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
 /// Damage the candidate `content_hash`'s cover rows as no write leaves them:
 /// its remote cover's bytes are gone, so reading the candidate fails as a
 /// damaged row.
-pub(crate) async fn lose_remote_cover_bytes(db: &Database, content_hash: &str) {
-    bae_db::test_fixtures::exec(
+pub(crate) async fn lose_remote_cover_bytes(db: &Store, content_hash: &str) {
+    bae_store::test_fixtures::exec(
         db,
         "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?1",
         &[content_hash],
@@ -451,7 +445,7 @@ pub(crate) struct PaneControls {
 }
 
 impl PaneControls {
-    pub(crate) fn new(db: &Database, root: &Path, key: &crate::CandidateKey) -> Self {
+    pub(crate) fn new(db: &Store, root: &Path, key: &crate::CandidateKey) -> Self {
         Self {
             preparations: crate::CandidatePreparations::new(db.clone()),
             tables: crate::tables::ImportTables::new(db.clone()),
@@ -461,12 +455,12 @@ impl PaneControls {
     }
 
     /// The controls over the scanned candidate `candidate`.
-    pub(crate) fn of(db: &Database, candidate: &crate::folder_scanner::FolderCandidate) -> Self {
+    pub(crate) fn of(db: &Store, candidate: &crate::folder_scanner::FolderCandidate) -> Self {
         Self::new(db, &candidate.watched_folder_path, &candidate.key())
     }
 
     /// The controls over [`stored_pane_candidate`]'s candidate.
-    pub(crate) fn of_pane_candidate(db: &Database) -> Self {
+    pub(crate) fn of_pane_candidate(db: &Store) -> Self {
         Self::new(db, &host_root("/music"), &pane_candidate_key())
     }
 

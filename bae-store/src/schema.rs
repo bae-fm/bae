@@ -260,7 +260,3 @@ pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
     }
     conn
 }
-
-#[cfg(test)]
-#[path = "schema_tests.rs"]
-mod tests;

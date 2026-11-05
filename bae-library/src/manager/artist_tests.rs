@@ -182,12 +182,11 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
             .artist_names
             .clone()
     };
-    let queued_featured =
-        bae_playback::tables::track_display(&manager.database, &library.featured.id)
-            .await
-            .unwrap()
-            .expect("the track's display")
-            .artist_names;
+    let queued_featured = bae_playback::tables::track_display(&manager.store, &library.featured.id)
+        .await
+        .unwrap()
+        .expect("the track's display")
+        .artist_names;
     let searched_album = views(manager)
         .search_rows("Test Album", 10)
         .await
@@ -254,7 +253,7 @@ async fn a_merged_artists_credit_prints_the_survivor_unless_a_printed_name_was_s
     let library = credited_library().await;
     library
         .manager
-        .database
+        .store
         .execute_local_sql_for_test(&format!(
             "INSERT INTO artist_merges (id, into_artist_id, created_at) \
              VALUES ('{CREDIT_ARTIST_B}', '{CREDIT_ARTIST_A}', '2026-01-01T00:00:00Z')"

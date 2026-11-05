@@ -196,7 +196,7 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> bae_import::ReleaseUser
 }
 
 async fn queued_write_rows(manager: &LibraryManager) -> Vec<Vec<String>> {
-    manager.database.queued_write_rows_for_test().await.unwrap()
+    manager.store.queued_write_rows_for_test().await.unwrap()
 }
 
 /// Saving a release's metadata again without changing it is no write: nothing

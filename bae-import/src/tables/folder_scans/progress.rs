@@ -65,7 +65,7 @@ fn load_folder_scan_progress_on(
 impl ImportTables {
     /// Where each watched folder's scan stands now.
     pub async fn load_folder_scan_progress(&self) -> Result<FolderScanProgress, DbError> {
-        self.database
+        self.store
             .read(move |sql| load_folder_scan_progress_on(&sql))
             .process(|statuses| Ok(FolderScanProgress::of(statuses)))
             .await
@@ -73,7 +73,7 @@ impl ImportTables {
 
     /// Where each watched folder's scan stands, live.
     pub(crate) fn subscribe_folder_scan_progress(&self) -> coven::LiveQuery<FolderScanProgress> {
-        self.database
+        self.store
             .subscribe(move |sql| load_folder_scan_progress_on(&sql).map_err(CovenError::from))
             .process(|statuses| Ok(FolderScanProgress::of(statuses)))
     }

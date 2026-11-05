@@ -23,6 +23,7 @@ crate_order = [
     "bae-diagnostics",
     "bae-catalogs",
     "bae-app-dir",
+    "bae-store",
     "bae-db",
     "bae-preferences",
     "bae-track-audio",
@@ -103,6 +104,7 @@ capability_types = [
     "SessionCache",
     "SparseStreamingBuffer",
     "SrpClient",
+    "Store",
     "SubsonicPasswordProvider",
     "SubsonicServerController",
     "TrackStream",
@@ -376,7 +378,7 @@ ImageHold = "RemoteImageHost"
 # and restores the second from it, and hands the test, the final owner of
 # what it built, each store to write and read. It is test-utils code, which
 # the views' tests compile, so the checker reads it as production code.
-"bae-db/src/test_devices.rs" = ["TwoStores::a", "TwoStores::b"]
+"bae-store/src/test_devices.rs" = ["TwoStores::a", "TwoStores::b"]
 # One person's devices of a test library, syncing over shared memory storage:
 # it creates the first device and restores more from its code, and hands the
 # test, the final owner of what it built, each device and the manager and
@@ -385,6 +387,7 @@ ImageHold = "RemoteImageHost"
 "bae-library/src/test_libraries/devices.rs" = [
     "TestDevice::manager",
     "TestDevice::database",
+    "TestDevice::store",
     "TwoDevices::a",
     "TwoDevices::b",
     "TwoDevices::a_mut",
@@ -400,6 +403,7 @@ ImageHold = "RemoteImageHost"
 "bae-library/src/test_libraries.rs" = [
     "TestLibrary::deref",
     "TestLibrary::database",
+    "TestLibrary::store",
     "TestLibrary::catalogs",
     "TestLibrary::closing",
     "TestLibrary::clock",

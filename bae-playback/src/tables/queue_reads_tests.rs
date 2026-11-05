@@ -4,6 +4,7 @@
 use super::*;
 use crate::tables::tests::*;
 use crate::QueueAddition;
+use bae_store::query::SQL_MAX_IN_VARS;
 use bae_util::test_channels::HANG_GUARD;
 
 /// Each addition that puts tracks in counts one, with how many it put in,

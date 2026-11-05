@@ -1,7 +1,8 @@
 //! Releases and files for the storage listing's tests, and the plan SQLite
 //! picks for a read.
 
-use crate::{Database, DbError, NewReleaseFile};
+use crate::NewReleaseFile;
+use bae_store::DbError;
 
 pub const RELEASE_EARLY: &str = "d439555e-9883-4037-a580-48ea33c2c57b";
 pub const RELEASE_LATE: &str = "af4421de-5174-45a9-81fc-74110bc5f85d";
@@ -19,28 +20,29 @@ pub const LIBRARY: &str = "
 /// Seed the release file `id` of `release`, named `name`, staged on this
 /// device only from an original of `size` zero bytes written under `dir`.
 pub async fn insert_file(
-    db: &Database,
+    store: &bae_store::Store,
     dir: &std::path::Path,
     (id, release, name, size): (&str, &str, &str, u64),
 ) {
     let original = dir.join(id);
     std::fs::File::create_new(&original).unwrap().set_len(size).unwrap();
-    db.insert_file_for_test(
-        &NewReleaseFile::new(
-            release,
-            name,
-            bae_util::content_type::ContentType::Jpeg,
-            id.to_string(),
-            chrono::Utc::now(),
-        ),
-        &original,
-    )
-    .await
-    .unwrap();
+    super::test_database(store)
+        .insert_file_for_test(
+            &NewReleaseFile::new(
+                release,
+                name,
+                bae_util::content_type::ContentType::Jpeg,
+                id.to_string(),
+                chrono::Utc::now(),
+            ),
+            &original,
+        )
+        .await
+        .unwrap();
 }
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
-pub async fn plan(db: &Database, statement: String) -> Vec<String> {
+pub async fn plan(db: &bae_store::Store, statement: String) -> Vec<String> {
     db.read(move |sql| {
         sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
             .map_err(DbError::from)

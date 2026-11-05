@@ -19,10 +19,10 @@ mod test_transfer;
 
 /// Where this release's files are, and whether this device pins them.
 pub(crate) async fn release_storage(
-    database: &bae_db::Database,
+    db: &bae_store::Store,
     release_id: &str,
 ) -> bae_views::album_detail::ReleaseStorageState {
-    let summary = bae_views::LibraryViews::new(database.clone())
+    let summary = bae_views::LibraryViews::new(db.clone())
         .find_release_detail(release_id)
         .await
         .unwrap()

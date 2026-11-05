@@ -25,6 +25,7 @@ use bae_db::{Database, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef, Lib
 #[cfg(desktop)]
 use bae_db::{DbAlbum, DbArtist};
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
+use bae_store::Store;
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{blocking, caught, joined, Bug, TaskFailed};
 use coven::ClockRef;
@@ -115,7 +116,7 @@ impl LibraryError {
 #[derive(Error, Debug)]
 pub enum LibraryError {
     #[error("Database error: {0}")]
-    Database(#[from] bae_db::DbError),
+    Database(#[from] bae_store::DbError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     /// An import step the library ran failed — reading a catalog release
@@ -434,6 +435,7 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
 /// transitions, library browsing, and deletion with cloud-storage cleanup.
 #[derive(Clone)]
 pub struct LibraryManager {
+    store: Store,
     database: Database,
     /// The app directory this library is registered under: where renaming
     /// another library finds it, where the active-library pointer is written,
@@ -496,7 +498,7 @@ pub fn generate_mcp_token() -> String {
 
 impl std::fmt::Debug for LibraryManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LibraryManager").field("database", &self.database).finish_non_exhaustive()
+        f.debug_struct("LibraryManager").field("store", &self.store).finish_non_exhaustive()
     }
 }
 

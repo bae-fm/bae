@@ -1,4 +1,5 @@
 use super::*;
+use rusqlite::Connection;
 
 /// Rows with ties on every term but the id, and NULLs in the terms that can
 /// hold them, so each seek of every order below has rows to find.

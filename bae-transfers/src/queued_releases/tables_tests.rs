@@ -5,23 +5,24 @@ use crate::output_snapshot::{OutputKind, OutputRequest};
 use crate::queued_releases::tables::{self, QueuedPayload};
 use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
 use bae_db::test_fixtures::*;
-use bae_db::*;
+use bae_store::test_fixtures::*;
+use bae_store::*;
 
 async fn enqueue_releases<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
     entries: Vec<ReleaseQueueEntry<P>>,
 ) -> Result<bool, DbError> {
     db.call(move |sql| tables::enqueue_releases_on(sql, &entries)).await
 }
 
 async fn next_queued_release<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
 ) -> Result<Option<ReleaseQueueEntry<P>>, DbError> {
     db.read(|sql| tables::next_queued_release_on::<P>(&sql)).await
 }
 
 async fn activate_queued_release<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
     release_id: &str,
 ) -> Result<bool, DbError> {
     let release_id = release_id.to_string();
@@ -29,7 +30,7 @@ async fn activate_queued_release<P: QueuedPayload>(
 }
 
 async fn finish_queued_release<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
     release_id: &str,
 ) -> Result<bool, DbError> {
     let release_id = release_id.to_string();
@@ -37,7 +38,7 @@ async fn finish_queued_release<P: QueuedPayload>(
 }
 
 async fn fail_queued_release<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
     release_id: &str,
     error: String,
 ) -> Result<bool, DbError> {
@@ -45,19 +46,19 @@ async fn fail_queued_release<P: QueuedPayload>(
     db.call(move |sql| tables::fail_queued_release_on::<P>(sql, &release_id, &error)).await
 }
 
-async fn retry_failed_releases<P: QueuedPayload>(db: &Database) -> Result<bool, DbError> {
+async fn retry_failed_releases<P: QueuedPayload>(db: &Store) -> Result<bool, DbError> {
     db.call(|sql| tables::retry_failed_releases_on::<P>(sql)).await
 }
 
 async fn set_release_queue_paused<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
     paused: bool,
 ) -> Result<bool, DbError> {
     db.call(move |sql| tables::set_release_queue_paused_on::<P>(sql, paused)).await
 }
 
 async fn cancel_queued_release<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
     release_id: &str,
 ) -> Result<bool, DbError> {
     let release_id = release_id.to_string();
@@ -65,12 +66,12 @@ async fn cancel_queued_release<P: QueuedPayload>(
 }
 
 async fn release_queue<P: QueuedPayload>(
-    db: &Database,
+    db: &Store,
 ) -> Result<crate::release_queue::ReleaseQueueSnapshot<P, ()>, DbError> {
     db.read(|sql| tables::release_queue_on::<P>(&sql)).await
 }
 
-async fn clear_transfers(db: &Database) -> Result<(), DbError> {
+async fn clear_transfers(db: &Store) -> Result<(), DbError> {
     db.call(tables::clear_transfers_on).await
 }
 
@@ -80,7 +81,7 @@ fn download(release_id: &str) -> ReleaseQueueEntry<()> {
 
 /// The download queue's entries as the Downloads pane lists them: each
 /// release and its phase, in the order queued.
-async fn downloads(db: &Database) -> Vec<(String, ReleaseQueueState<()>)> {
+async fn downloads(db: &Store) -> Vec<(String, ReleaseQueueState<()>)> {
     release_queue::<()>(db)
         .await
         .unwrap()
@@ -346,9 +347,9 @@ async fn a_window_reads_its_entries_and_the_queue_length() {
         (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
     enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
     let mut live =
-        crate::Downloads::new(db.clone()).subscribe_windows(bae_db::LibraryPageWindows::from([
-            bae_db::LibraryPageWindow { offset: 1, limit: 2 },
-            bae_db::LibraryPageWindow { offset: 9, limit: 2 },
+        crate::Downloads::new(db.clone()).subscribe_windows(bae_store::LibraryPageWindows::from([
+            bae_store::LibraryPageWindow { offset: 1, limit: 2 },
+            bae_store::LibraryPageWindow { offset: 9, limit: 2 },
         ]));
     let read = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(read.total_count, 5);

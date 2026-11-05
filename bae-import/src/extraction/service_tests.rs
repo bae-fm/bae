@@ -110,16 +110,16 @@ pub(super) async fn collect_snapshots(
 }
 
 /// A throwaway library database over a temp dir, which must outlive it.
-pub(super) async fn make_database() -> (bae_db::Database, TempDir) {
+pub(super) async fn make_database() -> (bae_store::Store, TempDir) {
     let tmp = TempDir::new().unwrap();
-    let database = bae_db::Database::new_test(
+    let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         tmp.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
-    (database, tmp)
+    (db, tmp)
 }
 
 /// Start a service; the bus sender comes back so a test can inject events.
@@ -128,12 +128,13 @@ pub(super) async fn make_service(
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
-    let (database, lib_tmp) = make_database().await;
+    let (db, lib_tmp) = make_database().await;
     let handle = ExtractionService::new(
         tokio::runtime::Handle::current(),
         tx.clone(),
         candidates,
-        database,
+        db.clone(),
+        bae_db::test_fixtures::test_database(&db),
         bae_diagnostics::Diagnostics::noop(),
     );
     (handle, tx, rx, lib_tmp)
@@ -561,12 +562,13 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let mut rx = tx.every_event();
-    let (database, _lib_tmp) = make_database().await;
+    let (db, _lib_tmp) = make_database().await;
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),
         event_tx: tx,
         analyzer: std::sync::Mutex::new(None),
-        database,
+        database: bae_db::test_fixtures::test_database(&db),
+        store: db,
         diagnostics: bae_diagnostics::Diagnostics::noop(),
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
         candidates,

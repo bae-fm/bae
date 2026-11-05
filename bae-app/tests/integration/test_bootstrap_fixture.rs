@@ -33,7 +33,7 @@ fn library_with_fixture(
     let id = runtime.block_on(async {
         let handle = create_library(
             installation.builder(),
-            bae_db::EnteredName::parse("Fixture Library").unwrap(),
+            bae_store::EnteredName::parse("Fixture Library").unwrap(),
         )
         .await
         .unwrap();

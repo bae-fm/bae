@@ -817,7 +817,7 @@ impl StoredMatchEntries {
 /// The releases of every run in flight, or of `key`'s runs alone, by run,
 /// each run's in position order.
 pub(super) fn load_run_matches_on(
-    sql: &impl bae_db::client::query::QueryRows,
+    sql: &impl bae_store::query::QueryRows,
     key: Option<&crate::CandidateKey>,
 ) -> Result<HashMap<i64, StoredMatches>, DbError> {
     let rows = sql.query(
@@ -854,7 +854,7 @@ pub(super) fn load_run_matches_on(
 /// each search's under its catalog parts in their order, each part's in the
 /// order it returned them.
 pub(super) fn load_search_matches_on(
-    sql: &impl bae_db::client::query::QueryRows,
+    sql: &impl bae_store::query::QueryRows,
     key: Option<&crate::CandidateKey>,
 ) -> Result<HashMap<i64, Vec<MatchRow>>, DbError> {
     let rows = sql.query(

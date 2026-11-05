@@ -2,6 +2,7 @@
 //! coven's `coven_uploads` beside them.
 
 use super::*;
+use bae_store::UPLOADS_PAUSED;
 
 /// How many of the release `?1`'s files wait in this device's upload queue.
 pub(super) const RELEASE_QUEUED_FILE_COUNT: &str = "SELECT COUNT(*) FROM release_files AS f \
@@ -45,9 +46,9 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
         return Ok(None);
     }
     Ok(Some(DbReleaseUpload {
-        waiting: read::count_column(row, "waiting_files")?,
-        sending: read::count_column(row, "sending_files")?,
-        stored: read::count_column(row, "stored_files")?,
+        waiting: bae_store::read::count_column(row, "waiting_files")?,
+        sending: bae_store::read::count_column(row, "sending_files")?,
+        stored: bae_store::read::count_column(row, "stored_files")?,
     }))
 }
 
@@ -69,9 +70,6 @@ pub fn release_upload_on(
         .optional()?
         .flatten())
 }
-
-/// Whether the person paused uploads, as coven's one row says.
-pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 
 /// Each file this process is sending now and, when it is one of a release's
 /// files, its release and size. One row per upload in flight is read.
@@ -100,7 +98,7 @@ pub(super) fn sending_file_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendingFi
     Ok(DbSendingFile {
         file: row.get("file")?,
         release_id: row.get("release_id")?,
-        file_size: read::optional_count_column(row, "file_size")?,
+        file_size: bae_store::read::optional_count_column(row, "file_size")?,
     })
 }
 
@@ -109,8 +107,8 @@ pub(super) fn sending_file_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendingFi
 pub(super) fn sending_release_in_row(row: &Row<'_>) -> rusqlite::Result<DbSendingRelease> {
     Ok(DbSendingRelease {
         release_id: row.get("release_id")?,
-        bytes_stored: read::count_column(row, "bytes_stored")?,
-        bytes_total: read::count_column(row, "bytes_total")?,
+        bytes_stored: bae_store::read::count_column(row, "bytes_stored")?,
+        bytes_total: bae_store::read::count_column(row, "bytes_total")?,
     })
 }
 
@@ -121,22 +119,26 @@ impl Database {
         release_id: &str,
     ) -> Result<i64, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| {
-            sql.query_row(RELEASE_QUEUED_FILE_COUNT, [release_id], |row| row.get(0))
-                .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(RELEASE_QUEUED_FILE_COUNT, [release_id], |row| row.get(0))
+                    .map_err(DbError::from)
+            })
+            .await
     }
 
     /// Whether any of the release's files still waits to upload from this
     /// device.
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| {
-            sql.query_row(RELEASE_HAS_QUEUED_FILE, [release_id], |row| row.get(0))
-                .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(RELEASE_HAS_QUEUED_FILE, [release_id], |row| row.get(0))
+                    .map_err(DbError::from)
+            })
+            .await
     }
 
     /// The files this process is sending now and the releases they belong
@@ -144,7 +146,7 @@ impl Database {
     /// stop being sent or the person pauses uploads. How far each file has
     /// got is coven's upload watch.
     pub fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads> {
-        self.inner.handle.subscribe(|sql| {
+        self.inner.store.subscribe(|sql| {
             let files = sql.query(FILES_SENDING, [], sending_file_in_row)?;
             let releases = sql.query(RELEASES_SENDING_BYTES, [], sending_release_in_row)?;
             Ok(DbSendingUploads {
@@ -155,27 +157,18 @@ impl Database {
         })
     }
 
-    /// How far each file this process is sending has got, by file, from
-    /// coven's upload watch.
-    pub fn subscribe_upload_transfers(&self) -> coven::TransferWatch {
-        self.inner.handle.subscribe_upload_transfers()
-    }
-
-    /// Whether the person paused uploads now.
-    pub async fn uploads_paused(&self) -> Result<bool, DbError> {
-        self.read(|sql| sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0)).map_err(DbError::from))
-            .await
-    }
-
     /// Whether a release file's coven file still waits to upload from this
     /// device.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
         let file_id = file_id.to_string();
-        self.read(move |sql| {
-            sql.query_row(RELEASE_FILE_QUEUED, [file_id], |row| row.get(0)).map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(RELEASE_FILE_QUEUED, [file_id], |row| row.get(0))
+                    .map_err(DbError::from)
+            })
+            .await
     }
 }
 

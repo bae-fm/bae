@@ -34,7 +34,7 @@ impl ImportingLibrary {
         http: bae_util::http::Http,
     ) -> Self {
         let temp = TempDir::new().unwrap();
-        let database = bae_db::Database::new_test(
+        let database = bae_store::Store::new_test(
             bae_library::SCHEMA,
             temp.path().join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
@@ -224,7 +224,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         .await
         .expect("the import reaches its measurement");
 
-    let mut values = bae_views::LibraryViews::new(fixture.library.database().clone())
+    let mut values = bae_views::LibraryViews::new(fixture.library.store().clone())
         .subscribe_album_detail(Some(shown_album.clone()));
     let shown =
         next_detail(&mut values, "the album detail arrives while the other import runs").await;
@@ -466,10 +466,10 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
 
     fixture.import(&key).await.unwrap_or_else(|error| panic!("import failed: {error}"));
 
-    let mut search = bae_views::LibraryViews::new(fixture.library.database().clone())
+    let mut search = bae_views::LibraryViews::new(fixture.library.store().clone())
         .subscribe_artist_search(bae_views::ArtistSearchView {
             query: bae_views::LibrarySearchQuery::parse("Track Artist"),
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
+            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into(),
         });
     let found = search.next().await.expect("the artist search stays open").result.unwrap();
     let result = bae_views::artist_search::resolve_artist_search(found, 0)

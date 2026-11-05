@@ -79,8 +79,8 @@ impl LibraryManager {
     pub async fn generate_restore_code(
         &self,
     ) -> Result<crate::sync::restore_code::RestoreCodeShare, LibraryError> {
-        let code = self.database.generate_restore_code().await?;
-        let qr_text = self.database.restore_code_for_transfer().await?;
+        let code = self.store.generate_restore_code().await?;
+        let qr_text = self.store.restore_code_for_transfer().await?;
         crate::sync::restore_code::RestoreCodeShare::new(code, qr_text)
             .map_err(LibraryError::TransferCode)
     }
@@ -111,7 +111,7 @@ impl LibraryManager {
         &self,
         watch: crate::sync::membership::AddedDeviceWatch,
     ) -> coven::LiveQuery<Option<bae_db::membership::ActiveDevice>> {
-        let sync_often = self.database.sync_often(ADD_DEVICE_SYNC_INTERVAL);
+        let sync_often = self.store.sync_often(ADD_DEVICE_SYNC_INTERVAL);
         self.subscribe_members().process(move |membership| {
             // The subscription owns the request; dropping it ends the request.
             let _sync_often = &sync_often;
@@ -170,7 +170,7 @@ impl LibraryManager {
         access: coven::InviteAccess,
         delivery: coven::InviteDelivery,
     ) -> Result<coven::InviteId, LibraryError> {
-        Ok(self.database.invite_person(role, name, access, delivery).await?)
+        Ok(self.store.invite_person(role, name, access, delivery).await?)
     }
 
     pub async fn approve_join_request(
@@ -184,13 +184,13 @@ impl LibraryManager {
         &self,
         request: &coven::JoinRequest,
     ) -> Result<(), LibraryError> {
-        Ok(self.database.decline_join_request(request).await?)
+        Ok(self.store.decline_join_request(request).await?)
     }
 
     /// Cancel an invite and take back its access. Once approval of its
     /// person has begun, the invite can't be cancelled (§5.6).
     pub async fn cancel_invite(&self, invite: &coven::InviteId) -> Result<(), LibraryError> {
-        match self.database.cancel_invite(invite).await {
+        match self.store.cancel_invite(invite).await {
             Err(error @ coven::SyncError::InvitationChanged) => {
                 Err(LibraryError::InviteJoining(error))
             }

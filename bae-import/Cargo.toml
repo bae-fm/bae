@@ -22,6 +22,7 @@ bae-catalogs = { workspace = true }
 # The store import reads and writes its own tables and the library's records
 # in.
 bae-db = { workspace = true }
+bae-store = { workspace = true }
 # The bugs and telemetry an import reports, and the error categories a pane
 # shows.
 bae-diagnostics = { workspace = true }
@@ -95,6 +96,7 @@ bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 # Test databases with bae's schema and the rows db's fixtures seed them with.
 bae-db = { workspace = true, features = ["test-utils"] }
+bae-store = { workspace = true, features = ["test-utils"] }
 # What the tests read back of an identify run.
 bae-identify = { workspace = true, features = ["test-utils"] }
 # A new library's preferences, built without a library.
@@ -130,7 +132,7 @@ default = []
 # bae-catalogs' and bae-util's the catalog fakes, the stand-in image host and
 # the test transport the runs ask. Dev/test-only: a production build never
 # enables it.
-test-utils = ["coven/test-utils", "bae-db/test-utils", "bae-catalogs/test-utils", "bae-util/test-utils"]
+test-utils = ["coven/test-utils", "bae-db/test-utils", "bae-store/test-utils", "bae-catalogs/test-utils", "bae-util/test-utils"]
 
 [lints]
 workspace = true

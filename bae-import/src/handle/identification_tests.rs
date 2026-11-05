@@ -219,8 +219,8 @@ async fn a_skip_ends_identification_in_its_write() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn combining_ends_its_folders_identification_in_its_write() {
-    let (parts, database, _library) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, _library) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&tables, &first_root, "Volume B").await;

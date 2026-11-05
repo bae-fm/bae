@@ -18,6 +18,7 @@ pub async fn start_services_on(
 ) -> Result<AppServices, ServicesStartError> {
     crate::start_library_services(
         bae_library::LibraryManager::clone(library),
+        library.store().clone(),
         library.database().clone(),
         library.catalogs().clone(),
         library.closing().clone(),

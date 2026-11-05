@@ -145,7 +145,7 @@ async fn test_local_delete_preserves_files() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let database = library.database().clone();
+    let db = library.store().clone();
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
@@ -175,7 +175,7 @@ async fn test_local_delete_preserves_files() {
         library.get_tracks_for_release(&release_id).await.expect("get tracks after delete");
     assert!(tracks_after.is_empty(), "Tracks should be deleted from database");
 
-    let album_after = bae_views::LibraryViews::new(database.clone())
+    let album_after = bae_views::LibraryViews::new(db.clone())
         .find_album_detail(&album_id)
         .await
         .expect("get album after delete");
@@ -212,6 +212,7 @@ async fn run_import_with_cover_test() {
     )
     .await;
     let database = library.database().clone();
+    let db = library.store().clone();
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
@@ -313,7 +314,7 @@ async fn run_import_with_cover_test() {
     info!("Cover library_image record exists, made from the selected image");
     let album_id =
         library.get_album_id_for_release(&release_id).await.expect("Failed to get album_id");
-    let album = bae_views::LibraryViews::new(database.clone())
+    let album = bae_views::LibraryViews::new(db.clone())
         .find_album_detail(&album_id)
         .await
         .expect("Failed to get album")

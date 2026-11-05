@@ -1,7 +1,7 @@
 //! The album grid's multi-selection, read through one live query whose ids
 //! change as the selection does.
 
-use bae_db::live_query::{CancellableLiveQuery, LiveQueryError};
+use bae_store::live_query::{CancellableLiveQuery, LiveQueryError};
 use std::collections::BTreeSet;
 
 /// One value the subscription delivered: the ids it read, and those of them

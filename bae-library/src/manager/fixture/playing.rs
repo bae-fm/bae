@@ -168,7 +168,7 @@ impl LibraryManager {
         track_id: String,
         position_ms: Option<u64>,
     ) -> Result<(), LibraryFixtureError> {
-        let filled = bae_playback::tables::PlaybackQueueTables::new(self.database.clone())
+        let filled = bae_playback::tables::PlaybackQueueTables::new(self.store.clone())
             .fill(bae_playback::tables::ContextFill::Release {
                 release_id: release_id.to_string(),
                 start: bae_playback::tables::ReleaseStart::Track(track_id.clone()),
@@ -181,7 +181,7 @@ impl LibraryManager {
             )));
         };
         let row = bae_playback::tables::PlaybackResumeRow { current: Some(current), position_ms };
-        bae_playback::tables::save_playback_state(&self.database, &row)
+        bae_playback::tables::save_playback_state(&self.store, &row)
             .await
             .map_err(LibraryError::from)?;
         Ok(())

@@ -8,6 +8,7 @@ impl ImportService {
     /// is how the rest of the app submits import requests.
     pub async fn start(
         runtime_handle: tokio::runtime::Handle,
+        store: bae_store::Store,
         database: bae_db::Database,
         catalogs: crate::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -19,6 +20,7 @@ impl ImportService {
     ) -> Result<ImportServiceHandle, crate::ImportError> {
         Self::start_reading_tags_through(
             runtime_handle,
+            store,
             database,
             catalogs,
             remote_images,
@@ -37,6 +39,7 @@ impl ImportService {
     /// test.
     pub(crate) async fn start_reading_tags_through(
         runtime_handle: tokio::runtime::Handle,
+        store: bae_store::Store,
         database: bae_db::Database,
         catalogs: crate::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -50,13 +53,14 @@ impl ImportService {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
         // anything reads the list.
-        let tables = crate::tables::ImportTables::new(database.clone());
+        let tables = crate::tables::ImportTables::new(store.clone());
         tables.clear_candidate_standings().await?;
         tables.close_import_lists().await?;
         let runtime = CandidateRuntime::new(tables, diagnostics.clone());
         let event_tx = crate::ImportEventBus::new(runtime.clone());
         let services = crate::ImportServices::new(
             event_tx,
+            store,
             database,
             catalogs,
             remote_images,

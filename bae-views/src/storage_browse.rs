@@ -1,7 +1,7 @@
 //! The Storage Manager list, read through one live query whose sort, filter,
 //! search text and windows change in place.
 
-use bae_db::{LibraryBrowseWindow, LibraryPageWindows};
+use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 
 /// What the Storage Manager shows: the list under one sort, filter and
 /// search text, the windows of it on screen, and the releases selected in it.

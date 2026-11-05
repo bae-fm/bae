@@ -2,12 +2,13 @@
 //! credits, tracks and files.
 
 use super::RELEASE_A;
-use crate::{Database, DbError, NewReleaseFile};
+use crate::NewReleaseFile;
+use bae_store::DbError;
 
 /// The library the reads that aggregate and order a release's credits and
 /// tracks are tested on, on `schema`.
-pub async fn aggregate_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(schema).await;
+pub async fn aggregate_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -40,8 +41,8 @@ pub async fn aggregate_db(schema: crate::Schema) -> (Database, tempfile::TempDir
     (db, tmp)
 }
 
-pub async fn queue_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(schema).await;
+pub async fn queue_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     db.call(|conn| {
         super::seed_artist_album_release(conn)?;
         conn.execute_batch(
@@ -65,8 +66,8 @@ pub async fn queue_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
 }
 
 /// The aggregate library with a release's detail seeded on it, on `schema`.
-pub async fn release_detail_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(schema).await;
+pub async fn release_detail_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     db.call(|conn| {
         super::seed_artist_album_release(conn)?;
         conn.execute_batch(
@@ -92,10 +93,15 @@ pub async fn release_detail_db(schema: crate::Schema) -> (Database, tempfile::Te
 
 /// Seed a release file, staged on this device only from an original of
 /// `size` zero bytes written under `dir`.
-pub async fn insert_file(db: &Database, dir: &std::path::Path, file: NewReleaseFile, size: u64) {
+pub async fn insert_file(
+    db: &bae_store::Store,
+    dir: &std::path::Path,
+    file: NewReleaseFile,
+    size: u64,
+) {
     let original = dir.join(&file.id);
     std::fs::File::create_new(&original).unwrap().set_len(size).unwrap();
-    db.insert_file_for_test(&file, &original).await.unwrap();
+    super::test_database(db).insert_file_for_test(&file, &original).await.unwrap();
 }
 
 /// The names `insert_files_out_of_natural_order` seeds, in natural order,
@@ -105,7 +111,7 @@ pub const FILES_IN_NATURAL_ORDER: [&str; 5] =
 
 /// Seed `RELEASE_A` with the files of `FILES_IN_NATURAL_ORDER`, inserted out
 /// of order, mixed case, with a two-digit number.
-pub async fn insert_files_out_of_natural_order(db: &Database, dir: &std::path::Path) {
+pub async fn insert_files_out_of_natural_order(db: &bae_store::Store, dir: &std::path::Path) {
     for (i, name) in
         ["Track 10.flac", "cover.jpg", "Track 2.flac", "Back.jpg", "album.cue"].iter().enumerate()
     {

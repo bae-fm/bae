@@ -233,7 +233,7 @@ impl PlaybackService {
     /// resumes nothing, and the library opened with the queue emptied
     /// (`settle_playback_queue`).
     pub(super) async fn restore_from_cache(&mut self) {
-        match crate::tables::load_playback_state(&self.database).await {
+        match crate::tables::load_playback_state(&self.store).await {
             Ok(Some(state)) => self.restore(state).await,
             Ok(None) => {}
             Err(e) => warn!("couldn't load the saved playback state: {e}; resuming nothing"),
@@ -242,7 +242,7 @@ impl PlaybackService {
 
     /// A queue table write or read failed: the queue is as it was before the
     /// command, and the command does nothing more.
-    pub(super) fn queue_failed(&self, doing: &str, error: &bae_db::DbError) {
+    pub(super) fn queue_failed(&self, doing: &str, error: &bae_store::DbError) {
         error!("couldn't {doing}: {error}");
         self.telemetry_playback_failed(PlaybackOperation::QueueChange);
     }
@@ -584,8 +584,8 @@ impl PlaybackService {
         }
     }
     /// Playback reads the library's tracks and preferences and streams their
-    /// files from `database`, and writes its resume row and listening history
-    /// there, each play under an id `ids` mints.
+    /// files from `store`, and its tracks' audio from `database`, and writes
+    /// its resume row and listening history there, each play under an id `ids` mints.
     /// `restore_playback` controls whether startup resumes the saved track and
     /// position over the queue the tables hold; opening the library settled
     /// the tables for it first (`settle_playback_queue`). The crash-safe row
@@ -598,6 +598,7 @@ impl PlaybackService {
     /// and where it is into `now_row` and `timeline_row`, and lets go of a
     /// track it holds once the library no longer holds it.
     pub fn start(
+        store: bae_store::Store,
         database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
@@ -611,6 +612,7 @@ impl PlaybackService {
         audio_focus: crate::AudioFocus,
     ) -> PlaybackHandle {
         Self::start_inner(
+            store,
             database,
             ids,
             queue_tables,
@@ -631,6 +633,7 @@ impl PlaybackService {
     /// touches no audio hardware.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn start_with_audio_device(
+        store: bae_store::Store,
         database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
@@ -644,6 +647,7 @@ impl PlaybackService {
         clock: crate::PlaybackClockRef,
     ) -> PlaybackHandle {
         Self::start_inner(
+            store,
             database,
             ids,
             queue_tables,
@@ -661,6 +665,7 @@ impl PlaybackService {
     }
 
     pub(super) fn start_inner(
+        store: bae_store::Store,
         database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
@@ -723,16 +728,17 @@ impl PlaybackService {
                             diagnostics.clone(),
                         );
                         let staged_sides = advance::track_infos_follow(
-                            &database,
+                            &store,
                             "the staged crossing's sides",
                             &diagnostics,
                         );
                         let held_tracks = advance::track_infos_follow(
-                            &database,
+                            &store,
                             "the tracks playback holds",
                             &diagnostics,
                         );
                         let mut service = PlaybackService {
+                            store,
                             database,
                             ids,
                             diagnostics,

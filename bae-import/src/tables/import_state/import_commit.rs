@@ -61,12 +61,16 @@ fn import_commit_error(error: CovenError) -> ImportCommitError {
         CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(host))) => {
             match host.downcast::<ImportCommitError>() {
                 Ok(error) => *error,
-                Err(other) => ImportCommitError::Write(Database::identity_write_error(
-                    rusqlite::Error::UserFunctionError(other).into(),
-                )),
+                Err(other) => ImportCommitError::Write(
+                    bae_db::client::artist_resolution::identity_write_error(
+                        rusqlite::Error::UserFunctionError(other).into(),
+                    ),
+                ),
             }
         }
-        other => ImportCommitError::Write(Database::identity_write_error(other)),
+        other => {
+            ImportCommitError::Write(bae_db::client::artist_resolution::identity_write_error(other))
+        }
     }
 }
 
@@ -288,6 +292,7 @@ impl ImportTables {
     /// the import record — every row below lands together or not at all.
     pub(crate) async fn finalize_import_atomic(
         &self,
+        ids: &dyn coven::IdSource,
         guard: ImportCommitGuard,
         // `None` when the album is an existing one, already in the DB.
         album: Option<&DbAlbum>,
@@ -337,10 +342,10 @@ impl ImportTables {
             .map(|prepared| (prepared.row, (prepared.original, prepared.place)))
             .unzip();
         let records = rows.records.to_vec();
-        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.database.now());
+        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.store.now());
         let now = now_dt.to_rfc3339();
-        let labels = self.database.label_parts(&release.pressing.labels);
-        self.database
+        let labels = bae_db::LabelParts::new(ids, now_dt, &release.pressing.labels);
+        self.store
             .write_staged(
                 move |w| {
                     Ok(image_files
@@ -495,11 +500,10 @@ impl ImportTables {
     ) -> Result<bae_db::client::artist_resolution::ResolvedArtists, bae_db::IdentityWriteError>
     {
         let (credits, picked) = (credits.to_vec(), picked.to_vec());
-        self.database
-            .read_resolving_identities(move |sql| {
-                ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql)
-            })
-            .await
+        bae_db::client::artist_resolution::read_resolving_identities(&self.store, move |sql| {
+            ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql)
+        })
+        .await
     }
 }
 

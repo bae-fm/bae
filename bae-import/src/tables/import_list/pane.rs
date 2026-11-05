@@ -392,7 +392,7 @@ impl ImportTables {
         Option<crate::CandidateKey>,
         Option<ImportCandidateDetailProjection>,
     > {
-        self.database
+        self.store
             .subscribe_reconfigurable(initial, |key, sql| match key {
                 None => Ok(None),
                 Some(key) => pane::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
@@ -416,7 +416,7 @@ impl ImportTables {
         Option<crate::CandidateKey>,
         Option<crate::InvalidCandidateDetail>,
     > {
-        self.database.subscribe_reconfigurable(initial, |key, sql| match key {
+        self.store.subscribe_reconfigurable(initial, |key, sql| match key {
             None => Ok(None),
             Some(key) => {
                 let invalid: bool = sql.query_row(
@@ -447,7 +447,7 @@ impl ImportTables {
         key: &crate::CandidateKey,
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.clone();
-        self.database
+        self.store
             .read(move |sql| pane::load_candidate_detail_on(&sql, &key))
             .process(|process| process.map(pane::CandidateDetailRows::process).transpose())
             .await

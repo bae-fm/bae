@@ -11,9 +11,10 @@ use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_catalogs::test_releases::seed_mb_release_with_works;
-use bae_db::{Database, DbAlbum, DbArtist, DbRelease};
+use bae_db::{DbAlbum, DbArtist, DbRelease};
 use bae_identify::AlbumLink;
 use bae_identify::LookupChoiceEdit;
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use std::path::Path;
@@ -22,7 +23,7 @@ use uuid::Uuid;
 
 /// What an import service is started from over a fresh store asking no
 /// catalog, the store, and the directory holding it.
-pub(super) async fn setup_test_import() -> (TestImport, Database, TempDir) {
+pub(super) async fn setup_test_import() -> (TestImport, Store, TempDir) {
     setup_test_import_with(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -34,7 +35,7 @@ pub(super) async fn setup_test_import() -> (TestImport, Database, TempDir) {
 pub(super) async fn setup_test_import_with(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
-) -> (TestImport, Database, TempDir) {
+) -> (TestImport, Store, TempDir) {
     setup_test_import_over(providers, http, bae_diagnostics::Diagnostics::noop()).await
 }
 
@@ -42,10 +43,10 @@ pub(super) async fn setup_test_import_over(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (TestImport, Database, TempDir) {
+) -> (TestImport, Store, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
+    let db = Store::new_test(
         crate::TEST_SCHEMA,
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
@@ -53,14 +54,14 @@ pub(super) async fn setup_test_import_over(
     .await
     .unwrap();
     let parts = TestImport::new(
-        database.clone(),
+        db.clone(),
         providers,
         http,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         diagnostics,
     );
-    (parts, database, temp_dir)
+    (parts, db, temp_dir)
 }
 
 pub(crate) fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
@@ -78,13 +79,13 @@ pub(crate) fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&s
 /// An album of its own holding one release of one track, crediting the
 /// library artist `artist_id`, written as the library writes a release.
 pub(super) async fn insert_library_release(
-    database: &Database,
+    db: &Store,
     artist_id: &str,
     title: &str,
 ) -> (DbAlbum, DbRelease) {
     let album = DbAlbum::new_test(title);
     let release = DbRelease::new_test(&album.id, &Uuid::new_v4().to_string());
-    database
+    bae_db::test_fixtures::test_database(db)
         .insert_album_with_release_and_tracks(
             &album,
             &[bae_db::DbAlbumArtist::new_test(&album.id, artist_id)],
@@ -464,7 +465,7 @@ pub(crate) struct StoredCandidate {
     pub(crate) parts: TestImport,
     /// The store the service was started over, for a test that reads or
     /// seeds rows no call reads or writes on its own.
-    pub(crate) database: Database,
+    pub(crate) db: Store,
     pub(super) candidate: FolderCandidate,
     /// The key the pane's controls address the candidate by.
     pub(crate) key: crate::CandidateKey,
@@ -516,31 +517,31 @@ pub(super) async fn stored_candidate_with(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
 ) -> StoredCandidate {
-    let (parts, database, tmp) = setup_test_import_with(providers, http).await;
-    let tables = crate::tables::ImportTables::new(database.clone());
+    let (parts, db, tmp) = setup_test_import_with(providers, http).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
     let (candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
-    started(parts, database, candidate, key, tmp).await
+    started(parts, db, candidate, key, tmp).await
 }
 
 /// [`stored_candidate`] whose tags the scan could not read.
 pub(super) async fn unread_stored_candidate() -> StoredCandidate {
-    let (parts, database, tmp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database.clone());
+    let (parts, db, tmp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
     let (candidate, key, _hash) = unread_candidate(&tables, &tmp, "Album").await;
-    started(parts, database, candidate, key, tmp).await
+    started(parts, db, candidate, key, tmp).await
 }
 
 /// An import service started from `parts` over `database`, addressed at the
 /// stored `candidate`.
 pub(super) async fn started(
     parts: TestImport,
-    database: Database,
+    db: Store,
     candidate: FolderCandidate,
     key: crate::CandidateKey,
     tmp: TempDir,
 ) -> StoredCandidate {
     let handle = parts.start().await.unwrap();
-    StoredCandidate { handle, parts, database, candidate, key, tmp }
+    StoredCandidate { handle, parts, db, candidate, key, tmp }
 }
 
 /// The handle, the key its controls address, and the hash its rows are stored

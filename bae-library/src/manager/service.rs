@@ -39,6 +39,7 @@ impl LibraryManager {
     /// transfers run as this device's preferences for it say, and what no
     /// process outlives is cleared. `closing` ends its tasks when it closes.
     pub(crate) async fn open(
+        store: Store,
         database: Database,
         app_dir: bae_app_dir::AppDir,
         clock: ClockRef,
@@ -52,21 +53,21 @@ impl LibraryManager {
         make_local_transfers: bae_transfers::ReleaseTransfers<crate::MakeLocalTransferProgress>,
         detach_cancels: crate::detach_cancels::DetachCancels,
         closing: tokio_util::sync::CancellationToken,
-    ) -> Result<Self, bae_db::DbError> {
+    ) -> Result<Self, bae_store::DbError> {
         // The store opens running one transfer per direction, the least any
         // preference allows, so nothing it starts before this exceeds them.
-        database
-            .set_transfer_limits(bae_preferences::preferences(&database).await?.transfer_limits());
+        store.set_transfer_limits(bae_preferences::preferences(&store).await?.transfer_limits());
         // No transfer outlives the process that ran it, so the library opens
         // with its transfer queues empty, before their workers start, and
         // with no release in a storage transition.
-        database.call(bae_transfers::tables::clear_transfers_on).await?;
+        store.call(bae_transfers::tables::clear_transfers_on).await?;
         // Nor does an attempt to start sync: a failed start stands only in
         // the process that made it.
         database.record_sync_start_failure(None).await?;
         let manager = LibraryManager {
             #[cfg(desktop)]
             catalogs,
+            store,
             database,
             app_dir,
             #[cfg(desktop)]
@@ -223,12 +224,12 @@ impl LibraryManager {
     pub fn until_closed<Request, Projection>(
         &self,
         query: coven::ReconfigurableLiveQuery<Request, Projection>,
-    ) -> bae_db::live_query::CancellableLiveQuery<Request, Projection>
+    ) -> bae_store::live_query::CancellableLiveQuery<Request, Projection>
     where
         Request: Clone + PartialEq + Send + Sync + 'static,
         Projection: Clone + PartialEq + Send + 'static,
     {
-        bae_db::live_query::CancellableLiveQuery::new(query, self.tasks.closing.child_token())
+        bae_store::live_query::CancellableLiveQuery::new(query, self.tasks.closing.child_token())
     }
 
     /// `query`'s values for a surface to pull, which closing the library ends
@@ -237,9 +238,9 @@ impl LibraryManager {
     /// start.
     pub fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
-        query: impl bae_db::live_query::LiveSource<T> + 'static,
-    ) -> bae_db::live_query::LiveValues<T> {
-        bae_db::live_query::LiveValues::new(query, self.tasks.closing.child_token())
+        query: impl bae_store::live_query::LiveSource<T> + 'static,
+    ) -> bae_store::live_query::LiveValues<T> {
+        bae_store::live_query::LiveValues::new(query, self.tasks.closing.child_token())
     }
 
     /// A file operation owns its rollback even when its caller disappears. A
@@ -307,13 +308,13 @@ impl LibraryManager {
         steps: &(dyn Fn(crate::ClosingStep) + Send + Sync),
     ) -> Result<(), LibraryError> {
         steps(crate::ClosingStep::StoppingSync);
-        if let Err(error) = self.database.stop_sync().await {
+        if let Err(error) = self.store.stop_sync().await {
             warn!(%error, "stopping sync as the library closes failed");
         }
         steps(crate::ClosingStep::FinishingWork);
         self.tasks.close().await;
         steps(crate::ClosingStep::ClosingStore);
-        self.database.close().await?;
+        self.store.close().await?;
         Ok(())
     }
 
@@ -386,7 +387,7 @@ impl LibraryManager {
             _ => None,
         };
         if failed(snapshot).is_some() && last.and_then(failed) != failed(snapshot) {
-            match self.database.storage_config().await {
+            match self.store.storage_config().await {
                 Ok(Some(storage)) => self.diagnostics.event(TelemetryEvent::SyncFailed {
                     provider: storage.provider(),
                     operation: SyncOperation::Cycle,
@@ -401,8 +402,8 @@ impl LibraryManager {
     /// sync status's rows, each value made from the latest of both.
     pub fn subscribe_sync_status(
         &self,
-    ) -> bae_db::WithSyncState<bae_db::SyncStatusRows, bae_db::SyncStatusSnapshot> {
-        self.database.with_sync_state(bae_db::sync_status_rows_on, bae_db::SyncStatusSnapshot::read)
+    ) -> bae_store::WithSyncState<bae_db::SyncStatusRows, bae_db::SyncStatusSnapshot> {
+        self.store.with_sync_state(bae_db::sync_status_rows_on, bae_db::SyncStatusSnapshot::read)
     }
 
     /// How far and how fast each release with files being sent goes, and
@@ -410,7 +411,7 @@ impl LibraryManager {
     pub fn watch_outbox_transfers(&self) -> crate::OutboxTransfersWatch {
         crate::OutboxTransfersWatch::of(
             self.database.subscribe_sending_uploads(),
-            self.database.subscribe_upload_transfers(),
+            self.store.subscribe_upload_transfers(),
             self.clock.clone(),
         )
     }
@@ -419,7 +420,7 @@ impl LibraryManager {
     pub fn watch_outbox_total_transfer(&self) -> crate::OutboxTotalTransferWatch {
         crate::OutboxTotalTransferWatch::of(
             self.database.subscribe_sending_uploads(),
-            self.database.subscribe_upload_transfers(),
+            self.store.subscribe_upload_transfers(),
             self.clock.clone(),
         )
     }
@@ -427,13 +428,13 @@ impl LibraryManager {
     /// How far each file being sent has got, by file, told as each one
     /// moves.
     pub fn watch_upload_file_transfers(&self) -> crate::FileTransfersWatch {
-        crate::FileTransfersWatch::of(self.database.subscribe_upload_transfers())
+        crate::FileTransfersWatch::of(self.store.subscribe_upload_transfers())
     }
 
     /// How far each file being downloaded to keep whole has got, by file,
     /// told as each one moves.
     pub fn watch_pin_file_transfers(&self) -> crate::FileTransfersWatch {
-        crate::FileTransfersWatch::of(self.database.subscribe_download_file_transfers())
+        crate::FileTransfersWatch::of(self.store.subscribe_download_file_transfers())
     }
 
     /// Every entry of the download queue now, for a test that reads the
@@ -454,9 +455,9 @@ impl LibraryManager {
     /// names of them, as the Downloads pane draws them.
     pub fn subscribe_download_windows(
         &self,
-        initial: bae_db::LibraryPageWindows,
+        initial: bae_store::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        bae_db::LibraryPageWindows,
+        bae_store::LibraryPageWindows,
         bae_transfers::ReleaseQueueWindows<()>,
     > {
         self.downloads.subscribe_windows(initial)
@@ -520,7 +521,7 @@ impl LibraryManager {
 
     /// A transfer queue's own table failed to read or write in its worker,
     /// which has nobody to tell: the worker waits for the next command.
-    pub(super) fn report_queue_store_failure(&self, queue: &str, error: &bae_db::DbError) {
+    pub(super) fn report_queue_store_failure(&self, queue: &str, error: &bae_store::DbError) {
         self.diagnostics.report_bug(
             &format!("read or write the {queue} queue's table"),
             &bae_util::error_text::CauseChain(error),

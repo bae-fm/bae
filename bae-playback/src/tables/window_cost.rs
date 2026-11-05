@@ -2,10 +2,10 @@
 //! library's window-cost harness.
 
 use super::*;
-use bae_db::test_fixtures::window_cost::{median, offsets, report, LIMIT};
+use bae_store::test_fixtures::window_cost::{median, offsets, report, LIMIT};
 
 /// What the playback queue's upcoming windows cost to read.
-pub async fn measure_playback_queue(db: &Database, n: u64) {
+pub async fn measure_playback_queue(store: &Store, n: u64) {
     // The context lane's upcoming windows are read by offset alone: the
     // offset steps over the lane's positions before any track is read.
     let lane = format!(
@@ -20,7 +20,7 @@ pub async fn measure_playback_queue(db: &Database, n: u64) {
     );
     for (at, offset) in offsets(n) {
         let lane = lane.clone();
-        let timing = median(db, move |sql| {
+        let timing = median(store, move |sql| {
             Ok(sql.query(&lane, params![LIMIT as i64, offset as i64], |_| Ok(()))?.len())
         })
         .await;

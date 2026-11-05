@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 
 use rusqlite::types::Value;
 
-use bae_db::SchemaFunction;
+use bae_store::SchemaFunction;
 
 /// A watched root or folder path the store refuses to key by: relative,
 /// containing `..`, or not in canonical form.
@@ -17,7 +17,7 @@ use bae_db::SchemaFunction;
 #[error("watched folder: {0}")]
 pub struct WatchedPathError(String);
 
-impl From<WatchedPathError> for bae_db::DbError {
+impl From<WatchedPathError> for bae_store::DbError {
     fn from(error: WatchedPathError) -> Self {
         Self::Message(error.to_string())
     }

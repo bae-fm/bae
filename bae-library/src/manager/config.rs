@@ -36,33 +36,33 @@ impl LibraryManager {
             + Send
             + 'static,
     ) -> Result<(), bae_preferences::PreferencesError> {
-        bae_preferences::edit_preferences(&self.database, edit).await
+        bae_preferences::edit_preferences(&self.store, edit).await
     }
 
     /// This device's preferences for the library, as stored now.
-    pub async fn preferences(&self) -> Result<bae_preferences::Preferences, bae_db::DbError> {
-        bae_preferences::preferences(&self.database).await
+    pub async fn preferences(&self) -> Result<bae_preferences::Preferences, bae_store::DbError> {
+        bae_preferences::preferences(&self.store).await
     }
 
     /// The library this is, by its store id.
     pub fn store_id(&self) -> coven::StoreId {
-        self.database.store_id()
+        self.store.store_id()
     }
 
     /// bae's own directory for this library, apart from coven's store: the
     /// remote image cache and the like.
     pub fn library_path(&self) -> PathBuf {
-        self.app_dir.registered_library(&self.database.store_id().to_string())
+        self.app_dir.registered_library(&self.store.store_id().to_string())
     }
 
     /// The library's preferences as the settings screens read them, with the
     /// library and its directory: the first value at once, then one after
     /// each write that changes them, until the surface cancels or the library
     /// closes.
-    pub fn subscribe_config(&self) -> bae_db::live_query::LiveValues<bae_preferences::Config> {
-        let store_id = self.database.store_id();
+    pub fn subscribe_config(&self) -> bae_store::live_query::LiveValues<bae_preferences::Config> {
+        let store_id = self.store.store_id();
         let library_path = self.library_path();
-        self.values_until_closed(bae_preferences::subscribe_preferences(&self.database).process(
+        self.values_until_closed(bae_preferences::subscribe_preferences(&self.store).process(
             move |prefs| {
                 Ok(bae_preferences::Config { store_id, library_path: library_path.clone(), prefs })
             },
@@ -75,9 +75,9 @@ impl LibraryManager {
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
         &self,
         part: impl Fn(bae_preferences::Preferences) -> T + Send + Sync + 'static,
-    ) -> bae_db::live_query::LiveValues<T> {
+    ) -> bae_store::live_query::LiveValues<T> {
         self.values_until_closed(
-            bae_preferences::subscribe_preferences(&self.database)
+            bae_preferences::subscribe_preferences(&self.store)
                 .process(move |prefs| Ok(part(prefs))),
         )
     }
@@ -166,7 +166,7 @@ impl LibraryManager {
     /// current ones.
     pub async fn metadata_sources(
         &self,
-    ) -> Result<Vec<bae_preferences::CatalogAvailability>, bae_db::DbError> {
+    ) -> Result<Vec<bae_preferences::CatalogAvailability>, bae_store::DbError> {
         Ok(self.preferences().await?.metadata_sources())
     }
 
@@ -253,17 +253,19 @@ impl LibraryManager {
     /// Hand the stored transfer limits to the open store, as opening it
     /// does; this is what a change after open does.
     async fn apply_transfer_limits(&self) -> Result<(), bae_preferences::PreferencesError> {
-        self.database.set_transfer_limits(self.preferences().await?.transfer_limits());
+        self.store.set_transfer_limits(self.preferences().await?.transfer_limits());
         Ok(())
     }
 
     /// The limits the open store runs under — what a change through the
     /// setters above has taken effect as.
     pub fn transfer_limits(&self) -> coven::TransferLimits {
-        self.database.transfer_limits()
+        self.store.transfer_limits()
     }
 
-    pub async fn save_presets(&self) -> Result<Vec<bae_preferences::SavePreset>, bae_db::DbError> {
+    pub async fn save_presets(
+        &self,
+    ) -> Result<Vec<bae_preferences::SavePreset>, bae_store::DbError> {
         Ok(self.preferences().await?.save_presets)
     }
 
@@ -441,8 +443,8 @@ impl LibraryManager {
         &self,
         name: &'static str,
     ) -> Result<Option<String>, LibraryError> {
-        let database = self.database.clone();
-        let secret = blocking("read a host secret", move || database.host_secret(name))
+        let store = self.store.clone();
+        let secret = blocking("read a host secret", move || store.host_secret(name))
             .await
             .map_err(|failed| self.bug(failed))?;
         Ok(secret?)
@@ -450,11 +452,10 @@ impl LibraryManager {
 
     /// Store a host secret in the keychain on a blocking thread.
     async fn set_host_secret(&self, name: &'static str, value: String) -> Result<(), LibraryError> {
-        let database = self.database.clone();
-        let stored =
-            blocking("store a host secret", move || database.set_host_secret(name, &value))
-                .await
-                .map_err(|failed| self.bug(failed))?;
+        let store = self.store.clone();
+        let stored = blocking("store a host secret", move || store.set_host_secret(name, &value))
+            .await
+            .map_err(|failed| self.bug(failed))?;
         Ok(stored?)
     }
 }

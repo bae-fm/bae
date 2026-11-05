@@ -138,7 +138,7 @@ async fn unlinked_cover_gallery_for_file_tags() {
 async fn unlinked_cover_gallery_for_library_release() {
     let (parts, database, _tmp) = setup_test_import().await;
     let artist = make_artist("Artist Name", None, None);
-    database.insert_artist(&artist).await.unwrap();
+    bae_db::test_fixtures::test_database(&database).insert_artist(&artist).await.unwrap();
     let (_album, release) = insert_library_release(&database, &artist.id, "Album Title").await;
     let handle = parts.start().await.unwrap();
     let gallery = handle.fetch_remote_covers(CoverTarget::Release(release.id)).await.unwrap();
@@ -150,9 +150,9 @@ async fn unlinked_cover_gallery_for_library_release() {
 async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     let (parts, database, _tmp) = setup_test_import().await;
     let artist = make_artist("Artist Name", None, None);
-    database.insert_artist(&artist).await.unwrap();
+    bae_db::test_fixtures::test_database(&database).insert_artist(&artist).await.unwrap();
     let (_album, release) = insert_library_release(&database, &artist.id, "Album Title").await;
-    database
+    bae_db::test_fixtures::test_database(&database)
         .insert_release_records(
             &release.id,
             &[bae_catalogs::records::ReleaseRecord::new(

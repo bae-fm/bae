@@ -8,10 +8,10 @@ use super::*;
 /// leaving out a track the library no longer holds. The playback service
 /// points it at the tracks whose crossing it has staged.
 pub(crate) fn subscribe_playback_track_infos(
-    database: &Database,
+    store: &Store,
     initial: Vec<String>,
 ) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::PlaybackTrackInfo>> {
-    database
+    store
         .subscribe_reconfigurable(initial, |track_ids, sql| {
             let mut infos = Vec::with_capacity(track_ids.len());
             for track_id in track_ids {
@@ -31,11 +31,11 @@ pub(crate) fn subscribe_playback_track_infos(
 /// The display of `track_id` as the library holds it now, or `None` when it
 /// no longer holds the track.
 pub async fn track_display(
-    database: &Database,
+    store: &Store,
     track_id: &str,
 ) -> Result<Option<crate::TrackDisplay>, DbError> {
     let track_id = track_id.to_string();
-    database.read(move |sql| track_display_on(&sql, &track_id)).await
+    store.read(move |sql| track_display_on(&sql, &track_id)).await
 }
 
 /// A track's display and its catalog duration, as the queue rows show it.
@@ -64,7 +64,7 @@ pub(crate) fn track_display_columns() -> String {
          a.title AS album_title, r.id AS release_id, \
          {cover_version} AS cover_version, \
          {artist_names} AS artist_names",
-        cover_version = bae_db::client::files::file_version_sql("c.file"),
+        cover_version = bae_store::file_version_sql("c.file"),
         artist_names = track_credits_json_sql("t"),
     )
 }

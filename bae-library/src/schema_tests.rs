@@ -1,4 +1,4 @@
-use bae_db::test_fixtures::schema_checks::{absent_update_of_columns, loose_tables};
+use bae_store::test_fixtures::schema_checks::{absent_update_of_columns, loose_tables};
 
 /// Every table the schema creates is `STRICT`, so a value of the wrong type
 /// is refused rather than stored.

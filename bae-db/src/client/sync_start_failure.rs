@@ -143,8 +143,8 @@ impl FailureColumns {
     }
 
     fn sizes(&mut self, size: u64, limit: u64) -> Result<(), DbError> {
-        self.size_bytes = Some(super::query::to_i64(size, "size_bytes")?);
-        self.limit_bytes = Some(super::query::to_i64(limit, "limit_bytes")?);
+        self.size_bytes = Some(bae_store::query::to_i64(size, "size_bytes")?);
+        self.limit_bytes = Some(bae_store::query::to_i64(limit, "limit_bytes")?);
         Ok(())
     }
 }
@@ -294,10 +294,12 @@ impl Database {
                 FailureColumns::of(&category).map(|columns| (columns, detail))
             })
             .transpose()?;
-        self.call(move |sql| {
-            match &row {
-                Some((columns, detail)) => sql.execute(
-                    "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
+        self.inner
+            .store
+            .call(move |sql| {
+                match &row {
+                    Some((columns, detail)) => sql.execute(
+                        "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
                      own_bucket_reason, required_access, size_bytes, limit_bytes, detail) \
                      VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7) \
                      ON CONFLICT (singleton) DO UPDATE SET \
@@ -306,21 +308,21 @@ impl Database {
                      required_access = excluded.required_access, \
                      size_bytes = excluded.size_bytes, limit_bytes = excluded.limit_bytes, \
                      detail = excluded.detail",
-                    params![
-                        columns.category,
-                        columns.storage_failure,
-                        columns.own_bucket_reason,
-                        columns.required_access,
-                        columns.size_bytes,
-                        columns.limit_bytes,
-                        detail
-                    ],
-                )?,
-                None => sql.execute("DELETE FROM sync_start_failure", [])?,
-            };
-            Ok(())
-        })
-        .await
+                        params![
+                            columns.category,
+                            columns.storage_failure,
+                            columns.own_bucket_reason,
+                            columns.required_access,
+                            columns.size_bytes,
+                            columns.limit_bytes,
+                            detail
+                        ],
+                    )?,
+                    None => sql.execute("DELETE FROM sync_start_failure", [])?,
+                };
+                Ok(())
+            })
+            .await
     }
 }
 

@@ -20,7 +20,7 @@ fn a_cover_reaches_another_device_with_its_stored_file() {
         insert_release(manager, &release).await;
         devices.converge("SELECT id FROM releases").await;
 
-        manager.database.set_uploads_paused(true).await.unwrap();
+        manager.store.set_uploads_paused(true).await.unwrap();
         store_test_cover(manager, &release.id, b"the cover").await;
         let cover = cover_file(manager, &release.id).await;
         devices
@@ -110,7 +110,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         let a = devices.a();
         a.stop_sync().await;
         assert!(
-            a.database()
+            a.store()
                 .queued_write_rows_for_test()
                 .await
                 .unwrap()
@@ -141,7 +141,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
             "the cover can't be read while its file is on its uploader only"
         );
 
-        devices.a().database().start_sync().await.unwrap();
+        devices.a().store().start_sync().await.unwrap();
         let b = devices.b();
         b.wait_until("the cover's file on the second device", || async {
             matches!(
@@ -186,7 +186,7 @@ async fn an_image_over_the_bound_limit_is_refused() {
         .await
         .expect_err("an image over the limit makes no cover");
     match &error {
-        LibraryError::Database(bae_db::DbError::Coven(coven::CovenError::Database(
+        LibraryError::Database(bae_store::DbError::Coven(coven::CovenError::Database(
             coven::DbError::BoundFileTooLarge { table, column, size, limit },
         ))) => {
             assert_eq!((table.as_str(), column.as_str()), ("covers", "file"));

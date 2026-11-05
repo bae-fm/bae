@@ -3,8 +3,8 @@
 use crate::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScannedFile,
 };
-use bae_db::test_fixtures::empty_db;
-use bae_db::Database;
+use bae_store::test_fixtures::empty_db;
+use bae_store::Store;
 use std::path::PathBuf;
 
 /// The folder at `name`, a `/`-separated path below `root`, spelled the way
@@ -59,7 +59,7 @@ pub(crate) fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
 }
 
 /// `empty_db` plus a watched-folder root that exists on disk.
-pub(crate) async fn watched_root() -> (Database, tempfile::TempDir, std::path::PathBuf) {
+pub(crate) async fn watched_root() -> (Store, tempfile::TempDir, std::path::PathBuf) {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let root = tmp.path().join("watched");
     std::fs::create_dir_all(&root).unwrap();

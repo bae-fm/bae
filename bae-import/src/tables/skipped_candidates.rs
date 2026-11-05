@@ -9,8 +9,8 @@ use crate::CandidateKey;
 use std::path::Path;
 
 /// The skipped candidates' part of the library's schema.
-pub(super) const SCHEMA: bae_db::SchemaPart =
-    bae_db::SchemaPart::new(&[include_str!("skipped_candidates.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("skipped_candidates.sql")]);
 
 /// Forget every candidate set aside at or below `folders`.
 pub(super) fn forget_at_or_below(
@@ -43,7 +43,7 @@ impl ImportTables {
         let (below_first, below_past) =
             crate::tables::watched_path::paths_below(watched_folder_path);
         let paths: Vec<PathBuf> = self
-            .database
+            .store
             .read(move |sql| {
                 Ok(sql.query(
                     "SELECT candidate_path FROM skipped_import_candidates \
@@ -74,7 +74,7 @@ impl ImportTables {
         // The store refuses a write that changes nothing, so read first.
         let stored = {
             let candidate_path = coven::path_bytes(&candidate_path);
-            self.database
+            self.store
                 .read(move |sql| {
                     Ok(sql
                         .query_row(
@@ -90,7 +90,7 @@ impl ImportTables {
         if stored == skipped {
             return Ok(false);
         }
-        self.database
+        self.store
             .call(move |sql| {
                 let changed = if skipped {
                     require_watched(sql, &candidate_path)?;

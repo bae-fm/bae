@@ -114,7 +114,7 @@ async fn check_playability(
     )
     .await;
     let playability = |release_id: String| async move {
-        bae_views::LibraryViews::new(manager.database.clone())
+        bae_views::LibraryViews::new(manager.store.clone())
             .find_release_detail(&release_id)
             .await
             .unwrap()
@@ -142,5 +142,5 @@ async fn check_playability(
 }
 
 async fn queued_upload_count(manager: &LibraryManager) -> i64 {
-    manager.database.queued_upload_count_for_test().await.unwrap()
+    manager.store.queued_upload_count_for_test().await.unwrap()
 }

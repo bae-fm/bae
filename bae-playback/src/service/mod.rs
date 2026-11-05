@@ -455,6 +455,9 @@ pub struct PlaybackService {
     /// The library's store: the tracks playback reads, the resume row and
     /// listening history it writes, the preferences it plays by, and the
     /// files it streams.
+    store: bae_store::Store,
+    /// The library's records and plays: the tracks' audio, and the plays the
+    /// listening history records.
     database: bae_db::Database,
     /// Mints the id of each play the listening history records.
     ids: coven::IdSourceRef,

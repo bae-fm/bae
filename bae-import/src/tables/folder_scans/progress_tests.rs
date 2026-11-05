@@ -144,7 +144,7 @@ async fn folder_scan_progress_lists_the_folders_in_their_order() {
             sql.query(&format!("EXPLAIN QUERY PLAN {}", super::FOLDER_SCAN_PROGRESS), [], |row| {
                 row.get::<_, String>(3)
             })
-            .map_err(bae_db::DbError::from)
+            .map_err(bae_store::DbError::from)
         })
         .await
         .unwrap();

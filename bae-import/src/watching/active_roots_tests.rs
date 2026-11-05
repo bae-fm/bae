@@ -50,8 +50,7 @@ async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
 async fn a_removal_announces_the_folders_its_write_left_watched() {
     let harness = CoordinatorHarness::with_roots(&["/music", "/other"]).await;
     *harness.removal_backend.leaves_watched.lock().unwrap() = vec![root_path("/music")];
-    *harness.removal_backend.unreadable_after_remove.lock().unwrap() =
-        Some(harness.database.clone());
+    *harness.removal_backend.unreadable_after_remove.lock().unwrap() = Some(harness.db.clone());
     let (completion, result) = tokio::sync::oneshot::channel();
     harness
         .commands
@@ -155,7 +154,7 @@ async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule
 #[tokio::test]
 async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_returning() {
     let harness = CoordinatorHarness::new().await;
-    let tables = crate::tables::ImportTables::new(harness.database.clone());
+    let tables = crate::tables::ImportTables::new(harness.db.clone());
     *harness.removal_backend.remove_error.lock().unwrap() =
         Some("injected database failure".to_string());
     let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;

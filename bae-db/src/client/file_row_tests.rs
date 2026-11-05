@@ -2,20 +2,22 @@
 //! library.
 
 use crate::client::pending::pending_rows_query;
+use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
-async fn plan(db: &crate::client::Database, statement: String) -> Vec<String> {
-    db.read(move |sql| {
-        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
-            .map_err(crate::client::DbError::from)
-    })
-    .await
-    .unwrap()
+async fn plan(store: &Store, statement: String) -> Vec<String> {
+    store
+        .read(move |sql| {
+            sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
+                .map_err(crate::client::DbError::from)
+        })
+        .await
+        .unwrap()
 }
 
 #[tokio::test]
 async fn the_pending_list_finds_each_row_by_index() {
-    let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let plan = plan(&db, pending_rows_query()).await;
     for alias in [
         "named",

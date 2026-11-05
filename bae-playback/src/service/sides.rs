@@ -20,7 +20,7 @@ impl PlaybackTrackInfo {
     pub async fn read(
         database: &bae_db::Database,
         track_id: &str,
-    ) -> Result<Option<Self>, bae_db::DbError> {
+    ) -> Result<Option<Self>, bae_store::DbError> {
         let Some(track) = database.find_track_by_id(track_id).await? else {
             return Ok(None);
         };

@@ -54,12 +54,16 @@ pub struct LabelParts {
     now: String,
 }
 
-impl Database {
-    /// The [`LabelParts`] of a write of `labels`.
-    pub fn label_parts(&self, labels: &[ReleaseLabel]) -> LabelParts {
-        LabelParts {
-            fresh_ids: labels.iter().map(|_| self.inner.ids.new_id().to_string()).collect(),
-            now: self.now_utc().to_rfc3339(),
+impl LabelParts {
+    /// The parts of a write of `labels` at `now`: an id from `ids` for each.
+    pub fn new(
+        ids: &dyn coven::IdSource,
+        now: chrono::DateTime<chrono::Utc>,
+        labels: &[ReleaseLabel],
+    ) -> Self {
+        Self {
+            fresh_ids: labels.iter().map(|_| ids.new_id().to_string()).collect(),
+            now: now.to_rfc3339(),
         }
     }
 }

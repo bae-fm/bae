@@ -130,7 +130,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         let mut changes = manager.subscribe_admin_changes();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
 
-        manager.rename_library(&bae_db::EnteredName::parse("Home").unwrap()).await.unwrap();
+        manager.rename_library(&bae_store::EnteredName::parse("Home").unwrap()).await.unwrap();
         let waiting =
             crate::followed::value_matching(&mut changes, |changes| !changes.is_empty()).await;
         let [AdminChange {
@@ -146,7 +146,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         assert_eq!(manager.library_name().await.unwrap(), "Two Devices");
         assert!(manager.acknowledge_admin_change(operation).await.is_err());
 
-        laptop.database().start_sync().await.unwrap();
+        laptop.store().start_sync().await.unwrap();
         crate::followed::value_matching(&mut changes, |changes| {
             changes.len() == 1 && changes[0].state == AdminChangeState::Done
         })
@@ -155,11 +155,8 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
 
         manager.acknowledge_admin_change(operation).await.unwrap();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
-        let listed = laptop
-            .database()
-            .query_texts_for_test("SELECT kind FROM coven_operations")
-            .await
-            .unwrap();
+        let listed =
+            laptop.store().query_texts_for_test("SELECT kind FROM coven_operations").await.unwrap();
         assert!(listed.is_empty(), "{listed:?}");
     });
 }
@@ -173,7 +170,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
 fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
     run_two_device_test(async |devices| {
         let (laptop, tablet) = (devices.a(), devices.b());
-        let (laptop_id, tablet_id) = (laptop.database().device_id(), tablet.database().device_id());
+        let (laptop_id, tablet_id) = (laptop.store().device_id(), tablet.store().device_id());
         let active = |device: coven::DeviceId| async move {
             laptop
                 .manager()
@@ -203,7 +200,7 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
             })
             .await;
 
-        laptop.database().start_sync().await.unwrap();
+        laptop.store().start_sync().await.unwrap();
         let stopped = crate::followed::value_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
@@ -246,7 +243,7 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
         };
         assert_eq!(*device, unknown);
 
-        laptop.database().start_sync().await.unwrap();
+        laptop.store().start_sync().await.unwrap();
         let refused = crate::followed::value_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
@@ -272,7 +269,7 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
 fn an_invite_is_listed_until_it_is_cancelled() {
     run_library_test(async |library| {
         let manager = library.first().manager();
-        let views = bae_views::LibraryViews::new(library.first().database().clone());
+        let views = bae_views::LibraryViews::new(library.first().store().clone());
         let mut invites = views.subscribe_invites();
         crate::followed::value_matching(&mut invites, Vec::is_empty).await;
         let invite = manager
@@ -341,7 +338,7 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         })
         .await;
 
-        let tablet_id = tablet.database().device_id();
+        let tablet_id = tablet.store().device_id();
         let laptop = devices.a();
         let tablet_active = || async {
             laptop
@@ -357,7 +354,7 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         laptop.manager().remove_device(tablet_id).await.unwrap();
         laptop.wait_until("the tablet's removal", || async { !tablet_active().await }).await;
 
-        tablet.database().start_sync().await.unwrap();
+        tablet.store().start_sync().await.unwrap();
         let stopped = RequestedProfile {
             name: "Robin".into(),
             state: RequestedProfileState::Stopped(coven::DeviceStop::Removed),

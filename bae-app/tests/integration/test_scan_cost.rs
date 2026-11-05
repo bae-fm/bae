@@ -16,8 +16,8 @@
 //! (`SCAN_SIZES=5000,20000`).
 
 use bae_app::AppServices;
-use bae_db::LibraryPageWindow;
 use bae_import::{ImportListView, ScanEvent};
+use bae_store::LibraryPageWindow;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 

@@ -72,7 +72,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "the failure names the file that would not open: {detail}"
     );
     assert!(
-        bae_db::test_fixtures::row_count(&test.database, "albums").await == 0,
+        bae_store::test_fixtures::row_count(&test.db, "albums").await == 0,
         "a failed import writes no album"
     );
     assert!(
@@ -97,17 +97,24 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .expect("the retried import lands");
 
     assert_eq!(
-        bae_db::test_fixtures::row_count(&test.database, "albums").await,
+        bae_store::test_fixtures::row_count(&test.db, "albums").await,
         1,
         "the retry writes the release once"
     );
-    assert_eq!(bae_db::test_fixtures::row_count(&test.database, "releases").await, 1);
+    assert_eq!(bae_store::test_fixtures::row_count(&test.db, "releases").await, 1);
     let release = tables
         .release_imported_from(&candidate.content_hash)
         .await
         .unwrap()
         .expect("the retried import records the release of its files");
-    assert_eq!(test.database.get_tracks_for_release(&release).await.unwrap().len(), 6);
+    assert_eq!(
+        bae_db::test_fixtures::test_database(&test.db)
+            .get_tracks_for_release(&release)
+            .await
+            .unwrap()
+            .len(),
+        6
+    );
 }
 
 /// Ids for an import whose first id panics, as a broken dependency of the
@@ -170,7 +177,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         .do_import(local_import_command("import-again", &candidate_key, &folder), stored)
         .await;
     assert_eq!(
-        bae_db::test_fixtures::row_count(&test.database, "albums").await,
+        bae_store::test_fixtures::row_count(&test.db, "albums").await,
         1,
         "the next import lands the release"
     );
@@ -183,7 +190,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
 /// link to an album, beside the draft and the folder's cover the candidate
 /// holds.
 async fn seed_spent_rows(test: &TestService, content_hash: &str) {
-    let database = &test.database;
+    let db = &test.db;
     for statement in [
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, kept_own_draft, disc_id_step, barcode_step, \
@@ -226,7 +233,7 @@ async fn seed_spent_rows(test: &TestService, content_hash: &str) {
             true => vec![content_hash.to_string()],
             false => Vec::new(),
         };
-        database.execute_for_test(statement, params).await.unwrap();
+        db.execute_for_test(statement, params).await.unwrap();
     }
 }
 
@@ -251,8 +258,7 @@ async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'stat
         "import_candidate_release_link_album",
         "import_candidate_cover",
     ] {
-        let count =
-            test.database.count_rows_for_test(table, "content_hash", content_hash).await.unwrap();
+        let count = test.db.count_rows_for_test(table, "content_hash", content_hash).await.unwrap();
         counts.push((table, count));
     }
     counts
@@ -318,7 +324,7 @@ async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
         "the import's write leaves none of what it spent"
     );
     let done = test
-        .database
+        .db
         .query_texts_for_test(
             "SELECT tab || '|' || shown_title || '|' || shown_artists \
              FROM import_list_placement WHERE item = 'candidate'",
@@ -392,7 +398,7 @@ async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
 
 /// What the folder's row shows: its tab, title and artists.
 async fn shown_row(test: &TestService) -> Vec<String> {
-    test.database
+    test.db
         .query_texts_for_test(
             "SELECT tab || '|' || shown_title || '|' || COALESCE(shown_artists, '-') \
              FROM import_list_placement WHERE item = 'candidate'",
@@ -428,7 +434,7 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
         .await
         .expect("the import lands");
     let drafts = || async {
-        test.database
+        test.db
             .count_rows_for_test("import_candidate_edit", "content_hash", &content_hash)
             .await
             .unwrap()
@@ -444,10 +450,7 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
         .await
         .unwrap()
         .expect("the import is recorded");
-    test.database
-        .execute_for_test("DELETE FROM releases WHERE id = ?1", vec![release_id])
-        .await
-        .unwrap();
+    test.db.execute_for_test("DELETE FROM releases WHERE id = ?1", vec![release_id]).await.unwrap();
     assert_eq!(shown_row(&test).await, vec!["pending|Box Set Renamed|-".to_string()]);
     let pane = tables
         .load_import_candidate(&candidate_key)

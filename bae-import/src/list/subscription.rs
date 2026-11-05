@@ -19,9 +19,9 @@ use super::{
 use crate::selection::{SelectedRows, SelectionChange};
 use crate::tables::{ImportTables, SelectionWrite};
 use crate::FolderReleaseDecisionKey;
-use bae_db::live_query::CancellableLiveQuery;
-use bae_db::DbError;
-use bae_db::LibraryPageWindows;
+use bae_store::live_query::CancellableLiveQuery;
+use bae_store::DbError;
+use bae_store::LibraryPageWindows;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
@@ -37,8 +37,8 @@ pub enum LiveImportListError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<bae_db::live_query::LiveQueryCancelled> for LiveImportListError {
-    fn from(_: bae_db::live_query::LiveQueryCancelled) -> Self {
+impl From<bae_store::live_query::LiveQueryCancelled> for LiveImportListError {
+    fn from(_: bae_store::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }

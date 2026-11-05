@@ -65,7 +65,7 @@ impl LibraryManager {
 
         let entry = bae_transfers::OutputEntry {
             release_id: release_id.to_string(),
-            created_at: bae_db::client::utc_now(self.clock.as_ref()).timestamp_millis(),
+            created_at: bae_store::utc_now(self.clock.as_ref()).timestamp_millis(),
             payload: bae_transfers::OutputRequest { target_dir, kind },
         };
         self.outputs.enqueue_all(vec![entry]).await?;

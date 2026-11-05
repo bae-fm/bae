@@ -12,7 +12,7 @@ use crate::list::{
 
 #[derive(Clone, PartialEq)]
 struct ImportListRows {
-    windows: Vec<(bae_db::LibraryPageWindow, Vec<window::WindowItemRows>)>,
+    windows: Vec<(bae_store::LibraryPageWindow, Vec<window::WindowItemRows>)>,
     total_count: u64,
     summary: ImportQueueSummary,
     pending_filter_entries: Vec<crate::PendingFilterEntry>,
@@ -130,7 +130,7 @@ impl ImportTables {
         initial: ImportListRequest,
     ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection> {
         let places = KnownPlaces::new();
-        self.database
+        self.store
             .subscribe_reconfigurable(initial, move |request, sql| {
                 load_import_list_on(&sql, request, &places).map_err(CovenError::from)
             })
@@ -142,7 +142,7 @@ impl ImportTables {
         &self,
         request: ImportListRequest,
     ) -> Result<ImportListProjection, DbError> {
-        self.database
+        self.store
             .read(move |sql| load_import_list_on(&sql, &request, &KnownPlaces::new()))
             .process(ImportListRows::process)
             .await

@@ -30,7 +30,7 @@ async fn open_library() -> (TestLibrary, Arc<MemoryStorage>, TempDir) {
 
 /// The library's views over its store.
 fn views(library: &TestLibrary) -> LibraryViews {
-    LibraryViews::new(library.database().clone())
+    LibraryViews::new(library.store().clone())
 }
 
 /// A library holding one album with one release.
@@ -119,35 +119,33 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
 
     let mut load = Vec::new();
     for _ in 0..8 {
-        let database = manager.database().clone();
+        let db = manager.store().clone();
+        let database = bae_db::test_fixtures::test_database(&db);
         let album_id = album.id.clone();
         load.push(tokio::spawn(async move {
             loop {
                 #[expect(
                     clippy::let_underscore_must_use,
-                    reason = "this is load on the database; each read's answer is not the point"
+                    reason = "this is load on the db; each read's answer is not the point"
                 )]
                 let _ = database.get_releases_for_album(&album_id).await;
             }
         }));
     }
-    let database = manager.database().clone();
+    let db = manager.store().clone();
     let transitioning = releases[0].clone();
     load.push(tokio::spawn(async move {
         loop {
             bae_transfers::release_storage_action::begin_release_storage_action(
-                &database,
+                &db,
                 &transitioning,
                 bae_transfers::StoredTransition::Unpin,
             )
             .await
             .unwrap();
-            bae_transfers::release_storage_action::end_release_storage_action(
-                &database,
-                &transitioning,
-            )
-            .await
-            .unwrap();
+            bae_transfers::release_storage_action::end_release_storage_action(&db, &transitioning)
+                .await
+                .unwrap();
             tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         }
     }));
@@ -283,11 +281,11 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
         bae_views::StorageBrowseView {
             sort: bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
-                direction: bae_db::SortDirection::Ascending,
+                direction: bae_store::SortDirection::Ascending,
             },
             filter: bae_views::StorageFilter::All,
             search: String::new(),
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
             selected: Default::default(),
         },
     );
@@ -336,9 +334,9 @@ async fn next_storage_value(
 async fn the_storage_view_moves_one_subscription() {
     let (manager, _storage, _temp_dir) = open_library().await;
     seed_albums(&manager, 3).await;
-    let window = |offset, limit| bae_db::LibraryPageWindow { offset, limit };
-    let view =
-        |direction, filter, windows: &[bae_db::LibraryPageWindow]| bae_views::StorageBrowseView {
+    let window = |offset, limit| bae_store::LibraryPageWindow { offset, limit };
+    let view = |direction, filter, windows: &[bae_store::LibraryPageWindow]| {
+        bae_views::StorageBrowseView {
             sort: bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
                 direction,
@@ -347,7 +345,8 @@ async fn the_storage_view_moves_one_subscription() {
             search: String::new(),
             windows: windows.iter().cloned().collect(),
             selected: Default::default(),
-        };
+        }
+    };
     let titles = |value: &bae_views::StorageBrowseSnapshot| {
         value
             .windows
@@ -355,7 +354,7 @@ async fn the_storage_view_moves_one_subscription() {
             .map(|window| window.rows.iter().map(|row| row.album.title.clone()).collect::<Vec<_>>())
             .collect::<Vec<_>>()
     };
-    let ascending = bae_db::SortDirection::Ascending;
+    let ascending = bae_store::SortDirection::Ascending;
     let all = bae_views::StorageFilter::All;
     let values = bae_app::live_reads::subscribe_storage_browse(
         &manager,
@@ -372,7 +371,7 @@ async fn the_storage_view_moves_one_subscription() {
     assert_eq!(titles(&scrolled), vec![vec!["Album 0"], vec!["Album 2"]]);
     assert_eq!(scrolled.total_count, 3, "one count answers every window");
 
-    let descending = bae_db::SortDirection::Descending;
+    let descending = bae_store::SortDirection::Descending;
     values.set(view(descending, all, &[window(0, 2)])).unwrap();
     let resorted = next_storage_value(&values).await;
     assert_eq!(resorted.sort.direction, descending);
@@ -403,11 +402,11 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         bae_views::StorageBrowseView {
             sort: bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
-                direction: bae_db::SortDirection::Ascending,
+                direction: bae_store::SortDirection::Ascending,
             },
             filter: bae_views::StorageFilter::All,
             search: String::new(),
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
             selected: Default::default(),
         },
     );
@@ -435,7 +434,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     until("the row rests", || storage.next(), row_shows(StorageRowStatus::Local)).await;
 
     assert!(bae_transfers::release_storage_action::begin_release_storage_action(
-        manager.database(),
+        manager.store(),
         &release.id,
         StoredTransition::Unpin
     )
@@ -452,12 +451,9 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     )
     .await;
 
-    bae_transfers::release_storage_action::end_release_storage_action(
-        manager.database(),
-        &release.id,
-    )
-    .await
-    .unwrap();
+    bae_transfers::release_storage_action::end_release_storage_action(manager.store(), &release.id)
+        .await
+        .unwrap();
     until("the album's transition ends", || album_detail.next(), album_shows(None)).await;
     until("the release's transition ends", || release_detail.next(), release_shows(None)).await;
     until("the row rests again", || storage.next(), row_shows(StorageRowStatus::Local)).await;

@@ -4,8 +4,10 @@
 //! Pins independently keep its audio available offline; covers remain shared.
 
 use bae_app::live_reads::LiveStorageBrowse;
-use bae_db::{Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection};
+use bae_db::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_library::{CancellationToken, LibraryManager};
+use bae_store::SortDirection;
+use bae_store::Store;
 use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
@@ -109,7 +111,7 @@ async fn create_local_release(
 /// Local, attach its files, and finish the uploads. Returns (release_id,
 /// [(file_id, original_filename, plaintext)]).
 async fn create_remote_cloud_only_release(
-    db: &Database,
+    db: &Store,
     mgr: &LibraryManager,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
@@ -177,7 +179,7 @@ async fn test_multiple_releases_independent_completion() {
     assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
     // Each completed upload carried its file's pin to the stored file, which
     // is pinned once its copy from storage lands.
-    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let views = bae_views::LibraryViews::new(mgr.store().clone());
     for release_id in [&release_a, &release_b] {
         let release = bae_app::live_reads::subscribe_release_detail(&mgr, &views);
         release.set(Some(release_id.clone())).unwrap();
@@ -199,11 +201,11 @@ async fn test_multiple_releases_independent_completion() {
     }
 
     assert_eq!(
-        crate::release_storage(mgr.database(), &release_a).await,
+        crate::release_storage(mgr.store(), &release_a).await,
         ReleaseStorageState::InStorage { pinned: true }
     );
     assert_eq!(
-        crate::release_storage(mgr.database(), &release_b).await,
+        crate::release_storage(mgr.store(), &release_b).await,
         ReleaseStorageState::InStorage { pinned: true }
     );
 }
@@ -217,7 +219,7 @@ async fn test_manage_refused_without_cloud_storage() {
     let tmp = TempDir::new().unwrap();
     // No cloud home connected, so the sync loop is NOT running.
     let (mgr, _cloud) = setup_manager(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     assert!(
         !mgr.is_sync_ready().await.unwrap(),
         "precondition: no cloud home / sync loop not running"
@@ -256,7 +258,7 @@ async fn test_manage_refused_without_cloud_storage() {
 async fn attached_release_turns_remote_once_its_uploads_finish() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &mgr,
@@ -285,7 +287,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 async fn upload_failure_keeps_attachment_and_pending_work() {
     let tmp = TempDir::new().unwrap();
     let (mgr, cloud) = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
         &mgr,
@@ -314,7 +316,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
 async fn truncated_source_fails_its_move_without_sending() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
         &mgr,
@@ -357,7 +359,7 @@ async fn truncated_source_fails_its_move_without_sending() {
 async fn detaching_audio_updates_summary_and_original_paths() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
@@ -386,7 +388,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();
     let (mgr, cloud) = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
@@ -421,7 +423,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 async fn detaching_audio_whose_names_write_as_one_is_refused() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let (release_id, _files) = create_remote_cloud_only_release(
         &db,
         &mgr,
@@ -488,7 +490,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
-    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = bae_app::live_reads::subscribe_storage_browse(
         &mgr,
         &views,
@@ -499,7 +501,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
             },
             filter: StorageFilter::All,
             search: String::new(),
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
             selected: Default::default(),
         },
     );

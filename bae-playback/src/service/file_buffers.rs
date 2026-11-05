@@ -137,6 +137,7 @@ impl FileBuffers {
 /// buffers onward into the slot, and an owner hands its retained state to no
 /// caller. Kept in this module so the only reach into the cache stays here.
 pub(super) async fn prepare_track_for_playback(
+    store: &bae_store::Store,
     database: &bae_db::Database,
     diagnostics: &Diagnostics,
     track_id: &str,
@@ -149,7 +150,7 @@ pub(super) async fn prepare_track_for_playback(
     // preferences read buried inside `finalize_playback_track`. Read before
     // any buffer is made, so nothing fails between caching a buffer and
     // starting its fill.
-    let replay_gain_mode = bae_preferences::preferences(database).await?.replay_gain_mode;
+    let replay_gain_mode = bae_preferences::preferences(store).await?.replay_gain_mode;
 
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
     // The fresh buffers, each with the file its fill reads.

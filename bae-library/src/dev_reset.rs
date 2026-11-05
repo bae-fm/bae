@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 /// A dev library's profile, read from its TOML file.
 pub struct DevResetProfile {
-    pub library_name: bae_db::EnteredName,
+    pub library_name: bae_store::EnteredName,
     /// The storage setup the library connects to, with the profile coven
     /// picks from the endpoint, as the storage setup form's default does.
     pub s3: S3ConfigData,
@@ -136,7 +136,7 @@ impl DevResetProfile {
         }
         // The refusal carries nothing beyond the field being empty.
         let library_name =
-            bae_db::EnteredName::parse(&file.library_name).map_err(|bae_db::BlankName| {
+            bae_store::EnteredName::parse(&file.library_name).map_err(|bae_store::BlankName| {
                 DevResetProfileError::Empty { path: path.to_path_buf(), field: "library_name" }
             })?;
         Ok(Self {

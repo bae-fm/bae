@@ -518,7 +518,7 @@ impl ImportTables {
         &self,
         list: ImportListId,
     ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
-        self.database
+        self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?;
                 row.items(Shown::View).window_plans(&sql)
@@ -533,7 +533,7 @@ impl ImportTables {
         &self,
         list: ImportListId,
     ) -> Result<Vec<Vec<String>>, DbError> {
-        self.database
+        self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?;
                 let counts = sql.query(

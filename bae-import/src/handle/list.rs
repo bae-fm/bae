@@ -9,7 +9,7 @@ impl ImportServiceHandle {
     pub async fn open_list(
         &self,
         view: crate::ImportListView,
-        windows: bae_db::LibraryPageWindows,
+        windows: bae_store::LibraryPageWindows,
     ) -> Result<crate::LiveImportList, crate::ImportError> {
         Ok(crate::LiveImportList::open(
             self.tables.clone(),
@@ -25,7 +25,7 @@ impl ImportServiceHandle {
     pub async fn load_list(
         &self,
         view: crate::ImportListView,
-        windows: bae_db::LibraryPageWindows,
+        windows: bae_store::LibraryPageWindows,
     ) -> Result<crate::ImportListProjection, crate::ImportError> {
         let list = self.tables.open_import_list(view).await?;
         let projection =
@@ -39,8 +39,8 @@ impl ImportServiceHandle {
     /// processed progress. Closing the library ends it.
     pub fn subscribe_folder_scans(
         &self,
-    ) -> bae_db::live_query::LiveValues<crate::FolderScanProgress> {
-        bae_db::live_query::LiveValues::new(
+    ) -> bae_store::live_query::LiveValues<crate::FolderScanProgress> {
+        bae_store::live_query::LiveValues::new(
             self.tables.subscribe_folder_scan_progress(),
             self.closing.child_token(),
         )
@@ -49,8 +49,8 @@ impl ImportServiceHandle {
     /// How far the identifications and imports in flight have got: the
     /// first value at once, then a value after each write that moves them.
     /// Closing the library ends it.
-    pub fn subscribe_counts(&self) -> bae_db::live_query::LiveValues<crate::ImportCounts> {
-        bae_db::live_query::LiveValues::new(
+    pub fn subscribe_counts(&self) -> bae_store::live_query::LiveValues<crate::ImportCounts> {
+        bae_store::live_query::LiveValues::new(
             self.tables.subscribe_import_counts(),
             self.closing.child_token(),
         )
@@ -62,8 +62,8 @@ impl ImportServiceHandle {
     pub fn subscribe_candidate_runtime(
         &self,
         key: &crate::CandidateKey,
-    ) -> bae_db::live_query::LiveValues<Option<crate::CandidateRuntimeSnapshot>> {
-        bae_db::live_query::LiveValues::new(
+    ) -> bae_store::live_query::LiveValues<Option<crate::CandidateRuntimeSnapshot>> {
+        bae_store::live_query::LiveValues::new(
             self.tables.subscribe_candidate_runtime(key),
             self.closing.child_token(),
         )
@@ -112,8 +112,11 @@ impl ImportServiceHandle {
     /// that watches it change.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn subscribe_whole_list(&self, view: crate::ImportListView) -> crate::LiveImportList {
-        self.subscribe_list_window(view, bae_db::LibraryPageWindow { offset: 0, limit: u64::MAX })
-            .await
+        self.subscribe_list_window(
+            view,
+            bae_store::LibraryPageWindow { offset: 0, limit: u64::MAX },
+        )
+        .await
     }
 
     /// The import list for `view` through one window, for a test that
@@ -122,7 +125,7 @@ impl ImportServiceHandle {
     pub async fn subscribe_list_window(
         &self,
         view: crate::ImportListView,
-        window: bae_db::LibraryPageWindow,
+        window: bae_store::LibraryPageWindow,
     ) -> crate::LiveImportList {
         self.open_list(view, std::iter::once(window).collect())
             .await

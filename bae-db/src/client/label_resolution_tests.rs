@@ -1,8 +1,9 @@
 use super::*;
 use crate::test_fixtures::labels::*;
 
-async fn label_count(db: &Database) -> i64 {
-    db.read(|sql| Ok(sql.query_row("SELECT count(*) FROM labels", [], |row| row.get(0))?))
+async fn label_count(store: &Store) -> i64 {
+    store
+        .read(|sql| Ok(sql.query_row("SELECT count(*) FROM labels", [], |row| row.get(0))?))
         .await
         .unwrap()
 }
@@ -13,6 +14,7 @@ async fn label_count(db: &Database) -> i64 {
 #[tokio::test]
 async fn a_label_is_the_library_label_holding_its_catalog_id() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     add_label(&db, "held", "Warner Strategic Marketing", None, Some("7190")).await;
 
     write(
@@ -33,7 +35,7 @@ async fn a_label_is_the_library_label_holding_its_catalog_id() {
     assert_eq!(held.musicbrainz_label_id.as_deref(), Some("mb-rhino"));
     assert_eq!(label_count(&db).await, 1);
     assert_eq!(
-        read_labels(&db).await,
+        read_labels(&database).await,
         vec![label(Some("Warner Strategic Marketing"), Some("R2 1")), label(None, Some("XY 3"))]
     );
 }
@@ -171,13 +173,17 @@ async fn a_discogs_label_holding_another_musicbrainz_id_leaves_the_label_its_mus
 
 /// Fill in `discogs` on the label `id` on `db`, as a device does once a
 /// catalog names it.
-async fn give_discogs_id(db: &Database, id: &'static str, discogs: &'static str) {
-    db.call(move |sql| {
-        sql.execute("UPDATE labels SET discogs_label_id = ? WHERE id = ?", params![discogs, id])?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+async fn give_discogs_id(store: &Store, id: &'static str, discogs: &'static str) {
+    store
+        .call(move |sql| {
+            sql.execute(
+                "UPDATE labels SET discogs_label_id = ? WHERE id = ?",
+                params![discogs, id],
+            )?;
+            Ok(())
+        })
+        .await
+        .unwrap();
 }
 
 /// Two devices apart each give one Discogs id to a different label of one
@@ -186,17 +192,16 @@ async fn give_discogs_id(db: &Database, id: &'static str, discogs: &'static str)
 /// reads the release's label as that one.
 #[test]
 fn a_catalog_id_two_devices_gave_two_labels_merges_them() {
-    crate::test_devices::run_two_store_test(
+    bae_store::test_devices::run_two_store_test(
         crate::test_fixtures::TEST_SCHEMA,
         check_two_devices_give_one_label_id,
     );
 }
 
-async fn check_two_devices_give_one_label_id(devices: &crate::test_devices::TwoStores) {
+async fn check_two_devices_give_one_label_id(devices: &bae_store::test_devices::TwoStores) {
     let album = crate::DbAlbum::new_test("Album Title");
     let release = crate::DbRelease::new_test(&album.id, RELEASE);
-    devices
-        .a()
+    crate::test_fixtures::test_database(devices.a())
         .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
         .await
         .unwrap();
@@ -224,6 +229,9 @@ async fn check_two_devices_give_one_label_id(devices: &crate::test_devices::TwoS
 
     for device in [devices.a(), devices.b()] {
         assert_eq!(ids_of(&placed(device).await), [Some("label-a")]);
-        assert_eq!(read_labels(device).await, vec![label(Some("Label Name"), Some("LN 1"))]);
+        assert_eq!(
+            read_labels(&crate::test_fixtures::test_database(device)).await,
+            vec![label(Some("Label Name"), Some("LN 1"))]
+        );
     }
 }

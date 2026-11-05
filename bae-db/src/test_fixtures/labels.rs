@@ -1,19 +1,24 @@
 //! A library of one release, and how a test writes, adds and reads back the
 //! labels that release names.
 
+use super::test_database;
 use crate::client::label_resolution::{label_write, write_release_labels_on, LabelRow};
-use crate::{Database, DbAlbum, DbRelease, IdentityWriteError};
+use crate::{Database, DbAlbum, DbRelease, IdentityWriteError, LabelParts};
+use bae_store::Store;
 use bae_types::pressing::ReleaseLabel;
 use rusqlite::params;
 
 pub const RELEASE: &str = "5d1c2c9e-4f0b-4a43-9a51-0e6c1d3b7a10";
 
 /// A database on `schema` holding one album and its release, `RELEASE`.
-pub async fn library(schema: crate::Schema) -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(schema).await;
+pub async fn library(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     let album = DbAlbum::new_test("Album Title");
     let release = DbRelease::new_test(&album.id, RELEASE);
-    db.insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[]).await.unwrap();
+    test_database(&db)
+        .insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
+        .await
+        .unwrap();
     (db, tmp)
 }
 
@@ -30,7 +35,7 @@ pub fn with_ids(
 }
 
 pub async fn add_label(
-    db: &Database,
+    db: &Store,
     id: &str,
     name: &str,
     musicbrainz: Option<&str>,
@@ -52,16 +57,16 @@ pub async fn add_label(
 }
 
 /// Write `RELEASE`'s labels as an edit would.
-pub async fn write(db: &Database, labels: Vec<ReleaseLabel>) -> Result<(), IdentityWriteError> {
-    let parts = db.label_parts(&labels);
-    db.write_resolving_identities(move |sql| {
+pub async fn write(store: &Store, labels: Vec<ReleaseLabel>) -> Result<(), IdentityWriteError> {
+    let parts = LabelParts::new(&coven::UuidIds, store.now_utc(), &labels);
+    crate::client::artist_resolution::write_resolving_identities(store, move |sql| {
         write_release_labels_on(&sql, RELEASE, &labels, &label_write(&parts))
     })
     .await
 }
 
 /// The label each of `RELEASE`'s label rows names, as stored, with its number.
-pub async fn placed(db: &Database) -> Vec<(Option<String>, Option<String>)> {
+pub async fn placed(db: &Store) -> Vec<(Option<String>, Option<String>)> {
     db.read(|sql| {
         Ok(sql.query(
             "SELECT label_id, catalog_number FROM release_labels \
@@ -74,7 +79,7 @@ pub async fn placed(db: &Database) -> Vec<(Option<String>, Option<String>)> {
     .unwrap()
 }
 
-pub async fn stored_label(db: &Database, id: &str) -> LabelRow {
+pub async fn stored_label(db: &Store, id: &str) -> LabelRow {
     let id = id.to_string();
     db.read(move |sql| {
         Ok(sql.query_row("SELECT * FROM labels WHERE id = ?", [id], LabelRow::from_row)?)
@@ -84,8 +89,8 @@ pub async fn stored_label(db: &Database, id: &str) -> LabelRow {
 }
 
 /// The labels `RELEASE` reads with, as the library shows them.
-pub async fn read_labels(db: &Database) -> Vec<ReleaseLabel> {
-    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.labels
+pub async fn read_labels(database: &Database) -> Vec<ReleaseLabel> {
+    database.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.labels
 }
 
 pub fn ids_of(rows: &[(Option<String>, Option<String>)]) -> Vec<Option<&str>> {

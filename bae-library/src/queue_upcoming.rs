@@ -1,8 +1,8 @@
 //! The context's upcoming tail, read through one live subscription whose
 //! windows move as the queue scrolls.
 
-use bae_db::LibraryPageWindows;
 use bae_playback::QueueUpcomingWindow;
+use bae_store::LibraryPageWindows;
 
 /// Every requested window as of one read. Offsets are into the
 /// not-yet-played tail, the first entry after the playing one at offset 0, and
@@ -33,7 +33,8 @@ pub type LiveQueueUpcoming = super::LiveRead<LibraryPageWindows, QueueUpcomingSn
 ///
 /// [`LiveRead::set`]: super::LiveRead::set
 pub fn subscribe_queue_upcoming(library: &crate::LibraryManager) -> crate::LiveQueueUpcoming {
-    let (windows_tx, mut windows) = tokio::sync::watch::channel(bae_db::LibraryPageWindows::new());
+    let (windows_tx, mut windows) =
+        tokio::sync::watch::channel(bae_store::LibraryPageWindows::new());
     let (tx, rx) = crate::live_read_channel();
     let manager = library.clone();
     let task = crate::CancellationToken::new();

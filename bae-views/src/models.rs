@@ -2,6 +2,7 @@
 //! what a screen shows.
 
 use bae_db::*;
+use bae_store::*;
 use chrono::{DateTime, Utc};
 
 /// Raw combined search-result aggregate. No formatting — resolving it

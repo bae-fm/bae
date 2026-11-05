@@ -272,8 +272,8 @@ impl PlaybackService {
             }
             #[cfg(any(test, feature = "test-utils"))]
             PlaybackCommand::GetQueue(reply) => {
-                let value = match crate::tables::queue_value(&self.database).await {
-                    Ok(value) => crate::tables::queue_upcoming(&self.database)
+                let value = match crate::tables::queue_value(&self.store).await {
+                    Ok(value) => crate::tables::queue_upcoming(&self.store)
                         .await
                         .map(|upcoming| (value, upcoming)),
                     Err(e) => Err(e),

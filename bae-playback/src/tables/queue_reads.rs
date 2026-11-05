@@ -10,58 +10,54 @@ use crate::{ContextSource, QueueItem, QueueUpcomingWindow, RepeatMode};
 
 /// Follow the queue as its screens show it: Up Next whole, what the context
 /// lane plays from, and whether the transport can step either way.
-pub fn subscribe_queue_value(
-    database: &Database,
-) -> coven::LiveQuery<crate::ResolvedQueueSnapshot> {
-    database.subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
+pub fn subscribe_queue_value(store: &Store) -> coven::LiveQuery<crate::ResolvedQueueSnapshot> {
+    store.subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
 }
 
 /// Follow the queue's last addition to Up Next; `None` until there is one
 /// since playback started with the library.
-pub fn subscribe_queue_addition(
-    database: &Database,
-) -> coven::LiveQuery<Option<crate::QueueAddition>> {
-    database.subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
+pub fn subscribe_queue_addition(store: &Store) -> coven::LiveQuery<Option<crate::QueueAddition>> {
+    store.subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
 }
 
 /// The queue's last addition to Up Next, as `subscribe_queue_addition` reads
 /// it.
 #[cfg(any(test, feature = "test-utils"))]
-pub async fn queue_addition(database: &Database) -> Result<Option<crate::QueueAddition>, DbError> {
-    database.read(|sql| queue_addition_on(&sql)).await
+pub async fn queue_addition(store: &Store) -> Result<Option<crate::QueueAddition>, DbError> {
+    store.read(|sql| queue_addition_on(&sql)).await
 }
 
 /// The queue as its screens show it now.
-pub async fn queue_value(database: &Database) -> Result<crate::ResolvedQueueSnapshot, DbError> {
-    database.read(|sql| queue_value_on(&sql)).await
+pub async fn queue_value(store: &Store) -> Result<crate::ResolvedQueueSnapshot, DbError> {
+    store.read(|sql| queue_value_on(&sql)).await
 }
 
 /// Every one of the context lane's tracks after the playing one, as the queue
 /// rows show them.
 #[cfg(any(test, feature = "test-utils"))]
-pub async fn queue_upcoming(database: &Database) -> Result<Vec<QueueItem>, DbError> {
-    let all = bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
+pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
+    let all = bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
         offset: 0,
         limit: u64::MAX,
     }]);
-    let read = database.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
+    let read = store.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
     Ok(read.windows.into_iter().flat_map(|window| window.items).collect())
 }
 
 /// The context lane's version, as the upcoming windows' reads carry it.
 #[cfg(any(test, feature = "test-utils"))]
-pub async fn queue_context_version(database: &Database) -> Result<u64, DbError> {
-    database.read(|sql| Ok(queue_head_on(&sql)?.context_version)).await
+pub async fn queue_context_version(store: &Store) -> Result<u64, DbError> {
+    store.read(|sql| Ok(queue_head_on(&sql)?.context_version)).await
 }
 
 /// Follow the windows `initial` names of the context lane's tracks after the
 /// playing one. The windows change by pointing the same query at new ones
 /// through its request handle.
 pub fn subscribe_queue_upcoming(
-    database: &Database,
-    initial: bae_db::LibraryPageWindows,
-) -> coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, QueueUpcomingRead> {
-    database
+    store: &Store,
+    initial: bae_store::LibraryPageWindows,
+) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, QueueUpcomingRead> {
+    store
         .subscribe_reconfigurable(initial, |windows, sql| {
             queue_upcoming_on(&sql, windows).map_err(CovenError::from)
         })
@@ -205,7 +201,7 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
 
 fn queue_upcoming_on(
     sql: &SqlReadContext<'_>,
-    windows: &bae_db::LibraryPageWindows,
+    windows: &bae_store::LibraryPageWindows,
 ) -> Result<QueueUpcomingRead, DbError> {
     let head = queue_head_on(sql)?;
     let windows = windows

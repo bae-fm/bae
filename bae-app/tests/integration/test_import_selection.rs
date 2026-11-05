@@ -3,13 +3,13 @@
 //! keys in the order the list shows them.
 
 use bae_app::AppServices;
-use bae_db::LibraryPageWindow;
 use bae_import::selection::{SelectionChange, SelectionSummary, SingleSelection};
 use bae_import::{
     Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
     ImportListItem, ImportListOrder, ImportListSnapshot, ImportListView, LiveImportList,
     PendingFilter, TriageTab,
 };
+use bae_store::LibraryPageWindow;
 use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
 use tempfile::TempDir;

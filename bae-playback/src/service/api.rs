@@ -38,7 +38,7 @@ pub enum PlayOutcome {
 #[derive(Debug, thiserror::Error)]
 pub enum PlayError {
     #[error("couldn't fill the queue: {0}")]
-    Queue(#[source] bae_db::DbError),
+    Queue(#[source] bae_store::DbError),
     #[error("the playback service stopped before it answered the play")]
     Stopped(#[source] oneshot::error::RecvError),
 }
@@ -55,7 +55,7 @@ pub enum QueueEditError {
     #[error("the queue changed before the command, so nothing changed")]
     QueueChanged,
     #[error("couldn't change the queue: {0}")]
-    Queue(#[source] bae_db::DbError),
+    Queue(#[source] bae_store::DbError),
     #[error("the playback service stopped before it answered the queue command")]
     Stopped(#[source] oneshot::error::RecvError),
 }

@@ -5,8 +5,8 @@
 
 use crate::album_detail::{ComposerDetailItem, ComposerHeading};
 use crate::*;
-use bae_db::test_fixtures::live_query::first_page;
-use bae_db::test_fixtures::{exec_batch, temp_db};
+use bae_store::test_fixtures::live_query::first_page;
+use bae_store::test_fixtures::{exec_batch, temp_db};
 
 const COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01";
 const OTHER_COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a02";
@@ -89,7 +89,7 @@ use Shown::{Credit, Work};
 
 /// The rows of `artist`'s page, each with whether it opens a heading, by
 /// what they show: the work's or the credit's id, matched to the fixture's.
-async fn page(db: &Database, artist: &str) -> Vec<(bool, Shown)> {
+async fn page(db: &Store, artist: &str) -> Vec<(bool, Shown)> {
     let ids = [
         ALPHA_PARENT,
         BETA_PARENT,
@@ -162,7 +162,7 @@ async fn each_part_of_the_page_opens_its_heading() {
     exec_batch(&db, PAGE).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
-        [bae_db::LibraryPageWindow { offset: 0, limit: 100 }].into_iter().collect(),
+        [bae_store::LibraryPageWindow { offset: 0, limit: 100 }].into_iter().collect(),
     );
     let event = live.next().await.expect("the query stays open");
     let snapshot = crate::composer_detail::resolve_composer_detail_rows(
@@ -292,7 +292,7 @@ fn held_rows(conn: &rusqlite::Connection) -> Vec<(i64, String, Option<i64>, Stri
 fn rows_whose_titles_arrive_late_wait_for_them() {
     // Rows from another device can arrive before the rows they name: here a
     // part's parent, and a credit's release and album.
-    let conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
+    let conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
     conn.execute_batch(
         "PRAGMA foreign_keys = OFF;
          INSERT INTO artists (id, name, name_key, created_at) VALUES
@@ -351,7 +351,7 @@ async fn the_page_rows_follow_writes_in_their_windows() {
     exec_batch(&db, PAGE).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
-        [bae_db::LibraryPageWindow { offset: 8, limit: 4 }].into_iter().collect(),
+        [bae_store::LibraryPageWindow { offset: 8, limit: 4 }].into_iter().collect(),
     );
     let first = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(first.total_count, 12);

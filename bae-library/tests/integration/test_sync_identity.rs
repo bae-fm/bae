@@ -83,13 +83,13 @@ async fn remote_release_in(device: &TestDevice, album_id: &str) -> String {
     release.id
 }
 
-async fn texts(database: &Database, query: &str) -> Vec<String> {
-    database.query_texts_for_test(query).await.unwrap()
+async fn texts(db: &bae_store::Store, query: &str) -> Vec<String> {
+    db.query_texts_for_test(query).await.unwrap()
 }
 
 /// The artists the artist browse lists.
-async fn listed_artists(database: &Database) -> Vec<String> {
-    bae_views::LibraryViews::new(database.clone())
+async fn listed_artists(db: &bae_store::Store) -> Vec<String> {
+    bae_views::LibraryViews::new(db.clone())
         .get_artist_page(&[], 0, 100)
         .await
         .unwrap()
@@ -99,8 +99,8 @@ async fn listed_artists(database: &Database) -> Vec<String> {
 }
 
 /// The albums the album browse lists.
-async fn listed_albums(database: &Database) -> Vec<String> {
-    bae_views::LibraryViews::new(database.clone())
+async fn listed_albums(db: &bae_store::Store) -> Vec<String> {
+    bae_views::LibraryViews::new(db.clone())
         .get_album_page(&[], 0, 100)
         .await
         .unwrap()
@@ -121,7 +121,7 @@ async fn album_artist_ids(database: &Database, album_id: &str) -> Vec<String> {
 
 async fn assert_nothing_held(devices: &TwoDevices) {
     for (name, device) in [("A", devices.a()), ("B", devices.b())] {
-        let held = device.database().pending().await.unwrap();
+        let held = device.store().pending().await.unwrap();
         assert!(held.is_empty(), "device {name} holds {held:?}");
     }
 }
@@ -151,9 +151,9 @@ fn one_catalog_artist_credited_on_two_devices_is_one_artist() {
         devices.resume().await;
 
         releases_on_both(devices, &[&release_a, &release_b]).await;
-        for database in [devices.a().database(), devices.b().database()] {
+        for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                listed_artists(database).await.len(),
+                listed_artists(db).await.len(),
                 1,
                 "one MusicBrainz artist is one library artist on every device"
             );
@@ -220,9 +220,9 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
         devices.resume().await;
 
         releases_on_both(devices, &[&releases[0], &releases[1]]).await;
-        for database in [devices.a().database(), devices.b().database()] {
+        for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                texts(database, "SELECT id FROM works").await.len(),
+                texts(db, "SELECT id FROM works").await.len(),
                 1,
                 "one MusicBrainz work is one library work on every device"
             );
@@ -261,9 +261,9 @@ fn one_release_group_identified_on_two_devices_is_one_album() {
         devices.resume().await;
 
         releases_on_both(devices, &[&releases[0], &releases[1]]).await;
-        for database in [devices.a().database(), devices.b().database()] {
+        for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                listed_albums(database).await.len(),
+                listed_albums(db).await.len(),
                 1,
                 "one release group is one album on every device"
             );
@@ -317,9 +317,9 @@ fn the_same_album_credit_added_on_two_devices_merges() {
         devices
             .converge("SELECT id || ' ' || album_id || ' ' || artist_id FROM album_artists")
             .await;
-        for database in [devices.a().database(), devices.b().database()] {
+        for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                album_artist_ids(database, &album_id).await,
+                album_artist_ids(&bae_db::test_fixtures::test_database(db), &album_id).await,
                 vec![first.clone(), second.clone()]
             );
         }
@@ -365,7 +365,7 @@ fn the_same_record_set_on_two_devices_merges() {
         devices
             .converge("SELECT id || ' ' || release_id || ' ' || catalog FROM release_records")
             .await;
-        assert_eq!(texts(devices.a().database(), &records_of).await.len(), 2);
+        assert_eq!(texts(devices.a().store(), &records_of).await.len(), 2);
         assert_nothing_held(devices).await;
     });
 }
@@ -397,7 +397,7 @@ async fn one_id_on_two_artists(devices: &TwoDevices) -> (String, String, Vec<Str
 /// import-pane state no sync carries.
 async fn draft_crediting(device: &TestDevice, artist_id: &str) {
     device
-        .database()
+        .store()
         .execute_local_sql_for_test(&format!(
             "INSERT INTO import_candidate_state (content_hash, candidate_key) \
                  VALUES ('draft', CAST('/Album' AS BLOB));
@@ -428,8 +428,11 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         assert_eq!(credited, survivor, "the write keeps the artist with the smaller id");
 
         devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
-        for database in [devices.a().database(), devices.b().database()] {
-            assert_eq!(album_artist_ids(database, &album_id).await, vec![survivor.clone()]);
+        for db in [devices.a().store(), devices.b().store()] {
+            assert_eq!(
+                album_artist_ids(&bae_db::test_fixtures::test_database(db), &album_id).await,
+                vec![survivor.clone()]
+            );
         }
         assert_nothing_held(devices).await;
     });
@@ -452,8 +455,11 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
         releases.push(new_release);
         releases_on_both(devices, &releases.iter().map(String::as_str).collect::<Vec<_>>()).await;
         devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
-        for database in [devices.a().database(), devices.b().database()] {
-            assert_eq!(album_artist_ids(database, &new_album).await, vec![survivor.clone()]);
+        for db in [devices.a().store(), devices.b().store()] {
+            assert_eq!(
+                album_artist_ids(&bae_db::test_fixtures::test_database(db), &new_album).await,
+                vec![survivor.clone()]
+            );
         }
         assert_nothing_held(devices).await;
     });
@@ -475,8 +481,8 @@ fn removing_an_albums_last_release_never_takes_a_concurrent_release_with_it() {
         devices.resume().await;
 
         releases_on_both(devices, &[&added]).await;
-        for database in [devices.a().database(), devices.b().database()] {
-            assert_eq!(listed_albums(database).await, vec![album_id.clone()]);
+        for db in [devices.a().store(), devices.b().store()] {
+            assert_eq!(listed_albums(db).await, vec![album_id.clone()]);
         }
         assert_nothing_held(devices).await;
     });

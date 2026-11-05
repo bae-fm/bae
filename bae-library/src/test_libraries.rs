@@ -25,6 +25,7 @@ use bae_catalogs::remote_image::RemoteImageCache;
 use bae_db::Database;
 use bae_diagnostics::Diagnostics;
 use bae_import::{CatalogSessions, ImportServiceHandle};
+use bae_store::Store;
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
 
@@ -33,6 +34,7 @@ use std::sync::Arc;
 /// needs over it, each over the same store, catalog sessions and image cache.
 pub struct TestLibrary {
     manager: LibraryManager,
+    store: Store,
     database: Database,
     catalogs: CatalogSessions,
     closing: CancellationToken,
@@ -50,16 +52,16 @@ impl std::ops::Deref for TestLibrary {
 }
 
 impl TestLibrary {
-    /// Open the library over `database` on the real clock and ids, asking
+    /// Open the library over `store` on the real clock and ids, asking
     /// `providers`, which were built on `http`, reporting nowhere.
     pub async fn open(
-        database: Database,
+        store: Store,
         app_dir: bae_app_dir::AppDir,
         providers: bae_catalogs::providers::Providers,
         http: bae_util::http::Http,
     ) -> Self {
         Self::open_with(
-            database,
+            store,
             app_dir,
             providers,
             http,
@@ -70,13 +72,13 @@ impl TestLibrary {
         .await
     }
 
-    /// Open the library over `database` through the app's opening step, on
+    /// Open the library over `store` through the app's opening step, on
     /// `clock` and `ids`, reporting to `diagnostics`. `http` is the transport
     /// `providers` were built on. The catalog sessions, the image cache over
     /// `http` and the closing token are built here, as the bootstrap builds
     /// them from the one transport it holds.
     pub async fn open_with(
-        database: Database,
+        store: Store,
         app_dir: bae_app_dir::AppDir,
         providers: bae_catalogs::providers::Providers,
         http: bae_util::http::Http,
@@ -85,14 +87,16 @@ impl TestLibrary {
         diagnostics: Diagnostics,
     ) -> Self {
         let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
+        let database = Database::new(store.clone(), ids.clone());
         let catalogs = CatalogSessions::new(
             providers,
-            database.clone(),
+            store.clone(),
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
         );
         let closing = CancellationToken::new();
         let manager = crate::open_library_manager(
+            store.clone(),
             database.clone(),
             catalogs.clone(),
             closing.clone(),
@@ -105,10 +109,15 @@ impl TestLibrary {
         )
         .await
         .expect("open the test library");
-        Self { manager, database, catalogs, closing, clock, ids, diagnostics, remote_images }
+        Self { manager, store, database, catalogs, closing, clock, ids, diagnostics, remote_images }
     }
 
     /// The library's store.
+    pub fn store(&self) -> &Store {
+        &self.store
+    }
+
+    /// The library's records, people, membership and sync status.
     pub fn database(&self) -> &Database {
         &self.database
     }
@@ -120,7 +129,7 @@ impl TestLibrary {
 
     /// The cast picker's list over its store.
     pub fn cast_picker(&self) -> bae_playback::renderer::CastPicker {
-        bae_playback::renderer::CastPicker::new(self.database.clone())
+        bae_playback::renderer::CastPicker::new(self.store.clone())
     }
 
     /// The token whose cancel ends what runs while the library is open.
@@ -153,11 +162,12 @@ impl TestLibrary {
     pub async fn start_import(&self) -> Result<ImportServiceHandle, bae_import::ImportError> {
         bae_import::ImportService::start(
             tokio::runtime::Handle::current(),
+            self.store.clone(),
             self.database.clone(),
             self.catalogs.clone(),
             self.remote_images.clone(),
             self.diagnostics.clone(),
-            bae_import::CandidatePreparations::new(self.database.clone()),
+            bae_import::CandidatePreparations::new(self.store.clone()),
             self.clock.clone(),
             self.ids.clone(),
             self.closing.child_token(),
@@ -261,11 +271,12 @@ impl TestLibrary {
             .await
             .expect("settle the playback queue");
         bae_playback::PlaybackService::start_with_audio_device(
+            self.store.clone(),
             self.database.clone(),
             self.ids.clone(),
-            bae_playback::tables::PlaybackQueueTables::new(self.database.clone()),
-            bae_playback::tables::PlaybackNowRow::new(self.database.clone()),
-            bae_playback::tables::PlaybackTimelineRow::new(self.database.clone()),
+            bae_playback::tables::PlaybackQueueTables::new(self.store.clone()),
+            bae_playback::tables::PlaybackNowRow::new(self.store.clone()),
+            bae_playback::tables::PlaybackTimelineRow::new(self.store.clone()),
             self.diagnostics.clone(),
             tokio::runtime::Handle::current(),
             position_update_interval_ms,
@@ -277,8 +288,8 @@ impl TestLibrary {
 }
 
 /// Open `dir/test.db` under the real clock and real UUID provider.
-async fn open_test_db(dir: &std::path::Path) -> Database {
-    Database::new_test(
+async fn open_test_db(dir: &std::path::Path) -> Store {
+    Store::new_test(
         crate::SCHEMA,
         dir.join("test.db").to_str().expect("test database path is valid UTF-8"),
         Arc::new(coven::SystemClock),
@@ -321,7 +332,7 @@ pub async fn test_library_from_handle(
     http: bae_util::http::Http,
 ) -> TestLibrary {
     TestLibrary::open(
-        Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds)),
+        Store::new(handle, Arc::new(coven::SystemClock)),
         bae_app_dir::AppDir::under_home(dir).unwrap(),
         providers,
         http,
@@ -372,14 +383,13 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let library = runtime.block_on(async {
-        let handle = bae_db::configure_store(installation.builder(), crate::SCHEMA)
+        let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
             .create_store("Test Library")
             .await
             .expect("create fresh test store");
-        let database =
-            Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds));
+        let store = Store::new(handle, Arc::new(coven::SystemClock));
         TestLibrary::open(
-            database,
+            store,
             app_dir,
             bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),

@@ -128,8 +128,8 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 
 #[tokio::test]
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
-    let (parts, database, _temp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, _temp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let root = crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();

@@ -14,7 +14,7 @@ pub enum BridgeFormerDeviceState {
     Removed,
     Replaced,
 }
-mirror_enum! { BridgeFormerDeviceState = bae_db::membership::FormerDeviceState,
+mirror_enum! { BridgeFormerDeviceState = bae_store::FormerDeviceState,
     from_core: pub(crate) fn, variants: { Removed, Replaced },
 }
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]

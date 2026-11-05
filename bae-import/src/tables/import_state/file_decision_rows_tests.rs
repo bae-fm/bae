@@ -1,7 +1,7 @@
 //! A candidate's sheet decisions as stored and read back by the next scan.
 
 use crate::tables::import_state::tests::*;
-use bae_db::test_fixtures::empty_db;
+use bae_store::test_fixtures::empty_db;
 
 /// A binding the user cleared survives a relaunch: it is stored under the
 /// candidate's content hash, read back from a cold database, and the scan

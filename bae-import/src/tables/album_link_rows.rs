@@ -119,7 +119,7 @@ impl ImportTables {
         &self,
         read: Vec<(String, Vec<MetadataRef>)>,
     ) -> Result<(), DbError> {
-        self.database.call(move |sql| replace_group_album_links_on(sql, &read)).await
+        self.store.call(move |sql| replace_group_album_links_on(sql, &read)).await
     }
 }
 

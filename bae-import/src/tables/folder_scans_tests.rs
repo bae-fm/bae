@@ -6,15 +6,15 @@ use super::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::tables::ImportTables;
-use bae_db::test_fixtures::empty_db;
-use bae_db::Database;
+use bae_store::test_fixtures::empty_db;
+use bae_store::Store;
 use rusqlite::params;
 
 impl ImportTables {
     /// Each watched folder's scan as a test reads it whole: its generation,
     /// status and every stored entry.
     pub async fn load_folder_scan_snapshots(&self) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
-        self.database
+        self.store
             .read(move |sql| load_folder_scan_snapshots_on(&sql))
             .process(|process| process())
             .await
@@ -95,25 +95,25 @@ pub(crate) fn combined_candidate(
 
 /// Store `folder` under `root` read as `decision`, yielding `items`.
 pub(crate) async fn commit_reading(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
     folder: &str,
     decision: crate::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::folder_scanner::ScanItem>,
-) -> Result<crate::tables::FolderReadingWrite, bae_db::DbError> {
+) -> Result<crate::tables::FolderReadingWrite, bae_store::DbError> {
     let tables = crate::tables::ImportTables::new(db.clone());
     let stamp = tables.begin_folder_reading(std::path::Path::new(root)).await?;
     commit_reading_under(db, root, folder, decision, items, stamp).await
 }
 
 pub(crate) async fn commit_reading_under(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
     folder: &str,
     decision: crate::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::folder_scanner::ScanItem>,
     stamp: crate::tables::folder_scans::FolderReadingStamp,
-) -> Result<crate::tables::FolderReadingWrite, bae_db::DbError> {
+) -> Result<crate::tables::FolderReadingWrite, bae_store::DbError> {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables
         .commit_folder_reading(crate::tables::FolderReadingCommit {
@@ -149,7 +149,7 @@ pub(crate) async fn commit_reading_under(
 
 /// Scan `root` holding `Box/CD1`, `Box/CD2` and `Other`, returning the scan's
 /// generation.
-pub(crate) async fn scanned_box_and_sibling(db: &Database, root: &std::path::Path) -> u64 {
+pub(crate) async fn scanned_box_and_sibling(db: &Store, root: &std::path::Path) -> u64 {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
     let generation = tables
@@ -384,7 +384,7 @@ async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
 // A release is found once: the first write that settles its folder.
 
 async fn write(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
     generation: u64,
     item: &crate::folder_scanner::ScanItem,
@@ -563,7 +563,7 @@ fn tentative_candidate(root: &std::path::Path, name: &str) -> crate::folder_scan
 /// Save `items` in turn under one scan generation of `root`, returning each
 /// write.
 async fn save_in_turn(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
     items: &[crate::folder_scanner::ScanItem],
 ) -> Vec<crate::tables::ScanItemWrite> {
@@ -721,7 +721,7 @@ async fn a_tentative_candidate_stands_down_only_for_a_release_reading_its_files(
     );
 }
 
-pub(crate) async fn stored_keys(db: &Database, root: &std::path::Path) -> Vec<crate::CandidateKey> {
+pub(crate) async fn stored_keys(db: &Store, root: &std::path::Path) -> Vec<crate::CandidateKey> {
     let tables = crate::tables::ImportTables::new(db.clone());
     let mut keys: Vec<crate::CandidateKey> = tables
         .load_folder_scan_items(root)

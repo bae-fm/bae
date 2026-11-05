@@ -175,7 +175,7 @@ impl StoredCover {
 
 /// The cover the candidate `content_hash` chose, if it chose one.
 pub(super) fn load_cover_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     content_hash: &str,
 ) -> Result<Option<CoverSelection>, DbError> {
     sql.query_row(
@@ -198,7 +198,7 @@ pub(super) fn load_cover_on(
 /// without its bytes, or bytes stored beside a cover of the folder, is a
 /// damaged row, and the read fails naming it.
 pub(super) fn load_prepared_cover_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     content_hash: &str,
     selection: Option<CoverSelection>,
 ) -> Result<Option<PreparedCover>, DbError> {

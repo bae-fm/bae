@@ -275,7 +275,7 @@ impl PlaybackService {
         listening.meter = ListeningMeter::Remote { position, reported_at: now };
     }
 
-    fn listening_failed(&self, error: bae_db::DbError) {
+    fn listening_failed(&self, error: bae_store::DbError) {
         error!("could not record listening history: {error}");
         emit_progress(
             &self.progress_tx,
@@ -287,7 +287,7 @@ impl PlaybackService {
 async fn persist(
     database: &bae_db::Database,
     listening: &mut Listening,
-) -> Result<(), bae_db::DbError> {
+) -> Result<(), bae_store::DbError> {
     if listening.play.qualifies()
         && listening.play.entry().played.as_millis() != listening.saved.as_millis()
     {

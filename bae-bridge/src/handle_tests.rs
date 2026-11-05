@@ -139,7 +139,7 @@ pub(super) fn fresh_test_library(
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = runtime
         .block_on(
-            bae_db::configure_store(installation.builder(), bae_library::SCHEMA)
+            bae_store::configure_store(installation.builder(), bae_library::SCHEMA)
                 .create_store("Test Library"),
         )
         .expect("test store");
@@ -705,7 +705,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         })
         .await;
     });
-    let database = library.database().clone();
+    let db = library.store().clone();
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
             .await
@@ -725,11 +725,13 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .enable_all()
         .build()
         .expect("a runtime to read the library from")
-        .block_on(database.unsent_writes_for_test());
+        .block_on(db.unsent_writes_for_test());
     assert!(
         matches!(
             read,
-            Err(bae_db::DbError::Coven(coven::CovenError::Database(coven::DbError::StoreClosed)))
+            Err(bae_store::DbError::Coven(coven::CovenError::Database(
+                coven::DbError::StoreClosed
+            )))
         ),
         "the library's store is closed: {read:?}"
     );
@@ -770,7 +772,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     assert!(
         matches!(
             read,
-            Err(bae_library::LibraryError::Database(bae_db::DbError::Coven(
+            Err(bae_library::LibraryError::Database(bae_store::DbError::Coven(
                 coven::CovenError::Database(coven::DbError::StoreClosed)
             )))
         ),

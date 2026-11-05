@@ -414,7 +414,7 @@ impl ImportTables {
         if content_hashes.is_empty() {
             return Ok(());
         }
-        self.database
+        self.store
             .call(move |sql| {
                 for content_hash in &content_hashes {
                     move_pane_on(sql, content_hash, pane_move)?;
@@ -433,7 +433,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let session = session.clone();
-        self.database.call(move |sql| save_session_on(sql, &content_hash, &session)).await
+        self.store.call(move |sql| save_session_on(sql, &content_hash, &session)).await
     }
 }
 

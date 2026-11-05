@@ -251,8 +251,8 @@ impl ImportServiceHandle {
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
             destination: crate::ImportDestination::of(
-                bae_preferences::preferences(&self.database).await?.import_storage,
-                self.database.storage_config().await?.is_some(),
+                bae_preferences::preferences(&self.store).await?.import_storage,
+                self.store.storage_config().await?.is_some(),
             ),
             #[cfg(any(test, feature = "test-utils"))]
             pick: None,

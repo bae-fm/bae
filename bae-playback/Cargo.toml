@@ -20,6 +20,7 @@ bae-audio = { workspace = true }
 # The store the queue, its resume point and history are kept in, and the
 # track audio playback resolves.
 bae-db = { workspace = true }
+bae-store = { workspace = true }
 # The bugs and telemetry a playback failure reports.
 bae-diagnostics = { workspace = true }
 # Replay gain, side pauses and the cast transcode a playback reads.
@@ -66,6 +67,7 @@ cpal = { workspace = true }
 bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"] }
 # Test databases with bae's schema.
 bae-db = { workspace = true, features = ["test-utils"] }
+bae-store = { workspace = true, features = ["test-utils"] }
 # The bug reporter and telemetry transport that record what they are handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 # A new library's preferences, built without a library.
@@ -93,7 +95,7 @@ default = []
 # manual playback clock, and the seams the playback tests of the crates above
 # read. Dev/test-only: a
 # production build never enables it.
-test-utils = ["bae-db/test-utils", "bae-util/test-utils"]
+test-utils = ["bae-db/test-utils", "bae-store/test-utils", "bae-util/test-utils"]
 
 [lints]
 workspace = true

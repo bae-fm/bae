@@ -14,7 +14,7 @@ impl Database {
             RatingTarget::Track(id) => ("track", id.clone(), None, Some(id)),
         };
         let id = format!("{person}:{kind}:{target_id}");
-        self.call(move |sql| {
+        self.inner.store.call(move |sql| {
             match stars {
                 Some(stars) => {
                     sql.execute("INSERT INTO ratings (id, person_id, album_id, track_id, stars) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(id) DO UPDATE SET stars = excluded.stars", params![id, person.to_string(), album, track, stars as i64])?;
@@ -27,7 +27,7 @@ impl Database {
     }
 
     pub async fn ratings(&self) -> Result<Vec<Rating>, DbError> {
-        self.read(|sql| Ok(ratings(&sql)?)).await
+        self.inner.store.read(|sql| Ok(ratings(&sql)?)).await
     }
 
     /// The caller obtains ids from its injected IdSource, including on retries.
@@ -37,7 +37,7 @@ impl Database {
         name: &str,
         sharing: Sharing,
     ) -> Result<Playlist, CollectionError> {
-        let name = crate::EnteredName::parse(name)?.into_string();
+        let name = bae_store::EnteredName::parse(name)?.into_string();
         let person = self.own_profile().await?;
         let playlist = Playlist {
             id,
@@ -46,23 +46,25 @@ impl Database {
             audience: sharing.audience(person.private_circle),
         };
         let row = playlist.clone();
-        self.call(move |sql| {
-            sql.execute(
-                "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
-                params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
-            )?;
-            Ok(())
-        })
-        .await?;
+        self.inner
+            .store
+            .call(move |sql| {
+                sql.execute(
+                    "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
+                    params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
+                )?;
+                Ok(())
+            })
+            .await?;
         Ok(playlist)
     }
 
     pub async fn playlists(&self) -> Result<Vec<Playlist>, DbError> {
-        self.read(|sql| Ok(playlists(&sql)?)).await
+        self.inner.store.read(|sql| Ok(playlists(&sql)?)).await
     }
 
     pub async fn rename_playlist(&self, id: uuid::Uuid, name: &str) -> Result<(), CollectionError> {
-        let name = crate::EnteredName::parse(name)?.into_string();
+        let name = bae_store::EnteredName::parse(name)?.into_string();
         self.change_playlist(id, move |sql| {
             sql.execute(
                 "UPDATE playlists SET name = ? WHERE id = ?",
@@ -98,7 +100,7 @@ impl Database {
     }
 
     pub async fn playlist_entries(&self, id: uuid::Uuid) -> Result<Vec<PlaylistEntry>, DbError> {
-        self.read(move |sql| Ok(entries(&sql, id)?)).await
+        self.inner.store.read(move |sql| Ok(entries(&sql, id)?)).await
     }
 
     pub async fn append_playlist_entry(
@@ -153,21 +155,23 @@ impl Database {
             + 'static,
     ) -> Result<(), CollectionError> {
         let person = self.own_profile().await?.id.to_string();
-        self.call(move |sql| {
-            let owner: Option<String> = sql
-                .query_row(
-                    "SELECT person_id FROM playlists WHERE id = ?",
-                    [id.to_string()],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            match owner {
-                None => Ok(Err(CollectionError::Missing)),
-                Some(owner) if owner != person => Ok(Err(CollectionError::NotOwner)),
-                Some(_) => change(sql),
-            }
-        })
-        .await?
+        self.inner
+            .store
+            .call(move |sql| {
+                let owner: Option<String> = sql
+                    .query_row(
+                        "SELECT person_id FROM playlists WHERE id = ?",
+                        [id.to_string()],
+                        |row| row.get(0),
+                    )
+                    .optional()?;
+                match owner {
+                    None => Ok(Err(CollectionError::Missing)),
+                    Some(owner) if owner != person => Ok(Err(CollectionError::NotOwner)),
+                    Some(_) => change(sql),
+                }
+            })
+            .await?
     }
 }
 

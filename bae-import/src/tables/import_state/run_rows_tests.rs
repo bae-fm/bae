@@ -8,7 +8,7 @@ use crate::candidate_runtime::tests::{
 use crate::tables::import_state::tests::{pane_candidate_key, stored_pane_candidate};
 use crate::Admission;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_db::test_fixtures::empty_db;
+use bae_store::test_fixtures::empty_db;
 
 /// Tables over a library whose scan holds one folder candidate, its key and
 /// the files it is identified as.

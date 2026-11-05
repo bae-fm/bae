@@ -51,8 +51,7 @@ impl HighSampleRateTestFixture {
 
         library.import_folder(album_dir, release_id_key).await;
 
-        let albums =
-            bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await?;
+        let albums = bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await?;
         let releases = library.get_releases_for_album(&albums[0].id).await?;
         let tracks = library.get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
@@ -393,11 +392,9 @@ async fn test_restore_emits_seeked_at_saved_position() {
     let (library, _temp_dir) = imported_library_without_playback().await;
     let releases = library
         .get_releases_for_album(
-            &bae_views::LibraryViews::new(library.database().clone())
-                .get_albums(&[])
-                .await
-                .unwrap()[0]
-                .id,
+            &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
+                [0]
+            .id,
         )
         .await
         .unwrap();
@@ -435,11 +432,9 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let (library, _temp_dir) = imported_library_without_playback().await;
     let release_id = library
         .get_releases_for_album(
-            &bae_views::LibraryViews::new(library.database().clone())
-                .get_albums(&[])
-                .await
-                .unwrap()[0]
-                .id,
+            &bae_views::LibraryViews::new(library.store().clone()).get_albums(&[]).await.unwrap()
+                [0]
+            .id,
         )
         .await
         .unwrap()[0]
@@ -454,7 +449,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let played =
         handle.play_release(release_id.clone(), None, false).await.expect("the play is answered");
     assert_eq!(played, bae_playback::PlayOutcome::Playing);
-    let mut state = bae_playback::tables::subscribe_playback_state(library.database());
+    let mut state = bae_playback::tables::subscribe_playback_state(library.store());
     let row = bae_library::followed::value_matching(&mut state, Option::is_some)
         .await
         .expect("playing a release persists the playback_state row");
@@ -502,7 +497,7 @@ async fn test_position_persists_periodically_while_playing() {
 /// The `playback_state` row's position once it passes `floor_ms`. Panics if
 /// it never does.
 async fn persisted_position_past(fixture: &PlaybackTestFixture, floor_ms: u64) -> u64 {
-    let mut state = bae_playback::tables::subscribe_playback_state(fixture.library.database());
+    let mut state = bae_playback::tables::subscribe_playback_state(fixture.library.store());
     let past = |row: &Option<bae_playback::tables::PlaybackResumeRow>| {
         row.as_ref().and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms)
     };

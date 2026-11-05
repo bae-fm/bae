@@ -138,7 +138,7 @@ async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
         }
         assert!(find_release(&manager, &release.id).await.is_none());
         assert_eq!(std::fs::read(source.join("track.flac")).unwrap(), b"audio");
-        assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+        assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     }
 }
 
@@ -148,24 +148,20 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
     for delete_album in [false, true] {
         let (manager, _temp, album, release) = manager_with_release().await;
         store_test_cover(&manager, &release.id, b"cover").await;
-        let before = manager.database.every_row_for_test().await.unwrap();
-        let id = manager.database.store_id();
-        manager.database.close().await.unwrap();
+        let before = manager.store.every_row_for_test().await.unwrap();
+        let id = manager.store.store_id();
+        manager.store.close().await.unwrap();
         let error = if delete_album {
             manager.delete_album(&album.id).await.unwrap_err()
         } else {
             manager.delete_release(&release.id).await.unwrap_err()
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
-        let handle = bae_db::configure_store(manager.installation.builder(), crate::SCHEMA)
+        let handle = bae_store::configure_store(manager.installation.builder(), crate::SCHEMA)
             .open(id, |_| ())
             .await
             .unwrap();
-        let reopened = Database::from_handle(
-            handle,
-            manager.clock.clone(),
-            std::sync::Arc::new(coven::UuidIds),
-        );
+        let reopened = bae_store::Store::new(handle, manager.clock.clone());
         assert_eq!(reopened.every_row_for_test().await.unwrap(), before);
         reopened.close().await.unwrap();
     }
@@ -234,8 +230,8 @@ fn devices_setting_different_primaries_converge_on_one() {
     crate::test_libraries::run_two_device_test(check_converging_primaries);
 }
 
-async fn primary_of(database: &bae_db::Database, album_id: &str) -> String {
-    bae_views::LibraryViews::new(database.clone())
+async fn primary_of(db: &bae_store::Store, album_id: &str) -> String {
+    bae_views::LibraryViews::new(db.clone())
         .find_album_detail(album_id)
         .await
         .unwrap()
@@ -254,7 +250,7 @@ async fn check_converging_primaries(devices: &mut crate::test_libraries::TwoDevi
     let orders =
         format!("SELECT id || ':' || album_order FROM releases WHERE album_id = '{}'", album.id);
     devices.converge(&orders).await;
-    assert_eq!(primary_of(devices.b().database(), &album.id).await, releases[0].id);
+    assert_eq!(primary_of(devices.b().store(), &album.id).await, releases[0].id);
 
     devices.pause().await;
     devices.a().manager().set_album_primary_release(&album.id, &releases[1].id).await.unwrap();
@@ -263,8 +259,8 @@ async fn check_converging_primaries(devices: &mut crate::test_libraries::TwoDevi
     devices.converge(&orders).await;
 
     let lower = std::cmp::min(&releases[1].id, &releases[2].id).clone();
-    assert_eq!(primary_of(devices.a().database(), &album.id).await, lower);
-    assert_eq!(primary_of(devices.b().database(), &album.id).await, lower);
+    assert_eq!(primary_of(devices.a().store(), &album.id).await, lower);
+    assert_eq!(primary_of(devices.b().store(), &album.id).await, lower);
 }
 
 #[tokio::test]
@@ -725,7 +721,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
 async fn deleting_a_release_retires_its_queued_uploads() {
     let (manager, temp, release, _) = queued_upload_fixture("queued").await;
     manager.delete_release(&release.id).await.unwrap();
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.pending().await.unwrap().is_empty());
     assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
 }

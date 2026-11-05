@@ -5,15 +5,16 @@
 //! decides.
 
 use super::*;
-use crate::test_fixtures::temp_db;
 use crate::{DbArtist, IdentityWriteError};
+use bae_store::test_fixtures::temp_db;
 use chrono::Utc;
+use rusqlite::Connection;
 use uuid::Uuid;
 
 const NOW: &str = "2026-01-01T00:00:00Z";
 
 fn library() -> Connection {
-    crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA)
+    bae_store::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA)
 }
 
 fn add_artist(
@@ -419,11 +420,12 @@ fn catalog_artist_id(artist: &DbArtist) -> String {
 #[tokio::test]
 async fn test_same_discogs_id_reuses_existing() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist One", Some("d123"), None);
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist One", Some("d123"), None);
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -431,11 +433,12 @@ async fn test_same_discogs_id_reuses_existing() {
 #[tokio::test]
 async fn test_same_mb_id_reuses_existing() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist One", None, Some("mb-abc"));
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist One", None, Some("mb-abc"));
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -443,10 +446,11 @@ async fn test_same_mb_id_reuses_existing() {
 #[tokio::test]
 async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
-    let resolved = db
+    let resolved = database
         .find_or_create_artists(&[discogs_credit.clone(), cross_linked_credit.clone()])
         .await
         .unwrap();
@@ -455,32 +459,36 @@ async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
     // MusicBrainz id names.
     let artist_id = catalog_artist_id(&cross_linked_credit);
     assert_eq!(resolved, vec![artist_id.clone(), artist_id.clone()]);
-    let saved = db.find_artist_by_id(&artist_id).await.unwrap().unwrap();
+    let saved = database.find_artist_by_id(&artist_id).await.unwrap().unwrap();
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
 
 #[tokio::test]
 async fn one_import_reuses_an_idless_artist_name_already_waiting_to_be_inserted() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let album_credit = make_artist("Artist Name", None, None);
     let track_credit = make_artist("Artist Name", None, None);
 
-    let resolved =
-        db.find_or_create_artists(&[album_credit.clone(), track_credit.clone()]).await.unwrap();
+    let resolved = database
+        .find_or_create_artists(&[album_credit.clone(), track_credit.clone()])
+        .await
+        .unwrap();
 
     assert_eq!(resolved, vec![album_credit.id.clone(), album_credit.id.clone()]);
-    assert!(db.find_artist_by_id(&album_credit.id).await.unwrap().is_some());
-    assert!(db.find_artist_by_id(&track_credit.id).await.unwrap().is_none());
+    assert!(database.find_artist_by_id(&album_credit.id).await.unwrap().is_some());
+    assert!(database.find_artist_by_id(&track_credit.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
 async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let musicbrainz_credit = make_artist("Artist One", None, Some("mb-abc"));
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
-    let resolved = db
+    let resolved = database
         .find_or_create_artists(&[
             discogs_credit.clone(),
             musicbrainz_credit,
@@ -491,7 +499,7 @@ async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them(
 
     let artist_id = catalog_artist_id(&cross_linked_credit);
     assert_eq!(resolved, vec![artist_id.clone(), artist_id.clone(), artist_id.clone()]);
-    let saved = db.find_artist_by_id(&artist_id).await.unwrap().unwrap();
+    let saved = database.find_artist_by_id(&artist_id).await.unwrap().unwrap();
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d123"));
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
@@ -499,15 +507,17 @@ async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them(
 #[tokio::test]
 async fn a_pending_artist_is_folded_into_a_committed_cross_provider_match() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist One", None, Some("mb-abc"));
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
-    let resolved = db.find_or_create_artists(&[discogs_credit, cross_linked_credit]).await.unwrap();
+    let resolved =
+        database.find_or_create_artists(&[discogs_credit, cross_linked_credit]).await.unwrap();
 
     assert_eq!(resolved, vec![existing.id.clone(), existing.id.clone()]);
-    let saved = db.find_artist_by_id(&existing.id).await.unwrap().unwrap();
+    let saved = database.find_artist_by_id(&existing.id).await.unwrap().unwrap();
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d123"));
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
@@ -515,28 +525,32 @@ async fn a_pending_artist_is_folded_into_a_committed_cross_provider_match() {
 #[tokio::test]
 async fn one_import_reuses_an_external_id_waiting_to_be_added_to_an_existing_artist() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist One", None, Some("mb-abc"));
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
 
-    let resolved = db.find_or_create_artists(&[cross_linked_credit, discogs_credit]).await.unwrap();
+    let resolved =
+        database.find_or_create_artists(&[cross_linked_credit, discogs_credit]).await.unwrap();
 
     assert_eq!(resolved, vec![existing.id.clone(), existing.id.clone()]);
-    let saved = db.find_artist_by_id(&existing.id).await.unwrap().unwrap();
+    let saved = database.find_artist_by_id(&existing.id).await.unwrap().unwrap();
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d123"));
 }
 
 #[tokio::test]
 async fn credits_of_one_write_reuse_an_artist_waiting_to_be_inserted() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
-    let resolved = db.find_or_create_artists(&[discogs_credit, cross_linked_credit]).await.unwrap();
+    let resolved =
+        database.find_or_create_artists(&[discogs_credit, cross_linked_credit]).await.unwrap();
 
     assert_eq!(resolved, vec![resolved[0].clone(); 2]);
-    let saved = db.find_artist_by_id(&resolved[0]).await.unwrap().unwrap();
+    let saved = database.find_artist_by_id(&resolved[0]).await.unwrap().unwrap();
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
 
@@ -545,33 +559,35 @@ async fn credits_of_one_write_reuse_an_artist_waiting_to_be_inserted() {
 #[tokio::test]
 async fn exact_source_ids_naming_two_artists_credit_the_musicbrainz_one() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let discogs_artist = make_artist("Artist One", Some("d123"), None);
     let musicbrainz_artist = make_artist("Artist Two", None, Some("mb-abc"));
-    db.insert_artist(&discogs_artist).await.unwrap();
-    db.insert_artist(&musicbrainz_artist).await.unwrap();
+    database.insert_artist(&discogs_artist).await.unwrap();
+    database.insert_artist(&musicbrainz_artist).await.unwrap();
 
     let incoming = make_artist("Artist Three", Some("d123"), Some("mb-abc"));
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved, std::slice::from_ref(&musicbrainz_artist.id));
     for artist in [&discogs_artist, &musicbrainz_artist] {
-        let stored = db.find_artist_by_id(&artist.id).await.unwrap().unwrap();
+        let stored = database.find_artist_by_id(&artist.id).await.unwrap().unwrap();
         assert_eq!(
             (stored.discogs_artist_id, stored.musicbrainz_artist_id),
             (artist.discogs_artist_id.clone(), artist.musicbrainz_artist_id.clone())
         );
     }
-    assert!(db.find_artist_by_id(&incoming.id).await.unwrap().is_none());
+    assert!(database.find_artist_by_id(&incoming.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
 async fn a_same_name_credit_without_ids_is_the_library_artist() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist One", None, None);
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("artist one", None, None);
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -579,11 +595,12 @@ async fn a_same_name_credit_without_ids_is_the_library_artist() {
 #[tokio::test]
 async fn test_same_name_same_mb_id_reuses() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist Two", None, Some("mb-artist-two"));
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist Two", None, Some("mb-artist-two"));
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -591,11 +608,12 @@ async fn test_same_name_same_mb_id_reuses() {
 #[tokio::test]
 async fn test_same_name_different_mb_id_creates_new() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist Two", None, Some("mb-artist-two-uk"));
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist Two", None, Some("mb-artist-two-ca"));
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     // Should create a new artist, not reuse existing
     assert_eq!(resolved[0], catalog_artist_id(&incoming));
@@ -605,11 +623,12 @@ async fn test_same_name_different_mb_id_creates_new() {
 #[tokio::test]
 async fn test_same_name_different_discogs_id_creates_new() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let existing = make_artist("Artist Two", Some("d100"), None);
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist Two", Some("d200"), None);
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], catalog_artist_id(&incoming));
     assert_ne!(resolved[0], existing.id);
@@ -618,32 +637,34 @@ async fn test_same_name_different_discogs_id_creates_new() {
 #[tokio::test]
 async fn ids_of_different_catalogs_do_not_keep_a_name_match_apart() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     // Existing has a Discogs ID only; the credit a MusicBrainz ID only.
     // Neither contradicts the other, so the name decides.
     let existing = make_artist("Artist One", Some("d456"), None);
-    db.insert_artist(&existing).await.unwrap();
+    database.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist One", None, Some("mb-xyz"));
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id, "the artist keeps its own id");
-    let linked = db.find_artist_by_id(&existing.id).await.unwrap().unwrap();
+    let linked = database.find_artist_by_id(&existing.id).await.unwrap().unwrap();
     assert_eq!(linked.discogs_artist_id.as_deref(), Some("d456"));
     assert_eq!(linked.musicbrainz_artist_id.as_deref(), Some("mb-xyz"));
-    assert!(db.find_artist_by_id(&catalog_artist_id(&incoming)).await.unwrap().is_none());
+    assert!(database.find_artist_by_id(&catalog_artist_id(&incoming)).await.unwrap().is_none());
 }
 
 #[tokio::test]
 async fn test_new_artist_inserts() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
 
     let incoming = make_artist("New Band", Some("d999"), Some("mb-999"));
-    let resolved = db.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
+    let resolved = database.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], catalog_artist_id(&incoming));
 
     // Verify it's in the DB
-    let saved = db.find_artist_by_id(&resolved[0]).await.unwrap().unwrap();
+    let saved = database.find_artist_by_id(&resolved[0]).await.unwrap().unwrap();
     assert_eq!(saved.name, "New Band");
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d999"));
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-999"));
@@ -655,15 +676,18 @@ async fn test_new_artist_inserts() {
 /// reads the credit as that artist.
 #[test]
 fn a_catalog_id_two_devices_gave_two_artists_merges_them() {
-    crate::test_devices::run_two_store_test(
+    bae_store::test_devices::run_two_store_test(
         crate::test_fixtures::TEST_SCHEMA,
         check_two_devices_give_one_artist_id,
     );
 }
 
-async fn check_two_devices_give_one_artist_id(devices: &crate::test_devices::TwoStores) {
+async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices::TwoStores) {
     for id in ["artist-a", "artist-b"] {
-        devices.a().insert_artist(&credit(id, "Artist Name", None, None)).await.unwrap();
+        crate::test_fixtures::test_database(devices.a())
+            .insert_artist(&credit(id, "Artist Name", None, None))
+            .await
+            .unwrap();
     }
     let artists = "SELECT id || ':' || COALESCE(discogs_artist_id, '') FROM artists";
     devices.converge(artists).await;
@@ -684,8 +708,7 @@ async fn check_two_devices_give_one_artist_id(devices: &crate::test_devices::Two
     devices.resume().await;
     devices.converge(artists).await;
 
-    let credited = devices
-        .a()
+    let credited = crate::test_fixtures::test_database(devices.a())
         .find_or_create_artists(&[credit("credit", "Artist Name", Some("discogs-1"), None)])
         .await
         .unwrap();
@@ -697,7 +720,10 @@ async fn check_two_devices_give_one_artist_id(devices: &crate::test_devices::Two
         ..bae_catalogs::credits::ArtistCredit::named("Artist Name")
     };
     for device in [devices.a(), devices.b()] {
-        let resolved = device.resolve_artist_credits(std::slice::from_ref(&read)).await.unwrap();
+        let resolved = crate::test_fixtures::test_database(device)
+            .resolve_artist_credits(std::slice::from_ref(&read))
+            .await
+            .unwrap();
         let crate::CreditResolution::Library { artist } = &resolved[0].resolution else {
             panic!("the id names one artist, got {:?}", resolved[0].resolution);
         };

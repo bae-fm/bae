@@ -5,13 +5,15 @@
 //! the catalog sessions and the closing token — and passes them by name.
 
 use crate::{CancellationToken, LibraryManager};
-use bae_db::{Database, DbError};
+use bae_db::Database;
 use bae_diagnostics::Diagnostics;
+use bae_store::{DbError, Store};
 use coven::{ClockRef, IdSourceRef};
 
 /// Open the library manager over the library's store, with the services it
 /// drives built from that store. `closing` ends its tasks when it closes.
 pub async fn open_library_manager(
+    store: Store,
     database: Database,
     #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     closing: CancellationToken,
@@ -22,12 +24,13 @@ pub async fn open_library_manager(
     runtime_handle: tokio::runtime::Handle,
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
 ) -> Result<LibraryManager, DbError> {
-    let downloads = bae_transfers::Downloads::new(database.clone());
+    let downloads = bae_transfers::Downloads::new(store.clone());
     let make_local_transfers = bae_transfers::ReleaseTransfers::new();
     let detach_cancels = crate::detach_cancels::DetachCancels::default();
     #[cfg(desktop)]
-    let outputs = bae_transfers::Outputs::new(database.clone());
+    let outputs = bae_transfers::Outputs::new(store.clone());
     LibraryManager::open(
+        store,
         database,
         app_dir,
         clock,

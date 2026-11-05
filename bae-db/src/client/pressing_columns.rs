@@ -9,7 +9,7 @@
 //! and a value no vocabulary names fails the read instead of turning into
 //! nothing.
 
-use super::read::{column_conversion_error, json_column};
+use bae_store::read::{column_conversion_error, json_column};
 use bae_types::pressing::{
     Country, DiscogsDetail, MediaCount, Packaging, PressingFacts, Region, ReleaseArea,
     ReleaseLabel, ReleaseStatus,

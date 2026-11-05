@@ -4,9 +4,10 @@
 
 use bae_app::live_reads::LiveStorageBrowse;
 use bae_db::GallerySource;
-use bae_db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
+use bae_db::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_library::storage::transfer::TransferProgress;
 use bae_library::{CancellationToken, LibraryManager};
+use bae_store::SortDirection;
 use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
@@ -86,7 +87,7 @@ async fn create_local_release(
 /// create it Local, attach its files, and finish the uploads.
 async fn create_remote_release(
     mgr: &LibraryManager,
-    db: &bae_db::Database,
+    db: &bae_store::Store,
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
@@ -264,10 +265,10 @@ async fn a_release_detail_says_where_its_download_stands() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let release_id =
         create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
-    let status = |db: bae_db::Database, release_id: String| async move {
+    let status = |db: bae_store::Store, release_id: String| async move {
         bae_views::LibraryViews::new(db)
             .find_release_detail(&release_id)
             .await
@@ -295,7 +296,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let release_id = create_remote_release(
         &mgr,
         &db,
@@ -349,7 +350,7 @@ async fn the_detail_views_follow_a_releases_pin() {
     let mgr = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &mgr,
-        mgr.database(),
+        mgr.store(),
         &tmp.path().join("src"),
         &[("a.flac", b"follow-bytes")],
     )
@@ -360,7 +361,7 @@ async fn the_detail_views_follow_a_releases_pin() {
         .unwrap()
         .expect("the library holds the release")
         .album_id;
-    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let views = bae_views::LibraryViews::new(mgr.store().clone());
     let release = bae_app::live_reads::subscribe_release_detail(&mgr, &views);
     release.set(Some(release_id.clone())).unwrap();
     let album = bae_app::live_reads::subscribe_album_detail(&mgr, &views);
@@ -412,7 +413,7 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
-    let db = mgr.database().clone();
+    let db = mgr.store().clone();
     let release_id =
         create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")])
             .await;
@@ -472,7 +473,7 @@ async fn transition_completions_deliver_storage_values() {
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
-    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = bae_app::live_reads::subscribe_storage_browse(
         &mgr,
         &views,
@@ -483,7 +484,7 @@ async fn transition_completions_deliver_storage_values() {
             },
             filter: StorageFilter::All,
             search: String::new(),
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
             selected: Default::default(),
         },
     );
@@ -517,7 +518,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     mgr.upload_release(&first, false).await.unwrap();
     mgr.upload_release(&second, false).await.unwrap();
 
-    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let views = bae_views::LibraryViews::new(mgr.store().clone());
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
     let values = bae_app::live_reads::subscribe_storage_browse(
@@ -531,7 +532,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
             filter: StorageFilter::Local,
             search: String::new(),
             // One row on screen, so one selected release sits outside it.
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
             selected: selected.clone(),
         },
     );
@@ -588,14 +589,14 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     let mgr = setup_with_cloud(&tmp).await;
     let pinned = create_remote_release(
         &mgr,
-        mgr.database(),
+        mgr.store(),
         &tmp.path().join("pinned"),
         &[("a.flac", b"pinned")],
     )
     .await;
     let unpinned = create_remote_release(
         &mgr,
-        mgr.database(),
+        mgr.store(),
         &tmp.path().join("unpinned"),
         &[("b.flac", b"unpinned")],
     )
@@ -607,7 +608,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     .await
     .expect("pin task completes");
 
-    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let views = bae_views::LibraryViews::new(mgr.store().clone());
     let view = |selected: &[&String]| StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,
@@ -616,7 +617,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         filter: StorageFilter::All,
         search: String::new(),
         // One row on screen, so one selected release sits outside it.
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+        windows: [bae_store::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
         selected: selected.iter().map(|id| (*id).clone()).collect(),
     };
     let values =

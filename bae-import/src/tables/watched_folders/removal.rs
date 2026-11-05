@@ -46,7 +46,7 @@ impl ImportTables {
         {
             return Ok(None);
         }
-        self.database
+        self.store
             .call(move |sql| {
                 let watched = super::watched_roots_on(sql)?;
                 if let Some(root) = roots.iter().find(|root| !is_among(&watched, root)) {

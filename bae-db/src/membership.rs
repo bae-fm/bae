@@ -11,20 +11,13 @@ pub struct ActiveDevice {
     pub can_remove: bool,
 }
 
-/// How a device lost access to the library.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FormerDeviceState {
-    Removed,
-    Replaced,
-}
-
 /// A device that lost access. Coven keeps its record for good, so it stays
 /// listed under its person.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FormerDevice {
     pub id: coven::DeviceId,
     pub name: String,
-    pub state: FormerDeviceState,
+    pub state: bae_store::FormerDeviceState,
 }
 
 /// A member with their devices split into those that can sync and those that

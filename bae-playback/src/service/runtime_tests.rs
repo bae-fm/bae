@@ -183,7 +183,7 @@ async fn halt_on_error_noops_when_stopped() {
 #[tokio::test]
 async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    let queue_before = crate::tables::queue_value(&service.database).await.unwrap();
+    let queue_before = crate::tables::queue_value(&service.store).await.unwrap();
 
     service.handle_play("4b6f0e2a-91c3-4d58-b7e6-0a2f3c4d5e6f".to_string()).await;
 
@@ -200,7 +200,7 @@ async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     }
     assert!(saw_error, "a failed context load must surface a PlaybackError");
     assert_eq!(
-        crate::tables::queue_value(&service.database).await.unwrap(),
+        crate::tables::queue_value(&service.store).await.unwrap(),
         queue_before,
         "a failed context load must not mutate the queue with a fallback single-track entry"
     );
@@ -415,16 +415,15 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
     service.slot =
         active_slot(test_prepared_track(TRACK_A, create_sparse_buffer(1_024)), TrackPhase::Playing);
     let commands = service.command_tx.clone();
-    let database: bae_db::Database = (*store).clone();
+    let db: bae_store::Store = (*store).clone();
 
     let delete_then_watch = async move {
-        database
-            .call(|sql| {
-                sql.execute("DELETE FROM tracks WHERE id = ?", [TRACK_A])?;
-                Ok(())
-            })
-            .await
-            .expect("the track's row is deleted");
+        db.call(|sql| {
+            sql.execute("DELETE FROM tracks WHERE id = ?", [TRACK_A])?;
+            Ok(())
+        })
+        .await
+        .expect("the track's row is deleted");
         let stopped = tokio::time::timeout(HANG_GUARD, async {
             while let Some(progress) = progress_rx.recv().await {
                 if matches!(

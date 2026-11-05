@@ -179,7 +179,7 @@ impl LibraryManager {
         let source = self.database.find_album_by_id(seed_album_id).await?.ok_or_else(|| {
             LibraryError::Refused(format!("Source album '{seed_album_id}' not found"))
         })?;
-        let now = bae_db::client::utc_now(self.clock.as_ref());
+        let now = bae_store::utc_now(self.clock.as_ref());
         Ok(DbAlbum {
             id: self.ids.new_id().to_string(),
             title: source.title,

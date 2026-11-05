@@ -3,11 +3,13 @@
 //! call this, so tests run the app's wiring.
 
 use crate::AppServices;
-use bae_db::{Database, DbError};
+use bae_db::Database;
 use bae_diagnostics::Diagnostics;
 #[cfg(desktop)]
 use bae_library::CancellationToken;
 use bae_library::{LibraryError, LibraryManager};
+use bae_store::DbError;
+use bae_store::Store;
 #[cfg(desktop)]
 use coven::ClockRef;
 use coven::IdSourceRef;
@@ -32,6 +34,7 @@ pub enum PlaybackOutput {
 /// source for side-pause countdowns.
 pub async fn start_library_services(
     manager: LibraryManager,
+    store: Store,
     database: Database,
     #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     #[cfg(desktop)] closing: CancellationToken,
@@ -46,16 +49,17 @@ pub async fn start_library_services(
     playback_output: PlaybackOutput,
 ) -> Result<AppServices, ServicesStartError> {
     manager.settle_playback_queue(restore_playback).await?;
-    let queue_tables = bae_playback::tables::PlaybackQueueTables::new(database.clone());
-    let now_row = bae_playback::tables::PlaybackNowRow::new(database.clone());
-    let timeline_row = bae_playback::tables::PlaybackTimelineRow::new(database.clone());
-    let views = bae_views::LibraryViews::new(database.clone());
+    let queue_tables = bae_playback::tables::PlaybackQueueTables::new(store.clone());
+    let now_row = bae_playback::tables::PlaybackNowRow::new(store.clone());
+    let timeline_row = bae_playback::tables::PlaybackTimelineRow::new(store.clone());
+    let views = bae_views::LibraryViews::new(store.clone());
     // No discovery outlives the process that ran it: the cast picker's list
     // starts empty, before anything that writes or reads it can.
-    let cast_picker = bae_playback::renderer::CastPicker::new(database.clone());
+    let cast_picker = bae_playback::renderer::CastPicker::new(store.clone());
     cast_picker.clear().await?;
     let playback = match playback_output {
         PlaybackOutput::System(audio_focus) => bae_playback::PlaybackService::start(
+            store.clone(),
             database.clone(),
             ids.clone(),
             queue_tables,
@@ -70,6 +74,7 @@ pub async fn start_library_services(
         ),
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackOutput::Device(device) => bae_playback::PlaybackService::start_with_audio_device(
+            store.clone(),
             database.clone(),
             ids.clone(),
             queue_tables,
@@ -90,11 +95,12 @@ pub async fn start_library_services(
     {
         let import = bae_import::ImportService::start(
             runtime_handle,
-            database.clone(),
+            store.clone(),
+            database,
             catalogs,
             remote_images,
             diagnostics,
-            bae_import::CandidatePreparations::new(database),
+            bae_import::CandidatePreparations::new(store),
             clock,
             ids,
             closing.child_token(),

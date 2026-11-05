@@ -1,6 +1,6 @@
 use super::*;
 use crate::test_fixtures::labels::{add_label, label, library, placed, read_labels, stored_label};
-use crate::test_fixtures::{empty_db, fixed_now, row_count};
+use bae_store::test_fixtures::{empty_db, fixed_now, row_count};
 
 const AT: &str = "2026-01-15T12:00:00+00:00";
 
@@ -18,39 +18,41 @@ fn artist(seed: &str, discogs: Option<&str>, musicbrainz: Option<&str>) -> DbArt
 /// Merge `absorbed` into `survivor` in a write of its own, the survivor
 /// taking `discogs-1`, `mb-1` and `sort_name`.
 async fn merge_artist(
-    db: &Database,
+    store: &Store,
     survivor: &str,
     absorbed: &str,
     sort_name: Option<&str>,
 ) -> Result<(), DbError> {
     let (survivor, absorbed) = (survivor.to_string(), absorbed.to_string());
     let sort_name = sort_name.map(str::to_string);
-    db.call(move |sql| {
-        merge_artist_on(
-            sql,
-            &ArtistMerge {
-                survivor: &survivor,
-                absorbed: &absorbed,
-                discogs_artist_id: Some("discogs-1"),
-                musicbrainz_artist_id: Some("mb-1"),
-                sort_name: sort_name.as_deref(),
-                at: AT,
-            },
-        )
-    })
-    .await
+    store
+        .call(move |sql| {
+            merge_artist_on(
+                sql,
+                &ArtistMerge {
+                    survivor: &survivor,
+                    absorbed: &absorbed,
+                    discogs_artist_id: Some("discogs-1"),
+                    musicbrainz_artist_id: Some("mb-1"),
+                    sort_name: sort_name.as_deref(),
+                    at: AT,
+                },
+            )
+        })
+        .await
 }
 
 /// The artist each of `table`'s merge rows was absorbed into, by absorbed id.
-async fn merges(db: &Database, table: &'static str) -> Vec<(String, String)> {
-    db.read(move |sql| {
-        let column = if table == "artist_merges" { "into_artist_id" } else { "into_label_id" };
-        Ok(sql.query(&format!("SELECT id, {column} FROM {table} ORDER BY id"), [], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        })?)
-    })
-    .await
-    .unwrap()
+async fn merges(store: &Store, table: &'static str) -> Vec<(String, String)> {
+    store
+        .read(move |sql| {
+            let column = if table == "artist_merges" { "into_artist_id" } else { "into_label_id" };
+            Ok(sql.query(&format!("SELECT id, {column} FROM {table} ORDER BY id"), [], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?)
+        })
+        .await
+        .unwrap()
 }
 
 async fn store_artist_image(db: &Database, artist_id: &str, bytes: &[u8]) {
@@ -72,26 +74,29 @@ async fn artist_image_file(db: &Database, artist_id: &str) -> Option<coven::File
 #[tokio::test]
 async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the_survivor() {
     let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let survivor = artist("survivor", Some("discogs-1"), None);
     let absorbed = artist("absorbed", None, Some("mb-1"));
-    db.insert_artist(&survivor).await.unwrap();
-    db.insert_artist(&absorbed).await.unwrap();
+    database.insert_artist(&survivor).await.unwrap();
+    database.insert_artist(&absorbed).await.unwrap();
     let album = DbAlbum::new_test("Album Title");
-    db.insert_album(&album).await.unwrap();
-    db.insert_album_artist(&DbAlbumArtist::new(&album.id, &survivor.id, 0, fixed_now()))
+    database.insert_album(&album).await.unwrap();
+    database
+        .insert_album_artist(&DbAlbumArtist::new(&album.id, &survivor.id, 0, fixed_now()))
         .await
         .unwrap();
-    db.insert_album_artist(&DbAlbumArtist::new(&album.id, &absorbed.id, 1, fixed_now()))
+    database
+        .insert_album_artist(&DbAlbumArtist::new(&album.id, &absorbed.id, 1, fixed_now()))
         .await
         .unwrap();
 
     merge_artist(&db, &survivor.id, &absorbed.id, Some("Artist Name, The")).await.unwrap();
 
-    let merged = db.find_artist_by_id(&survivor.id).await.unwrap().unwrap();
+    let merged = database.find_artist_by_id(&survivor.id).await.unwrap().unwrap();
     assert_eq!(merged.discogs_artist_id.as_deref(), Some("discogs-1"));
     assert_eq!(merged.musicbrainz_artist_id.as_deref(), Some("mb-1"));
     assert_eq!(merged.sort_name.as_deref(), Some("Artist Name, The"));
-    assert!(db.find_artist_by_id(&absorbed.id).await.unwrap().is_some());
+    assert!(database.find_artist_by_id(&absorbed.id).await.unwrap().is_some());
     assert_eq!(merges(&db, "artist_merges").await, [(absorbed.id.clone(), survivor.id.clone())]);
     let album_id = album.id.clone();
     let written: Vec<String> = db
@@ -105,7 +110,7 @@ async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the
         .await
         .unwrap();
     assert_eq!(written, [survivor.id.clone(), absorbed.id.clone()], "credits stay as written");
-    let shown = db.get_artists_for_album(&album.id).await.unwrap();
+    let shown = database.get_artists_for_album(&album.id).await.unwrap();
     assert_eq!(
         shown.into_iter().map(|credit| credit.artist.id).collect::<Vec<_>>(),
         [survivor.id.clone(), survivor.id.clone()]
@@ -115,15 +120,16 @@ async fn the_survivor_takes_the_absorbed_artists_ids_and_its_credits_read_as_the
 #[tokio::test]
 async fn a_survivor_keeps_the_sort_name_it_has() {
     let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let mut survivor = artist("survivor", Some("discogs-1"), None);
     survivor.sort_name = Some("Name, Artist".to_string());
     let absorbed = artist("absorbed", None, Some("mb-1"));
-    db.insert_artist(&survivor).await.unwrap();
-    db.insert_artist(&absorbed).await.unwrap();
+    database.insert_artist(&survivor).await.unwrap();
+    database.insert_artist(&absorbed).await.unwrap();
 
     merge_artist(&db, &survivor.id, &absorbed.id, Some("Artist Name, The")).await.unwrap();
 
-    let merged = db.find_artist_by_id(&survivor.id).await.unwrap().unwrap();
+    let merged = database.find_artist_by_id(&survivor.id).await.unwrap().unwrap();
     assert_eq!(merged.sort_name.as_deref(), Some("Name, Artist"));
 }
 
@@ -132,20 +138,21 @@ async fn a_survivor_keeps_the_sort_name_it_has() {
 #[tokio::test]
 async fn a_survivor_with_an_image_keeps_it_and_the_absorbed_artists_goes() {
     let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let survivor = artist("survivor", Some("discogs-1"), None);
     let absorbed = artist("absorbed", None, Some("mb-1"));
-    db.insert_artist(&survivor).await.unwrap();
-    db.insert_artist(&absorbed).await.unwrap();
-    store_artist_image(&db, &survivor.id, b"survivor").await;
-    store_artist_image(&db, &absorbed.id, b"absorbed").await;
-    let own = artist_image_file(&db, &survivor.id).await.unwrap().id();
+    database.insert_artist(&survivor).await.unwrap();
+    database.insert_artist(&absorbed).await.unwrap();
+    store_artist_image(&database, &survivor.id, b"survivor").await;
+    store_artist_image(&database, &absorbed.id, b"absorbed").await;
+    let own = artist_image_file(&database, &survivor.id).await.unwrap().id();
 
     merge_artist(&db, &survivor.id, &absorbed.id, None).await.unwrap();
 
-    let kept = artist_image_file(&db, &survivor.id).await.unwrap();
+    let kept = artist_image_file(&database, &survivor.id).await.unwrap();
     assert_eq!(kept.id(), own);
     assert_eq!(db.read_file(&kept).await.unwrap(), b"survivor");
-    assert!(db
+    assert!(database
         .find_library_image(&absorbed.id, &LibraryImageType::Artist)
         .await
         .unwrap()
@@ -162,20 +169,21 @@ async fn a_survivor_without_an_image_takes_the_absorbed_artists_file() {
     const HIGH: &str = "00000000-0000-4000-8000-000000000002";
     for (survivor_id, absorbed_id) in [(LOW, HIGH), (HIGH, LOW)] {
         let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
+        let database = crate::test_fixtures::test_database(&db);
         let mut survivor = artist("survivor", Some("discogs-1"), None);
         survivor.id = survivor_id.to_string();
         let mut absorbed = artist("absorbed", None, Some("mb-1"));
         absorbed.id = absorbed_id.to_string();
-        db.insert_artist(&survivor).await.unwrap();
-        db.insert_artist(&absorbed).await.unwrap();
-        store_artist_image(&db, &absorbed.id, b"absorbed").await;
-        let file = artist_image_file(&db, &absorbed.id).await.unwrap().id();
+        database.insert_artist(&survivor).await.unwrap();
+        database.insert_artist(&absorbed).await.unwrap();
+        store_artist_image(&database, &absorbed.id, b"absorbed").await;
+        let file = artist_image_file(&database, &absorbed.id).await.unwrap().id();
 
         merge_artist(&db, &survivor.id, &absorbed.id, None).await.unwrap_or_else(|error| {
             panic!("survivor {survivor_id}, absorbed {absorbed_id}: {error}")
         });
 
-        let taken = artist_image_file(&db, &survivor.id).await.unwrap();
+        let taken = artist_image_file(&database, &survivor.id).await.unwrap();
         assert_eq!(taken.id(), file);
         assert_eq!(db.read_file(&taken).await.unwrap(), b"absorbed");
         assert_eq!(
@@ -185,7 +193,7 @@ async fn a_survivor_without_an_image_takes_the_absorbed_artists_file() {
             1,
             "the merge stages no second copy"
         );
-        assert!(db
+        assert!(database
             .find_library_image(&absorbed.id, &LibraryImageType::Artist)
             .await
             .unwrap()
@@ -198,11 +206,12 @@ async fn a_survivor_without_an_image_takes_the_absorbed_artists_file() {
 #[tokio::test]
 async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
     let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let earlier = artist("earlier", None, None);
     let absorbed = artist("absorbed", None, Some("mb-1"));
     let survivor = artist("survivor", Some("discogs-1"), None);
     for artist in [&earlier, &absorbed, &survivor] {
-        db.insert_artist(artist).await.unwrap();
+        database.insert_artist(artist).await.unwrap();
     }
     let (earlier_id, absorbed_id) = (earlier.id.clone(), absorbed.id.clone());
     db.call(move |sql| {
@@ -232,8 +241,9 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
 #[tokio::test]
 async fn an_artist_merge_into_a_missing_survivor_is_refused() {
     let (db, _tmp) = empty_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     let absorbed = artist("absorbed", None, Some("mb-1"));
-    db.insert_artist(&absorbed).await.unwrap();
+    database.insert_artist(&absorbed).await.unwrap();
     let missing = bae_util::test_ids::test_uuid("missing");
 
     let refused = merge_artist(&db, &missing, &absorbed.id, None).await.unwrap_err();
@@ -244,21 +254,22 @@ async fn an_artist_merge_into_a_missing_survivor_is_refused() {
 
 /// Merge `absorbed` into `survivor` in a write of its own, the survivor
 /// taking `7190` and `mb-label`.
-async fn merge_label(db: &Database, survivor: &str, absorbed: &str) -> Result<(), DbError> {
+async fn merge_label(store: &Store, survivor: &str, absorbed: &str) -> Result<(), DbError> {
     let (survivor, absorbed) = (survivor.to_string(), absorbed.to_string());
-    db.call(move |sql| {
-        merge_label_on(
-            sql,
-            &LabelMerge {
-                survivor: &survivor,
-                absorbed: &absorbed,
-                discogs_label_id: Some("7190"),
-                musicbrainz_label_id: Some("mb-label"),
-                at: AT,
-            },
-        )
-    })
-    .await
+    store
+        .call(move |sql| {
+            merge_label_on(
+                sql,
+                &LabelMerge {
+                    survivor: &survivor,
+                    absorbed: &absorbed,
+                    discogs_label_id: Some("7190"),
+                    musicbrainz_label_id: Some("mb-label"),
+                    at: AT,
+                },
+            )
+        })
+        .await
 }
 
 /// The surviving label takes the catalog id it lacks and keeps its own; the
@@ -267,6 +278,7 @@ async fn merge_label(db: &Database, survivor: &str, absorbed: &str) -> Result<()
 #[tokio::test]
 async fn the_surviving_label_takes_the_absorbed_ones_id_and_its_releases_read_the_survivor() {
     let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+    let database = crate::test_fixtures::test_database(&db);
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "by-musicbrainz", "Label Name Records", Some("mb-label"), None).await;
     crate::test_fixtures::labels::write(
@@ -291,7 +303,7 @@ async fn the_surviving_label_takes_the_absorbed_ones_id_and_its_releases_read_th
         [("by-musicbrainz".to_string(), "by-discogs".to_string())]
     );
     assert_eq!(placed(&db).await[0].0.as_deref(), Some("by-musicbrainz"), "stays as written");
-    assert_eq!(read_labels(&db).await, vec![label(Some("Label Name"), None)]);
+    assert_eq!(read_labels(&database).await, vec![label(Some("Label Name"), None)]);
 }
 
 #[tokio::test]

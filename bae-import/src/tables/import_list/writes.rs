@@ -41,7 +41,7 @@ fn opened_at(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
 impl ImportTables {
     /// Open a list showing `view`, with nothing folded and nothing selected.
     pub async fn open_import_list(&self, view: ImportListView) -> Result<ImportListId, DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 Ok(ImportListId(sql.query_row(
                     "INSERT INTO import_list (tab, pending_filter, filter_text, list_order) \
@@ -60,7 +60,7 @@ impl ImportTables {
 
     /// Close a list: its row, its folds and its selection go.
     pub(crate) async fn close_import_list(&self, list: ImportListId) -> Result<(), DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 sql.execute("DELETE FROM import_list WHERE id = ?", [list.0])?;
                 Ok(())
@@ -71,7 +71,7 @@ impl ImportTables {
     /// Close every list: what the library opens with, since no list outlives
     /// the process that opened it.
     pub(crate) async fn close_import_lists(&self) -> Result<(), DbError> {
-        self.database
+        self.store
             .call(|sql| {
                 sql.execute("DELETE FROM import_list", [])?;
                 Ok(())
@@ -88,7 +88,7 @@ impl ImportTables {
         list: ImportListId,
         view: ImportListView,
     ) -> Result<u64, DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 let changed = sql.execute(
                     "UPDATE import_list \
@@ -128,7 +128,7 @@ impl ImportTables {
         group: FolderReleaseDecisionKey,
         folded: bool,
     ) -> Result<u64, DbError> {
-        self.database.call(move |sql| {
+        self.store.call(move |sql| {
             let changed = match folded {
                 true => sql.execute(
                     "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \
@@ -166,7 +166,7 @@ impl ImportTables {
         list: ImportListId,
         folded: bool,
     ) -> Result<u64, DbError> {
-        self.database.call(move |sql| {
+        self.store.call(move |sql| {
             let changed = match folded {
                 true => sql.execute(
                     "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \

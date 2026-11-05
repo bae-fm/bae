@@ -13,14 +13,14 @@ pub(super) const SQL: &str = include_str!("storage.sql");
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        self.database.read(move |sql| storage_count_on(&sql, filter)).await
+        self.store.read(move |sql| storage_count_on(&sql, filter)).await
     }
 
     /// The size of every file of the storage rows matching `filter` — the
     /// storage-manager footer's "Total:", independent of how many pages have
     /// loaded.
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        self.database.read(move |sql| storage_total_size_on(&sql, filter)).await
+        self.store.read(move |sql| storage_total_size_on(&sql, filter)).await
     }
 
     /// One page of the Storage Manager list, pre-sorted and pre-filtered.
@@ -34,7 +34,7 @@ impl LibraryViews {
     ) -> Result<StoragePage, DbError> {
         let raw_rows = self.get_db_storage_page(sort, filter, offset, limit).await?;
         let total_count = self.get_storage_count(filter).await?;
-        let has_cloud_home = self.database.cloud_home().await?;
+        let has_cloud_home = self.store.cloud_home().await?;
         let rows =
             raw_rows.into_iter().map(|raw| StorageRow::from_raw(raw, has_cloud_home)).collect();
         Ok(StoragePage { rows, total_count })
@@ -50,7 +50,7 @@ impl LibraryViews {
         limit: u64,
     ) -> Result<Vec<DbStorageRow>, DbError> {
         let order = storage_order(sort);
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(storage_rows_on(&sql, &order, filter, None, &order.everything(), limit, offset)?
                     .into_iter()
@@ -77,7 +77,7 @@ impl LibraryViews {
         initial: StorageBrowseRequest,
     ) -> coven::ReconfigurableLiveQuery<StorageBrowseRequest, StorageBrowseProjection> {
         let places = KnownPlaces::new();
-        self.database
+        self.store
             .subscribe_reconfigurable(initial, move |request, sql| {
                 let order = storage_order(&request.sort);
                 let query = crate::LibrarySearchQuery::parse(&request.search);
@@ -145,7 +145,7 @@ impl LibraryViews {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
-                            Ok(bae_db::LibraryBrowseWindow {
+                            Ok(bae_store::LibraryBrowseWindow {
                                 window,
                                 rows: process_storage_rows(rows)?,
                             })
@@ -175,7 +175,7 @@ pub fn resolve_storage_browse(projection: StorageBrowseProjection) -> crate::Sto
     let windows = projection
         .windows
         .into_iter()
-        .map(|window| bae_db::LibraryBrowseWindow {
+        .map(|window| bae_store::LibraryBrowseWindow {
             window: window.window,
             rows: window.rows.into_iter().map(&resolve).collect(),
         })
@@ -277,7 +277,7 @@ fn storage_place(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storage
         2 => Ok(crate::album_detail::StoragePlace::Local),
         3 => Ok(crate::album_detail::StoragePlace::Pinned),
         4 => Ok(crate::album_detail::StoragePlace::Cloud),
-        order => Err(bae_db::client::read::column_conversion_error(
+        order => Err(bae_store::read::column_conversion_error(
             row,
             column,
             format!("storage order {order} names no place"),
@@ -528,7 +528,7 @@ pub(crate) fn storage_totals_on(
         &storage_found_totals_query(filter),
         rusqlite::named_params! {
             ":search": pattern,
-            ":titles": bae_db::client::list_windows::sql_bound(titles),
+            ":titles": bae_store::list_windows::sql_bound(titles),
         },
         |row| {
             Ok((row.get::<_, bool>(0)?, row.get::<_, i64>(1)? as u64, row.get::<_, i64>(2)? as u64))
@@ -704,7 +704,7 @@ pub struct StorageBrowseRequest {
     pub sort: StorageSortCriterion,
     pub filter: StorageFilter,
     pub search: String,
-    pub windows: bae_db::LibraryPageWindows,
+    pub windows: bae_store::LibraryPageWindows,
     pub selected: BTreeSet<String>,
 }
 
@@ -720,7 +720,7 @@ pub struct StorageBrowseProjection {
     /// Whether the search text narrows the list: it is a library search,
     /// not blank.
     pub searching: bool,
-    pub windows: Vec<bae_db::LibraryBrowseWindow<DbStorageRow>>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<DbStorageRow>>,
     pub total_count: u64,
     pub total_size: u64,
     pub selected: Vec<DbStorageRow>,

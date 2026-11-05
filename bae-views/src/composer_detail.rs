@@ -22,7 +22,7 @@ impl LibraryViews {
         artist_id: &str,
     ) -> Result<Option<DbComposerDetail>, DbError> {
         let artist_id = artist_id.to_string();
-        self.database.read(move |sql| find_composer_detail_on(&sql, &artist_id)).await
+        self.store.read(move |sql| find_composer_detail_on(&sql, &artist_id)).await
     }
 
     /// Follow the composer `initial` names, or none. The detail view moves to
@@ -31,7 +31,7 @@ impl LibraryViews {
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection> {
-        self.database.subscribe_reconfigurable(initial, |artist_id, sql| {
+        self.store.subscribe_reconfigurable(initial, |artist_id, sql| {
             let Some(artist_id) = artist_id else {
                 return Ok(ComposerDetailProjection { detail: None });
             };
@@ -50,7 +50,7 @@ impl LibraryViews {
         limit: u64,
     ) -> Result<Vec<DbComposerDetailRow>, DbError> {
         let artist_id = artist_id.to_string();
-        self.database
+        self.store
             .read(move |sql| {
                 let order = composer_detail_order("listing");
                 Ok(composer_detail_rows_on(
@@ -74,13 +74,13 @@ impl LibraryViews {
     pub fn subscribe_composer_detail_rows(
         &self,
         artist_id: &str,
-        initial_windows: bae_db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, ComposerDetailRowsProjection>
+        initial_windows: bae_store::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, ComposerDetailRowsProjection>
     {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
         let places = KnownPlaces::new();
-        self.database.subscribe_reconfigurable(initial_windows, move |requested, sql| {
+        self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
             let versions =
                 list_versions_on(&sql, crate::versions::TABLE, &["composer_detail_row"])?;
             let total_count =
@@ -93,7 +93,7 @@ impl LibraryViews {
             Ok(ComposerDetailRowsProjection {
                 windows: windows
                     .into_iter()
-                    .map(|(window, rows)| bae_db::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| bae_store::LibraryBrowseWindow { window, rows })
                     .collect(),
                 total_count,
             })
@@ -122,7 +122,7 @@ pub fn resolve_composer_detail_rows(
         windows: projection
             .windows
             .into_iter()
-            .map(|window| bae_db::LibraryBrowseWindow {
+            .map(|window| bae_store::LibraryBrowseWindow {
                 window: window.window,
                 rows: window.rows.into_iter().map(composer_detail_row_of).collect(),
             })
@@ -359,7 +359,7 @@ pub struct ComposerDetailProjection {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerDetailRowsProjection {
-    pub windows: Vec<bae_db::LibraryBrowseWindow<DbComposerDetailRow>>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<DbComposerDetailRow>>,
     pub total_count: u64,
 }
 

@@ -6,7 +6,7 @@ use crate::folder_scanner::{
     ScanItem, ScannedFile,
 };
 use crate::tables::tests::*;
-use bae_db::Database;
+use bae_store::Store;
 use bae_util::content_type::ContentType;
 use rusqlite::params;
 
@@ -39,7 +39,7 @@ pub(crate) fn tagged_candidate(root: &std::path::Path) -> FolderCandidate {
 }
 
 pub(crate) async fn scanned_tagged_candidate(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
 ) -> (FolderCandidate, u64) {
     let tables = crate::tables::ImportTables::new(db.clone());
@@ -103,7 +103,7 @@ pub(crate) fn tag_snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
 /// How many file-tag rows the candidate at `key` holds: the reading's own row
 /// and one row per file it was read from.
 pub(crate) async fn stored_reading_rows(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
     key: &crate::CandidateKey,
 ) -> (i64, i64) {

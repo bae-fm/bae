@@ -20,7 +20,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         let joining = household.join(&invite.code, &guest, &control);
         let approving = async {
             let mut invites =
-                bae_views::LibraryViews::new(library.database().clone()).subscribe_invites();
+                bae_views::LibraryViews::new(library.store().clone()).subscribe_invites();
             let deciding = |open: &bae_views::OpenInvite| match bae_library::people::invite_shown(
                 &open.invite,
             ) {

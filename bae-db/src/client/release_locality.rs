@@ -20,33 +20,37 @@ impl Database {
         &self,
         releases: Vec<String>,
     ) -> Result<Vec<String>, DbError> {
-        self.call_sql(move |sql| {
-            let mut cancelled = Vec::with_capacity(releases.len());
-            for release in releases {
-                let moves: Vec<coven::MoveId> =
-                    sql.query(RELEASE_MOVES, [&release], |row| row.get(0))?;
-                if moves.is_empty() {
-                    tracing::debug!(release, "no move to the cloud to cancel");
-                    continue;
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                let mut cancelled = Vec::with_capacity(releases.len());
+                for release in releases {
+                    let moves: Vec<coven::MoveId> =
+                        sql.query(RELEASE_MOVES, [&release], |row| row.get(0))?;
+                    if moves.is_empty() {
+                        tracing::debug!(release, "no move to the cloud to cancel");
+                        continue;
+                    }
+                    for id in moves {
+                        sql.cancel_move(id)?;
+                    }
+                    cancelled.push(release);
                 }
-                for id in moves {
-                    sql.cancel_move(id)?;
-                }
-                cancelled.push(release);
-            }
-            Ok(cancelled)
-        })
-        .await
+                Ok(cancelled)
+            })
+            .await
     }
 
     /// End the failed move `id`, whose original changed before its upload,
     /// as its pending record offers: coven retires it, and every file of it
     /// stays on this device only, as it was before it moved.
     pub async fn cancel_failed_release_move(&self, id: coven::MoveId) -> Result<(), DbError> {
-        self.call_sql(move |sql| {
-            sql.cancel_move(id)?;
-            Ok(())
-        })
-        .await
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                sql.cancel_move(id)?;
+                Ok(())
+            })
+            .await
     }
 }

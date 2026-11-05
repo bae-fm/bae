@@ -3,9 +3,8 @@
 
 #[cfg(desktop)]
 use super::DbFile;
-use super::{
-    Database, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbError, DbRelease, DbTrack,
-};
+use super::{Database, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbRelease, DbTrack};
+use bae_store::DbError;
 
 /// Why a track's audio could not be read.
 #[derive(Debug, thiserror::Error)]

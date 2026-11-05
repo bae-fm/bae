@@ -4,8 +4,8 @@ use crate::tables::folder_scans::tests::*;
 use crate::tables::release_groupings::tests::{scanned, sidecar_in, sidecar_of};
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
-use bae_db::test_fixtures::empty_db;
-use bae_db::Database;
+use bae_store::test_fixtures::empty_db;
+use bae_store::Store;
 
 /// Reading one folder again prunes the sidecars it no longer yields at and
 /// below that folder, and leaves those of the folders beside it, whatever
@@ -42,7 +42,7 @@ async fn reading_a_folder_again_prunes_only_its_own_sidecars() {
     );
 }
 
-async fn row_generation(db: &Database, root: &std::path::Path, name: &str) -> i64 {
+async fn row_generation(db: &Store, root: &std::path::Path, name: &str) -> i64 {
     let path = key_of(root, name);
     db.read(move |sql| {
         Ok(sql.query_row(

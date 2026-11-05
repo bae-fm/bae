@@ -1,11 +1,12 @@
 //! A release with more tracks than one SQLite statement binds.
 
-use crate::client::query::SQL_MAX_IN_VARS;
-use crate::Database;
+use bae_store::query::SQL_MAX_IN_VARS;
 use rusqlite::params;
 
-pub async fn chunked_track_db(schema: crate::Schema) -> (Database, tempfile::TempDir, Vec<String>) {
-    let (db, tmp) = super::temp_db(schema).await;
+pub async fn chunked_track_db(
+    schema: bae_store::Schema,
+) -> (bae_store::Store, tempfile::TempDir, Vec<String>) {
+    let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     let track_ids = track_ids(SQL_MAX_IN_VARS * 45);
     let seed_track_ids = track_ids.clone();
     db.call(move |conn| seed_release(conn, &seed_track_ids)).await.unwrap();
@@ -22,7 +23,7 @@ pub fn track_ids(count: usize) -> Vec<String> {
 pub fn seed_release(
     conn: &coven::CovenWrite<'_>,
     track_ids: &[String],
-) -> Result<(), crate::DbError> {
+) -> Result<(), bae_store::DbError> {
     super::seed_artist_album_release(conn)?;
     // The ids are minted in Rust, not in SQL: coven takes only canonical
     // UUIDs on a synced row, and the test's assertions need the same values

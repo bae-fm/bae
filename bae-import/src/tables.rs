@@ -16,7 +16,7 @@ mod source_releases;
 mod watched_folders;
 
 /// Import's parts of the library's schema, in the order they run.
-pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[
+pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     watched_folders::SCHEMA,
     skipped_candidates::SCHEMA,
     folder_scans::SCHEMA,
@@ -48,14 +48,15 @@ pub use watched_folders::watched_path;
 pub use watched_folders::WatchedFoldersRemoved;
 
 use bae_catalogs::catalog::Catalog;
-use bae_db::client::list_windows::{
+use bae_db::*;
+use bae_store::list_windows::{
     list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Places, Seek, SortTerm,
     WindowsRead,
 };
-use bae_db::client::path_column;
-use bae_db::client::query::*;
-use bae_db::client::read::*;
-use bae_db::*;
+use bae_store::path_column;
+use bae_store::query::*;
+use bae_store::read::*;
+use bae_store::*;
 use coven::{CovenError, CovenWrite, SqlReadContext};
 use rusqlite::{named_params, params, OptionalExtension, Row};
 use std::collections::HashMap;
@@ -75,19 +76,19 @@ fn key_hex_list<'a>(keys: impl Iterator<Item = &'a crate::CandidateKey>) -> Stri
 /// The library's store, as import reads and writes its own tables in it.
 #[derive(Clone, Debug)]
 pub struct ImportTables {
-    database: Database,
+    store: Store,
 }
 
 impl ImportTables {
-    pub fn new(database: Database) -> Self {
-        Self { database }
+    pub fn new(store: Store) -> Self {
+        Self { store }
     }
 
     /// Run `statements` against the store, for a test that stores the rows a
     /// scan would.
     #[cfg(test)]
     pub(crate) async fn execute_local_sql_for_test(&self, statements: &str) -> Result<(), DbError> {
-        self.database.execute_local_sql_for_test(statements).await
+        self.store.execute_local_sql_for_test(statements).await
     }
 
     /// How many rows of `table` have `column` equal to `value`, for a test.
@@ -98,7 +99,7 @@ impl ImportTables {
         column: &str,
         value: &str,
     ) -> Result<i64, DbError> {
-        self.database.count_rows_for_test(table, column, value).await
+        self.store.count_rows_for_test(table, column, value).await
     }
 }
 

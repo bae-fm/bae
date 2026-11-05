@@ -243,7 +243,7 @@ pub(crate) fn load_standings_on(
 /// Where `candidate_key` stands, as its row says, inside a write or outside
 /// one; nothing running when it has no row.
 pub(crate) fn load_standing_on(
-    sql: &impl bae_db::client::query::QueryOne,
+    sql: &impl bae_store::query::QueryOne,
     candidate_key: &CandidateKey,
 ) -> Result<StoredStanding, DbError> {
     let columns = sql
@@ -488,7 +488,7 @@ impl ImportTables {
     /// every typed search: what the library opens with, since nothing they
     /// describe outlives the process that wrote it.
     pub(crate) async fn clear_candidate_standings(&self) -> Result<(), DbError> {
-        self.database
+        self.store
             .call(|sql| {
                 sql.execute("DELETE FROM import_candidate_standing", [])?;
                 sql.execute("DELETE FROM import_identification_batch", [])?;
@@ -505,7 +505,7 @@ impl ImportTables {
     pub(crate) async fn load_candidate_standings(
         &self,
     ) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
-        self.database.read(|sql| load_standings_on(&sql)).await
+        self.store.read(|sql| load_standings_on(&sql)).await
     }
 
     /// Where `candidate_key` stands.
@@ -514,20 +514,20 @@ impl ImportTables {
         candidate_key: &CandidateKey,
     ) -> Result<StoredStanding, DbError> {
         let candidate_key = candidate_key.clone();
-        self.database.read(move |sql| load_standing_on(&sql, &candidate_key)).await
+        self.store.read(move |sql| load_standing_on(&sql, &candidate_key)).await
     }
 
     /// How far the batch of identifications in flight has got, for a test;
     /// the live read carries it to everyone else.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn load_identification_progress(&self) -> Result<(u32, u32), DbError> {
-        self.database.read(|sql| load_identification_progress_on(&sql)).await
+        self.store.read(|sql| load_identification_progress_on(&sql)).await
     }
 
     /// How far the identification batch has got and how many imports are in
     /// flight, live.
     pub(crate) fn subscribe_import_counts(&self) -> coven::LiveQuery<ImportCounts> {
-        self.database.subscribe(|sql| load_import_counts_on(&sql).map_err(CovenError::from))
+        self.store.subscribe(|sql| load_import_counts_on(&sql).map_err(CovenError::from))
     }
 
     /// Apply each change to its candidate's identification, in one write.
@@ -535,7 +535,7 @@ impl ImportTables {
         &self,
         changes: Vec<(CandidateKey, IdentificationChange)>,
     ) -> Result<Vec<(CandidateKey, IdentificationMove)>, DbError> {
-        self.database
+        self.store
             .call(move |sql| {
                 changes
                     .into_iter()
@@ -558,7 +558,7 @@ impl ImportTables {
     ) -> Result<ImportClaim, DbError> {
         let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
-        self.database
+        self.store
             .call(move |sql| {
                 if !claim_import_on(sql, &candidate_key, &import_id)? {
                     return Ok(ImportClaim::Refused);
@@ -581,7 +581,7 @@ impl ImportTables {
     ) -> Result<(), DbError> {
         let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
-        self.database.call(move |sql| move_import_on(sql, &candidate_key, &import_id, next)).await
+        self.store.call(move |sql| move_import_on(sql, &candidate_key, &import_id, next)).await
     }
 }
 

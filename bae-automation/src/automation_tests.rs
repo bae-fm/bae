@@ -68,7 +68,7 @@ impl Fixture {
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
     let library = bae_library::test_libraries::open_test_library(tmp.path()).await;
-    let tables = bae_import::tables::ImportTables::new(library.database().clone());
+    let tables = bae_import::tables::ImportTables::new(library.store().clone());
     let services = bae_app::test_services::start_services(&library)
         .await
         .expect("the test library's services start");

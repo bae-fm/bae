@@ -14,7 +14,7 @@ use crate::CandidateKey;
 use crate::IdentifyRunId;
 use crate::ImportStep;
 use crate::{Admission, CandidateFiles, SaveFailure};
-use bae_db::DbError;
+use bae_store::DbError;
 
 /// What a run identifies: a folder candidate's files, whose standing the
 /// table holds, or a library release, which has none.

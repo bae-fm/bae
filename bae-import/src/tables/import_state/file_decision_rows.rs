@@ -209,7 +209,7 @@ impl ImportTables {
     /// Every candidate's user-set file decisions, keyed by `content_hash`, so a
     /// folder scan reports the roles the user settled.
     pub async fn load_stored_candidate_edits(&self) -> Result<StoredCandidateEdits, DbError> {
-        self.database
+        self.store
             .read(move |sql| load_stored_candidate_edits_on(&sql))
             .process(|process| process())
             .await
@@ -222,7 +222,7 @@ impl ImportTables {
         content_hash: &str,
     ) -> Result<CandidateFileEdits, DbError> {
         let content_hash = content_hash.to_string();
-        self.database
+        self.store
             .read(move |sql| load_candidate_file_edits_on(&sql, &content_hash))
             .process(|process| process())
             .await
@@ -234,7 +234,7 @@ impl ImportTables {
 /// moved past zero though none stands now. Any other candidate has none at
 /// revision zero, which is what a scan reads where nothing is stored.
 pub(crate) fn load_stored_candidate_edits_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
 ) -> Result<FinishRead<crate::folder_scanner::StoredCandidateEdits>, DbError> {
     let rows = sql.query(
         &format!(
@@ -263,7 +263,7 @@ pub(crate) fn load_stored_candidate_edits_on(
 /// compute a content hash, so each emitted row performs one indexed lookup
 /// instead of rereading the whole table.
 pub(crate) fn load_candidate_file_edits_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     content_hash: &str,
 ) -> Result<FinishRead<CandidateFileEdits>, DbError> {
     let stored = sql

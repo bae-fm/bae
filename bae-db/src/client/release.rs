@@ -120,12 +120,15 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
-        let labels = self.label_parts(&release.pressing.labels);
-        self.call_sql(move |sql| {
-            insert_release_row(&sql, &release, &label_write(&labels))
-                .map_err(IdentityWriteError::into_db_error)
-        })
-        .await
+        let labels =
+            LabelParts::new(&*self.inner.ids, self.inner.store.now_utc(), &release.pressing.labels);
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                insert_release_row(&sql, &release, &label_write(&labels))
+                    .map_err(IdentityWriteError::into_db_error)
+            })
+            .await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -135,17 +138,19 @@ impl Database {
         track_works: &[DbTrackWork],
     ) -> Result<(), DbError> {
         let (works, track_works) = (works.to_vec(), track_works.to_vec());
-        self.call_sql(move |sql| {
-            let conn = &sql;
-            for work in &works {
-                insert_work_row(conn, work)?;
-            }
-            for track_work in &track_works {
-                insert_track_work_row(conn, track_work)?;
-            }
-            Ok(())
-        })
-        .await
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                let conn = &sql;
+                for work in &works {
+                    insert_work_row(conn, work)?;
+                }
+                for track_work in &track_works {
+                    insert_track_work_row(conn, track_work)?;
+                }
+                Ok(())
+            })
+            .await
     }
 
     /// Test-only: insert an album with its credits, a release, its mediums,
@@ -169,28 +174,31 @@ impl Database {
             tracks.to_vec(),
             track_artists.to_vec(),
         );
-        let labels = self.label_parts(&release.pressing.labels);
-        self.call_sql(move |sql| {
-            let tx = &sql;
+        let labels =
+            LabelParts::new(&*self.inner.ids, self.inner.store.now_utc(), &release.pressing.labels);
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                let tx = &sql;
 
-            insert_album_row(tx, &album)?;
-            for credit in &album_artists {
-                insert_album_artist_row(tx, credit)?;
-            }
-            insert_release_row(tx, &release, &label_write(&labels))
-                .map_err(IdentityWriteError::into_db_error)?;
-            for medium in &mediums {
-                insert_release_medium_row(tx, medium)?;
-            }
-            for track in &tracks {
-                insert_track_row(tx, track)?;
-            }
-            for ta in &track_artists {
-                insert_track_artist_row(tx, ta)?;
-            }
-            Ok(())
-        })
-        .await?;
+                insert_album_row(tx, &album)?;
+                for credit in &album_artists {
+                    insert_album_artist_row(tx, credit)?;
+                }
+                insert_release_row(tx, &release, &label_write(&labels))
+                    .map_err(IdentityWriteError::into_db_error)?;
+                for medium in &mediums {
+                    insert_release_medium_row(tx, medium)?;
+                }
+                for track in &tracks {
+                    insert_track_row(tx, track)?;
+                }
+                for ta in &track_artists {
+                    insert_track_artist_row(tx, ta)?;
+                }
+                Ok(())
+            })
+            .await?;
         Ok(())
     }
 
@@ -203,24 +211,27 @@ impl Database {
     ) -> Result<(), DbError> {
         let (release, mediums, tracks, track_artists) =
             (release.clone(), mediums.to_vec(), tracks.to_vec(), track_artists.to_vec());
-        let labels = self.label_parts(&release.pressing.labels);
-        self.call_sql(move |sql| {
-            let tx = &sql;
+        let labels =
+            LabelParts::new(&*self.inner.ids, self.inner.store.now_utc(), &release.pressing.labels);
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                let tx = &sql;
 
-            insert_release_row(tx, &release, &label_write(&labels))
-                .map_err(IdentityWriteError::into_db_error)?;
-            for medium in &mediums {
-                insert_release_medium_row(tx, medium)?;
-            }
-            for track in &tracks {
-                insert_track_row(tx, track)?;
-            }
-            for ta in &track_artists {
-                insert_track_artist_row(tx, ta)?;
-            }
-            Ok(())
-        })
-        .await?;
+                insert_release_row(tx, &release, &label_write(&labels))
+                    .map_err(IdentityWriteError::into_db_error)?;
+                for medium in &mediums {
+                    insert_release_medium_row(tx, medium)?;
+                }
+                for track in &tracks {
+                    insert_track_row(tx, track)?;
+                }
+                for ta in &track_artists {
+                    insert_track_artist_row(tx, ta)?;
+                }
+                Ok(())
+            })
+            .await?;
         Ok(())
     }
 
@@ -230,9 +241,13 @@ impl Database {
         &self,
         metadata: ReleaseMetadataRows,
     ) -> Result<(), IdentityWriteError> {
-        let labels = self.label_parts(&metadata.release.pressing.labels);
-        let now = self.now_utc().to_rfc3339();
-        self.write_resolving_identities(move |sql| {
+        let labels = LabelParts::new(
+            &*self.inner.ids,
+            self.inner.store.now_utc(),
+            &metadata.release.pressing.labels,
+        );
+        let now = self.inner.store.now_utc().to_rfc3339();
+        artist_resolution::write_resolving_identities(&self.inner.store, move |sql| {
             write_release_metadata_on(
                 &sql,
                 &metadata,
@@ -248,17 +263,19 @@ impl Database {
     /// exist. See the method conventions above.
     pub async fn get_release_for_track(&self, track: &DbTrack) -> Result<DbRelease, DbError> {
         let release_id = track.release_id.clone();
-        self.read(move |sql| {
-            sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
-                .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
+                    .map_err(DbError::from)
+            })
+            .await
     }
 
     /// Ordered by `created_at`.
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |sql| get_releases_for_album_on(&sql, &album_id)).await
+        self.inner.store.read(move |sql| get_releases_for_album_on(&sql, &album_id)).await
     }
     /// Seed a release-file row for tests, its file staged from the original
     /// at `original` as a local import stages it: on this device only, with
@@ -287,20 +304,22 @@ impl Database {
             prepared.push(coven::prepare_user_file(&original, |_| ()).await?);
             rows.push(file);
         }
-        self.call_sql(move |sql| {
-            let mut staged = Vec::with_capacity(rows.len());
-            for (file, original) in rows.iter().zip(prepared) {
-                let id = sql.put_user_file(
-                    crate::synced::RELEASE_FILES_NAMESPACE,
-                    original,
-                    coven::Place::DeviceOnly,
-                )?;
-                insert_release_file_row(&sql, file, id)?;
-                staged.push(id);
-            }
-            Ok(staged)
-        })
-        .await
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                let mut staged = Vec::with_capacity(rows.len());
+                for (file, original) in rows.iter().zip(prepared) {
+                    let id = sql.put_user_file(
+                        crate::synced::RELEASE_FILES_NAMESPACE,
+                        original,
+                        coven::Place::DeviceOnly,
+                    )?;
+                    insert_release_file_row(&sql, file, id)?;
+                    staged.push(id);
+                }
+                Ok(staged)
+            })
+            .await
     }
 
     /// The release's files in their order, each with the path of the original
@@ -311,30 +330,34 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| {
-            sql.query(
-                concat!(
-                    "SELECT ",
-                    release_file_columns!(),
-                    ", u.path AS original_path \
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query(
+                    concat!(
+                        "SELECT ",
+                        release_file_columns!(),
+                        ", u.path AS original_path \
                      FROM release_files AS f \
                      LEFT JOIN coven_user_files AS u ON u.file = f.file \
                      WHERE f.release_id = ?1 \
                      ORDER BY f.original_filename COLLATE natural_order, f.id"
-                ),
-                params![release_id],
-                |row| Ok((row_to_file(row)?, row.get::<_, Option<Vec<u8>>>("original_path")?)),
-            )?
-            .into_iter()
-            .map(|(file, original)| Ok((file, original.map(path_column::decode).transpose()?)))
-            .collect()
-        })
-        .await
+                    ),
+                    params![release_id],
+                    |row| Ok((row_to_file(row)?, row.get::<_, Option<Vec<u8>>>("original_path")?)),
+                )?
+                .into_iter()
+                .map(|(file, original)| {
+                    Ok((file, original.map(bae_store::path_column::decode).transpose()?))
+                })
+                .collect()
+            })
+            .await
     }
 
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| get_files_for_release_on(&sql, &release_id)).await
+        self.inner.store.read(move |sql| get_files_for_release_on(&sql, &release_id)).await
     }
 
     /// Insert an audio format and its segments in one transaction — the rows the
@@ -347,14 +370,16 @@ impl Database {
         segments: &[DbAudioSegment],
     ) -> Result<(), DbError> {
         let (audio_format, segments) = (audio_format.clone(), segments.to_vec());
-        self.call_sql(move |sql| {
-            insert_audio_format_row(&sql, &audio_format)?;
-            for segment in &segments {
-                insert_audio_segment_row(&sql, segment)?;
-            }
-            Ok(())
-        })
-        .await
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                insert_audio_format_row(&sql, &audio_format)?;
+                for segment in &segments {
+                    insert_audio_segment_row(&sql, segment)?;
+                }
+                Ok(())
+            })
+            .await
     }
 
     /// Insert scrub points as the import commit writes them, for tests whose
@@ -365,7 +390,7 @@ impl Database {
         points: &DbScrubPoints,
     ) -> Result<(), DbError> {
         let points = points.clone();
-        self.call_sql(move |sql| insert_scrub_points_row(&sql, &points)).await
+        self.inner.store.call_sql(move |sql| insert_scrub_points_row(&sql, &points)).await
     }
     /// The file `file_id` of the release `release_id`, by the files' key;
     /// `None` when the release has no such file.
@@ -375,39 +400,43 @@ impl Database {
         file_id: &str,
     ) -> Result<Option<DbFile>, DbError> {
         let (release_id, file_id) = (release_id.to_string(), file_id.to_string());
-        self.read(move |sql| {
-            sql.query_row(
-                concat!(
-                    "SELECT ",
-                    release_file_columns!(),
-                    " FROM release_files AS f WHERE f.id = ? AND f.release_id = ?"
-                ),
-                params![file_id, release_id],
-                row_to_file,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(
+                    concat!(
+                        "SELECT ",
+                        release_file_columns!(),
+                        " FROM release_files AS f WHERE f.id = ? AND f.release_id = ?"
+                    ),
+                    params![file_id, release_id],
+                    row_to_file,
+                )
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await
     }
 
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
-        self.read(move |sql| {
-            sql.query_row(
-                concat!(
-                    "SELECT ",
-                    release_file_columns!(),
-                    " FROM release_files AS f WHERE f.id = ?"
-                ),
-                params![file_id],
-                row_to_file,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .read(move |sql| {
+                sql.query_row(
+                    concat!(
+                        "SELECT ",
+                        release_file_columns!(),
+                        " FROM release_files AS f WHERE f.id = ?"
+                    ),
+                    params![file_id],
+                    row_to_file,
+                )
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await
     }
 
     /// Delete a release in one write. Its album's next release in album order
@@ -419,12 +448,14 @@ impl Database {
         &self,
         plan: ReleaseDeletion,
     ) -> Result<bool, DbError> {
-        self.call_sql(move |sql| {
-            plan.apply_on(&sql)?;
-            sql.execute("DELETE FROM releases WHERE id = ?", params![plan.release_id()])?;
-            vacate_album_on(&sql, plan.album_id())
-        })
-        .await
+        self.inner
+            .store
+            .call_sql(move |sql| {
+                plan.apply_on(&sql)?;
+                sql.execute("DELETE FROM releases WHERE id = ?", params![plan.release_id()])?;
+                vacate_album_on(&sql, plan.album_id())
+            })
+            .await
     }
 
     /// Read what deleting `release_id` owes coven; see [`ReleaseDeletion`].
@@ -433,13 +464,13 @@ impl Database {
         release_id: &str,
     ) -> Result<ReleaseDeletion, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| ReleaseDeletion::plan_on(&sql, &release_id)).await
+        self.inner.store.read(move |sql| ReleaseDeletion::plan_on(&sql, &release_id)).await
     }
 
     /// Find release by ID. Caller-provided ID — may not exist.
     pub async fn find_release_by_id(&self, release_id: &str) -> Result<Option<DbRelease>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| find_release_by_id_on(&sql, &release_id)).await
+        self.inner.store.read(move |sql| find_release_by_id_on(&sql, &release_id)).await
     }
 
     /// Test-only: write a stored name onto an existing row directly, the way a
@@ -455,15 +486,17 @@ impl Database {
     ) -> Result<(), DbError> {
         let file_id = file_id.to_string();
         let original_filename = original_filename.to_string();
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE release_files SET original_filename = ?1 WHERE id = ?2",
-                params![original_filename, file_id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .call(move |conn| {
+                conn.execute(
+                    "UPDATE release_files SET original_filename = ?1 WHERE id = ?2",
+                    params![original_filename, file_id],
+                )
+                .map(|_| ())
+                .map_err(DbError::from)
+            })
+            .await
     }
 
     /// Test-only. See [`set_original_filename_for_test`](Self::set_original_filename_for_test).
@@ -475,15 +508,17 @@ impl Database {
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let source_folder_name = source_folder_name.to_string();
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE releases SET source_folder_name = ?1 WHERE id = ?2",
-                params![source_folder_name, release_id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
+        self.inner
+            .store
+            .call(move |conn| {
+                conn.execute(
+                    "UPDATE releases SET source_folder_name = ?1 WHERE id = ?2",
+                    params![source_folder_name, release_id],
+                )
+                .map(|_| ())
+                .map_err(DbError::from)
+            })
+            .await
     }
 }
 
@@ -520,13 +555,13 @@ pub fn release_edit_tracks_on(
         layout: Option<String>,
     }
     Ok(sql.query(RELEASE_EDIT_TRACKS, params![release_id], |row| {
-        let segments: Vec<Segment> = super::read::json_column(row, "segments_json")?;
+        let segments: Vec<Segment> = bae_store::read::json_column(row, "segments_json")?;
         let segments = segments
             .into_iter()
             .map(|segment| {
                 let role =
                     crate::DbAudioSegmentRole::from_db_value(&segment.role).ok_or_else(|| {
-                        super::read::column_conversion_error(
+                        bae_store::read::column_conversion_error(
                             row,
                             "segments_json",
                             format!("unknown segment role {:?}", segment.role),
@@ -548,7 +583,7 @@ pub fn release_edit_tracks_on(
                     }),
                     (false, _) => None,
                     (true, None) => {
-                        return Err(super::read::column_conversion_error(
+                        return Err(bae_store::read::column_conversion_error(
                             row,
                             "segments_json",
                             format!("release file {} has no name", segment.file_id),

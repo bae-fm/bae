@@ -201,7 +201,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
     );
 
     assert!(matches!(
-        manager.database.read_file(&first_ref).await,
+        manager.store.read_file(&first_ref).await,
         Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))
     ));
 }
@@ -226,8 +226,10 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
     assert!(matches!(second.place(), coven::FilePlace::Cloud { .. }), "{:?}", second.place());
     assert_ne!(first.id(), second.id());
     assert!(matches!(
-        manager.database.coven_file(first.id()).await,
-        Err(bae_db::DbError::Coven(coven::CovenError::Database(coven::DbError::FileAbsent { .. })))
+        manager.store.file_ref(first.id()).await,
+        Err(bae_store::DbError::Coven(coven::CovenError::Database(
+            coven::DbError::FileAbsent { .. }
+        )))
     ));
-    assert_eq!(manager.database.read_file(&second).await.unwrap(), b"second cover");
+    assert_eq!(manager.store.read_file(&second).await.unwrap(), b"second cover");
 }

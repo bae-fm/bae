@@ -12,7 +12,6 @@
 //! It prints each query's runs over the writes: all of them, those a write
 //! caused, and of those, the ones whose result was unchanged.
 
-use bae_db::LibraryPageWindow;
 use bae_import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
 };
@@ -20,6 +19,7 @@ use bae_import::RelativeFolder;
 use bae_import::{
     CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
 };
+use bae_store::LibraryPageWindow;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -102,7 +102,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
     let test_library = bae_library::test_libraries::open_test_library(&library).await;
-    let tables = bae_import::tables::ImportTables::new(test_library.database().clone());
+    let tables = bae_import::tables::ImportTables::new(test_library.store().clone());
     test_library.set_identify_automatically(false).await.unwrap();
     let services = bae_app::test_services::start_services(&test_library)
         .await
@@ -146,7 +146,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         loop {
             let found = match progress.next().await {
                 Ok(read) => read,
-                Err(bae_db::live_query::LiveQueryError::Cancelled) => break,
+                Err(bae_store::live_query::LiveQueryError::Cancelled) => break,
                 Err(error) => panic!("the progress reads: {error}"),
             }
             .activity

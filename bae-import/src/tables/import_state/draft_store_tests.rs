@@ -2,8 +2,8 @@
 
 use crate::tables::import_state::tests::*;
 use crate::CandidateEditField;
-use bae_db::test_fixtures::empty_db;
-use bae_db::Database;
+use bae_store::test_fixtures::empty_db;
+use bae_store::Store;
 use rusqlite::params;
 
 /// The list places a row by whether its draft is blank and valid, read off two
@@ -13,7 +13,7 @@ async fn every_draft_write_keeps_the_lists_draft_columns_current() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     fetched(&db, "rel-1").await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    let columns = |db: &Database, hash: &str| {
+    let columns = |db: &Store, hash: &str| {
         let db = db.clone();
         let hash = hash.to_string();
         async move {

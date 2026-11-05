@@ -14,7 +14,7 @@
 
 use std::future::Future;
 
-use bae_db::live_query::LiveValues;
+use bae_store::live_query::LiveValues;
 
 use crate::types::BridgeError;
 
@@ -177,7 +177,7 @@ macro_rules! browse_window {
         }
 
         impl $window {
-            fn from_core(window: bae_db::LibraryBrowseWindow<$core_row>) -> Self {
+            fn from_core(window: bae_store::LibraryBrowseWindow<$core_row>) -> Self {
                 Self {
                     window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
                     rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
@@ -188,7 +188,9 @@ macro_rules! browse_window {
 }
 
 /// The windows a screen asks a list for, as core reads them.
-fn core_windows(windows: Vec<crate::types::BridgeLibraryPageWindow>) -> bae_db::LibraryPageWindows {
+fn core_windows(
+    windows: Vec<crate::types::BridgeLibraryPageWindow>,
+) -> bae_store::LibraryPageWindows {
     windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect()
 }
 

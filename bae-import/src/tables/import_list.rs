@@ -53,7 +53,7 @@ pub use selection::SelectionWrite;
 /// ones creating the tables its triggers fire on: the placement first, the
 /// lists a surface has open before the triggers that follow other domains'
 /// tables, and the versions after the placement.
-pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
+pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     placement::SQL,
     groups::SQL,
     counts::SQL,
@@ -69,15 +69,15 @@ pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[
 .collations(SQL_COLLATIONS);
 
 /// The SQL functions the import list's SQL names.
-const SQL_FUNCTIONS: &[&bae_db::SchemaFunction] = &[
-    &bae_db::FOLD_CASE,
-    &bae_db::SEARCH_PATTERN,
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
+    &bae_store::FOLD_CASE,
+    &bae_store::SEARCH_PATTERN,
     &super::watched_path::FOLDER_BELOW,
     &super::watched_path::FOLDER_RELATIVE,
 ];
 
 /// The collations the import list's SQL names.
-const SQL_COLLATIONS: &[&bae_db::SchemaCollation] = &[&bae_db::NATURAL_ORDER];
+const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];
 
 /// One list's row as its reads take it: its view, its revisions, and whether
 /// its view narrows its tab or keeps every row of it.
@@ -131,7 +131,7 @@ fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
 /// The list `id`'s row. A list is read only while it is open, so a missing
 /// row is a list closed under its own read.
 fn list_row(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     id: ImportListId,
 ) -> Result<ListRow, DbError> {
     let (

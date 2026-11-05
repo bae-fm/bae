@@ -18,14 +18,13 @@ async fn opening_a_library_empties_its_transfer_queues() {
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let handle = bae_db::configure_store(installation.builder(), crate::SCHEMA)
+    let handle = bae_store::configure_store(installation.builder(), crate::SCHEMA)
         .clock(clock.clone())
         .storage_connector(Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap()))
         .create_store("Test Library")
         .await
         .unwrap();
-    let left =
-        Database::from_handle(handle.clone(), clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let left = bae_store::Store::new(handle.clone(), clock.clone());
     let left = bae_transfers::Downloads::new(left);
     left.enqueue_all(vec![bae_transfers::DownloadEntry {
         release_id: REL_1.to_string(),
@@ -37,7 +36,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
     left.set_paused(true).await.unwrap();
 
     let manager = TestLibrary::open_with(
-        Database::from_handle(handle, clock.clone(), Arc::new(coven::UuidIds)),
+        bae_store::Store::new(handle, clock.clone()),
         app_dir,
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -92,7 +91,7 @@ async fn done_with_two_uploading(
         ));
         keys.push((name.to_string(), key));
     }
-    manager.database.execute_local_sql_for_test(&sql).await.unwrap();
+    manager.store.execute_local_sql_for_test(&sql).await.unwrap();
     keys
 }
 
@@ -114,23 +113,23 @@ fn done_names(projection: &bae_import::ImportListProjection) -> Vec<String> {
 async fn open_list(
     manager: &TestLibrary,
     view: bae_import::ImportListView,
-    windows: bae_db::LibraryPageWindows,
+    windows: bae_store::LibraryPageWindows,
 ) -> Result<bae_import::LiveImportList, bae_import::ImportError> {
     manager.start_import().await?.open_list(view, windows).await
 }
 
 /// One read of `list` through `offset` and `limit`.
 async fn read_list(
-    database: &bae_db::Database,
+    db: &bae_store::Store,
     list: bae_import::ImportListId,
     offset: u64,
     limit: u64,
 ) -> bae_import::ImportListProjection {
-    let tables = bae_import::tables::ImportTables::new(database.clone());
+    let tables = bae_import::tables::ImportTables::new(db.clone());
     tables
         .load_import_list(bae_import::ImportListRequest {
             list,
-            windows: std::iter::once(bae_db::LibraryPageWindow { offset, limit }).collect(),
+            windows: std::iter::once(bae_store::LibraryPageWindow { offset, limit }).collect(),
         })
         .await
         .unwrap()
@@ -142,7 +141,7 @@ async fn read_list(
 #[tokio::test]
 async fn done_runs_the_releases_still_uploading_first() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
+    let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
     let done = |order| bae_import::ImportListView {
         tab: bae_import::TriageTab::Done,
@@ -157,7 +156,7 @@ async fn done_runs_the_releases_still_uploading_first() {
     ] {
         let list = tables.open_import_list(done(order)).await.unwrap();
         assert_eq!(
-            done_names(&read_list(&manager.database, list, 0, 50).await),
+            done_names(&read_list(&manager.store, list, 0, 50).await),
             expected,
             "{order:?}"
         );
@@ -165,10 +164,10 @@ async fn done_runs_the_releases_still_uploading_first() {
 
     let list =
         tables.open_import_list(done(bae_import::ImportListOrder::NewestFirst)).await.unwrap();
-    let across = read_list(&manager.database, list, 1, 2).await;
+    let across = read_list(&manager.store, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
     assert_eq!(across.total_count, 4);
-    assert_eq!(done_names(&read_list(&manager.database, list, 3, 5).await), ["A"]);
+    assert_eq!(done_names(&read_list(&manager.store, list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let location =
         tables.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
@@ -184,7 +183,7 @@ async fn done_runs_the_releases_still_uploading_first() {
         .set_import_list_view(list, done(bae_import::ImportListOrder::OldestFirst))
         .await
         .unwrap();
-    let selected = read_list(&manager.database, list, 0, 0).await;
+    let selected = read_list(&manager.store, list, 0, 0).await;
     assert_eq!(selected.summary.opened_at, 1, "the view opens at B, still uploading, behind C");
     assert_eq!(
         tables
@@ -230,7 +229,7 @@ async fn a_done_row_carries_its_release_upload() {
             order: bae_import::ImportListOrder::PathAscending,
             ..bae_import::ImportListView::default()
         },
-        std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+        std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
     )
     .await
     .unwrap();
@@ -251,7 +250,7 @@ async fn a_done_row_carries_its_release_upload() {
     manager
         .storage
         .hold_next_creation(
-            coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+            coven::ObjectPrefix::files(manager.store.store_id_for_test()),
             started,
             resumed,
         )
@@ -287,7 +286,7 @@ async fn a_done_row_carries_its_release_upload() {
 #[tokio::test]
 async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let tables = bae_import::tables::ImportTables::new(manager.database.clone());
+    let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let list = tables
@@ -327,7 +326,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     let subscription = open_list(
         &manager,
         bae_import::ImportListView::default(),
-        bae_db::LibraryPageWindows::default(),
+        bae_store::LibraryPageWindows::default(),
     )
     .await
     .unwrap();
@@ -336,7 +335,9 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     assert!(initial.windows.is_empty());
 
     subscription
-        .set_windows(std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect())
+        .set_windows(
+            std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+        )
         .expect("the first window is requested");
     let requested = subscription.next().await.expect("the requested value");
     assert_eq!(requested.cause, coven::LiveQueryCause::Request);
@@ -363,7 +364,7 @@ async fn cancelling_closes_the_list() {
     let subscription = open_list(
         &manager,
         bae_import::ImportListView::default(),
-        bae_db::LibraryPageWindows::default(),
+        bae_store::LibraryPageWindows::default(),
     )
     .await
     .unwrap();
@@ -372,7 +373,7 @@ async fn cancelling_closes_the_list() {
     subscription.cancel().await.unwrap();
 
     assert!(manager
-        .database
+        .store
         .query_texts_for_test("SELECT CAST(id AS TEXT) FROM import_list")
         .await
         .unwrap()
@@ -394,7 +395,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         open_list(
             &manager,
             bae_import::ImportListView::default(),
-            bae_db::LibraryPageWindows::default(),
+            bae_store::LibraryPageWindows::default(),
         )
         .await
         .unwrap(),
@@ -482,7 +483,7 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
     let (manager, _home) = setup_test_manager().await;
     let (entered, reached) = tokio::sync::oneshot::channel();
     let (release, released) = tokio::sync::oneshot::channel();
-    let database = manager.database.clone();
+    let db = manager.store.clone();
     let (admitted, admission) = tokio::sync::oneshot::channel();
     let working = manager.clone();
     let operation = tokio::spawn(async move {
@@ -492,7 +493,7 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
                 closing.cancelled().await;
                 entered.send(()).unwrap();
                 released.await.unwrap();
-                database.store_name().await?;
+                db.store_name().await?;
                 Ok(())
             })
             .await
@@ -558,9 +559,9 @@ async fn the_transfers_name_only_the_files_being_sent() {
         &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b")],
     )
     .await;
-    manager.database.set_transfer_limits(coven::TransferLimits {
+    manager.store.set_transfer_limits(coven::TransferLimits {
         uploads: std::num::NonZeroUsize::new(1).unwrap(),
-        ..manager.database.transfer_limits()
+        ..manager.store.transfer_limits()
     });
     let mut transfers = manager.watch_outbox_transfers();
     let mut held = None;
@@ -577,7 +578,7 @@ async fn the_transfers_name_only_the_files_being_sent() {
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        coven::ObjectPrefix::files(manager.store.store_id_for_test()),
         started,
         resumed,
     )
@@ -638,7 +639,7 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        coven::ObjectPrefix::files(manager.store.store_id_for_test()),
         started,
         resumed,
     )
@@ -693,7 +694,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        coven::ObjectPrefix::files(manager.store.store_id_for_test()),
         started,
         resumed,
     )

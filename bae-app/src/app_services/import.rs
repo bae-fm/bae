@@ -62,9 +62,9 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &bae_import::CandidateKey, track: bae_import::RawTrackEdit) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &bae_import::CandidateKey, track_ids: Vec<String>, assignments: bae_import::TrackArtistAssignments) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, load_import_candidate => load_candidate(key: &bae_import::CandidateKey) -> Result<Option<ImportCandidateDetail>, bae_import::ImportError>);
-    delegate_sync!(import, subscribe_folder_scans => subscribe_folder_scans() -> bae_db::live_query::LiveValues<bae_import::FolderScanProgress>);
-    delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> bae_db::live_query::LiveValues<bae_import::ImportCounts>);
-    delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &bae_import::CandidateKey) -> bae_db::live_query::LiveValues<Option<bae_import::CandidateRuntimeSnapshot>>);
+    delegate_sync!(import, subscribe_folder_scans => subscribe_folder_scans() -> bae_store::live_query::LiveValues<bae_import::FolderScanProgress>);
+    delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> bae_store::live_query::LiveValues<bae_import::ImportCounts>);
+    delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &bae_import::CandidateKey) -> bae_store::live_query::LiveValues<Option<bae_import::CandidateRuntimeSnapshot>>);
 
     /// Register the platform's artwork analyzer, which extraction reads
     /// barcodes and text off a candidate's images with.
@@ -275,7 +275,7 @@ impl AppServices {
         &self,
         view: ImportListView,
     ) -> Result<LiveImportList, bae_library::LibraryError> {
-        Ok(self.inner.import.open_list(view, bae_db::LibraryPageWindows::new()).await?)
+        Ok(self.inner.import.open_list(view, bae_store::LibraryPageWindows::new()).await?)
     }
 
     /// One read of a list showing `view` through `windows`, for a caller
@@ -283,7 +283,7 @@ impl AppServices {
     pub async fn load_import_list(
         &self,
         view: ImportListView,
-        windows: bae_db::LibraryPageWindows,
+        windows: bae_store::LibraryPageWindows,
     ) -> Result<bae_import::ImportListProjection, bae_library::LibraryError> {
         Ok(self.inner.import.load_list(view, windows).await?)
     }

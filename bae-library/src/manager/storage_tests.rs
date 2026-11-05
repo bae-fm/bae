@@ -33,7 +33,7 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 
     let sort = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::AlbumTitle,
-        direction: bae_db::SortDirection::Ascending,
+        direction: bae_store::SortDirection::Ascending,
     };
     let first_page =
         views(&manager).get_storage_page(&sort, bae_views::StorageFilter::All, 0, 1).await.unwrap();
@@ -59,7 +59,7 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 /// count other than its storage row's: none when the triggers kept up.
 async fn queue_storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
-        .database
+        .store
         .query_texts_for_test(
             "SELECT r.id || ': stored ' || COALESCE(s.queued_count || ' from ' \
                      || COALESCE(s.first_queued_position, 'nowhere'), 'nothing') \
@@ -88,7 +88,7 @@ async fn queue_storage_disagreements(manager: &LibraryManager) -> Vec<String> {
 /// wait, probed file by file.
 async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
     manager
-        .database
+        .store
         .query_texts_for_test(
             "SELECT f.release_id FROM coven_uploads u \
              JOIN release_files f ON u.file = f.file \
@@ -185,7 +185,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                 }
                 let file = &files[rng.random_range(0..files.len())];
                 manager
-                    .database
+                    .store
                     .execute_for_test(
                         "UPDATE release_files SET release_id = ?1 WHERE id = ?2",
                         vec![releases[to].id.clone(), file.id.clone()],
@@ -204,7 +204,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                 }
                 let file = &files[rng.random_range(0..files.len())];
                 manager
-                    .database
+                    .store
                     .execute_for_test(
                         "DELETE FROM release_files WHERE id = ?1",
                         vec![file.id.clone()],
@@ -274,7 +274,7 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
         .get_storage_page(
             &bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
-                direction: bae_db::SortDirection::Ascending,
+                direction: bae_store::SortDirection::Ascending,
             },
             bae_views::StorageFilter::All,
             0,
@@ -360,7 +360,7 @@ async fn storage_page_sorts_album_title_descending() {
 
     let sort = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::AlbumTitle,
-        direction: bae_db::SortDirection::Descending,
+        direction: bae_store::SortDirection::Descending,
     };
     let page = views(&manager)
         .get_storage_page(&sort, bae_views::StorageFilter::All, 0, 10)
@@ -594,7 +594,7 @@ async fn storage_page_sort_by_artist_names() {
 
     let asc = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::ArtistNames,
-        direction: bae_db::SortDirection::Ascending,
+        direction: bae_store::SortDirection::Ascending,
     };
     let page =
         views(&manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
@@ -603,7 +603,7 @@ async fn storage_page_sort_by_artist_names() {
 
     let desc = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::ArtistNames,
-        direction: bae_db::SortDirection::Descending,
+        direction: bae_store::SortDirection::Descending,
     };
     let page = views(&manager)
         .get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10)
@@ -633,7 +633,7 @@ async fn storage_page_sort_by_media_nulls_last() {
 
     let asc = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::Media,
-        direction: bae_db::SortDirection::Ascending,
+        direction: bae_store::SortDirection::Ascending,
     };
     let page =
         views(&manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
@@ -643,7 +643,7 @@ async fn storage_page_sort_by_media_nulls_last() {
 
     let desc = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::Media,
-        direction: bae_db::SortDirection::Descending,
+        direction: bae_store::SortDirection::Descending,
     };
     let page = views(&manager)
         .get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10)
@@ -679,7 +679,7 @@ async fn storage_page_sort_by_file_count() {
 
     let desc = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::FileCount,
-        direction: bae_db::SortDirection::Descending,
+        direction: bae_store::SortDirection::Descending,
     };
     let page = views(&manager)
         .get_storage_page(&desc, bae_views::StorageFilter::All, 0, 10)
@@ -712,7 +712,7 @@ async fn storage_page_sort_by_total_size() {
 
     let asc = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::TotalSize,
-        direction: bae_db::SortDirection::Ascending,
+        direction: bae_store::SortDirection::Ascending,
     };
     let page =
         views(&manager).get_storage_page(&asc, bae_views::StorageFilter::All, 0, 10).await.unwrap();
@@ -759,7 +759,7 @@ async fn storage_page_sort_by_date_added() {
         }
     };
     assert_eq!(
-        page(bae_db::SortDirection::Ascending).await,
+        page(bae_store::SortDirection::Ascending).await,
         vec![
             ("Album First".to_string(), at(0)),
             ("Album Tied A".to_string(), at(10)),
@@ -768,7 +768,7 @@ async fn storage_page_sort_by_date_added() {
         ]
     );
     assert_eq!(
-        page(bae_db::SortDirection::Descending).await,
+        page(bae_store::SortDirection::Descending).await,
         vec![
             ("Album Last".to_string(), at(20)),
             ("Album Tied A".to_string(), at(10)),
@@ -810,7 +810,7 @@ async fn storage_page_sort_by_storage_state() {
     .await
     .id;
 
-    use bae_db::SortDirection;
+    use bae_store::SortDirection;
     use bae_views::StorageFilter;
     let ascending =
         vec![uploading.clone(), pinning.clone(), local.clone(), pinned.clone(), cloud.clone()];

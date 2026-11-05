@@ -43,7 +43,7 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
         .await
         .expect_err("a file changed since its scan fails the import");
     assert!(error.contains("changed after its import candidate was scanned"), "{error}");
-    let rows = pick.database.every_row_for_test().await.unwrap();
+    let rows = pick.db.every_row_for_test().await.unwrap();
     for table in ["releases", "release_files"] {
         assert!(
             rows.get(table).is_none_or(Vec::is_empty),
@@ -226,7 +226,7 @@ async fn an_import_whose_claim_cannot_be_written_fails_and_claims_nothing() {
 
 /// Every release in the library.
 async fn release_count(handle: &ImportServiceHandle) -> usize {
-    bae_db::test_fixtures::row_count(&handle.database, "releases").await
+    bae_store::test_fixtures::row_count(&handle.store, "releases").await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -283,8 +283,8 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_of_its_files_are_re
 /// hash taken and fails with the typed error, and the files make one release.
 #[tokio::test(flavor = "multi_thread")]
 async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release() {
-    let (parts, database, tmp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, tmp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let (original, original_key, _) = picked_candidate(&tables, &tmp, "Album").await;
     let copy = twin_of(&original, "Copy");
     let copy_key = crate::CandidateKey::folder(&copy.path);
@@ -581,7 +581,7 @@ async fn an_automatic_start_over_already_imported_files_records_no_failure() {
         .expect_err("files this device imported do not start a second import");
 
     assert!(matches!(error, crate::ImportError::FilesAlreadyImported { .. }), "{error:?}");
-    let rows = fixture.database.every_row_for_test().await.unwrap();
+    let rows = fixture.db.every_row_for_test().await.unwrap();
     assert!(
         rows.get("import_candidate_failure").is_none_or(Vec::is_empty),
         "the refused start records no failed import"
@@ -643,7 +643,7 @@ async fn an_automatic_start_a_damaged_row_refuses_records_the_failure_and_report
     fixture.drain_automatic().await;
     assert_eq!(fixture.judgement_for(&dir).await, (true, None));
     crate::tables::import_state::tests::lose_remote_cover_bytes(
-        &fixture.database,
+        &fixture.db,
         &fixture.content_hash(&dir),
     )
     .await;

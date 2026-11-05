@@ -5,7 +5,7 @@
 use super::*;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;
-use bae_db::Database;
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
@@ -76,8 +76,8 @@ impl crate::folder_scanner::DirectoryReader for ListingThatPanicsOnce {
 }
 
 /// Where the stored scan of the only watched root stands.
-async fn root_scan_status(database: &Database) -> crate::FolderScanStatus {
-    let tables = crate::tables::ImportTables::new(database.clone());
+async fn root_scan_status(db: &Store) -> crate::FolderScanStatus {
+    let tables = crate::tables::ImportTables::new(db.clone());
     let mut statuses = tables.load_folder_scan_progress().await.unwrap().statuses;
     assert_eq!(statuses.len(), 1, "one root is watched");
     statuses.remove(0).status
@@ -126,7 +126,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
             .unwrap(),
         Ok(())
     );
-    let crate::FolderScanStatus::Failed { error } = root_scan_status(&test.database).await else {
+    let crate::FolderScanStatus::Failed { error } = root_scan_status(&test.db).await else {
         panic!("the panicked pass is stored as failed");
     };
     assert!(error.contains("the listing broke"), "{error}");
@@ -145,7 +145,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
             .unwrap(),
         Ok(())
     );
-    assert!(matches!(root_scan_status(&test.database).await, crate::FolderScanStatus::Complete));
+    assert!(matches!(root_scan_status(&test.db).await, crate::FolderScanStatus::Complete));
 
     let (completion, stopped) = std::sync::mpsc::channel();
     commands.send(crate::watching::WatcherCommand::Shutdown { completion }).unwrap();

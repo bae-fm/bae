@@ -6,12 +6,13 @@ use crate::album::album_browse_order;
 use crate::tests::{assert_seeks_search_sorting, both_ways, key_at, library};
 use crate::*;
 use bae_db::test_fixtures::album_listing::*;
-use bae_db::test_fixtures::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
-use bae_db::{LibraryPageWindow, LibraryPageWindows};
+use bae_db::test_fixtures::{ARTIST_A, ARTIST_B, ARTIST_C};
+use bae_store::test_fixtures::{exec, exec_batch, temp_db};
+use bae_store::{LibraryPageWindow, LibraryPageWindows};
 use std::collections::BTreeSet;
 
 /// The grid's album ids in `field` order, `direction`.
-async fn album_ids(db: &Database, field: AlbumSortField, direction: SortDirection) -> Vec<String> {
+async fn album_ids(db: &Store, field: AlbumSortField, direction: SortDirection) -> Vec<String> {
     crate::LibraryViews::new(db.clone())
         .get_album_page(&[AlbumSortCriterion { field, direction }], 0, 50)
         .await
@@ -22,7 +23,7 @@ async fn album_ids(db: &Database, field: AlbumSortField, direction: SortDirectio
 }
 
 /// The artist list: each artist's id and album count, by name.
-async fn artists(db: &Database) -> Vec<(String, i64)> {
+async fn artists(db: &Store) -> Vec<(String, i64)> {
     crate::LibraryViews::new(db.clone())
         .get_artist_page(&[], 0, 50)
         .await
@@ -34,7 +35,7 @@ async fn artists(db: &Database) -> Vec<(String, i64)> {
 
 /// The grid grouped by artist: each section's artist, its first row and its
 /// length, and the album ids of the rows in order.
-async fn grouped(db: &Database) -> (Vec<(String, u64, u64)>, Vec<String>) {
+async fn grouped(db: &Store) -> (Vec<(String, u64, u64)>, Vec<String>) {
     let windows = [LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect::<BTreeSet<_>>();
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, windows);
     let shown = live.next().await.expect("the query stays open").result.unwrap();
@@ -159,7 +160,7 @@ async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
         .is_none());
 }
 
-async fn grouped_library() -> (Database, tempfile::TempDir) {
+async fn grouped_library() -> (Store, tempfile::TempDir) {
     let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     for (id, name, sort_name) in [
         (ARTIST_A, "Artist Name A", "Same Sort Name"),
@@ -458,13 +459,17 @@ async fn a_grouped_row_names_the_albums_other_credits() {
 #[tokio::test]
 async fn an_artist_section_carries_the_artists_picture() {
     let (db, _dir) = grouped_library().await;
+    let database = bae_db::test_fixtures::test_database(&db);
     let mut browse =
         LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, BTreeSet::new());
     let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert!(initial.sections.iter().all(|section| section.image.is_none()));
-    let version =
-        bae_db::test_fixtures::live_query::write_artist_image(&db, ARTIST_B, "artist image bytes")
-            .await;
+    let version = bae_db::test_fixtures::live_query::write_artist_image(
+        &database,
+        ARTIST_B,
+        "artist image bytes",
+    )
+    .await;
     let pictured = browse.next().await.expect("the query stays open").result.unwrap();
     let images = pictured
         .sections
@@ -532,7 +537,7 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
 }
 
 /// The album list's ids at `window`, as a read by offset finds them.
-async fn albums_at(db: &Database, window: &LibraryPageWindow) -> Vec<String> {
+async fn albums_at(db: &Store, window: &LibraryPageWindow) -> Vec<String> {
     crate::LibraryViews::new(db.clone())
         .get_album_page(&[], window.offset, window.limit)
         .await

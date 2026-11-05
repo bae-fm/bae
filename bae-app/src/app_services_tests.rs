@@ -1,5 +1,6 @@
 use super::*;
-use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use tempfile::TempDir;
 
@@ -15,13 +16,14 @@ use tempfile::TempDir;
 async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
+    let db = Store::new_test(
         bae_library::SCHEMA,
         db_path.to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
+    let database = bae_db::test_fixtures::test_database(&db);
 
     let artist = DbArtist {
         id: bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
@@ -63,7 +65,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     // actor thread that made it exits (the enumerator dies with that thread's
     // COM apartment), and the test builds one player per case.
     let library = bae_library::test_libraries::TestLibrary::open(
-        database,
+        db,
         bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -94,8 +96,8 @@ async fn queue_value_with_context(services: &AppServices) -> bae_playback::Resol
     }
 }
 
-fn windows(windows: &[(u64, u64)]) -> bae_db::LibraryPageWindows {
-    windows.iter().map(|&(offset, limit)| bae_db::LibraryPageWindow { offset, limit }).collect()
+fn windows(windows: &[(u64, u64)]) -> bae_store::LibraryPageWindows {
+    windows.iter().map(|&(offset, limit)| bae_store::LibraryPageWindow { offset, limit }).collect()
 }
 
 /// The subscription's next value that `accept` takes, skipping the ones
@@ -395,7 +397,7 @@ async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_clo
     let ended =
         tokio::time::timeout(HANG_GUARD, values.next()).await.expect("the subscription ends");
     assert!(
-        matches!(ended, Err(bae_db::live_query::LiveQueryError::Cancelled)),
+        matches!(ended, Err(bae_store::live_query::LiveQueryError::Cancelled)),
         "the subscription heard from the closed store: {ended:?}"
     );
 }

@@ -85,7 +85,7 @@ impl LibraryViews {
         &self,
         initial: Option<ReleaseFilesRequest>,
     ) -> coven::ReconfigurableLiveQuery<Option<ReleaseFilesRequest>, Option<Vec<DbFile>>> {
-        self.database
+        self.store
             .subscribe_reconfigurable(initial, |request, sql| {
                 let Some(request) = request else {
                     return Ok(None);

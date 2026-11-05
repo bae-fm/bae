@@ -65,7 +65,7 @@ pub(super) fn profile_request_on(
         // nothing else does: a request whose operation coven no longer
         // lists has lost what it waits for.
         if !row.get::<_, bool>(3)? {
-            return Err(super::read::column_conversion_error(
+            return Err(bae_store::read::column_conversion_error(
                 row,
                 0,
                 format!("the profile request's operation {operation:?} isn't listed"),
@@ -125,13 +125,13 @@ impl Database {
         &self,
     ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>> {
         self.inner
-            .handle
+            .store
             .subscribe(|sql| Ok(profile_request_on(&sql)?.map(requested_profile).transpose()?))
     }
 
     /// The profile request, live: it reruns as the request is made or ends
     /// and as its circle's operation ends.
     pub(crate) fn subscribe_profile_request(&self) -> coven::LiveQuery<Option<ProfileRequest>> {
-        self.inner.handle.subscribe(|sql| Ok(profile_request_on(&sql)?))
+        self.inner.store.subscribe(|sql| Ok(profile_request_on(&sql)?))
     }
 }

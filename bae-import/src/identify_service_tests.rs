@@ -9,10 +9,10 @@ use bae_catalogs::records::LookupRef;
 use bae_catalogs::test_releases::{
     discogs_release_json, discogs_search_json, mb_barcode_search_json, mb_release_json,
 };
-use bae_db::Database;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::IdentifyState;
 use bae_identify::TerminalVerdict;
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use std::time::Duration;
 
@@ -26,7 +26,7 @@ pub(super) async fn setup_inner_reporting_to(
 ) -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
+    let db = Store::new_test(
         crate::TEST_SCHEMA,
         db_path.to_str().unwrap(),
         Arc::new(coven::SystemClock),
@@ -36,15 +36,15 @@ pub(super) async fn setup_inner_reporting_to(
 
     let catalogs = crate::CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
-        database.clone(),
+        db.clone(),
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
-    let release_reads = crate::ReleaseReads::new(database.clone(), catalogs.clone());
+    let release_reads = crate::ReleaseReads::new(db.clone(), catalogs.clone());
     let candidates = CandidateRuntime::for_test().await;
     let event_tx = ImportEventBus::new(candidates.clone());
     let handle = IdentifyService::new(
-        database,
+        db,
         catalogs,
         release_reads,
         tokio::runtime::Handle::current(),
@@ -332,7 +332,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     };
 
     let (inner, _tmp) = setup_inner().await;
-    let tables = crate::tables::ImportTables::new(inner.database.clone());
+    let tables = crate::tables::ImportTables::new(inner.store.clone());
     let discogs = bae_catalogs::payloads::ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "4242"),
         serde_json::json!({

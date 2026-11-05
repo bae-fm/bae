@@ -9,7 +9,7 @@ use std::sync::Arc;
 use bae_util::test_channels::HANG_GUARD;
 use coven::Storage;
 
-use crate::Database;
+use crate::Store;
 
 /// The S3 key the library's storage is reached with on every device.
 fn owner_credentials() -> coven::S3Credentials {
@@ -82,17 +82,17 @@ pub async fn reopen_store(
         .expect("open the device's store again")
 }
 
-/// The database over a device's opened store, under the system clock.
-pub fn device_database(handle: coven::CovenHandle) -> Database {
-    Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds))
+/// The store over a device's opened store, under the system clock.
+pub fn device_store(handle: coven::CovenHandle) -> Store {
+    Store::new(handle, Arc::new(coven::SystemClock))
 }
 
-/// How `database`'s last pass ended and when a pass last reached the end
+/// How `store`'s last pass ended and when a pass last reached the end
 /// of the sequence, as coven's sync status row keeps them, live: a pass
 /// that ends synced moves the time, and one that fails changes how it
 /// ended.
-fn pass_ends(database: &Database) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>)> {
-    database.subscribe(|sql| {
+fn pass_ends(store: &Store) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>)> {
+    store.subscribe(|sql| {
         Ok(sql.query_row("SELECT last_pass, last_synced FROM coven_sync_status", [], |row| {
             Ok((row.get(0)?, row.get(1)?))
         })?)
@@ -101,8 +101,8 @@ fn pass_ends(database: &Database) -> coven::LiveQuery<(Option<coven::LastPass>, 
 
 /// Stop the device's sync loop: the pass running ends first, and once this
 /// returns no pass or upload runs until sync starts again.
-pub async fn stop_sync(database: &Database) {
-    database.stop_sync().await.unwrap();
+pub async fn stop_sync(store: &Store) {
+    store.stop_sync().await.unwrap();
 }
 
 /// What the latest sync cycle a device's store completed reported, for as
@@ -114,11 +114,11 @@ pub struct SyncCycles {
 }
 
 impl SyncCycles {
-    /// Record the cycles `database` completes from now on: the last pass as
+    /// Record the cycles `store` completes from now on: the last pass as
     /// it stands is no cycle.
-    pub fn follow(database: &Database) -> Self {
+    pub fn follow(store: &Store) -> Self {
         let last = Arc::new(std::sync::Mutex::new(String::new()));
-        let mut ends = pass_ends(database);
+        let mut ends = pass_ends(store);
         let recorded = last.clone();
         let watcher = tokio::spawn(async move {
             let mut previous = match ends.next().await {
@@ -147,25 +147,25 @@ impl SyncCycles {
     }
 }
 
-/// Ask `database` for a pass and wait for the pass that answers it: one that
+/// Ask `store` for a pass and wait for the pass that answers it: one that
 /// began after the asking, so it read what storage held then.
-async fn pass(database: &Database) {
-    let answer = database.retry_now().await.expect("a device's sync takes a retry");
+async fn pass(store: &Store) {
+    let answer = store.retry_now().await.expect("a device's sync takes a retry");
     // A failed pass is one more cycle; the caller's condition is the verdict.
     answer.await;
 }
 
-/// Run `database`'s passes until `condition` holds, or fail naming `what`.
+/// Run `store`'s passes until `condition` holds, or fail naming `what`.
 /// It runs passes of this device only, so another device runs only the
 /// passes its own work starts.
-pub async fn wait_until<F, Fut>(database: &Database, cycles: &SyncCycles, what: &str, condition: F)
+pub async fn wait_until<F, Fut>(store: &Store, cycles: &SyncCycles, what: &str, condition: F)
 where
     F: Fn() -> Fut,
     Fut: std::future::Future<Output = bool>,
 {
     let reached = tokio::time::timeout(HANG_GUARD, async {
         while !condition().await {
-            pass(database).await;
+            pass(store).await;
         }
     })
     .await;
@@ -182,8 +182,8 @@ where
 /// hold on one device while the other's write that changes the outcome is
 /// still on its way out.
 pub async fn settle<F, Fut>(
-    (a, a_cycles): (&Database, &SyncCycles),
-    (b, b_cycles): (&Database, &SyncCycles),
+    (a, a_cycles): (&Store, &SyncCycles),
+    (b, b_cycles): (&Store, &SyncCycles),
     what: &str,
     condition: F,
 ) where
@@ -231,15 +231,15 @@ pub async fn settle<F, Fut>(
 
 /// Run sync on both devices until they answer `query` with the same rows
 /// and neither holds anything back: each has pulled what the other wrote.
-pub async fn converge(a: (&Database, &SyncCycles), b: (&Database, &SyncCycles), query: &str) {
+pub async fn converge(a: (&Store, &SyncCycles), b: (&Store, &SyncCycles), query: &str) {
     settle(a, b, &format!("the rows of {query:?}"), || async {
         sorted_rows(a.0, query).await == sorted_rows(b.0, query).await
     })
     .await;
 }
 
-async fn sorted_rows(database: &Database, query: &str) -> Vec<String> {
-    let mut rows = database.query_texts_for_test(query).await.expect("read the compared rows");
+async fn sorted_rows(store: &Store, query: &str) -> Vec<String> {
+    let mut rows = store.query_texts_for_test(query).await.expect("read the compared rows");
     rows.sort();
     rows
 }
@@ -265,11 +265,11 @@ pub fn on_device_runtime(body: impl AsyncFnOnce() + Send + 'static) {
         .unwrap_or_else(|panic| std::panic::resume_unwind(panic));
 }
 
-/// One device of a store-level test: its store's database, the record of its
+/// One device of a store-level test: its store's store, the record of its
 /// sync cycles, and what keeps its installation alive.
 #[cfg(any(test, feature = "test-utils"))]
 struct StoreDevice {
-    database: Database,
+    store: Store,
     cycles: SyncCycles,
     _installation: coven::Coven,
     _dir: tempfile::TempDir,
@@ -278,9 +278,9 @@ struct StoreDevice {
 #[cfg(any(test, feature = "test-utils"))]
 impl StoreDevice {
     fn new(handle: coven::CovenHandle, installation: coven::Coven, dir: tempfile::TempDir) -> Self {
-        let database = device_database(handle);
-        let cycles = SyncCycles::follow(&database);
-        Self { database, cycles, _installation: installation, _dir: dir }
+        let store = device_store(handle);
+        let cycles = SyncCycles::follow(&store);
+        Self { store, cycles, _installation: installation, _dir: dir }
     }
 }
 
@@ -295,7 +295,7 @@ pub struct TwoStores {
 
 /// Run `test` over two stores on `schema`, each closed before the runtime
 /// ends: a store still syncing as its runtime shuts down has its next
-/// database call cancelled, which coven reports as a panic.
+/// store call cancelled, which coven reports as a panic.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn run_two_store_test<F>(schema: crate::Schema, test: F)
 where
@@ -305,7 +305,7 @@ where
         let stores = TwoStores::new(schema).await;
         test(&stores).await;
         for store in [&stores.a, &stores.b] {
-            store.database.close().await.expect("close the device's store");
+            store.store.close().await.expect("close the device's store");
         }
     });
 }
@@ -319,57 +319,51 @@ impl TwoStores {
         let installation = coven::Coven::in_memory(dir.path().to_path_buf());
         let handle = create_first_store(schema, &installation, storage.clone()).await;
         let a = StoreDevice::new(handle, installation, dir);
-        let code = a.database.generate_restore_code().await.unwrap();
+        let code = a.store.generate_restore_code().await.unwrap();
         let dir = tempfile::TempDir::new().unwrap();
         let installation = coven::Coven::in_memory(dir.path().to_path_buf());
         let handle =
             restore_store(schema, &installation, Arc::new(storage.for_device()), &code, "Device B")
                 .await;
         let b = StoreDevice::new(handle, installation, dir);
-        b.database.start_sync().await.unwrap();
+        b.store.start_sync().await.unwrap();
         Self { a, b }
     }
 
     /// The device that created the library.
-    pub fn a(&self) -> &Database {
-        &self.a.database
+    pub fn a(&self) -> &Store {
+        &self.a.store
     }
 
     /// The device restored from the first one's code.
-    pub fn b(&self) -> &Database {
-        &self.b.database
+    pub fn b(&self) -> &Store {
+        &self.b.store
     }
 
     /// Stop both sync loops, before making concurrent offline edits.
     pub async fn pause(&self) {
         for store in [&self.a, &self.b] {
-            stop_sync(&store.database).await;
+            stop_sync(&store.store).await;
         }
     }
 
     pub async fn resume(&self) {
         for store in [&self.a, &self.b] {
-            store.database.start_sync().await.unwrap();
+            store.store.start_sync().await.unwrap();
         }
     }
 
     /// Run sync on both until they answer `query` with the same rows.
     pub async fn converge(&self, query: &str) {
-        converge((&self.a.database, &self.a.cycles), (&self.b.database, &self.b.cycles), query)
-            .await;
+        converge((&self.a.store, &self.a.cycles), (&self.b.store, &self.b.cycles), query).await;
     }
 
     /// Run sync on both until `settled` holds on each, named by its letter,
     /// and neither holds anything back.
-    pub async fn settle(&self, what: &str, settled: impl AsyncFn(&'static str, &Database) -> bool) {
-        settle(
-            (&self.a.database, &self.a.cycles),
-            (&self.b.database, &self.b.cycles),
-            what,
-            || async {
-                settled("A", &self.a.database).await && settled("B", &self.b.database).await
-            },
-        )
+    pub async fn settle(&self, what: &str, settled: impl AsyncFn(&'static str, &Store) -> bool) {
+        settle((&self.a.store, &self.a.cycles), (&self.b.store, &self.b.cycles), what, || async {
+            settled("A", &self.a.store).await && settled("B", &self.b.store).await
+        })
         .await;
     }
 }

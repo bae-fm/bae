@@ -112,7 +112,7 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         let manager = manager.library.clone();
         async move {
             manager
-                .database
+                .store
                 .pending()
                 .await
                 .unwrap()
@@ -188,7 +188,7 @@ async fn failed_storage_setup_keeps_the_library_unconfigured() {
     let (manager, _temp) = setup_test_manager().await;
     manager.storage.set_online(false);
     manager
-        .database
+        .store
         .setup_s3_storage(
             manager.storage.config(),
             "Device",
@@ -328,7 +328,7 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
 
     let mut values = manager.subscribe_sync_status();
     manager
-        .database
+        .store
         .setup_s3_storage(
             manager.storage.config(),
             "Test Device",
@@ -560,7 +560,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
 #[tokio::test]
 async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
     let (manager, temp_dir, _clock) = library_on_a_stopped_clock().await;
-    manager.database.set_uploads_paused(true).await.unwrap();
+    manager.store.set_uploads_paused(true).await.unwrap();
     let release = insert_release_with_queued_uploads(
         &manager,
         &temp_dir.path().join("refused"),
@@ -577,7 +577,7 @@ async fn a_refused_upload_offers_retry_and_retrying_uploads_it() {
             ..coven::Faults::none()
         })
         .await;
-    manager.database.set_uploads_paused(false).await.unwrap();
+    manager.store.set_uploads_paused(false).await.unwrap();
 
     let refused = status_until(&manager, |value| {
         value.pending.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("500")))
@@ -666,19 +666,18 @@ async fn setting_up_s3_storage_tells_each_step_coven_reports() {
 /// entry deleted by hand does, and open the library again: its location
 /// stays recorded, with no storage set up on this device.
 async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) -> TestManager {
-    let store = manager.database.store_id();
+    let store = manager.store.store_id();
     manager.close().await.unwrap();
     manager.installation.lose_storage_credentials(store).unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let handle = bae_db::configure_store(manager.installation.builder(), crate::SCHEMA)
+    let handle = bae_store::configure_store(manager.installation.builder(), crate::SCHEMA)
         .clock(clock.clone())
         .storage_connector(manager.storage.clone())
         .open(store, |_| ())
         .await
         .unwrap();
-    let database =
-        Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let database = bae_store::Store::new(handle, clock.clone());
     let library = TestLibrary::open_with(
         database,
         app_dir,
@@ -732,7 +731,7 @@ mod sign_in {
         let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-        let handle = bae_db::configure_store(
+        let handle = bae_store::configure_store(
             coven::Coven::in_memory(app_dir.coven_app_dir()).builder(),
             crate::SCHEMA,
         )
@@ -745,8 +744,7 @@ mod sign_in {
         .create_store("Test Library")
         .await
         .unwrap();
-        let database =
-            Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+        let database = bae_store::Store::new(handle, clock.clone());
         let library = TestLibrary::open_with(
             database,
             app_dir,
@@ -785,7 +783,7 @@ mod sign_in {
         let presenter = Arc::new(RecordingPresenter::default());
         let (manager, storage, _temp) = manager_signing_in_with(presenter.clone()).await;
         manager
-            .database
+            .store
             .setup_s3_storage(
                 storage.config(),
                 "Test Device",

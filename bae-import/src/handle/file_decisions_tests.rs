@@ -125,8 +125,8 @@ async fn sheet_disc_of(
 /// folder holding the same files, and no folder holding others.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_file_decision_settles_every_folder_holding_the_same_files() {
-    let (parts, database, tmp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, tmp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db);
     let (mut original, original_key, _) = picked_candidate(&tables, &tmp, "Album").await;
     std::fs::write(original.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
     original.files = crate::folder_scanner::collect_release_candidate_files_with_scope(

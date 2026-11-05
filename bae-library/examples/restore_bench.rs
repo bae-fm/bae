@@ -98,7 +98,7 @@ async fn restore_runs(
             // at another download limit asks coven directly, configured as
             // bae configures its store.
             Some(downloads) => coven::restore_from_code(
-                bae_db::configure_store(builder, bae_library::SCHEMA)
+                bae_store::configure_store(builder, bae_library::SCHEMA)
                     .max_concurrent_uploads(crate_default_uploads())
                     .max_concurrent_downloads(downloads),
                 code,

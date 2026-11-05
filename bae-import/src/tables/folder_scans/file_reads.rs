@@ -21,7 +21,7 @@ impl ImportTables {
         tags: Arc<dyn FileTagReader>,
     ) -> Result<FileReads, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
-        self.database
+        self.store
             .read(move |sql| {
                 let items = load_items(&sql, &watched_folder_path, RowSources::Scanned)?;
                 let sidecars = load_sidecars(&sql, &watched_folder_path)?;
@@ -49,7 +49,7 @@ impl ImportTables {
     ) -> Result<bool, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let coverage = coverage.clone();
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(!read::entries_reading(
                     &sql,

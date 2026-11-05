@@ -3,12 +3,12 @@
 //! and what the schema refuses.
 
 use super::*;
-use bae_db::test_fixtures::*;
+use bae_store::test_fixtures::*;
 use bae_util::test_channels::HANG_GUARD;
 use std::num::NonZeroU32;
 
 /// Edit the preferences as a setter does, refusing nothing.
-async fn set(db: &Database, edit: impl FnOnce(&mut Preferences) + Send + 'static) {
+async fn set(db: &Store, edit: impl FnOnce(&mut Preferences) + Send + 'static) {
     edit_preferences(db, |prefs| {
         edit(prefs);
         Ok(())

@@ -59,6 +59,8 @@ pub struct ImportServiceHandle {
     /// lock, so teardown must not return before it is joined.
     worker: WorkerThread<crate::service::ImportWorkerMessage>,
     /// The library's store, which the handle reads and writes directly.
+    store: bae_store::Store,
+    /// The library's records, which the handle reads.
     database: bae_db::Database,
     /// Import's own tables in that store.
     tables: crate::tables::ImportTables,
@@ -132,6 +134,7 @@ impl ImportServiceHandle {
     ) -> Result<Self, crate::ImportError> {
         let crate::ImportServices {
             event_tx,
+            store,
             database,
             tables,
             catalogs,
@@ -146,9 +149,9 @@ impl ImportServiceHandle {
             diagnostics,
             closing,
         } = services;
-        let release_reads = crate::ReleaseReads::new(database.clone(), catalogs.clone());
+        let release_reads = crate::ReleaseReads::new(store.clone(), catalogs.clone());
         let identify = crate::IdentifyService::new(
-            database.clone(),
+            store.clone(),
             catalogs.clone(),
             release_reads.clone(),
             runtime_handle.clone(),
@@ -160,11 +163,13 @@ impl ImportServiceHandle {
             runtime_handle.clone(),
             event_tx.clone(),
             runtime.clone(),
+            store.clone(),
             database.clone(),
             diagnostics.clone(),
         );
         Ok(Self {
             worker,
+            store,
             database,
             tables,
             catalogs,

@@ -4,8 +4,8 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::membership::FormerDeviceState;
 use bae_db::OtherDevice;
+use bae_store::FormerDeviceState;
 use bae_transfers::StoredTransition;
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_views::album_detail::ReleasePlayability;
@@ -28,7 +28,7 @@ fn making_uploaded_audio_local_keeps_only_this_device_playable() {
 async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, uploaded: bool) {
     devices.pause().await;
     let manager = devices.a().manager();
-    manager.database.set_uploads_paused(true).await.unwrap();
+    manager.store.set_uploads_paused(true).await.unwrap();
     let original = TempDir::new().unwrap();
     let destination = TempDir::new().unwrap();
     let album = create_test_album();
@@ -48,7 +48,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     assert_eq!(moving_file_count(manager, &release.id).await, 2);
 
     if uploaded {
-        manager.database.set_uploads_paused(false).await.unwrap();
+        manager.store.set_uploads_paused(false).await.unwrap();
         devices.resume().await;
         devices
             .converge(
@@ -63,7 +63,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
             assert_eq!(devices.b().database().read_release_file(&file.id).await.unwrap(), expected);
         }
         devices.pause().await;
-        manager.database.unlock_store_key().await.unwrap();
+        manager.store.unlock_store_key().await.unwrap();
         manager.detach_release_audio(&release.id, destination.path()).await.unwrap();
     } else {
         manager.cancel_release_transition(&release.id).await.unwrap();
@@ -86,7 +86,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         assert_eq!(manager.database.read_release_file(&file.id).await.unwrap(), expected);
     }
     assert_eq!(cover_file(manager, &release.id).await.id(), cover);
-    manager.database.set_uploads_paused(false).await.unwrap();
+    manager.store.set_uploads_paused(false).await.unwrap();
     devices.resume().await;
     devices
         .converge(
@@ -99,7 +99,10 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         assert!(devices.b().manager().file_local_path(&file.id).await.unwrap().is_none());
         let read = devices.b().database().read_release_file(&file.id).await;
         assert!(
-            matches!(read, Err(bae_db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }))),
+            matches!(
+                read,
+                Err(bae_store::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }))
+            ),
             "{read:?}"
         );
         assert_eq!(
@@ -127,7 +130,7 @@ async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
     manager.upload_release(&release.id, true).await.unwrap();
     manager.cancel_release_transition(&release.id).await.unwrap();
     assert!(download_queue_now(&manager).await.rows.is_empty());
-    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
+    assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     let files = release_files(&manager, &release.id).await;
     assert!(files.iter().all(|file| !file.stored));
     assert_eq!(manager.database.read_release_file(&files[0].id).await.unwrap(), b"audio");
@@ -169,7 +172,7 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
         let originals = TempDir::new().unwrap();
         let release = release_on_the_first_device(devices, originals.path(), "Album").await;
         let manager = devices.b().manager();
-        let mut live = bae_views::LibraryViews::new(manager.database.clone())
+        let mut live = bae_views::LibraryViews::new(manager.store.clone())
             .subscribe_release_detail(Some(release.id.clone()));
 
         assert_eq!(
@@ -251,7 +254,7 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
             .await;
         let manager = devices.a().manager();
         let playability = async || {
-            bae_views::LibraryViews::new(manager.database.clone())
+            bae_views::LibraryViews::new(manager.store.clone())
                 .find_release_detail(&release.id)
                 .await
                 .unwrap()
@@ -263,7 +266,7 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
             ReleasePlayability::OnOtherDevice(OtherDevice::Active { name: "Device B".to_string() })
         );
 
-        manager.remove_device(devices.b().database().device_id()).await.unwrap();
+        manager.remove_device(devices.b().store().device_id()).await.unwrap();
         // The write journals the removal; a pass of this device claims it.
         devices
             .a()
@@ -336,12 +339,9 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
 async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let shown = || async {
-        bae_transfers::release_storage_action::release_transfer_action(
-            &manager.database,
-            &release.id,
-        )
-        .await
-        .unwrap()
+        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
+            .await
+            .unwrap()
     };
 
     let failed = manager
@@ -393,7 +393,7 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     assert!(pinned().await);
 
     let refused = bae_transfers::release_storage_action::unpin_release(
-        &manager.database,
+        &manager.store,
         &release.id,
         vec![file.file],
     )
@@ -404,12 +404,9 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     manager.unpin_release(&release.id).await.unwrap();
     assert!(!pinned().await, "the unpin released the pin");
     assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(
-            &manager.database,
-            &release.id
-        )
-        .await
-        .unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
+            .await
+            .unwrap(),
         None,
         "and ended the transition"
     );
@@ -446,13 +443,10 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         })
         .collect();
     let (_stop, stopped) = tokio::sync::watch::channel(false);
-    let prepared = manager
-        .database
-        .prepare_device_only(&refused_folder, paths, &stopped, |_| {})
-        .await
-        .unwrap();
+    let prepared =
+        manager.store.prepare_device_only(&refused_folder, paths, &stopped, |_| {}).await.unwrap();
     let refused = bae_transfers::release_storage_action::make_release_local(
-        &manager.database,
+        &manager.store,
         &release.id,
         prepared,
     )
@@ -474,12 +468,9 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         "making it local switched every file here"
     );
     assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(
-            &manager.database,
-            &release.id
-        )
-        .await
-        .unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
+            .await
+            .unwrap(),
         None,
         "and ended the transition"
     );
@@ -491,7 +482,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
 async fn a_release_in_a_transition_refuses_another() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     assert!(bae_transfers::release_storage_action::begin_release_storage_action(
-        &manager.database,
+        &manager.store,
         &release.id,
         StoredTransition::Unpin
     )
@@ -508,12 +499,9 @@ async fn a_release_in_a_transition_refuses_another() {
     assert!(matches!(refused, Err(LibraryError::Storage(_))), "{refused:?}");
     assert!(!ran.load(std::sync::atomic::Ordering::SeqCst), "the refused work never runs");
     assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(
-            &manager.database,
-            &release.id
-        )
-        .await
-        .unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
+            .await
+            .unwrap(),
         Some(ReleaseStorageAction::Unpin)
     );
 }
@@ -535,12 +523,9 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
     manager.upload_release(&release.id, false).await.unwrap();
     assert_eq!(moving_file_count(&manager, &release.id).await, 1);
     assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(
-            &manager.database,
-            &release.id
-        )
-        .await
-        .unwrap(),
+        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &release.id)
+            .await
+            .unwrap(),
         None
     );
 
@@ -548,7 +533,7 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
     let refused = manager.upload_release(&empty, false).await;
     assert!(refused.is_err(), "a release with no files has none to queue");
     assert_eq!(
-        bae_transfers::release_storage_action::release_transfer_action(&manager.database, &empty)
+        bae_transfers::release_storage_action::release_transfer_action(&manager.store, &empty)
             .await
             .unwrap(),
         None
@@ -585,7 +570,7 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_body_at(
         coven::ObjectPath::file(
-            manager.database.store_id_for_test(),
+            manager.store.store_id_for_test(),
             location.uploader(),
             location.object(),
         ),

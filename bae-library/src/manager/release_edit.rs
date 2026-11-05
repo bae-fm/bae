@@ -109,9 +109,9 @@ impl LibraryManager {
     pub(crate) async fn find_release_edit_context(
         &self,
         release_id: &str,
-    ) -> Result<Option<ReleaseEditContext>, bae_db::DbError> {
+    ) -> Result<Option<ReleaseEditContext>, bae_store::DbError> {
         let release_id = release_id.to_string();
-        self.database
+        self.store
             .read(move |sql| {
                 let Some(release) = bae_db::client::read::find_release_by_id_on(&sql, &release_id)?
                 else {
@@ -299,7 +299,7 @@ impl LibraryManager {
     ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
         let release_id = session.release_id();
         // Nothing names these releases, so they are read and never stored.
-        let reads = bae_import::ReleaseReads::new(self.database.clone(), self.catalogs.clone());
+        let reads = bae_import::ReleaseReads::new(self.store.clone(), self.catalogs.clone());
         let release = reads.applied_release(&link.record, steps).await?.release;
         let partners: Vec<_> = reads
             .partners(

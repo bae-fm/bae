@@ -16,7 +16,7 @@ impl AppServices {
     pub fn subscribe_download_browse(&self) -> bae_views::LiveDownloadBrowse {
         let manager = &self.inner.manager;
         let query = manager
-            .until_closed(manager.subscribe_download_windows(bae_db::LibraryPageWindows::new()));
+            .until_closed(manager.subscribe_download_windows(bae_store::LibraryPageWindows::new()));
         bae_views::LiveLibraryBrowse::new(
             query,
             |read: bae_transfers::ReleaseQueueWindows<()>, request_revision, cause| {
@@ -41,7 +41,7 @@ impl AppServices {
     /// one after each write that changes them.
     pub fn subscribe_download_counts(
         &self,
-    ) -> bae_db::live_query::LiveValues<bae_transfers::ReleaseQueueCounts> {
+    ) -> bae_store::live_query::LiveValues<bae_transfers::ReleaseQueueCounts> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_download_counts())
     }

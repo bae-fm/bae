@@ -14,7 +14,7 @@ impl PlaybackService {
     }
 
     /// Tracks went into Up Next, or the write failed.
-    pub(super) async fn queue_added(&mut self, added: Result<usize, bae_db::DbError>) {
+    pub(super) async fn queue_added(&mut self, added: Result<usize, bae_store::DbError>) {
         match added {
             // The write counted the addition on the queue row, which the
             // screens confirming it read.

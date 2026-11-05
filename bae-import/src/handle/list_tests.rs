@@ -206,8 +206,8 @@ async fn one_row_on_the_page(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
 ) -> (ImportServiceHandle, TempDir, LiveImportList, crate::CandidateKey, crate::CandidateKey) {
-    let (parts, database, tmp) = setup_test_import_with(providers, http).await;
-    let tables = crate::tables::ImportTables::new(database);
+    let (parts, db, tmp) = setup_test_import_with(providers, http).await;
+    let tables = crate::tables::ImportTables::new(db);
     let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&tables, &tmp, "Other Record").await;
     let root = first.watched_folder_path.clone();
@@ -231,7 +231,7 @@ async fn one_row_on_the_page(
     let list = handle
         .subscribe_list_window(
             ImportListView::default(),
-            bae_db::LibraryPageWindow { offset: 0, limit: 1 },
+            bae_store::LibraryPageWindow { offset: 0, limit: 1 },
         )
         .await;
     let snapshot = delivered(&list).await;

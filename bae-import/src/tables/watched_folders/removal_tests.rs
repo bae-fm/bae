@@ -4,8 +4,8 @@
 use crate::tables::release_groupings::folder_readings::tests::store_user_folder_decision;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
-use bae_db::test_fixtures::empty_db;
-use bae_db::Database;
+use bae_store::test_fixtures::empty_db;
+use bae_store::Store;
 
 #[tokio::test]
 async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
@@ -28,7 +28,7 @@ async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
     assert!(tables.load_folder_scan_snapshots().await.unwrap()[0].items.is_empty());
 }
 
-async fn rows_in(db: &Database, table: &'static str) -> i64 {
+async fn rows_in(db: &Store, table: &'static str) -> i64 {
     db.read(move |sql| {
         Ok(sql.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0))?)
     })
@@ -48,7 +48,7 @@ const FOLDER_TABLES: [&str; 6] = [
 
 /// Two releases under `root`, read together as the grouping `key`.
 async fn picked_grouping(
-    db: &Database,
+    db: &Store,
     root: &std::path::Path,
     names: [&str; 2],
     key: &crate::CandidateKey,

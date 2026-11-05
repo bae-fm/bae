@@ -113,6 +113,8 @@ check "clippy (bae-diagnostics + test-utils)" \
   scripts/cargo.sh clippy -p bae-diagnostics --tests --features bae-diagnostics/test-utils -- -D warnings
 check "clippy (bae-app-dir + test-utils)" \
   scripts/cargo.sh clippy -p bae-app-dir --tests --features bae-app-dir/test-utils -- -D warnings
+check "clippy (bae-store + test-utils)" \
+  scripts/cargo.sh clippy -p bae-store --tests --features bae-store/test-utils -- -D warnings
 check "clippy (bae-db + test-utils)" \
   scripts/cargo.sh clippy -p bae-db --tests --features bae-db/test-utils -- -D warnings
 check "clippy (bae-preferences + test-utils)" \
@@ -159,6 +161,8 @@ check "dead_code (bae-diagnostics lib only)" \
   scripts/cargo.sh rustc -p bae-diagnostics --lib --profile check -- -D warnings
 check "dead_code (bae-app-dir lib only)" \
   scripts/cargo.sh rustc -p bae-app-dir --lib --profile check -- -D warnings
+check "dead_code (bae-store lib only)" \
+  scripts/cargo.sh rustc -p bae-store --lib --profile check -- -D warnings
 check "dead_code (bae-db lib only)" \
   scripts/cargo.sh rustc -p bae-db --lib --profile check -- -D warnings
 check "dead_code (bae-preferences lib only)" \
@@ -206,6 +210,7 @@ check "cargo test (bae-types)"         scripts/cargo.sh test -p bae-types
 check "cargo test (bae-catalogs)"      scripts/cargo.sh test -p bae-catalogs
 check "cargo test (bae-diagnostics)"   scripts/cargo.sh test -p bae-diagnostics
 check "cargo test (bae-app-dir)"       scripts/cargo.sh test -p bae-app-dir
+check "cargo test (bae-store)"       scripts/cargo.sh test -p bae-store
 check "cargo test (bae-db)"       scripts/cargo.sh test -p bae-db
 check "cargo test (bae-preferences)" scripts/cargo.sh test -p bae-preferences
 check "cargo test (bae-track-audio)"  scripts/cargo.sh test -p bae-track-audio

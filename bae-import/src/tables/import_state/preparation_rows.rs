@@ -136,7 +136,7 @@ impl CandidatePreparationRead {
 }
 
 pub(super) fn load_preparation_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
     content_hash: &str,
 ) -> Result<Option<CandidatePreparationRead>, DbError> {
     let Some(state) = load_states_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
@@ -380,7 +380,7 @@ impl ImportTables {
         content_hash: &str,
     ) -> Result<Option<CandidatePreparationRead>, DbError> {
         let content_hash = content_hash.to_string();
-        self.database.read(move |sql| load_preparation_on(&sql, &content_hash)).await
+        self.store.read(move |sql| load_preparation_on(&sql, &content_hash)).await
     }
 
     /// Write one candidate's whole state, in one transaction, if its stored
@@ -391,7 +391,7 @@ impl ImportTables {
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
     ) -> Result<CandidateSaved, DbError> {
-        self.database.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras)).await
+        self.store.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras)).await
     }
 
     /// [`Self::save_candidate_preparation`] for the verdict `run` reached:
@@ -406,7 +406,7 @@ impl ImportTables {
         candidate_key: crate::CandidateKey,
         run: crate::IdentifyRunId,
     ) -> Result<RunVerdictSaved, DbError> {
-        self.database
+        self.store
             .call(move |sql| match save_preparation_on(sql, &prep, &expected, &extras)? {
                 CandidateSaved::Landed(_) => {
                     Ok(RunVerdictSaved::Landed(super::change_identification_on(

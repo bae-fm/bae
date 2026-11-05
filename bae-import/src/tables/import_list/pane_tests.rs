@@ -12,10 +12,10 @@ use crate::ImportFailure;
 use crate::{MetadataProvenance, TriageTab};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::PayloadSource;
-use bae_db::test_fixtures::fixed_now;
 use bae_db::test_fixtures::live_query::{live_db, ALBUM_ID, RELEASE_ID};
-use bae_db::test_fixtures::{empty_db, exec};
 use bae_identify::TerminalVerdict;
+use bae_store::test_fixtures::fixed_now;
+use bae_store::test_fixtures::{empty_db, exec};
 use std::path::PathBuf;
 
 /// A MusicBrainz release linking a Discogs release, in a group linking
@@ -337,7 +337,7 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scan_finished(&db, root, "release").await;
     let key = candidate.key();
-    let detail = |db: Database, key: crate::CandidateKey| async move {
+    let detail = |db: Store, key: crate::CandidateKey| async move {
         let tables = crate::tables::ImportTables::new(db);
         tables
             .load_import_candidate(&key)

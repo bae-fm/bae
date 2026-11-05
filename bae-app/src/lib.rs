@@ -122,27 +122,27 @@ impl BootstrapError {
     }
 }
 
-fn classify_open_error(error: bae_db::DbError) -> BootstrapError {
+fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
     match error {
-        bae_db::DbError::Coven(coven::CovenError::Key(key)) => {
+        bae_store::DbError::Coven(coven::CovenError::Key(key)) => {
             match BootstrapError::from_keychain_refusal(key) {
                 Ok(refusal) => refusal,
                 Err(key) => {
-                    let error = bae_db::DbError::Coven(coven::CovenError::Key(key));
+                    let error = bae_store::DbError::Coven(coven::CovenError::Key(key));
                     BootstrapError::Database(format!("Failed to open database: {error}"))
                 }
             }
         }
-        error @ bae_db::DbError::Coven(coven::CovenError::Database(
+        error @ bae_store::DbError::Coven(coven::CovenError::Database(
             coven::DbError::DamagedDatabase,
         )) => BootstrapError::DeviceResetRequired(error.to_string()),
-        bae_db::DbError::Coven(coven::CovenError::Lock(
+        bae_store::DbError::Coven(coven::CovenError::Lock(
             coven::StoreLockError::ReplacementUnfinished { by, .. },
         )) => BootstrapError::ReplacementUnfinished(by),
         // The platform refused coven's watch of the network, as an Android
         // app packaged without coven's network library is: no retry or
         // setting fixes it.
-        error @ bae_db::DbError::Coven(coven::CovenError::NetworkWatch(_)) => {
+        error @ bae_store::DbError::Coven(coven::CovenError::NetworkWatch(_)) => {
             BootstrapError::Internal(format!("Failed to open database: {error}"))
         }
         error => BootstrapError::Database(format!("Failed to open database: {error}")),
@@ -288,18 +288,17 @@ enum LibraryOpening {
 async fn open_store(
     opening: LibraryOpening,
     clock: ClockRef,
-    ids: IdSourceRef,
-) -> Result<bae_db::Database, bae_db::DbError> {
+) -> Result<bae_store::Store, bae_store::DbError> {
     let handle = match opening {
         LibraryOpening::Registered { builder, store, on_progress } => {
-            bae_db::configure_store(builder, bae_library::SCHEMA)
+            bae_store::configure_store(builder, bae_library::SCHEMA)
                 .clock(clock.clone())
                 .open(store, on_progress)
                 .await?
         }
         LibraryOpening::Open(handle) => handle,
     };
-    Ok(bae_db::Database::from_handle(handle, clock, ids))
+    Ok(bae_store::Store::new(handle, clock))
 }
 
 /// The library a registered id names; an id that is no library's is not
@@ -427,11 +426,12 @@ where
 
     // The library's store, opened once; each part of the open library is
     // built from it here, once, and handed to what holds it.
-    let database = timing
+    let store = timing
         .stage(&library_id, "open the library's store", || {
-            runtime.block_on(open_store(builder, Arc::clone(&clock), ids.clone()))
+            runtime.block_on(open_store(builder, Arc::clone(&clock)))
         })
         .map_err(classify_open_error)?;
+    let database = bae_db::Database::new(store.clone(), ids.clone());
     #[cfg(desktop)]
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
         &app_dir.registered_library(&library_id),
@@ -441,7 +441,7 @@ where
     #[cfg(desktop)]
     let catalogs = bae_import::CatalogSessions::new(
         providers,
-        database.clone(),
+        store.clone(),
         diagnostics.clone(),
         runtime.handle().clone(),
     );
@@ -451,6 +451,7 @@ where
     let library_manager = timing
         .stage(&library_id, "open library manager", || {
             runtime.block_on(bae_library::open_library_manager(
+                store.clone(),
                 database.clone(),
                 #[cfg(desktop)]
                 catalogs.clone(),
@@ -466,7 +467,7 @@ where
         })
         .map_err(classify_open_error)?;
 
-    let store = library_manager.store_id();
+    let store_id = library_manager.store_id();
 
     // From here the library is open on `runtime`. A step that fails closes it
     // before the runtime ends, so nothing of it is left running for the
@@ -517,6 +518,7 @@ where
             .stage(&library_id, "start library services", || {
                 runtime.block_on(start_library_services(
                     library_manager,
+                    store,
                     database,
                     #[cfg(desktop)]
                     catalogs,
@@ -575,7 +577,7 @@ where
     if advance_active_pointer {
         timing
             .stage(&library_id, "save active-library pointer", || {
-                app_dir.save_active_library(store)
+                app_dir.save_active_library(store_id)
             })
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
     }

@@ -95,8 +95,9 @@ struct ExtractionServiceInner {
     /// The platform's artwork analyzer; `None` where the platform has none, so
     /// artwork is no source at all.
     analyzer: Mutex<Option<Arc<dyn ArtworkAnalyzer>>>,
-    /// The library a `Release` re-identify reads the release's rows and
-    /// files from.
+    /// The library a `Release` re-identify reads the release's files from.
+    store: bae_store::Store,
+    /// The library a `Release` re-identify reads the release's rows from.
     database: bae_db::Database,
     /// Where a panic in a pass is reported as the bug it is.
     diagnostics: bae_diagnostics::Diagnostics,
@@ -158,6 +159,7 @@ impl ExtractionService {
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
+        store: bae_store::Store,
         database: bae_db::Database,
         diagnostics: bae_diagnostics::Diagnostics,
     ) -> ExtractionService {
@@ -165,6 +167,7 @@ impl ExtractionService {
             runtime_handle,
             event_tx,
             analyzer: Mutex::new(None),
+            store,
             database,
             diagnostics,
             settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
@@ -356,6 +359,7 @@ async fn extract(
             let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
             let (artwork, _cover_staging) = if let Some(analyzer) = analyzer {
                 match resolve_release_artwork_paths(
+                    &inner.store,
                     &inner.database,
                     &inner.diagnostics,
                     &release_id,

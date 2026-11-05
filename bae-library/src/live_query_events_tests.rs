@@ -6,7 +6,7 @@ use std::sync::Arc;
 async fn an_ended_query_takes_a_new_request() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
-    let database = bae_db::Database::new_test(
+    let database = bae_store::Store::new_test(
         crate::SCHEMA,
         path.to_str().unwrap(),
         Arc::new(coven::SystemClock),
@@ -23,7 +23,7 @@ async fn an_ended_query_takes_a_new_request() {
     let (reader, _read) = tokio::sync::mpsc::unbounded_channel::<Result<(), crate::LibraryError>>();
     let mut events = super::reconfigurable_live_query_events(
         &manager,
-        manager.subscribe_queue_upcoming(bae_db::LibraryPageWindows::new()),
+        manager.subscribe_queue_upcoming(bae_store::LibraryPageWindows::new()),
         reader,
     );
     database.close().await.unwrap();
@@ -34,7 +34,7 @@ async fn an_ended_query_takes_a_new_request() {
     .await
     .expect("the query ends with its store");
 
-    events.set([bae_db::LibraryPageWindow { offset: 0, limit: 10 }].into());
+    events.set([bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into());
 
     assert!(events.recv().await.is_none(), "the ended query reads nothing");
 }

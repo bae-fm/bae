@@ -12,8 +12,8 @@ pub mod watched_path;
 pub use removal::WatchedFoldersRemoved;
 
 /// The watched folders' part of the library's schema.
-pub(super) const SCHEMA: bae_db::SchemaPart =
-    bae_db::SchemaPart::new(&[include_str!("watched_folders.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("watched_folders.sql")]);
 
 /// The folders at or below one folder, as a condition on a stored folder
 /// column: the range each owner of rows kept by folder forgets when the
@@ -116,14 +116,14 @@ impl ImportTables {
     /// Every watched folder, in the order they were added. A stored root that
     /// is not canonical, or overlaps another, fails the read.
     pub async fn load_watched_import_folders(&self) -> Result<Vec<crate::WatchedFolder>, DbError> {
-        self.database.read(move |sql| watched_folders_on(&sql)).await
+        self.store.read(move |sql| watched_folders_on(&sql)).await
     }
 
     /// Whether `path`, spelled as the store keys it, is a watched folder,
     /// read by the watched folders' key.
     pub async fn is_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
         let path = coven::path_bytes(path);
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(sql.query_row(
                     "SELECT EXISTS (SELECT 1 FROM watched_import_folders WHERE path = ?)",
@@ -140,7 +140,7 @@ impl ImportTables {
         path: &Path,
     ) -> Result<Option<PathBuf>, DbError> {
         let path = path.to_path_buf();
-        self.database.read(move |sql| watched_folder_among_on(&sql, path.ancestors().skip(1))).await
+        self.store.read(move |sql| watched_folder_among_on(&sql, path.ancestors().skip(1))).await
     }
 
     /// The watched folders inside `path`, not `path` itself, in their order:
@@ -148,7 +148,7 @@ impl ImportTables {
     pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {
         let (first, past) = crate::tables::watched_path::paths_below(path);
         let path = coven::path_bytes(path);
-        self.database
+        self.store
             .read(move |sql| {
                 Ok(sql.query(
                     "SELECT path FROM watched_import_folders \
@@ -162,7 +162,7 @@ impl ImportTables {
 
     /// Every watched root, in the order they were added.
     async fn watched_import_roots(&self) -> Result<Vec<PathBuf>, DbError> {
-        self.database.read(move |sql| watched_roots_on(&sql)).await
+        self.store.read(move |sql| watched_roots_on(&sql)).await
     }
 
     /// Watch the folder `path` names, keyed by its canonical spelling, and
@@ -181,7 +181,7 @@ impl ImportTables {
         if self.is_watched_import_folder(&path).await? {
             return Ok(None);
         }
-        self.database
+        self.store
             .call(move |sql| {
                 let roots = watched_roots_on(sql)?;
                 if roots.iter().any(|root| root.as_os_str() == path.as_os_str()) {

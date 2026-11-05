@@ -16,7 +16,7 @@ impl LibraryViews {
         let Some(context) = self.find_release_detail_context(release_id).await? else {
             return Ok(None);
         };
-        let has_cloud_home = self.database.cloud_home().await?;
+        let has_cloud_home = self.store.cloud_home().await?;
         Ok(Some(resolve_release_detail(release_id, context, has_cloud_home)))
     }
 
@@ -27,7 +27,7 @@ impl LibraryViews {
         release_id: &str,
     ) -> Result<Option<DbReleaseDetail>, DbError> {
         let release_id = release_id.to_string();
-        self.database
+        self.store
             .read(move |sql| {
                 let Some(release) = find_release_by_id_on(&sql, &release_id)? else {
                     return Ok(None);
@@ -44,7 +44,7 @@ impl LibraryViews {
         release_id: &str,
     ) -> Result<Option<ReleaseDetailContext>, DbError> {
         let release_id = release_id.to_string();
-        self.database
+        self.store
             .read(move |sql| find_release_detail_context_on(&sql, &release_id))
             .process(|rows| Ok(rows.map(ReleaseContextRows::process)))
             .await
@@ -56,7 +56,7 @@ impl LibraryViews {
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection> {
-        self.database
+        self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let has_cloud_home = cloud_home_on(&sql)?;
                 let context = match release_id {

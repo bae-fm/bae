@@ -78,7 +78,7 @@ impl Listed {
     /// end: about the window's end times the tab's releases over the releases
     /// the search keeps. Otherwise it is read from the tab's rows in order,
     /// each tested.
-    pub(super) fn shown(&self, window: &bae_db::LibraryPageWindow) -> Shown<'static> {
+    pub(super) fn shown(&self, window: &bae_store::LibraryPageWindow) -> Shown<'static> {
         let narrowed = match (self.reads, self.narrowed) {
             (Reads::Search, Some(narrowed)) => narrowed,
             (Reads::Search, None) | (Reads::Order, _) => return Shown::View,
@@ -266,7 +266,7 @@ impl ImportTables {
         candidate_key: &crate::CandidateKey,
     ) -> Result<Option<crate::ImportCandidateListLocation>, DbError> {
         let candidate_key = candidate_key.clone();
-        self.database.read(move |sql| locate(&sql, list, &candidate_key)).await
+        self.store.read(move |sql| locate(&sql, list, &candidate_key)).await
     }
 
     /// The first candidate in the list's order, every tab's rows unfiltered,
@@ -276,7 +276,7 @@ impl ImportTables {
         &self,
         list: ImportListId,
     ) -> Result<Option<crate::CandidateKey>, DbError> {
-        self.database.read(move |sql| first_identifying(&sql, list)).await
+        self.store.read(move |sql| first_identifying(&sql, list)).await
     }
 }
 

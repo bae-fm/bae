@@ -60,7 +60,7 @@ struct Context {
     import: ImportServiceHandle,
     /// The library's store, which the queue reads the person's preferences
     /// from.
-    database: bae_db::Database,
+    store: bae_store::Store,
     /// Import's tables, which the queue reads candidates' stored state from.
     tables: crate::tables::ImportTables,
     /// Where a bug in the queue's work is reported.
@@ -98,18 +98,18 @@ enum Drain {
 }
 
 /// Start the identification queue over `import`, reading the store
-/// `database` and import's tables `tables`, and reporting bugs to
+/// `store` and import's tables `tables`, and reporting bugs to
 /// `diagnostics`. There is one per import
 /// service, since it takes the service's event feed.
 pub(crate) fn start(
     import: ImportServiceHandle,
-    database: bae_db::Database,
+    store: bae_store::Store,
     tables: crate::tables::ImportTables,
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
-    let context = Context { import, database, tables, diagnostics };
+    let context = Context { import, store, tables, diagnostics };
 
     let mut bus =
         context.import.take_event_feed().expect("one identification queue per import service");

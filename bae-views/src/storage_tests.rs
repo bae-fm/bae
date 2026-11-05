@@ -6,15 +6,15 @@ use crate::tests::{assert_seeks_search, both_ways, key_at, library};
 use crate::*;
 use bae_db::test_fixtures::aggregate_ordering::aggregate_db;
 use bae_db::test_fixtures::album_listing::listed_db;
-use bae_db::test_fixtures::exec_batch;
 use bae_db::test_fixtures::storage_listing::*;
+use bae_store::test_fixtures::exec_batch;
 // The listing's albums, not the root fixtures' of the same names.
 use bae_db::test_fixtures::storage_listing::{ALBUM_A, ALBUM_B};
 use bae_db::test_fixtures::*;
-use bae_db::{LibraryPageWindow, LibraryPageWindows};
+use bae_store::{LibraryPageWindow, LibraryPageWindows};
 
 /// The Storage Manager list's release ids in `field` order, ascending.
-async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
+async fn page(db: &Store, field: StorageSortField) -> Vec<String> {
     crate::LibraryViews::new(db.clone())
         .get_storage_page(
             &StorageSortCriterion { field, direction: SortDirection::Ascending },
@@ -32,7 +32,7 @@ async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
 
 #[tokio::test]
 async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
-    let (db, tmp) = bae_db::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let (db, tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
     exec_batch(&db, LIBRARY).await;
     // The first release has two files, of 10 and 20 bytes; the second none.
     for file in [
@@ -112,7 +112,7 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
 /// direction, under every filter: SQLite never sorts the list itself.
 #[tokio::test]
 async fn the_storage_sort_reads_a_window_from_an_index() {
-    let (db, _tmp) = bae_db::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
     for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
         for direction in [SortDirection::Ascending, SortDirection::Descending] {
             let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
@@ -644,7 +644,7 @@ async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
 
 /// How many rows the library's tables, the listings' triggers included,
 /// change when `release` is added to Album Title One.
-async fn rows_changed_adding_release(db: &Database, release: &str) -> i64 {
+async fn rows_changed_adding_release(db: &Store, release: &str) -> i64 {
     let release = release.to_string();
     db.call(move |conn| {
         let before: i64 = conn.query_row("SELECT total_changes()", [], |row| row.get(0))?;
@@ -762,7 +762,7 @@ fn first_on_arrival(conn: &mut rusqlite::Connection) -> FirstOnArrival {
 /// release arrives, and that records every release whose listing row a
 /// write asks to refresh, in `refreshed`.
 fn counting_refreshes(first: FirstOnArrival) -> rusqlite::Connection {
-    let mut conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
+    let mut conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
     // SQLite runs the newest of the triggers on one event first, so creating
     // `first`'s again puts it first; the probe says whether it did.
     let created: String = conn
@@ -940,7 +940,7 @@ fn a_release_s_media_rows_set_its_listing_s_media() {
 /// rows, in order.
 #[test]
 fn a_media_edit_from_another_device_sorts_its_release() {
-    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let release = "0252dedb-ee39-4547-8803-438dbeb57a64";
         devices.a().call(seed_artist_album_release).await.unwrap();
         exec_batch(

@@ -87,7 +87,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         tracks.push(track.id);
     }
     finish_bound_uploads(&manager).await;
-    bae_playback::tables::PlaybackQueueTables::new(manager.database.clone())
+    bae_playback::tables::PlaybackQueueTables::new(manager.store.clone())
         .add_manual(tracks.clone(), bae_playback::tables::ManualPlace::End)
         .await
         .unwrap();
@@ -99,20 +99,20 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         )
     };
     let deleted_files =
-        manager.database.query_texts_for_test(&coven_files_of(&[&kept, &local])).await.unwrap();
+        manager.store.query_texts_for_test(&coven_files_of(&[&kept, &local])).await.unwrap();
     assert_eq!(deleted_files.len(), 4, "two files and two covers");
     let mut pinned = 0;
     for file in &deleted_files {
-        pinned += manager.database.count_rows_for_test("coven_pins", "file", file).await.unwrap();
+        pinned += manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap();
     }
     assert!(pinned > 0, "the kept release's file is pinned here");
     let kept_files =
-        manager.database.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
+        manager.store.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
 
     let mut browse = views(&manager).subscribe_album_browse(
         &[],
         false,
-        [bae_db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let listed = |browse: &bae_views::AlbumBrowseProjection| -> Vec<String> {
         browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()
@@ -158,14 +158,8 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
             .is_none());
     }
     for file in &deleted_files {
-        assert_eq!(
-            manager.database.count_rows_for_test("coven_files", "id", file).await.unwrap(),
-            0
-        );
-        assert_eq!(
-            manager.database.count_rows_for_test("coven_pins", "file", file).await.unwrap(),
-            0
-        );
+        assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 0);
+        assert_eq!(manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap(), 0);
     }
     assert_eq!(std::fs::read(local_dir.join("a.flac")).unwrap(), b"local audio");
     assert_eq!(std::fs::read(temp.path().join("kept").join("track.flac")).unwrap(), b"track-bytes");
@@ -178,12 +172,9 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         .unwrap()
         .is_some());
     for file in &kept_files {
-        assert_eq!(
-            manager.database.count_rows_for_test("coven_files", "id", file).await.unwrap(),
-            1
-        );
+        assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 1);
     }
-    let queued: Vec<String> = bae_playback::tables::queue_value(manager.database())
+    let queued: Vec<String> = bae_playback::tables::queue_value(manager.store())
         .await
         .unwrap()
         .manual

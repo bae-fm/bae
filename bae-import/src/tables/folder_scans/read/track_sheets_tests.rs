@@ -1,6 +1,6 @@
 //! A scan's track sheets as stored and read back from a cold database.
 
-use bae_db::test_fixtures::empty_db;
+use bae_store::test_fixtures::empty_db;
 
 /// The CD ripper a sheet names is kept with the scan, so a folder read back
 /// from a cold database still proves the CD rip its sheet does.

@@ -174,7 +174,7 @@ pub enum ImportError {
     /// The library's store failed a read or a write import asked of it.
     #[cfg(desktop)]
     #[error(transparent)]
-    Database(#[from] bae_db::DbError),
+    Database(#[from] bae_store::DbError),
 
     /// Where the library syncs to could not be read, which decides where an
     /// import's files go.

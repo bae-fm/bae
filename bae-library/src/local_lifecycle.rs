@@ -190,14 +190,10 @@ pub async fn unsent_before_removal(
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
 ) -> Result<coven::UnsentWork, LibraryError> {
     let handle =
-        bae_db::configure_store(builder, crate::SCHEMA).open(store, on_open_progress).await?;
-    let unsent = bae_db::Database::from_handle(
-        handle.clone(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-    )
-    .unsent_before_removal()
-    .await;
+        bae_store::configure_store(builder, crate::SCHEMA).open(store, on_open_progress).await?;
+    let unsent = bae_store::Store::new(handle.clone(), std::sync::Arc::new(coven::SystemClock))
+        .unsent_before_removal()
+        .await;
     let closed = handle.close().await;
     let unsent = unsent?;
     closed?;

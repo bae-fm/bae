@@ -32,7 +32,7 @@ async fn paused_on_first_track(fixture: &PlaybackTestFixture) -> String {
 /// paused and `accept` takes what it shows. The system media controls are
 /// handed the same value, so they must show it too.
 async fn now_playing_until(
-    values: &bae_db::live_query::LiveValues<Option<bae_playback::NowPlayingValues>>,
+    values: &bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>>,
     track_id: &str,
     what: &str,
     accept: impl Fn(&bae_playback::TrackDisplay) -> bool,
@@ -88,7 +88,10 @@ async fn first_upcoming_until(
 fn first_upcoming(library: &TestLibrary) -> bae_library::LiveQueueUpcoming {
     let queue = bae_library::subscribe_queue_upcoming(library);
     queue
-        .set(bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow { offset: 0, limit: 1 }]))
+        .set(bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
+            offset: 0,
+            limit: 1,
+        }]))
         .expect("the read takes its window");
     queue
 }

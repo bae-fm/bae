@@ -1,23 +1,25 @@
 use super::*;
+use bae_store::Store;
 use bae_util::test_logs::capture_warn_logs_async;
 use std::sync::Arc;
 
 /// A test library under `root` holding one release of one album and artist,
 /// with no files or tracks yet.
-async fn library_with_release(root: &std::path::Path) -> (Database, String) {
+async fn library_with_release(root: &std::path::Path) -> (Store, String) {
     use bae_db::{DbAlbum, DbArtist, DbRelease};
     use chrono::Utc;
     use uuid::Uuid;
 
     let library_root = root.join("library");
     std::fs::create_dir_all(&library_root).unwrap();
-    let database = Database::new_test(
+    let db = Store::new_test(
         crate::TEST_SCHEMA,
         library_root.join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
     .await
     .unwrap();
+    let database = bae_db::test_fixtures::test_database(&db);
     let artist = DbArtist {
         id: bae_util::test_ids::test_uuid("artist-1"),
         name: "Test Artist".to_string(),
@@ -50,7 +52,7 @@ async fn library_with_release(root: &std::path::Path) -> (Database, String) {
         created_at: Utc::now(),
     };
     database.insert_release(&release).await.unwrap();
-    (database, release.id)
+    (db, release.id)
 }
 
 #[tokio::test]
@@ -60,7 +62,8 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
     use chrono::Utc;
 
     let temp = tempfile::TempDir::new().unwrap();
-    let (database, release_id) = library_with_release(temp.path()).await;
+    let (db, release_id) = library_with_release(temp.path()).await;
+    let database = bae_db::test_fixtures::test_database(&db);
 
     let file = NewReleaseFile {
         id: "4c3b28d5-7315-48f1-8352-500492675441".to_string(),
@@ -79,7 +82,8 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
 
     let logs = capture_warn_logs_async(|| async {
         let (paths, cover_staging) = resolve_release_artwork_paths(
-            &database,
+            &db,
+            &bae_db::test_fixtures::test_database(&db),
             &bae_diagnostics::Diagnostics::noop(),
             &release_id,
         )
@@ -126,7 +130,8 @@ async fn test_resolve_release_identity_local() {
     std::fs::copy(fixture_dir.join("02 Test Track 2.flac"), local_dir.join("02 Test Track 2.flac"))
         .unwrap();
 
-    let (database, release_id) = library_with_release(temp.path()).await;
+    let (db, release_id) = library_with_release(temp.path()).await;
+    let database = bae_db::test_fixtures::test_database(&db);
 
     for (filename, content_type) in [
         ("test_album.log", ContentType::PlainText),
@@ -203,7 +208,8 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
     let scanned = disc_ids(crate::rip_reading::read_rip_artifacts(&categorized));
 
     let library = tempfile::TempDir::new().unwrap();
-    let (database, release_id) = library_with_release(library.path()).await;
+    let (db, release_id) = library_with_release(library.path()).await;
+    let database = bae_db::test_fixtures::test_database(&db);
     for file in categorized.release_files() {
         let row = NewReleaseFile {
             id: Uuid::new_v4().to_string(),

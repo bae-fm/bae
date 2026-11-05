@@ -26,6 +26,7 @@ bae-library = { workspace = true }
 bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.
 bae-db = { workspace = true }
+bae-store = { workspace = true }
 # The preferences the settings screens mirror.
 # The playback service, its values and the renderers the bridge mirrors.
 bae-playback = { workspace = true }

@@ -9,9 +9,9 @@ use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::tables::{DbCandidateIdentifyResult, DbImportCandidateState};
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::test_releases::mb_release_json;
-use bae_db::Database;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::{FolderCheck, VerdictSummary};
+use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -98,7 +98,7 @@ pub(crate) struct Fixture {
     /// starts another over the same store or writes a preference.
     pub(crate) parts: crate::tests::import::TestImport,
     /// The store under `import`, for a test that breaks a row directly.
-    pub(crate) database: Database,
+    pub(crate) db: Store,
     pub(crate) import: ImportServiceHandle,
     pub(crate) provider: bae_util::test_host::FakeHost,
     /// The MusicBrainz client those sessions ask, which a test seeds answers
@@ -137,7 +137,7 @@ impl Fixture {
         bae_util::test_logs::install();
         let temp = TempDir::new().unwrap();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock::new((fixed_now()).into()));
-        let database = Database::new_test(
+        let db = Store::new_test(
             crate::TEST_SCHEMA,
             temp.path().join("test.db").to_str().unwrap(),
             clock.clone(),
@@ -164,7 +164,7 @@ impl Fixture {
         // `use_discogs`.
         let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
         let parts = crate::tests::import::TestImport::new(
-            database.clone(),
+            db.clone(),
             providers,
             http,
             clock,
@@ -178,13 +178,13 @@ impl Fixture {
 
         let context = Context {
             import: import.clone(),
-            database: database.clone(),
-            tables: crate::tables::ImportTables::new(database.clone()),
+            store: db.clone(),
+            tables: crate::tables::ImportTables::new(db.clone()),
             diagnostics: bae_diagnostics::Diagnostics::noop(),
         };
         Fixture {
             parts,
-            database,
+            db,
             import,
             provider,
             musicbrainz,
@@ -721,7 +721,7 @@ pub(crate) async fn start_import_for(fixture: &Fixture, candidate: &Path) {
 /// A list subscription over the Pending tab, asking for `windows`.
 pub(crate) async fn list_subscription(
     fixture: &Fixture,
-    windows: bae_db::LibraryPageWindows,
+    windows: bae_store::LibraryPageWindows,
 ) -> crate::LiveImportList {
     fixture
         .import
@@ -730,8 +730,8 @@ pub(crate) async fn list_subscription(
         .expect("the list opens")
 }
 
-pub(crate) fn page_window(offset: u64, limit: u64) -> bae_db::LibraryPageWindows {
-    std::iter::once(bae_db::LibraryPageWindow { offset, limit }).collect()
+pub(crate) fn page_window(offset: u64, limit: u64) -> bae_store::LibraryPageWindows {
+    std::iter::once(bae_store::LibraryPageWindow { offset, limit }).collect()
 }
 
 /// The list's next snapshot.

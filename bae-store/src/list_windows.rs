@@ -16,11 +16,18 @@
 //! last rows sat at, with the versions it read them at, and the next read
 //! starts from them only while those versions still stand.
 
-use super::*;
+use coven::SqlReadContext;
 use rusqlite::types::Value;
-use rusqlite::ToSql;
+use rusqlite::{Row, ToSql};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
+
+/// Which way a list runs its order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortDirection {
+    Ascending,
+    Descending,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LibraryPageWindow {

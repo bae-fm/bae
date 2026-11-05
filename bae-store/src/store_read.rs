@@ -1,21 +1,22 @@
-use super::{CovenError, Database, DbError, SqlReadContext};
+use crate::DbError;
+use coven::{CovenError, SqlReadContext};
 use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 
-/// A Coven read with the database client's error type at the calling boundary.
+/// A Coven read with the store's error type at the calling boundary.
 #[must_use = "reads do not execute until awaited"]
-pub struct DatabaseRead<'a, F> {
+pub struct StoreRead<'a, F> {
     read: coven::Read<'a, F>,
 }
 
-impl<'a, F, R> DatabaseRead<'a, F>
+impl<'a, F, R> StoreRead<'a, F>
 where
     F: for<'connection> FnOnce(SqlReadContext<'connection>) -> Result<R, CovenError>
         + Send
         + 'static,
     R: Send + 'static,
 {
-    pub(super) fn new(read: coven::Read<'a, F>) -> Self {
+    pub(crate) fn new(read: coven::Read<'a, F>) -> Self {
         Self { read }
     }
 
@@ -27,11 +28,11 @@ where
         self.read
             .process(move |rows| process(rows).map_err(CovenError::from))
             .await
-            .map_err(Database::coven_error)
+            .map_err(DbError::from)
     }
 }
 
-impl<'a, F, R> IntoFuture for DatabaseRead<'a, F>
+impl<'a, F, R> IntoFuture for StoreRead<'a, F>
 where
     F: for<'connection> FnOnce(SqlReadContext<'connection>) -> Result<R, CovenError>
         + Send
@@ -42,6 +43,6 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'a>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(async move { self.read.await.map_err(Database::coven_error) })
+        Box::pin(async move { self.read.await.map_err(DbError::from) })
     }
 }

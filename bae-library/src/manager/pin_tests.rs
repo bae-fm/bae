@@ -100,7 +100,7 @@ fn a_download_the_pins_end_before_the_watch_keeps_its_bytes() {
 /// storage row's: none when the triggers kept up.
 async fn storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
-        .database
+        .store
         .query_texts_for_test(
             "SELECT r.id || ': stored ' \
                  || COALESCE(s.pinned_count || ' of ' || s.file_count, 'nothing') \
@@ -127,7 +127,7 @@ async fn storage_disagreements(manager: &LibraryManager) -> Vec<String> {
 /// file.
 async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
     manager
-        .database
+        .store
         .query_texts_for_test(
             "SELECT r.id FROM releases r \
              WHERE EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) \
@@ -143,11 +143,11 @@ async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::B
 
 /// The pinned marker each release shows in the Storage Manager list.
 async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
-    bae_views::LibraryViews::new(manager.database.clone())
+    bae_views::LibraryViews::new(manager.store.clone())
         .get_storage_page(
             &bae_views::StorageSortCriterion {
                 field: bae_views::StorageSortField::AlbumTitle,
-                direction: bae_db::SortDirection::Ascending,
+                direction: bae_store::SortDirection::Ascending,
             },
             bae_views::StorageFilter::All,
             0,
@@ -245,7 +245,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 };
                 let refs = release_file_refs(&manager, &releases[index].id).await;
                 let count = rng.random_range(1..=refs.len());
-                manager.database.pin(&refs[..count]).await.unwrap();
+                manager.store.pin(&refs[..count]).await.unwrap();
                 "pin"
             }
             6 => {
@@ -255,7 +255,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let refs = release_file_refs(&manager, &releases[index].id).await;
                 let one = rng.random_range(0..refs.len());
                 if rng.random_bool(0.5) {
-                    manager.database.unpin(&[refs[one].id()]).await.unwrap();
+                    manager.store.unpin(&[refs[one].id()]).await.unwrap();
                     "unpin"
                 } else {
                     manager.evict_file_for_test(refs[one].id()).await.unwrap();
@@ -275,7 +275,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 }
                 let file = &files[rng.random_range(0..files.len())];
                 manager
-                    .database
+                    .store
                     .execute_for_test(
                         "UPDATE release_files SET release_id = ?1 WHERE id = ?2",
                         vec![releases[to].id.clone(), file.id.clone()],
@@ -294,7 +294,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 }
                 let file = &files[rng.random_range(0..files.len())];
                 manager
-                    .database
+                    .store
                     .execute_for_test(
                         "DELETE FROM release_files WHERE id = ?1",
                         vec![file.id.clone()],
@@ -369,7 +369,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
 
     // The memory provider holds the read of the stored file until the test
     // has seen it downloading.
-    let files_prefix = coven::ObjectPrefix::files(manager.database.store_id_for_test());
+    let files_prefix = coven::ObjectPrefix::files(manager.store.store_id_for_test());
     let stored = home
         .request_trace()
         .into_iter()
@@ -441,7 +441,7 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_body_at(
         coven::ObjectPath::file(
-            manager.database.store_id_for_test(),
+            manager.store.store_id_for_test(),
             location.uploader(),
             location.object(),
         ),
@@ -605,7 +605,7 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
     manager.evict_file_for_test(file).await.unwrap();
     // The pin's read of the stored file is refused, not whatever request
     // comes next: sync runs, and its passes make requests of their own.
-    let files = coven::ObjectPrefix::files(manager.database.store_id_for_test());
+    let files = coven::ObjectPrefix::files(manager.store.store_id_for_test());
     let stored = home
         .request_trace()
         .into_iter()
@@ -694,7 +694,7 @@ async fn release_kept_here_waiting_for_its_copy(
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_creation(
-        coven::ObjectPrefix::files(manager.database.store_id_for_test()),
+        coven::ObjectPrefix::files(manager.store.store_id_for_test()),
         started,
         resumed,
     )
@@ -781,7 +781,7 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     let file = manager.release_file_ref(&file_id).await.unwrap();
     assert_eq!(
-        manager.database.files_pinned(&[file.id()]).await.unwrap(),
+        manager.store.files_pinned(&[file.id()]).await.unwrap(),
         [Some(false)],
         "the file's copy hasn't landed"
     );
@@ -802,7 +802,7 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
     );
 
     home.set_faults(coven::Faults::none()).await;
-    manager.database.pin(std::slice::from_ref(&file)).await.unwrap();
+    manager.store.pin(std::slice::from_ref(&file)).await.unwrap();
     assert!(summary_pinned().await, "the release's summary");
     assert!(
         listed_pinned_releases(&manager).await.contains(&release.id),
@@ -825,11 +825,11 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     )
     .await;
     let by_storage = || async {
-        bae_views::LibraryViews::new(manager.database.clone())
+        bae_views::LibraryViews::new(manager.store.clone())
             .get_storage_page(
                 &bae_views::StorageSortCriterion {
                     field: bae_views::StorageSortField::Storage,
-                    direction: bae_db::SortDirection::Ascending,
+                    direction: bae_store::SortDirection::Ascending,
                 },
                 bae_views::StorageFilter::All,
                 0,
@@ -850,7 +850,7 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
 
     home.set_faults(coven::Faults::none()).await;
     let refs = release_file_refs(&manager, &waiting.id).await;
-    manager.database.pin(&refs).await.unwrap();
+    manager.store.pin(&refs).await.unwrap();
     assert_eq!(
         by_storage().await,
         [(waiting.id.clone(), StorageRowStatus::Pinned), (cloud.clone(), StorageRowStatus::Cloud),]

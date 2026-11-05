@@ -97,6 +97,7 @@ jobs:
         cargo clippy -p bae-catalogs --tests --features test-utils,test-instrumentation -- -D warnings
         cargo clippy -p bae-diagnostics --tests --features bae-diagnostics/test-utils -- -D warnings
         cargo clippy -p bae-app-dir --tests --features bae-app-dir/test-utils -- -D warnings
+        cargo clippy -p bae-store --tests --features bae-store/test-utils -- -D warnings
         cargo clippy -p bae-db --tests --features bae-db/test-utils -- -D warnings
         cargo clippy -p bae-preferences --tests --features bae-preferences/test-utils -- -D warnings
         cargo clippy -p bae-track-audio --tests --features bae-track-audio/test-utils -- -D warnings
@@ -120,6 +121,7 @@ jobs:
         cargo rustc -p bae-catalogs --lib --profile check -- -D warnings
         cargo rustc -p bae-diagnostics --lib --profile check -- -D warnings
         cargo rustc -p bae-app-dir --lib --profile check -- -D warnings
+        cargo rustc -p bae-store --lib --profile check -- -D warnings
         cargo rustc -p bae-db --lib --profile check -- -D warnings
         cargo rustc -p bae-preferences --lib --profile check -- -D warnings
         cargo rustc -p bae-track-audio --lib --profile check -- -D warnings
@@ -156,6 +158,7 @@ jobs:
         cargo nextest run --no-fail-fast -p bae-catalogs || status=1
         cargo nextest run --no-fail-fast -p bae-diagnostics || status=1
         cargo nextest run --no-fail-fast -p bae-app-dir || status=1
+        cargo nextest run --no-fail-fast -p bae-store || status=1
         cargo nextest run --no-fail-fast -p bae-db || status=1
         cargo nextest run --no-fail-fast -p bae-preferences || status=1
         cargo nextest run --no-fail-fast -p bae-track-audio || status=1
