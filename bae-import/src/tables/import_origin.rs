@@ -2,10 +2,18 @@
 //! (`local_release_origin`): what places a scanned folder in Done wherever it
 //! sits, and what makes one hash one release on this device. A release
 //! another device imported from the same files is not one.
+//!
+//! Its table is `import_origin.sql`, which every device's library holds.
 
+/// The import origin's part of the library's schema.
+pub(super) const SCHEMA: bae_db::SchemaPart =
+    bae_db::SchemaPart::new(&[include_str!("import_origin.sql")]);
+
+#[cfg(desktop)]
 use super::*;
 
 /// What recording an import's origin found.
+#[cfg(desktop)]
 pub(super) enum OriginRecord {
     Recorded,
     /// This device already holds `release_id` for the hash.
@@ -17,6 +25,7 @@ pub(super) enum OriginRecord {
 /// Record that this device imported `release_id` from the files hashed
 /// `content_hash`, inside the import's commit. The unique hash refuses a
 /// second release for the same files, naming the one that holds them.
+#[cfg(desktop)]
 pub(super) fn record_on(
     sql: &CovenWrite<'_>,
     release_id: &str,
@@ -43,6 +52,7 @@ pub(super) fn record_on(
 
 /// The release this device imported from the files hashed `content_hash`,
 /// if it imported one.
+#[cfg(desktop)]
 pub(super) fn imported_release_on(
     sql: &impl bae_db::client::query::QueryOne,
     content_hash: &str,
@@ -56,6 +66,7 @@ pub(super) fn imported_release_on(
         .optional()?)
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     /// The release this device imported from the files hashed `hash`, if it
     /// imported one.
@@ -64,3 +75,7 @@ impl ImportTables {
         self.database.read(move |sql| imported_release_on(&sql, &hash)).await
     }
 }
+
+#[cfg(test)]
+#[path = "import_origin_tests.rs"]
+mod tests;

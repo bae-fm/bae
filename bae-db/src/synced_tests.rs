@@ -134,10 +134,9 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
 /// on one device. A synced table is one of bae-db's part, so every table of
 /// another crate's part stays on the device.
 const DEVICE_LOCAL_TABLES: &[&str] = &[
-    // This device's own copies: the folder each release was imported
-    // from, plays before a person exists, and what this device plays:
-    // its queue, where it stood, what it is doing and where it is.
-    "local_release_origin",
+    // This device's own copies: plays before a person exists, and what this
+    // device plays: its queue, where it stood, what it is doing and where it
+    // is.
     "local_history",
     // The profile this device's person asked for, while their private
     // circle is being made.

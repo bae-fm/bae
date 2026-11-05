@@ -10,7 +10,6 @@ mod album_link_rows;
 mod downscaled_copies;
 mod folder_scans;
 mod import_list;
-#[cfg(desktop)]
 mod import_origin;
 pub(crate) mod import_state;
 mod release_groupings;
@@ -26,6 +25,7 @@ pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[
     release_groupings::SCHEMA,
     import_state::SCHEMA,
     source_releases::SCHEMA,
+    import_origin::SCHEMA,
     import_list::SCHEMA,
 ];
 

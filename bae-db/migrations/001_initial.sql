@@ -461,17 +461,6 @@ CREATE INDEX IF NOT EXISTS idx_release_files_file ON release_files (file);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
     ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
 
--- The folder hash (SHA-256 over sorted relative paths, sizes and modification
--- times) of the files this device imported each release from. Another device's
--- folders mean nothing here, so it never syncs. A folder whose hash is here is
--- Done in the import list wherever it sits now, and one hash is one release on
--- this device.
-CREATE TABLE IF NOT EXISTS local_release_origin (
-    release_id   TEXT NOT NULL PRIMARY KEY REFERENCES releases(id) ON DELETE CASCADE,
-    content_hash TEXT NOT NULL UNIQUE
-) STRICT;
-
-
 -- Who is credited on a release, and in what role, as the catalog stated it.
 CREATE TABLE IF NOT EXISTS release_artist_roles (
     id TEXT PRIMARY KEY,
