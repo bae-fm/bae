@@ -581,6 +581,9 @@ impl PlaybackService {
     /// Reads only the `TrackCrossing` payload — both track ids and the finishing
     /// stats come from the event, not from a shared cell.
     pub(super) async fn handle_track_crossed(&mut self, crossing: TrackCrossing) {
+        if !self.resolve_pending_load().await {
+            return;
+        }
         self.finish_listening_audio(crossing.finished_fmt.clone(), crossing.samples_decoded);
         self.finish_listening().await;
         // A gaplessly-advanced track never reaches the completion path, so this is
@@ -619,8 +622,8 @@ impl PlaybackService {
         self.telemetry_track_started(&track_id, TrackTransition::Gapless);
 
         // Swap the finishing track's prepared + decoder for the incoming one in
-        // place. The phase stays Playing — a crossing only fires while samples are
-        // pulling.
+        // place. The phase is Playing here: a load still pending when the
+        // crossing came was resolved above.
         let Some(cur) = (match &mut self.slot {
             PlaybackSlot::Active(cur) => Some(cur),
             _ => None,

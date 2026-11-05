@@ -178,6 +178,32 @@ impl PlaybackService {
         }
     }
 
+    /// Resolve the load the current track is still in, when its audio reached
+    /// its end or a crossing into the next track before its `TrackReady` was
+    /// handled: a Loading phase whose intent is Playing already pulls samples,
+    /// so under load the track can play through before the command loop gets
+    /// to the ready signal. Its first samples were there, so it was heard, and
+    /// it reports Playing (and starts its listening) before what ended it
+    /// reports. The `TrackReady` that arrives afterwards finds no Loading phase
+    /// and is dropped. Returns whether the slot is still active: a failed
+    /// start of the listening stops playback.
+    pub(super) async fn resolve_pending_load(&mut self) -> bool {
+        let pending = match &self.slot {
+            PlaybackSlot::Active(cur) => match &cur.phase {
+                TrackPhase::Loading { generation, .. } => {
+                    Some((cur.prepared.track_id.clone(), *generation))
+                }
+                _ => None,
+            },
+            _ => None,
+        };
+        let Some((track_id, generation)) = pending else {
+            return true;
+        };
+        self.resolve_track_ready(track_id, generation).await;
+        matches!(self.slot, PlaybackSlot::Active(_))
+    }
+
     /// Resume playback from the device-local resume row over the queue the
     /// tables hold: the repeat mode, the volume `playback_now` kept, and the
     /// entry playing, loaded paused at its saved position. A deleted track

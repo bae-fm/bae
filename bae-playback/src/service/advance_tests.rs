@@ -64,6 +64,56 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
     assert!(!shared_buffer.is_cancelled());
 }
 
+/// A track whose audio crossed into the next one before its `TrackReady` was
+/// handled (a load under load: the callback pulls samples as soon as the load
+/// starts) was heard, so it reports Playing before the crossing reports the
+/// track it crossed into, and the `TrackReady` that follows changes nothing.
+#[tokio::test]
+async fn a_crossing_before_its_load_resolves_reports_the_finished_track_playing() {
+    let (_home, mut service, mut progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
+
+    let generation = service.next_load_generation();
+    let finished_buffer = create_sparse_buffer(1_024);
+    let incoming_buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track(FINISHED_TRACK, finished_buffer),
+        TrackPhase::Loading { generation, target: PlayTarget::Playing },
+    );
+    service.preloaded_next = Some(test_preloaded_next(
+        test_prepared_track(INCOMING_TRACK, incoming_buffer),
+        PreloadedNextSource::Staged,
+    ));
+
+    service
+        .handle_track_crossed(TrackCrossing {
+            finished_fmt: Arc::new(TrackFmt::for_test(FINISHED_TRACK)),
+            decode_error_count: 0,
+            samples_decoded: 44_100,
+            incoming_fmt: Arc::new(TrackFmt::for_test(INCOMING_TRACK)),
+        })
+        .await;
+
+    let states = drained_states(&mut progress_rx);
+    assert!(
+        matches!(
+            states.as_slice(),
+            [
+                PlaybackState::Playing { track: finished },
+                PlaybackState::Playing { track: incoming },
+            ] if finished.track_id == FINISHED_TRACK && incoming.track_id == INCOMING_TRACK
+        ),
+        "the finished track plays, then the one it crossed into, got {states:?}"
+    );
+
+    service.resolve_track_ready(FINISHED_TRACK.to_string(), generation).await;
+    assert!(
+        drained_states(&mut progress_rx).is_empty(),
+        "the load's TrackReady, handled after the crossing, reports nothing"
+    );
+}
+
 /// A side-pause phase resuming into `next`, with `resumes_at` as its countdown.
 fn side_paused_slot(resumes_at: Option<chrono::DateTime<chrono::Utc>>) -> PlaybackSlot {
     side_paused_between("t", "next", resumes_at)

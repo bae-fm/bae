@@ -16,6 +16,9 @@ impl PlaybackService {
         error_count: u32,
         samples_decoded: u64,
     ) {
+        if !self.resolve_pending_load().await {
+            return;
+        }
         self.finish_listening_audio(fmt.clone(), samples_decoded);
         self.finish_listening().await;
         if let Some(latency) = self.renderer.airplay_latency() {

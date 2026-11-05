@@ -191,9 +191,10 @@ async fn test_cue_ape_track_playback_matches_reference() {
         (0usize, "01 Test Artist - Track One.flac", "track 1"),
         (1usize, "02 Test Artist - Track Two.flac", "track 2"),
     ] {
-        let mut fixture = CueApeTestFixture::with_capture()
-            .await
-            .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+        let mut fixture =
+            CueApeTestFixture::with_capture(bae_playback::test_capture::TestAudioDevice::Capture)
+                .await
+                .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
         let track_id = fixture.track_ids[track_index].clone();
         fixture.playback_handle.play(track_id.clone());
@@ -248,9 +249,11 @@ async fn test_cue_ape_track_playback_matches_reference() {
 async fn test_cue_ape_seek() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueApeTestFixture::with_capture()
-        .await
-        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+    let mut fixture = CueApeTestFixture::with_capture(
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+    )
+    .await
+    .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track_id = fixture.track_ids[1].clone();
 
@@ -375,9 +378,11 @@ async fn test_cue_ape_seek() {
 async fn test_cue_ape_auto_advance_no_replay() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueApeTestFixture::with_capture()
-        .await
-        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+    let mut fixture = CueApeTestFixture::with_capture(
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+    )
+    .await
+    .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track1_id = fixture.track_ids[0].clone();
     let track2_id = fixture.track_ids[1].clone();

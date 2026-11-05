@@ -46,3 +46,30 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
         serde_json::json!("08c80007-b56a-4fc9-8df6-af2967fa09b9")
     );
 }
+
+/// A track that drained before its `TrackReady` was handled was heard, so it
+/// reports Playing before it completes.
+#[tokio::test]
+async fn a_completion_before_its_load_resolves_reports_the_track_playing() {
+    let (_home, mut service, mut progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
+
+    let generation = service.next_load_generation();
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track(FINISHED_TRACK, buffer),
+        TrackPhase::Loading { generation, target: PlayTarget::Playing },
+    );
+
+    service.handle_completion_event(Arc::new(TrackFmt::for_test(FINISHED_TRACK)), 0, 44_100).await;
+
+    let states = drained_states(&mut progress_rx);
+    assert!(
+        matches!(
+            states.first(),
+            Some(PlaybackState::Playing { track }) if track.track_id == FINISHED_TRACK
+        ),
+        "the drained track reports Playing first, got {states:?}"
+    );
+}

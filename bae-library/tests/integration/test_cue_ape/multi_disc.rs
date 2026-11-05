@@ -8,9 +8,11 @@ use super::*;
 async fn test_cue_ape_next_track() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueApeTestFixture::with_capture()
-        .await
-        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+    let mut fixture = CueApeTestFixture::with_capture(
+        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+    )
+    .await
+    .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
     let track1_id = fixture.track_ids[0].clone();
     let track2_id = fixture.track_ids[1].clone();
