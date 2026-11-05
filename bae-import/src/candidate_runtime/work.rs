@@ -18,6 +18,17 @@ pub(crate) enum CandidateWork {
     Identify,
 }
 
+/// The work lock is poisoned: a panic left the work in flight partway
+/// through a change.
+#[derive(Debug)]
+pub(crate) struct WorkLockPoisoned;
+
+impl std::fmt::Display for WorkLockPoisoned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("the candidate work lock is poisoned")
+    }
+}
+
 /// Every key's work in flight and the counter that hands out generations,
 /// under one lock so a generation and its entry advance together.
 #[derive(Default)]
@@ -77,13 +88,35 @@ impl CandidateRuntime {
         }
     }
 
-    /// Remove `key`'s `work` only while it is still `generation`.
-    pub(crate) fn release_work(&self, work: CandidateWork, key: &CandidateKey, generation: u64) {
-        let mut state = self.work.lock().expect("candidate work lock poisoned");
+    /// Remove `key`'s `work` only while it is still `generation`. An error
+    /// when a panic poisoned the work lock: a caller that may run during an
+    /// unwind reports it instead of panicking again.
+    pub(crate) fn release_work(
+        &self,
+        work: CandidateWork,
+        key: &CandidateKey,
+        generation: u64,
+    ) -> Result<(), WorkLockPoisoned> {
+        let mut state = match self.work.lock() {
+            Ok(state) => state,
+            Err(_) => return Err(WorkLockPoisoned),
+        };
         let entry = (work, key.clone());
         if state.running.get(&entry).is_some_and(|(current, _)| *current == generation) {
             state.running.remove(&entry);
         }
+        Ok(())
+    }
+
+    /// Poison the work lock, as a panic in work emitted under it would.
+    #[cfg(test)]
+    pub(super) fn poison_work_lock(&self) {
+        let work = self.work.clone();
+        let poisoner = std::thread::spawn(move || {
+            let _held = work.lock().expect("the work lock is not yet poisoned");
+            panic!("poison the work lock");
+        });
+        assert!(poisoner.join().is_err());
     }
 
     pub(crate) fn is_working(&self, work: CandidateWork, key: &CandidateKey) -> bool {

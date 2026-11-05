@@ -70,11 +70,15 @@ async fn a_release_removes_only_the_current_generation() {
             (token, generation)
         });
 
-    runtime.release_work(WORK, &crate::CandidateKey::test("cand"), stale);
+    runtime
+        .release_work(WORK, &crate::CandidateKey::test("cand"), stale)
+        .expect("the lock is sound");
     assert!(runtime.is_working(WORK, &crate::CandidateKey::test("cand")));
     assert!(!live.is_cancelled());
 
-    runtime.release_work(WORK, &crate::CandidateKey::test("cand"), live_generation);
+    runtime
+        .release_work(WORK, &crate::CandidateKey::test("cand"), live_generation)
+        .expect("the lock is sound");
     assert!(!runtime.is_working(WORK, &crate::CandidateKey::test("cand")));
 }
 
@@ -107,4 +111,18 @@ async fn a_removal_or_rebind_ends_every_kind_of_work_for_its_key_alone() {
         runtime.working_keys(CandidateWork::Identify),
         vec![crate::CandidateKey::test("kept")]
     );
+}
+
+/// A release made while an unwind is under way must not panic again, which
+/// ends the process: a poisoned lock is an error the caller reports.
+#[tokio::test]
+async fn a_released_extraction_reports_a_poisoned_lock_without_panicking() {
+    let runtime = CandidateRuntime::for_test().await;
+    let generation =
+        runtime.start_work(WORK, crate::CandidateKey::test("cand"), |_, generation| generation);
+    runtime.poison_work_lock();
+
+    let released = runtime.release_work(WORK, &crate::CandidateKey::test("cand"), generation);
+
+    assert!(released.is_err());
 }

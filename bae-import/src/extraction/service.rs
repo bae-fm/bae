@@ -129,7 +129,15 @@ struct ExtractionRelease {
 
 impl Drop for ExtractionRelease {
     fn drop(&mut self) {
-        self.inner.candidates.release_work(CandidateWork::Extraction, &self.key, self.generation);
+        // A drop may run during an unwind, where a second panic ends the
+        // process: a poisoned lock is reported, not unwrapped.
+        if let Err(error) = self.inner.candidates.release_work(
+            CandidateWork::Extraction,
+            &self.key,
+            self.generation,
+        ) {
+            self.inner.diagnostics.report_bug("release a finished extraction", &error);
+        }
     }
 }
 

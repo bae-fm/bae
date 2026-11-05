@@ -219,11 +219,10 @@ impl IdentifyServiceHandle {
                     "identify a candidate",
                     driver,
                     move |_| {
-                        panicked.candidates.release_work(
-                            CandidateWork::Identify,
-                            &panicked_key,
-                            generation,
-                        );
+                        panicked
+                            .candidates
+                            .release_work(CandidateWork::Identify, &panicked_key, generation)
+                            .expect("candidate work lock poisoned");
                         panicked.event_tx.send(ImportEvent::IdentifyStateChanged {
                             candidate_key: panicked_key,
                             run,
@@ -354,7 +353,11 @@ async fn run_driver(
         // anything a person asks for afterwards is a new run with inputs of its
         // own rather than a message to this one.
         if state.is_terminal() || matches!(state, IdentifyState::Idle) {
-            driver.inner.candidates.release_work(CandidateWork::Identify, &driver.key, generation);
+            driver
+                .inner
+                .candidates
+                .release_work(CandidateWork::Identify, &driver.key, generation)
+                .expect("candidate work lock poisoned");
             return;
         }
     }
