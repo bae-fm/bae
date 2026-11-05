@@ -4212,7 +4212,10 @@ the folder scans' (`folder_scans.sql`), the release groupings'
 (`release_groupings.sql`), the candidate state's (the `.sql` files beside the
 row files in `import_state/`), the source releases' (`source_releases.sql`,
 `source_releases/tracklist.sql` and `album_link_rows.sql`), the import origin's
-(`import_origin.sql`) and the import list's (`import_list/`), and bae-views',
+(`import_origin.sql`) and the import list's (`import_list/`), then
+bae-transfers', under `bae-transfers/src/`: the transfer queues'
+(`queued_releases/tables.sql`) and the storage transitions'
+(`release_storage_action.sql`), and bae-views',
 under `bae-views/src/`: the album grid's (`album/listing.sql`), the artist
 list's (`artist.sql`), the composer list's (`composer.sql`), a composer's
 page's (`composer_detail.sql`), the Storage manager's (`storage.sql`), library

@@ -1,6 +1,11 @@
 //! The storage transition this process runs for each release, as
 //! `release_storage_action` holds it, what a release's reads show of it, and
 //! the writes that end one together with the change to the release's files.
+//!
+//! Its table is `release_storage_action.sql`.
+
+/// The SQL creating this part's table.
+pub(crate) const SQL: &str = include_str!("release_storage_action.sql");
 
 use bae_db::{Database, DbError};
 use bae_types::release_storage::ReleaseStorageAction;

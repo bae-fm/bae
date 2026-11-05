@@ -154,14 +154,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     "preferences",
     "save_preset",
     "save_preset_filename_token",
-    // The releases this device is downloading, exporting or saving, one
-    // at a time.
-    "release_queues",
-    "release_queue_versions",
-    "download_queue",
-    "output_queue",
-    // The storage transition this process runs for each release.
-    "release_storage_action",
     // The cast receivers discovery found.
     "cast_device",
     // The artist each artist shows as, kept from the artists and their

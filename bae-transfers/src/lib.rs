@@ -32,6 +32,16 @@ pub use release_queue::{
 };
 pub use release_state::{release_transfer_state_on, ReleaseTransferState};
 pub use release_storage_action::StoredTransition;
+/// The transfer queues' part of the library's schema: one domain, its files in
+/// run order.
+pub const SCHEMA_PARTS: &[bae_db::SchemaPart] =
+    &[bae_db::SchemaPart::new(&[queued_releases::tables::SQL, release_storage_action::SQL])];
+
+/// The schema this crate's tests open their stores on: bae-db's part and the
+/// transfers'.
+#[cfg(test)]
+const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, SCHEMA_PARTS]);
+
 pub use release_transfers::{
     release_changes, ReleaseTransferChange, ReleaseTransferReport, ReleaseTransfers,
     ReleaseTransfersWatch,

@@ -4,6 +4,11 @@
 //! queue owners ([`crate::QueuedReleases`]) are the only writers; the panes,
 //! the detail views and the sync activity read the same tables through live
 //! queries.
+//!
+//! Its tables, and the versions of their order, are `tables.sql`.
+
+/// The SQL creating this part's tables and triggers.
+pub(crate) const SQL: &str = include_str!("tables.sql");
 
 use crate::output_snapshot::{OutputKind, OutputRequest};
 #[cfg(any(desktop, test, feature = "test-utils"))]

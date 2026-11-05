@@ -8,7 +8,7 @@ const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
 async fn queue() -> (QueuedReleases<(), u8>, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let database = Database::new_test(
-        bae_db::test_fixtures::TEST_SCHEMA,
+        crate::TEST_SCHEMA,
         tmp.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
