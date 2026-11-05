@@ -38,6 +38,7 @@ pub use resume::{
 pub use timeline::playback_timeline;
 pub use timeline::subscribe_playback_timeline;
 pub use timeline::PlaybackTimelineRow;
+pub(super) use timeline::SCHEMA as TIMELINE_SCHEMA;
 pub(crate) use track_display::subscribe_playback_track_infos;
 pub use track_display::track_display;
 #[cfg(test)]

@@ -1,6 +1,10 @@
 //! The device's `playback_timeline` row: where playback is, for the surfaces
 //! that move the position on themselves, written only as playback leaves the
-//! line it holds, and read by their live query.
+//! line it holds, and read by their live query. Its table is `timeline.sql`.
+
+/// The row's part of the library's schema.
+pub(crate) const SCHEMA: bae_db::SchemaPart =
+    bae_db::SchemaPart::new(&[include_str!("timeline.sql")]);
 
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::*;

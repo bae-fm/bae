@@ -4208,7 +4208,7 @@ code. bae-library assembles it from bae-db's part,
 `bae-db/migrations/001_initial.sql`, which holds every table no other part
 does, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
 `bae-playback/src/`: the queue's (`tables/queue.sql`), what playback is doing
-(`tables/now.sql`) and, on a desktop,
+(`tables/now.sql`), where it is (`tables/timeline.sql`) and, on a desktop,
 bae-import's, under `bae-import/src/tables/`: the watched folders'
 (`watched_folders.sql`), the skipped candidates' (`skipped_candidates.sql`),
 the folder scans' (`folder_scans.sql`), the release groupings'
@@ -4362,6 +4362,7 @@ All sync (§5), except `local_history`, `profile_request` and
 | `playback_context` | entry of what's playing from, in play order: its track and its place before shuffle |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver, preview, last failure and the count of failures (§9.4) |
+| `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on, and the count of seeks applied (§9.4) |
 | `cast_device` | receiver the cast picker lists, as discovery last found it: its id, name and kind (Cast, UPnP or AirPlay) |
 
 A play's fill, Clear up next, Clear playing from and the emptying as a library
