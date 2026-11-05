@@ -25,13 +25,13 @@ pub trait BridgeAudioFocus: Send + Sync {
 /// paused.
 pub(crate) struct PlatformAudioFocus {
     focus: Box<dyn BridgeAudioFocus>,
-    diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 impl PlatformAudioFocus {
     pub(crate) fn new(
         focus: Box<dyn BridgeAudioFocus>,
-        diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         Self { focus, diagnostics }
     }

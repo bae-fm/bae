@@ -11,7 +11,7 @@ impl BridgeAudioFocus for Answering {
 }
 
 fn platform(focus: impl BridgeAudioFocus + 'static) -> PlatformAudioFocus {
-    PlatformAudioFocus::new(Box::new(focus), crate::BridgeDiagnostics::noop())
+    PlatformAudioFocus::new(Box::new(focus), bae_diagnostics::Diagnostics::noop())
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn a_platform_that_throws_is_reported_and_refuses() {
     let bugs = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let throwing = PlatformAudioFocus::new(
         Box::new(Throwing),
-        crate::BridgeDiagnostics::reporting_bugs_to(bugs.clone()),
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
     );
 
     assert!(throwing.request().is_err());

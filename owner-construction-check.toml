@@ -348,7 +348,12 @@ ImageHold = "RemoteImageHost"
     "bootstrap_opening",
     "bootstrap_inner",
 ]
-"bae-bridge/src/host.rs" = ["BridgeHost::open_prepared", "BridgeHost::create_library"]
+"bae-bridge/src/host.rs" = [
+    "BridgeHost::open_prepared",
+    "BridgeHost::create_library",
+    "BridgeHost::open_app",
+    "BridgeHost::open_app_on_fixture",
+]
 # Restoring, joining and resetting a device open the library they leave.
 "bae-bridge/src/host/bootstrap.rs" = [
     "BridgeHost::restore_from_code",
@@ -359,13 +364,9 @@ ImageHold = "RemoteImageHost"
     "BridgeHost::prepare_device_reset",
     "BridgeDeviceReset::confirm",
 ]
-# Opening the app, and the operation runtime the host builds as it starts.
-"bae-bridge/src/init.rs" = [
-    "BridgeDiagnostics::open_app",
-    "BridgeDiagnostics::open_app_on_fixture",
-    "BridgeDiagnostics::open_prepared",
-    "BridgeDiagnostics::operations",
-]
+# The sink the app built at launch, taken back as core's by the host the app
+# builds on it.
+"bae-bridge/src/init.rs" = ["BridgeDiagnostics::core"]
 # A library just set up opens.
 "bae-bridge/src/setup.rs" = ["OpenedLibrary::open"]
 # A test's catalog fakes: the providers its library asks are built over

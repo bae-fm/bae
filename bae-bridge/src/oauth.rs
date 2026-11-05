@@ -51,7 +51,7 @@ pub(crate) struct NativeOAuthPresenter {
     redirects: BridgeOAuthRedirects,
     callback: Box<dyn OAuthPresenterCallback>,
     /// Where a throw the callback doesn't declare is reported.
-    diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 #[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
@@ -59,7 +59,7 @@ impl NativeOAuthPresenter {
     pub(crate) fn new(
         redirects: BridgeOAuthRedirects,
         callback: Box<dyn OAuthPresenterCallback>,
-        diagnostics: std::sync::Arc<crate::BridgeDiagnostics>,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         Self { redirects, callback, diagnostics }
     }

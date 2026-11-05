@@ -3917,7 +3917,9 @@ release's or track's id as UTF-8, or a candidate's key.
 ### 10.2 The handle and the host
 
 - **`BridgeHost`** is built once per process. It holds bae's directory, the
-  OAuth applications, on phones the app's sign-in presenter, and a runtime for
+  telemetry sink the app built at launch, which it reports bugs and a failed
+  open through, the OAuth applications, on phones the app's sign-in presenter,
+  and a runtime for
   the calls that run before a library is open: create, restore, join, reset,
   sign in. A call that creates or opens a store hands back coven's handle, and
   the app starts the library on it.

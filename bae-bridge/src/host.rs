@@ -1,12 +1,17 @@
 //! Process registrations and the runtime used before a library is open.
+use crate::handle::AppHandle;
 use crate::{BridgeAppDir, BridgeDiagnostics, BridgeError, BridgeLibrary};
+use bae_app::{bootstrap, BootstrapError};
+use bae_diagnostics::{AppStartFailureKind, Diagnostics, DiagnosticsError, TelemetryEvent};
 use std::sync::{Arc, Mutex};
 
 const HOST_LOCK: &str = "host registrations lock";
 
 #[derive(uniffi::Object)]
 pub struct BridgeHost {
-    diagnostics: Arc<BridgeDiagnostics>,
+    /// Where the host reports bugs and a failed open: the sink the app built
+    /// at launch.
+    diagnostics: Diagnostics,
     app_dir: bae_app_dir::AppDir,
     /// This device's libraries as coven keeps them, under `app_dir`.
     coven: coven::Coven,
@@ -36,13 +41,76 @@ impl BridgeHost {
         interval: u32,
         restore: bool,
     ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-        self.diagnostics.open_prepared(
+        self.opened(bae_app::bootstrap_prepared(
             self.app_dir.clone(),
             handle,
-            self.clone(),
             interval,
             restore,
-        )
+            bae_app::PlaybackOutput::System(self.audio_focus()),
+            self.diagnostics.clone(),
+            start_handle(self.clone(), self.diagnostics.clone()),
+        ))
+    }
+
+    /// Bootstrap the library `library_id` with this host's sink, its open's
+    /// steps written into `opening`'s stream. A bootstrap failure ships
+    /// `app_start_failed` through it before the error returns.
+    pub(crate) fn open_app(
+        self: &Arc<Self>,
+        library_id: String,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+        opening: &crate::BridgeLibraryOpening,
+    ) -> Result<Arc<AppHandle>, BridgeError> {
+        self.opened(bootstrap(
+            self.app_dir.clone(),
+            library_id,
+            position_update_interval_ms,
+            restore_playback,
+            bae_app::PlaybackOutput::System(self.audio_focus()),
+            self.diagnostics.clone(),
+            self.builder(),
+            opening.report(),
+            start_handle(self.clone(), self.diagnostics.clone()),
+        ))
+    }
+
+    /// [`Self::open_app`] with the fixture a debug UI test left at `fixture`
+    /// written into the library before its services start.
+    #[cfg(all(debug_assertions, desktop))]
+    pub(crate) fn open_app_on_fixture(
+        self: &Arc<Self>,
+        fixture: std::path::PathBuf,
+        library_id: String,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+        opening: &crate::BridgeLibraryOpening,
+    ) -> Result<Arc<AppHandle>, BridgeError> {
+        self.opened(bae_app::bootstrap_on_fixture(
+            fixture,
+            self.app_dir.clone(),
+            library_id,
+            position_update_interval_ms,
+            restore_playback,
+            bae_app::PlaybackOutput::System(self.audio_focus()),
+            self.diagnostics.clone(),
+            self.builder(),
+            opening.report(),
+            start_handle(self.clone(), self.diagnostics.clone()),
+        ))
+    }
+
+    /// The handle a bootstrap built, or its failure shipped as
+    /// `app_start_failed` and returned.
+    fn opened(
+        &self,
+        bootstrapped: Result<AppHandle, BootstrapError>,
+    ) -> Result<Arc<AppHandle>, BridgeError> {
+        bootstrapped.map(Arc::new).map_err(|error| {
+            self.diagnostics
+                .event(TelemetryEvent::AppStartFailed { kind: app_start_failure_kind(&error) });
+            bootstrap_error_to_bridge(error)
+        })
     }
 
     /// How this platform shares the speaker, which an opened library's
@@ -115,12 +183,15 @@ impl BridgeHost {
         &self,
         steps: &crate::screens::SetupSteps,
     ) -> Result<(), BridgeError> {
-        Ok(self
-            .diagnostics
-            .finish_removals(&self.app_dir, &self.coven, &|done, total| {
+        Ok(bae_library::finish_removals(
+            &self.app_dir,
+            &self.coven,
+            &self.diagnostics,
+            &|done, total| {
                 steps.step(crate::types::BridgeSetupStep::FinishingRemovals, done, total)
-            })
-            .await?)
+            },
+        )
+        .await?)
     }
 
     /// Remove `store`, which isn't open, without opening it, on the caller's
@@ -130,9 +201,14 @@ impl BridgeHost {
         store: coven::StoreId,
         steps: &crate::screens::ClosingSteps,
     ) -> Result<(), bae_library::LibraryRemovalError> {
-        self.diagnostics
-            .remove_unopenable_library(&self.app_dir, &self.coven, store, &|step| steps.core(step))
-            .await
+        bae_library::remove_unopenable_library(
+            &self.app_dir,
+            &self.coven,
+            &self.diagnostics,
+            store,
+            &|step| steps.core(step),
+        )
+        .await
     }
 
     /// Remove the open library `services` runs, which this host opened, on
@@ -163,7 +239,7 @@ impl BridgeHost {
     }
 
     fn start(
-        diagnostics: Arc<BridgeDiagnostics>,
+        diagnostics: Diagnostics,
         app_dir: Arc<BridgeAppDir>,
         coven: coven::Coven,
         audio_focus: bae_playback::AudioFocus,
@@ -174,7 +250,10 @@ impl BridgeHost {
             .enable_all()
             .build()
             .map_err(BridgeError::internal)?;
-        let operations = diagnostics.operations(runtime.handle().clone());
+        let operations = crate::operation_runtime::OperationRuntime::new(
+            runtime.handle().clone(),
+            diagnostics.clone(),
+        );
         Ok(Arc::new(Self {
             diagnostics,
             operations,
@@ -202,7 +281,7 @@ impl BridgeHost {
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
         let coven = coven::Coven::in_memory(app_dir.core().coven_app_dir());
-        Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
+        Self::start(diagnostics.core().clone(), app_dir, coven, bae_playback::AudioFocus::Unshared)
     }
 }
 
@@ -215,7 +294,8 @@ impl BridgeHost {
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
     ) -> Result<Arc<Self>, BridgeError> {
-        let coven = diagnostics.installation(app_dir.core())?;
+        let diagnostics = diagnostics.core().clone();
+        let coven = installation(&diagnostics, app_dir.core())?;
         Self::start(diagnostics, app_dir, coven, bae_playback::AudioFocus::Unshared)
     }
 }
@@ -231,7 +311,8 @@ impl BridgeHost {
         app_dir: Arc<BridgeAppDir>,
         audio_focus: Box<dyn crate::BridgeAudioFocus>,
     ) -> Result<Arc<Self>, BridgeError> {
-        let coven = diagnostics.installation(app_dir.core())?;
+        let diagnostics = diagnostics.core().clone();
+        let coven = installation(&diagnostics, app_dir.core())?;
         let audio_focus = crate::PlatformAudioFocus::new(audio_focus, diagnostics.clone());
         Self::start(
             diagnostics,
@@ -247,10 +328,9 @@ impl BridgeHost {
     pub async fn flush_diagnostics(self: Arc<Self>) -> Result<(), BridgeError> {
         self.operations
             .clone()
-            .run(
-                "BridgeHost.flush_diagnostics",
-                move || async move { self.diagnostics.flush().await },
-            )
+            .run("BridgeHost.flush_diagnostics", move || async move {
+                self.diagnostics.flush().await.map_err(diagnostics_error_to_bridge)
+            })
             .await
     }
 
@@ -276,8 +356,12 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_removal", move || async move {
-                let removal =
-                    self.diagnostics.unfinished_removal(&self.app_dir, &self.coven).await?;
+                let removal = bae_library::UnfinishedRemoval::find(
+                    &self.app_dir,
+                    &self.coven,
+                    &self.diagnostics,
+                )
+                .await?;
                 Ok(removal.map(|removal| {
                     crate::BridgeUnfinishedRemoval::new(
                         removal.category(),
@@ -422,15 +506,7 @@ pub fn init_app(
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
     host.wait_for_closing(crate::from_app::store(&library_id)?);
-    host.diagnostics.open_app(
-        host.app_dir.clone(),
-        library_id,
-        position_update_interval_ms,
-        restore_playback,
-        host.builder(),
-        &opening,
-        host.clone(),
-    )
+    host.open_app(library_id, position_update_interval_ms, restore_playback, &opening)
 }
 
 #[cfg(all(debug_assertions, desktop))]
@@ -444,16 +520,98 @@ pub fn init_app_on_fixture(
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
     host.wait_for_closing(crate::from_app::store(&library_id)?);
-    host.diagnostics.open_app_on_fixture(
+    host.open_app_on_fixture(
         fixture_path.into(),
-        host.app_dir.clone(),
         library_id,
         position_update_interval_ms,
         restore_playback,
-        host.builder(),
         &opening,
-        host.clone(),
     )
+}
+
+/// This device's libraries as coven keeps them under `app_dir`, their
+/// keys in the OS keychain, which building it opens. A keychain coven
+/// can't reach ships `keyring_init_failed` through this sink and fails
+/// as a keyring error.
+fn installation(
+    diagnostics: &Diagnostics,
+    app_dir: &bae_app_dir::AppDir,
+) -> Result<coven::Coven, BridgeError> {
+    app_dir.coven().map_err(|error| {
+        diagnostics.event(TelemetryEvent::KeyringInitFailed {});
+        BridgeError::Diagnostic {
+            category: crate::types::BridgeErrorCategory::Keyring,
+            detail: error.to_string(),
+        }
+    })
+}
+
+fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
+    match error {
+        BootstrapError::LibraryNotFound(_) => AppStartFailureKind::LibraryNotFound,
+        BootstrapError::Config(_) => AppStartFailureKind::Config,
+        BootstrapError::Database(_) | BootstrapError::DeviceResetRequired(_) => {
+            AppStartFailureKind::Database
+        }
+        BootstrapError::Internal(_) => AppStartFailureKind::Internal,
+        BootstrapError::KeyringUnavailable => AppStartFailureKind::KeyringUnavailable,
+        BootstrapError::KeychainEntitlementMissing(_) => {
+            AppStartFailureKind::KeychainEntitlementMissing
+        }
+        BootstrapError::ReplacementUnfinished(_) => AppStartFailureKind::ReplacementUnfinished,
+    }
+}
+
+fn diagnostics_error_to_bridge(e: DiagnosticsError) -> BridgeError {
+    BridgeError::internal(format!("diagnostics failed: {e}"))
+}
+
+fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
+    match e {
+        BootstrapError::LibraryNotFound(id) => {
+            BridgeError::NotFound { entity: crate::types::BridgeEntityKind::Library, id }
+        }
+        BootstrapError::Config(msg) => BridgeError::config(msg),
+        BootstrapError::Database(msg) => BridgeError::database(msg),
+        BootstrapError::DeviceResetRequired(msg) => {
+            BridgeError::diagnostic(crate::BridgeErrorCategory::DeviceResetRequired, msg)
+        }
+        // The category names the one call that finishes the replacement, so
+        // the host offers that call and never the other.
+        error @ BootstrapError::ReplacementUnfinished(by) => BridgeError::diagnostic(
+            crate::BridgeErrorCategory::ReplacementUnfinished {
+                by: crate::BridgeReplacedBy::from_core(by),
+            },
+            error,
+        ),
+        BootstrapError::Internal(msg) => BridgeError::internal(msg),
+        // Its own category, not `Keyring`: that one reads as "the keyring
+        // broke", and this one is "it is locked this second, try again after
+        // you unlock". The host branches on the category to keep the handle
+        // path open and retry, so the distinction has to survive the bridge.
+        BootstrapError::KeyringUnavailable => BridgeError::diagnostic(
+            crate::types::BridgeErrorCategory::KeyringLocked,
+            "the OS keychain refused the read while the session is locked",
+        ),
+        error @ BootstrapError::KeychainEntitlementMissing(_) => BridgeError::diagnostic(
+            crate::types::BridgeErrorCategory::KeychainEntitlementMissing,
+            error,
+        ),
+    }
+}
+
+/// What a bootstrap runs once the library is open: start the handle for
+/// `host` over it, reporting a panic in its work through `diagnostics`.
+fn start_handle(
+    host: Arc<crate::BridgeHost>,
+    diagnostics: Diagnostics,
+) -> impl FnOnce(
+    bae_app::AppServices,
+    tokio::runtime::Runtime,
+) -> Result<AppHandle, bae_app::BootstrapError>
+       + Send
+       + 'static {
+    move |services, runtime| AppHandle::start(services, runtime, diagnostics, host)
 }
 
 mod bootstrap;

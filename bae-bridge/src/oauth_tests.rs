@@ -13,7 +13,7 @@ async fn native_presentation_preserves_redirects_and_cancellation() {
     let presenter = NativeOAuthPresenter::new(
         BridgeOAuthRedirects { dropbox: "bae://dropbox".into(), onedrive: "bae://onedrive".into() },
         Box::new(Cancelled),
-        crate::BridgeDiagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     assert_eq!(presenter.redirect_uri(coven::CloudProvider::Dropbox), "bae://dropbox");
     assert_eq!(presenter.redirect_uri(coven::CloudProvider::OneDrive), "bae://onedrive");
@@ -34,7 +34,7 @@ async fn native_presentation_returns_the_complete_redirect_to_coven() {
     let presenter = NativeOAuthPresenter::new(
         BridgeOAuthRedirects { dropbox: "bae://dropbox".into(), onedrive: "bae://onedrive".into() },
         Box::new(Redirect),
-        crate::BridgeDiagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let redirect = presenter.present("https://example.test/authorize").await.unwrap();
     assert_eq!(redirect.as_str(), "bae://dropbox?code=authorization-code&state=request-state");
@@ -57,7 +57,7 @@ async fn a_sign_in_sheet_that_throws_fails_the_sign_in_and_is_reported() {
     let presenter = NativeOAuthPresenter::new(
         BridgeOAuthRedirects { dropbox: "bae://dropbox".into(), onedrive: "bae://onedrive".into() },
         Box::new(Throwing),
-        crate::BridgeDiagnostics::reporting_bugs_to(bugs.clone()),
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
     );
     assert!(matches!(
         presenter.present("https://example.test/authorize").await,
