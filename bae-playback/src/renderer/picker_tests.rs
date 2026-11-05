@@ -11,7 +11,7 @@ fn device(id: &str, name: &str, kind: RendererKind) -> CastDevice {
 /// A write replaces the whole list; the list reads by name, then id.
 #[tokio::test]
 async fn each_write_lists_the_whole_picker_by_name() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let picker = CastPicker::new(db);
     picker
         .show(vec![
@@ -41,7 +41,7 @@ async fn each_write_lists_the_whole_picker_by_name() {
 /// that ran it.
 #[tokio::test]
 async fn opening_empties_the_picker() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let picker = CastPicker::new(db);
     picker.show(vec![device("cast-1", "Kitchen", RendererKind::Cast)]).await.unwrap();
 

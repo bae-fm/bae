@@ -16,7 +16,7 @@ pub(super) async fn queue_items(db: &Database, track_ids: &[&str]) -> Vec<crate:
 
 /// `RELEASE_A` holding `count` tracks, in order, and their ids.
 pub(super) async fn release_db(count: usize) -> (Database, tempfile::TempDir, Vec<String>) {
-    let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let track_ids: Vec<String> = (0..count)
         .map(|index| bae_util::test_ids::test_uuid(&format!("queue-track-{index}")))
         .collect();

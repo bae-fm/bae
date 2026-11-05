@@ -40,6 +40,12 @@ pub mod timeline;
 mod track_buffered;
 mod volume_level;
 
+/// The schema this crate's tests open their stores on: bae-db's part and
+/// preferences'.
+#[cfg(test)]
+const TEST_SCHEMA: bae_db::Schema =
+    bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, bae_preferences::SCHEMA_PARTS]);
+
 pub use audio_focus::{AudioFocus, AudioFocusRefused, AudioFocusSystem};
 pub use audio_output::{
     AudioError, AudioOutput, AudioOutputDevice, AudioState, AudioStream, CompletionEvent,

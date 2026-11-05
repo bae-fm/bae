@@ -292,10 +292,11 @@ pub use session::{
 #[cfg(desktop)]
 pub use tables::SCHEMA_PARTS;
 
-/// The schema this crate's tests open their stores on: bae-db's part and
-/// import's.
+/// The schema this crate's tests open their stores on: bae-db's part,
+/// preferences' and import's.
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
-pub const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, SCHEMA_PARTS]);
+pub const TEST_SCHEMA: bae_db::Schema =
+    bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, bae_preferences::SCHEMA_PARTS, SCHEMA_PARTS]);
 
 #[cfg(desktop)]
 pub use triage::{

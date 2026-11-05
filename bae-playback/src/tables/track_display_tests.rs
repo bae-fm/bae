@@ -8,7 +8,7 @@ const TRACK_OTHER: &str = "69e67928-545a-4dcf-8ae7-ef7778331231";
 /// One album holds one release; the other holds two, and the queued track is
 /// on the one that is NOT its primary.
 async fn cover_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(move |conn| {
         conn.execute_batch(
             "

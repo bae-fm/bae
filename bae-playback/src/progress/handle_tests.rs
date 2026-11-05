@@ -12,7 +12,7 @@ async fn started() -> (
 ) {
     let tmp = tempfile::TempDir::new().unwrap();
     let db = bae_db::Database::new_test(
-        bae_db::test_fixtures::TEST_SCHEMA,
+        crate::TEST_SCHEMA,
         tmp.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )

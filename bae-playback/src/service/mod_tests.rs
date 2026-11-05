@@ -184,7 +184,7 @@ pub(super) async fn seeded_store_with_track_length(
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
     let database = bae_db::Database::new_test(
-        bae_db::test_fixtures::TEST_SCHEMA,
+        crate::TEST_SCHEMA,
         db_path.to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )

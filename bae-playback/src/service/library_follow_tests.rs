@@ -8,7 +8,7 @@ async fn a_follow_ends_once_its_store_closes() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
     let database = bae_db::Database::new_test(
-        bae_db::test_fixtures::TEST_SCHEMA,
+        crate::TEST_SCHEMA,
         path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
     )
@@ -46,7 +46,7 @@ async fn an_ended_follow_takes_a_new_request() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
     let database = bae_db::Database::new_test(
-        bae_db::test_fixtures::TEST_SCHEMA,
+        crate::TEST_SCHEMA,
         path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
     )
@@ -84,7 +84,7 @@ async fn a_failed_read_is_reported_as_a_bug() {
     let directory = tempfile::TempDir::new().unwrap();
     let path = directory.path().join("library.db");
     let database = bae_db::Database::new_test(
-        bae_db::test_fixtures::TEST_SCHEMA,
+        crate::TEST_SCHEMA,
         path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
     )

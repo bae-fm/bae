@@ -2,6 +2,8 @@
 //! setting decides, followed by the settings screens' live query, edited one
 //! write at a time by the setters, and carried into the copy a restore over
 //! this device's copy puts in its place.
+//!
+//! Its tables are `row.sql`.
 
 use super::{
     CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportStoragePreferences,
@@ -14,6 +16,9 @@ use coven::{BulkSqlContext, CovenError, CovenWrite, SqlRead};
 use rusqlite::{params, Params, Row};
 use std::collections::HashMap;
 use std::num::NonZeroU32;
+
+/// The preferences' part of the library's schema.
+pub(super) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[include_str!("row.sql")]);
 
 /// This device's preferences for the library.
 pub async fn preferences(database: &Database) -> Result<Preferences, DbError> {

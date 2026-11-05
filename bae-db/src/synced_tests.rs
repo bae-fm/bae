@@ -150,10 +150,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     "playback_state",
     "playback_now",
     "playback_timeline",
-    // This device's settings for the library.
-    "preferences",
-    "save_preset",
-    "save_preset_filename_token",
     // The cast receivers discovery found.
     "cast_device",
     // The artist each artist shows as, kept from the artists and their

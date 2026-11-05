@@ -34,6 +34,14 @@ pub use server::{
 #[cfg(any(test, feature = "test-utils"))]
 use save::default_save_presets;
 
+/// The preferences' part of the library's schema.
+pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[row::SCHEMA];
+
+/// The schema this crate's tests open their stores on: bae-db's part and the
+/// preferences'.
+#[cfg(test)]
+const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, SCHEMA_PARTS]);
+
 /// The largest transfer concurrency the UI offers and the setters accept.
 pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
 
