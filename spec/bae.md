@@ -784,7 +784,9 @@ holds it, so it is never waiting on it and never out of step with it.
 Each tab sorts newest first, oldest first, or by path either way. A date order
 sorts by each row's date — its folder's for Pending and Skipped, its release's
 import for Done — with undated rows last; a path order sorts by watched folder
-and then by path, in natural order ("Disc 2" before "Disc 10", case aside).
+and then by path, in natural order ("Disc 2" before "Disc 10", case aside). A
+release combined from folders in several watched folders sorts by its first
+part: that part's watched folder and path.
 On Pending a release nested below a folder is listed under that folder's
 group, and so is one at that folder while another is nested below it: the
 group sorts by its newest member's date and its folder, its header leads its
