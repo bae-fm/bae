@@ -9,13 +9,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeTimelinePoint
 
@@ -42,7 +47,33 @@ class PlaybackTimelinePullsTest {
 
         assertEquals(42_000L, session.playback.contentPosition)
 
-        runBlocking { session.dispose(null) }
+        // Disposing waits on the main thread the player runs on, so it runs there and the looper is let go.
+        scope.launch { session.dispose(null) }
+        shadowOf(Looper.getMainLooper()).idle()
+        scope.cancel()
+    }
+
+    @Test
+    fun aFailedTimelinePullShowsItsError() {
+        val handle =
+            object : FakeAppHandle() {
+                override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
+
+                override fun close() = Unit
+            }
+        val session = openTestLibrary(handle)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        session.wireUp(scope)
+
+        handle.playbackTimeline.fail(BridgeException.Diagnostic(BridgeErrorCategory.Internal, "timeline read failed"))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val shown = runBlocking { withTimeoutOrNull(1_000) { session.messages.messages.first() } }
+        assertEquals(DisplayError("failed", "timeline read failed"), shown?.error)
+
+        // Disposing waits on the main thread the player runs on, so it runs there and the looper is let go.
+        scope.launch { session.dispose(null) }
+        shadowOf(Looper.getMainLooper()).idle()
         scope.cancel()
     }
 }

@@ -721,7 +721,8 @@ object AppSessionHolder {
         // The session's coroutines report a failure nothing caught as a bug.
         val sessionScope =
             CoroutineScope(appScope.coroutineContext + SupervisorJob(appScope.coroutineContext.job) + bugs.handler)
-        val messages = SessionMessages(sessionScope, LocaleErrorDisplays(appContext))
+        val errors = LocaleErrorDisplays(appContext)
+        val messages = SessionMessages(sessionScope, errors)
         val session =
             OpenLibrary(
                 libraryId = libraryId,
@@ -746,6 +747,7 @@ object AppSessionHolder {
                         scope = sessionScope,
                         messages = messages,
                         bugs = bugs,
+                        errors = errors,
                     ),
                 appContext = appContext,
             )

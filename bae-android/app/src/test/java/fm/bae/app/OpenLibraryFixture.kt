@@ -59,6 +59,7 @@ internal fun openTestLibrary(
                 scope = scope,
                 messages = SessionMessages(scope, NoErrorDisplays),
                 bugs = BugReports(),
+                errors = NoErrorDisplays,
             ),
         appContext = context,
     )

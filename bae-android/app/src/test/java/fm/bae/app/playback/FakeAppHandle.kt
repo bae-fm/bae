@@ -928,21 +928,26 @@ internal class FakeQueueAdditionsSubscription : QueueAdditionsSubscription(NoHan
     }
 }
 
-/** Timelines a test hands the app one at a time: each pull waits for the next. */
+/** Timelines a test hands the app one at a time: each pull waits for the next, or answers a failure a test queued. */
 internal class FakePlaybackTimelineSubscription : PlaybackTimelineSubscription(NoHandle) {
-    private val timelines = Channel<BridgePlaybackTimeline>(Channel.UNLIMITED)
+    private val pulls = Channel<Result<BridgePlaybackTimeline>>(Channel.UNLIMITED)
 
     fun deliver(timeline: BridgePlaybackTimeline) {
-        timelines.trySend(timeline)
+        pulls.trySend(Result.success(timeline))
     }
 
-    override suspend fun next(): BridgePlaybackTimeline = timelines.receive()
+    /** The next pull fails with [error]; the pull after it waits again. */
+    fun fail(error: BridgeException) {
+        pulls.trySend(Result.failure(error))
+    }
+
+    override suspend fun next(): BridgePlaybackTimeline = pulls.receive().getOrThrow()
 
     override suspend fun cancel() {
-        timelines.close(BridgeException.Cancelled())
+        pulls.close(BridgeException.Cancelled())
     }
 
     override fun close() {
-        timelines.close(BridgeException.Cancelled())
+        pulls.close(BridgeException.Cancelled())
     }
 }

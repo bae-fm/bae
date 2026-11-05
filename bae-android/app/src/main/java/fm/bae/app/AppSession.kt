@@ -153,7 +153,7 @@ class OpenLibrary internal constructor(
             ScreenSubscription(
                 appHandle.subscribeSyncStatus().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = { value -> stores.syncStatus.apply(value, LocaleErrorDisplays(appContext)) },
+                onValue = { value -> stores.syncStatus.apply(value, runtime.errors) },
                 onError = { error -> subscriptionFailed("sync status", error)?.let(stores.syncStatus::fail) },
             )
         screenSubscriptions +=
@@ -239,7 +239,7 @@ class OpenLibrary internal constructor(
                 stores.cast.applyStatus(value.remote)?.let(::announceCastEnded)
                 // A playback failure has no screen of its own: a snackbar wherever the person is, once.
                 playbackFailures.toShow(value)?.let { reason ->
-                    messages.show(LocaleErrorDisplays(appContext).display(reason))
+                    messages.show(runtime.errors.display(reason))
                 }
             },
             onError = { error ->
@@ -274,7 +274,7 @@ class OpenLibrary internal constructor(
         error: uniffi.bae_bridge.BridgeException,
     ): DisplayError? {
         logger.error("the $subscription subscription failed", error)
-        val shown = LocaleErrorDisplays(appContext).display(error)
+        val shown = runtime.errors.display(error)
         if (shown == null) logger.debug("the $subscription subscription was cancelled; its value stays")
         return shown
     }
@@ -388,4 +388,6 @@ internal data class OpenLibraryRuntime(
     val scope: CoroutineScope,
     val messages: SessionMessages,
     val bugs: BugReports,
+    /** How the session words a failure it shows. */
+    val errors: ErrorDisplays,
 )
