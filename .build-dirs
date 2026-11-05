@@ -29,6 +29,9 @@ target-macos                          15G
 target-ios                            24G
 target-android                        13G
 bae-macos/bae/.build                  20G
+# The app the person launches (main) and tests (the app checkout) is built here;
+# builds never ages it out in those two checkouts.
+keep bae-macos/bae/.build/runApp
 bae-ios/bae/.build                    10G
 BaeKit/.build                         9G
 BaeKit/Frameworks                     7G
