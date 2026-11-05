@@ -1,40 +1,17 @@
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    crate::types::BridgeMcpServerStatus = bae_desktop::McpServerStatus,
+    crate::types::BridgeServerStatus = bae_desktop::ServerStatus,
     from_core: pub(super) fn,
     variants: {
         Disabled,
         Running { url },
-        Error { error: (crate::types::BridgeMcpServerError) },
+        Error { error: (crate::types::BridgeServerError) },
     },
 }
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    crate::types::BridgeMcpServerError = bae_desktop::McpServerError,
-    from_core: pub(super) fn,
-    variants: {
-        InvalidConfig { detail },
-        TokenUnavailable { detail },
-        BindFailed { detail },
-        ServerFailed { detail },
-    },
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    crate::types::BridgeSubsonicServerStatus = bae_desktop::SubsonicServerStatus,
-    from_core: pub(super) fn,
-    variants: {
-        Disabled,
-        Running { url },
-        Error { error: (crate::types::BridgeSubsonicServerError) },
-    },
-}
-
-mirror_enum! {
-    #[cfg(feature = "desktop")]
-    crate::types::BridgeSubsonicServerError = bae_desktop::SubsonicServerError,
+    crate::types::BridgeServerError = bae_desktop::ServerError,
     from_core: pub(super) fn,
     variants: {
         InvalidConfig { detail },

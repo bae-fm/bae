@@ -3,6 +3,8 @@ use bae_playback::QueueEntryId;
 use std::sync::PoisonError;
 use tracing::info;
 
+#[cfg(feature = "desktop")]
+use crate::types::BridgeServerStatus;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
     BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog, BridgeComposerDetail,
@@ -16,8 +18,6 @@ use crate::types::{
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeCoverSelection, BridgeDiscogsSaveOutcome};
-#[cfg(feature = "desktop")]
-use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
 
 #[derive(uniffi::Object)]
 pub struct AppHandle {

@@ -31,32 +31,11 @@ type McpTokenProvider = dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Ou
     + Send
     + Sync;
 
-pub type McpServerStatus = ServerStatus<McpServerError>;
-
-#[derive(Debug, Clone)]
-pub enum McpServerError {
-    InvalidConfig { detail: String },
-    TokenUnavailable { detail: String },
-    BindFailed { detail: String },
-    ServerFailed { detail: String },
-}
-
-impl ServerError for McpServerError {
-    fn detail(&self) -> &str {
-        match self {
-            Self::InvalidConfig { detail }
-            | Self::TokenUnavailable { detail }
-            | Self::BindFailed { detail }
-            | Self::ServerFailed { detail } => detail,
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct McpServerController {
     automation: Automation,
     token_provider: Arc<McpTokenProvider>,
-    server: ServerController<u16, McpServerError>,
+    server: ServerController<u16>,
     /// Where a panic in the server or in one of its requests is reported.
     diagnostics: Diagnostics,
 }
@@ -76,20 +55,20 @@ impl McpServerController {
         }
     }
 
-    pub async fn apply_config(&self, config: bae_preferences::McpConfig) -> McpServerStatus {
+    pub async fn apply_config(&self, config: bae_preferences::McpConfig) -> ServerStatus {
         if !config.enabled {
             return self.server.disable().await;
         }
         if let Err(error) = config.validate() {
             return self
                 .server
-                .record_error(McpServerError::InvalidConfig { detail: error.to_string() })
+                .record_error(ServerError::InvalidConfig { detail: error.to_string() })
                 .await;
         }
         self.server.apply(config.port, |port| self.start(port)).await
     }
 
-    pub async fn status(&self) -> McpServerStatus {
+    pub async fn status(&self) -> ServerStatus {
         self.server.status().await
     }
 
@@ -97,9 +76,12 @@ impl McpServerController {
         self.server.shutdown().await;
     }
 
-    async fn start(&self, port: u16) -> McpServerStatus {
+    async fn start(&self, port: u16) -> ServerStatus {
         if let Err(e) = self.token_provider.as_ref()().await {
-            return self.server.record_error(McpServerError::TokenUnavailable { detail: e }).await;
+            return self
+                .server
+                .record_error(ServerError::CredentialUnavailable { detail: e })
+                .await;
         }
 
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -108,7 +90,7 @@ impl McpServerController {
             Err(e) => {
                 return self
                     .server
-                    .record_error(McpServerError::BindFailed {
+                    .record_error(ServerError::BindFailed {
                         detail: format!("failed to bind 127.0.0.1:{port}: {e}"),
                     })
                     .await;
@@ -119,31 +101,26 @@ impl McpServerController {
         let token_provider = self.token_provider.clone();
         let diagnostics = self.diagnostics.clone();
         self.server
-            .start(
-                port,
-                format!("http://127.0.0.1:{port}/mcp"),
-                |detail| McpServerError::ServerFailed { detail },
-                |cancellation| {
-                    let service: StreamableHttpService<BaeMcpServer, LocalSessionManager> =
-                        StreamableHttpService::new(
-                            move || Ok(BaeMcpServer::new(automation.clone())),
-                            Default::default(),
-                            StreamableHttpServerConfig::default()
-                                .with_sse_keep_alive(None)
-                                .with_cancellation_token(cancellation.child_token()),
-                        );
-                    let router = axum::Router::new()
-                        .nest_service("/mcp", service)
-                        .layer(middleware::from_fn_with_state(
-                            AuthState { token_provider },
-                            bearer_auth,
-                        ))
-                        .layer(middleware::from_fn_with_state(diagnostics, report_panics));
-                    let shutdown = cancellation.clone();
-                    axum::serve(listener, router)
-                        .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
-                },
-            )
+            .start(port, format!("http://127.0.0.1:{port}/mcp"), |cancellation| {
+                let service: StreamableHttpService<BaeMcpServer, LocalSessionManager> =
+                    StreamableHttpService::new(
+                        move || Ok(BaeMcpServer::new(automation.clone())),
+                        Default::default(),
+                        StreamableHttpServerConfig::default()
+                            .with_sse_keep_alive(None)
+                            .with_cancellation_token(cancellation.child_token()),
+                    );
+                let router = axum::Router::new()
+                    .nest_service("/mcp", service)
+                    .layer(middleware::from_fn_with_state(
+                        AuthState { token_provider },
+                        bearer_auth,
+                    ))
+                    .layer(middleware::from_fn_with_state(diagnostics, report_panics));
+                let shutdown = cancellation.clone();
+                axum::serve(listener, router)
+                    .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
+            })
             .await
     }
 }

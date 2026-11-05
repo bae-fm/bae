@@ -40,7 +40,7 @@ struct AutomationSettingsContent: View {
     @State
     private var portText = ""
     @State
-    private var status: BridgeMcpServerStatus = .disabled
+    private var status: BridgeServerStatus = .disabled
     @State
     private var mutationTask: Task<Void, Never>?
     @State
@@ -127,7 +127,7 @@ struct AutomationSettingsContent: View {
                         .textSelection(.enabled)
                 case .error(let error):
                     VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        ErrorText(error.localizedSummary)
+                        ErrorText(error.mcpSummary)
                         Text(error.detail)
                             .themeText(.mono)
                             .foregroundStyle(.secondary)
@@ -294,27 +294,17 @@ struct AutomationSettingsContent: View {
     }
 #endif
 
-extension BridgeMcpServerError {
-    fileprivate var localizedSummary: String {
+extension BridgeServerError {
+    fileprivate var mcpSummary: String {
         switch self {
         case .invalidConfig:
             String(localized: "Invalid MCP server configuration")
-        case .tokenUnavailable:
+        case .credentialUnavailable:
             String(localized: "MCP token unavailable")
         case .bindFailed:
             String(localized: "MCP server could not start")
         case .serverFailed:
             String(localized: "MCP server stopped")
-        }
-    }
-
-    fileprivate var detail: String {
-        switch self {
-        case .invalidConfig(let detail),
-            .tokenUnavailable(let detail),
-            .bindFailed(let detail),
-            .serverFailed(let detail):
-            detail
         }
     }
 }

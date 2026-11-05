@@ -27,27 +27,6 @@ type SubsonicPasswordProvider = dyn Fn() -> std::pin::Pin<
     > + Send
     + Sync;
 
-pub type SubsonicServerStatus = ServerStatus<SubsonicServerError>;
-
-#[derive(Debug, Clone)]
-pub enum SubsonicServerError {
-    InvalidConfig { detail: String },
-    CredentialUnavailable { detail: String },
-    BindFailed { detail: String },
-    ServerFailed { detail: String },
-}
-
-impl ServerError for SubsonicServerError {
-    fn detail(&self) -> &str {
-        match self {
-            Self::InvalidConfig { detail }
-            | Self::CredentialUnavailable { detail }
-            | Self::BindFailed { detail }
-            | Self::ServerFailed { detail } => detail,
-        }
-    }
-}
-
 /// The address and port a running server is bound to, and the username it
 /// authenticates against. A config that changes any of these must restart the
 /// server, so all three form the identity `apply_config` compares against the
@@ -63,7 +42,7 @@ struct Binding {
 pub struct SubsonicServerController {
     services: AppServices,
     password_provider: Arc<SubsonicPasswordProvider>,
-    server: ServerController<Binding, SubsonicServerError>,
+    server: ServerController<Binding>,
     /// Where a panic in the server, a request or a stream is reported.
     diagnostics: Diagnostics,
 }
@@ -88,14 +67,14 @@ impl SubsonicServerController {
     /// or username differs from what is already running. A password change is not
     /// visible here — the password is keyring-only — so the host drives it
     /// through [`Self::restart`].
-    pub async fn apply_config(&self, config: SubsonicConfig) -> SubsonicServerStatus {
+    pub async fn apply_config(&self, config: SubsonicConfig) -> ServerStatus {
         if !config.enabled {
             return self.server.disable().await;
         }
         if let Err(error) = config.validate() {
             return self
                 .server
-                .record_error(SubsonicServerError::InvalidConfig { detail: error.to_string() })
+                .record_error(ServerError::InvalidConfig { detail: error.to_string() })
                 .await;
         }
 
@@ -111,12 +90,12 @@ impl SubsonicServerController {
     /// change (a new keyring password) that `apply_config` alone would treat as
     /// no change and skip. A no-op restart of a disabled config just reports
     /// `Disabled`.
-    pub async fn restart(&self, config: SubsonicConfig) -> SubsonicServerStatus {
+    pub async fn restart(&self, config: SubsonicConfig) -> ServerStatus {
         self.server.shutdown().await;
         self.apply_config(config).await
     }
 
-    pub async fn status(&self) -> SubsonicServerStatus {
+    pub async fn status(&self) -> ServerStatus {
         self.server.status().await
     }
 
@@ -124,13 +103,13 @@ impl SubsonicServerController {
         self.server.shutdown().await;
     }
 
-    async fn start(&self, binding: Binding) -> SubsonicServerStatus {
+    async fn start(&self, binding: Binding) -> ServerStatus {
         let password = match self.password_provider.as_ref()().await {
             Ok(password) => password.unwrap_or_default(),
             Err(detail) => {
                 return self
                     .server
-                    .record_error(SubsonicServerError::CredentialUnavailable { detail })
+                    .record_error(ServerError::CredentialUnavailable { detail })
                     .await;
             }
         };
@@ -142,7 +121,7 @@ impl SubsonicServerController {
         if binding.username.is_empty() || password.is_empty() {
             return self
                 .server
-                .record_error(SubsonicServerError::InvalidConfig {
+                .record_error(ServerError::InvalidConfig {
                     detail: "Subsonic server enabled but no username/password is configured"
                         .to_string(),
                 })
@@ -157,7 +136,7 @@ impl SubsonicServerController {
             Err(e) => {
                 return self
                     .server
-                    .record_error(SubsonicServerError::InvalidConfig {
+                    .record_error(ServerError::InvalidConfig {
                         detail: format!("invalid bind address {:?}: {e}", binding.bind_address),
                     })
                     .await;
@@ -169,7 +148,7 @@ impl SubsonicServerController {
             Err(e) => {
                 return self
                     .server
-                    .record_error(SubsonicServerError::BindFailed {
+                    .record_error(ServerError::BindFailed {
                         detail: format!(
                             "failed to bind {}:{}: {e}",
                             binding.bind_address, binding.port
@@ -182,16 +161,11 @@ impl SubsonicServerController {
         let url = format!("http://{}:{}/rest", binding.bind_address, binding.port);
         let router = crate::router(self.services.clone(), credential, self.diagnostics.clone());
         self.server
-            .start(
-                binding,
-                url,
-                |detail| SubsonicServerError::ServerFailed { detail },
-                |cancellation| {
-                    let shutdown = cancellation.clone();
-                    axum::serve(listener, router)
-                        .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
-                },
-            )
+            .start(binding, url, |cancellation| {
+                let shutdown = cancellation.clone();
+                axum::serve(listener, router)
+                    .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
+            })
             .await
     }
 }

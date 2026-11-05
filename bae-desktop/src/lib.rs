@@ -8,11 +8,9 @@ use std::sync::Arc;
 use bae_app::AppServices;
 use bae_diagnostics::Diagnostics;
 use bae_mcp::{Automation, McpServerController};
-pub use bae_mcp::{McpServerError, McpServerStatus};
 use bae_preferences::{McpConfig, PreferencesError, SubsonicConfig};
 use bae_subsonic::SubsonicServerController;
-pub use bae_subsonic::{SubsonicServerError, SubsonicServerStatus};
-use bae_util::server::{ServerError, ServerStatus};
+pub use bae_util::server::{ServerError, ServerStatus};
 use bae_util::task_failure::caught;
 use tokio::runtime::Handle;
 
@@ -25,11 +23,11 @@ pub struct DesktopServices {
 /// A rejected service-config change: either the config itself (validation, or
 /// the write to disk) or the running server refusing to come up on it.
 #[derive(Debug, thiserror::Error)]
-pub enum DesktopConfigError<E: ServerError> {
+pub enum DesktopConfigError {
     #[error("{0}")]
     Config(PreferencesError),
     #[error("{}", .0.detail())]
-    Server(E),
+    Server(ServerError),
 }
 
 impl DesktopServices {
@@ -117,14 +115,11 @@ impl DesktopServices {
         Self { services, mcp_controller: controller, subsonic_controller }
     }
 
-    pub async fn mcp_server_status(&self) -> McpServerStatus {
+    pub async fn mcp_server_status(&self) -> ServerStatus {
         self.mcp_controller.status().await
     }
 
-    pub async fn set_mcp_config(
-        &self,
-        config: McpConfig,
-    ) -> Result<(), DesktopConfigError<McpServerError>> {
+    pub async fn set_mcp_config(&self, config: McpConfig) -> Result<(), DesktopConfigError> {
         config.validate().map_err(DesktopConfigError::Config)?;
         apply_service_config(
             "MCP",
@@ -136,14 +131,14 @@ impl DesktopServices {
         .await
     }
 
-    pub async fn subsonic_server_status(&self) -> SubsonicServerStatus {
+    pub async fn subsonic_server_status(&self) -> ServerStatus {
         self.subsonic_controller.status().await
     }
 
     pub async fn set_subsonic_config(
         &self,
         config: SubsonicConfig,
-    ) -> Result<(), DesktopConfigError<SubsonicServerError>> {
+    ) -> Result<(), DesktopConfigError> {
         config.validate().map_err(DesktopConfigError::Config)?;
         apply_service_config(
             "Subsonic",
@@ -159,18 +154,13 @@ impl DesktopServices {
     /// running server so it authenticates against the new password. The password
     /// is not in config, so `apply_config` cannot see the change — the restart
     /// is how a running server picks it up.
-    pub async fn set_subsonic_password(
-        &self,
-        password: &str,
-    ) -> Result<(), DesktopConfigError<SubsonicServerError>> {
+    pub async fn set_subsonic_password(&self, password: &str) -> Result<(), DesktopConfigError> {
         self.services
             .set_subsonic_password(password.to_string())
             .await
             .map_err(|e| DesktopConfigError::Config(PreferencesError::Invalid(e.to_string())))?;
         let config = self.stored_preferences().await?.subsonic;
-        if let SubsonicServerStatus::Error { error } =
-            self.subsonic_controller.restart(config).await
-        {
+        if let ServerStatus::Error { error } = self.subsonic_controller.restart(config).await {
             return Err(DesktopConfigError::Server(error));
         }
         Ok(())
@@ -178,9 +168,7 @@ impl DesktopServices {
 
     /// The preferences as stored now, whose server settings a change rolls
     /// back to.
-    async fn stored_preferences<E: ServerError>(
-        &self,
-    ) -> Result<bae_preferences::Preferences, DesktopConfigError<E>> {
+    async fn stored_preferences(&self) -> Result<bae_preferences::Preferences, DesktopConfigError> {
         self.services
             .preferences()
             .await
@@ -200,17 +188,16 @@ impl DesktopServices {
 /// both the server and the stored config on `previous` — no half-applied
 /// change. A free function so the rollback contract is testable against a bare
 /// controller + manager, without a full app bootstrap.
-async fn apply_service_config<C, E, F, P>(
+async fn apply_service_config<C, F, P>(
     label: &str,
     config: C,
     previous: C,
     apply: impl Fn(C) -> F,
     persist: impl FnOnce(C) -> P,
-) -> Result<(), DesktopConfigError<E>>
+) -> Result<(), DesktopConfigError>
 where
     C: Clone,
-    E: ServerError,
-    F: std::future::Future<Output = ServerStatus<E>>,
+    F: std::future::Future<Output = ServerStatus>,
     P: std::future::Future<Output = Result<(), PreferencesError>>,
 {
     if let ServerStatus::Error { error } = apply(config.clone()).await {

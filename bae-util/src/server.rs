@@ -3,9 +3,9 @@
 //! it changes, plus the status the UI reads.
 //!
 //! `bae-mcp` and `bae-subsonic` both run one axum server this way. What differs
-//! between them is the config fields a change must restart for (the *identity*),
-//! the error vocabulary each reports, and how each builds its serve future —
-//! so those are the parameters here. Everything else — the state machine, the
+//! between them is the config fields a change must restart for (the *identity*)
+//! and how each builds its serve future — so those are the parameters here.
+//! The errors they report are shared. Everything else — the state machine, the
 //! locking, the graceful-shutdown token, the task that records a mid-flight
 //! server failure — lives once. A serve future that panics is a bug: the
 //! server's owner reports it through the `bug` it hands the controller, and
@@ -22,22 +22,42 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
 
-/// A service's own error enum. Every variant carries a human-readable detail;
-/// this is how the shared lifecycle reads it without knowing the variants.
-pub trait ServerError: Clone {
-    fn detail(&self) -> &str;
+/// Why a server is not running. Every variant carries a human-readable
+/// detail.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerError {
+    /// The stored config cannot be served.
+    InvalidConfig { detail: String },
+    /// The server's own secret could not be read from the keychain: the MCP
+    /// bearer token, the Subsonic password.
+    CredentialUnavailable { detail: String },
+    /// The address could not be bound.
+    BindFailed { detail: String },
+    /// The server stopped while running.
+    ServerFailed { detail: String },
+}
+
+impl ServerError {
+    pub fn detail(&self) -> &str {
+        match self {
+            Self::InvalidConfig { detail }
+            | Self::CredentialUnavailable { detail }
+            | Self::BindFailed { detail }
+            | Self::ServerFailed { detail } => detail,
+        }
+    }
 }
 
 /// What the app reports for a server: off, reachable at a URL, or stopped with
 /// the reason it failed.
 #[derive(Debug, Clone)]
-pub enum ServerStatus<E> {
+pub enum ServerStatus {
     Disabled,
     Running { url: String },
-    Error { error: E },
+    Error { error: ServerError },
 }
 
-enum State<I, E> {
+enum State<I> {
     Disabled,
     Running {
         /// The config the running server is bound to. A config that differs
@@ -48,12 +68,12 @@ enum State<I, E> {
         task: JoinHandle<()>,
     },
     Error {
-        error: E,
+        error: ServerError,
     },
 }
 
-impl<I, E: Clone> State<I, E> {
-    fn status(&self) -> ServerStatus<E> {
+impl<I> State<I> {
+    fn status(&self) -> ServerStatus {
         match self {
             Self::Disabled => ServerStatus::Disabled,
             Self::Running { url, .. } => ServerStatus::Running { url: url.clone() },
@@ -69,38 +89,37 @@ impl<I, E: Clone> State<I, E> {
 pub type ReportBug = Arc<dyn Fn(Bug) -> Bug + Send + Sync>;
 
 #[derive(Clone)]
-pub struct ServerController<I, E> {
+pub struct ServerController<I> {
     /// The service's name in log messages ("MCP", "Subsonic"), and the
     /// operation a panic of its serve future is reported as.
     name: &'static str,
-    inner: Arc<Mutex<State<I, E>>>,
+    inner: Arc<Mutex<State<I>>>,
     bug: ReportBug,
 }
 
-impl<I, E> ServerController<I, E>
+impl<I> ServerController<I>
 where
     I: Clone + PartialEq + Send + 'static,
-    E: ServerError + Send + 'static,
 {
     pub fn new(name: &'static str, bug: ReportBug) -> Self {
         Self { name, inner: Arc::new(Mutex::new(State::Disabled)), bug }
     }
 
-    pub async fn status(&self) -> ServerStatus<E> {
+    pub async fn status(&self) -> ServerStatus {
         self.inner.lock().await.status()
     }
 
     /// Stop whatever is running and report the server off.
-    pub async fn disable(&self) -> ServerStatus<E> {
+    pub async fn disable(&self) -> ServerStatus {
         self.shutdown().await;
         ServerStatus::Disabled
     }
 
     /// Leave a server already bound to `identity` alone; otherwise stop what is
     /// running and hand `identity` to `start`.
-    pub async fn apply<Fut>(&self, identity: I, start: impl FnOnce(I) -> Fut) -> ServerStatus<E>
+    pub async fn apply<Fut>(&self, identity: I, start: impl FnOnce(I) -> Fut) -> ServerStatus
     where
-        Fut: Future<Output = ServerStatus<E>>,
+        Fut: Future<Output = ServerStatus>,
     {
         {
             let state = self.inner.lock().await;
@@ -134,7 +153,7 @@ where
     }
 
     /// Record a failure to start: nothing runs, and the status carries why.
-    pub async fn record_error(&self, error: E) -> ServerStatus<E> {
+    pub async fn record_error(&self, error: ServerError) -> ServerStatus {
         self.shutdown().await;
         let mut state = self.inner.lock().await;
         *state = State::Error { error: error.clone() };
@@ -146,16 +165,15 @@ where
     /// `serve` receives the controller's cancellation token — the future it
     /// returns must stop when that token is cancelled, since [`Self::shutdown`]
     /// cancels it and then waits for the task. A serve future that ends with an
-    /// error, or panics, moves the controller into `Error` (built through
-    /// `server_failed`), unless a different server has since taken its place;
+    /// error, or panics, moves the controller into `Error` as
+    /// [`ServerError::ServerFailed`], unless a different server has since taken its place;
     /// a panic is reported first.
     pub async fn start<S, Err>(
         &self,
         identity: I,
         url: String,
-        server_failed: fn(String) -> E,
         serve: impl FnOnce(&CancellationToken) -> S,
-    ) -> ServerStatus<E>
+    ) -> ServerStatus
     where
         S: IntoFuture<Output = Result<(), Err>>,
         S::IntoFuture: Send + 'static,
@@ -172,11 +190,15 @@ where
             let error = match caught(name, serving).await {
                 Ok(Ok(())) => return,
                 Ok(Err(e)) => {
-                    let error = server_failed(format!("{name} server stopped with error: {e}"));
+                    let error = ServerError::ServerFailed {
+                        detail: format!("{name} server stopped with error: {e}"),
+                    };
                     warn!("{}", error.detail());
                     error
                 }
-                Err(failed) => server_failed(format!("{name} server stopped: {}", bug(failed))),
+                Err(failed) => ServerError::ServerFailed {
+                    detail: format!("{name} server stopped: {}", bug(failed)),
+                },
             };
             let mut state = task_state.lock().await;
             if let State::Running { identity: running, .. } = &*state {

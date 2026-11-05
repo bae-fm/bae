@@ -27,8 +27,8 @@ fn desktop_controller_calls_do_not_reenter_the_owned_runtime() {
     ));
 
     runtime.block_on(async {
-        assert!(matches!(desktop.mcp_server_status().await, McpServerStatus::Disabled));
-        assert!(matches!(desktop.subsonic_server_status().await, SubsonicServerStatus::Disabled));
+        assert!(matches!(desktop.mcp_server_status().await, ServerStatus::Disabled));
+        assert!(matches!(desktop.subsonic_server_status().await, ServerStatus::Disabled));
         desktop.shutdown().await;
     });
 }

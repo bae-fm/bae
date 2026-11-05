@@ -7,7 +7,7 @@ import Foundation
 final class Automation: Sendable, Observable {
     let setMcpServerConfig:
         @Sendable (_ enabled: Bool, _ portText: String) async throws -> Void
-    let getMcpServerStatus: @Sendable () async throws -> BridgeMcpServerStatus
+    let getMcpServerStatus: @Sendable () async throws -> BridgeServerStatus
     let getMcpToken: @Sendable () async throws -> String
     let generateMcpToken: @Sendable () async throws -> String
     let setMcpToken: @Sendable (_ token: String) async throws -> Void
@@ -17,7 +17,7 @@ final class Automation: Sendable, Observable {
             @escaping @Sendable (Bool, String) async throws -> Void,
         getMcpServerStatus:
             @escaping @Sendable () async throws ->
-            BridgeMcpServerStatus,
+            BridgeServerStatus,
         getMcpToken: @escaping @Sendable () async throws -> String,
         generateMcpToken: @escaping @Sendable () async throws -> String,
         setMcpToken: @escaping @Sendable (String) async throws -> Void

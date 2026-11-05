@@ -51,7 +51,7 @@ async fn disabled_config_reports_disabled() {
     let (services, _temp) = test_manager().await;
     let controller = controller(&services, Some("s3cret"));
     let status = controller.apply_config(SubsonicConfig::disabled_default()).await;
-    assert!(matches!(status, SubsonicServerStatus::Disabled));
+    assert!(matches!(status, ServerStatus::Disabled));
 }
 
 #[tokio::test]
@@ -61,7 +61,7 @@ async fn enabled_with_valid_credential_runs() {
     let config = enabled_config(free_port(), "listener");
     let status = controller.apply_config(config).await;
     assert!(
-        matches!(status, SubsonicServerStatus::Running { .. }),
+        matches!(status, ServerStatus::Running { .. }),
         "a valid enabled config must start the server, got {status:?}"
     );
     controller.shutdown().await;
@@ -75,10 +75,7 @@ async fn enabled_without_stored_password_is_invalid_and_does_not_bind() {
     let config = enabled_config(port, "listener");
     let status = controller.apply_config(config).await;
     assert!(
-        matches!(
-            status,
-            SubsonicServerStatus::Error { error: SubsonicServerError::InvalidConfig { .. } }
-        ),
+        matches!(status, ServerStatus::Error { error: ServerError::InvalidConfig { .. } }),
         "a missing password is a config error, got {status:?}"
     );
     // The port was never bound, so it is still free to take.
@@ -99,12 +96,7 @@ async fn keyring_read_failure_is_credential_unavailable() {
     let config = enabled_config(free_port(), "listener");
     let status = controller.apply_config(config).await;
     assert!(
-        matches!(
-            status,
-            SubsonicServerStatus::Error {
-                error: SubsonicServerError::CredentialUnavailable { .. }
-            }
-        ),
+        matches!(status, ServerStatus::Error { error: ServerError::CredentialUnavailable { .. } }),
         "a keyring read error is CredentialUnavailable, got {status:?}"
     );
 }
@@ -117,14 +109,14 @@ async fn transitions_disabled_enabled_disabled() {
 
     assert!(matches!(
         controller.apply_config(SubsonicConfig::disabled_default()).await,
-        SubsonicServerStatus::Disabled
+        ServerStatus::Disabled
     ));
-    assert!(matches!(controller.apply_config(enabled).await, SubsonicServerStatus::Running { .. }));
+    assert!(matches!(controller.apply_config(enabled).await, ServerStatus::Running { .. }));
     assert!(matches!(
         controller.apply_config(SubsonicConfig::disabled_default()).await,
-        SubsonicServerStatus::Disabled
+        ServerStatus::Disabled
     ));
-    assert!(matches!(controller.status().await, SubsonicServerStatus::Disabled));
+    assert!(matches!(controller.status().await, ServerStatus::Disabled));
 }
 
 #[tokio::test]
@@ -133,9 +125,9 @@ async fn bind_then_shutdown_frees_the_port() {
     let controller = controller(&services, Some("s3cret"));
     let port = free_port();
     let config = enabled_config(port, "listener");
-    assert!(matches!(controller.apply_config(config).await, SubsonicServerStatus::Running { .. }));
+    assert!(matches!(controller.apply_config(config).await, ServerStatus::Running { .. }));
     controller.shutdown().await;
-    assert!(matches!(controller.status().await, SubsonicServerStatus::Disabled));
+    assert!(matches!(controller.status().await, ServerStatus::Disabled));
     // Once shut down, the port is released and can be bound again.
     assert!(
         std::net::TcpListener::bind(("127.0.0.1", port)).is_ok(),
@@ -155,7 +147,7 @@ async fn changing_bind_address_restarts_the_server() {
     let loopback = enabled_config(port, "listener");
     let status = controller.apply_config(loopback).await;
     assert!(
-        matches!(&status, SubsonicServerStatus::Running { url } if url.contains("127.0.0.1")),
+        matches!(&status, ServerStatus::Running { url } if url.contains("127.0.0.1")),
         "loopback config runs on 127.0.0.1, got {status:?}"
     );
 
@@ -163,7 +155,7 @@ async fn changing_bind_address_restarts_the_server() {
         SubsonicConfig { bind_address: "0.0.0.0".to_string(), ..enabled_config(port, "listener") };
     let status = controller.apply_config(lan).await;
     assert!(
-        matches!(&status, SubsonicServerStatus::Running { url } if url.contains("0.0.0.0")),
+        matches!(&status, ServerStatus::Running { url } if url.contains("0.0.0.0")),
         "a bind-address change must restart on the new address, got {status:?}"
     );
 

@@ -37,7 +37,7 @@ struct SubsonicSettingsContent: View {
     @State
     private var allowNetwork = false
     @State
-    private var status: BridgeSubsonicServerStatus = .disabled
+    private var status: BridgeServerStatus = .disabled
     @State
     private var mutationTask: Task<Void, Never>?
     @State
@@ -150,7 +150,7 @@ struct SubsonicSettingsContent: View {
                         .textSelection(.enabled)
                 case .error(let error):
                     VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        ErrorText(error.localizedSummary)
+                        ErrorText(error.subsonicSummary)
                         Text(error.detail)
                             .themeText(.mono)
                             .foregroundStyle(.secondary)
@@ -294,8 +294,8 @@ struct SubsonicSettingsContent: View {
     }
 #endif
 
-extension BridgeSubsonicServerError {
-    fileprivate var localizedSummary: String {
+extension BridgeServerError {
+    fileprivate var subsonicSummary: String {
         switch self {
         case .invalidConfig:
             String(localized: "Invalid Subsonic server configuration")
@@ -305,16 +305,6 @@ extension BridgeSubsonicServerError {
             String(localized: "Subsonic server could not start")
         case .serverFailed:
             String(localized: "Subsonic server stopped")
-        }
-    }
-
-    fileprivate var detail: String {
-        switch self {
-        case .invalidConfig(let detail),
-            .credentialUnavailable(let detail),
-            .bindFailed(let detail),
-            .serverFailed(let detail):
-            detail
         }
     }
 }

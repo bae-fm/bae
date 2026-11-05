@@ -11,7 +11,7 @@ final class SubsonicServer: Sendable, Observable {
             _ bindAddress: String
         )
             async throws -> Void
-    let getServerStatus: @Sendable () async throws -> BridgeSubsonicServerStatus
+    let getServerStatus: @Sendable () async throws -> BridgeServerStatus
     let setPassword: @Sendable (_ password: String) async throws -> Void
 
     init(
@@ -19,7 +19,7 @@ final class SubsonicServer: Sendable, Observable {
             @escaping @Sendable (Bool, String, String, String) async throws ->
             Void,
         getServerStatus:
-            @escaping @Sendable () async throws -> BridgeSubsonicServerStatus,
+            @escaping @Sendable () async throws -> BridgeServerStatus,
         setPassword: @escaping @Sendable (String) async throws -> Void
     ) {
         self.setServerConfig = setServerConfig

@@ -37,8 +37,8 @@ forward! { async this => {
             .map_err(BridgeError::config)
     }
 
-    fn get_mcp_server_status() -> BridgeMcpServerStatus {
-        Ok(BridgeMcpServerStatus::from_core(
+    fn get_mcp_server_status() -> BridgeServerStatus {
+        Ok(BridgeServerStatus::from_core(
             this.desktop.mcp_server_status().await,
         ))
     }
@@ -60,8 +60,8 @@ forward! { async this => {
             .map_err(BridgeError::config)
     }
 
-    fn get_subsonic_server_status() -> BridgeSubsonicServerStatus {
-        Ok(BridgeSubsonicServerStatus::from_core(
+    fn get_subsonic_server_status() -> BridgeServerStatus {
+        Ok(BridgeServerStatus::from_core(
             this.desktop.subsonic_server_status().await,
         ))
     }

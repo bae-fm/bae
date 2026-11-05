@@ -166,17 +166,20 @@ pub struct BridgeMcpConfig {
     pub port: u16,
 }
 
+/// What the app shows for an embedded server: off, reachable at a URL, or
+/// stopped with the reason it failed.
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMcpServerStatus {
+pub enum BridgeServerStatus {
     Disabled,
     Running { url: String },
-    Error { error: BridgeMcpServerError },
+    Error { error: BridgeServerError },
 }
 
+/// Why an embedded server is not running.
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMcpServerError {
+pub enum BridgeServerError {
     InvalidConfig { detail: String },
-    TokenUnavailable { detail: String },
+    CredentialUnavailable { detail: String },
     BindFailed { detail: String },
     ServerFailed { detail: String },
 }
@@ -192,21 +195,6 @@ pub struct BridgeSubsonicConfig {
     /// opens it to other devices on the network. The UI presents this as a
     /// network-access toggle rather than a raw address field.
     pub bind_address: String,
-}
-
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeSubsonicServerStatus {
-    Disabled,
-    Running { url: String },
-    Error { error: BridgeSubsonicServerError },
-}
-
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeSubsonicServerError {
-    InvalidConfig { detail: String },
-    CredentialUnavailable { detail: String },
-    BindFailed { detail: String },
-    ServerFailed { detail: String },
 }
 
 /// A discovered remote-renderer device (Cast or UPnP), for the device picker.
