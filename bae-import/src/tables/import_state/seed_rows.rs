@@ -79,6 +79,27 @@ pub(crate) fn ensure_candidate_state(
     Ok(())
 }
 
+/// Start the state of the files hashed `content_hash` over, under `key`: drop
+/// the state an undone grouping of the same files left, and when `inherited`
+/// holds file decisions, store a state row carrying them.
+#[cfg(desktop)]
+pub(crate) fn restart_state_on(
+    sql: &CovenWrite<'_>,
+    content_hash: &str,
+    key: &CandidateKey,
+    inherited: &crate::folder_scanner::CandidateFileEdits,
+) -> Result<(), DbError> {
+    sql.execute("DELETE FROM import_candidate_state WHERE content_hash = ?", [content_hash])?;
+    if !inherited.is_empty() {
+        sql.execute(
+            "INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES (?, ?)",
+            params![content_hash, key],
+        )?;
+        super::file_decision_rows::store_file_edits(sql, content_hash, inherited)?;
+    }
+    Ok(())
+}
+
 /// Forget every folder at or below `folders` that files were found at, and
 /// the state of every candidate found only there.
 #[cfg(desktop)]

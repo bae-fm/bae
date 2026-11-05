@@ -166,7 +166,7 @@ impl StoredFileEdits {
 
 /// Replace every file decision held for `content_hash` with `edits`.
 #[cfg(desktop)]
-pub(crate) fn store_file_edits(
+pub(super) fn store_file_edits(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     edits: &CandidateFileEdits,

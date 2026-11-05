@@ -761,19 +761,7 @@ impl ImportTables {
                                 .into(),
                         ));
                     }
-                    // Drop any state an undone grouping of the same files left.
-                    sql.execute(
-                        "DELETE FROM import_candidate_state WHERE content_hash = ?",
-                        [&content_hash],
-                    )?;
-                    if !inherited.is_empty() {
-                        sql.execute(
-                            "INSERT INTO import_candidate_state (content_hash, candidate_key) \
-                         VALUES (?, ?)",
-                            params![content_hash, key],
-                        )?;
-                        super::import_state::store_file_edits(sql, &content_hash, &inherited)?;
-                    }
+                    super::import_state::restart_state_on(sql, &content_hash, &key, &inherited)?;
                 }
                 for member in &members {
                     let member_key = member.key();

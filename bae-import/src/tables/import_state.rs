@@ -67,9 +67,9 @@ pub(super) use cover_rows::{cover_read_columns, read_cover};
 #[cfg(desktop)]
 use failure_rows::{delete_failure_on, load_failure_on};
 #[cfg(desktop)]
-use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_candidates};
+pub(super) use file_decision_rows::load_candidate_file_edits_on;
 #[cfg(desktop)]
-pub(super) use file_decision_rows::{load_candidate_file_edits_on, store_file_edits};
+use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_candidates};
 #[cfg(desktop)]
 pub use import_commit::ImportCommitError;
 #[cfg(desktop)]
@@ -94,7 +94,9 @@ pub(super) use rows::load_states_on;
 #[cfg(desktop)]
 pub use rows::DbImportCandidateState;
 #[cfg(desktop)]
-pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, CandidateStateSeed};
+pub(super) use seed_rows::{
+    ensure_candidate_state, forget_at_or_below, restart_state_on, CandidateStateSeed,
+};
 #[cfg(desktop)]
 use session_rows::load_session_on;
 #[cfg(desktop)]
