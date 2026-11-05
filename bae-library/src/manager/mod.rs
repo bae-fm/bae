@@ -20,7 +20,6 @@ use tracing::{debug, warn};
 #[cfg(desktop)]
 use crate::save::SaveService;
 use crate::sync::S3ConfigData;
-use crate::sync_controller::SyncController;
 use bae_db::GallerySource;
 use bae_db::{
     Database, DbAlbum, DbArtist, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef,
@@ -443,9 +442,6 @@ pub struct LibraryManager {
     /// pending subscriptions, startup sync), which each hold a clone of it and
     /// so of the store. [`LibraryManager::close`] ends them all.
     tasks: service::BackgroundTasks,
-    /// The cloud-sync responsibility: the provider connection and the
-    /// upload pause.
-    sync: SyncController,
     /// How to stop each transfer making a release local that this process
     /// runs.
     detach_cancels: crate::detach_cancels::DetachCancels,

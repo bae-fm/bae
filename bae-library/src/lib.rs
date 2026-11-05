@@ -26,7 +26,6 @@ mod saved_restore_codes;
 mod schema;
 pub mod storage;
 pub mod sync;
-pub(crate) mod sync_controller;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_libraries;
 mod track_decode;

@@ -106,7 +106,6 @@ capability_types = [
     "SrpClient",
     "SubsonicPasswordProvider",
     "SubsonicServerController",
-    "SyncController",
     "TrackStream",
     "TransferService",
     "UploadThroughput",

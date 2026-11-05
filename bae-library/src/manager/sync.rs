@@ -14,11 +14,12 @@ impl LibraryManager {
     }
 
     pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
-        self.sync.set_sync_paused(paused).await
+        self.database.set_uploads_paused(paused).await?;
+        Ok(())
     }
 
     pub async fn is_sync_paused(&self) -> Result<bool, LibraryError> {
-        self.sync.is_sync_paused().await
+        Ok(self.database.uploads_paused().await?)
     }
 
     /// Whether coven's sync loop is running now: storage is set up and
@@ -84,21 +85,62 @@ impl LibraryManager {
         device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.save_s3_config(data, device_name, steps).await
+        let (storage, credentials) = data
+            .into_location()
+            .map_err(|error| LibraryError::Validation(format!("invalid S3 endpoint: {error}")))?;
+        let setup = self
+            .database
+            .setup_s3_storage(
+                storage,
+                device_name,
+                credentials.access_key_id,
+                credentials.secret_access_key,
+                steps,
+            )
+            .await?;
+        self.diagnostics
+            .event(TelemetryEvent::CloudProviderConnected { provider: coven::CloudProvider::S3 });
+        Ok(setup)
     }
 
+    /// Sign in to an account provider before choosing a new location on it.
+    /// bae registers a Full Dropbox app, since a household's library lives in
+    /// a folder its members share.
     #[cfg(feature = "oauth-providers")]
     pub async fn sign_in(&self, provider: coven::CloudProvider) -> Result<(), LibraryError> {
-        self.sync.sign_in(provider).await
+        let access = match provider {
+            coven::CloudProvider::Dropbox => {
+                coven::OAuthAccess::Dropbox(coven::DropboxAccess::FullDropbox)
+            }
+            coven::CloudProvider::OneDrive => coven::OAuthAccess::OneDrive,
+            coven::CloudProvider::S3 | coven::CloudProvider::CloudKit => {
+                return Err(LibraryError::Internal(format!("{provider:?} has no account sign-in")))
+            }
+        };
+        self.database.authenticate(access).await?;
+        Ok(())
     }
 
+    /// Sign in again to the provider this library's location is on, with the
+    /// access that location needs, and reconnect the location with the new
+    /// sign-in.
     #[cfg(feature = "oauth-providers")]
     pub async fn sign_in_again(
         &self,
         device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.sign_in_again(device_name, steps).await
+        let storage = self.database.storage_config().await?.ok_or_else(|| {
+            LibraryError::Internal("signing in again needs a library with storage".into())
+        })?;
+        let access = storage.oauth_access().ok_or_else(|| {
+            LibraryError::Internal(format!(
+                "{:?} storage has no account sign-in",
+                storage.provider()
+            ))
+        })?;
+        self.database.authenticate(access).await?;
+        self.setup_oauth_storage(storage, device_name, steps).await
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -108,7 +150,10 @@ impl LibraryManager {
         device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.setup_oauth_storage(storage, device_name, steps).await
+        let provider = storage.provider();
+        let setup = self.database.setup_oauth_storage(storage, device_name, steps).await?;
+        self.diagnostics.event(TelemetryEvent::CloudProviderConnected { provider });
+        Ok(setup)
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -143,11 +188,16 @@ impl LibraryManager {
         device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync.use_cloudkit(device_name, steps).await
+        let setup = self.database.setup_cloudkit_storage(device_name, steps).await?;
+        self.diagnostics.event(TelemetryEvent::CloudProviderConnected {
+            provider: coven::CloudProvider::CloudKit,
+        });
+        Ok(setup)
     }
 
     pub async fn unlock_store_key(&self) -> Result<(), LibraryError> {
-        self.sync.unlock_store_key().await
+        self.database.unlock_store_key().await?;
+        Ok(())
     }
 
     /// Start coven's sync loop with the store keys this session unlocked. Its
@@ -155,7 +205,8 @@ impl LibraryManager {
     /// retries like any other; starting fails only when the session lacks a
     /// store key or custody can't be read.
     pub async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
-        self.sync.attach_and_start_sync().await
+        self.database.start_sync().await?;
+        Ok(())
     }
 
     /// Start sync for a returning user without withholding local library

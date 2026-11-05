@@ -22,7 +22,6 @@ pub async fn open_library_manager(
     runtime_handle: tokio::runtime::Handle,
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
 ) -> Result<LibraryManager, DbError> {
-    let sync = crate::sync_controller::SyncController::new(database.clone(), diagnostics.clone());
     let downloads = bae_transfers::Downloads::new(database.clone());
     #[cfg(desktop)]
     let outputs = bae_transfers::Outputs::new(database.clone());
@@ -36,7 +35,6 @@ pub async fn open_library_manager(
         remote_images,
         #[cfg(desktop)]
         catalogs,
-        sync,
         downloads,
         #[cfg(desktop)]
         outputs,
