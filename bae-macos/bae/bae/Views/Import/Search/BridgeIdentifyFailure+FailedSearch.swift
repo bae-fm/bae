@@ -12,7 +12,7 @@ struct FailedSearch: Hashable {
     /// the catalog it has no record of are the run's own, which have no badge
     /// because they are not values the folder carries.
     enum Step: Hashable {
-        case signal(BridgeSignalKind)
+        case signal(SignalBadgeStyle.Signal)
         case titleSearch
         case pressing
     }

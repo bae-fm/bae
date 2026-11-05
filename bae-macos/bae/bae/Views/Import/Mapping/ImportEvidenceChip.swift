@@ -53,7 +53,8 @@ enum ImportEvidence {
     }
 
     /// The same glyph and wording the Find online ledger uses for the signal.
-    static func kind(_ signal: BridgeEvidenceSignal) -> BridgeSignalKind {
+    static func kind(_ signal: BridgeEvidenceSignal) -> SignalBadgeStyle.Signal
+    {
         switch signal {
         case .barcode: .barcode
         case .discId: .discId

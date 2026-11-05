@@ -19,12 +19,21 @@ enum SignalBadgeStyle {
         case notes
     }
 
+    /// The identifying signals, as a failure line, an evidence chip or the
+    /// run's lookup row name them.
+    enum Signal {
+        case discId
+        case barcode
+        case catalog
+        case isrc
+    }
+
     /// The agreement's name on its own — a badge.
     static func label(for agreement: Agreement) -> String {
         switch agreement {
-        case .discId: label(for: BridgeSignalKind.discId)
-        case .barcode: label(for: BridgeSignalKind.barcode)
-        case .catalog: label(for: BridgeSignalKind.catalog)
+        case .discId: label(for: Signal.discId)
+        case .barcode: label(for: Signal.barcode)
+        case .catalog: label(for: Signal.catalog)
         case .label: String(localized: "Label")
         case .year: String(localized: "Year")
         case .country: String(localized: "Country")
@@ -32,7 +41,7 @@ enum SignalBadgeStyle {
         }
     }
 
-    static func icon(for kind: BridgeSignalKind) -> String {
+    static func icon(for kind: Signal) -> String {
         switch kind {
         case .discId: "opticaldiscdrive"
         case .barcode: "barcode"
@@ -42,7 +51,7 @@ enum SignalBadgeStyle {
     }
 
     /// The signal's name on its own — a row label.
-    static func label(for kind: BridgeSignalKind) -> String {
+    static func label(for kind: Signal) -> String {
         switch kind {
         case .discId: String(localized: "Disc ID")
         case .barcode: String(localized: "Barcode")
@@ -54,7 +63,7 @@ enum SignalBadgeStyle {
     /// The signal's name inside a sentence — "Discogs barcode results are
     /// missing from this list." A proper noun keeps its capitals; the rest
     /// are common nouns.
-    static func sentenceLabel(for kind: BridgeSignalKind) -> String {
+    static func sentenceLabel(for kind: Signal) -> String {
         switch kind {
         case .discId: String(localized: "Disc ID")
         case .barcode: String(localized: "barcode")

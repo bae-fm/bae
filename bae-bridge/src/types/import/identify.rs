@@ -34,16 +34,6 @@ mirror_enum! {
     },
 }
 
-/// The identifying signals, as the apps name them in a failure line, an
-/// evidence chip or the run's lookup row. Nothing crosses into it from core.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSignalKind {
-    DiscId,
-    Barcode,
-    Catalog,
-    Isrc,
-}
-
 /// Why a catalog did not answer a lookup; the UI resolves its line through
 /// `bridge_lookup_failure_key`. Mirrors `bae_catalogs::LookupFailure`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

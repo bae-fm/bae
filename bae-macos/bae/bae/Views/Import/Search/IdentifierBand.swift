@@ -59,7 +59,7 @@ struct IdentifierBand: View {
     /// run.
     @ViewBuilder
     private var discIdChips: some View {
-        let label = SignalBadgeStyle.label(for: BridgeSignalKind.discId)
+        let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.discId)
         switch run.discId {
         case .reading:
             IdentifierChip(label: label) { ChipWait(waitingOn: run.discId) }
@@ -136,7 +136,7 @@ struct IdentifierBand: View {
     /// A chip per code the folder carries, each toggling in and out of the run.
     @ViewBuilder
     private var barcodeChips: some View {
-        let label = SignalBadgeStyle.label(for: BridgeSignalKind.barcode)
+        let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.barcode)
         switch run.barcode {
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
@@ -216,7 +216,7 @@ struct IdentifierBand: View {
     /// the first code and lists every one on hover.
     @ViewBuilder
     private var isrcChip: some View {
-        let label = SignalBadgeStyle.label(for: BridgeSignalKind.isrc)
+        let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.isrc)
         switch run.isrc {
         case .reading:
             IdentifierChip(label: label) { ChipWait(waitingOn: run.isrc) }
