@@ -53,6 +53,27 @@ impl ScanCancellation {
         self.0.cancelled().await;
     }
 
+    /// Park this thread until this is cancelled, then give the error a read
+    /// cut short by it ends with: a test's reader that holds a directory
+    /// read open until the scan is cancelled.
+    #[cfg(test)]
+    pub(crate) fn park_until_cancelled(&self) -> FolderScanError {
+        use std::future::Future;
+        struct Unpark(std::thread::Thread);
+        impl std::task::Wake for Unpark {
+            fn wake(self: std::sync::Arc<Self>) {
+                self.0.unpark();
+            }
+        }
+        let waker = std::task::Waker::from(std::sync::Arc::new(Unpark(std::thread::current())));
+        let mut cx = std::task::Context::from_waker(&waker);
+        let mut cancelled = std::pin::pin!(self.0.cancelled());
+        while cancelled.as_mut().poll(&mut cx).is_pending() {
+            std::thread::park();
+        }
+        FolderScanError::Cancelled
+    }
+
     pub(super) fn check(&self) -> Result<(), FolderScanError> {
         if self.is_cancelled() {
             Err(FolderScanError::Cancelled)

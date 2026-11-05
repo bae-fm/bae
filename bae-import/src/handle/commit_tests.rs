@@ -45,7 +45,9 @@ async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
                 .await
         }
     });
-    tokio::task::yield_now().await;
+    tokio::time::timeout(HANG_GUARD, handle.folder_state_commit.waiting_reaches(1))
+        .await
+        .expect("the edit parks on the commit lock");
     handle.runtime.claim_for_import(&key, "import-1", false).await.unwrap();
     drop(commit);
 

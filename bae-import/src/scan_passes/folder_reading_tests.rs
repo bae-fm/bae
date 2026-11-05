@@ -7,7 +7,6 @@ use crate::scan_passes::tests::*;
 use crate::service::tests::*;
 use bae_db::Database;
 use bae_util::test_channels::HANG_GUARD;
-use std::time::Duration;
 
 /// Every list the live query delivered shows the folder one way or the
 /// other: the combined release, or both discs. None shows neither.
@@ -155,13 +154,9 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
             .await
         })
     };
-    tokio::time::timeout(HANG_GUARD, async {
-        while fixture.listing.take().is_empty() {
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .expect("the reading started walking");
+    tokio::time::timeout(HANG_GUARD, commit.waiting_reaches(1))
+        .await
+        .expect("the reading walked and waits at the commit lock");
     fixture.test.tables().begin_folder_scan(&fixture.root, crate::VolumeKind::Local).await.unwrap();
     drop(held);
 

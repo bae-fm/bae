@@ -18,16 +18,61 @@ const NOTICEABLE_HOLD: Duration = Duration::from_millis(250);
 
 /// The folder-state commit lock. Clones share the one lock.
 #[derive(Clone, Default)]
-pub(crate) struct FolderStateCommit(Arc<tokio::sync::Mutex<()>>);
+pub(crate) struct FolderStateCommit {
+    lock: Arc<tokio::sync::Mutex<()>>,
+    #[cfg(test)]
+    waiting: Arc<Waiting>,
+}
+
+/// How many callers are waiting for the lock, for a test to wait on.
+#[cfg(test)]
+#[derive(Default)]
+struct Waiting {
+    count: std::sync::atomic::AtomicUsize,
+    changed: tokio::sync::Notify,
+}
 
 impl FolderStateCommit {
     /// Wait for the lock and hold it for `operation`, which names the holder
     /// in the log lines its release writes.
     pub(crate) async fn lock(&self, operation: &'static str) -> FolderStateCommitGuard {
         let asked = Instant::now();
-        let guard = self.0.clone().lock_owned().await;
+        #[cfg(test)]
+        self.waiting.arrive();
+        let guard = self.lock.clone().lock_owned().await;
+        #[cfg(test)]
+        self.waiting.leave();
         let acquired = Instant::now();
         FolderStateCommitGuard { _guard: guard, operation, waited: acquired - asked, acquired }
+    }
+}
+
+#[cfg(test)]
+impl Waiting {
+    fn arrive(&self) {
+        self.count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.changed.notify_waiters();
+    }
+
+    fn leave(&self) {
+        self.count.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        self.changed.notify_waiters();
+    }
+}
+
+#[cfg(test)]
+impl FolderStateCommit {
+    /// Wait until `count` callers are waiting for the lock.
+    pub(crate) async fn waiting_reaches(&self, count: usize) {
+        loop {
+            let changed = self.waiting.changed.notified();
+            tokio::pin!(changed);
+            changed.as_mut().enable();
+            if self.waiting.count.load(std::sync::atomic::Ordering::SeqCst) >= count {
+                return;
+            }
+            changed.await;
+        }
     }
 }
 

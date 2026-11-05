@@ -261,10 +261,7 @@ impl DirectoryReader for FailsInOneFolder {
                 directory.display()
             )));
         }
-        loop {
-            cancellation.check()?;
-            std::thread::yield_now();
-        }
+        Err(cancellation.park_until_cancelled())
     }
 
     /// No folder has a date, so the pass walks them in name order.
@@ -338,10 +335,7 @@ impl DirectoryReader for CancelsInOneFolder {
         if directory.as_os_str().is_empty() || directory == self.cancelling {
             return OsDirectoryReader.read(root, directory, cancellation);
         }
-        loop {
-            cancellation.check()?;
-            std::thread::yield_now();
-        }
+        Err(cancellation.park_until_cancelled())
     }
 
     /// No folder has a date, so the pass walks them in name order.

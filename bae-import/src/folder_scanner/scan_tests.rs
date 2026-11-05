@@ -298,10 +298,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
             cancellation: &ScanCancellation,
         ) -> Result<DirectoryListing, FolderScanError> {
             self.entered.send(()).expect("announce directory read");
-            loop {
-                cancellation.check()?;
-                std::thread::yield_now();
-            }
+            Err(cancellation.park_until_cancelled())
         }
 
         fn folder_times(
