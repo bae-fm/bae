@@ -184,11 +184,17 @@ internal open class FakeAppHandle(
 
     override fun subscribeQueue(): QueueSubscription = FakeQueueSubscription()
 
-    override fun subscribePlaybackValues(): PlaybackValuesSubscription = FakePlaybackValuesSubscription()
+    /** The playback values the handle answers, which a test delivers to. */
+    val playbackValues = FakePlaybackValuesSubscription()
+
+    override fun subscribePlaybackValues(): PlaybackValuesSubscription = playbackValues
 
     override fun subscribeQueueAdditions(): QueueAdditionsSubscription = FakeQueueAdditionsSubscription()
 
-    override fun subscribePlaybackTimeline(): PlaybackTimelineSubscription = FakePlaybackTimelineSubscription()
+    /** The playback timeline the handle answers, which a test delivers to. */
+    val playbackTimeline = FakePlaybackTimelineSubscription()
+
+    override fun subscribePlaybackTimeline(): PlaybackTimelineSubscription = playbackTimeline
 
     override fun feedPlaybackPositions(): KeyedValueStream = FakeKeyedValueStream()
 
@@ -888,9 +894,13 @@ internal class FakeConfigSubscription : ConfigSubscription(NoHandle) {
     }
 }
 
-/** Playback values nothing delivers: each pull waits until cancelled. */
+/** Playback values a test hands the app a value at a time: each pull waits for the next. */
 internal class FakePlaybackValuesSubscription : PlaybackValuesSubscription(NoHandle) {
     private val values = Channel<BridgePlaybackValues>(Channel.UNLIMITED)
+
+    fun deliver(playback: BridgePlaybackValues) {
+        values.trySend(playback)
+    }
 
     override suspend fun next(): BridgePlaybackValues = values.receive()
 
@@ -918,9 +928,13 @@ internal class FakeQueueAdditionsSubscription : QueueAdditionsSubscription(NoHan
     }
 }
 
-/** Timelines nothing delivers: each pull waits until cancelled. */
+/** Timelines a test hands the app one at a time: each pull waits for the next. */
 internal class FakePlaybackTimelineSubscription : PlaybackTimelineSubscription(NoHandle) {
     private val timelines = Channel<BridgePlaybackTimeline>(Channel.UNLIMITED)
+
+    fun deliver(timeline: BridgePlaybackTimeline) {
+        timelines.trySend(timeline)
+    }
 
     override suspend fun next(): BridgePlaybackTimeline = timelines.receive()
 
