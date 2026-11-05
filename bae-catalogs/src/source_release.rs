@@ -579,3 +579,7 @@ pub fn claimed_records(claimed: &[Vec<ReleaseRecord>]) -> Vec<ReleaseRecord> {
         .sort_by_key(|record| (Some(record.catalog()) != applied, catalog_rank(record.catalog())));
     records
 }
+
+#[cfg(test)]
+#[path = "source_release_tests.rs"]
+mod tests;
