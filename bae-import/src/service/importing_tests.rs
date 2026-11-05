@@ -461,7 +461,7 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
     assert_eq!(draft.metadata_author, crate::MetadataAuthor::Nobody);
     assert_eq!(draft.metadata_provenance, None);
     assert_eq!(
-        draft.cover.as_ref().map(|cover| cover.selection.clone()),
+        draft.cover.as_ref().map(|cover| cover.selection().clone()),
         Some(crate::CoverSelection::Local("front.jpg".to_string())),
         "the folder's own cover"
     );

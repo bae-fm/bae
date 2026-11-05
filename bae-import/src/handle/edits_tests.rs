@@ -493,7 +493,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
         .cover
         .clone()
         .expect("the fixture has a selected cover")
-        .selection;
+        .selection();
     handle.claim_candidate_for_import_for_test(&key, "import-1").await;
 
     assert_every_mutation_refused(&handle, &key, "Blocked title", first_track, cover, |error| {

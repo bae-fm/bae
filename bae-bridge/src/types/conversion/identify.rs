@@ -70,9 +70,8 @@ impl BridgeRemoteCover {
 
 impl BridgeCoverChoice {
     pub(crate) fn from_core(choice: bae_import::CoverChoice) -> Self {
-        let bae_import::CoverChoice { selection, image } = choice;
         Self {
-            selection: match selection {
+            selection: match choice.selection() {
                 bae_import::CoverSelection::Local(file_id) => {
                     BridgeCoverSelection::ReleaseImage { file_id }
                 }
@@ -88,7 +87,7 @@ impl BridgeCoverChoice {
                     BridgeCoverSelection::EmbeddedCover { source_file_id }
                 }
             },
-            image: BridgeCoverImageSource::from_core(image),
+            image: BridgeCoverImageSource::from_core(choice.image()),
         }
     }
 }

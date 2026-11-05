@@ -341,7 +341,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
         .cover
         .clone()
         .expect("file metadata applies its deterministic default cover");
-    assert_eq!(cover.selection, crate::CoverSelection::Local("cover.jpg".to_string()));
+    assert_eq!(cover.selection(), crate::CoverSelection::Local("cover.jpg".to_string()));
     let scanned = candidate
         .files
         .files
@@ -349,7 +349,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
         .find(|entry| entry.file.relative_path == "cover.jpg")
         .expect("the fixture folder holds cover.jpg");
     assert_eq!(
-        cover.image,
+        cover.image(),
         crate::cover_art::CoverImageSource::Local { file: scanned.file.version() },
         "a folder image is drawn from disk at the version the scan read"
     );
@@ -373,7 +373,7 @@ async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
         .cover
         .clone()
         .expect("applying tags that embed artwork selects a cover");
-    assert_eq!(cover.selection, crate::CoverSelection::Local("cover.jpg".to_string()));
+    assert_eq!(cover.selection(), crate::CoverSelection::Local("cover.jpg".to_string()));
     shut_down(handle).await;
 
     let reopened = parts.start().await.unwrap();
@@ -385,7 +385,7 @@ async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
             .cover
             .clone()
             .expect("the persisted selection survives a relaunch")
-            .selection,
+            .selection(),
         crate::CoverSelection::Local("cover.jpg".to_string())
     );
     shut_down(reopened).await;

@@ -89,37 +89,38 @@ impl PreparedCover {
 /// One image, not a preview and a thumbnail: a remote image carries its
 /// catalog's downscaled copies, and the size a slot draws at picks among them.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CoverChoice {
-    pub selection: CoverSelection,
-    pub image: CoverImageSource,
+pub enum CoverChoice {
+    /// A catalog's image, with every copy the catalog serves of it.
+    Remote { image: RemoteImageSet, source: Catalog },
+    /// One of the folder's own images, named by its relative path and drawn
+    /// from where it sits on disk.
+    Local { file_id: String, file: crate::folder_scanner::FileVersion },
+    /// Artwork stored in the candidate's file-tag snapshot, named by the file
+    /// it came from and drawn from the bytes the snapshot holds, which both
+    /// the pane and the sidebar render.
+    Embedded { source_file_id: String, source: crate::folder_scanner::FileVersion, data: Vec<u8> },
 }
 
 impl CoverChoice {
-    /// A catalog's image, with every copy the catalog serves of it.
-    pub fn remote(image: RemoteImageSet, source: Catalog) -> Self {
-        Self {
-            selection: CoverSelection::Remote(image.clone(), source),
-            image: CoverImageSource::Remote { image },
+    /// What the choice names, without the image it draws.
+    pub fn selection(&self) -> CoverSelection {
+        match self {
+            Self::Remote { image, source } => CoverSelection::Remote(image.clone(), *source),
+            Self::Local { file_id, .. } => CoverSelection::Local(file_id.clone()),
+            Self::Embedded { source_file_id, .. } => {
+                CoverSelection::Embedded(source_file_id.clone())
+            }
         }
     }
 
-    /// One of the folder's own images, named by its relative path and drawn
-    /// from where it sits on disk.
-    pub fn local(file_id: String, file: crate::folder_scanner::FileVersion) -> Self {
-        Self { selection: CoverSelection::Local(file_id), image: CoverImageSource::Local { file } }
-    }
-
-    /// Artwork stored in the candidate's file-tag snapshot. The source file
-    /// identifies the selection; the snapshot owns the exact bytes rendered
-    /// by both the pane and the sidebar, read from `source`.
-    pub fn embedded(
-        source_file_id: String,
-        source: crate::folder_scanner::FileVersion,
-        data: Vec<u8>,
-    ) -> Self {
-        Self {
-            selection: CoverSelection::Embedded(source_file_id),
-            image: CoverImageSource::Embedded { source, data },
+    /// Where the choice's bytes are drawn from.
+    pub fn image(&self) -> CoverImageSource {
+        match self {
+            Self::Remote { image, .. } => CoverImageSource::Remote { image: image.clone() },
+            Self::Local { file, .. } => CoverImageSource::Local { file: file.clone() },
+            Self::Embedded { source, data, .. } => {
+                CoverImageSource::Embedded { source: source.clone(), data: data.clone() }
+            }
         }
     }
 }

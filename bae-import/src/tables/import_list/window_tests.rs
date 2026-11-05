@@ -370,7 +370,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         .unwrap()
         .expect("the candidate reads back");
     assert_eq!(
-        detail.draft().unwrap().cover.clone().map(|cover| cover.selection),
+        detail.draft().unwrap().cover.clone().map(|cover| cover.selection()),
         Some(crate::CoverSelection::Local("cover.jpg".to_string()))
     );
     let projection = tables.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
@@ -475,7 +475,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         .unwrap()
         .expect("the candidate reads back");
     assert_eq!(
-        detail.draft().unwrap().cover.clone().map(|cover| cover.image),
+        detail.draft().unwrap().cover.clone().map(|cover| cover.image()),
         Some(crate::CoverImageSource::Embedded {
             source: FileVersion {
                 path: root.join("Album").join("01.flac"),
@@ -794,7 +794,7 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     assert_eq!(draft.metadata_draft, candidate.blank_draft().release_edit());
     assert_eq!(draft.metadata_author, crate::MetadataAuthor::Nobody);
     assert_eq!(
-        draft.cover.as_ref().map(|cover| cover.selection.clone()),
+        draft.cover.as_ref().map(|cover| cover.selection().clone()),
         Some(folder_cover.selection())
     );
 

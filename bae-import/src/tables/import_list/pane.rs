@@ -365,12 +365,14 @@ fn chosen_cover(
                     "the selected cover is no longer among the candidate's images"
                 );
             }
-            image.map(|image| CoverChoice::local(file_id.clone(), image.version()))
+            image
+                .map(|image| CoverChoice::Local { file_id: file_id.clone(), file: image.version() })
         }
-        Some(CoverSelection::Embedded(source_file_id)) => embedded_cover
-            .map(|(source, data)| CoverChoice::embedded(source_file_id.clone(), source, data)),
+        Some(CoverSelection::Embedded(source_file_id)) => embedded_cover.map(|(source, data)| {
+            CoverChoice::Embedded { source_file_id: source_file_id.clone(), source, data }
+        }),
         Some(CoverSelection::Remote(image, source)) => {
-            Some(CoverChoice::remote(image.clone(), *source))
+            Some(CoverChoice::Remote { image: image.clone(), source: *source })
         }
     }
 }

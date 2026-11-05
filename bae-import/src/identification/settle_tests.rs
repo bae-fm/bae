@@ -112,7 +112,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
             .cover
             .clone()
             .expect("the pane shows the stored selection")
-            .selection,
+            .selection(),
         folders_own.selection()
     );
 }
@@ -664,8 +664,8 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     assert_eq!(row.metadata_author, crate::MetadataAuthor::Identification);
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     let cover = pane.draft().unwrap().cover.clone().expect("the applied release brings its cover");
-    let crate::CoverSelection::Remote(image, source) = &cover.selection else {
-        panic!("the cover is the catalog's, got {:?}", cover.selection);
+    let crate::CoverSelection::Remote(image, source) = &cover.selection() else {
+        panic!("the cover is the catalog's, got {:?}", cover.selection());
     };
     assert_eq!(*source, bae_catalogs::catalog::Catalog::MusicBrainz);
     assert!(image.url.ends_with("/release/mb-cover-1/front"), "{}", image.url);

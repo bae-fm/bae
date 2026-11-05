@@ -147,7 +147,10 @@ impl CandidateFile {
             && bae_util::content_type_hint::ContentTypeHint::path_is_supported_cover(
                 &self.file.path,
             ))
-        .then(|| crate::CoverChoice::local(self.file.relative_path.clone(), self.file.version()))
+        .then(|| crate::CoverChoice::Local {
+            file_id: self.file.relative_path.clone(),
+            file: self.file.version(),
+        })
     }
 }
 
