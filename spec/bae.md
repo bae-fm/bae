@@ -4290,7 +4290,6 @@ Beside them, device-local tables:
 
 | Table | One row per |
 |---|---|
-| `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, and how many wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
 | `composer_work` | work and artist shown credited on it |
@@ -4307,9 +4306,8 @@ Beside them, device-local tables:
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
-Local triggers write every table here but `local_release_origin` in the same
-write as the library rows they come from, on this device or applied from
-another, so they always match those rows. A release's storage row follows
+Local triggers write every table here in the same write as the library rows
+they come from, on this device or applied from another, so they always match those rows. A release's storage row follows
 coven's records of its files, the pins `coven_pins` lists as kept and coven's
 upload queue the same way, in the transaction that changes one of them,
 whether this device's own write, another device's applied, or coven's as a
@@ -4404,6 +4402,12 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws, read by the import counts' own live query: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
 | `import_identify_run` | each identify run in flight and the key it identifies. How the run stands is stored in the shape of the verdict it may end on (A.6), owned by the run instead of by a candidate's files: a verdict row, `running` while its lookups are out, with the ledger as it stands (clues still being read or scanned, cells queued or looking up, a title search waiting) and the releases its answers so far combine to as match rows, then the answer it reached while that is written; beside them the signals it last read, scans still going included, each stored in the write of the state the run reached from them. Its pane and the release editor's search draw the run from these rows, its rows judged against the text of those signals. A folder candidate's run has its rows only while its standing names the run: its first state is written in the write that starts it, a later one only while the standing still names it, and the write that moves the standing off the run deletes them, so no read finds a run the standing does not name, or a standing whose run published nothing. A library release's re-identify run, which has no standing, keeps its rows until it ends or the release's sheet closes. Every row a run owns goes with its row here, and the table is emptied as the library opens |
 | `import_candidate_search`, `import_candidate_search_source` | a person's typed search for a candidate (§3.5): the query as columns by mode (artist and album, catalog number, or barcode), and each catalog's part of it in the catalogs' order: not asked (switched off, or needing a credential the library lacks), searching, answered with the releases it returned (match rows the search owns, A.6), or failed (the catalog's failure with its HTTP status, or the error chain of bae breaking). The cards the pane draws are folded from the answered parts as the search is read, never stored. Each catalog's answer is a write of its own that lands only on a part still searching, of the search it was asked for: a new search for the key replaces the row on a run number never used again, so an answer to the replaced search, a second answer, or one for a part switched off lands nowhere. Retry puts only the failed parts back to searching, on the same run. Switching a catalog off closes its part of every search and deletes what it returned. A pick of a MusicBrainz release on the list marks its rows picked, with what its documents state its album is; a release the list does not hold, a partner the pick claims included, is none of the search's. A folder candidate's search is of the files it names and goes in the scan write that leaves the candidate with other files or none; a library release's names none. Every row a search owns goes with its row, and the table is emptied as the library opens |
+
+Beside them, keyed by the release an import made:
+
+| Table | One row per |
+|---|---|
+| `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 
 ### A.6 Identification
 
