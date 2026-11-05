@@ -65,7 +65,7 @@ impl ItemKey {
 
     /// The key as text for the log.
     pub(super) fn shown(&self) -> String {
-        crate::CandidateKey::from_bytes(self.key.clone()).to_string()
+        crate::CandidateKey::from(self.key.clone()).to_string()
     }
 }
 

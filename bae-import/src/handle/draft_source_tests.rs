@@ -24,7 +24,7 @@ async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
         .store_verdict(&crate::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edits.revision,
-            candidate_key: crate::CandidateKey::from_bytes(Vec::new()),
+            candidate_key: crate::CandidateKey::from(Vec::new()),
             verdict: bae_identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_identify::signals::Signals {
                 origin: bae_catalogs::AudioOrigin::default(),

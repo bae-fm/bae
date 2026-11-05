@@ -207,9 +207,7 @@ impl TestLibrary {
         let import = self.start_discogs_import().await;
         import
             .send_command(bae_import::ImportCommand {
-                candidate_key: bae_import::CandidateKey::from_bytes(
-                    candidate_key.as_bytes().to_vec(),
-                ),
+                candidate_key: bae_import::CandidateKey::from(candidate_key.as_bytes().to_vec()),
                 ..bae_import::test_imports::folder_import(
                     &import_id,
                     album_dir,

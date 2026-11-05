@@ -26,7 +26,7 @@ impl BridgeWatchedFolder {
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_candidate_key_text(candidate_key: Vec<u8>) -> String {
-    bae_import::CandidateKey::from_bytes(candidate_key).to_string()
+    bae_import::CandidateKey::from(candidate_key).to_string()
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

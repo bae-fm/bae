@@ -114,7 +114,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: bae_import::CandidateKey::from_bytes(b"cue".to_vec()),
+            candidate_key: bae_import::CandidateKey::from(b"cue".to_vec()),
             ..bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
@@ -313,7 +313,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: bae_import::CandidateKey::from_bytes(b"identified".to_vec()),
+            candidate_key: bae_import::CandidateKey::from(b"identified".to_vec()),
             ..bae_import::test_imports::folder_import(
                 &import_id,
                 identified_dir,
@@ -341,7 +341,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     let import_id2 = uuid::Uuid::new_v4().to_string();
     f.handle
         .send_command(ImportCommand {
-            candidate_key: bae_import::CandidateKey::from_bytes(b"file-tags".to_vec()),
+            candidate_key: bae_import::CandidateKey::from(b"file-tags".to_vec()),
             ..bae_import::test_imports::folder_import(
                 &import_id2,
                 file_tags_dir,

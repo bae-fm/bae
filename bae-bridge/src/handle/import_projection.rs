@@ -61,7 +61,7 @@ impl crate::types::BridgeFolderCandidate {
                 .iter()
                 .map(crate::types::BridgeReleasePart::from_core)
                 .collect(),
-            candidate_key: candidate.key().into_bytes(),
+            candidate_key: Vec::<u8>::from(candidate.key()),
             folder_path: coven::path_bytes(&candidate.path),
             source_folder_name: candidate.name.clone(),
             watched_folder_path: coven::path_bytes(&candidate.watched_folder_path),
@@ -88,7 +88,7 @@ impl crate::types::BridgeInvalidCandidate {
             tags,
         } = candidate;
         crate::types::BridgeInvalidCandidate {
-            candidate_key: candidate_key.into_bytes(),
+            candidate_key: candidate_key.into(),
             folder_path: coven::path_bytes(&path),
             source_folder_name: name,
             watched_folder_path: coven::path_bytes(&watched_folder_path),
@@ -216,7 +216,7 @@ impl crate::types::BridgeTriageRow {
             selected,
         } = row;
         crate::types::BridgeTriageRow {
-            candidate_key: candidate_key.into_bytes(),
+            candidate_key: candidate_key.into(),
             folder_name,
             watched_folder_path: coven::path_bytes(&watched_folder_path),
             display_path,

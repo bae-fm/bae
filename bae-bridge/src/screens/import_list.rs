@@ -123,7 +123,7 @@ impl ImportListSubscription {
                     .first_identifying_candidate()
                     .await
                     .map_err(list_error)?
-                    .map(bae_import::CandidateKey::into_bytes))
+                    .map(Vec::<u8>::from))
             })
             .await
     }
@@ -199,7 +199,7 @@ impl ImportListSubscription {
                     })
                     .await
                     .map_err(list_error)?;
-                Ok(key.into_bytes())
+                Ok(key.into())
             })
             .await
     }
@@ -223,7 +223,7 @@ impl ImportListSubscription {
                     })
                     .await
                     .map_err(list_error)?;
-                Ok(keys.into_iter().map(bae_import::CandidateKey::into_bytes).collect())
+                Ok(keys.into_iter().map(Vec::<u8>::from).collect())
             })
             .await
     }
@@ -259,7 +259,7 @@ impl ImportListSubscription {
                 Ok(failures
                     .into_iter()
                     .map(|failure| crate::types::BridgeSelectionActionFailure {
-                        candidate_key: failure.candidate_key.into_bytes(),
+                        candidate_key: failure.candidate_key.into(),
                         name: failure.name,
                         error: BridgeError::from(failure.error),
                     })

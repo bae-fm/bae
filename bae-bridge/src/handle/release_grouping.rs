@@ -22,7 +22,7 @@ forward! { async this => {
             .import_combine_folder(key.into_core()?)
             .await
             .map_err(BridgeError::from)?
-            .into_bytes())
+            .into())
     }
 
     /// Read the release at `key` as the folders it is made of — a broken

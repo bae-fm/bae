@@ -622,7 +622,7 @@ pub(super) async fn import_second_release(
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
-            candidate_key: bae_import::CandidateKey::from_bytes(b"second".to_vec()),
+            candidate_key: bae_import::CandidateKey::from(b"second".to_vec()),
             ..bae_import::test_imports::folder_import(
                 &import_id,
                 source.path().to_path_buf(),

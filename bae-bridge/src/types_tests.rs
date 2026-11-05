@@ -695,9 +695,9 @@ fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
     assert_eq!(folder.path_text, "/music/Caf\\xE9");
 
     let key = bae_import::CandidateKey::folder(&path);
-    assert_eq!(bridge_candidate_key_text(key.into_bytes()), "/music/Caf\\xE9");
+    assert_eq!(bridge_candidate_key_text(Vec::<u8>::from(key)), "/music/Caf\\xE9");
     let grouping = bae_import::CandidateKey::grouping("g1");
-    assert_eq!(bridge_candidate_key_text(grouping.into_bytes()), "grouping:g1");
+    assert_eq!(bridge_candidate_key_text(Vec::<u8>::from(grouping)), "grouping:g1");
 }
 
 /// A new installation's open crosses with its step, and loading the store

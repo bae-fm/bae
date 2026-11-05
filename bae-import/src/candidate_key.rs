@@ -43,31 +43,22 @@ impl CandidateKey {
         self.0.starts_with(REIDENTIFY)
     }
 
-    /// The key whose bytes are `bytes`, as a row or the app holds them.
-    pub fn from_bytes(bytes: Vec<u8>) -> Self {
-        Self(bytes)
-    }
-
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
-    }
-
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.0
     }
 }
 
 /// The key whose bytes an app holds.
 impl From<Vec<u8>> for CandidateKey {
     fn from(bytes: Vec<u8>) -> Self {
-        Self::from_bytes(bytes)
+        Self(bytes)
     }
 }
 
 /// The key's bytes, as an app holds them.
 impl From<CandidateKey> for Vec<u8> {
     fn from(key: CandidateKey) -> Self {
-        key.into_bytes()
+        key.0
     }
 }
 

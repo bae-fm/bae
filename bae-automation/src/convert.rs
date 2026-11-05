@@ -16,7 +16,7 @@ pub(crate) fn candidate_key_name(key: &CandidateKey) -> String {
 /// The key a caller names, refused when the name is not the hex of a key's
 /// bytes.
 pub(crate) fn candidate_key_named(name: &str) -> Result<CandidateKey, AutomationError> {
-    hex::decode(name).map(CandidateKey::from_bytes).map_err(|error| {
+    hex::decode(name).map(CandidateKey::from).map_err(|error| {
         AutomationError::validation(format!(
             "candidate key '{name}' is not the hex of a key's bytes: {error}"
         ))

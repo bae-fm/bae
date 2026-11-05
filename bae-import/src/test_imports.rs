@@ -113,7 +113,7 @@ pub fn folder_import(
 ) -> crate::ImportCommand {
     draft_source.onto(crate::ImportCommand {
         import_id: import_id.to_string(),
-        candidate_key: crate::CandidateKey::from_bytes(b"test".to_vec()),
+        candidate_key: crate::CandidateKey::from(b"test".to_vec()),
         source: crate::release_candidate::CandidateSource {
             path: folder.into(),
             scope: crate::ReleaseFileScope::Recursive,
