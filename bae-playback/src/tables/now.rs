@@ -1,6 +1,9 @@
 //! The device's `playback_now` row: what playback is doing, written as each
 //! of its values changes, and read by the screens' live query with the
-//! playing track's display and the queue's repeat mode.
+//! playing track's display and the queue's repeat mode. Its table is `now.sql`.
+
+/// The row's part of the library's schema.
+pub(crate) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[include_str!("now.sql")]);
 
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::queue::repeat_from_row;

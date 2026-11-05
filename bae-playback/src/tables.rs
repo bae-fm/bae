@@ -19,6 +19,7 @@ mod track_display;
 #[cfg(any(test, feature = "test-utils"))]
 pub use now::now_playing;
 pub use now::subscribe_now_playing;
+pub(super) use now::SCHEMA as NOW_SCHEMA;
 pub use now::{playback_level, PlaybackNowRow};
 pub(super) use queue::SCHEMA as QUEUE_SCHEMA;
 pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables, ShuffleChange};

@@ -142,8 +142,7 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // What each admin change this device asked for changes, while coven
     // lists its operation.
     "admin_operations",
-    // What this device's playback is doing and where it is.
-    "playback_now",
+    // Where this device's playback is.
     "playback_timeline",
     // The cast receivers discovery found.
     "cast_device",

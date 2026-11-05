@@ -4207,7 +4207,8 @@ crate's parts of it, in crate order, each part a domain's SQL files beside its
 code. bae-library assembles it from bae-db's part,
 `bae-db/migrations/001_initial.sql`, which holds every table no other part
 does, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
-`bae-playback/src/`: the queue's (`tables/queue.sql`) and, on a desktop,
+`bae-playback/src/`: the queue's (`tables/queue.sql`), what playback is doing
+(`tables/now.sql`) and, on a desktop,
 bae-import's, under `bae-import/src/tables/`: the watched folders'
 (`watched_folders.sql`), the skipped candidates' (`skipped_candidates.sql`),
 the folder scans' (`folder_scans.sql`), the release groupings'

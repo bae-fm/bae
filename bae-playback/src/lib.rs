@@ -41,7 +41,7 @@ mod track_buffered;
 mod volume_level;
 
 /// The playback tables' part of the library's schema.
-pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[tables::QUEUE_SCHEMA];
+pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[tables::QUEUE_SCHEMA, tables::NOW_SCHEMA];
 
 /// The schema this crate's tests open their stores on: bae-db's part,
 /// preferences' and playback's.
