@@ -17,6 +17,7 @@ async fn an_ended_query_takes_a_new_request() {
         database.clone(),
         bae_app_dir::AppDir::under_home(directory.path()).unwrap(),
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
     )
     .await;
     let (reader, _read) = tokio::sync::mpsc::unbounded_channel::<Result<(), crate::LibraryError>>();

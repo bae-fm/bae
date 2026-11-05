@@ -66,6 +66,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         database,
         bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
     )
     .await;
     let services =

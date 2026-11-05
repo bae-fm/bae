@@ -40,6 +40,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
         Database::from_handle(handle, clock.clone(), Arc::new(coven::UuidIds)),
         app_dir,
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
         clock,
         Arc::new(coven::UuidIds),
         bae_diagnostics::Diagnostics::noop(),

@@ -19,8 +19,12 @@ use tempfile::TempDir;
 /// A test library over in-memory storage, with storage not yet set up.
 async fn open_library() -> (TestLibrary, Arc<MemoryStorage>, TempDir) {
     let dir = TempDir::new().unwrap();
-    let (library, storage) =
-        storage_library(dir.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        dir.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     (library, storage, dir)
 }
 

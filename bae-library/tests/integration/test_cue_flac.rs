@@ -312,8 +312,12 @@ async fn import_cue_flac_fixture(
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_flac_fixture_with_seektable(&album_dir);
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library =
-        bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_library::test_libraries::open_test_library_with(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let release_id_key = fakes.seed_discogs_test_release(create_test_discogs_release());
     let release_id = library.import_folder(album_dir, release_id_key).await;
     (library, release_id)

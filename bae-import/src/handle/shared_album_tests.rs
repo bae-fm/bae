@@ -24,7 +24,8 @@ async fn link(handle: &ImportServiceHandle, hash: &str) -> Option<ReleaseLink> {
 #[tokio::test(flavor = "multi_thread")]
 async fn linking_the_album_takes_what_its_pressings_share() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     store_two_pressings(&handle, &fakes, &hash).await;
     let before = pane(&handle, &key).await;
     let bae_identify::IdentifyStateView::Found { offers_shared_album, .. } =
@@ -81,7 +82,8 @@ async fn linking_the_album_takes_what_its_pressings_share() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_linked_to_an_album_stores_the_album() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     store_two_pressings(&handle, &fakes, &hash).await;
     handle.link_candidate_shared_album(key.clone()).await.unwrap();
 
@@ -98,7 +100,8 @@ async fn an_import_linked_to_an_album_stores_the_album() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_replaces_the_album_link() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     store_two_pressings(&handle, &fakes, &hash).await;
     handle.link_candidate_shared_album(key.clone()).await.unwrap();
 

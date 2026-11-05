@@ -395,31 +395,32 @@ impl ImportService {
             // coven reads the original whole and records it as it finds it
             // now, on this device only or for the cloud alike, so what it
             // finds must be the file the scan read.
-            let original = Box::pin(coven::prepare_user_file(&file.version.path, move |consumed| {
-                let completed = bytes_read_before_file + u128::from(consumed);
-                let percent = ((completed * 100) / total_bytes).min(100) as u8;
-                let previous = reported_percent_for_progress
-                    .swap(percent, std::sync::atomic::Ordering::Relaxed);
-                if previous != percent {
-                    super::progress::emit_phase_progress_on(
-                        &event_tx,
-                        ImportRun {
-                            import_id: &import_id_for_progress,
-                            candidate_key: &candidate_key_for_progress,
-                        },
-                        &release_id_for_progress,
-                        Some(percent),
-                        ImportPhase::ReadingFiles,
-                    );
-                }
-            }))
-            .await
-            .map_err(|error| crate::ImportError::UnusableFile {
-                detail: format!(
-                    "coven could not prepare {} for import: {error}",
-                    file.version.path.display()
-                ),
-            })?;
+            let original =
+                Box::pin(coven::prepare_user_file(&file.version.path, move |consumed| {
+                    let completed = bytes_read_before_file + u128::from(consumed);
+                    let percent = ((completed * 100) / total_bytes).min(100) as u8;
+                    let previous = reported_percent_for_progress
+                        .swap(percent, std::sync::atomic::Ordering::Relaxed);
+                    if previous != percent {
+                        super::progress::emit_phase_progress_on(
+                            &event_tx,
+                            ImportRun {
+                                import_id: &import_id_for_progress,
+                                candidate_key: &candidate_key_for_progress,
+                            },
+                            &release_id_for_progress,
+                            Some(percent),
+                            ImportPhase::ReadingFiles,
+                        );
+                    }
+                }))
+                .await
+                .map_err(|error| crate::ImportError::UnusableFile {
+                    detail: format!(
+                        "coven could not prepare {} for import: {error}",
+                        file.version.path.display()
+                    ),
+                })?;
             super::file_identity::require_scanned_identity(
                 file,
                 original.size(),

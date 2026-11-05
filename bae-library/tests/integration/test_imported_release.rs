@@ -21,11 +21,18 @@ struct ImportingLibrary {
 
 impl ImportingLibrary {
     async fn open() -> Self {
-        Self::asking(bae_catalogs::providers::Providers::offline()).await
+        Self::asking(
+            bae_catalogs::providers::Providers::offline(),
+            bae_util::http::Http::for_test(),
+        )
+        .await
     }
 
-    /// A library asking `providers`.
-    async fn asking(providers: bae_catalogs::providers::Providers) -> Self {
+    /// A library asking `providers`, which were built on `http`.
+    async fn asking(
+        providers: bae_catalogs::providers::Providers,
+        http: bae_util::http::Http,
+    ) -> Self {
         let temp = TempDir::new().unwrap();
         let database = bae_db::Database::new_test(
             bae_library::SCHEMA,
@@ -38,6 +45,7 @@ impl ImportingLibrary {
             database,
             bae_app_dir::AppDir::under_home(temp.path()).unwrap(),
             providers,
+            http,
         )
         .await;
         let import = library.start_import().await.unwrap();
@@ -393,11 +401,10 @@ async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_imported_artist_is_searchable_with_its_picture() {
     let images = bae_catalogs::test_image_host::RemoteImageHost::start().await;
-    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(
-        bae_util::http::Http::for_test()
-            .serve(bae_catalogs::test_image_host::TEST_IMAGE_HOST, images.origin()),
-    );
-    let fixture = ImportingLibrary::asking(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test()
+        .serve(bae_catalogs::test_image_host::TEST_IMAGE_HOST, images.origin());
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http.clone());
+    let fixture = ImportingLibrary::asking(fakes.providers(), http).await;
     fixture
         .library
         .catalogs()

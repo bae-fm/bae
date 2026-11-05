@@ -6,8 +6,12 @@ use bae_util::test_ids::test_uuid;
 #[tokio::test]
 async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let db = library.database().clone();
     connect_storage(&library, &storage).await;
     let person = made_profile(&library, "Robin").await;

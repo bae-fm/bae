@@ -23,7 +23,11 @@ impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let (library, album_dir, temp_dir) =
-            bae_library::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
+            bae_library::test_libraries::setup_test_library_with_album_dir(
+                fakes.providers(),
+                bae_util::http::Http::for_test(),
+            )
+            .await;
 
         let fixture_path = bae_import::test_fixtures::flac_dir().join("96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
@@ -358,7 +362,11 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 async fn imported_library_without_playback() -> (TestLibrary, TempDir) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library, album_dir, temp_dir) =
-        bae_library::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
+        bae_library::test_libraries::setup_test_library_with_album_dir(
+            fakes.providers(),
+            bae_util::http::Http::for_test(),
+        )
+        .await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key = fakes.seed_discogs_test_release(create_test_album());
     library.import_folder(album_dir, release_id_key).await;

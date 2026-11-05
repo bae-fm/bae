@@ -47,9 +47,9 @@ impl ImportFixture {
         fs::create_dir_all(&db_dir).unwrap();
 
         let http = images.route(bae_util::http::Http::for_test());
-        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http);
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http.clone());
         let (library, storage) =
-            bae_library::test_libraries::storage_library(&db_dir, fakes.providers()).await;
+            bae_library::test_libraries::storage_library(&db_dir, fakes.providers(), http).await;
         let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
         let handle = library.start_discogs_import().await;
 

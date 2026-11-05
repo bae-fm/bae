@@ -158,7 +158,7 @@ impl Fixture {
             http.clone(),
             musicbrainz.clone(),
             Arc::new(bae_catalogs::discogs::client::Discogs::new(http.clone())),
-            Arc::new(bae_catalogs::wikidata::Wikidata::new(http)),
+            Arc::new(bae_catalogs::wikidata::Wikidata::new(http.clone())),
         );
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
@@ -166,6 +166,7 @@ impl Fixture {
         let parts = crate::tests::import::TestImport::new(
             database.clone(),
             providers,
+            http,
             clock,
             ids,
             bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),

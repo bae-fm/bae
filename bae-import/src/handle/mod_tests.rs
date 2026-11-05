@@ -23,18 +23,24 @@ use uuid::Uuid;
 /// What an import service is started from over a fresh store asking no
 /// catalog, the store, and the directory holding it.
 pub(super) async fn setup_test_import() -> (TestImport, Database, TempDir) {
-    setup_test_import_with(bae_catalogs::providers::Providers::offline()).await
+    setup_test_import_with(
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await
 }
 
 /// [`setup_test_import`] asking `providers`.
 pub(super) async fn setup_test_import_with(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> (TestImport, Database, TempDir) {
-    setup_test_import_over(providers, bae_diagnostics::Diagnostics::noop()).await
+    setup_test_import_over(providers, http, bae_diagnostics::Diagnostics::noop()).await
 }
 
 pub(super) async fn setup_test_import_over(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestImport, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
@@ -49,6 +55,7 @@ pub(super) async fn setup_test_import_over(
     let parts = TestImport::new(
         database.clone(),
         providers,
+        http,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         diagnostics,
@@ -192,7 +199,8 @@ pub(super) async fn stored_draft(
 /// two slices.
 pub(super) async fn three_track_draft() -> (StoredCandidate, String) {
     let fakes = FakeCatalogs::offline();
-    let mut fixture = stored_candidate_with(fakes.providers()).await;
+    let mut fixture =
+        stored_candidate_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     add_sheet(&fixture.handle.tables, &mut fixture.candidate, SECOND_FILE_IN_TWO).await;
     fixture
         .handle
@@ -465,7 +473,11 @@ pub(crate) struct StoredCandidate {
 }
 
 pub(super) async fn stored_candidate() -> StoredCandidate {
-    stored_candidate_with(bae_catalogs::providers::Providers::offline()).await
+    stored_candidate_with(
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await
 }
 
 /// A sheet carving the second of [`picked_candidate`]'s two files into two
@@ -502,8 +514,9 @@ pub(super) async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
 
 pub(super) async fn stored_candidate_with(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> StoredCandidate {
-    let (parts, database, tmp) = setup_test_import_with(providers).await;
+    let (parts, database, tmp) = setup_test_import_with(providers, http).await;
     let tables = crate::tables::ImportTables::new(database.clone());
     let (candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
     started(parts, database, candidate, key, tmp).await
@@ -534,14 +547,19 @@ pub(super) async fn started(
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
 pub(super) async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::CandidateKey, String) {
-    pane_fixture_with(bae_catalogs::providers::Providers::offline()).await
+    pane_fixture_with(
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await
 }
 
 /// [`pane_fixture`] asking `providers`.
 pub(super) async fn pane_fixture_with(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> (ImportServiceHandle, TempDir, crate::CandidateKey, String) {
-    let fixture = picked_stored_candidate_with(providers).await;
+    let fixture = picked_stored_candidate_with(providers, http).await;
     let hash = fixture.candidate.files.content_hash();
     (fixture.handle, fixture.tmp, fixture.key, hash)
 }
@@ -549,8 +567,9 @@ pub(super) async fn pane_fixture_with(
 /// [`stored_candidate_with`] with the folder's own tags already picked.
 pub(crate) async fn picked_stored_candidate_with(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> StoredCandidate {
-    let fixture = stored_candidate_with(providers).await;
+    let fixture = stored_candidate_with(providers, http).await;
     let revision = fixture.handle.select_candidate_file_tags(fixture.key.clone()).await.unwrap();
     assert_eq!(revision, 1);
     fixture
@@ -683,7 +702,8 @@ pub(super) async fn picked_fixture(
     release_id: &str,
 ) -> (ImportServiceHandle, TempDir, crate::CandidateKey) {
     let fakes = FakeCatalogs::offline();
-    let (handle, tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, tmp, key, _hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     seed_mb_release_with_catalog(&fakes, release_id, "CAT-1");
     pick(&handle, &key, release_id).await;
     assert_eq!(standing(&handle, &key).await, PendingStanding::Identified);

@@ -16,9 +16,9 @@ async fn picked_with_front(
     release_id: &str,
 ) -> (ImportServiceHandle, TempDir, crate::CandidateKey, String) {
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, tmp, key, hash) = pane_fixture_with(fakes.providers(), http).await;
     seed_mb_release_with_front(&fakes, release_id, "CAT-1");
     pick(&handle, &key, release_id).await;
     (handle, tmp, key, hash)
@@ -72,9 +72,9 @@ async fn unlinking_offers_no_catalog_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn linking_the_album_offers_no_catalog_cover() {
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers(), http).await;
     store_two_pressings(&handle, &fakes, &hash).await;
     seed_mb_release_with_front(&fakes, "mb-pressing-1", "CAT-100");
     pick(&handle, &key, "mb-pressing-1").await;
@@ -177,7 +177,8 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
 #[tokio::test(flavor = "multi_thread")]
 async fn linked_cover_gallery_can_be_empty() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, _) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)

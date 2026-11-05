@@ -151,8 +151,12 @@ impl CloudOnlyPlaybackFixture {
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-        let (library, cloud) =
-            bae_library::test_libraries::storage_library(temp_dir.path(), fakes.providers()).await;
+        let (library, cloud) = bae_library::test_libraries::storage_library(
+            temp_dir.path(),
+            fakes.providers(),
+            bae_util::http::Http::for_test(),
+        )
+        .await;
         bae_library::test_libraries::connect_storage(&library, &cloud).await;
 
         let discogs_release = create_test_album();

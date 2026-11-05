@@ -39,8 +39,12 @@ async fn test_local_import() {
     }
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library =
-        bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_library::test_libraries::open_test_library_with(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let database = library.database().clone();
 
     let discogs_release = create_test_discogs_release();
@@ -135,8 +139,12 @@ async fn test_local_delete_preserves_files() {
     }
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library =
-        bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_library::test_libraries::open_test_library_with(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let database = library.database().clone();
 
     let discogs_release = create_test_discogs_release();
@@ -197,8 +205,12 @@ async fn run_import_with_cover_test() {
     let file_data = generate_test_files(&album_dir);
     info!("Generated {} test files", file_data.len());
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library =
-        bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_library::test_libraries::open_test_library_with(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let database = library.database().clone();
 
     let discogs_release = create_test_discogs_release();

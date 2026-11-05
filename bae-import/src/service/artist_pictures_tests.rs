@@ -147,12 +147,11 @@ fn assert_stored_large_picture(stored: Option<Vec<u8>>) {
 
 pub(crate) async fn picked_discogs_release() -> DiscogsPick {
     let images = bae_catalogs::test_image_host::RemoteImageHost::start().await;
-    let fakes = FakeCatalogs::over(
-        bae_util::http::Http::for_test()
-            .serve(bae_catalogs::test_image_host::TEST_IMAGE_HOST, images.origin()),
-    );
+    let http = bae_util::http::Http::for_test()
+        .serve(bae_catalogs::test_image_host::TEST_IMAGE_HOST, images.origin());
+    let fakes = FakeCatalogs::over(http.clone());
     let StoredCandidate { handle, parts, database, key, tmp, .. } =
-        picked_stored_candidate_with(fakes.providers()).await;
+        picked_stored_candidate_with(fakes.providers(), http).await;
     parts
         .catalogs()
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)

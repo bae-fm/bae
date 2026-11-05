@@ -69,6 +69,7 @@ impl Library {
             database.clone(),
             bae_app_dir::AppDir::under_home(temp.path()).unwrap(),
             providers,
+            bae_util::http::Http::for_test(),
         )
         .await;
         let import = library.start_import().await.unwrap();

@@ -31,8 +31,11 @@ async fn a_track_whose_name_is_not_utf8_plays() {
 async fn a_track_in_a_folder_whose_name_is_not_utf8_plays() {
     bae_util::test_logs::install();
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, temp_dir) =
-        bae_library::test_libraries::setup_test_library_with(fakes.providers()).await;
+    let (library, temp_dir) = bae_library::test_libraries::setup_test_library_with(
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let album_dir = temp_dir.path().join(std::ffi::OsStr::from_bytes(b"Caf\xE9"));
     std::fs::create_dir_all(&album_dir).unwrap();
     let mut album = create_test_album();

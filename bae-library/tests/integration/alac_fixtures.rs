@@ -45,8 +45,12 @@ async fn import_single_m4a_fixture(
     std::fs::copy(&fixture_path, &dest).expect("copy fixture");
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library =
-        bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_library::test_libraries::open_test_library_with(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
@@ -216,8 +220,12 @@ async fn import_cue_alac_pair() {
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library =
-        bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_library::test_libraries::open_test_library_with(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
 
     let discogs_release = make_discogs_release(
         "test-cue-alac",

@@ -12,6 +12,7 @@ use coven::{MemoryStorage, Storage};
 pub async fn storage_library(
     directory: &std::path::Path,
     providers: Providers,
+    http: bae_util::http::Http,
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
     let app_dir = bae_app_dir::AppDir::under_home(directory).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -22,7 +23,7 @@ pub async fn storage_library(
         .create_store("Test Library")
         .await
         .unwrap();
-    let library = super::test_library_from_handle(handle, directory, providers).await;
+    let library = super::test_library_from_handle(handle, directory, providers, http).await;
     library.start().unwrap();
     (library, storage)
 }

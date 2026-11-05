@@ -74,8 +74,12 @@ async fn import_cue_ape_fixture() -> (bae_library::test_libraries::TestLibrary, 
     copy_cue_ape_fixture(&album_dir);
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library =
-        bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_library::test_libraries::open_test_library_with(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let release_id_key = fakes.seed_discogs_test_release(create_test_discogs_release());
     let release_id = library.import_folder(album_dir, release_id_key).await;
     (library, release_id, temp_root)

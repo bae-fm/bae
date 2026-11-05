@@ -45,6 +45,7 @@ async fn manager_with_recording_transport(
         database,
         bae_app_dir::AppDir::under_home(home.path()).unwrap(),
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),
         diagnostics.clone(),

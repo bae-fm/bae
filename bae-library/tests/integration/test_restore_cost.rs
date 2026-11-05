@@ -149,6 +149,7 @@ async fn restore_cost(library: Library) {
         database,
         app_dir.clone(),
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
         clock.clone(),
         Arc::new(coven::UuidIds),
         bae_diagnostics::Diagnostics::noop(),

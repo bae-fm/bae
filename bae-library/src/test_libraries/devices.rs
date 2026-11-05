@@ -254,6 +254,7 @@ impl RunningLibrary {
             database.clone(),
             app_dir,
             bae_catalogs::providers::Providers::offline(),
+            bae_util::http::Http::for_test(),
         )
         .await;
         let manager = LibraryManager::clone(&library);

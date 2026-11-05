@@ -76,6 +76,7 @@ pub(super) async fn setup_test_manager_with(
         database,
         app_dir,
         fakes.providers(),
+        bae_util::http::Http::for_test(),
         clock,
         Arc::new(coven::UuidIds),
         diagnostics,

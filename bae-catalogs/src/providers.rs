@@ -140,19 +140,6 @@ impl Providers {
     }
 }
 
-/// What a test reaches past the operations for: the transport to build an
-/// image cache on.
-#[cfg(any(test, feature = "test-utils"))]
-mod test_access {
-    use super::*;
-
-    impl Providers {
-        pub fn http(&self) -> &Http {
-            &self.http
-        }
-    }
-}
-
 /// One operation's view of the catalogs: the client for the library's stored
 /// Discogs key, when there is one Discogs may be asked with, the catalogs the
 /// person has switched on, and the other providers a release fetch follows

@@ -173,7 +173,8 @@ async fn striking_a_chosen_number_out_and_back_asks_for_a_run_each_way() {
 #[tokio::test(flavor = "multi_thread")]
 async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
     seed_mb_release_with_catalog(&fakes, "chosen-mb-rel-1", "NJ 8255");
 
@@ -188,7 +189,8 @@ async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_leaves_the_person_s_choices_as_they_were() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
     edit(&handle, &key, [barcode("0123456789012"), catalog("WPCR-80001"), discounted("NJ-8255")])
         .await;

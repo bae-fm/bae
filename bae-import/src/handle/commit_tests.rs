@@ -16,7 +16,12 @@ use tempfile::TempDir;
 async fn setup_test_import_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestImport, Database, TempDir) {
-    setup_test_import_over(bae_catalogs::providers::Providers::offline(), diagnostics).await
+    setup_test_import_over(
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+        diagnostics,
+    )
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]

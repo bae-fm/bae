@@ -147,6 +147,7 @@ pub(super) fn fresh_test_library(
         handle,
         &root,
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
     ));
     (runtime, library, root)
 }
@@ -696,6 +697,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         directory.path(),
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
     ));
     runtime.block_on(async {
         bae_library::test_libraries::connect_storage(&library, &storage).await;

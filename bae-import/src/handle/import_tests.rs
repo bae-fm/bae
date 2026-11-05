@@ -60,7 +60,7 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
 async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() {
     let fakes = FakeCatalogs::offline();
     let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } =
-        stored_candidate_with(fakes.providers()).await;
+        stored_candidate_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     let tables = handle.tables.clone();
     seed_mb_release_with_works(
         &fakes,
@@ -419,7 +419,8 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
 #[tokio::test(flavor = "multi_thread")]
 async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     let release_id = "numeric-vinyl-release";
     fakes
         .seed_musicbrainz_release(release_id, serde_json::json!({
@@ -482,9 +483,9 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)

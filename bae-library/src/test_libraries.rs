@@ -51,16 +51,18 @@ impl std::ops::Deref for TestLibrary {
 
 impl TestLibrary {
     /// Open the library over `database` on the real clock and ids, asking
-    /// `providers`, reporting nowhere.
+    /// `providers`, which were built on `http`, reporting nowhere.
     pub async fn open(
         database: Database,
         app_dir: bae_app_dir::AppDir,
         providers: bae_catalogs::providers::Providers,
+        http: bae_util::http::Http,
     ) -> Self {
         Self::open_with(
             database,
             app_dir,
             providers,
+            http,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidIds),
             Diagnostics::noop(),
@@ -69,19 +71,20 @@ impl TestLibrary {
     }
 
     /// Open the library over `database` through the app's opening step, on
-    /// `clock` and `ids`, reporting to `diagnostics`. The catalog sessions,
-    /// the image cache and the closing token are built here, as the bootstrap
-    /// builds them.
+    /// `clock` and `ids`, reporting to `diagnostics`. `http` is the transport
+    /// `providers` were built on. The catalog sessions, the image cache over
+    /// `http` and the closing token are built here, as the bootstrap builds
+    /// them from the one transport it holds.
     pub async fn open_with(
         database: Database,
         app_dir: bae_app_dir::AppDir,
         providers: bae_catalogs::providers::Providers,
+        http: bae_util::http::Http,
         clock: ClockRef,
         ids: IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
-        let remote_images =
-            RemoteImageCache::for_test(providers.http().clone(), diagnostics.clone());
+        let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
         let catalogs = CatalogSessions::new(
             providers,
             database.clone(),
@@ -289,7 +292,12 @@ async fn open_test_db(dir: &std::path::Path) -> Database {
 /// one, so a test that already owns its library directory (a cloned fixture
 /// template, a `db/` subdirectory next to an `album/`) uses it too.
 pub async fn open_test_library(dir: &std::path::Path) -> TestLibrary {
-    open_test_library_with(dir, bae_catalogs::providers::Providers::offline()).await
+    open_test_library_with(
+        dir,
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await
 }
 
 /// [`open_test_library`] asking `providers` — ones routed to a test's own
@@ -297,9 +305,11 @@ pub async fn open_test_library(dir: &std::path::Path) -> TestLibrary {
 pub async fn open_test_library_with(
     dir: &std::path::Path,
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> TestLibrary {
     let database = open_test_db(dir).await;
-    TestLibrary::open(database, bae_app_dir::AppDir::under_home(dir).unwrap(), providers).await
+    TestLibrary::open(database, bae_app_dir::AppDir::under_home(dir).unwrap(), providers, http)
+        .await
 }
 
 /// A library over an installation the test created with its own storage and
@@ -308,11 +318,13 @@ pub async fn test_library_from_handle(
     handle: coven::CovenHandle,
     dir: &std::path::Path,
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> TestLibrary {
     TestLibrary::open(
         Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds)),
         bae_app_dir::AppDir::under_home(dir).unwrap(),
         providers,
+        http,
     )
     .await
 }
@@ -320,17 +332,22 @@ pub async fn test_library_from_handle(
 /// [`open_test_library`] over a fresh temp directory. The returned `TempDir`
 /// owns the database file, so it must outlive the library.
 pub async fn setup_test_library() -> (TestLibrary, tempfile::TempDir) {
-    setup_test_library_with(bae_catalogs::providers::Providers::offline()).await
+    setup_test_library_with(
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await
 }
 
 /// [`setup_test_library`] asking `providers`, ones built over the test's own
 /// fakes.
 pub async fn setup_test_library_with(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> (TestLibrary, tempfile::TempDir) {
     bae_util::test_logs::install();
     let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
-    let library = open_test_library_with(temp_dir.path(), providers).await;
+    let library = open_test_library_with(temp_dir.path(), providers, http).await;
     (library, temp_dir)
 }
 
@@ -339,8 +356,9 @@ pub async fn setup_test_library_with(
 /// `TempDir` owns both directories, so it must outlive the library.
 pub async fn setup_test_library_with_album_dir(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> (TestLibrary, std::path::PathBuf, tempfile::TempDir) {
-    let (library, temp_dir) = setup_test_library_with(providers).await;
+    let (library, temp_dir) = setup_test_library_with(providers, http).await;
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir).expect("test album dir");
     (library, album_dir, temp_dir)
@@ -360,7 +378,13 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
             .expect("create fresh test store");
         let database =
             Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds));
-        TestLibrary::open(database, app_dir, bae_catalogs::providers::Providers::offline()).await
+        TestLibrary::open(
+            database,
+            app_dir,
+            bae_catalogs::providers::Providers::offline(),
+            bae_util::http::Http::for_test(),
+        )
+        .await
     });
     (library, tmp)
 }
@@ -426,7 +450,9 @@ pub async fn imported_release_setup_with<G>(
 where
     G: FnOnce(&std::path::Path),
 {
-    let (library, album_dir, temp_dir) = setup_test_library_with_album_dir(fakes.providers()).await;
+    let (library, album_dir, temp_dir) =
+        setup_test_library_with_album_dir(fakes.providers(), bae_util::http::Http::for_test())
+            .await;
 
     let release_id_key = fakes.seed_discogs_test_release(release);
     generate_files(&album_dir);

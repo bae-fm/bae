@@ -131,8 +131,12 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     }
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, storage) =
-        bae_library::test_libraries::storage_library(&db_dir, fakes.providers()).await;
+    let (library, storage) = bae_library::test_libraries::storage_library(
+        &db_dir,
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     if let ImportDestination::Remote { .. } = destination {
         bae_library::test_libraries::connect_storage(&library, &storage).await;
     }

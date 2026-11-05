@@ -578,7 +578,11 @@ pub(super) struct RestoreTestLibrary {
 pub(super) async fn restore_test_library() -> RestoreTestLibrary {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library, album_dir, temp_dir) =
-        bae_library::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
+        bae_library::test_libraries::setup_test_library_with_album_dir(
+            fakes.providers(),
+            bae_util::http::Http::for_test(),
+        )
+        .await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key = fakes.seed_discogs_test_release(create_test_album());
     library.import_folder(album_dir, release_id_key).await;

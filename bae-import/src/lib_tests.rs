@@ -129,17 +129,17 @@ pub(crate) mod import {
     }
 
     impl TestImport {
-        /// Over `database` on `clock` and `ids`, asking `providers`, reporting
-        /// to `diagnostics`.
+        /// Over `database` on `clock` and `ids`, asking `providers`, which were
+        /// built on `http`, reporting to `diagnostics`.
         pub(crate) fn new(
             database: Database,
             providers: bae_catalogs::providers::Providers,
+            http: bae_util::http::Http,
             clock: ClockRef,
             ids: IdSourceRef,
             diagnostics: Diagnostics,
         ) -> Self {
-            let remote_images =
-                RemoteImageCache::for_test(providers.http().clone(), diagnostics.clone());
+            let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
             let catalogs = CatalogSessions::new(
                 providers,
                 database.clone(),

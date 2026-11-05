@@ -127,8 +127,11 @@ struct Library {
 /// three-track single-file CUE release into one library.
 async fn seed_library() -> Library {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, db_temp) =
-        bae_library::test_libraries::setup_test_library_with(fakes.providers()).await;
+    let (library, db_temp) = bae_library::test_libraries::setup_test_library_with(
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
 
     // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();

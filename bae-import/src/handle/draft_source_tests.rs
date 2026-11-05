@@ -96,7 +96,8 @@ async fn keeping_the_draft_with_no_lookup_is_refused() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_after_keeping_the_draft_is_identified() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     let tables = handle.tables.clone();
     store_not_found(&handle, &hash).await;
     handle.keep_candidate_draft(key.clone()).await.unwrap();
@@ -162,7 +163,8 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
@@ -216,7 +218,8 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
 #[tokio::test(flavor = "multi_thread")]
 async fn applying_a_release_with_two_barcodes_keeps_both() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)

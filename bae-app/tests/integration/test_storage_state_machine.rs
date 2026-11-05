@@ -27,6 +27,7 @@ async fn setup_manager(
     bae_library::test_libraries::storage_library(
         tmp.path(),
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
     )
     .await
 }

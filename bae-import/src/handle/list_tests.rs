@@ -204,8 +204,9 @@ async fn the_entry_counts_follow_what_is_running() {
 /// first item alone: the key on that page, and the key off it.
 async fn one_row_on_the_page(
     providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
 ) -> (ImportServiceHandle, TempDir, LiveImportList, crate::CandidateKey, crate::CandidateKey) {
-    let (parts, database, tmp) = setup_test_import_with(providers).await;
+    let (parts, database, tmp) = setup_test_import_with(providers, http).await;
     let tables = crate::tables::ImportTables::new(database);
     let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&tables, &tmp, "Other Record").await;
@@ -277,8 +278,11 @@ fn counted(entries: &[crate::PendingFilterEntry], filter: PendingFilter) -> Opti
 /// page but moves the row's count to In Progress, so the list delivers it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_off_the_page_delivers_its_count() {
-    let (handle, _tmp, list, on_page, off_page) =
-        one_row_on_the_page(bae_catalogs::providers::Providers::offline()).await;
+    let (handle, _tmp, list, on_page, off_page) = one_row_on_the_page(
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
 
     admit(&handle, &off_page).await;
     let moved = delivered(&list).await;
@@ -303,7 +307,8 @@ async fn a_run_off_the_page_delivers_its_count() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_verdict_off_the_page_delivers_its_count() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, list, _on_page, off_page) = one_row_on_the_page(fakes.providers()).await;
+    let (handle, _tmp, list, _on_page, off_page) =
+        one_row_on_the_page(fakes.providers(), bae_util::http::Http::for_test()).await;
     seed_mb_release_with_catalog(&fakes, "off-the-page", "CAT-1");
 
     pick(&handle, &off_page, "off-the-page").await;

@@ -98,7 +98,11 @@ fn a_box_set_import_holds_a_bounded_number_of_files_open() {
 async fn import_a_box_set_under_a_lowered_limit() {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library, album_dir, _temp) =
-        bae_library::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
+        bae_library::test_libraries::setup_test_library_with_album_dir(
+            fakes.providers(),
+            bae_util::http::Http::for_test(),
+        )
+        .await;
     write_box_set(&album_dir);
 
     let release = bae_catalogs::discogs::DiscogsRelease {

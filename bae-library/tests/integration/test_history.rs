@@ -7,8 +7,12 @@ use std::time::Duration;
 #[tokio::test]
 async fn qualifying_plays_keep_their_identity_and_original_audience() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let db = library.database().clone();
     let release = test_uuid("history-release");
     let track = test_uuid("history-track");

@@ -13,6 +13,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         root.path(),
         bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
     ));
     runtime.block_on(bae_library::test_libraries::connect_storage(&library, &storage));
     let made = runtime.block_on(bae_library::test_libraries::made_profile(&library, "Robin"));

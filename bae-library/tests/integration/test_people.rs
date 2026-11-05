@@ -6,8 +6,12 @@ use bae_library::test_libraries::{
 #[tokio::test]
 async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let database = library.database().clone();
     assert!(matches!(library.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
     assert!(database.profiles().await.unwrap().is_empty());
@@ -46,8 +50,12 @@ fn png(image: image::RgbImage) -> Vec<u8> {
 #[tokio::test]
 async fn a_profile_names_each_new_avatar_at_once() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let database = library.database().clone();
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Rowan").await;
@@ -90,8 +98,12 @@ async fn a_profile_names_each_new_avatar_at_once() {
 #[tokio::test]
 async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Rowan").await;
     let edge = bae_util::stored_image::STORED_MAX_EDGE;
@@ -119,8 +131,12 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
 #[tokio::test]
 async fn a_png_avatar_is_stored_as_covers_are() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Rowan").await;
     let picked = solid_png(16, 16, [120, 40, 200]);
@@ -138,8 +154,12 @@ async fn a_png_avatar_is_stored_as_covers_are() {
 #[tokio::test]
 async fn an_undecodable_avatar_is_refused() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) =
-        storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     connect_storage(&library, &storage).await;
     let profile = made_profile(&library, "Rowan").await;
 
@@ -305,6 +325,7 @@ impl Household {
             self.owner.clone(),
             dir,
             bae_catalogs::providers::Providers::offline(),
+            bae_util::http::Http::for_test(),
         )
         .await
     }

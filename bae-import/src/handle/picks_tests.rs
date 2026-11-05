@@ -69,9 +69,9 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers(), http).await;
     let tables = handle.tables.clone();
     handle
         .catalogs
@@ -144,7 +144,8 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_partner_that_will_not_prepare_fails_the_apply() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     let tables = handle.tables.clone();
 
     let mb_release_id = "unpaired-mb-rel-1";
@@ -194,7 +195,8 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_partner_repeating_the_primary_source_is_refused() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     let tables = handle.tables.clone();
 
     let mb_release_id = "repeat-mb-rel-1";
@@ -252,9 +254,9 @@ fn seed_linked_discogs_release(fakes: &FakeCatalogs) -> bae_catalogs::records::L
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers(), http).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
@@ -298,7 +300,8 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     shut_down(handle).await;
 
     let scratch_fakes = FakeCatalogs::offline();
-    let (scratch, _scratch_tmp, _, _) = pane_fixture_with(scratch_fakes.providers()).await;
+    let (scratch, _scratch_tmp, _, _) =
+        pane_fixture_with(scratch_fakes.providers(), bae_util::http::Http::for_test()).await;
     scratch
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
@@ -334,9 +337,9 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     // The pick offers the joined group's album address, which the archive
     // holds no image at.
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
@@ -400,9 +403,9 @@ fn recorded() -> (
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_tells_each_catalog_read_it_waits_on() {
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
@@ -455,9 +458,9 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_of_a_held_release_tells_no_read() {
     let archive = bae_util::http::serve_not_found().await;
-    let fakes =
-        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
-    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
     let mb_release_id = "steps-held-mb-rel-1";
     seed_two_track_mb_release(&fakes, mb_release_id, "steps-held-mb-group-1");
     let link = bae_identify::PressingLink {

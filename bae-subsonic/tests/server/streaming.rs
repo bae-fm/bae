@@ -453,8 +453,11 @@ async fn lossy_track_reports_bit_depth_zero() {
 /// Import the single-file lossy Opus fixture through the normal import path.
 async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, db_temp) =
-        bae_library::test_libraries::setup_test_library_with(fakes.providers()).await;
+    let (library, db_temp) = bae_library::test_libraries::setup_test_library_with(
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
