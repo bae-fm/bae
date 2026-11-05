@@ -6,6 +6,7 @@ impl Database {
         let artist = artist.clone();
         self.call_sql(move |sql| insert_artist_row(&sql, &artist)).await
     }
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_album_artist(&self, album_artist: &DbAlbumArtist) -> Result<(), DbError> {
         let album_artist = album_artist.clone();
         self.call_sql(move |sql| insert_album_artist_row(&sql, &album_artist)).await

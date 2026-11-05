@@ -27,6 +27,7 @@ impl Database {
         }
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
         let album = album.clone();
         self.call_sql(move |sql| insert_album_row(&sql, &album)).await

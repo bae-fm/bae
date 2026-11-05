@@ -48,6 +48,7 @@ pub(super) fn update_artist_external_ids_row(
     .map_err(DbError::from)
 }
 
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
@@ -94,6 +95,7 @@ pub fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), Db
     .map_err(DbError::from)
 }
 
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub(super) fn insert_album_artist_row(
     conn: &CovenWrite<'_>,
     aa: &DbAlbumArtist,
