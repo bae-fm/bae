@@ -62,7 +62,7 @@ impl LibraryManager {
     /// [`QueuedReleases::run_serial`]: bae_transfers::QueuedReleases::run_serial
     ///
     /// All this supplies is how a pin runs: resolve the release's byte totals,
-    /// ask `TransferService` to compose the pin task with this worker's progress
+    /// ask [`LibraryManager::start_pin_transfer`] to compose the pin task with this worker's progress
     /// drain, and yield the resulting operation. The
     /// outcome comes from draining the transfer's progress channel — that drain
     /// also publishes the action the storage row reads — and then joining the pin
@@ -75,17 +75,14 @@ impl LibraryManager {
     /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
     /// to report on the way out.
     pub(super) async fn run_download_worker(&self) {
-        use crate::storage::transfer::TransferService;
-
         self.downloads
             .run_serial(
                 "Pin",
                 |op| async move {
                     let release_id = op.release_id;
                     let initial_progress = self.initial_download_progress(&release_id).await?;
-                    let transfer = TransferService::new(self.clone());
                     let drive_release_id = release_id.clone();
-                    let running = transfer.pin_release(release_id, move |progress| async move {
+                    let running = self.start_pin_transfer(release_id, move |progress| async move {
                         self.drive_transfer(&drive_release_id, ReleaseStorageAction::Pin, progress)
                             .await
                     });

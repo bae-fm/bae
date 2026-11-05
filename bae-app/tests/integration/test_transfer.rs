@@ -5,7 +5,7 @@
 use bae_app::live_reads::LiveStorageBrowse;
 use bae_db::GallerySource;
 use bae_db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
-use bae_library::storage::transfer::{TransferProgress, TransferService};
+use bae_library::storage::transfer::TransferProgress;
 use bae_library::{CancellationToken, LibraryManager};
 use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
@@ -229,8 +229,10 @@ async fn test_pin_rejects_local_release() {
     let (_a, release_id, _f) =
         create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
 
-    let events = TransferService::new(mgr.clone())
-        .pin_release(release_id, |progress| async move { Ok(collect_progress(progress).await) })
+    let events =
+        mgr.start_pin_transfer(release_id, |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
         .finish()
         .await
         .expect("pin task completes");
@@ -301,11 +303,10 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     )
     .await;
 
-    let events = TransferService::new(mgr.clone())
-        .pin_release(
-            release_id.clone(),
-            |progress| async move { Ok(collect_progress(progress).await) },
-        )
+    let events = mgr
+        .start_pin_transfer(release_id.clone(), |progress| async move {
+            Ok(collect_progress(progress).await)
+        })
         .finish()
         .await
         .expect("pin task completes");
@@ -391,14 +392,12 @@ async fn the_detail_views_follow_a_releases_pin() {
     };
     shown(false).await;
 
-    TransferService::new(mgr.clone())
-        .pin_release(
-            release_id.clone(),
-            |progress| async move { Ok(collect_progress(progress).await) },
-        )
-        .finish()
-        .await
-        .expect("pin task completes");
+    mgr.start_pin_transfer(release_id.clone(), |progress| async move {
+        Ok(collect_progress(progress).await)
+    })
+    .finish()
+    .await
+    .expect("pin task completes");
     shown(true).await;
 
     mgr.unpin_release(&release_id).await.unwrap();
@@ -417,14 +416,12 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
         create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")])
             .await;
 
-    TransferService::new(mgr.clone())
-        .pin_release(
-            release_id.clone(),
-            |progress| async move { Ok(collect_progress(progress).await) },
-        )
-        .finish()
-        .await
-        .expect("pin task completes");
+    mgr.start_pin_transfer(release_id.clone(), |progress| async move {
+        Ok(collect_progress(progress).await)
+    })
+    .finish()
+    .await
+    .expect("pin task completes");
     assert_eq!(
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: true }
@@ -602,11 +599,12 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         &[("b.flac", b"unpinned")],
     )
     .await;
-    TransferService::new(mgr.clone())
-        .pin_release(pinned.clone(), |progress| async move { Ok(collect_progress(progress).await) })
-        .finish()
-        .await
-        .expect("pin task completes");
+    mgr.start_pin_transfer(pinned.clone(), |progress| async move {
+        Ok(collect_progress(progress).await)
+    })
+    .finish()
+    .await
+    .expect("pin task completes");
 
     let views = bae_views::LibraryViews::new(mgr.database().clone());
     let view = |selected: &[&String]| StorageBrowseView {

@@ -34,7 +34,7 @@ pub enum TransferProgress {
 }
 
 /// The progress one pin, unpin or audio detachment reports, until it says how
-/// it ended, from the transfer service that started it.
+/// it ended, from the library manager that started it.
 pub struct TransferProgressFeed(mpsc::UnboundedReceiver<TransferProgress>);
 
 impl TransferProgressFeed {
@@ -50,19 +50,10 @@ impl TransferProgressFeed {
     }
 }
 
-/// Pin, unpin, and audio detachment service for releases.
-pub struct TransferService {
-    library_manager: LibraryManager,
-}
-
-impl TransferService {
-    pub fn new(library_manager: LibraryManager) -> Self {
-        Self { library_manager }
-    }
-
+impl LibraryManager {
     /// Pin a release and compose its progress drain, task completion, and abort
     /// control into the operation the serial queue owns.
-    pub fn pin_release<Drive, DriveFuture, DriveOutput>(
+    pub fn start_pin_transfer<Drive, DriveFuture, DriveOutput>(
         &self,
         release_id: String,
         drive: Drive,
@@ -71,14 +62,10 @@ impl TransferService {
         Drive: FnOnce(TransferProgressFeed) -> DriveFuture,
         DriveFuture: Future<Output = Result<DriveOutput, LibraryError>>,
     {
-        let library_manager = self.library_manager.clone();
+        let library_manager = self.clone();
         let pinned_release_id = release_id.clone();
         let (progress, task) = spawn_transfer(
-            ReleaseTransfer::new(
-                self.library_manager.clone(),
-                release_id,
-                ReleaseStorageAction::Pin,
-            ),
+            ReleaseTransfer::new(self.clone(), release_id, ReleaseStorageAction::Pin),
             move |tx| async move {
                 library_manager
                     .pin_release_files_with_progress(&pinned_release_id, |progress| {
@@ -89,7 +76,7 @@ impl TransferService {
             },
         );
         let abort = task.abort_handle();
-        let manager = self.library_manager.clone();
+        let manager = self.clone();
         let outcome = async move {
             let drained = drive(TransferProgressFeed(progress)).await;
             match task.await {
@@ -108,15 +95,11 @@ impl TransferService {
     /// Unpin a release: move its files from the pinned cache to the evictable
     /// cache, as the release's transition. Returns a receiver for progress
     /// updates.
-    pub fn unpin_release(&self, release_id: String) -> TransferProgressFeed {
-        let library_manager = self.library_manager.clone();
+    pub(crate) fn start_unpin_transfer(&self, release_id: String) -> TransferProgressFeed {
+        let library_manager = self.clone();
         let unpinned_release_id = release_id.clone();
         let (rx, _) = spawn_transfer(
-            ReleaseTransfer::new(
-                self.library_manager.clone(),
-                release_id,
-                ReleaseStorageAction::Unpin,
-            ),
+            ReleaseTransfer::new(self.clone(), release_id, ReleaseStorageAction::Unpin),
             move |_tx| async move { library_manager.unpin_release_files(&unpinned_release_id).await },
         );
         TransferProgressFeed(rx)
@@ -127,21 +110,17 @@ impl TransferService {
     /// only in one write. `cancel` stops it; the transfer's task holds
     /// `registration`, which makes `cancel` reachable, until it ends.
     /// Returns a receiver for progress updates.
-    pub(crate) fn detach_release_audio(
+    pub(crate) fn start_detach_transfer(
         &self,
         release_id: String,
         new_path: std::path::PathBuf,
         cancel: crate::CancellationToken,
         registration: crate::detach_cancels::DetachRegistration,
     ) -> TransferProgressFeed {
-        let library_manager = self.library_manager.clone();
+        let library_manager = self.clone();
         let localized_release_id = release_id.clone();
         let (rx, _) = spawn_transfer(
-            ReleaseTransfer::new(
-                self.library_manager.clone(),
-                release_id,
-                ReleaseStorageAction::DetachAudio,
-            ),
+            ReleaseTransfer::new(self.clone(), release_id, ReleaseStorageAction::DetachAudio),
             move |_tx| async move {
                 let _registration = registration;
                 // coven removes every copy and folder it made if the call

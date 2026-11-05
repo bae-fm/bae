@@ -72,13 +72,13 @@ async fn shipped_events(
 #[tokio::test]
 async fn a_failed_transfer_ships_storage_transfer_failed() {
     let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
-    let transfer = TransferService::new(manager);
 
     // No such release, so `ReleaseTransfer::start` errors before any file work.
-    let running = transfer.pin_release("missing-release".to_string(), |mut progress| async move {
-        while progress.recv().await.is_some() {}
-        Ok(())
-    });
+    let running =
+        manager.start_pin_transfer("missing-release".to_string(), |mut progress| async move {
+            while progress.recv().await.is_some() {}
+            Ok(())
+        });
     running.finish().await.expect("transfer task completes");
 
     let events = shipped_events(&diagnostics, &transport).await;

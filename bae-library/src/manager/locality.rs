@@ -166,8 +166,7 @@ impl LibraryManager {
     /// Unpin a release: coven moves its files out of the pinned cache and into the
     /// evictable cache, so they stay readable but become droppable.
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
-        let rx = transfer_service.unpin_release(release_id.to_string());
+        let rx = self.start_unpin_transfer(release_id.to_string());
         self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx).await
     }
 
@@ -189,8 +188,7 @@ impl LibraryManager {
                     "release {release_id} already has an active storage transition"
                 ))
             })?;
-        let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
-        let rx = transfer_service.detach_release_audio(
+        let rx = self.start_detach_transfer(
             release_id.to_string(),
             new_path.to_path_buf(),
             cancel,
