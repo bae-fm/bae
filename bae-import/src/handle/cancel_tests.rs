@@ -159,8 +159,8 @@ async fn nothing_importing_is_nothing_to_cancel() {
 
 /// Everything an import could leave behind: every row the library holds, and
 /// every file under its directory apart from the database's own. The counts
-/// of how often each list's rows moved (`list_order_versions`,
-/// `import_list_versions`) are left out: an import moves its release through
+/// of how often each list's rows moved (`library_list_versions`,
+/// `release_queue_versions`, `import_list_versions`) are left out: an import moves its release through
 /// the import list's states and back, and those moves count however the
 /// import ends.
 #[derive(Debug, PartialEq)]
@@ -187,7 +187,7 @@ async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreS
     }
     files.sort();
     let mut rows = handle.database.every_row_for_test().await.unwrap();
-    for versions in ["list_order_versions", "import_list_versions"] {
+    for versions in ["library_list_versions", "release_queue_versions", "import_list_versions"] {
         rows.remove(versions).expect("the store holds the lists' move counts");
     }
     StoreState { rows, files }

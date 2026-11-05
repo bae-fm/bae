@@ -30,7 +30,7 @@ type Standing = (ImportListId, u64, Vec<i64>);
 /// found by the hash of the folder each came from.
 const LIST_SOURCES: &[&str] = &["import_list_placement", "local_release_origin", "scan_candidate"];
 
-/// Done's releases still uploading, as `list_order_versions` names them.
+/// Done's releases still uploading, as `library_list_versions` names them.
 const UPLOAD_SOURCES: &[&str] = &["release_listing"];
 
 /// Where a read found a list's rows: each window's first and last items in
@@ -52,7 +52,7 @@ fn load_import_list_on(
     let list = list_row(sql, request.list)?;
     let versions = [
         list_versions_on(sql, "import_list_versions", LIST_SOURCES)?,
-        list_versions_on(sql, "list_order_versions", UPLOAD_SOURCES)?,
+        list_versions_on(sql, "library_list_versions", UPLOAD_SOURCES)?,
     ]
     .concat();
     let standing = (list.id, list.view_revision, versions);

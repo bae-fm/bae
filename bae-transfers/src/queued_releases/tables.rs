@@ -226,7 +226,7 @@ pub(crate) fn release_queue_windows_on<P: QueuedPayload>(
     windows: &LibraryPageWindows,
     places: &KnownPlaces<Vec<i64>>,
 ) -> Result<ReleaseQueueWindows<P>, DbError> {
-    let versions = list_versions_on(sql, "list_order_versions", &[P::TABLE])?;
+    let versions = list_versions_on(sql, "release_queue_versions", &[P::TABLE])?;
     let total_count: u64 =
         sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?;
     let order = queue_order();

@@ -3664,7 +3664,7 @@ Reads come two ways:
   last rows of each window it read before, and of each window its last read
   held while no row of the list has moved since: the tables a list sorts keep
   a count of the writes that inserted, deleted or reordered their rows
-  (`list_order_versions`, `import_list_versions`, Appendix A), and a read
+  (`library_list_versions`, `release_queue_versions`, `import_list_versions`, Appendix A), and a read
   starts from its last read's rows only while those counts stand. Any other window, such as one a jump to
   the middle of the list reaches, is read by its offset, past every row before
   it. The playback queue's upcoming tracks are read by offset alone: the
@@ -3681,7 +3681,7 @@ Reads come two ways:
   search finding a handful of releases never walks the whole index, and a
   window of one finding most of them costs about what the unsearched list's
   does. Its rows' places also hold only while what library search finds
-  stands (`library_search` in `list_order_versions`). The artist picker's
+  stands (`library_search` in `library_list_versions`). The artist picker's
   search reads every
   artist its text finds and sorts them, so each window of it is read by its
   offset.
@@ -4279,7 +4279,7 @@ Beside them, device-local tables:
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
-| `list_order_versions` | table a paged list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, `download_queue`, `output_queue`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
+| `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
@@ -4401,7 +4401,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order, where its view opened (its first selected row when the view was set, or its top), and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 | `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
-| `import_list_versions` | table the import list's order reads (`import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2). Done's uploads also read `release_listing`'s count in `list_order_versions` |
+| `import_list_versions` | table the import list's order reads (`import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2). Done's uploads also read `release_listing`'s count in `library_list_versions` |
 
 No list outlives the process that opened it: the import service empties
 `import_list` and the tables hanging off it as the library opens, with the
@@ -4433,6 +4433,7 @@ write commits, so the release and the row naming it land in either order.
 | Table | Holds |
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
+| `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `download_queue` | release queued to pin, in the order queued: queued, downloading, or failed with its error (§4.3) |
 | `release_storage_action` | release in a storage transition this process runs while its files rest where they are: a move to storage being admitted, an unpin, or making it local (§4.2) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with the preset captured whole, and queued, writing, or failed with its error (§4.6) |

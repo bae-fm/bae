@@ -76,7 +76,8 @@ impl LibraryViews {
         let order = composer_detail_order("listing");
         let places = KnownPlaces::new();
         self.database.subscribe_reconfigurable(initial_windows, move |requested, sql| {
-            let versions = list_versions_on(&sql, "list_order_versions", &["composer_detail_row"])?;
+            let versions =
+                list_versions_on(&sql, crate::versions::TABLE, &["composer_detail_row"])?;
             let total_count =
                 composer_detail_row_count_on(&sql, &artist_id).map_err(CovenError::from)?;
             let WindowsRead { windows, found } =

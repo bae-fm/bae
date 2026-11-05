@@ -131,7 +131,7 @@ impl LibraryViews {
         });
         self.database
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
-                let versions = list_versions_on(&sql, "list_order_versions", sources)?;
+                let versions = list_versions_on(&sql, crate::versions::TABLE, sources)?;
                 let total_count = album_count_on(&sql).map_err(CovenError::from)?;
                 let sections = match &section_query {
                     Some(query) => sql.query(query, [], |row| {

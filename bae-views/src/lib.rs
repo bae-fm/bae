@@ -25,6 +25,7 @@ mod storage_browse;
 pub mod storage_inspector;
 mod sync_activity;
 mod uploads;
+mod versions;
 
 pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};
 pub use browse::*;

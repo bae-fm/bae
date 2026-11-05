@@ -9,11 +9,12 @@
 //! A row's place is known when an earlier window of the same read held it, or
 //! when the list's last read held it and no row of the list has moved since.
 //! Each table a list's order reads keeps a version, in the versions table of
-//! the domain whose list reads it (`list_order_versions`,
-//! `import_list_versions`), that any write inserting, deleting or reordering
-//! one of its rows advances, in that write (Appendix A of the spec). A read carries the places its
-//! windows' first and last rows sat at, with the versions it read them at, and
-//! the next read starts from them only while those versions still stand.
+//! the domain whose list reads it (`library_list_versions`,
+//! `release_queue_versions`, `import_list_versions`), that any write
+//! inserting, deleting or reordering one of its rows advances, in that write
+//! (Appendix A of the spec). A read carries the places its windows' first and
+//! last rows sat at, with the versions it read them at, and the next read
+//! starts from them only while those versions still stand.
 
 use super::*;
 use rusqlite::types::Value;

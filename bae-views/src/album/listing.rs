@@ -126,7 +126,7 @@ pub(crate) fn album_browse_order(
 }
 
 /// The tables whose rows the album list's order reads, flat or grouped by
-/// artist, as `list_order_versions` names them.
+/// artist, as `library_list_versions` names them.
 pub(super) fn album_browse_sources(group_by_artist: bool) -> &'static [&'static str] {
     if group_by_artist {
         &["album_listing", "album_artist_link", "artist_listing"]

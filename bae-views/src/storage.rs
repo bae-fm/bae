@@ -89,7 +89,7 @@ impl LibraryViews {
                     request.sort,
                     request.filter,
                     query,
-                    list_versions_on(&sql, "list_order_versions", sources)?,
+                    list_versions_on(&sql, crate::versions::TABLE, sources)?,
                 );
                 let WindowsRead { windows, found } = read_windows(
                     &order,
