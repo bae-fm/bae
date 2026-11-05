@@ -17,23 +17,34 @@
 //!
 //! The identification count is held beside it (`import_identification_batch`)
 //! and moved by each change to an identification in that change's own write.
+//! Its tables are `standing_rows.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("standing_rows.sql");
+
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use crate::candidate_runtime::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredStanding,
 };
+#[cfg(desktop)]
 use crate::triage::TriageRuntimeFacts;
+#[cfg(desktop)]
 use crate::IdentifyRunId;
+#[cfg(desktop)]
 use crate::{Admission, CandidateFiles, SaveFailure};
+#[cfg(desktop)]
 use crate::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads
 /// them.
+#[cfg(desktop)]
 const COLUMNS: &str = "identification, content_hash, file_edit_revision, admission, \
      identify_run, import_asked, save_failure_error, import_step, import_id";
 
 /// One row's columns as SQLite holds them.
+#[cfg(desktop)]
 struct StandingColumns {
     identification: Option<String>,
     content_hash: Option<String>,
@@ -46,6 +57,7 @@ struct StandingColumns {
     import_id: Option<String>,
 }
 
+#[cfg(desktop)]
 impl StandingColumns {
     fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -133,6 +145,7 @@ impl StandingColumns {
 
 /// The step an import is at, as the `import_step` column holds it; what is
 /// wrong with the column otherwise.
+#[cfg(desktop)]
 fn import_step(column: &str) -> Result<ImportStep, String> {
     match column {
         "queued" => Ok(ImportStep::Preparing(PrepareStep::Queued)),
@@ -148,6 +161,7 @@ fn import_step(column: &str) -> Result<ImportStep, String> {
 }
 
 /// `step` as the `import_step` column holds it.
+#[cfg(desktop)]
 fn import_step_column(step: ImportStep) -> &'static str {
     match step {
         ImportStep::Preparing(PrepareStep::Queued) => "queued",
@@ -162,11 +176,13 @@ fn import_step_column(step: ImportStep) -> &'static str {
 /// The columns of a standing that say what is running for its candidate, over
 /// the alias `st`, in the order [`RuntimeFactColumns::read`] reads them: what
 /// the list reads of a row's standing, and groups selected rows by.
+#[cfg(desktop)]
 pub(crate) const RUNTIME_FACT_COLUMNS: &str =
     "st.identification, st.import_asked, st.save_failure_error, st.import_step";
 
 /// [`RUNTIME_FACT_COLUMNS`] as SQLite holds them: all `NULL` for a candidate
 /// with no standing.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct RuntimeFactColumns {
     identification: Option<String>,
@@ -175,6 +191,7 @@ pub(crate) struct RuntimeFactColumns {
     import_step: Option<String>,
 }
 
+#[cfg(desktop)]
 impl RuntimeFactColumns {
     pub(crate) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
         Ok(Self {
@@ -221,6 +238,7 @@ impl RuntimeFactColumns {
 
 /// Where every candidate something is running for stands, by key. A key with
 /// no entry has nothing running.
+#[cfg(desktop)]
 pub(crate) fn load_standings_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
@@ -239,6 +257,7 @@ pub(crate) fn load_standings_on(
 
 /// Where `candidate_key` stands, as its row says, inside a write or outside
 /// one; nothing running when it has no row.
+#[cfg(desktop)]
 pub(crate) fn load_standing_on(
     sql: &impl bae_db::client::query::QueryOne,
     candidate_key: &CandidateKey,
@@ -259,6 +278,7 @@ pub(crate) fn load_standing_on(
 
 /// How far the batch of identifications in flight has got: ended of
 /// admitted. `(0, 0)` is no batch.
+#[cfg(desktop)]
 fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32), DbError> {
     Ok(sql.query_row(
         "SELECT COALESCE(SUM(ended), 0), COUNT(*) FROM import_identification_batch",
@@ -268,6 +288,7 @@ fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32
 }
 
 /// How many candidates an import holds, whatever step it has reached.
+#[cfg(desktop)]
 fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
     Ok(sql.query_row(
         "SELECT COUNT(*) FROM import_candidate_standing WHERE import_step IS NOT NULL",
@@ -277,6 +298,7 @@ fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
 }
 
 /// The identification batch's count and the imports in flight, read together.
+#[cfg(desktop)]
 fn load_import_counts_on(sql: &SqlReadContext<'_>) -> Result<ImportCounts, DbError> {
     let (identified, admitted) = load_identification_progress_on(sql)?;
     Ok(ImportCounts { identified, admitted, imports_in_flight: load_imports_in_flight_on(sql)? })
@@ -286,6 +308,7 @@ fn load_import_counts_on(sql: &SqlReadContext<'_>) -> Result<ImportCounts, DbErr
 /// typed search unless they are of `held` — the files the write leaves the
 /// scan holding the candidate with, `None` for a write that leaves the scan
 /// without it.
+#[cfg(desktop)]
 pub(crate) fn end_file_work_unless_of_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
@@ -303,6 +326,7 @@ pub(crate) fn end_file_work_unless_of_on(
 /// Move the identification count by what one change did to `candidate_key`:
 /// an admission joins the batch, an ending counts as ended, and the batch is
 /// over once every identification it admitted has ended.
+#[cfg(desktop)]
 fn count_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
@@ -332,6 +356,7 @@ fn count_on(
 
 /// Store `standing` as `candidate_key`'s row, or remove the row when nothing
 /// is running for it.
+#[cfg(desktop)]
 fn write_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
@@ -417,6 +442,7 @@ fn write_on(
 
 /// Apply `change` to `candidate_key`'s identification as stored, inside the
 /// caller's write.
+#[cfg(desktop)]
 pub(crate) fn change_identification_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
@@ -436,6 +462,7 @@ pub(crate) fn change_identification_on(
 
 /// Claim `candidate_key` for `import_id`, queued. `false`, changing nothing,
 /// when an import already owns it: one import of a candidate at a time.
+#[cfg(desktop)]
 fn claim_import_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
@@ -456,6 +483,7 @@ fn claim_import_on(
 /// The step the import `import_id` that owns `candidate_key` is at now, or
 /// its end with `None`, inside the caller's write. Refused when that import
 /// does not own it: only the import holding a claim moves or ends it.
+#[cfg(desktop)]
 pub(crate) fn move_import_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
@@ -471,6 +499,7 @@ pub(crate) fn move_import_on(
 }
 
 /// What claiming a candidate for an import did.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum ImportClaim {
     /// The import owns the candidate, and the identification change the
@@ -480,6 +509,7 @@ pub(crate) enum ImportClaim {
     Refused,
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     /// Remove every candidate's standing, every run's published state and
     /// every typed search: what the library opens with, since nothing they

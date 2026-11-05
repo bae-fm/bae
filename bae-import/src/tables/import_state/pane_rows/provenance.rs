@@ -1,18 +1,25 @@
 //! Where the draft's values were read from: one row beside the draft, naming
 //! the files' tags or the catalog release a pick read, written with the
 //! draft and read back with every read that shows it.
+//! Its table is `provenance.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("provenance.sql");
+
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use crate::MetadataProvenance;
 
 /// The provenance as its columns. Only an external release names a source and
 /// a release.
+#[cfg(desktop)]
 struct ProvenanceColumns<'a> {
     kind: &'static str,
     source: Option<&'static str>,
     release_id: Option<&'a str>,
 }
 
+#[cfg(desktop)]
 fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> {
     match provenance {
         MetadataProvenance::FileMetadata => {
@@ -29,6 +36,7 @@ fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> 
 /// Make the draft's provenance `provenance`, or remove it: in place when one
 /// stays, so the draft never reads as read from nowhere on its way from one
 /// source to another.
+#[cfg(desktop)]
 pub(crate) fn store_provenance(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -54,6 +62,7 @@ pub(crate) fn store_provenance(
 }
 
 /// Write the provenance of a draft just written, which has none yet.
+#[cfg(desktop)]
 pub(crate) fn insert_provenance(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -71,11 +80,13 @@ pub(crate) fn insert_provenance(
 
 /// A candidate's draft provenance as columns of a read that joins its row as
 /// `provenance`. A candidate with none reads `provenance_row` as NULL.
+#[cfg(desktop)]
 pub(crate) const PROVENANCE_COLUMNS: &str = "provenance.content_hash AS provenance_row, \
      provenance.kind AS provenance_kind, provenance.source AS provenance_source, \
      provenance.release_id AS provenance_release_id";
 
 /// One candidate's [`PROVENANCE_COLUMNS`] as SQLite hands them over.
+#[cfg(desktop)]
 pub(crate) struct StoredProvenance {
     kind: String,
     source: Option<String>,
@@ -84,6 +95,7 @@ pub(crate) struct StoredProvenance {
 
 /// The [`PROVENANCE_COLUMNS`] of `row`; none for a draft that records no
 /// provenance.
+#[cfg(desktop)]
 pub(crate) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredProvenance>> {
     if row.get::<_, Option<String>>("provenance_row")?.is_none() {
         return Ok(None);
@@ -95,6 +107,7 @@ pub(crate) fn read_provenance(row: &Row<'_>) -> rusqlite::Result<Option<StoredPr
     }))
 }
 
+#[cfg(desktop)]
 impl StoredProvenance {
     pub(crate) fn provenance(self) -> Result<MetadataProvenance, DbError> {
         match self.kind.as_str() {

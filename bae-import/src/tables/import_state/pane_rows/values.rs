@@ -3,13 +3,20 @@
 //! with the works they nest among.
 //!
 //! They hang off the draft row, and each track's off its track row.
+//! Its tables are `values.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("values.sql");
+
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use bae_catalogs::credits::CreditedRole;
+#[cfg(desktop)]
 use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
 
 /// Write the values `draft` holds beside its rows besides its tracks': the
 /// works and the roles on the release. The draft row is already written.
+#[cfg(desktop)]
 pub(super) fn insert_draft_values(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -76,6 +83,7 @@ pub(super) fn insert_draft_values(
 /// Write the values hanging off one draft track: the roles the source
 /// credits on it and the works it performs. The track row is already
 /// written, and the works are.
+#[cfg(desktop)]
 pub(super) fn insert_track_values(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -111,6 +119,7 @@ pub(super) fn insert_track_values(
 
 /// The works the draft `edit` holds, each with its composers, as a JSON array
 /// in the draft's order; decoded by [`works_of`].
+#[cfg(desktop)]
 pub(super) const WORKS_JSON: &str = "(SELECT json_group_array(json_object( \
          'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
          'disambiguation', work.disambiguation, 'work_type', work.work_type, \
@@ -126,12 +135,14 @@ pub(super) const WORKS_JSON: &str = "(SELECT json_group_array(json_object( \
 
 /// Which of the draft `edit`'s works is part of which, as a JSON array in
 /// the order the source relates them.
+#[cfg(desktop)]
 pub(super) const WORK_PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
          'parent', part.parent_work_id, 'child', part.child_work_id) ORDER BY part.position) \
      FROM import_candidate_work_part AS part WHERE part.content_hash = edit.content_hash)";
 
 /// The roles the source credits on the draft `edit`'s release, as a JSON
 /// array in its order; decoded by [`roles_of`].
+#[cfg(desktop)]
 pub(super) const RELEASE_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
          'name', role.name, 'sort_name', role.sort_name, \
          'musicbrainz_artist_id', role.musicbrainz_artist_id, \
@@ -141,6 +152,7 @@ pub(super) const RELEASE_ROLES_JSON: &str = "(SELECT json_group_array(json_objec
 
 /// The roles the source credits on the draft track `track`, as a JSON array
 /// in its order; decoded by [`roles_of`].
+#[cfg(desktop)]
 pub(super) const TRACK_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
          'name', role.name, 'sort_name', role.sort_name, \
          'musicbrainz_artist_id', role.musicbrainz_artist_id, \
@@ -151,12 +163,14 @@ pub(super) const TRACK_ROLES_JSON: &str = "(SELECT json_group_array(json_object(
 
 /// The works the draft track `track` performs, as a JSON array of their ids
 /// in its order.
+#[cfg(desktop)]
 pub(super) const TRACK_WORKS_JSON: &str = "(SELECT json_group_array( \
          performed.musicbrainz_work_id ORDER BY performed.position) \
      FROM import_candidate_track_work AS performed \
      WHERE performed.content_hash = track.content_hash AND performed.track_id = track.track_id)";
 
 /// One stored work as [`WORKS_JSON`] holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 pub(super) struct StoredWork {
     musicbrainz_work_id: String,
@@ -167,6 +181,7 @@ pub(super) struct StoredWork {
 }
 
 /// One stored part as [`WORK_PARTS_JSON`] holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 pub(super) struct StoredPart {
     parent: String,
@@ -174,6 +189,7 @@ pub(super) struct StoredPart {
 }
 
 /// The work graph [`WORKS_JSON`] and [`WORK_PARTS_JSON`] hold.
+#[cfg(desktop)]
 pub(super) fn works_of(works: Vec<StoredWork>, parts: Vec<StoredPart>) -> WorkGraph {
     WorkGraph {
         works: works
@@ -195,6 +211,7 @@ pub(super) fn works_of(works: Vec<StoredWork>, parts: Vec<StoredPart>) -> WorkGr
 
 /// One stored role as [`RELEASE_ROLES_JSON`] and [`TRACK_ROLES_JSON`] hold
 /// it, its source not yet read.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 pub(super) struct StoredRole {
     name: String,
@@ -206,6 +223,7 @@ pub(super) struct StoredRole {
 }
 
 /// The credited roles a roles column holds.
+#[cfg(desktop)]
 pub(super) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbError> {
     roles
         .into_iter()

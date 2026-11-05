@@ -1,13 +1,20 @@
 //! The pane's per-candidate state between visits: which surface it shows,
 //! the typed-search form, and the last command that failed.
+//! Its table is `session_rows.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("session_rows.sql");
+
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use crate::{
     CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
     SearchForm, SearchTab,
 };
+#[cfg(desktop)]
 use bae_diagnostics::{GroupingBlockReason, UiError, UiErrorCategory};
 
+#[cfg(desktop)]
 fn presentation_column(presentation: MetadataPresentation) -> &'static str {
     match presentation {
         MetadataPresentation::Draft => "draft",
@@ -15,6 +22,7 @@ fn presentation_column(presentation: MetadataPresentation) -> &'static str {
     }
 }
 
+#[cfg(desktop)]
 fn presentation_of(column: &str) -> Result<MetadataPresentation, DbError> {
     match column {
         "draft" => Ok(MetadataPresentation::Draft),
@@ -23,6 +31,7 @@ fn presentation_of(column: &str) -> Result<MetadataPresentation, DbError> {
     }
 }
 
+#[cfg(desktop)]
 fn section_column(section: FindOnlineSection) -> &'static str {
     match section {
         FindOnlineSection::Automatic => "automatic",
@@ -30,6 +39,7 @@ fn section_column(section: FindOnlineSection) -> &'static str {
     }
 }
 
+#[cfg(desktop)]
 fn section_of(column: &str) -> Result<FindOnlineSection, DbError> {
     match column {
         "automatic" => Ok(FindOnlineSection::Automatic),
@@ -38,6 +48,7 @@ fn section_of(column: &str) -> Result<FindOnlineSection, DbError> {
     }
 }
 
+#[cfg(desktop)]
 fn tab_column(tab: SearchTab) -> &'static str {
     match tab {
         SearchTab::General => "general",
@@ -46,6 +57,7 @@ fn tab_column(tab: SearchTab) -> &'static str {
     }
 }
 
+#[cfg(desktop)]
 fn tab_of(column: &str) -> Result<SearchTab, DbError> {
     match column {
         "general" => Ok(SearchTab::General),
@@ -55,6 +67,7 @@ fn tab_of(column: &str) -> Result<SearchTab, DbError> {
     }
 }
 
+#[cfg(desktop)]
 fn command_column(command: PaneCommand) -> &'static str {
     match command {
         PaneCommand::Import => "import",
@@ -68,6 +81,7 @@ fn command_column(command: PaneCommand) -> &'static str {
     }
 }
 
+#[cfg(desktop)]
 fn command_of(column: &str) -> Result<PaneCommand, DbError> {
     Ok(match column {
         "import" => PaneCommand::Import,
@@ -82,6 +96,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
     })
 }
 
+#[cfg(desktop)]
 fn block_column(reason: GroupingBlockReason) -> &'static str {
     match reason {
         GroupingBlockReason::SourceChanged => "source_changed",
@@ -94,6 +109,7 @@ fn block_column(reason: GroupingBlockReason) -> &'static str {
 
 /// How a failure's class is stored: its name, and for a class that carries a
 /// reason or counts, each after a dot.
+#[cfg(desktop)]
 fn category_column(category: UiErrorCategory) -> String {
     use UiErrorCategory as C;
     let class = category.class().name();
@@ -120,10 +136,12 @@ fn category_column(category: UiErrorCategory) -> String {
     }
 }
 
+#[cfg(desktop)]
 fn storage_failure_json(failure: &coven::StorageFailure) -> String {
     serde_json::to_string(failure).expect("storage failure serializes")
 }
 
+#[cfg(desktop)]
 fn check_column(value: coven::StorageCheck) -> &'static str {
     match value {
         coven::StorageCheck::Create => "Create",
@@ -138,6 +156,7 @@ fn check_column(value: coven::StorageCheck) -> &'static str {
         coven::StorageCheck::Behavior => "Behavior",
     }
 }
+#[cfg(desktop)]
 fn check_of(value: &str) -> Option<coven::StorageCheck> {
     Some(match value {
         "Create" => coven::StorageCheck::Create,
@@ -153,6 +172,7 @@ fn check_of(value: &str) -> Option<coven::StorageCheck> {
         _ => return None,
     })
 }
+#[cfg(desktop)]
 fn versioning_column(value: coven::S3BucketVersioning) -> &'static str {
     match value {
         coven::S3BucketVersioning::Disabled => "Disabled",
@@ -161,6 +181,7 @@ fn versioning_column(value: coven::S3BucketVersioning) -> &'static str {
         coven::S3BucketVersioning::Unavailable => "Unavailable",
     }
 }
+#[cfg(desktop)]
 fn versioning_of(value: &str) -> Option<coven::S3BucketVersioning> {
     Some(match value {
         "Disabled" => coven::S3BucketVersioning::Disabled,
@@ -171,6 +192,7 @@ fn versioning_of(value: &str) -> Option<coven::S3BucketVersioning> {
     })
 }
 
+#[cfg(desktop)]
 fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
     use bae_diagnostics::UiErrorClass as K;
     use GroupingBlockReason as B;
@@ -240,6 +262,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
 }
 
 /// The stored session's columns, as one read gives them.
+#[cfg(desktop)]
 type SessionRow = (
     String,
     String,
@@ -253,11 +276,13 @@ type SessionRow = (
     String,
 );
 
+#[cfg(desktop)]
 const SESSION_SELECT: &str = "SELECT presentation, search_tab, search_artist, search_album, \
             search_catalog, search_barcode, \
             error_command, error_category, error_detail, find_online_section \
      FROM import_candidate_session WHERE content_hash = ?";
 
+#[cfg(desktop)]
 fn session_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
     Ok((
         row.get(0)?,
@@ -273,6 +298,7 @@ fn session_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
     ))
 }
 
+#[cfg(desktop)]
 fn session_of(row: SessionRow) -> Result<CandidateSession, DbError> {
     let (presentation, tab, artist, album, catalog, barcode, command, category, detail, section) =
         row;
@@ -294,6 +320,7 @@ fn session_of(row: SessionRow) -> Result<CandidateSession, DbError> {
 
 /// The session the pane left for `content_hash`, or `None` before it has
 /// touched the candidate.
+#[cfg(desktop)]
 pub(super) fn load_session_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -306,11 +333,13 @@ pub(super) fn load_session_on(
 
 /// Store `session` whole for `content_hash`, inside the caller's write.
 /// Forget where the pane of `content_hash` was.
+#[cfg(desktop)]
 pub(super) fn delete_session(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_session WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
+#[cfg(desktop)]
 fn save_session_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -371,6 +400,7 @@ fn save_session_on(
 /// Move the candidate's pane by the one rule, [`CandidateSession::moved`],
 /// leaving the rest of its session as it is. A candidate with no session yet
 /// gets a fresh one moved the same way; one with no state row gets nothing.
+#[cfg(desktop)]
 pub(crate) fn move_pane_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -399,6 +429,7 @@ pub(crate) fn move_pane_on(
     save_session_on(sql, content_hash, &session)
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     /// Move the pane of every one of these candidates by `pane_move`, in one
     /// call, so an admission is one act and the pane of a candidate a person

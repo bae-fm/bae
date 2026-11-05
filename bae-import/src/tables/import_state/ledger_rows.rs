@@ -9,22 +9,34 @@
 //! stored settled: a clue still being read, a cell still queued or looking
 //! up, or artwork still being scanned is no state a verdict ends on, and
 //! storing one fails. A run in flight stores its ledger as it stands.
+//! Its tables are `ledger_rows.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("ledger_rows.sql");
+
+#[cfg(desktop)]
 use super::lookup_failure_columns::{failure_columns, failure_of};
+#[cfg(desktop)]
 use super::verdict_rows::Owner;
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
+#[cfg(desktop)]
 use bae_catalogs::search::MetadataResult;
+#[cfg(desktop)]
 use bae_identify::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
     IdentifyRunView, IsrcStepView, LookupView, NotAskedReason, ProviderCell, SearchStepView,
     SignalValueRow,
 };
+#[cfg(desktop)]
 use std::collections::{HashMap, HashSet};
+#[cfg(desktop)]
 use std::str::FromStr;
 
 /// How each clue stood in a recorded ledger, as the verdict's step columns;
 /// every one `None` for a verdict that recorded no ledger.
+#[cfg(desktop)]
 pub(super) struct StepColumns<'a> {
     pub(super) disc_id: Option<&'static str>,
     pub(super) barcode: Option<&'static str>,
@@ -36,6 +48,7 @@ pub(super) struct StepColumns<'a> {
 }
 
 /// A ledger's clue in a state no settled run records.
+#[cfg(desktop)]
 fn unsettled(owner: Owner<'_>, what: &str) -> DbError {
     DbError::Message(format!(
         "the ledger recorded for {owner} shows {what}, which no settled run records"
@@ -44,6 +57,7 @@ fn unsettled(owner: Owner<'_>, what: &str) -> DbError {
 
 /// How each clue of `ledger` stands, as step columns. `running`: the ledger
 /// is a run's in flight, whose clues may not have settled.
+#[cfg(desktop)]
 pub(super) fn step_columns<'a>(
     owner: Owner<'_>,
     ledger: Option<&'a IdentifyRunView>,
@@ -116,6 +130,7 @@ pub(super) fn step_columns<'a>(
 
 /// Clear the ledger rows `owner` holds; the lookups and the releases they
 /// found go with their rows.
+#[cfg(desktop)]
 pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
     for table in [
         "import_candidate_lookup_value",
@@ -130,6 +145,7 @@ pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<()
 
 /// The match rows a ledger's releases are, by release: each one's position
 /// and the copy the row holds.
+#[cfg(desktop)]
 pub(super) type MatchPositions<'a> = HashMap<(LookupCatalog, &'a str), (usize, &'a MetadataResult)>;
 
 /// Write `ledger`'s rows under `owner`'s verdict row, whose step columns are
@@ -137,6 +153,7 @@ pub(super) type MatchPositions<'a> = HashMap<(LookupCatalog, &'a str), (usize, &
 /// is linked to the match row holding it, which must hold the cell's copy of
 /// it: the cell is laid out again from that row. `running`: the ledger is a
 /// run's in flight, whose cells may be queued or looking up.
+#[cfg(desktop)]
 pub(super) fn store_ledger(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -226,13 +243,19 @@ pub(super) fn store_ledger(
     Ok(())
 }
 
+#[cfg(desktop)]
 const STEP_DISC_ID: &str = "disc_id";
+#[cfg(desktop)]
 const STEP_BARCODE: &str = "barcode";
+#[cfg(desktop)]
 const STEP_CATALOG: &str = "catalog";
+#[cfg(desktop)]
 const STEP_ISRC: &str = "isrc";
+#[cfg(desktop)]
 const STEP_SEARCH: &str = "search";
 
 /// Which cell of which row a lookup is.
+#[cfg(desktop)]
 #[derive(Clone, Copy)]
 struct LookupKey<'a> {
     step: &'a str,
@@ -242,6 +265,7 @@ struct LookupKey<'a> {
 
 /// One cell, and the releases it found linked to their match rows; queued
 /// or looking up only in a run's ledger in flight (`running`).
+#[cfg(desktop)]
 fn store_lookup(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -321,6 +345,7 @@ fn store_lookup(
     Ok(())
 }
 
+#[cfg(desktop)]
 fn column(index: usize) -> Result<i64, DbError> {
     to_i64(index, "a ledger row's place in its list")
 }
@@ -330,6 +355,7 @@ fn column(index: usize) -> Result<i64, DbError> {
 /// the providers, the ISRCs and the offered catalog numbers in order, and
 /// the rows in order, each with its lookups in cell order and each lookup
 /// with the match positions of the releases it found in its order.
+#[cfg(desktop)]
 pub(super) const LEDGER_COLUMNS: &str = "verdict.disc_id_step AS ledger_disc_id_step, \
      verdict.barcode_step AS ledger_barcode_step, \
      verdict.catalog_step AS ledger_catalog_step, verdict.isrc_step AS ledger_isrc_step, \
@@ -369,6 +395,7 @@ pub(super) const LEDGER_COLUMNS: &str = "verdict.disc_id_step AS ledger_disc_id_
 
 /// One verdict's [`LEDGER_COLUMNS`] as SQLite hands them over, its lists
 /// still JSON.
+#[cfg(desktop)]
 pub(super) struct StoredLedger {
     disc_id: Option<String>,
     barcode: Option<String>,
@@ -383,6 +410,7 @@ pub(super) struct StoredLedger {
     rows: String,
 }
 
+#[cfg(desktop)]
 pub(super) fn read_ledger(row: &Row<'_>) -> rusqlite::Result<StoredLedger> {
     Ok(StoredLedger {
         disc_id: row.get("ledger_disc_id_step")?,
@@ -400,6 +428,7 @@ pub(super) fn read_ledger(row: &Row<'_>) -> rusqlite::Result<StoredLedger> {
 }
 
 /// One ledger row as [`LEDGER_COLUMNS`] holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredRow {
     step: String,
@@ -409,6 +438,7 @@ struct StoredRow {
 }
 
 /// One lookup as [`LEDGER_COLUMNS`] holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredLookup {
     catalog: Option<String>,
@@ -419,6 +449,7 @@ struct StoredLookup {
     releases: Vec<i64>,
 }
 
+#[cfg(desktop)]
 impl StoredLedger {
     /// The ledger these rows record, its cells laying out the releases at
     /// the match positions they link, `None` for a verdict that recorded
@@ -666,6 +697,7 @@ impl StoredLedger {
 
 /// One stored lookup as its cell: why nobody was asked, how it failed, or
 /// the releases it found laid out as the run laid them out.
+#[cfg(desktop)]
 fn lookup_of(
     content_hash: &str,
     stored: StoredLookup,

@@ -2,16 +2,24 @@
 //! text lines; or the signals a run in flight last read, under the run. How
 //! bae broke reading a signal is one column, its error chain. A still-scanning
 //! signal reaching a candidate's rows is a defect, and the write refuses it.
+//! Its tables are `signal_rows.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("signal_rows.sql");
+
+#[cfg(desktop)]
 use super::verdict_rows::Owner;
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use bae_catalogs::{
     AudioOrigin, AudioSource, CdProof, DownloadProof, InternalFailure, StoreMarker,
 };
+#[cfg(desktop)]
 use bae_identify::signals::{
     BarcodeSignal, ComputedDiscId, DiscIdSignal, Signals, SourcedValue, TextLine, TextSignal,
 };
 
+#[cfg(desktop)]
 const SIGNALS_COLUMNS: &str =
     "content_hash, identify_run, audio_source, cd_rip_proof, download_proof, \
      audio_source_file, not_cd_rate, \
@@ -20,14 +28,18 @@ const SIGNALS_COLUMNS: &str =
 
 /// The stored `download_proof` of a label's delivery set; a store's marker is
 /// stored as its own key.
+#[cfg(desktop)]
 const DELIVERY_SET: &str = "delivery_set";
 
+#[cfg(desktop)]
 const SIGNAL_VALUE_COLUMNS: &str = "content_hash, identify_run, list, position, value, origin_path";
 
+#[cfg(desktop)]
 const TEXT_LINE_COLUMNS: &str = "content_hash, identify_run, position, text, origin";
 
 /// One list's values under the header joined as `signals`, as a JSON array
 /// in their order, each value as `value` gives it.
+#[cfg(desktop)]
 fn signal_list_sql(list: &str, value: &str) -> String {
     format!(
         "(SELECT json_group_array({value} ORDER BY listed.position) \
@@ -41,6 +53,7 @@ fn signal_list_sql(list: &str, value: &str) -> String {
 /// header row as `signals`, each list and the text lines riding on it as a
 /// JSON array; a Disc ID or barcode with the file it was read off. A
 /// candidate with no header row reads `signals_row` as NULL.
+#[cfg(desktop)]
 pub(super) fn signals_read_columns() -> String {
     let sourced = "json_object('value', listed.value, 'origin_path', listed.origin_path)";
     format!(
@@ -74,6 +87,7 @@ pub(super) fn signals_read_columns() -> String {
 }
 
 /// Every signal row under `content_hash`. The values cascade from the header.
+#[cfg(desktop)]
 pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_signals WHERE content_hash = ?", [content_hash])?;
     Ok(())
@@ -82,6 +96,7 @@ pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result
 /// The signals as one header row and its list values, over whatever signals
 /// `owner` held: the header in place, its values anew. Only a run in flight
 /// stores a pass still scanning.
+#[cfg(desktop)]
 pub(super) fn store_signals(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -219,6 +234,7 @@ pub(super) fn store_signals(
     Ok(())
 }
 
+#[cfg(desktop)]
 fn free_text(text: &TextSignal) -> &[String] {
     match text {
         TextSignal::Scanning { free_text, .. }
@@ -229,6 +245,7 @@ fn free_text(text: &TextSignal) -> &[String] {
 
 /// One candidate's [`signals_read_columns`] as SQLite hands them over, its
 /// lists still JSON.
+#[cfg(desktop)]
 pub(super) struct StoredSignals {
     audio_source: Option<String>,
     cd_rip_proof: Option<String>,
@@ -252,6 +269,7 @@ pub(super) struct StoredSignals {
 
 /// The [`signals_read_columns`] of `row`; none for a candidate whose signals
 /// were never settled.
+#[cfg(desktop)]
 pub(super) fn read_signals(row: &Row<'_>) -> rusqlite::Result<Option<StoredSignals>> {
     if row.get::<_, Option<String>>("signals_row")?.is_none() {
         return Ok(None);
@@ -279,6 +297,7 @@ pub(super) fn read_signals(row: &Row<'_>) -> rusqlite::Result<Option<StoredSigna
 }
 
 /// One sourced value of a list as [`signals_read_columns`] holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredSourcedValue {
     value: String,
@@ -286,17 +305,20 @@ struct StoredSourcedValue {
 }
 
 /// One text line as [`signals_read_columns`] holds it.
+#[cfg(desktop)]
 #[derive(serde::Deserialize)]
 struct StoredTextLine {
     text: String,
     origin: String,
 }
 
+#[cfg(desktop)]
 fn list_of<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
     serde_json::from_str(json)
         .map_err(|error| DbError::Message(format!("stored signal {what} {json:?}: {error}")))
 }
 
+#[cfg(desktop)]
 impl StoredSignals {
     pub(super) fn signals(self) -> Result<Signals, DbError> {
         let Self {

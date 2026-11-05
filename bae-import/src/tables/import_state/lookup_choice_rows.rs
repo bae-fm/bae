@@ -5,8 +5,13 @@
 //! Written whole: the caller hands over the next value of all of it, and what
 //! the new value does not name is gone. A candidate with no header row has
 //! decided nothing, which reads back as [`LookupChoices::default`].
+//! Its tables are `lookup_choice_rows.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("lookup_choice_rows.sql");
+
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use bae_identify::{LookupChoices, SearchWords};
 
 /// A candidate's lookup choices as columns of a read that joins its header
@@ -14,6 +19,7 @@ use bae_identify::{LookupChoices, SearchWords};
 /// catalog numbers in their order, the struck-out ones and the left-out
 /// barcodes by value. A candidate with no header row reads `choices_row` as
 /// NULL.
+#[cfg(desktop)]
 pub(super) const LOOKUP_CHOICES_COLUMNS: &str = "choices.content_hash AS choices_row, \
      choices.disc_id_excluded AS choices_disc_id_excluded, \
      choices.search_album AS choices_search_album, \
@@ -30,6 +36,7 @@ pub(super) const LOOKUP_CHOICES_COLUMNS: &str = "choices.content_hash AS choices
 
 /// One candidate's [`LOOKUP_CHOICES_COLUMNS`] as SQLite hands them over,
 /// its lists still JSON.
+#[cfg(desktop)]
 pub(super) struct StoredLookupChoices {
     disc_id_excluded: bool,
     search_words: Option<SearchWords>,
@@ -40,6 +47,7 @@ pub(super) struct StoredLookupChoices {
 
 /// The [`LOOKUP_CHOICES_COLUMNS`] of `row`; none for a candidate that has
 /// decided nothing.
+#[cfg(desktop)]
 pub(super) fn read_lookup_choices(row: &Row<'_>) -> rusqlite::Result<Option<StoredLookupChoices>> {
     if row.get::<_, Option<String>>("choices_row")?.is_none() {
         return Ok(None);
@@ -60,6 +68,7 @@ pub(super) fn read_lookup_choices(row: &Row<'_>) -> rusqlite::Result<Option<Stor
     }))
 }
 
+#[cfg(desktop)]
 impl StoredLookupChoices {
     pub(super) fn choices(self) -> Result<LookupChoices, DbError> {
         let list = |json: &str, what: &str| {
@@ -82,6 +91,7 @@ impl StoredLookupChoices {
 /// the write says so rather than landing nowhere.
 /// Forget what the person let the lookups of `content_hash` use; the barcode
 /// and catalog lists hang off the choices row and go with it.
+#[cfg(desktop)]
 pub(super) fn delete_lookup_choices(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -93,6 +103,7 @@ pub(super) fn delete_lookup_choices(
     Ok(())
 }
 
+#[cfg(desktop)]
 pub(super) fn replace_lookup_choices_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -162,6 +173,7 @@ pub(super) fn replace_lookup_choices_on(
     Ok(())
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     /// Record what a candidate's identification asks about, whole: the rows
     /// under `content_hash` become exactly this value.

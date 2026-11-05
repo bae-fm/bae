@@ -4189,7 +4189,8 @@ code. bae-library assembles it from bae-db's part,
 does, and bae-import's, under `bae-import/src/tables/`: the watched folders'
 (`watched_folders.sql`), the skipped candidates' (`skipped_candidates.sql`),
 the folder scans' (`folder_scans.sql`), the release groupings'
-(`release_groupings.sql`), the source releases' (`source_releases.sql`,
+(`release_groupings.sql`), the candidate state's (the `.sql` files beside the
+row files in `import_state/`), the source releases' (`source_releases.sql`,
 `source_releases/tracklist.sql` and `album_link_rows.sql`) and the import
 list's (`import_list/`). A part runs
 after the parts creating the tables its triggers fire on. Every table is

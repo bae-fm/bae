@@ -9,15 +9,24 @@
 //! A run in flight is stored in the same rows, owned by the run rather than by
 //! a candidate's files ([`Owner`]): how it stands, the ledger as it stands and
 //! the releases its answers so far combine to, then the answer it reached.
+//! Its table is `verdict_rows.sql`, which every device's library holds.
 
+pub(super) const SQL: &str = include_str!("verdict_rows.sql");
+
+#[cfg(desktop)]
 use super::ledger_rows::{
     delete_ledger, read_ledger, step_columns, store_ledger, MatchPositions, StoredLedger,
     LEDGER_COLUMNS,
 };
+#[cfg(desktop)]
 use super::match_rows::{store_match, Listing, MatchOwner, StoredMatches, Written};
+#[cfg(desktop)]
 use super::*;
+#[cfg(desktop)]
 use bae_catalogs::search::MetadataResult;
+#[cfg(desktop)]
 use bae_catalogs::InternalFailure;
+#[cfg(desktop)]
 use bae_identify::{
     Findings, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict, NamedNote, RunOutcome,
     TerminalVerdict,
@@ -25,12 +34,14 @@ use bae_identify::{
 
 /// Whose verdict-shaped rows these are: a candidate's verdict, under its
 /// files' content hash, or how a run in flight stands, under the run.
+#[cfg(desktop)]
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Owner<'a> {
     Candidate(&'a str),
     Run(i64),
 }
 
+#[cfg(desktop)]
 impl Owner<'_> {
     /// The column that names this owner on every row it owns.
     pub(super) fn column(self) -> &'static str {
@@ -55,6 +66,7 @@ impl Owner<'_> {
     }
 }
 
+#[cfg(desktop)]
 impl rusqlite::ToSql for Owner<'_> {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
         match self {
@@ -64,6 +76,7 @@ impl rusqlite::ToSql for Owner<'_> {
     }
 }
 
+#[cfg(desktop)]
 impl std::fmt::Display for Owner<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -75,12 +88,14 @@ impl std::fmt::Display for Owner<'_> {
 
 /// An outcome as its rows store it: a run's state while its lookups are out,
 /// or the verdict a run ended on.
+#[cfg(desktop)]
 #[derive(Clone, Copy)]
 pub(super) enum Outcome<'a> {
     Running { ledger: &'a IdentifyRunView, findings: &'a Findings, track_count: u32 },
     Settled(&'a TerminalVerdict),
 }
 
+#[cfg(desktop)]
 impl<'a> Outcome<'a> {
     pub(super) fn of(outcome: &'a RunOutcome) -> Self {
         match outcome {
@@ -112,6 +127,7 @@ impl<'a> Outcome<'a> {
 
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
 /// it: they hang off the verdict row.
+#[cfg(desktop)]
 pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_verdict WHERE content_hash = ?", [content_hash])?;
     Ok(())
@@ -122,6 +138,7 @@ pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result
 /// match row in place, so the candidate never reads as holding no verdict or
 /// no matches on its way from one verdict to another, and the matches past
 /// the new last go.
+#[cfg(desktop)]
 pub(super) fn store_verdict(
     sql: &CovenWrite<'_>,
     content_hash: &str,
@@ -138,6 +155,7 @@ pub(super) fn store_verdict(
 /// Write `outcome` as `owner`'s, over whatever it stored before, as
 /// [`store_verdict`] writes a verdict. Only a run in flight stores a ledger
 /// that has not settled.
+#[cfg(desktop)]
 pub(super) fn store_outcome(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -249,6 +267,7 @@ pub(super) fn store_outcome(
 /// found verdict, a failed one and a run in flight write theirs alike; the
 /// other kinds hold no findings, and a ledger of theirs lists nothing.
 /// Answers the releases written, in position order.
+#[cfg(desktop)]
 fn store_matches<'a>(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -335,6 +354,7 @@ fn store_matches<'a>(
 }
 
 /// The columns of one stored verdict row.
+#[cfg(desktop)]
 pub(super) struct VerdictRow {
     pub(super) content_hash: String,
     pub(super) kind: String,
@@ -349,6 +369,7 @@ pub(super) struct VerdictRow {
 /// A candidate's verdict as columns of a read that joins its row as
 /// `verdict`, its ledger's beside them. A candidate with none reads
 /// `verdict_row` as NULL.
+#[cfg(desktop)]
 pub(super) fn verdict_columns() -> String {
     format!(
         "COALESCE(verdict.content_hash, 'run ' || verdict.identify_run) AS verdict_row, \
@@ -362,6 +383,7 @@ pub(super) fn verdict_columns() -> String {
 
 /// The [`verdict_columns`] of `row`; none for a candidate no verdict stands
 /// for.
+#[cfg(desktop)]
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbError> {
     let Some(content_hash) = row.get::<_, Option<String>>("verdict_row")? else {
         return Ok(None);
@@ -380,6 +402,7 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbEr
 
 /// Rebuild what identification concluded from its row, the matches it found
 /// and the ledger it recorded.
+#[cfg(desktop)]
 pub(super) fn identification_of(
     row: VerdictRow,
     found: StoredMatches,
@@ -398,6 +421,7 @@ pub(super) fn identification_of(
 /// Rebuild how a verdict row's owner stands — a run in flight, or the
 /// verdict a run reached — from its row, the matches and the ledger; and
 /// whether the person kept their own draft over it.
+#[cfg(desktop)]
 pub(super) fn outcome_of(
     row: VerdictRow,
     found: StoredMatches,
@@ -535,6 +559,7 @@ pub(super) fn outcome_of(
 }
 
 /// The stored medium conflict of a verdict row.
+#[cfg(desktop)]
 pub(super) fn medium_conflict_of(
     kind: Option<String>,
 ) -> Result<Option<bae_identify::MediumConflict>, DbError> {
@@ -550,6 +575,7 @@ pub(super) fn medium_conflict_of(
     }))
 }
 
+#[cfg(desktop)]
 impl ImportTables {
     /// Whether a verdict is stored for the files at `content_hash` as their
     /// file decisions stand at `edit_revision`.
@@ -585,6 +611,7 @@ impl ImportTables {
 ///
 /// It carries no file decisions: those are the user's half of the row and the
 /// verdict write leaves them alone.
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub struct NewImportCandidateVerdict {
     /// The files the verdict answers: the row it addresses, and the
@@ -613,6 +640,7 @@ pub struct NewImportCandidateVerdict {
 
 /// The release an identification run picked unattended, and the draft it
 /// read from it.
+#[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub struct VerdictPick {
     pub link: bae_identify::PressingLink,
@@ -622,6 +650,7 @@ pub struct VerdictPick {
 /// What identification concluded about one candidate. Present as a whole or
 /// absent as a whole: it is one verdict row with the match rows hanging off
 /// it, written or cleared in one transaction.
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
     pub verdict: bae_identify::TerminalVerdict,

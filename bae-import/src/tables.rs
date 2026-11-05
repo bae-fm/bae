@@ -12,7 +12,6 @@ mod folder_scans;
 mod import_list;
 #[cfg(desktop)]
 mod import_origin;
-#[cfg(desktop)]
 pub(crate) mod import_state;
 mod release_groupings;
 mod skipped_candidates;
@@ -25,6 +24,7 @@ pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[
     skipped_candidates::SCHEMA,
     folder_scans::SCHEMA,
     release_groupings::SCHEMA,
+    import_state::SCHEMA,
     source_releases::SCHEMA,
     import_list::SCHEMA,
 ];
