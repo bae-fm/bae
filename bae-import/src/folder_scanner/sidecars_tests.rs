@@ -60,7 +60,7 @@ fn a_folder_kept_as_separate_releases_says_its_own_files() {
             .collect::<Vec<_>>(),
         [("cover.jpg", &FileRole::Artwork), ("Scans/booklet.txt", &FileRole::Document)]
     );
-    assert!(files.iter().all(|entry| entry.file.path.starts_with(&album)));
+    assert!(files.iter().all(|entry| entry.file.version.path.starts_with(&album)));
 }
 
 /// A folder read as one release owns its files, a folder with tracks of its

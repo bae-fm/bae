@@ -99,7 +99,7 @@ impl SkippedFile {
     pub(crate) fn of_release_file(entry: &CandidateFile) -> Self {
         Self {
             relative_path: entry.file.relative_path.clone(),
-            file: entry.file.version(),
+            file: entry.file.version.clone(),
             role: match entry.role {
                 FileRole::Audio => ProposedRole::Audio,
                 FileRole::TrackSheet { .. } => ProposedRole::Cue,

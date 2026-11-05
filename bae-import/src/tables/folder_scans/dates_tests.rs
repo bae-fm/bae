@@ -84,7 +84,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
             .await
             .unwrap();
         let mut changed = original;
-        changed.files.files[0].file.size += 1;
+        changed.files.files[0].file.version.size += 1;
         later.save_folder_scan_item(&root, generation, &ScanItem::Valid(changed)).await.unwrap();
     }
     later.finish_folder_scan(&root, generation, None).await.unwrap();

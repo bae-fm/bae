@@ -19,7 +19,9 @@ fn validate_scanned_file_metadata(
 ) -> Result<crate::file_tag_snapshot::FileObservation, crate::ImportError> {
     let observation = crate::file_tag_snapshot::FileObservation::of(file)
         .map_err(|error| crate::ImportError::UnusableFile { detail: error.to_string() })?;
-    if observation.size != file.size || observation.modified_at_ns != file.modified_at_ns {
+    if observation.size != file.version.size
+        || observation.modified_at_ns != file.version.modified_at_ns
+    {
         return Err(changed_after_scan(file));
     }
     Ok(observation)
@@ -35,8 +37,8 @@ pub(super) fn require_scanned_identity(
     modified_at: std::time::SystemTime,
 ) -> Result<(), crate::ImportError> {
     let scanned: std::time::SystemTime =
-        chrono::DateTime::from_timestamp_nanos(file.modified_at_ns).into();
-    if size != file.size || modified_at != scanned {
+        chrono::DateTime::from_timestamp_nanos(file.version.modified_at_ns).into();
+    if size != file.version.size || modified_at != scanned {
         return Err(changed_after_scan(file));
     }
     Ok(())
@@ -46,7 +48,7 @@ fn changed_after_scan(file: &ScannedFile) -> crate::ImportError {
     crate::ImportError::UnusableFile {
         detail: format!(
             "{} changed after its import candidate was scanned; rescan before importing",
-            file.path.display()
+            file.version.path.display()
         ),
     }
 }

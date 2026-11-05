@@ -188,7 +188,7 @@ impl FileReads {
     }
 
     fn stream_known(&self, file: &ScannedFile) -> Option<Playability> {
-        self.with_known(|known| known.track(&file.version())?.stream.clone())
+        self.with_known(|known| known.track(&file.version)?.stream.clone())
     }
 
     fn tags_known(&self, version: &FileVersion) -> bool {
@@ -216,7 +216,7 @@ impl FileReads {
                 if stream == Playability::Unplayable {
                     tracing::warn!(
                         "{} was stored as playable, and FFmpeg finds no stream bae plays in it",
-                        file.path.display()
+                        file.version.path.display()
                     );
                 }
                 stream
@@ -232,7 +232,7 @@ impl FileReads {
     /// Probe the track `file` now, reading its tags beside it when it plays
     /// and they are not known, and keep both.
     fn probe(&self, file: &ScannedFile) -> Result<Playability, FolderScanError> {
-        let version = file.version();
+        let version = file.version.clone();
         let reader = (!self.tags_known(&version)).then_some(self.tags.as_ref());
         let (stream, read) = probe(file, reader)?;
         self.with_known(|known| {
@@ -250,10 +250,10 @@ impl FileReads {
         &self,
         file: &ScannedFile,
     ) -> Result<Result<FileTags, String>, FolderScanError> {
-        let version = file.version();
+        let version = file.version.clone();
         if !self.tags_known(&version) {
             unchanged(file, "changed before its tags could be read")?;
-            let read = self.tags.read(&file.path);
+            let read = self.tags.read(&file.version.path);
             unchanged(file, "changed while its tags were being read")?;
             self.with_known(|known| known.remember_tags(&version, read));
         }
@@ -290,7 +290,7 @@ impl FileReads {
             let mut found = false;
             let mut others = Vec::new();
             for file in audio {
-                let version = file.version();
+                let version = file.version.clone();
                 let cover = match known.track_mut_if_known(&version) {
                     Some(TrackRead { tags: Some(TagRead::Read { cover, .. }), .. }) => cover,
                     // Until the first picture is found, a track whose picture
@@ -335,11 +335,11 @@ impl FileReads {
         for file in audio_files {
             let observation = FileObservation {
                 relative_path: file.relative_path.clone(),
-                size: file.size,
-                modified_at_ns: file.modified_at_ns,
+                size: file.version.size,
+                modified_at_ns: file.version.modified_at_ns,
             };
             let (mut tags, mut cover) = self.with_known(|known| {
-                match known.track(&file.version()).and_then(|track| track.tags.as_ref()) {
+                match known.track(&file.version).and_then(|track| track.tags.as_ref()) {
                     Some(TagRead::Read { tags, cover }) => Ok((
                         Some(tags.clone()),
                         match cover {
@@ -375,7 +375,7 @@ impl FileReads {
                     let (observation, read) =
                         crate::file_tag_snapshot::read_observed(file, self.tags.as_ref())?;
                     let version = FileVersion {
-                        path: file.path.clone(),
+                        path: file.version.path.clone(),
                         size: observation.size,
                         modified_at_ns: observation.modified_at_ns,
                     };
@@ -427,20 +427,22 @@ impl FileReads {
     /// The sheet the CUE file `file` parses to — what is known, or a parse of
     /// it now — or `None` when it does not parse.
     pub(super) fn sheet(&self, file: &ScannedFile) -> Option<CueSheet> {
-        if let Some(sheet) = self.with_known(|known| match known.files.get(&file.version()) {
+        if let Some(sheet) = self.with_known(|known| match known.files.get(&file.version) {
             Some(FileRead::Sheet(sheet)) => Some(sheet.clone()),
             _ => None,
         }) {
             return sheet;
         }
-        let sheet = match parse_cue_sheet(&file.path) {
+        let sheet = match parse_cue_sheet(&file.version.path) {
             Ok(sheet) => Some(sheet),
             Err(error) => {
-                info!("CUE {:?} does not parse: {error}", file.path);
+                info!("CUE {:?} does not parse: {error}", file.version.path);
                 None
             }
         };
-        self.with_known(|known| known.files.insert(file.version(), FileRead::Sheet(sheet.clone())));
+        self.with_known(|known| {
+            known.files.insert(file.version.clone(), FileRead::Sheet(sheet.clone()))
+        });
         sheet
     }
 
@@ -452,7 +454,7 @@ impl FileReads {
         playable: &[&ScannedFile],
         read: impl FnOnce() -> Result<Option<SkippedTags>, FolderScanError>,
     ) -> Result<Option<SkippedTags>, FolderScanError> {
-        let key: Vec<FileVersion> = playable.iter().map(|file| file.version()).collect();
+        let key: Vec<FileVersion> = playable.iter().map(|file| file.version.clone()).collect();
         if let Some(tags) = self.with_known(|known| known.skipped_tags.get(&key).cloned()) {
             return Ok(tags);
         }
@@ -592,7 +594,7 @@ impl Known {
                 let audio = file.source_audio.clone().ok_or_else(|| {
                     FolderScanError::Other(format!(
                         "{} is stored as a release's audio without its measurements",
-                        file.path.display()
+                        file.version.path.display()
                     ))
                 })?;
                 FileRead::Track(TrackRead {
@@ -603,13 +605,13 @@ impl Known {
             FileRole::TrackSheet { sheet, .. } => FileRead::Sheet(Some(sheet.clone())),
             // A `.cue` a release carries as a document is a sheet that did
             // not parse.
-            FileRole::Document if is_cue_file(&file.path) => FileRead::Sheet(None),
+            FileRole::Document if is_cue_file(&file.version.path) => FileRead::Sheet(None),
             FileRole::Artwork => FileRead::Image { decodes: true },
             // A zero-byte image is damaged before its bytes are looked at.
-            FileRole::DamagedImage if file.size > 0 => FileRead::Image { decodes: false },
+            FileRole::DamagedImage if file.version.size > 0 => FileRead::Image { decodes: false },
             FileRole::DamagedImage | FileRole::Document | FileRole::Other => return Ok(()),
         };
-        self.learn(file.version(), read)
+        self.learn(file.version.clone(), read)
     }
 
     /// What one file of a folder that can't be imported says its pass read.
@@ -684,11 +686,11 @@ fn merged(known: &FileRead, other: &FileRead) -> Option<FileRead> {
 
 /// Fail unless `file` is still the version the listing found.
 fn unchanged(file: &ScannedFile, what: &str) -> Result<(), FolderScanError> {
-    let metadata =
-        std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
-    let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
-    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
-        return Err(FolderScanError::Other(format!("{} {what}", file.path.display())));
+    let metadata = std::fs::metadata(&file.version.path)
+        .map_err(|source| FolderScanError::io(&file.version.path, source))?;
+    let modified_at_ns = super::scan::file_modified_at_ns(&file.version.path, &metadata)?;
+    if metadata.len() != file.version.size || modified_at_ns != file.version.modified_at_ns {
+        return Err(FolderScanError::Other(format!("{} {what}", file.version.path.display())));
     }
     Ok(())
 }
@@ -701,7 +703,7 @@ fn probe(
     reader: Option<&dyn FileTagReader>,
 ) -> Result<(Playability, Option<Result<FileTagRead, ImportError>>), FolderScanError> {
     unchanged(file, "changed before its audio facts could be read")?;
-    let stream = match bae_audio::probe_audio_from_path(&file.path) {
+    let stream = match bae_audio::probe_audio_from_path(&file.version.path) {
         None => Playability::Unplayable,
         Some(probe) => match scanned_audio(&probe) {
             Some(audio) => Playability::Measured(audio),
@@ -713,7 +715,7 @@ fn probe(
     };
     let read = reader
         .filter(|_| matches!(stream, Playability::Measured(_)))
-        .map(|reader| reader.read(&file.path));
+        .map(|reader| reader.read(&file.version.path));
     unchanged(file, "changed while its audio facts were being read")?;
     Ok((stream, read))
 }

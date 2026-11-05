@@ -49,16 +49,16 @@ fn enumerate_filename_inputs_skips_all_audio_and_cue() {
 
     let inputs: Vec<PathBuf> = enumerate_filename_inputs(&categorized);
     assert!(
-        !inputs.iter().any(|p| p == &cue.path),
+        !inputs.iter().any(|p| p == &cue.version.path),
         "CUE names come from the parsed sheet, not the filename pool; got {inputs:?}",
     );
     assert!(
-        !inputs.iter().any(|p| p == &flac.path),
+        !inputs.iter().any(|p| p == &flac.version.path),
         "audio filename stems are almost always track titles — wrong pool \
          for Artist / Album autocomplete; got {inputs:?}",
     );
     assert!(
-        inputs.iter().any(|p| p == &cover.path),
+        inputs.iter().any(|p| p == &cover.version.path),
         "artwork filenames still contribute — `Artist Name - Album.png` \
          and similar carry real signal; got {inputs:?}",
     );

@@ -134,12 +134,12 @@ fn a_pass_holds_only_the_picture_a_release_takes() {
     let reading = reads.tag_snapshot(&audio, 0, 0, None).unwrap();
     assert_eq!(reading.embedded_cover.unwrap().source_relative_path, "01.flac");
     for file in &audio {
-        assert_eq!(reader.reads_of(&file.path), 1, "{}", file.relative_path);
+        assert_eq!(reader.reads_of(&file.version.path), 1, "{}", file.relative_path);
     }
 
     let second = reads.tag_snapshot(&audio[1..], 0, 0, None).unwrap();
     assert_eq!(second.embedded_cover.unwrap().source_relative_path, "02.flac");
-    assert_eq!(reader.reads_of(&audio[1].path), 2);
+    assert_eq!(reader.reads_of(&audio[1].version.path), 2);
 }
 
 /// A pass holds no more than [`file_reads::HELD_COVER_BYTES`] of pictures:
@@ -163,8 +163,8 @@ fn a_pass_lets_the_oldest_picture_go_past_what_it_holds() {
         let reading = reads.tag_snapshot(&audio, 0, 0, None).unwrap();
         assert!(reading.embedded_cover.is_some());
     }
-    assert_eq!(reader.reads_of(&audio_of(&second)[0].path), 1);
-    assert_eq!(reader.reads_of(&audio_of(&first)[0].path), 2);
+    assert_eq!(reader.reads_of(&audio_of(&second)[0].version.path), 1);
+    assert_eq!(reader.reads_of(&audio_of(&first)[0].version.path), 2);
 }
 
 #[test]

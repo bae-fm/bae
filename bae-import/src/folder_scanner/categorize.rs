@@ -148,7 +148,7 @@ pub(super) fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<Ski
         .iter()
         .map(|(file, role)| SkippedFile {
             relative_path: file.relative_path.clone(),
-            file: file.version(),
+            file: file.version.clone(),
             role: *role,
         })
         .collect();
@@ -310,7 +310,7 @@ pub(super) fn categorize_files_from_tree(
                 sheets.insert(index, sheet);
             }
             None => {
-                info!("CUE {:?} stays a document", file.path);
+                info!("CUE {:?} stays a document", file.version.path);
                 *role = ProposedRole::Document;
             }
         }
@@ -388,18 +388,18 @@ pub(crate) fn categorize_library_files(
         .filter_map(|file| {
             let role = if file.source_audio.is_some() {
                 FileRole::Audio
-            } else if is_cue_file(&file.path) {
-                match parse_cue_sheet(&file.path) {
+            } else if is_cue_file(&file.version.path) {
+                match parse_cue_sheet(&file.version.path) {
                     Ok(sheet) => unsettled_sheet(sheet),
                     Err(error) => {
                         info!(
                             "CUE {:?} does not parse, so it stays a document: {error}",
-                            file.path
+                            file.version.path
                         );
                         FileRole::Document
                     }
                 }
-            } else if is_document_file(&file.path) {
+            } else if is_document_file(&file.version.path) {
                 FileRole::Document
             } else {
                 return None;

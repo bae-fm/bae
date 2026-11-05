@@ -223,11 +223,11 @@ pub(super) fn twin_of(original: &FolderCandidate, name: &str) -> FolderCandidate
     std::fs::create_dir_all(&folder).unwrap();
     let mut twin = original.clone();
     for candidate_file in &mut twin.files.files {
-        let source = candidate_file.file.path.clone();
+        let source = candidate_file.file.version.path.clone();
         let target = folder.join(&candidate_file.file.relative_path);
         std::fs::copy(&source, &target).unwrap();
         set_modified(&target, std::fs::metadata(&source).unwrap().modified().unwrap());
-        candidate_file.file.path = target;
+        candidate_file.file.version.path = target;
     }
     twin.path = folder.clone();
     twin.file_root = folder;

@@ -73,10 +73,10 @@ fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
         ["Disc 1/01.flac", "Disc 1/02.flac", "Disc 2/01.flac", "Disc 2/02.flac"]
     );
     assert_eq!(
-        release.files.release_files().map(|file| &file.path).collect::<Vec<_>>(),
+        release.files.release_files().map(|file| &file.version.path).collect::<Vec<_>>(),
         members
             .iter()
-            .flat_map(|member| member.files.release_files().map(|file| &file.path))
+            .flat_map(|member| member.files.release_files().map(|file| &file.version.path))
             .collect::<Vec<_>>()
     );
     assert_eq!(
@@ -141,8 +141,8 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
             .map(|(index, file)| FileTagFact {
                 observation: FileObservation {
                     relative_path: file.relative_path.clone(),
-                    size: file.size,
-                    modified_at_ns: file.modified_at_ns,
+                    size: file.version.size,
+                    modified_at_ns: file.version.modified_at_ns,
                 },
                 tags: crate::file_tag_snapshot::FileTags {
                     title: Some(format!("Tagged Track {index}")),

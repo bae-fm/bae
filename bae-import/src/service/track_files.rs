@@ -46,7 +46,10 @@ pub(crate) fn resolve_track_files(
                         detail: format!("{} has no scanned audio facts", file.relative_path),
                     })?;
                 let duration_ms = source_audio.duration_ms;
-                (TrackAudio::Standalone { file_path: file.path.clone(), source_audio }, duration_ms)
+                (
+                    TrackAudio::Standalone { file_path: file.version.path.clone(), source_audio },
+                    duration_ms,
+                )
             }
             AudioFile::SheetSlice { sheet_id, index, .. } => {
                 let analysis = match analyses.get(sheet_id) {

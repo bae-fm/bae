@@ -355,7 +355,7 @@ impl ImportService {
             }
         }
         let total_bytes: u128 =
-            discovered_files.iter().map(|entry| u128::from(entry.file.size)).sum();
+            discovered_files.iter().map(|entry| u128::from(entry.file.version.size)).sum();
         if total_bytes == 0 {
             return Err(crate::ImportError::Internal {
                 detail: "stored import candidate contains no bytes".to_string(),
@@ -395,7 +395,7 @@ impl ImportService {
             // coven reads the original whole and records it as it finds it
             // now, on this device only or for the cloud alike, so what it
             // finds must be the file the scan read.
-            let original = Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
+            let original = Box::pin(coven::prepare_user_file(&file.version.path, move |consumed| {
                 let completed = bytes_read_before_file + u128::from(consumed);
                 let percent = ((completed * 100) / total_bytes).min(100) as u8;
                 let previous = reported_percent_for_progress
@@ -417,7 +417,7 @@ impl ImportService {
             .map_err(|error| crate::ImportError::UnusableFile {
                 detail: format!(
                     "coven could not prepare {} for import: {error}",
-                    file.path.display()
+                    file.version.path.display()
                 ),
             })?;
             super::file_identity::require_scanned_identity(
@@ -430,7 +430,7 @@ impl ImportService {
                 ImportDestination::Remote { pin: true } => coven::Place::CloudKeptHere,
                 ImportDestination::Remote { pin: false } => coven::Place::Cloud,
             };
-            bytes_read += u128::from(file.size);
+            bytes_read += u128::from(file.version.size);
             let completed_percent = ((bytes_read * 100) / total_bytes).min(100) as u8;
             if reported_percent.load(std::sync::atomic::Ordering::Relaxed) != completed_percent {
                 self.emit_phase_progress(
@@ -450,12 +450,12 @@ impl ImportService {
             );
             db_file.source_audio =
                 file.source_audio.as_ref().map(|audio| bae_db::source_audio::SourceAudioFile {
-                    layout: source_audio_layouts.get(file.path.as_path()).copied(),
+                    layout: source_audio_layouts.get(file.version.path.as_path()).copied(),
                     format: audio.format.clone(),
                     content_type: audio.content_type.clone(),
                     duration_ms: audio.duration_ms,
                 });
-            file_ids.insert(file.path.clone(), db_file.id.clone());
+            file_ids.insert(file.version.path.clone(), db_file.id.clone());
             prepared_files.push(PreparedImportFile { row: db_file, original, place });
             debug!("Read file {}/{}: {}", idx + 1, total_files, file.relative_path,);
         }
@@ -482,7 +482,7 @@ impl ImportService {
         };
         let source_file_sizes: HashMap<PathBuf, u64> = discovered_files
             .iter()
-            .map(|entry| (entry.file.path.clone(), entry.file.size))
+            .map(|entry| (entry.file.version.path.clone(), entry.file.version.size))
             .collect();
 
         // Measured from the source decode: bae stores originals verbatim (no

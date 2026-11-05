@@ -367,7 +367,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_identification() {
     let crate::folder_scanner::ScanItem::Valid(candidate) = &mut reshaped else {
         unreachable!("the fixture creates a valid candidate")
     };
-    candidate.files.files[0].file.size += 1;
+    candidate.files.files[0].file.version.size += 1;
     tables
         .save_folder_scan_item(&root, generation, &reshaped)
         .await
@@ -425,7 +425,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
     let crate::folder_scanner::ScanItem::Valid(candidate) = &mut reshaped else {
         unreachable!("the fixture creates a valid candidate")
     };
-    candidate.files.files[0].file.size += 1;
+    candidate.files.files[0].file.version.size += 1;
     tables
         .save_folder_scan_item(&root, generation, &reshaped)
         .await
@@ -479,7 +479,7 @@ async fn separating_a_picked_grouping_ends_its_release_s_identification() {
         let mut folder = candidate(&root, name);
         // A file of its own per folder, so no two share a path on disk.
         for entry in &mut folder.files.files {
-            entry.file.path = folder.path.join(&entry.file.relative_path);
+            entry.file.version.path = folder.path.join(&entry.file.relative_path);
         }
         tables
             .save_folder_scan_item(

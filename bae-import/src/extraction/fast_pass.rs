@@ -190,7 +190,10 @@ pub(super) fn gather_non_ocr_sources(
 
     pass.artwork = categorized
         .artwork()
-        .map(|f| ArtworkImage { path: f.path.clone(), file_id: Some(f.relative_path.clone()) })
+        .map(|f| ArtworkImage {
+            path: f.version.path.clone(),
+            file_id: Some(f.relative_path.clone()),
+        })
         .collect();
 
     Ok(pass)
@@ -252,7 +255,7 @@ fn track_titles(
 /// The filenames the classifier reads: artwork and documents. Audio stems are
 /// track titles, and a sheet's own names are already read from its fields.
 fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<PathBuf> {
-    categorized.artwork().chain(categorized.documents()).map(|f| f.path.clone()).collect()
+    categorized.artwork().chain(categorized.documents()).map(|f| f.version.path.clone()).collect()
 }
 
 /// A sheet's album- and track-level PERFORMER / TITLE values, deduped.
@@ -280,8 +283,8 @@ fn cue_sheet_names(sheet: &crate::cue_sheet::CueSheet) -> Vec<String> {
 fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     categorized
         .documents()
-        .filter(|f| crate::folder_scanner::has_extension(&f.path, "txt"))
-        .map(|f| f.path.clone())
+        .filter(|f| crate::folder_scanner::has_extension(&f.version.path, "txt"))
+        .map(|f| f.version.path.clone())
         .collect()
 }
 
@@ -323,8 +326,8 @@ fn download_proof(
         return Some(DownloadProof::Store { marker, file });
     }
     let read_off_a_disc = categorized.files.iter().any(|entry| {
-        crate::rip_reading::is_rip_document(&entry.file.path)
-            || crate::folder_scanner::is_cue_file(&entry.file.path)
+        crate::rip_reading::is_rip_document(&entry.file.version.path)
+            || crate::folder_scanner::is_cue_file(&entry.file.version.path)
     });
     let delivered = !files.is_empty()
         && files.iter().all(|file| {

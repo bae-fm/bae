@@ -99,6 +99,7 @@ async fn changed_file_observations_read_the_tags_again() {
         .find(|file| file.file.relative_path == "02 Track.flac")
         .unwrap()
         .file
+        .version
         .size = std::fs::metadata(&second_audio).unwrap().len();
     rescan_unread_into(&handle.tables, candidate).await;
 

@@ -545,10 +545,12 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
             };
             Ok(CandidateFile {
                 file: ScannedFile {
-                    path: row.absolute_path,
+                    version: FileVersion {
+                        path: row.absolute_path,
+                        size: to_u64(row.size, "a file's size")?,
+                        modified_at_ns: row.modified_at_ns,
+                    },
                     relative_path: row.relative_path,
-                    size: to_u64(row.size, "a file's size")?,
-                    modified_at_ns: row.modified_at_ns,
                     dir_prefix: row.dir_prefix,
                     file_name: row.file_name,
                     source_audio,

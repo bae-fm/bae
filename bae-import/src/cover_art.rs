@@ -182,7 +182,7 @@ fn front_cover_file<'a>(
     files
         .into_iter()
         .filter(|file| {
-            ContentTypeHint::path_is_supported_cover(&file.path)
+            ContentTypeHint::path_is_supported_cover(&file.version.path)
                 && conventional_artwork_name(file).is_some()
         })
         .min_by(|left, right| artwork_order(left, right))
@@ -199,7 +199,7 @@ pub(crate) fn default_local_cover_file<'a>(
 ) -> Option<&'a ScannedFile> {
     files
         .into_iter()
-        .filter(|file| ContentTypeHint::path_is_supported_cover(&file.path))
+        .filter(|file| ContentTypeHint::path_is_supported_cover(&file.version.path))
         .min_by(|left, right| artwork_order(left, right))
 }
 
@@ -209,13 +209,14 @@ fn artwork_order(left: &ScannedFile, right: &ScannedFile) -> std::cmp::Ordering 
     match (conventional_artwork_name(left), conventional_artwork_name(right)) {
         (Some(left_artwork), Some(right_artwork)) => left_artwork
             .cmp(&right_artwork)
-            .then_with(|| left.size.cmp(&right.size))
+            .then_with(|| left.version.size.cmp(&right.version.size))
             .then_with(|| left.relative_path.cmp(&right.relative_path)),
         (Some(_), None) => std::cmp::Ordering::Less,
         (None, Some(_)) => std::cmp::Ordering::Greater,
         (None, None) => left
+            .version
             .size
-            .cmp(&right.size)
+            .cmp(&right.version.size)
             .then_with(|| left_name.cmp(&right_name))
             .then_with(|| left.relative_path.cmp(&right.relative_path)),
     }

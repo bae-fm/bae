@@ -146,7 +146,7 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
         .expect("the scan found cover.jpg");
     assert_eq!(
         table.images[0].file,
-        cover.file.version(),
+        cover.file.version.clone(),
         "the gallery draws the image at the version the scan read"
     );
     assert_eq!(track_file(mappings[0]).name, "01.flac");

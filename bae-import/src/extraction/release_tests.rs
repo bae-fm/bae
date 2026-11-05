@@ -223,7 +223,7 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
             }),
             created_at: Utc::now(),
         };
-        database.insert_file_for_test(&row, &file.path).await.unwrap();
+        database.insert_file_for_test(&row, &file.version.path).await.unwrap();
     }
     let identity =
         resolve_release_identity(&database, &bae_diagnostics::Diagnostics::noop(), &release_id)

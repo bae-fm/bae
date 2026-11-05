@@ -149,8 +149,8 @@ pub(crate) fn sheet_analysis(
         })?;
         audio_files.push(CueAnalyzedAudioFile {
             file_reference: (*file_reference).to_string(),
-            path: file.path.clone(),
-            probe: source_audio.probe(&file.path)?,
+            path: file.version.path.clone(),
+            probe: source_audio.probe(&file.version.path)?,
         });
     }
 

@@ -131,13 +131,16 @@ async fn folder_cover(
             ),
         })?;
 
-    let path = cover_file.path.clone();
+    let path = cover_file.version.path.clone();
     let bytes =
         bae_util::task_failure::blocking("read the import's cover", move || std::fs::read(&path))
             .await
             .map_err(|failed| diagnostics.bug(failed))?
             .map_err(|e| ImportError::LocalCover {
-                detail: format!("Failed to read cover art {}: {e}", cover_file.path.display()),
+                detail: format!(
+                    "Failed to read cover art {}: {e}",
+                    cover_file.version.path.display()
+                ),
             })?;
 
     Ok(bytes)

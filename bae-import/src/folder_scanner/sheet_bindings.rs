@@ -99,9 +99,9 @@ pub(super) fn settle_sheet_bindings(
         .filter(|entry| matches!(entry.role, FileRole::Audio))
         .map(|entry| (entry.file.relative_path.as_str(), &entry.file))
         .collect();
-    let audio_paths: Vec<PathBuf> = audio.values().map(|file| file.path.clone()).collect();
+    let audio_paths: Vec<PathBuf> = audio.values().map(|file| file.version.path.clone()).collect();
     let audio_by_path: HashMap<&Path, &ScannedFile> =
-        audio.values().map(|file| (file.path.as_path(), *file)).collect();
+        audio.values().map(|file| (file.version.path.as_path(), *file)).collect();
 
     let mut settled: Vec<(usize, SheetBinding)> = Vec::new();
     for (index, entry) in files.iter().enumerate() {
@@ -119,13 +119,12 @@ pub(super) fn settle_sheet_bindings(
                     audio.get(file_id.as_str()).copied()
                 }
                 Some(UserSheetBinding::Cleared) => None,
-                None => {
-                    resolve_cue_audio_path(&entry.file.path, reference, &audio_paths).map(|path| {
+                None => resolve_cue_audio_path(&entry.file.version.path, reference, &audio_paths)
+                    .map(|path| {
                         *audio_by_path
                             .get(path.as_path())
                             .expect("resolved audio belongs to the candidate")
-                    })
-                }
+                    }),
             };
             if let Some(named) = named {
                 if used.insert(named.relative_path.as_str()) {
@@ -149,9 +148,12 @@ pub(super) fn settle_sheet_bindings(
             && resolved.len() != references.len()
             && edits.get(sheet_id).is_none()
         {
-            let sheet_dir = entry.file.path.parent();
-            let mut beside: Vec<&ScannedFile> =
-                audio.values().filter(|file| file.path.parent() == sheet_dir).copied().collect();
+            let sheet_dir = entry.file.version.path.parent();
+            let mut beside: Vec<&ScannedFile> = audio
+                .values()
+                .filter(|file| file.version.path.parent() == sheet_dir)
+                .copied()
+                .collect();
             if beside.len() == references.len() {
                 beside.sort_by(|a, b| {
                     natord::compare_ignore_case(&a.relative_path, &b.relative_path)

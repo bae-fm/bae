@@ -275,7 +275,7 @@ fn folder_files_besides(
                 file_rows.push(MappingFileRow::Sheet(SheetGroup {
                     sheet_id: entry.file.relative_path.clone(),
                     name: entry.file.relative_path.clone(),
-                    size: entry.file.size,
+                    size: entry.file.version.size,
                     bound: bound_of(
                         files,
                         TrackSheetFile { file: &entry.file, sheet, binding, disc: *disc },
@@ -336,7 +336,7 @@ pub(crate) fn mapping_table(
                     let group = SheetGroup {
                         sheet_id: sheet.file.relative_path.clone(),
                         name: sheet.file.relative_path.clone(),
-                        size: sheet.file.size,
+                        size: sheet.file.version.size,
                         bound: bound_sheet(sheet),
                         reference_options: files.sheet_binding_options(&sheet.file.relative_path),
                         assignment: sheet.disc,
@@ -448,7 +448,7 @@ impl RowBuilder<'_> {
                 let sample_rate = u64::try_from(format.sample_rate_hz)
                     .expect("a scanned audio file has a non-negative sample rate");
                 let preview_target = bae_track_audio::PreviewTarget::sample_range(
-                    audio.path.clone(),
+                    audio.version.path.clone(),
                     crate::cue_sheet::cue_frames_to_samples(track.start_cue_frames, sample_rate),
                     track
                         .end_cue_frames
@@ -572,7 +572,7 @@ fn mapping_image(entry: &CandidateFile) -> MappingImage {
     MappingImage {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.file_name.clone(),
-        file: entry.file.version(),
+        file: entry.file.version.clone(),
     }
 }
 
@@ -597,9 +597,9 @@ impl InvalidCandidateDetail {
                 MappingFile {
                     file_id: scanned.relative_path.clone(),
                     name: scanned.relative_path.clone(),
-                    size: scanned.size,
+                    size: scanned.version.size,
                     preview_target: (role == MappingRole::Audio)
-                        .then(|| bae_track_audio::PreviewTarget::whole_file(scanned.path)),
+                        .then(|| bae_track_audio::PreviewTarget::whole_file(scanned.version.path)),
                     duration_ms: None,
                     audio_format: None,
                     role,
@@ -633,7 +633,7 @@ fn container(audio: &ScannedFile) -> MappingContainer {
     MappingContainer {
         file_id: audio.relative_path.clone(),
         name: audio.file_name.clone(),
-        size: audio.size,
+        size: audio.version.size,
         audio_format: audio
             .source_audio
             .as_ref()
@@ -679,11 +679,11 @@ fn bound_sheet(sheet: &BoundTrackSheet<'_>) -> SheetBound {
 /// The left half of a file's row: what the folder holds.
 fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u64>) -> MappingFile {
     let preview_target = (role == MappingRole::Audio)
-        .then(|| bae_track_audio::PreviewTarget::whole_file(entry.file.path.clone()));
+        .then(|| bae_track_audio::PreviewTarget::whole_file(entry.file.version.path.clone()));
     MappingFile {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.relative_path.clone(),
-        size: entry.file.size,
+        size: entry.file.version.size,
         preview_target,
         duration_ms,
         audio_format: entry.file.source_audio.as_ref().map(|audio| audio.format.clone()),

@@ -44,7 +44,7 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
 
     let mut at_new_location = at_old_location.clone();
     for entry in &mut at_new_location.files {
-        entry.file.path =
+        entry.file.version.path =
             host_root("/music/New Location/Some Album").join(&entry.file.relative_path);
     }
     assert_eq!(

@@ -65,7 +65,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
     let crate::folder_scanner::ScanItem::Valid(candidate) = &mut replacement else {
         unreachable!("the fixture creates a valid candidate");
     };
-    candidate.files.files[0].file.size += 1;
+    candidate.files.files[0].file.version.size += 1;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables
         .save_folder_scan_item(&root, generation, &replacement)

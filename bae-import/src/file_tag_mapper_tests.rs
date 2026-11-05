@@ -62,8 +62,8 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
             .map(|file| FileTagFact {
                 observation: FileObservation {
                     relative_path: file.relative_path.clone(),
-                    size: file.size,
-                    modified_at_ns: file.modified_at_ns,
+                    size: file.version.size,
+                    modified_at_ns: file.version.modified_at_ns,
                 },
                 tags: crate::file_tag_snapshot::FileTags {
                     title: Some(format!("Tags {}", file.relative_path)),
@@ -195,8 +195,8 @@ pub(super) fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -
             .map(|file| FileTagFact {
                 observation: FileObservation {
                     relative_path: file.relative_path.clone(),
-                    size: file.size,
-                    modified_at_ns: file.modified_at_ns,
+                    size: file.version.size,
+                    modified_at_ns: file.version.modified_at_ns,
                 },
                 tags: crate::file_tag_snapshot::FileTags::untagged(),
             })

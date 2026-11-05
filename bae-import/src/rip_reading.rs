@@ -264,8 +264,8 @@ fn read_categorized(
 ) -> RipReading {
     let documents = categorized
         .documents()
-        .filter(|doc| is_rip_document(&doc.path))
-        .map(|doc| RipDocument { path: &doc.path, file: named(doc) })
+        .filter(|doc| is_rip_document(&doc.version.path))
+        .map(|doc| RipDocument { path: &doc.version.path, file: named(doc) })
         .collect();
     let carving = categorized.carving_sheets();
     let sheets = carving
@@ -284,7 +284,7 @@ fn read_categorized(
                         .duration_ms,
                 })
                 .collect(),
-            path: &bound.file.path,
+            path: &bound.file.version.path,
             file: named(bound.file),
         })
         .collect();

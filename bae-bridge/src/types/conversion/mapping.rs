@@ -4,7 +4,7 @@ impl BridgeFileInfo {
     fn from_core(f: &bae_import::folder_scanner::ScannedFile) -> Self {
         BridgeFileInfo {
             name: f.relative_path.clone(),
-            size: f.size,
+            size: f.version.size,
             dir_prefix: f.dir_prefix.clone(),
             file_name: f.file_name.clone(),
             audio_format: f

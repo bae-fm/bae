@@ -29,7 +29,7 @@ impl ImportServiceHandle {
         if !matches!(entry.role, FileRole::Document | FileRole::TrackSheet { .. }) {
             return Err(crate::ImportError::Refused(format!("{file_id} is not a document")));
         }
-        let path = entry.file.path;
+        let path = entry.file.version.path;
         let file = file_id.to_string();
         bae_util::task_failure::blocking("read a candidate's document", move || {
             bae_util::text_encoding::read_text_file(&path)

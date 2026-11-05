@@ -131,16 +131,16 @@ pub fn compose(
             detail: format!("{key} does not sit in one folder, so no folder's files are its own"),
         })?;
         for entry in parent_files {
-            if !entry.file.path.starts_with(&parent) {
+            if !entry.file.version.path.starts_with(&parent) {
                 return Err(ImportError::Internal {
                     detail: format!(
                         "{} is not under {}, the folder {key} sits in",
-                        coven::path_text(&entry.file.path),
+                        coven::path_text(&entry.file.version.path),
                         coven::path_text(&parent)
                     ),
                 });
             }
-            seen_files.insert(entry.file.path.clone());
+            seen_files.insert(entry.file.version.path.clone());
             files.push(entry.clone());
         }
     }
@@ -171,11 +171,11 @@ pub fn compose(
             });
         }
         for entry in &member.files.files {
-            if !seen_files.insert(entry.file.path.clone()) {
+            if !seen_files.insert(entry.file.version.path.clone()) {
                 return Err(ImportError::Internal {
                     detail: format!(
                         "{} belongs to more than one selected folder",
-                        coven::path_text(&entry.file.path)
+                        coven::path_text(&entry.file.version.path)
                     ),
                 });
             }

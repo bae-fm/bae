@@ -785,7 +785,9 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     assert_eq!(row.metadata_summary, None, "it shows its folder's name");
     assert_eq!(
         row.cover,
-        Some(crate::CoverImageSource::Local { file: candidate.files.files[1].file.version() })
+        Some(crate::CoverImageSource::Local {
+            file: candidate.files.files[1].file.version.clone()
+        })
     );
 
     let pane =

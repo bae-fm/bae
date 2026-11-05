@@ -18,12 +18,16 @@ impl FileObservation {
     /// `file` as it stands on disk now: the size and modification time a stat
     /// reads.
     pub(crate) fn of(file: &ScannedFile) -> Result<Self, crate::folder_scanner::FolderScanError> {
-        let metadata = std::fs::metadata(&file.path)
-            .map_err(|source| crate::folder_scanner::FolderScanError::io(&file.path, source))?;
+        let metadata = std::fs::metadata(&file.version.path).map_err(|source| {
+            crate::folder_scanner::FolderScanError::io(&file.version.path, source)
+        })?;
         Ok(Self {
             relative_path: file.relative_path.clone(),
             size: metadata.len(),
-            modified_at_ns: crate::folder_scanner::file_modified_at_ns(&file.path, &metadata)?,
+            modified_at_ns: crate::folder_scanner::file_modified_at_ns(
+                &file.version.path,
+                &metadata,
+            )?,
         })
     }
 }
@@ -118,8 +122,8 @@ impl FileTagSnapshot {
                 return false;
             };
             if fact.observation.relative_path != file.relative_path
-                || fact.observation.size != file.size
-                || fact.observation.modified_at_ns != file.modified_at_ns
+                || fact.observation.size != file.version.size
+                || fact.observation.modified_at_ns != file.version.modified_at_ns
             {
                 return false;
             }
@@ -151,7 +155,7 @@ pub(crate) fn read_observed(
     reader: &dyn FileTagReader,
 ) -> Result<(FileObservation, FileTagRead), ImportError> {
     let before = observe_file(file)?;
-    let read = reader.read(&file.path)?;
+    let read = reader.read(&file.version.path)?;
     let after = observe_file(file)?;
     if before != after {
         return Err(changed_file_error(file));
@@ -211,7 +215,7 @@ pub(crate) fn extract_file_tag_snapshot(
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
     let observation = FileObservation::of(file)
         .map_err(|error| ImportError::FileTags { detail: error.to_string() })?;
-    if observation.size != file.size {
+    if observation.size != file.version.size {
         return Err(changed_file_error(file));
     }
     Ok(observation)
@@ -221,7 +225,7 @@ fn changed_file_error(file: &ScannedFile) -> ImportError {
     ImportError::FileTags {
         detail: format!(
             "{} changed after its import candidate was scanned; rescan before reading file tags",
-            file.path.display()
+            file.version.path.display()
         ),
     }
 }

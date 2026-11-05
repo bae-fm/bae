@@ -23,7 +23,7 @@ pub(super) fn resolve_file_content_type(
 ) -> Result<ContentType, ImportError> {
     use crate::folder_scanner::FileRole;
 
-    let path = &entry.file.path;
+    let path = &entry.file.version.path;
     match entry.role {
         FileRole::Audio => {
             return entry

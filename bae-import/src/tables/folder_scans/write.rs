@@ -366,9 +366,9 @@ fn insert_file(
             candidate_path,
             file.file.relative_path,
             to_i64(position as u64, "a candidate file's position")?,
-            coven::path_bytes(&file.file.path),
-            to_i64(file.file.size, "a file's size")?,
-            file.file.modified_at_ns,
+            coven::path_bytes(&file.file.version.path),
+            to_i64(file.file.version.size, "a file's size")?,
+            file.file.version.modified_at_ns,
             file.file.source_audio.as_ref().map(|audio| audio.content_type.as_str()),
             file.file
                 .source_audio

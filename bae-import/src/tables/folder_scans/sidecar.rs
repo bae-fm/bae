@@ -192,9 +192,9 @@ pub(super) fn write_sidecar(
             .map(|entry| {
                 Ok(StoredSidecarFile {
                     relative_path: &entry.file.relative_path,
-                    path: &entry.file.path,
-                    size: entry.file.size,
-                    modified_at_ns: entry.file.modified_at_ns,
+                    path: &entry.file.version.path,
+                    size: entry.file.version.size,
+                    modified_at_ns: entry.file.version.modified_at_ns,
                     role: match entry.role {
                         FileRole::Artwork => "artwork",
                         FileRole::DamagedImage => "damaged_image",
@@ -203,7 +203,7 @@ pub(super) fn write_sidecar(
                         FileRole::Audio | FileRole::TrackSheet { .. } => {
                             return Err(DbError::Message(format!(
                                 "{} is a sidecar file read as a track or a sheet",
-                                coven::path_text(&entry.file.path)
+                                coven::path_text(&entry.file.version.path)
                             )))
                         }
                     },
@@ -325,7 +325,7 @@ pub(super) fn delete_sidecars_holding(
          WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY folder",
         [path_column::hex_list(
-            candidate.files.files.iter().map(|entry| entry.file.path.as_path()),
+            candidate.files.files.iter().map(|entry| entry.file.version.path.as_path()),
         )],
         |row| path_column::get(row, 0),
     )?;

@@ -11,8 +11,10 @@ use std::num::NonZeroU32;
 /// A file discovered during folder scanning
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ScannedFile {
-    /// Absolute filesystem path. A scanned file is always on disk.
-    pub path: PathBuf,
+    /// The version of the file the scan read: its absolute path (a scanned
+    /// file is always on disk), and the size and modification time it had
+    /// then.
+    pub version: FileVersion,
     /// The file's identity within the release (e.g. `CD1/CDImage.ape`) — used
     /// as the HashMap key throughout the import pipeline and as
     /// `DbFile.original_filename`. Two files may share a bare filename; they
@@ -21,16 +23,13 @@ pub struct ScannedFile {
     ///
     /// Each component is its name as `coven::path_text` shows it, so a name
     /// that isn't UTF-8 is its escaped text (`Caf\xE9.flac`): what the library
-    /// syncs and shows. `path` is what opens the file.
+    /// syncs and shows. The version's `path` is what opens the file.
     ///
     /// Always `/`-separated, on every platform: it is stored and synced, and
     /// whichever device exports the release or makes it local writes the file
     /// under these names (see [`bae_db::stored_name`]), so it cannot
     /// carry the writing platform's separator.
     pub relative_path: String,
-    /// File size in bytes
-    pub size: u64,
-    pub modified_at_ns: i64,
     /// Directory prefix of relative_path (e.g. "Disc 1/"). `None` when the
     /// file is at the candidate-folder root.
     pub dir_prefix: Option<String>,
@@ -48,23 +47,11 @@ impl ScannedFile {
             None => (None, relative_path.clone()),
         };
         Self {
-            path,
+            version: FileVersion { path, size, modified_at_ns },
             relative_path,
-            size,
-            modified_at_ns,
             dir_prefix,
             file_name,
             source_audio: None,
-        }
-    }
-
-    /// The version of the file the scan read: where it is, with the size and
-    /// modification time it had then.
-    pub fn version(&self) -> FileVersion {
-        FileVersion {
-            path: self.path.clone(),
-            size: self.size,
-            modified_at_ns: self.modified_at_ns,
         }
     }
 
@@ -193,11 +180,11 @@ impl CandidateFile {
     pub fn cover_choice(&self) -> Option<crate::CoverChoice> {
         (matches!(self.role, FileRole::Artwork)
             && bae_util::content_type_hint::ContentTypeHint::path_is_supported_cover(
-                &self.file.path,
+                &self.file.version.path,
             ))
         .then(|| crate::CoverChoice::Local {
             file_id: self.file.relative_path.clone(),
-            file: self.file.version(),
+            file: self.file.version.clone(),
         })
     }
 }
@@ -374,7 +361,7 @@ impl CategorizedFiles {
     /// This release's audio file paths, in `relative_path` order. The file metadata
     /// import path reads embedded cover art from these.
     pub fn audio_paths(&self) -> Vec<PathBuf> {
-        self.audio().map(|file| file.path.clone()).collect()
+        self.audio().map(|file| file.version.path.clone()).collect()
     }
 
     /// Stable scan fingerprint of this release: a SHA-256 over the relative
@@ -419,8 +406,8 @@ pub(super) fn content_hash_of<'a>(files: impl Iterator<Item = &'a ScannedFile>) 
     for file in entries {
         hasher.update((file.relative_path.len() as u64).to_le_bytes());
         hasher.update(file.relative_path.as_bytes());
-        hasher.update(file.size.to_le_bytes());
-        hasher.update(file.modified_at_ns.to_le_bytes());
+        hasher.update(file.version.size.to_le_bytes());
+        hasher.update(file.version.modified_at_ns.to_le_bytes());
     }
     format!("{:x}", hasher.finalize())
 }

@@ -24,7 +24,7 @@ pub(super) fn categorize_sidecar(
             ProposedRole::Audio => {
                 return Err(FolderScanError::Other(format!(
                     "{} is a track, and a folder's sidecar files hold none",
-                    file.path.display()
+                    file.version.path.display()
                 )))
             }
             // A sheet with no audio beside it names nothing here to play.

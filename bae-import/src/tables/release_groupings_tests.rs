@@ -30,7 +30,7 @@ async fn scanned_folders(
     for mut folder in folders {
         // A file of its own per folder, so no two share a path on disk.
         for entry in &mut folder.files.files {
-            entry.file.path = folder.path.join(&entry.file.relative_path);
+            entry.file.version.path = folder.path.join(&entry.file.relative_path);
         }
         tables
             .save_folder_scan_item(&root, generation, &ScanItem::Valid(folder.clone()))
@@ -67,7 +67,7 @@ async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
     };
 
     let mut changed = members[1].clone();
-    changed.files.files[0].file.size += 1;
+    changed.files.files[0].file.version.size += 1;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     let write = tables
         .save_folder_scan_item(&root, generation, &ScanItem::Valid(changed.clone()))
@@ -81,7 +81,10 @@ async fn a_changed_release_rebuilds_the_grouping_in_the_same_write() {
         panic!("the grouping still has its release");
     };
     assert_ne!(after.files.content_hash(), before.files.content_hash());
-    assert!(after.files.release_files().any(|file| file.size == changed.files.files[0].file.size));
+    assert!(after
+        .files
+        .release_files()
+        .any(|file| file.version.size == changed.files.files[0].file.version.size));
 }
 
 /// A release a grouping takes in that goes away leaves the grouping's release
