@@ -52,21 +52,10 @@ pub enum RemoteImageError {
     NoImage { url: String },
 
     /// The blocking task that reads or writes the disk cache did not report
-    /// back: it panicked — a bug the caller reports — or the runtime is
-    /// shutting down under it.
+    /// back: it panicked, a bug the cache has already reported, or the
+    /// runtime is shutting down under it.
     #[error("{0}")]
     CacheTask(TaskFailed),
-}
-
-impl RemoteImageError {
-    /// This failure, a cache task's handed to `report` first: the cache cannot
-    /// report its own task panicking, so whoever asked it does.
-    pub fn reporting_cache_task(self, report: impl FnOnce(TaskFailed) -> TaskFailed) -> Self {
-        match self {
-            Self::CacheTask(failed) => Self::CacheTask(report(failed)),
-            error => error,
-        }
-    }
 }
 
 #[cfg(test)]

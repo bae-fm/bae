@@ -5,7 +5,7 @@ use crate::remote_image::tests::*;
 async fn a_second_read_uses_the_stored_image() {
     let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
-    let cache = RemoteImageCache::for_test(direct_http());
+    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
 
     let first = cache.fetch_required(&url).await.unwrap();
     let second = cache.fetch_required(&url).await.unwrap();
@@ -21,13 +21,21 @@ async fn a_downloaded_image_survives_a_new_cache_over_the_same_directory() {
     let (host, url) = start_counting_host(200, body.clone()).await;
     let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
 
-    let first_cache =
-        RemoteImageCache::in_dir(direct_http(), directory.path().to_path_buf(), u64::MAX);
+    let first_cache = RemoteImageCache::in_dir(
+        direct_http(),
+        directory.path().to_path_buf(),
+        u64::MAX,
+        bae_diagnostics::Diagnostics::noop(),
+    );
     assert_eq!(first_cache.fetch_required(&url).await.unwrap().bytes, body);
     drop(first_cache);
 
-    let second_cache =
-        RemoteImageCache::in_dir(direct_http(), directory.path().to_path_buf(), u64::MAX);
+    let second_cache = RemoteImageCache::in_dir(
+        direct_http(),
+        directory.path().to_path_buf(),
+        u64::MAX,
+        bae_diagnostics::Diagnostics::noop(),
+    );
     assert_eq!(second_cache.fetch_required(&url).await.unwrap().bytes, body);
     assert_eq!(host.hits(), 1, "the second cache reads the stored image");
 }
@@ -104,7 +112,7 @@ fn a_poisoned_access_order_starts_over_and_the_cache_keeps_working() {
 async fn concurrent_reads_of_one_url_share_the_download() {
     let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
-    let cache = RemoteImageCache::for_test(direct_http());
+    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
 
     let (first, second) = tokio::join!(cache.fetch_required(&url), cache.fetch_required(&url));
 
@@ -116,7 +124,7 @@ async fn concurrent_reads_of_one_url_share_the_download() {
 #[tokio::test]
 async fn no_image_answer_is_stored() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
-    let cache = RemoteImageCache::for_test(direct_http());
+    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
 
     assert!(cache.fetch(&url).await.unwrap().is_none());
     assert!(cache.fetch(&url).await.unwrap().is_none());
@@ -129,7 +137,7 @@ async fn no_image_answer_is_stored() {
 #[tokio::test]
 async fn required_missing_artwork_is_no_image() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
-    let cache = RemoteImageCache::for_test(direct_http());
+    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
     assert!(cache.fetch(&url).await.unwrap().is_none());
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);

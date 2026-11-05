@@ -436,6 +436,7 @@ where
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
         &app_dir.registered_library(&library_id),
         http,
+        diagnostics.clone(),
     );
     #[cfg(desktop)]
     let catalogs = bae_import::CatalogSessions::new(

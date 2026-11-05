@@ -4,6 +4,7 @@
 
 use super::fetch::{send_image_request, ImageResponse};
 use super::RemoteImageError;
+use bae_diagnostics::Diagnostics;
 use bae_util::content_type::ContentType;
 use bae_util::http::Http;
 use bae_util::task_failure::blocking;
@@ -258,34 +259,42 @@ pub struct RemoteImageCache {
     http: Http,
     in_flight: Arc<Mutex<InFlightImages>>,
     disk: Arc<DiskImageCache>,
+    /// Where a panic in the cache's disk work is reported.
+    diagnostics: Diagnostics,
     #[cfg(any(test, feature = "test-utils"))]
     _owned_dir: Option<Arc<tempfile::TempDir>>,
 }
 
 impl RemoteImageCache {
-    pub fn new(library_path: &std::path::Path, http: Http) -> Self {
+    pub fn new(library_path: &std::path::Path, http: Http, diagnostics: Diagnostics) -> Self {
         Self::in_dir(
             http,
             library_path.join("cache").join("remote-images-v2"),
             REMOTE_IMAGE_DISK_BUDGET,
+            diagnostics,
         )
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn for_test(http: Http) -> Self {
+    pub fn for_test(http: Http, diagnostics: Diagnostics) -> Self {
         let directory =
             tempfile::TempDir::new().expect("a temp directory for the remote image cache");
-        let mut cache =
-            Self::in_dir(http, directory.path().to_path_buf(), REMOTE_IMAGE_DISK_BUDGET);
+        let mut cache = Self::in_dir(
+            http,
+            directory.path().to_path_buf(),
+            REMOTE_IMAGE_DISK_BUDGET,
+            diagnostics,
+        );
         cache._owned_dir = Some(Arc::new(directory));
         cache
     }
 
-    fn in_dir(http: Http, dir: std::path::PathBuf, budget: u64) -> Self {
+    fn in_dir(http: Http, dir: std::path::PathBuf, budget: u64, diagnostics: Diagnostics) -> Self {
         Self {
             http,
             in_flight: Arc::new(Mutex::new(HashMap::new())),
             disk: Arc::new(DiskImageCache::new(dir, budget)),
+            diagnostics,
             #[cfg(any(test, feature = "test-utils"))]
             _owned_dir: None,
         }
@@ -307,11 +316,14 @@ impl RemoteImageCache {
         };
         let http = self.http.clone();
         let disk = Arc::clone(&self.disk);
+        let diagnostics = self.diagnostics.clone();
         let owned_url = url.to_string();
 
         let result = active
             .get_or_try_init(|| async {
-                if let Some(entry) = read_disk(Arc::clone(&disk), owned_url.clone()).await? {
+                if let Some(entry) =
+                    read_disk(&diagnostics, Arc::clone(&disk), owned_url.clone()).await?
+                {
                     return Ok::<Option<RemoteImage>, RemoteImageError>(entry.into_image());
                 }
 
@@ -327,7 +339,7 @@ impl RemoteImageCache {
                         }
                     };
                 let image = entry.clone().into_image();
-                write_disk(Arc::clone(&disk), owned_url.clone(), entry).await?;
+                write_disk(&diagnostics, Arc::clone(&disk), owned_url.clone(), entry).await?;
                 Ok(image)
             })
             .await
@@ -341,7 +353,7 @@ impl RemoteImageCache {
     }
 
     async fn read_disk(&self, url: &str) -> Result<Option<DiskImageEntry>, RemoteImageError> {
-        read_disk(Arc::clone(&self.disk), url.to_string()).await
+        read_disk(&self.diagnostics, Arc::clone(&self.disk), url.to_string()).await
     }
 
     /// The image at `url`, which the caller needs: [`RemoteImageError::NoImage`]
@@ -361,22 +373,24 @@ impl DiskImageEntry {
 }
 
 async fn read_disk(
+    diagnostics: &Diagnostics,
     disk: Arc<DiskImageCache>,
     url: String,
 ) -> Result<Option<DiskImageEntry>, RemoteImageError> {
     blocking("read the remote image cache", move || disk.get(&url))
         .await
-        .map_err(RemoteImageError::CacheTask)
+        .map_err(|failed| RemoteImageError::CacheTask(diagnostics.bug(failed)))
 }
 
 async fn write_disk(
+    diagnostics: &Diagnostics,
     disk: Arc<DiskImageCache>,
     url: String,
     entry: DiskImageEntry,
 ) -> Result<(), RemoteImageError> {
     blocking("write the remote image cache", move || disk.put(&url, &entry))
         .await
-        .map_err(RemoteImageError::CacheTask)
+        .map_err(|failed| RemoteImageError::CacheTask(diagnostics.bug(failed)))
 }
 
 #[cfg(test)]

@@ -20,6 +20,8 @@ bae-types = { workspace = true }
 # The shared transport, its retries and response cache, and the error text a
 # request failure prints.
 bae-util = { workspace = true }
+# Where the image cache reports a panic in its disk work.
+bae-diagnostics = { workspace = true }
 # Every catalog request is an HTTPS GET with a query string.
 reqwest = { workspace = true, features = ["query", "rustls"] }
 serde = { workspace = true, features = ["derive"] }

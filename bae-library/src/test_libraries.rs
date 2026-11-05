@@ -80,7 +80,8 @@ impl TestLibrary {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
-        let remote_images = RemoteImageCache::for_test(providers.http().clone());
+        let remote_images =
+            RemoteImageCache::for_test(providers.http().clone(), diagnostics.clone());
         let catalogs = CatalogSessions::new(
             providers,
             database.clone(),

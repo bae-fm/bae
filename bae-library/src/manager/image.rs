@@ -75,11 +75,7 @@ impl LibraryManager {
                 self.remote_images
                     .fetch_required(&url)
                     .await
-                    .map_err(|error| {
-                        bae_import::ImportError::from(bae_catalogs::CatalogError::from(
-                            error.reporting_cache_task(|failed| self.diagnostics.bug(failed)),
-                        ))
-                    })?
+                    .map_err(bae_import::ImportError::from)?
                     .bytes
             }
         };

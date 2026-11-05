@@ -181,6 +181,7 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
     let error = ImportError::from(
         bae_catalogs::remote_image::RemoteImageCache::for_test(
             bae_util::http::Http::for_test().serve("images.example", &origin),
+            bae_diagnostics::Diagnostics::noop(),
         )
         .fetch("https://images.example/cover")
         .await

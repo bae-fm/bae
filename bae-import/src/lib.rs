@@ -82,8 +82,6 @@ pub mod release_candidate;
 #[cfg(desktop)]
 mod release_reads;
 #[cfg(desktop)]
-mod remote_images;
-#[cfg(desktop)]
 pub mod rip_reading;
 #[cfg(desktop)]
 mod scan_passes;
@@ -137,7 +135,7 @@ pub(crate) struct ImportServices {
     catalogs: CatalogSessions,
     /// The provider images candidates' covers and new artists' pictures are
     /// fetched through.
-    remote_images: RemoteImages,
+    remote_images: bae_catalogs::remote_image::RemoteImageCache,
     preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
@@ -180,7 +178,7 @@ impl ImportServices {
             tables: tables::ImportTables::new(database.clone()),
             database,
             catalogs,
-            remote_images: RemoteImages::new(remote_images, diagnostics.clone()),
+            remote_images,
             preparations,
             clock,
             ids,
@@ -280,8 +278,6 @@ pub use preparations::CandidatePreparations;
 pub use preparations::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 #[cfg(desktop)]
 pub use release_reads::ReleaseReads;
-#[cfg(desktop)]
-pub(crate) use remote_images::RemoteImages;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub use scan_passes::store_scan_item;
 #[cfg(desktop)]

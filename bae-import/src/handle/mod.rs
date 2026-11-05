@@ -67,7 +67,7 @@ pub struct ImportServiceHandle {
     /// Where a catalog release is read from storage or fetched.
     release_reads: crate::ReleaseReads,
     /// The provider images covers are fetched through.
-    remote_images: crate::RemoteImages,
+    remote_images: bae_catalogs::remote_image::RemoteImageCache,
     /// The one writer of candidates' stored state.
     preparations: crate::CandidatePreparations,
     /// The clock a refused import's failure is stamped with.
