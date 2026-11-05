@@ -2,6 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
+source "$repo_root/scripts/xcode-trees.sh"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 
@@ -35,7 +36,7 @@ chmod +x "$stub_bin/xcodegen" "$stub_bin/xcodebuild" "$stub_bin/python3"
         FFMPEG_DIR="$configured_ffmpeg" \
         BAE_RUN_ISOLATION_CAPTURE="$capture" \
         BAE_RUN_ISOLATION_FFMPEG_CAPTURE="$ffmpeg_capture" \
-        BAE_MACOS_RUN_DERIVED_DATA_PATH="$run_derived_data" \
+        BAE_MACOS_RUN_TREE="$run_derived_data" \
         ./bae-macos/run.sh --skip-rust --no-open
 )
 
@@ -61,7 +62,7 @@ require_argument() {
 
 require_argument "-configuration"
 require_argument "Debug"
-require_argument "-derivedDataPath"
+require_argument "${XCODE_MACOS_RUN_ARGS[0]}"
 require_argument "$run_derived_data"
 require_argument "-clonedSourcePackagesDirPath"
 require_argument "$repo_root/bae-macos/bae/.build/SourcePackages"
@@ -97,7 +98,7 @@ cp "$repo_root/bae-macos/run.sh" "$rust_fixture/bae-macos/run.sh"
 cp "$repo_root/bae-macos/prepare-build.sh" \
     "$rust_fixture/bae-macos/prepare-build.sh"
 cp "$repo_root/scripts/check-ffmpeg-dist.sh" "$repo_root/scripts/bae-ffmpeg-release" \
-    "$rust_fixture/scripts/"
+    "$repo_root/scripts/xcode-trees.sh" "$rust_fixture/scripts/"
 cp "$repo_root/scripts/bae-ffmpeg-release" "$rust_fixture/bae-ffmpeg/dist/VERSION"
 
 printf '%s\n' \
@@ -186,8 +187,8 @@ show_build_settings() {
     cd "$repo_root/bae-macos/bae"
     xcodebuild -project bae.xcodeproj -scheme bae \
         -configuration "$configuration" \
-        -derivedDataPath .build/derivedData \
-        -clonedSourcePackagesDirPath .build/SourcePackages \
+        "${XCODE_MACOS_UNSIGNED_ARGS[@]}" \
+        "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
         -skipPackageUpdates -disableAutomaticPackageResolution \
         "$@" \
         -showBuildSettings 2>&1

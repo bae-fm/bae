@@ -106,13 +106,14 @@ jobs:
     - name: Build iOS app
       id: build_ios
       run: |
+        source scripts/xcode-trees.sh
         xcodebuild -project bae-ios/bae/bae.xcodeproj \
           -scheme bae \
           -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           -sdk iphonesimulator \
           -arch arm64 \
-          -derivedDataPath bae-ios/bae/.build/derivedData \
+          "${XCODE_IOS_ARGS[@]}" \
           build
 
     - name: Check the app loads only bundled or system libraries
@@ -120,7 +121,8 @@ jobs:
       # A Debug build also carries Xcode's own runpath to the build products'
       # PackageFrameworks.
       run: |
-        PRODUCTS="$PWD/bae-ios/bae/.build/derivedData/Build/Products/Debug-iphonesimulator"
+        source scripts/xcode-trees.sh
+        PRODUCTS="$XCODE_IOS_TREE/Build/Products/Debug-iphonesimulator"
         python3 scripts/check-bundled-libraries.py \
           --allow-rpath "$PRODUCTS/PackageFrameworks" "$PRODUCTS"/*.app
 
@@ -145,6 +147,7 @@ jobs:
     - name: Dead code check (periphery)
       if: ${{ inputs.edition == 'full' && !cancelled() && steps.build_ios.conclusion == 'success' }}
       run: |
+        source scripts/xcode-trees.sh
         cd bae-ios/bae
         periphery scan --strict --skip-build \
-          --index-store-path .build/derivedData/Index.noindex/DataStore
+          --index-store-path "$XCODE_IOS_INDEX"

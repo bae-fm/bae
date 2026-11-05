@@ -37,7 +37,14 @@ REPO = Path(__file__).resolve().parent.parent
 STRINGSDATA_TARGETS = ("bae", "BaeKit")
 
 CATALOG = REPO / "bae-macos/bae/bae/Localizable.xcstrings"
-DERIVED_DATA = REPO / "bae-macos/bae/.build/derivedData"
+DERIVED_DATA = Path(
+    subprocess.run(
+        [REPO / "scripts" / "xcode-trees.sh", "macos-unsigned"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+)
 
 
 def extracted_keys(derived_data: Path) -> set[str]:

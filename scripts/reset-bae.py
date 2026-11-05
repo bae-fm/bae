@@ -49,8 +49,18 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_PROFILE = pathlib.Path.home() / ".config" / "bae-dev" / "profile.toml"
 # The app `bae-macos/run.sh` builds, and its bundle id.
 DEFAULT_APP = (
-    REPO / "bae-macos" / "bae" / ".build" / "runDerivedData" / "Build" / "Products"
-    / "Debug" / "bae.app"
+    pathlib.Path(
+        subprocess.run(
+            [REPO / "scripts" / "xcode-trees.sh", "macos-run"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+    / "Build"
+    / "Products"
+    / "Debug"
+    / "bae.app"
 )
 BUNDLE_ID = "fm.bae.desktop"
 

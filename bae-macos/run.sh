@@ -77,17 +77,12 @@ fi
 
 cd bae-macos/bae && xcodegen && cd ../..
 
-# Keep this runnable app separate from Xcode's preview and test app host. Both
-# use the Debug configuration, so Swift packages receive the same DEBUG
-# compilation condition, while separate DerivedData roots prevent either build
-# from replacing the other's app bundle or build records.
-DERIVED_DATA="${BAE_MACOS_RUN_DERIVED_DATA_PATH:-.build/runDerivedData}"
-DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DATA" && pwd)"
-# The Swift packages are resolved once per checkout, into one folder every
-# xcodebuild of the app shares (scripts/check.sh's tree, the screenshot
-# scenes): each DerivedData tree otherwise unpacks its own copy of Sentry's
-# binary frameworks, 2.8 GB.
-SOURCE_PACKAGES="$(cd bae-macos/bae && mkdir -p .build/SourcePackages && cd .build/SourcePackages && pwd)"
+# The runnable app has its own tree (scripts/xcode-trees.sh says what differs
+# from the unsigned tree the checks and tests build into): it is signed and has
+# its own bundle id and plist, so a build into one tree would replace the
+# other's app bundle.
+source scripts/xcode-trees.sh
+mkdir -p "$XCODE_MACOS_RUN_TREE" "$XCODE_MACOS_PACKAGES"
 
 # Pass app inputs under private names. The app target maps these to Xcode build
 # settings; package targets do not, so their resource bundles keep their own
@@ -96,8 +91,8 @@ XCODEBUILD_ARGUMENTS=(
     -project bae-macos/bae/bae.xcodeproj
     -scheme bae
     -configuration "$CONFIG"
-    -derivedDataPath "$DERIVED_DATA"
-    -clonedSourcePackagesDirPath "$SOURCE_PACKAGES"
+    "${XCODE_MACOS_RUN_ARGS[@]}"
+    "${XCODE_MACOS_PACKAGES_ARGS[@]}"
     BAE_APP_GENERATE_INFOPLIST_FILE=NO
     BAE_APP_INFOPLIST_FILE=bae/Info.plist
     BAE_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID"
@@ -112,9 +107,9 @@ xcodebuild "${XCODEBUILD_ARGUMENTS[@]}" build
 # The app must load only what it bundles and what macOS provides. A Debug build
 # also carries Xcode's own runpath to the build products' PackageFrameworks.
 python3 scripts/check-bundled-libraries.py \
-    --allow-rpath "$DERIVED_DATA/Build/Products/$CONFIG/PackageFrameworks" \
-    "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app"
+    --allow-rpath "$XCODE_MACOS_RUN_TREE/Build/Products/$CONFIG/PackageFrameworks" \
+    "$XCODE_MACOS_RUN_TREE/Build/Products/$CONFIG/$PRODUCT_NAME.app"
 
 if [[ "$OPEN" == true ]]; then
-    open "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app"
+    open "$XCODE_MACOS_RUN_TREE/Build/Products/$CONFIG/$PRODUCT_NAME.app"
 fi

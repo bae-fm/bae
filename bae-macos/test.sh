@@ -7,6 +7,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+source scripts/xcode-trees.sh
 
 # The project lists the test files that existed when it was last generated, so
 # generate it from project.yml now: a test file added since would not be built
@@ -29,8 +30,7 @@ BUNDLE="$RESULTS/baeTests.xcresult"
 status=0
 xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath bae-macos/bae/.build/derivedData \
-    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
+    "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution \
     -resultBundlePath "$BUNDLE" \

@@ -13,6 +13,7 @@ fi
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 ./scripts/build-layout.sh
+source scripts/xcode-trees.sh
 
 # The Android SDK, JDK and NDK the Gradle and cargo steps use; a missing SDK
 # or NDK fails here, before any check runs.
@@ -96,6 +97,7 @@ check "every Rust file compiled"    sh -c 'python3 scripts/check-rust-files-comp
 check "test keychain"                sh -c 'python3 scripts/check-test-keychain.py && python3 scripts/tests/check-test-keychain-test.py'
 check "macOS native Cargo cache"     scripts/check-macos-build-cache.sh
 check "mobile host Cargo cache"      scripts/check-mobile-build-cache.sh
+check "Xcode build trees"           scripts/check-xcode-trees.py
 check "clippy (workspace)"          scripts/cargo.sh clippy --workspace -- -D warnings
 check "clippy (bae-library + test-utils)" \
   scripts/cargo.sh clippy -p bae-library --tests --features bae-library/test-utils -- -D warnings
@@ -254,8 +256,7 @@ check "xcodebuild (macOS baeium)" \
   env BAE_BRIDGE_FEATURES=cast \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath bae-macos/bae/.build/derivedData \
-    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
+    "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build
 
@@ -267,8 +268,7 @@ check "xcodebuild" \
   env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath bae-macos/bae/.build/derivedData \
-    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
+    "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build
 
@@ -282,8 +282,7 @@ check "xcodebuild build-for-testing (baeShots)" \
   env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme baeShots -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath bae-macos/bae/.build/derivedData \
-    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
+    "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
     -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
     -disableAutomaticPackageResolution build-for-testing
 
@@ -298,8 +297,8 @@ check "swiftlint (BaeKit)" \
 
 check "periphery" bash -c '
   cd bae-macos/bae && periphery scan --strict --skip-build \
-    --index-store-path .build/derivedData/Index.noindex/DataStore
-'
+    --index-store-path "$1"
+' _ "$XCODE_MACOS_UNSIGNED_INDEX"
 
 # ── iOS ────────────────────────────────────────────────────────────────────────
 section "iOS"
@@ -317,7 +316,7 @@ check "xcodebuild (iOS baeium, iphonesimulator)" \
   xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -sdk iphonesimulator -arch arm64 \
-    -derivedDataPath bae-ios/bae/.build/derivedData build
+    "${XCODE_IOS_ARGS[@]}" build
 
 check "bridge build" ./bae-bridge/build-ios.sh
 check "xcodegen" bash -c 'cd bae-ios/bae && xcodegen'
@@ -326,14 +325,14 @@ check "xcodebuild (iphonesimulator)" \
   xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -sdk iphonesimulator -arch arm64 \
-    -derivedDataPath bae-ios/bae/.build/derivedData build
+    "${XCODE_IOS_ARGS[@]}" build
 
 check "swift-format lint" _swift_format_lint bae-ios/bae/bae
 check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-ios/bae/bae
 check "periphery" bash -c '
   cd bae-ios/bae && periphery scan --strict --skip-build \
-    --index-store-path .build/derivedData/Index.noindex/DataStore
-'
+    --index-store-path "$1"
+' _ "$XCODE_IOS_INDEX"
 
 # ── Android ────────────────────────────────────────────────────────────────────
 section "Android"

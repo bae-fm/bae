@@ -149,25 +149,27 @@ jobs:
         # package target too, so BaeKit's resource bundle would no longer be
         # BaeKit_BaeKit.bundle. Signing is CODE_SIGNING_ALLOWED=NO here; the
         # bundle is codesigned by hand below with the edition's entitlements.
+        source scripts/xcode-trees.sh
         xcodebuild -project bae-macos/bae/bae.xcodeproj \
           -scheme bae \
           -configuration Release \
-          -derivedDataPath bae-macos/bae/.build/derivedData \
+          "${XCODE_MACOS_UNSIGNED_ARGS[@]}" \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           BAE_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           BAE_APP_PRODUCT_NAME="$PRODUCT_NAME" \
           DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
           build
-        echo "APP_PATH=bae-macos/bae/.build/derivedData/Build/Products/Release/${PRODUCT_NAME}.app" >> "$GITHUB_ENV"
+        echo "APP_PATH=$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Release/${PRODUCT_NAME}.app" >> "$GITHUB_ENV"
 
     - name: Package dSYM
       if: matrix.edition == 'full'
       run: |
         mkdir -p target
-        DSYM_PATH="bae-macos/bae/.build/derivedData/Build/Products/Release/${PRODUCT_NAME}.app.dSYM"
+        source scripts/xcode-trees.sh
+        DSYM_PATH="$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Release/${PRODUCT_NAME}.app.dSYM"
         if [[ ! -d "$DSYM_PATH" ]]; then
           echo "dSYM bundle not found at $DSYM_PATH" >&2
-          find bae-macos/bae/.build/derivedData/Build/Products/Release -maxdepth 1 -name "*.dSYM" -print || true
+          find "$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Release" -maxdepth 1 -name "*.dSYM" -print || true
           exit 1
         fi
         ditto -c -k --sequesterRsrc --keepParent "$DSYM_PATH" target/bae.dSYM.zip

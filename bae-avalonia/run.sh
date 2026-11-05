@@ -56,6 +56,7 @@ fi
 
 cd "$(dirname "$0")/.."
 REPO="$PWD"
+source scripts/xcode-trees.sh
 ./scripts/build-layout.sh
 for tool in cargo rustc dotnet python3 uniffi-bindgen-cs codesign security install_name_tool otool; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -85,7 +86,7 @@ export FFMPEG_DIR="${FFMPEG_DIR:-$REPO/bae-ffmpeg/dist}"
 
 RUN_DIR="$REPO/bae-avalonia/bin/run/$RID/$EDITION/$CONFIG"
 APP="$RUN_DIR/$EDITION Avalonia.app"
-PROFILE="${BAE_AVALONIA_PROVISIONING_PROFILE:-$REPO/bae-macos/bae/.build/runDerivedData/Build/Products/Debug/$EDITION.app/Contents/embedded.provisionprofile}"
+PROFILE="${BAE_AVALONIA_PROVISIONING_PROFILE:-$XCODE_MACOS_RUN_TREE/Build/Products/Debug/$EDITION.app/Contents/embedded.provisionprofile}"
 BUNDLE_ARGS=(--profile "$PROFILE" --bundle-id "$BUNDLE_ID" --app "$APP")
 python3 bae-avalonia/macos_bundle.py "${BUNDLE_ARGS[@]}" --check-signing
 mkdir -p "$RUN_DIR"

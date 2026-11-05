@@ -39,11 +39,12 @@ jobs:
         brew install xcodegen
         ./bae-bridge/build-macos.sh
         ./bae-bridge/install-swift-bindings.sh macos
+        source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           SWIFT_EMIT_LOC_STRINGS=YES \
-          -derivedDataPath .build/derivedData build
+          "${XCODE_MACOS_UNSIGNED_ARGS[@]}" build
 
     # Each post-build check below runs whenever the build itself succeeded,
     # independent of the other checks. Without these gates, a periphery
@@ -56,7 +57,8 @@ jobs:
       # A Debug build also carries Xcode's own runpath to the build products'
       # PackageFrameworks.
       run: |
-        PRODUCTS="$PWD/bae-macos/bae/.build/derivedData/Build/Products/Debug"
+        source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
+        PRODUCTS="$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug"
         python3 scripts/check-bundled-libraries.py \
           --allow-rpath "$PRODUCTS/PackageFrameworks" "$PRODUCTS/bae.app"
 
@@ -73,9 +75,10 @@ jobs:
       # A UI test waits on an app that never launches until the job's limit.
       timeout-minutes: 30
       run: |
+        source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
           -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-          -derivedDataPath .build/derivedData \
+          "${XCODE_MACOS_UNSIGNED_ARGS[@]}" \
           -resultBundlePath "$RUNNER_TEMP/baeTests.xcresult" test
 
     # The log does not say why a UI test's app stopped; the bundle holds its
@@ -105,9 +108,10 @@ jobs:
     - name: Dead code check (periphery)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
       run: |
+        source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae
         periphery scan --strict --skip-build \
-          --index-store-path .build/derivedData/Index.noindex/DataStore
+          --index-store-path "$XCODE_MACOS_UNSIGNED_INDEX"
 
     # CI-only by design: adds ~5s to every macOS-touching commit, so
     # pre-commit isn't worth it; CI is the right gate.
@@ -125,8 +129,9 @@ jobs:
         shasum -a 256 -c SHA256SUMS
         tar -xzf "${archive}"
         cd "${GITHUB_WORKSPACE}"
+        source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         /tmp/swiftui-environment-audit \
-          --index-store-path bae-macos/bae/.build/derivedData/Index.noindex/DataStore \
+          --index-store-path "$XCODE_MACOS_UNSIGNED_INDEX" \
           bae-macos/bae/bae
 
   feature-parity:
@@ -168,11 +173,12 @@ jobs:
         brew install xcodegen
         ./bae-bridge/build-macos.sh
         ./bae-bridge/install-swift-bindings.sh macos
+        source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           SWIFT_EMIT_LOC_STRINGS=YES \
-          -derivedDataPath .build/derivedData build
+          "${XCODE_MACOS_UNSIGNED_ARGS[@]}" build
 
     # The baeium flavor compiles the other side of every BAE_* #if. Its compiled
     # strings must exist and be translated, but the catalog also contains the

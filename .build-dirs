@@ -8,9 +8,10 @@
 # date.
 #
 # Caps are about twice a fresh build of each: host 9.8G, macOS bridge 7.4G,
-# Android 6.4G, iOS 12G; the macOS app's .build holds two DerivedData trees
-# (check.sh's and run.sh's) of 2.2G each fresh and the Swift packages both
-# resolve into, 3.0G; BaeKit's `swift build` 4.4G; BaeKit/Frameworks, the
+# Android 6.4G, iOS 12G; the macOS app's .build holds two Xcode build trees
+# (scripts/xcode-trees.sh: runApp and unsigned) of 2.2G each fresh and the Swift
+# packages both resolve into, 3.0G; the tool also deletes a tree on its own once
+# no build has used it for three days; BaeKit's `swift build` 4.4G; BaeKit/Frameworks, the
 # xcframework whose macOS and iOS slices build-macos.sh and build-ios.sh
 # write, 1.4G and 1.9G; the others,
 # the Android bridge's debug info among them (0.4G per ABI), are under 1G.

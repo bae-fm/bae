@@ -34,6 +34,7 @@ done
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 ./scripts/build-layout.sh
+source scripts/xcode-trees.sh
 
 # Resolve the output directory to an absolute path before any `cd`, and create
 # it so the test's write target exists.
@@ -66,8 +67,7 @@ TEST_RUNNER_BAE_SHOTS_TONES="$(IFS=,; echo "${TONES[*]-}")"
 export TEST_RUNNER_BAE_SHOTS_SCENES TEST_RUNNER_BAE_SHOTS_TONES
 xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath .build/derivedData \
-    -clonedSourcePackagesDirPath .build/SourcePackages \
+    "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
     test
 
 echo "macOS scenes captured:"

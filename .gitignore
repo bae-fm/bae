@@ -111,7 +111,7 @@ bae-android/build/
 # Build output
 bae-macos/bae/build/
 bae-macos/bae/.build
-# iOS derivedData (mirrors the macOS project dir; -derivedDataPath .build/derivedData)
+# iOS Xcode build tree (mirrors the macOS project dir; scripts/xcode-trees.sh)
 bae-ios/bae/.build
 
 # Local working files

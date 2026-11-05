@@ -138,6 +138,10 @@ run_check "mobile host Cargo cache" scripts/check-mobile-build-cache.sh || {
     exit 1
 }
 
+run_check "Xcode build trees" scripts/check-xcode-trees.py || {
+    exit 1
+}
+
 if staged_path_under ".github/workflows" || staged_path_under ".github/actions"; then
     require_command actionlint "lint staged GitHub automation"
     require_command shellcheck "check shell embedded in GitHub workflows"

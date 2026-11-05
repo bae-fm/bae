@@ -31,6 +31,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$(dirname "$0")/.."
+source scripts/xcode-trees.sh
 ./scripts/build-layout.sh
 
 case "$EDITION" in
@@ -72,12 +73,12 @@ xcodebuild -project bae-ios/bae/bae.xcodeproj \
     -configuration Debug \
     -sdk iphonesimulator \
     -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
-    -derivedDataPath bae-ios/bae/.build/derivedData \
+    "${XCODE_IOS_ARGS[@]}" \
     BAE_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
     BAE_APP_PRODUCT_NAME="$PRODUCT_NAME" \
     build
 
 xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null || true
 open -a Simulator
-xcrun simctl install "$SIMULATOR_ID" "bae-ios/bae/.build/derivedData/Build/Products/Debug-iphonesimulator/$PRODUCT_NAME.app"
+xcrun simctl install "$SIMULATOR_ID" "$XCODE_IOS_TREE/Build/Products/Debug-iphonesimulator/$PRODUCT_NAME.app"
 xcrun simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"
