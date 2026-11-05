@@ -21,7 +21,7 @@ async fn open_library() -> (TestLibrary, Arc<MemoryStorage>, TempDir) {
     let dir = TempDir::new().unwrap();
     let (library, storage) = storage_library(
         dir.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

@@ -14,7 +14,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

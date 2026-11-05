@@ -29,7 +29,7 @@ impl ExportFixture {
 
         let (library, cloud) = bae_library::test_libraries::storage_library(
             &db_dir,
-            bae_catalogs::providers::Providers::offline(),
+            bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
         )
         .await;

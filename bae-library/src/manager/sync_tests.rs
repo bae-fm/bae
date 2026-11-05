@@ -750,7 +750,7 @@ mod sign_in {
         let library = TestLibrary::open_with(
             database,
             app_dir,
-            bae_catalogs::providers::Providers::offline(),
+            bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
             clock,
             Arc::new(coven::UuidIds),

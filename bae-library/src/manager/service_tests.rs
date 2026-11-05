@@ -39,7 +39,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
     let manager = TestLibrary::open_with(
         Database::from_handle(handle, clock.clone(), Arc::new(coven::UuidIds)),
         app_dir,
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
         clock,
         Arc::new(coven::UuidIds),

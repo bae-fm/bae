@@ -148,7 +148,7 @@ async fn restore_cost(library: Library) {
     let opened = bae_library::test_libraries::TestLibrary::open_with(
         database,
         app_dir.clone(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
         clock.clone(),
         Arc::new(coven::UuidIds),

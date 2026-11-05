@@ -28,7 +28,7 @@ async fn setup(tmp: &TempDir) -> bae_library::test_libraries::TestLibrary {
 async fn setup_with_cloud(tmp: &TempDir) -> bae_library::test_libraries::TestLibrary {
     let (library, storage) = bae_library::test_libraries::storage_library(
         tmp.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

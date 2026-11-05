@@ -24,7 +24,7 @@ use uuid::Uuid;
 /// catalog, the store, and the directory holding it.
 pub(super) async fn setup_test_import() -> (TestImport, Database, TempDir) {
     setup_test_import_with(
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await
@@ -474,7 +474,7 @@ pub(crate) struct StoredCandidate {
 
 pub(super) async fn stored_candidate() -> StoredCandidate {
     stored_candidate_with(
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await
@@ -548,7 +548,7 @@ pub(super) async fn started(
 /// edit form and the mapping table.
 pub(super) async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::CandidateKey, String) {
     pane_fixture_with(
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await

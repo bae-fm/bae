@@ -65,7 +65,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     let library = bae_library::test_libraries::TestLibrary::open(
         database,
         bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

@@ -16,7 +16,7 @@ async fn an_ended_query_takes_a_new_request() {
     let manager = crate::test_libraries::TestLibrary::open(
         database.clone(),
         bae_app_dir::AppDir::under_home(directory.path()).unwrap(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

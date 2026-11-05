@@ -8,7 +8,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

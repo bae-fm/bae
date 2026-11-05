@@ -17,7 +17,7 @@ async fn setup_test_import_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestImport, Database, TempDir) {
     setup_test_import_over(
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
         diagnostics,
     )

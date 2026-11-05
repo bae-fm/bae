@@ -44,7 +44,7 @@ async fn manager_with_recording_transport(
     let library = crate::test_libraries::TestLibrary::open_with(
         database,
         bae_app_dir::AppDir::under_home(home.path()).unwrap(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidIds),

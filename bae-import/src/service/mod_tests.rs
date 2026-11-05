@@ -117,7 +117,7 @@ pub(crate) async fn setup_import_service() -> TestService {
     let runtime =
         crate::CandidateRuntime::new(tables.clone(), bae_diagnostics::Diagnostics::noop());
     let catalogs = crate::CatalogSessions::new(
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         database.clone(),
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),

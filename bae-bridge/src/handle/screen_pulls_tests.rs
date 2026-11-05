@@ -39,7 +39,7 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     // A library with its storage, which making a profile needs.
     let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         root.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     ));
     runtime.block_on(bae_library::test_libraries::connect_storage(&library, &storage));
@@ -118,7 +118,7 @@ fn the_sync_status_follows_storage_being_set_up() {
         .unwrap();
     let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         root.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     ));
     let setup = bae_library::LibraryManager::clone(&library);

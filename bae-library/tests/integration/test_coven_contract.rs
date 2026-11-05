@@ -77,7 +77,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let library = bae_library::test_libraries::test_library_from_handle(
         handle.clone(),
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

@@ -294,7 +294,7 @@ async fn open_test_db(dir: &std::path::Path) -> Database {
 pub async fn open_test_library(dir: &std::path::Path) -> TestLibrary {
     open_test_library_with(
         dir,
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await
@@ -333,7 +333,7 @@ pub async fn test_library_from_handle(
 /// owns the database file, so it must outlive the library.
 pub async fn setup_test_library() -> (TestLibrary, tempfile::TempDir) {
     setup_test_library_with(
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await
@@ -381,7 +381,7 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
         TestLibrary::open(
             database,
             app_dir,
-            bae_catalogs::providers::Providers::offline(),
+            bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
         )
         .await

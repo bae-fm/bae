@@ -13,7 +13,7 @@ pub(crate) async fn test_sessions() -> (CatalogSessions, Database, TempDir) {
     .await
     .unwrap();
     let sessions = CatalogSessions::new(
-        Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         database.clone(),
         Diagnostics::noop(),
         tokio::runtime::Handle::current(),

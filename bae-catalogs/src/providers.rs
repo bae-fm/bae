@@ -60,20 +60,6 @@ impl Providers {
         Self { http, musicbrainz, discogs, wikidata }
     }
 
-    /// Providers that reach nothing and answer nothing: every request fails
-    /// fast on a port nothing listens on, and no test holds their fakes to
-    /// seed.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn offline() -> Self {
-        let http = Http::for_test();
-        Self::for_test(
-            http.clone(),
-            Arc::new(MusicBrainz::for_test(http.clone())),
-            Arc::new(Discogs::for_test(http.clone())),
-            Arc::new(Wikidata::for_test(http)),
-        )
-    }
-
     /// A client asking Discogs with `api_key`, over this app's Discogs
     /// transport. `observer` hears what each call proves about the key.
     pub fn discogs_client(

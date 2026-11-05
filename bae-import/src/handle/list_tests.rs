@@ -279,7 +279,7 @@ fn counted(entries: &[crate::PendingFilterEntry], filter: PendingFilter) -> Opti
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_off_the_page_delivers_its_count() {
     let (handle, _tmp, list, on_page, off_page) = one_row_on_the_page(
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;

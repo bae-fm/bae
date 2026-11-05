@@ -22,7 +22,7 @@ struct ImportingLibrary {
 impl ImportingLibrary {
     async fn open() -> Self {
         Self::asking(
-            bae_catalogs::providers::Providers::offline(),
+            bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
         )
         .await

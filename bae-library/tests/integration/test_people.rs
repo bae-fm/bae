@@ -8,7 +8,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
@@ -52,7 +52,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
@@ -100,7 +100,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
@@ -133,7 +133,7 @@ async fn a_png_avatar_is_stored_as_covers_are() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
@@ -156,7 +156,7 @@ async fn an_undecodable_avatar_is_refused() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
-        bae_catalogs::providers::Providers::offline(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
@@ -324,7 +324,7 @@ impl Household {
         bae_library::test_libraries::test_library_from_handle(
             self.owner.clone(),
             dir,
-            bae_catalogs::providers::Providers::offline(),
+            bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
         )
         .await
