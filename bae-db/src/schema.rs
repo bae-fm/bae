@@ -69,7 +69,7 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
         .collation(
             super::collation::NATURAL_ORDER,
             super::collation::NATURAL_ORDER_VERSION,
-            super::collation::natural_order,
+            bae_util::natural_order::compare,
         );
     register_functions(builder)
 }
@@ -119,13 +119,13 @@ schema_functions! {
 
 /// `bae_fold_case`: a text folded as library search folds it; NULL stays NULL.
 fn fold_case_value(text: Option<String>) -> Option<String> {
-    text.map(|text| fold_case(&text))
+    text.map(|text| bae_util::search_text::fold_case(&text))
 }
 
 /// `bae_search_pattern`: the `GLOB` pattern library search matches a query
 /// by; NULL stays NULL.
 fn search_pattern_value(query: Option<String>) -> Option<String> {
-    query.map(|query| search_pattern(&query))
+    query.map(|query| bae_util::search_text::search_pattern(&query))
 }
 
 /// `bae_catalog_rank`: a stored catalog's place in the order surfaces list
@@ -191,7 +191,7 @@ pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
             .transpose()
     })
     .expect("coven_path_text registers");
-    conn.create_collation(super::collation::NATURAL_ORDER, super::collation::natural_order)
+    conn.create_collation(super::collation::NATURAL_ORDER, bae_util::natural_order::compare)
         .expect("natural_order registers");
     // The schema's triggers follow coven's `coven_files`, `coven_pins`,
     // `coven_upload_queue` and `coven_sync_status`, which coven creates
@@ -214,32 +214,6 @@ pub fn bare_library_connection(schema: Schema) -> rusqlite::Connection {
         conn.execute_batch(sql).expect("the schema applies");
     }
     conn
-}
-
-/// A text as library search compares it: lowercased by Unicode's rules. The
-/// schema's `bae_fold_case` folds each searched title and name this way, and
-/// a query is folded the same way before it is matched against them.
-pub(crate) fn fold_case(text: &str) -> String {
-    text.to_lowercase()
-}
-
-/// The `GLOB` pattern matching `query` anywhere inside a text folded as the
-/// search tables fold theirs: the folded query with `*`, `?` and `[`, which
-/// `GLOB` reads as wildcards, each written as the one-character class that
-/// matches only itself. The schema's `bae_search_pattern` is this, for the
-/// import list's search.
-pub fn search_pattern(query: &str) -> String {
-    let mut pattern = String::from("*");
-    for character in fold_case(query).chars() {
-        match character {
-            '*' => pattern.push_str("[*]"),
-            '?' => pattern.push_str("[?]"),
-            '[' => pattern.push_str("[[]"),
-            other => pattern.push(other),
-        }
-    }
-    pattern.push('*');
-    pattern
 }
 
 #[cfg(test)]

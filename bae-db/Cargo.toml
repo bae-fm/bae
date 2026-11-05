@@ -40,8 +40,6 @@ uuid = { workspace = true, features = ["v4", "v5"] }
 chrono = { workspace = true, features = ["serde"] }
 # Stored paths are hex-encoded bytes.
 hex = { workspace = true }
-# Natural, case-insensitive file-name order.
-natord = { workspace = true }
 # A test database's app directory, and the temporary directory it lives in.
 bae-app-dir = { workspace = true, features = ["test-utils"], optional = true }
 tempfile = { workspace = true, optional = true }

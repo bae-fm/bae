@@ -34,6 +34,8 @@ chrono = { workspace = true }
 # The jitter drawn into each retry wait (src/retry.rs).
 rand = { workspace = true }
 lru = { workspace = true }
+# Natural, case-insensitive name order (src/natural_order.rs).
+natord = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 # Image downscaling at store time (src/stored_image.rs) runs on every

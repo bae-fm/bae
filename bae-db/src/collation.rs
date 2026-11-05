@@ -4,14 +4,7 @@
 /// reads them.
 pub(crate) const NATURAL_ORDER: &str = "natural_order";
 
-/// The version of [`natural_order`] coven records. A change to what it
-/// compares bumps it, and coven rebuilds the indexes that use it on the next
-/// writable open.
+/// The version of [`bae_util::natural_order::compare`] coven records. A
+/// change to what it compares bumps it, and coven rebuilds the indexes that
+/// use it on the next writable open.
 pub(crate) const NATURAL_ORDER_VERSION: u32 = 1;
-
-/// Natural order: "Disc 2" before "Disc 10" and letters without regard to
-/// case, then by bytes where that finds two strings alike, so two different
-/// strings never tie.
-pub fn natural_order(left: &str, right: &str) -> std::cmp::Ordering {
-    natord::compare_ignore_case(left, right).then_with(|| left.cmp(right))
-}

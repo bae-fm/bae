@@ -9,6 +9,7 @@ pub mod error_text;
 pub mod fs;
 pub mod http;
 pub mod logging;
+pub mod natural_order;
 #[cfg(unix)]
 pub mod open_file_limit;
 #[cfg(any(test, feature = "test-utils"))]
@@ -16,6 +17,7 @@ pub mod open_files_peak;
 pub mod path_text;
 pub mod retry;
 pub mod sample_time;
+pub mod search_text;
 pub mod server;
 pub mod session_cache;
 pub mod stall;

@@ -5,9 +5,9 @@
 
 /// The ids of the artists library search finds (§2.3) for the search
 /// pattern the parameter `pattern` binds (see
-/// [`bae_db::schema::search_pattern`]): those whose name or sort name holds
-/// it, and the artist each other printed name holding it shows as. Each part
-/// reads its search table's index; the artist picker finds by these too.
+/// [`bae_util::search_text::search_pattern`]): those whose name or sort name
+/// holds it, and the artist each other printed name holding it shows as. Each
+/// part reads its search table's index; the artist picker finds by these too.
 pub(crate) fn artists_found_sql(pattern: &str) -> String {
     format!(
         "SELECT artist_id FROM artist_search WHERE name GLOB {pattern} \
@@ -20,7 +20,7 @@ pub(crate) fn artists_found_sql(pattern: &str) -> String {
 
 /// The albums whose credits library search finds (§2.3) for the search
 /// pattern the parameter `pattern` binds (see
-/// [`bae_db::schema::search_pattern`]): the name of the artist a
+/// [`bae_util::search_text::search_pattern`]): the name of the artist a
 /// credit shows, or the other name it prints, holds it. Each part reads its
 /// search table's index, and an album two credits find is listed twice, so
 /// the list is only read through `IN`.
@@ -41,7 +41,7 @@ pub(crate) fn albums_credits_find_sql(pattern: &str) -> String {
 
 /// Whether the album `album_id` names is one library search finds (§2.3)
 /// for the search pattern the parameter `pattern` binds (see
-/// [`bae_db::schema::search_pattern`]): its title, or the name of an
+/// [`bae_util::search_text::search_pattern`]): its title, or the name of an
 /// artist one of its credits shows or the other name a credit prints, holds
 /// it. Each part reads its search table's index, so the test costs what the
 /// search finds, read once per statement; an album two parts find is listed
