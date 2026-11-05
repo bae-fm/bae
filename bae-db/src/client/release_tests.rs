@@ -153,21 +153,9 @@ async fn set_media(db: &crate::Database, media: Vec<MediaCount>) {
         .unwrap();
 }
 
-/// `RELEASE`'s media as `db` reads the release, and as its Storage Manager
-/// listing sorts it.
-async fn media_on(db: &crate::Database) -> (Vec<MediaCount>, Option<String>) {
-    let release = db.find_release_by_id(RELEASE).await.unwrap().unwrap();
-    let key = db
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT media_key FROM release_listing WHERE release_id = ?1",
-                [RELEASE],
-                |row| row.get(0),
-            )?)
-        })
-        .await
-        .unwrap();
-    (release.pressing.facts.media, key)
+/// `RELEASE`'s media as `db` reads the release.
+async fn media_on(db: &crate::Database) -> Vec<MediaCount> {
+    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.facts.media
 }
 
 /// The rows both devices must agree on.
@@ -175,7 +163,7 @@ const MEDIA_ROWS: &str = "SELECT id || ':' || position || ':' || medium || ':' |
      FROM release_media ORDER BY id";
 
 /// One device's edit of a release's media reaches the other, which reads the
-/// release and sorts its listing by them.
+/// release by them.
 #[test]
 fn a_media_edit_reaches_the_other_device() {
     crate::test_devices::run_two_store_test(
@@ -192,13 +180,7 @@ async fn check_media_edit_reaches(devices: &crate::test_devices::TwoStores) {
     set_media(devices.a(), vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
-    assert_eq!(
-        media_on(devices.b()).await,
-        (
-            vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)],
-            Some("vinyl:00002,cd:00001".to_string())
-        )
-    );
+    assert_eq!(media_on(devices.b()).await, vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]);
 }
 
 /// Two devices, apart, each change a different place in one release's media.
@@ -223,8 +205,8 @@ async fn check_concurrent_places(devices: &crate::test_devices::TwoStores) {
     devices.converge(MEDIA_ROWS).await;
 
     let both = vec![count(Medium::Cd, 2), count(Medium::BluRay, 1)];
-    assert_eq!(media_on(devices.a()).await.0, both);
-    assert_eq!(media_on(devices.b()).await.0, both);
+    assert_eq!(media_on(devices.a()).await, both);
+    assert_eq!(media_on(devices.b()).await, both);
 }
 
 /// Make `RELEASE`'s barcodes `barcodes` on `db`.
@@ -346,7 +328,7 @@ async fn check_labels(devices: &crate::test_devices::TwoStores) {
 async fn the_editor_reads_which_file_holds_a_track_s_body() {
     use crate::{DbAudioSegmentRole, NewReleaseFile};
     const TRACK_A: &str = "0482872e-d4bf-4080-8426-441a0a3e71fc";
-    let (db, tmp) = aggregate_ordering::release_detail_db().await;
+    let (db, tmp) = aggregate_ordering::release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
     let mut files = Vec::new();
     for name in ["01 Track Title A.flac", "02 Track Title B.flac"] {
         let file = NewReleaseFile {

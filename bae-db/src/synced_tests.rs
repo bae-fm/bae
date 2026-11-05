@@ -170,32 +170,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // Where each release's files are on this device, kept from them and
     // coven's records by local triggers.
     "release_storage",
-    // What library lists sort, filter and count by, kept from the synced
-    // rows by local triggers.
-    "composer_work",
-    "composer_release",
-    "composer_unlinked_credit",
-    "composer_listing",
-    "composer_detail_row",
-    "album_listing",
-    "album_artist_link",
-    "artist_listing",
-    "release_listing",
-    "release_listing_totals",
-    // How often each of those lists' rows have moved, which says whether
-    // a list's read may start from where its last read found rows.
-    "library_list_versions",
-    // Library search's folded titles and names.
-    "album_search",
-    "track_search",
-    "work_search",
-    "artist_search",
-    "artist_credit_search",
-    "album_search_entry",
-    "track_search_entry",
-    "work_search_entry",
-    "artist_search_entry",
-    "artist_credit_search_entry",
     // Why this device's last attempt to start sync failed.
     "sync_start_failure",
 ];

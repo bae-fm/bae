@@ -6,6 +6,7 @@ pub(crate) use listing::{album_browse_order, album_rows_on, AlbumAppearanceRow};
 use listing::{album_browse_sections_query, album_browse_sources, album_count_on};
 
 mod listing;
+pub(super) use listing::SQL as LISTING_SQL;
 
 impl LibraryViews {
     /// Search the library for a parsed, non-blank query. The result count is

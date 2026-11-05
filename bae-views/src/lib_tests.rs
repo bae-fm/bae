@@ -24,7 +24,7 @@ const ALBUM_VARIOUS: &str = "5a7c2e10-91b3-4f6d-8e2a-1c0b9d8e7f04";
 /// Various Artists whose one track carries its own credit, C, and whose other
 /// track has none. Each album holds one release.
 async fn credited_library() -> (Database, tempfile::TempDir) {
-    let (db, dir) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     exec_batch(
         &db,
         &format!(
@@ -197,7 +197,7 @@ pub(super) async fn assert_seeks_search_sorting(
 /// A library of 300 albums, each with an artist, a release, files and a
 /// work, every release queued to download and every track in the lane.
 pub(super) async fn library() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     window_cost::seed(&db, &tmp.path().join("originals"), 0, 300).await;
     (db, tmp)
 }
@@ -223,7 +223,7 @@ pub(super) async fn key_at<R: Send + 'static>(
 
 #[tokio::test]
 async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
-    let (db, _tmp) = bae_db::test_fixtures::temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = bae_db::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -600,7 +600,7 @@ mod window_cost {
     #[tokio::test(flavor = "multi_thread")]
     #[ignore = "measurement: run in release with --ignored --nocapture"]
     async fn window_cost() {
-        let (db, tmp) = bae_db::test_fixtures::empty_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+        let (db, tmp) = bae_db::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
         let mut held = 0;
         for n in SIZES {
             let took = grow_to(&db, &tmp.path().join("originals"), held, n).await;

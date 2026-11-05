@@ -17,7 +17,7 @@ const COMPOSER_SOLO: &str = "4d93d615-4549-45d9-81d9-644f079d59bf";
 
 #[tokio::test]
 async fn composer_page_lists_a_part_under_its_parent_with_its_representative_release() {
-    let (db, _tmp) = composed_work_db().await;
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
 
     let rows = crate::LibraryViews::new(db.clone())
         .get_composer_detail_rows(ARTIST_COMPOSER, 0, 10)
@@ -44,7 +44,7 @@ async fn composer_page_lists_a_part_under_its_parent_with_its_representative_rel
 
 #[tokio::test]
 async fn work_detail_lists_child_works_with_their_representative_release() {
-    let (db, _tmp) = composed_work_db().await;
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
 
     let detail = crate::LibraryViews::new(db.clone())
         .find_work_detail(WORK_PARENT_A)
@@ -59,7 +59,7 @@ async fn work_detail_lists_child_works_with_their_representative_release() {
 
 #[tokio::test]
 async fn work_detail_release_rows_carry_album_release_display_fields() {
-    let (db, _tmp) = composed_work_db().await;
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
 
     let detail = crate::LibraryViews::new(db.clone())
         .find_work_detail(WORK_CHILD_A)
@@ -83,7 +83,7 @@ async fn work_detail_release_rows_carry_album_release_display_fields() {
 
 #[tokio::test]
 async fn composer_page_uses_id_tiebreaker() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -131,7 +131,7 @@ async fn composer_page_uses_id_tiebreaker() {
 /// fall through to the tail's `composer.name ASC` and order them the other way.
 #[tokio::test]
 async fn composer_page_applies_secondary_criterion() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -226,7 +226,7 @@ async fn listed_composers(db: &Database) -> Vec<(String, i64, i64, i64)> {
 
 #[tokio::test]
 async fn composer_list_counts_a_merged_composer_under_its_survivor() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_listed(&db, LISTED_RELEASES).await;
     exec_listed(
         &db,
@@ -312,7 +312,7 @@ fn composer_listing_rows(conn: &rusqlite::Connection) -> Vec<(String, i64, i64, 
 fn a_composer_merged_before_it_arrived_is_listed_with_what_was_counted_under_it() {
     // Rows from another device can arrive before the rows they name: here a
     // merge and a work credit before either artist.
-    let conn = bae_db::schema::bare_library_connection(bae_db::test_fixtures::TEST_SCHEMA);
+    let conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
     conn.execute_batch(
         "PRAGMA foreign_keys = OFF;
          INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES
@@ -341,7 +341,7 @@ fn a_composer_merged_before_it_arrived_is_listed_with_what_was_counted_under_it(
 
 #[tokio::test]
 async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_listed(&db, LISTED_RELEASES).await;
     exec_listed(
         &db,
@@ -426,7 +426,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
 
 #[tokio::test]
 async fn composer_page_sorts_names_descending_with_ids_ascending() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_listed(
         &db,
         "
@@ -489,7 +489,7 @@ async fn next_composer_page_is_only_a_rename(
 
 #[tokio::test]
 async fn composer_browse_subscription_reconfigures_bounded_windows() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     exec_batch(
         &db,
         &format!(
@@ -624,7 +624,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
 /// under the survivor alone.
 #[test]
 fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
-    bae_db::test_devices::run_two_store_test(bae_db::test_fixtures::TEST_SCHEMA, async |devices| {
+    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let writer = devices.a();
         let reader = devices.b();
         let sort = [ComposerSortCriterion {
@@ -706,7 +706,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
 
 #[tokio::test]
 async fn work_summary_orders_composer_names_inside_the_aggregate() {
-    let (db, _tmp) = aggregate_db().await;
+    let (db, _tmp) = aggregate_db(crate::TEST_SCHEMA).await;
     let results =
         crate::LibraryViews::new(db.clone()).search_rows("Work Title A", 10).await.unwrap();
     let summary = results.works.first().expect("work summary row");
@@ -722,7 +722,7 @@ async fn work_summary_orders_composer_names_inside_the_aggregate() {
 /// by title compared without case, holds a primary release that doesn't
 /// perform it, then two that do, the later of them on its first track.
 async fn work_across_albums_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_batch(
         &db,
         "

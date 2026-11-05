@@ -4086,7 +4086,7 @@ bindings export none of their symbols.
 |---|---|
 | bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it, and the live reads the screens pull over the library and its views |
 | bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives, and the library's schema, assembled from each crate's parts of it (a phone's without import's) |
-| bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in |
+| bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in, with the tables those lists read, kept by triggers in the write that changes what they come from |
 | bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
@@ -4212,7 +4212,11 @@ the folder scans' (`folder_scans.sql`), the release groupings'
 (`release_groupings.sql`), the candidate state's (the `.sql` files beside the
 row files in `import_state/`), the source releases' (`source_releases.sql`,
 `source_releases/tracklist.sql` and `album_link_rows.sql`), the import origin's
-(`import_origin.sql`) and the import list's (`import_list/`). A part runs
+(`import_origin.sql`) and the import list's (`import_list/`), and bae-views',
+under `bae-views/src/`: the album grid's (`album/listing.sql`), the artist
+list's (`artist.sql`), the composer list's (`composer.sql`), a composer's
+page's (`composer_detail.sql`), the Storage manager's (`storage.sql`), library
+search's (`search.sql`) and the lists' versions (`versions.sql`). A part runs
 after the parts creating the tables its triggers fire on. Every table is
 `STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
 stays on the device.
@@ -4292,6 +4296,11 @@ Beside them, device-local tables:
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, and how many wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
+
+What the library lists, bae-views' part, kept by its triggers:
+
+| Table | One row per |
+|---|---|
 | `composer_work` | work and artist shown credited on it |
 | `composer_release` | release and artist shown credited on a work one of its tracks performs |
 | `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
@@ -4306,15 +4315,16 @@ Beside them, device-local tables:
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
-Local triggers write every table here in the same write as the library rows
-they come from, on this device or applied from another, so they always match those rows. A release's storage row follows
-coven's records of its files, the pins `coven_pins` lists as kept and coven's
-upload queue the same way, in the transaction that changes one of them,
-whether this device's own write, another device's applied, or coven's as a
-file is pinned, downloads, uploads or is unpinned, and its listing row copies
-what it sorts by in that write. A write applied from another device can hold
-a row before a row it references; the triggers count a row once what it
-references is there. An album's listing row is written only when one of its values changes, and its
+Local triggers write every table of bae-views' part in the same write as the
+library rows they come from, on this device or applied from another, so they
+always match those rows. A release's storage row follows coven's records of its
+files, the pins `coven_pins` lists as kept and coven's upload queue the same
+way, in the transaction that changes one of them, whether this device's own
+write, another device's applied, or coven's as a file is pinned, downloads,
+uploads or is unpinned, and its listing row copies what it sorts by in that
+write. A write applied from another device can hold a row before a row it
+references; the triggers count a row once what it references is there. An
+album's listing row is written only when one of its values changes, and its
 releases' rows only when its title or credits do, so a release added to an
 album, even a box set of thousands, rewrites no other release's row.
 

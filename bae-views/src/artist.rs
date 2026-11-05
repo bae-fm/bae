@@ -1,7 +1,12 @@
 //! The artist views: the artist list and an artist's detail.
+//!
+//! Its tables and the triggers keeping them are `artist.sql`.
 
 use super::*;
 use crate::album_detail::{AlbumSummary, ArtistDetail, ArtistSummary};
+
+/// The SQL creating this part's tables and triggers.
+pub(super) const SQL: &str = include_str!("artist.sql");
 
 impl LibraryViews {
     pub async fn get_artist_count(&self) -> Result<u64, DbError> {

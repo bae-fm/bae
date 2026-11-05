@@ -210,7 +210,7 @@ fn download(release_id: &str) -> ReleaseQueueEntry<()> {
 #[cfg(desktop)]
 #[tokio::test]
 async fn the_inspectors_read_holds_the_releases_own_entries() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|sql| {
         seed_artist_album_release(sql)?;
         Ok(())

@@ -34,6 +34,9 @@ bae-track-audio = { workspace = true }
 bae-transfers = { workspace = true }
 bae-types = { workspace = true }
 bae-util = { workspace = true }
+# The library views' part of the library's schema, which a library's store is
+# created, opened and restored on.
+bae-views = { workspace = true }
 coven = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

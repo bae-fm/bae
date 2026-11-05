@@ -4,6 +4,21 @@
 //! in. Their SQL is functions over coven's read context; [`LibraryViews`]
 //! runs them through the store and resolves what they read into what a
 //! screen shows.
+//!
+//! Their tables are the SQL files beside the listings that read them: the
+//! album grid's (`album/listing.sql`), the artist list's (`artist.sql`), the
+//! composer list's (`composer.sql`), a composer's page's
+//! (`composer_detail.sql`), the Storage Manager's (`storage.sql`), library
+//! search's (`search.sql`) and the versions of the tables those lists page
+//! (`versions.sql`). Each holds values a list sorts, filters or counts by that
+//! come from several library tables, each kept in a device-local table so an
+//! index serves it. Local triggers write them in the same write as the rows
+//! they come from, on this device or applied from another, so they always
+//! match those rows. Coven applies another device's write with foreign keys
+//! checked only at its end, so a row can arrive before a row it references: a
+//! trigger counts only rows whose references are there, and the referenced
+//! row's own trigger, when it arrives, counts the rows that were waiting for
+//! it.
 
 pub mod album;
 pub mod album_detail;
@@ -76,6 +91,24 @@ use chrono::{DateTime, Utc};
 use coven::{CovenError, SqlReadContext};
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::BTreeSet;
+
+/// The library views' part of the library's schema: one domain, its files in
+/// the order each runs after the files creating the tables its triggers fire
+/// on.
+pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[bae_db::SchemaPart::new(&[
+    album::LISTING_SQL,
+    artist::SQL,
+    composer::SQL,
+    composer_detail::SQL,
+    storage::SQL,
+    search::SQL,
+    versions::SQL,
+])];
+
+/// The schema this crate's tests open their stores on: bae-db's part and the
+/// views'.
+#[cfg(test)]
+const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, SCHEMA_PARTS]);
 
 /// The library's store, as the library's views read it.
 #[derive(Clone, Debug)]

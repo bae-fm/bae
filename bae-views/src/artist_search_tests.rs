@@ -14,7 +14,7 @@ const THIRD: &str = "3c9e3b75-8f2a-4b65-9c74-2e5b5c1b2c03";
 const OTHER: &str = "4daf4c86-9a3b-4c76-8d85-3f6c6d2c3d04";
 
 async fn seeded() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_batch(
         &db,
         &format!(

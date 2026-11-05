@@ -4,8 +4,10 @@
 use super::RELEASE_A;
 use crate::{Database, DbError, NewReleaseFile};
 
-pub async fn aggregate_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
+/// The library the reads that aggregate and order a release's credits and
+/// tracks are tested on, on `schema`.
+pub async fn aggregate_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
+    let (db, tmp) = super::temp_db(schema).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -62,8 +64,9 @@ pub async fn queue_db() -> (Database, tempfile::TempDir) {
     (db, tmp)
 }
 
-pub async fn release_detail_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
+/// The aggregate library with a release's detail seeded on it, on `schema`.
+pub async fn release_detail_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
+    let (db, tmp) = super::temp_db(schema).await;
     db.call(|conn| {
         super::seed_artist_album_release(conn)?;
         conn.execute_batch(

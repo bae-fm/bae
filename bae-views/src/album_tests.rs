@@ -16,7 +16,7 @@ use std::collections::BTreeSet;
 /// and deleting a selected album wakes the read that shows it gone.
 #[tokio::test]
 async fn album_selection_follows_its_ids_on_one_subscription() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_album_selection(BTreeSet::new());
     let requests = live.requests();
     assert!(live.next().await.expect("the query stays open").result.unwrap().is_empty());
@@ -64,7 +64,7 @@ async fn next_album_page_is_only_a_rename(
 
 #[tokio::test]
 async fn album_browse_delivers_rows_count_and_cover_versions() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let mut live =
         crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
 
@@ -89,7 +89,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
 /// not a change to the grid.
 #[tokio::test]
 async fn album_browse_reads_only_the_primary_releases_cover() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     exec(
         &db,
         "INSERT INTO releases (id, album_id, created_at, album_order) VALUES (?1, ?2, '2026-01-02T00:00:00Z', 0)",
@@ -114,7 +114,7 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
 
 #[tokio::test]
 async fn album_browse_subscription_reconfigures_bounded_windows() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let sort = [AlbumSortCriterion {
         field: AlbumSortField::DateAdded,
         direction: SortDirection::Ascending,
@@ -265,7 +265,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
 /// current query found wakes it.
 #[tokio::test]
 async fn library_search_moves_between_queries_on_one_subscription() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_library_search(None, 50);
     let requests = live.requests();
 
@@ -295,7 +295,7 @@ async fn library_search_moves_between_queries_on_one_subscription() {
 
 #[tokio::test]
 async fn album_browse_ignores_an_unread_table() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let mut live =
         crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
     let initial = live.next().await.expect("the query stays open").result.unwrap();
@@ -318,7 +318,7 @@ async fn album_browse_ignores_an_unread_table() {
 
 #[tokio::test]
 async fn album_detail_subscription_ignores_an_unread_column() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "cover bytes").await;
     let mut live =
         crate::LibraryViews::new(db.clone()).subscribe_album_detail(Some(ALBUM_ID.to_string()));
@@ -332,7 +332,7 @@ async fn album_detail_subscription_ignores_an_unread_column() {
 
 #[tokio::test]
 async fn album_detail_subscription_delivers_absence_after_deletion() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let mut live =
         crate::LibraryViews::new(db.clone()).subscribe_album_detail(Some(ALBUM_ID.to_string()));
     assert!(live.next().await.expect("the query stays open").result.unwrap().detail.is_some());
@@ -350,7 +350,7 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
 
 #[test]
 fn album_page_subscription_delivers_a_write_materialized_by_sync() {
-    bae_db::test_devices::run_two_store_test(bae_db::test_fixtures::TEST_SCHEMA, async |devices| {
+    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let writer = devices.a();
         let reader = devices.b();
         let mut live = crate::LibraryViews::new(reader.clone()).subscribe_album_browse(
@@ -386,7 +386,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
 /// turn.
 #[test]
 fn library_search_finds_rows_applied_from_another_device() {
-    bae_db::test_devices::run_two_store_test(bae_db::test_fixtures::TEST_SCHEMA, async |devices| {
+    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let writer = devices.a();
         let reader = devices.b();
         exec_batch(writer, &format!(
@@ -435,7 +435,7 @@ fn library_search_finds_rows_applied_from_another_device() {
 
 #[tokio::test]
 async fn album_summary_orders_artist_names_and_release_ids_inside_aggregates() {
-    let (db, _tmp) = aggregate_db().await;
+    let (db, _tmp) = aggregate_db(crate::TEST_SCHEMA).await;
     // The one album in the fixture, read the way the library page reads it.
     let summary = crate::LibraryViews::new(db.clone())
         .get_album_page(&[], 0, 1)
@@ -455,7 +455,7 @@ const TRACK_UNDERSCORE: &str = "b2930937-dae6-4719-8150-aa61422eeeac";
 
 #[tokio::test]
 async fn search_library_matches_album_artist_names() {
-    let (db, _tmp) = composed_work_db().await;
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
 
     let results =
         crate::LibraryViews::new(db.clone()).search_rows("Album Artist A", 10).await.unwrap();
@@ -465,7 +465,7 @@ async fn search_library_matches_album_artist_names() {
 
 #[tokio::test]
 async fn search_library_returns_artist_hits() {
-    let (db, _tmp) = composed_work_db().await;
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
 
     let results =
         crate::LibraryViews::new(db.clone()).search_rows("Album Artist A", 10).await.unwrap();
@@ -485,7 +485,7 @@ async fn search_library_returns_artist_hits() {
 /// credits print, as it finds their albums.
 #[tokio::test]
 async fn search_library_finds_an_artist_by_another_printed_name() {
-    let (db, _tmp) = composed_work_db().await;
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
     for (artist, name) in [(ARTIST_ALBUM, "Printed Alias"), (ARTIST_COMPOSER, "Composer Alias")] {
         db.add_artist_credit_name(artist, &bae_db::EnteredName::parse(name).unwrap())
             .await
@@ -508,7 +508,7 @@ async fn search_library_finds_an_artist_by_another_printed_name() {
 
 #[tokio::test]
 async fn search_library_matches_composer_and_work_sort_names() {
-    let (db, _tmp) = composed_work_db().await;
+    let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
 
     let composer_results =
         crate::LibraryViews::new(db.clone()).search_rows("Hidden Composer", 10).await.unwrap();
@@ -524,7 +524,7 @@ async fn search_library_matches_composer_and_work_sort_names() {
 
 #[tokio::test]
 async fn search_library_treats_like_metacharacters_as_literals() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -620,7 +620,7 @@ async fn found(db: &Database, query: &str) -> [Vec<String>; 5] {
 
 #[tokio::test]
 async fn search_library_ignores_case_outside_ascii() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_searched(&db, SEARCHED_LIBRARY).await;
 
     let ids = |id: &str| vec![id.to_string()];
@@ -638,7 +638,7 @@ async fn search_library_ignores_case_outside_ascii() {
 
 #[tokio::test]
 async fn search_library_reads_wildcards_as_themselves() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_searched(&db, SEARCHED_LIBRARY).await;
     exec_searched(
         &db,
@@ -654,7 +654,7 @@ async fn search_library_reads_wildcards_as_themselves() {
 
 #[tokio::test]
 async fn search_library_follows_names_as_they_change() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_searched(&db, SEARCHED_LIBRARY).await;
 
     exec_searched(

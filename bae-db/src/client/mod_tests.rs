@@ -6,7 +6,7 @@ use rusqlite::params;
 
 #[tokio::test]
 async fn release_file_source_audio_facts_round_trip_without_track_rows() {
-    let (db, tmp) = release_detail_db().await;
+    let (db, tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
     let source_audio = crate::source_audio::SourceAudioFile {
         layout: Some(crate::source_audio::SourceAudioLayout::Cue),
         content_type: bae_util::content_type::ContentType::Flac,
@@ -44,7 +44,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
 /// they were written in.
 #[tokio::test]
 async fn release_records_are_read_in_catalog_order() {
-    let (db, _tmp) = release_detail_db().await;
+    let (db, _tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(&format!(
             "INSERT INTO release_records (id, release_id, catalog, kind, key, album_key) VALUES
@@ -94,7 +94,7 @@ async fn release_records_are_read_in_catalog_order() {
 /// and how many the release has.
 #[tokio::test]
 async fn a_tracks_neighbors_are_read_from_the_positions_index() {
-    let (db, _tmp) = release_detail_db().await;
+    let (db, _tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
     assert_eq!(
         db.track_neighbors(TRACK_A).await.unwrap(),
         Some(crate::client::track::TrackNeighbors {
@@ -137,7 +137,7 @@ async fn a_tracks_neighbors_are_read_from_the_positions_index() {
 /// it both show it.
 #[tokio::test]
 async fn release_files_are_read_in_case_insensitive_natural_order() {
-    let (db, tmp) = release_detail_db().await;
+    let (db, tmp) = release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
     insert_files_out_of_natural_order(&db, tmp.path()).await;
     let names = |files: &[DbFile]| -> Vec<String> {
         files.iter().map(|f| f.original_filename.clone()).collect()

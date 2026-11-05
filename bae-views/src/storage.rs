@@ -1,9 +1,14 @@
 //! The Storage Manager's view over releases: the paged list with its
 //! counts and totals.
+//!
+//! Its tables and the triggers keeping them are `storage.sql`.
 
 use super::*;
 use crate::album_detail::{StoragePage, StorageRow};
 use bae_db::client::queued_uploads::{RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS};
+
+/// The SQL creating this part's tables and triggers.
+pub(super) const SQL: &str = include_str!("storage.sql");
 
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.

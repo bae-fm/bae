@@ -7,7 +7,7 @@ use bae_db::test_fixtures::*;
 
 #[tokio::test]
 async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() {
-    let (db, _tmp) = release_detail_db().await;
+    let (db, _tmp) = release_detail_db(crate::TEST_SCHEMA).await;
     let detail = crate::LibraryViews::new(db.clone())
         .find_db_release_detail(RELEASE_A)
         .await
@@ -43,7 +43,7 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
 /// that order, with their pins and uploads.
 #[tokio::test]
 async fn release_detail_files_are_in_case_insensitive_natural_order() {
-    let (db, tmp) = release_detail_db().await;
+    let (db, tmp) = release_detail_db(crate::TEST_SCHEMA).await;
     insert_files_out_of_natural_order(&db, tmp.path()).await;
 
     let detail = crate::LibraryViews::new(db.clone())
@@ -77,7 +77,7 @@ async fn release_detail_files_are_in_case_insensitive_natural_order() {
 /// releases index.
 #[tokio::test]
 async fn a_releases_index_counts_the_releases_before_it() {
-    let (db, _tmp) = aggregate_db().await;
+    let (db, _tmp) = aggregate_db(crate::TEST_SCHEMA).await;
     // Places 0, 1, 1: the two at place 1 go by id.
     for (release_id, index) in [
         ("8aa66d48-65a0-42e4-8c1d-e7481e8c1861", 0),

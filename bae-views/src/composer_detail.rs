@@ -2,6 +2,8 @@
 //! page's rows (its works, then its unlinked release credits, then its
 //! unlinked track credits) read in windows from `composer_detail_row`, which
 //! holds them in the page's order.
+//!
+//! Its tables and the triggers keeping them are `composer_detail.sql`.
 
 use super::*;
 use crate::album_detail::{
@@ -9,6 +11,9 @@ use crate::album_detail::{
     WorkSummary,
 };
 use crate::composer::work_summary_columns;
+
+/// The SQL creating this part's tables and triggers.
+pub(super) const SQL: &str = include_str!("composer_detail.sql");
 
 impl LibraryViews {
     #[cfg(test)]

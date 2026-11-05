@@ -5,8 +5,11 @@
 use crate::tests::{assert_seeks_search, both_ways, key_at, library};
 use crate::*;
 use bae_db::test_fixtures::aggregate_ordering::aggregate_db;
+use bae_db::test_fixtures::album_listing::listed_db;
 use bae_db::test_fixtures::exec_batch;
 use bae_db::test_fixtures::storage_listing::*;
+// The listing's albums, not the root fixtures' of the same names.
+use bae_db::test_fixtures::storage_listing::{ALBUM_A, ALBUM_B};
 use bae_db::test_fixtures::*;
 use bae_db::{LibraryPageWindow, LibraryPageWindows};
 
@@ -29,7 +32,7 @@ async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
 
 #[tokio::test]
 async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
-    let (db, tmp) = bae_db::test_fixtures::temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, tmp) = bae_db::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
     exec_batch(&db, LIBRARY).await;
     // The first release has two files, of 10 and 20 bytes; the second none.
     for file in [
@@ -109,7 +112,7 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
 /// direction, under every filter: SQLite never sorts the list itself.
 #[tokio::test]
 async fn the_storage_sort_reads_a_window_from_an_index() {
-    let (db, _tmp) = bae_db::test_fixtures::temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = bae_db::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
     for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
         for direction in [SortDirection::Ascending, SortDirection::Descending] {
             let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
@@ -620,7 +623,7 @@ async fn the_download_queue_seeks_its_windows_through_its_key() {
 
 #[tokio::test]
 async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
-    let (db, _tmp) = aggregate_db().await;
+    let (db, _tmp) = aggregate_db(crate::TEST_SCHEMA).await;
     let sort = StorageSortCriterion {
         field: StorageSortField::AlbumTitle,
         direction: SortDirection::Ascending,
@@ -637,4 +640,331 @@ async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
         "Artist Name Primary, Artist Name First, Artist Name Second"
     );
     assert_eq!(row.album.release_ids, vec![RELEASE_Z, RELEASE_A, RELEASE_B]);
+}
+
+/// How many rows the library's tables, the listings' triggers included,
+/// change when `release` is added to Album Title One.
+async fn rows_changed_adding_release(db: &Database, release: &str) -> i64 {
+    let release = release.to_string();
+    db.call(move |conn| {
+        let before: i64 = conn.query_row("SELECT total_changes()", [], |row| row.get(0))?;
+        conn.execute(
+            "INSERT INTO releases (id, album_id, created_at, album_order) \
+             VALUES (?1, '07d22f7d-3980-4c81-9d27-8fcd50ee3464', '2026-01-01T00:00:00Z', 1)",
+            [&release],
+        )?;
+        let after: i64 = conn.query_row("SELECT total_changes()", [], |row| row.get(0))?;
+        Ok(after - before)
+    })
+    .await
+    .unwrap()
+}
+
+/// Adding a release to an album lists that release and leaves the album's
+/// other releases' listing rows alone: what it costs doesn't grow with the
+/// releases the album already holds, as a box set's would.
+#[tokio::test]
+async fn adding_a_release_rewrites_no_other_release_of_its_album() {
+    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
+    let second =
+        rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid("box-set-1")).await;
+    for i in 2..22 {
+        rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid(&format!("box-set-{i}")))
+            .await;
+    }
+    let twenty_second =
+        rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid("box-set-22")).await;
+    assert_eq!(twenty_second, second, "the 22nd release changes as many rows as the second");
+}
+
+/// Renaming an album renames every one of its releases' listing rows, so
+/// the Storage Manager sorts them by the new title.
+#[tokio::test]
+async fn renaming_an_album_renames_its_releases_listing_rows() {
+    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
+    rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid("box-set-1")).await;
+    exec_batch(
+        &db,
+        "UPDATE albums SET title = 'Album Title Renamed' \
+         WHERE id = '07d22f7d-3980-4c81-9d27-8fcd50ee3464'",
+    )
+    .await;
+    let titles: Vec<String> = db
+        .call(|conn| {
+            Ok(conn.query(
+                "SELECT album_title FROM release_listing \
+                 WHERE album_id = '07d22f7d-3980-4c81-9d27-8fcd50ee3464'",
+                [],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(titles, vec!["Album Title Renamed".to_string(); 2]);
+}
+
+/// The trigger that runs first of the two on a release arriving, which
+/// SQLite runs in no order it names: the listing's tests hold under each.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FirstOnArrival {
+    /// `release_added`, which lists the release's album, then the release.
+    Listing,
+    /// `release_storage_release_added`, which writes the release's storage
+    /// row.
+    Storage,
+}
+
+impl FirstOnArrival {
+    const BOTH: [Self; 2] = [Self::Listing, Self::Storage];
+
+    fn trigger(self) -> &'static str {
+        match self {
+            Self::Listing => "release_added",
+            Self::Storage => "release_storage_release_added",
+        }
+    }
+}
+
+/// Which trigger runs first as a release arrives on `conn`: whether its
+/// album's listing row or its storage row is written first, in a write
+/// rolled back after.
+fn first_on_arrival(conn: &mut rusqlite::Connection) -> FirstOnArrival {
+    let probe = conn.transaction().unwrap();
+    probe
+        .execute_batch(
+            "CREATE TEMP TABLE arrival (step TEXT NOT NULL);
+             CREATE TEMP TRIGGER arrival_listed AFTER INSERT ON main.album_listing
+             BEGIN
+                 INSERT INTO arrival (step) VALUES ('listing');
+             END;
+             CREATE TEMP TRIGGER arrival_stored AFTER INSERT ON main.release_storage
+             BEGIN
+                 INSERT INTO arrival (step) VALUES ('storage');
+             END;
+             INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0);",
+        )
+        .unwrap();
+    let step: String = probe
+        .query_row("SELECT step FROM arrival ORDER BY rowid LIMIT 1", [], |row| row.get(0))
+        .unwrap();
+    probe.rollback().unwrap();
+    match step.as_str() {
+        "listing" => FirstOnArrival::Listing,
+        "storage" => FirstOnArrival::Storage,
+        other => panic!("no trigger writes {other}"),
+    }
+}
+
+/// A bare library connection on which `first`'s trigger runs first as a
+/// release arrives, and that records every release whose listing row a
+/// write asks to refresh, in `refreshed`.
+fn counting_refreshes(first: FirstOnArrival) -> rusqlite::Connection {
+    let mut conn = bae_db::schema::bare_library_connection(crate::TEST_SCHEMA);
+    // SQLite runs the newest of the triggers on one event first, so creating
+    // `first`'s again puts it first; the probe says whether it did.
+    let created: String = conn
+        .query_row(
+            "SELECT sql FROM sqlite_schema WHERE type = 'trigger' AND name = ?1",
+            [first.trigger()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    conn.execute_batch(&format!("DROP TRIGGER {}; {created};", first.trigger())).unwrap();
+    assert_eq!(first_on_arrival(&mut conn), first);
+    conn.execute_batch(
+        "CREATE TEMP TABLE refreshed (release_id TEXT NOT NULL);
+         CREATE TEMP TRIGGER count_refresh INSTEAD OF INSERT ON main.release_listing_refresh
+         BEGIN
+             INSERT INTO refreshed (release_id) VALUES (NEW.release_id);
+         END;",
+    )
+    .unwrap();
+    conn
+}
+
+/// How many refreshes of `release`'s listing row the writes since the count
+/// was last cleared asked for.
+fn refreshes(conn: &rusqlite::Connection, release: &str) -> i64 {
+    conn.query_row("SELECT count(*) FROM refreshed WHERE release_id = ?1", [release], |row| {
+        row.get(0)
+    })
+    .unwrap()
+}
+
+/// The album `release`'s listing row names, None while it has none.
+fn listed_album(conn: &rusqlite::Connection, release: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT (SELECT album_id FROM release_listing WHERE release_id = ?1)",
+        [release],
+        |row| row.get(0),
+    )
+    .unwrap()
+}
+
+/// Run `sql` as one write.
+fn write(conn: &mut rusqlite::Connection, sql: &str) {
+    let write = conn.transaction().unwrap();
+    write.execute_batch(sql).unwrap();
+    write.commit().unwrap();
+}
+
+/// A release arriving writes its listing row with one refresh, in the write
+/// that adds it: as a snapshot installs it, after its album, which lists that
+/// album too, and as it joins an album already listed.
+#[test]
+fn a_release_arriving_refreshes_its_listing_once() {
+    for first in FirstOnArrival::BOTH {
+        let mut conn = counting_refreshes(first);
+
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0);",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_EARLY).as_deref(), Some(ALBUM_A), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_EARLY), 1, "{first:?} first");
+
+        write(
+            &mut conn,
+            "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_EARLY), 1, "{first:?} first");
+    }
+}
+
+/// A release changing writes its listing row with one refresh: moving to an
+/// album the same write adds, which lists that album and its releases;
+/// moving to an album already listed; and changing what it states itself.
+#[test]
+fn a_release_changing_refreshes_its_listing_once() {
+    for first in FirstOnArrival::BOTH {
+        let mut conn = counting_refreshes(first);
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0),
+                 ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);
+             DELETE FROM refreshed;",
+        );
+
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('dab6efe2-9b5c-4034-b95e-73cf49f54b9a', 'Album Title B', 0, '2026-01-03T00:00:00Z');
+             UPDATE releases SET album_id = 'dab6efe2-9b5c-4034-b95e-73cf49f54b9a'
+             WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_B), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+
+        write(
+            &mut conn,
+            "DELETE FROM refreshed;
+             UPDATE releases SET album_id = '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d'
+             WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+
+        write(
+            &mut conn,
+            "DELETE FROM refreshed;
+             UPDATE releases SET created_at = '2026-01-04T00:00:00Z'
+             WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+        );
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_EARLY), 0, "{first:?} first");
+    }
+}
+
+/// `release`'s listing row's media columns.
+fn listed_media(conn: &rusqlite::Connection, release: &str) -> (bool, Option<String>) {
+    conn.query_row(
+        "SELECT media_empty, media_key FROM release_listing WHERE release_id = ?1",
+        [release],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )
+    .unwrap()
+}
+
+/// A release's media rows arriving, changing and leaving set its listing
+/// row's media, in order, without refreshing the rest of the row.
+#[test]
+fn a_release_s_media_rows_set_its_listing_s_media() {
+    for first in FirstOnArrival::BOTH {
+        let mut conn = counting_refreshes(first);
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 0);
+             INSERT INTO release_media (id, release_id, position, medium, count) VALUES
+                 ('media-1', 'af4421de-5174-45a9-81fc-74110bc5f85d', 1, 'cd', 1),
+                 ('media-0', 'af4421de-5174-45a9-81fc-74110bc5f85d', 0, 'vinyl', 2);",
+        );
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+        assert_eq!(
+            listed_media(&conn, RELEASE_LATE),
+            (false, Some("vinyl:00002,cd:00001".to_string()))
+        );
+
+        write(
+            &mut conn,
+            "DELETE FROM refreshed;
+             UPDATE release_media SET count = 3 WHERE id = 'media-0';",
+        );
+        assert_eq!(
+            listed_media(&conn, RELEASE_LATE),
+            (false, Some("vinyl:00003,cd:00001".to_string()))
+        );
+
+        write(&mut conn, "DELETE FROM release_media;");
+        assert_eq!(listed_media(&conn, RELEASE_LATE), (true, None));
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 0, "{first:?} first");
+    }
+}
+
+/// A release's media rows written on one device sort the release in the
+/// Storage Manager's listing on another: the listing's media key follows the
+/// rows, in order.
+#[test]
+fn a_media_edit_from_another_device_sorts_its_release() {
+    bae_db::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let release = "0252dedb-ee39-4547-8803-438dbeb57a64";
+        devices.a().call(seed_artist_album_release).await.unwrap();
+        exec_batch(
+            devices.a(),
+            &format!(
+                "INSERT INTO release_media (id, release_id, position, medium, count) VALUES
+                     ('media-1', '{release}', 1, 'cd', 1),
+                     ('media-0', '{release}', 0, 'vinyl', 2);"
+            ),
+        )
+        .await;
+        devices.converge("SELECT id, position, medium, count FROM release_media ORDER BY id").await;
+
+        let key: Option<String> = devices
+            .b()
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT media_key FROM release_listing WHERE release_id = ?1",
+                    [release],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+            .unwrap();
+        assert_eq!(key.as_deref(), Some("vinyl:00002,cd:00001"));
+    });
 }

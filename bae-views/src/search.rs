@@ -2,6 +2,11 @@
 //! results a search returns. Both are domain decisions; they live here once so no
 //! surface (the desktop title bar, the mobile search fields, the MCP tool) decides
 //! them differently — or, as the MCP tool did, not at all.
+//!
+//! Its tables and the triggers keeping them are `search.sql`.
+
+/// The SQL creating this part's tables and triggers.
+pub(super) const SQL: &str = include_str!("search.sql");
 
 /// A non-blank library search query. [`parse`](Self::parse) is the single
 /// definition of "what counts as a searchable query": it trims surrounding

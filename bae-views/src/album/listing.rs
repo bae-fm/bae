@@ -1,7 +1,12 @@
 //! The album grid's rows as the list reads them: their order, flat or
 //! grouped by artist, the artists' sections, and the rows of one window.
+//!
+//! Its tables and the triggers keeping them are `listing.sql`.
 
 use super::*;
+
+/// The SQL creating this part's tables and triggers.
+pub(crate) const SQL: &str = include_str!("listing.sql");
 
 pub(super) fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
     sql.query_row("SELECT COUNT(*) FROM album_listing", [], |row| row.get::<_, i64>(0))

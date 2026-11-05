@@ -1,8 +1,13 @@
 //! The composer views: the composer list and a work's detail. A composer's
 //! own page is `composer_detail`.
+//!
+//! Its tables and the triggers keeping them are `composer.sql`.
 
 use super::*;
 use crate::album_detail::{ComposerSummary, WorkDetail, WorkReleaseSummary, WorkSummary};
+
+/// The SQL creating this part's tables and triggers.
+pub(super) const SQL: &str = include_str!("composer.sql");
 
 impl LibraryViews {
     #[cfg(test)]

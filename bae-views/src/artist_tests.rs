@@ -23,7 +23,7 @@ const ARTIST_WORK_ONLY: &str = "b96d8066-777d-408d-8ae4-ed58c767e40c";
 /// Artists row as a compilation's primary, a work-only composer (no album
 /// links), and a fully unlinked artist.
 async fn seeded_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -149,7 +149,7 @@ async fn artist_page_sorts_by_album_count() {
 
 #[tokio::test]
 async fn artist_page_uses_id_tiebreaker() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -201,7 +201,7 @@ async fn artist_page_uses_id_tiebreaker() {
 /// fall through to the tail's `ar.name ASC` and order them the other way.
 #[tokio::test]
 async fn artist_page_applies_secondary_criterion() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -250,7 +250,7 @@ async fn artist_page_applies_secondary_criterion() {
 
 #[tokio::test]
 async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
-    let (db, _tmp) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -320,7 +320,7 @@ async fn artist_detail_absent_or_album_less_artist_is_none() {
 /// nothing it delivers.
 #[tokio::test]
 async fn artist_browse_reads_its_windows_and_their_images() {
-    let (db, _temp) = live_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_artist_browse(&[], first_page());
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();

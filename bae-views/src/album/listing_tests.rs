@@ -50,7 +50,7 @@ async fn grouped(db: &Database) -> (Vec<(String, u64, u64)>, Vec<String>) {
 
 #[tokio::test]
 async fn album_grid_sorts_by_credits_as_their_artists_change() {
-    let (db, _tmp) = listed_db().await;
+    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
     // Alpha's album, then Bravo's, then Bravo and Alpha's: the credit list
     // compares in order, so a longer list sorts after its first name alone.
@@ -76,7 +76,7 @@ async fn album_grid_sorts_by_credits_as_their_artists_change() {
 
 #[tokio::test]
 async fn album_grid_puts_unknown_years_last_ascending_and_first_descending() {
-    let (db, _tmp) = listed_db().await;
+    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
     assert_eq!(
         album_ids(&db, AlbumSortField::Year, SortDirection::Ascending).await,
@@ -90,7 +90,7 @@ async fn album_grid_puts_unknown_years_last_ascending_and_first_descending() {
 
 #[tokio::test]
 async fn an_album_leaves_the_lists_with_its_last_release() {
-    let (db, _tmp) = listed_db().await;
+    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 3);
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 
@@ -116,7 +116,7 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
 
 #[tokio::test]
 async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
-    let (db, _tmp) = listed_db().await;
+    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     // Newest first under each artist; Alpha's section before Bravo's.
     assert_eq!(
         grouped(&db).await,
@@ -160,7 +160,7 @@ async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
 }
 
 async fn grouped_library() -> (Database, tempfile::TempDir) {
-    let (db, dir) = temp_db(bae_db::test_fixtures::TEST_SCHEMA).await;
+    let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     for (id, name, sort_name) in [
         (ARTIST_A, "Artist Name A", "Same Sort Name"),
         (ARTIST_B, "Artist Name B", "Same Sort Name"),

@@ -31,8 +31,9 @@ pub const LIBRARY: &str = "
         ('7cc7aeee-e43c-469d-aa7a-990ea258bd80', 'c217fb46-e6a3-4eaf-bc0a-ac9036440dc7', '2026-01-01T00:00:00Z', 0);
 ";
 
-pub async fn listed_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db(super::TEST_SCHEMA).await;
+/// `LIBRARY` on `schema`.
+pub async fn listed_db(schema: crate::Schema) -> (Database, tempfile::TempDir) {
+    let (db, tmp) = super::temp_db(schema).await;
     super::exec_batch(&db, LIBRARY).await;
     (db, tmp)
 }

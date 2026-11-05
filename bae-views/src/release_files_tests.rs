@@ -11,7 +11,7 @@ use bae_db::test_fixtures::*;
 #[tokio::test]
 async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
     use crate::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
-    let (db, tmp) = release_detail_db().await;
+    let (db, tmp) = release_detail_db(crate::TEST_SCHEMA).await;
     for (i, (name, size, mime)) in [
         ("Track 10.flac", 30, "audio/flac"),
         ("cover.jpg", 20, "image/jpeg"),
