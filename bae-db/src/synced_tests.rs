@@ -164,9 +164,11 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     "release_storage_action",
     // The cast receivers discovery found.
     "cast_device",
+    // The artist each artist shows as, kept from the artists and their
+    // merges by local triggers.
+    "artist_shown_as",
     // What library lists sort, filter and count by, kept from the synced
     // rows by local triggers.
-    "artist_shown_as",
     "composer_work",
     "composer_release",
     "composer_unlinked_credit",

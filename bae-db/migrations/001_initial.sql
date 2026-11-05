@@ -73,6 +73,70 @@ resolved(artist_id, survivor_id) AS (
 )
 SELECT artist_id, survivor_id FROM resolved WHERE artist_id <> survivor_id;
 
+-- Each artist and the artist it shows as (§2.3): the survivor of its merges
+-- (`merged_artist_survivors`), else itself. Every read of a credit goes
+-- through it.
+CREATE TABLE IF NOT EXISTS artist_shown_as (
+    artist_id TEXT PRIMARY KEY REFERENCES artists (id) ON DELETE CASCADE,
+    shown_artist_id TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_artist_shown_as_shown ON artist_shown_as (shown_artist_id);
+
+-- Each artist a merge names, and every artist joined to it through merges in
+-- either direction: the artists a change to one of those merges can show as
+-- another artist.
+CREATE VIEW IF NOT EXISTS artist_merge_groups AS
+WITH RECURSIVE edge(artist_id, other_id) AS (
+    SELECT id, into_artist_id FROM artist_merges
+    UNION SELECT into_artist_id, id FROM artist_merges
+),
+reach(artist_id, member_id) AS (
+    SELECT artist_id, artist_id FROM edge
+    UNION SELECT reach.artist_id, edge.other_id FROM reach JOIN edge ON edge.artist_id = reach.member_id
+)
+SELECT artist_id, member_id FROM reach;
+
+-- An artist arriving takes its shown artist: the survivor of its merges,
+-- else itself.
+CREATE TRIGGER IF NOT EXISTS artist_added AFTER INSERT ON artists
+BEGIN
+    INSERT INTO artist_shown_as (artist_id, shown_artist_id)
+    VALUES (NEW.id, COALESCE((SELECT survivor_id FROM merged_artist_survivors WHERE artist_id = NEW.id), NEW.id));
+END;
+
+-- Inserting a merge's two artists into `artist_merge_refresh` sets the shown
+-- artist of every artist joined to either. The view holds no rows: it names
+-- the statement its INSTEAD OF trigger runs, which the three triggers on
+-- `artist_merges` share.
+CREATE VIEW IF NOT EXISTS artist_merge_refresh AS SELECT NULL AS artist_id, NULL AS into_artist_id WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS artist_merge_refresh INSTEAD OF INSERT ON artist_merge_refresh
+BEGIN
+    UPDATE artist_shown_as
+    SET shown_artist_id = COALESCE(
+        (SELECT survivor_id FROM merged_artist_survivors WHERE artist_id = artist_shown_as.artist_id),
+        artist_shown_as.artist_id)
+    WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id)
+       OR artist_id IN (SELECT member_id FROM artist_merge_groups WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id));
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_merge_added AFTER INSERT ON artist_merges
+BEGIN
+    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (NEW.id, NEW.into_artist_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_merge_changed AFTER UPDATE OF id, into_artist_id ON artist_merges
+BEGIN
+    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (OLD.id, OLD.into_artist_id);
+    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (NEW.id, NEW.into_artist_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS artist_merge_removed AFTER DELETE ON artist_merges
+BEGIN
+    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (OLD.id, OLD.into_artist_id);
+END;
+
 -- One stored picture per artist; `id` is the artist's id. `file` is the
 -- picture's coven file (`coven_files`), which a new picture replaces and two
 -- merged artists share.
@@ -652,30 +716,6 @@ INSERT OR IGNORE INTO list_order_versions (source, version) VALUES
     ('composer_listing', 0), ('composer_detail_row', 0), ('release_listing', 0),
     ('download_queue', 0), ('output_queue', 0), ('library_search', 0);
 
--- Each artist and the artist it shows as (§2.3): the survivor of its merges
--- (`merged_artist_survivors`), else itself. Every read of a credit goes
--- through it.
-CREATE TABLE IF NOT EXISTS artist_shown_as (
-    artist_id TEXT PRIMARY KEY REFERENCES artists (id) ON DELETE CASCADE,
-    shown_artist_id TEXT NOT NULL
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS idx_artist_shown_as_shown ON artist_shown_as (shown_artist_id);
-
--- Each artist a merge names, and every artist joined to it through merges in
--- either direction: the artists a change to one of those merges can show as
--- another artist.
-CREATE VIEW IF NOT EXISTS artist_merge_groups AS
-WITH RECURSIVE edge(artist_id, other_id) AS (
-    SELECT id, into_artist_id FROM artist_merges
-    UNION SELECT into_artist_id, id FROM artist_merges
-),
-reach(artist_id, member_id) AS (
-    SELECT artist_id, artist_id FROM edge
-    UNION SELECT reach.artist_id, edge.other_id FROM reach JOIN edge ON edge.artist_id = reach.member_id
-)
-SELECT artist_id, member_id FROM reach;
-
 -- The composer list (§2.4) counts three things for each artist it shows: the
 -- works it is credited on, the releases a track of which performs one of them,
 -- and its catalog role credits that none of its works link. Each is a view,
@@ -798,7 +838,7 @@ END;
 
 -- Each row added to or removed from the three tables counts in or out of its
 -- artist's listing row. An artist whose own row has not arrived yet gets its
--- listing row when it does (`artist_added`).
+-- listing row when it does (`composer_artist_shown_added`).
 CREATE TRIGGER IF NOT EXISTS composer_work_added AFTER INSERT ON composer_work
 BEGIN
     INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
@@ -845,9 +885,9 @@ END;
 -- release's rows of `composer_release` and `composer_unlinked_credit` from
 -- their views, adding and removing only the rows that differ; inserting a work
 -- id into `composer_work_refresh` does the same for that work's rows of
--- `composer_work`. These two views, and `artist_merge_refresh` below, hold no
--- rows: they name the statements their INSTEAD OF triggers run, which the
--- triggers on the library tables share.
+-- `composer_work`. These two views hold no rows: they name the statements
+-- their INSTEAD OF triggers run, which the triggers on the library tables
+-- share.
 CREATE VIEW IF NOT EXISTS composer_release_refresh AS SELECT NULL AS release_id WHERE 0;
 
 CREATE TRIGGER IF NOT EXISTS composer_release_refresh INSTEAD OF INSERT ON composer_release_refresh
@@ -887,68 +927,44 @@ SELECT artist_id, release_id FROM release_artist_roles
 UNION
 SELECT tar.artist_id, t.release_id FROM track_artist_roles tar JOIN tracks t ON t.id = tar.track_id;
 
--- An artist arriving takes its shown artist and a listing row for what was
--- already counted under it, then counts its own credits.
-CREATE TRIGGER IF NOT EXISTS artist_added AFTER INSERT ON artists
+-- An artist's shown row arriving gives it a listing row for what was
+-- already counted under it, then counts its own credits. It fires on the
+-- shown row rather than the artist, because the counts read
+-- `work_composers`, which joins `artist_shown_as`: the row's insert orders
+-- them after it.
+CREATE TRIGGER IF NOT EXISTS composer_artist_shown_added AFTER INSERT ON artist_shown_as
 BEGIN
-    INSERT INTO artist_shown_as (artist_id, shown_artist_id)
-    VALUES (NEW.id, COALESCE((SELECT survivor_id FROM merged_artist_survivors WHERE artist_id = NEW.id), NEW.id));
     INSERT INTO composer_listing (artist_id, name, work_count, linked_release_count, unlinked_credit_count)
-    SELECT NEW.id, NEW.name,
-           (SELECT COUNT(*) FROM composer_work WHERE artist_id = NEW.id),
-           (SELECT COUNT(*) FROM composer_release WHERE artist_id = NEW.id),
-           (SELECT COUNT(*) FROM composer_unlinked_credit WHERE artist_id = NEW.id)
-    WHERE EXISTS (SELECT 1 FROM composer_work WHERE artist_id = NEW.id)
-       OR EXISTS (SELECT 1 FROM composer_release WHERE artist_id = NEW.id)
-       OR EXISTS (SELECT 1 FROM composer_unlinked_credit WHERE artist_id = NEW.id);
+    SELECT artist.id, artist.name,
+           (SELECT COUNT(*) FROM composer_work WHERE artist_id = artist.id),
+           (SELECT COUNT(*) FROM composer_release WHERE artist_id = artist.id),
+           (SELECT COUNT(*) FROM composer_unlinked_credit WHERE artist_id = artist.id)
+    FROM artists artist
+    WHERE artist.id = NEW.artist_id
+      AND (EXISTS (SELECT 1 FROM composer_work WHERE artist_id = artist.id)
+        OR EXISTS (SELECT 1 FROM composer_release WHERE artist_id = artist.id)
+        OR EXISTS (SELECT 1 FROM composer_unlinked_credit WHERE artist_id = artist.id));
     INSERT INTO composer_work_refresh (work_id)
-    SELECT DISTINCT work_id FROM work_artists WHERE artist_id = NEW.id;
+    SELECT DISTINCT work_id FROM work_artists WHERE artist_id = NEW.artist_id;
     INSERT INTO composer_release_refresh (release_id)
-    SELECT DISTINCT release_id FROM artist_credited_releases WHERE artist_id = NEW.id;
+    SELECT DISTINCT release_id FROM artist_credited_releases WHERE artist_id = NEW.artist_id;
+END;
+
+-- An artist's shown artist moving rewrites the composer rows of every work
+-- and release it is credited on, as `album_credit_shown_changed` rewrites
+-- its albums. An artist whose shown artist stayed changes no row.
+CREATE TRIGGER IF NOT EXISTS composer_artist_shown_changed AFTER UPDATE OF shown_artist_id ON artist_shown_as
+WHEN OLD.shown_artist_id IS NOT NEW.shown_artist_id
+BEGIN
+    INSERT INTO composer_work_refresh (work_id)
+    SELECT DISTINCT work_id FROM work_artists WHERE artist_id = NEW.artist_id;
+    INSERT INTO composer_release_refresh (release_id)
+    SELECT DISTINCT release_id FROM artist_credited_releases WHERE artist_id = NEW.artist_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS artist_renamed AFTER UPDATE OF name ON artists
 BEGIN
     UPDATE composer_listing SET name = NEW.name WHERE artist_id = NEW.id;
-END;
-
--- Inserting a merge's two artists into `artist_merge_refresh` sets the shown
--- artist of every artist joined to either, then rewrites the rows of every work
--- and release those artists are credited on.
-CREATE VIEW IF NOT EXISTS artist_merge_refresh AS SELECT NULL AS artist_id, NULL AS into_artist_id WHERE 0;
-
-CREATE TRIGGER IF NOT EXISTS artist_merge_refresh INSTEAD OF INSERT ON artist_merge_refresh
-BEGIN
-    UPDATE artist_shown_as
-    SET shown_artist_id = COALESCE(
-        (SELECT survivor_id FROM merged_artist_survivors WHERE artist_id = artist_shown_as.artist_id),
-        artist_shown_as.artist_id)
-    WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id)
-       OR artist_id IN (SELECT member_id FROM artist_merge_groups WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id));
-    INSERT INTO composer_work_refresh (work_id)
-    SELECT DISTINCT work_id FROM work_artists
-    WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id)
-       OR artist_id IN (SELECT member_id FROM artist_merge_groups WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id));
-    INSERT INTO composer_release_refresh (release_id)
-    SELECT DISTINCT release_id FROM artist_credited_releases
-    WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id)
-       OR artist_id IN (SELECT member_id FROM artist_merge_groups WHERE artist_id IN (NEW.artist_id, NEW.into_artist_id));
-END;
-
-CREATE TRIGGER IF NOT EXISTS artist_merge_added AFTER INSERT ON artist_merges
-BEGIN
-    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (NEW.id, NEW.into_artist_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS artist_merge_changed AFTER UPDATE OF id, into_artist_id ON artist_merges
-BEGIN
-    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (OLD.id, OLD.into_artist_id);
-    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (NEW.id, NEW.into_artist_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS artist_merge_removed AFTER DELETE ON artist_merges
-BEGIN
-    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (OLD.id, OLD.into_artist_id);
 END;
 
 -- A work's credited artists change its rows and those of every release
