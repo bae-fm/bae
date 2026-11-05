@@ -105,12 +105,16 @@ pub const SCHEMA_PARTS: &[bae_db::SchemaPart] = &[bae_db::SchemaPart::new(&[
     versions::SQL,
 ])];
 
-/// The schema this crate's tests open their stores on: bae-db's part, the
-/// transfers' (the queues the release listing's pin triggers fire on) and the
-/// views'.
+/// The schema this crate's tests open their stores on: bae-db's part,
+/// playback's (the tables its tests read), the transfers' (the queues the
+/// release listing's pin triggers fire on) and the views'.
 #[cfg(test)]
-const TEST_SCHEMA: bae_db::Schema =
-    bae_db::Schema::new(&[bae_db::SCHEMA_PARTS, bae_transfers::SCHEMA_PARTS, SCHEMA_PARTS]);
+const TEST_SCHEMA: bae_db::Schema = bae_db::Schema::new(&[
+    bae_db::SCHEMA_PARTS,
+    bae_playback::SCHEMA_PARTS,
+    bae_transfers::SCHEMA_PARTS,
+    SCHEMA_PARTS,
+]);
 
 /// The library's store, as the library's views read it.
 #[derive(Clone, Debug)]

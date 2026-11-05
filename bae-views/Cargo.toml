@@ -39,7 +39,8 @@ tokio = { workspace = true, features = ["sync"] }
 # Test databases with bae's schema, the rows db's fixtures seed them with,
 # and two stores syncing over shared storage.
 bae-db = { workspace = true, features = ["test-utils"] }
-# The playback queue's window cost, measured beside the views'.
+# The playback queue's window cost, measured beside the views', and the
+# playback tables those tests read.
 bae-playback = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }

@@ -5,7 +5,11 @@
 //! plays from, which of its rows is playing, how the queue repeats, and the
 //! additions to Up Next since playback started with the library. The
 //! playback service is the only writer, each change one transaction; the queue
-//! screens read the same tables through live queries.
+//! screens read the same tables through live queries. Its tables, `playback_state`
+//! included, are `queue.sql`.
+
+/// The queue's part of the library's schema.
+pub(crate) const SCHEMA: bae_db::SchemaPart = bae_db::SchemaPart::new(&[include_str!("queue.sql")]);
 
 use super::queue_fill::{fill_on, ContextFill, ContextFilled};
 use super::*;

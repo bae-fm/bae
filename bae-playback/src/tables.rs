@@ -20,6 +20,7 @@ mod track_display;
 pub use now::now_playing;
 pub use now::subscribe_now_playing;
 pub use now::{playback_level, PlaybackNowRow};
+pub(super) use queue::SCHEMA as QUEUE_SCHEMA;
 pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables, ShuffleChange};
 pub use queue_fill::{ContextFill, ContextFilled, LeftOut, ReleaseStart};
 pub use queue_reads::queue_value;
