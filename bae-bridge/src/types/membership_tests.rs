@@ -4,7 +4,7 @@ use super::*;
 /// key to delete if nobody uses the invite.
 #[test]
 fn an_invite_carries_its_key_id_and_person() {
-    let invite = BridgeInvite::from_core(bae_db::people::OpenInvite {
+    let invite = BridgeInvite::from_core(bae_views::OpenInvite {
         invite: coven::Invite {
             id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
             member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),

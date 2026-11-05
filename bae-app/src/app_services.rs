@@ -477,9 +477,7 @@ impl AppServices {
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::InviteId, bae_library::LibraryError>);
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one.
-    pub fn subscribe_invites(
-        &self,
-    ) -> bae_db::live_query::LiveValues<Vec<bae_db::people::OpenInvite>> {
+    pub fn subscribe_invites(&self) -> bae_db::live_query::LiveValues<Vec<bae_views::OpenInvite>> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), bae_library::LibraryError>);

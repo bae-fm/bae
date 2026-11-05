@@ -242,9 +242,9 @@ pub enum BridgeInviteProgress {
     Joining,
 }
 impl BridgeInvite {
-    pub(crate) fn from_core(value: bae_db::people::OpenInvite) -> Self {
+    pub(crate) fn from_core(value: bae_views::OpenInvite) -> Self {
         use bae_library::people::{InviteProgress, InviteShown};
-        let bae_db::people::OpenInvite { invite, held } = value;
+        let bae_views::OpenInvite { invite, held } = value;
         let shown = match bae_library::people::invite_shown(&invite) {
             InviteShown::Granting => BridgeInviteShown::Granting,
             InviteShown::Code { code, progress } => BridgeInviteShown::Code {

@@ -125,36 +125,3 @@ impl ProfileError {
         }
     }
 }
-
-/// One of this device's open invites, with the pending record of its
-/// operation when coven holds one: a refused check or a failed grant, which
-/// the person ends by cancelling the invite (§5.6).
-#[derive(Clone, Debug, PartialEq)]
-pub struct OpenInvite {
-    pub invite: coven::Invite,
-    pub held: Option<crate::PendingWait>,
-}
-
-impl OpenInvite {
-    /// Each of `invites` with the record among `records` whose subject is
-    /// its operation.
-    pub fn held_by(invites: Vec<coven::Invite>, records: &[coven::PendingRecord]) -> Vec<Self> {
-        invites
-            .into_iter()
-            .map(|invite| {
-                let held = records
-                    .iter()
-                    .find(|record| {
-                        matches!(record.subject,
-                            coven::PendingSubject::Operation { id, .. } if id == invite.operation)
-                    })
-                    .map(|record| crate::PendingWait::of(record, None));
-                Self { invite, held }
-            })
-            .collect()
-    }
-}
-
-#[cfg(test)]
-#[path = "people_tests.rs"]
-mod tests;
