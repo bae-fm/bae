@@ -105,7 +105,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _album_id) =
         await_import_outcome(&mut events, &import_id).await.expect("the import completes");
-    let written = handle.database.track_sources_for_test(&release_id).await.unwrap();
+    let written = handle.records.track_sources_for_test(&release_id).await.unwrap();
     shut_down(handle).await;
 
     assert_eq!(
@@ -164,9 +164,9 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         let import_id = handle.start_import(&key).await.unwrap().expect_queued();
         let (release_id, album_id) =
             await_import_outcome(&mut events, &import_id).await.expect("the import completes");
-        let tracks = handle.database.get_tracks_for_release(&release_id).await.unwrap();
+        let tracks = handle.records.get_tracks_for_release(&release_id).await.unwrap();
         let album = handle
-            .database
+            .records
             .find_album_by_id(&album_id)
             .await
             .unwrap()
@@ -467,7 +467,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let tracks = handle.database.get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = handle.records.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(
         tracks
             .iter()
@@ -543,7 +543,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let records = handle.database.get_release_records(&release_id).await.unwrap();
+    let records = handle.records.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
     assert_eq!(
         records

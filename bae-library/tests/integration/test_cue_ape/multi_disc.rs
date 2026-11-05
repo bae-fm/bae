@@ -213,14 +213,14 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         let segment = resolved
             .segments
             .iter()
-            .find(|segment| segment.role == bae_db::DbAudioSegmentRole::Main)
+            .find(|segment| segment.role == bae_records::DbAudioSegmentRole::Main)
             .unwrap_or_else(|| panic!("track {} has no main audio segment", track.title));
         let filename = filename_by_id
             .get(&segment.file_id)
             .unwrap_or_else(|| panic!("file_id {} not in release_files", segment.file_id));
 
-        let disc_one = bae_db::identity::release_medium_id(&release_id, 1);
-        let disc_two = bae_db::identity::release_medium_id(&release_id, 2);
+        let disc_one = bae_records::identity::release_medium_id(&release_id, 1);
+        let disc_two = bae_records::identity::release_medium_id(&release_id, 2);
         let expected = match track.medium_id.as_str() {
             medium if medium == disc_one => "CD1/CDImage.ape",
             medium if medium == disc_two => "CD2/CDImage.ape",

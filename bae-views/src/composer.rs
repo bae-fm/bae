@@ -326,7 +326,7 @@ pub(crate) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
 pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
     let representative_release_id: Option<String> = row.get("representative_release_id")?;
     let representative_cover = match &representative_release_id {
-        Some(id) => bae_db::cover_ref(id, row.get("representative_cover_version")?),
+        Some(id) => bae_records::cover_ref(id, row.get("representative_cover_version")?),
         None => None,
     };
     Ok(DbWorkSummary {
@@ -348,7 +348,7 @@ pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
 pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbComposerSummary {
-        image: bae_db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        image: bae_records::artist_image_ref(&artist.id, row.get("artist_image_version")?),
         artist,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,

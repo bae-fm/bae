@@ -48,7 +48,7 @@ pub use watched_folders::watched_path;
 pub use watched_folders::WatchedFoldersRemoved;
 
 use bae_catalogs::catalog::Catalog;
-use bae_db::*;
+use bae_records::*;
 use bae_store::list_windows::{
     list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Places, Seek, SortTerm,
     WindowsRead,

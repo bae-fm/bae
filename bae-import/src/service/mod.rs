@@ -9,10 +9,9 @@ use bae_diagnostics::TelemetryEvent;
 
 use {
     crate::types::{ImportPhase, PrepareStep, TrackFile},
-    bae_db::WorkGraphRows,
-    bae_db::{
+    bae_records::{
         DbAlbum, DbAlbumArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist, DbTrackArtistRole,
-        NewReleaseFile,
+        NewReleaseFile, WorkGraphRows,
     },
     std::collections::HashMap,
     std::path::{Path, PathBuf},
@@ -60,10 +59,10 @@ struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
     /// The release's mediums, in order.
-    mediums: Vec<bae_db::DbReleaseMedium>,
+    mediums: Vec<bae_records::DbReleaseMedium>,
     /// The release's tracks, each bound to its audio and measured by the
     /// commit (`resolve_track_files`).
-    track_rows: Vec<bae_db::TrackRow>,
+    track_rows: Vec<bae_records::TrackRow>,
     existing_album_id: Option<String>,
     track_artists: Vec<DbTrackArtist>,
     /// Empty when the release joins an album already in the library.
@@ -73,7 +72,7 @@ struct PreparedMetadata {
     release_artist_roles: Vec<DbReleaseArtistRole>,
     track_artist_roles: Vec<DbTrackArtistRole>,
     /// Every artist the links above name, as the source or the person said.
-    artist_credits: Vec<bae_db::DbArtist>,
+    artist_credits: Vec<bae_records::DbArtist>,
     /// The credits that are library artists a person picked.
     picked_artists: Vec<String>,
     /// One per catalog that describes this release; empty for file metadata and
@@ -168,7 +167,7 @@ pub struct ImportService {
     /// the standing a commit ends.
     runtime: CandidateRuntime,
     /// The library's store, which an import writes its release into.
-    database: bae_db::Database,
+    records: bae_records::Records,
     /// Import's tables, which an import reads its candidate from.
     tables: crate::tables::ImportTables,
     /// The catalogs an import asks for its new artists' pictures.

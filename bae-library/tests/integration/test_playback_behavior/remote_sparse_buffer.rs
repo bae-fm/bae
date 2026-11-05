@@ -373,7 +373,7 @@ async fn a_resume_at_a_position_reads_from_there_not_the_track_start() {
     with_fixture(RemoteMultiWindowPlayback::new("remote-resume-start"), async |playback| {
         let last_track = playback.track_ids[2].clone();
         let resolved =
-            bae_db::ResolvedTrackAudio::resolve(playback.library.database(), &last_track)
+            bae_records::ResolvedTrackAudio::resolve(playback.library.records(), &last_track)
                 .await
                 .expect("the last track's audio");
         let track_start = resolved.segments[0].span.start_byte.expect("a CUE track's start byte");

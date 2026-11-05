@@ -112,7 +112,11 @@ fn sending(files: &[FileId], paused: bool) -> DbSendingUploads {
     DbSendingUploads {
         files: files
             .iter()
-            .map(|file| bae_db::DbSendingFile { file: *file, release_id: None, file_size: None })
+            .map(|file| bae_records::DbSendingFile {
+                file: *file,
+                release_id: None,
+                file_size: None,
+            })
             .collect(),
         releases: Vec::new(),
         paused,

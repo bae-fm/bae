@@ -38,12 +38,12 @@ use crate::progress::emit_progress;
 use crate::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::tables::{ContextFill, ContextFilled, LeftOut, PlaybackResumeRow, ReleaseStart};
 use bae_audio::DecodeError;
-use bae_db::DbAudioSegmentRole;
-use bae_db::ResolvedTrackAudio;
 use bae_diagnostics::{
     AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
     ReportedThread, TelemetryEvent, TrackTransition,
 };
+use bae_records::DbAudioSegmentRole;
+use bae_records::ResolvedTrackAudio;
 use bae_track_audio::data_source::FetchArbiter;
 // Imported by path so the sample feed reads `source::PlaybackSource`, apart
 // from the queue's `ContextSource`.
@@ -236,7 +236,7 @@ impl PlaybackPreparedTrack {
 /// the buffer `buffer_of` gives it.
 pub fn track_stream_decode(
     resolved: &ResolvedTrackAudio,
-    mut buffer_of: impl FnMut(&bae_db::ResolvedTrackAudioSegment) -> SharedSparseBuffer,
+    mut buffer_of: impl FnMut(&bae_records::ResolvedTrackAudioSegment) -> SharedSparseBuffer,
 ) -> StreamDecodeParams {
     let segments: Vec<PreparedAudioSegment> = resolved
         .segments
@@ -295,14 +295,14 @@ struct PreparedAudioSegment {
     file_id: String,
     buffer: SharedSparseBuffer,
     /// Where this segment sits inside its backing file, in samples and bytes.
-    span: bae_db::SegmentSpan,
+    span: bae_records::SegmentSpan,
     /// The frames a decode inside this segment starts at.
-    scrub_points: bae_db::ScrubPoints,
+    scrub_points: bae_records::ScrubPoints,
 }
 
 impl PreparedAudioSegment {
     /// `segment`, its bytes read through `buffer`.
-    fn of(segment: &bae_db::ResolvedTrackAudioSegment, buffer: SharedSparseBuffer) -> Self {
+    fn of(segment: &bae_records::ResolvedTrackAudioSegment, buffer: SharedSparseBuffer) -> Self {
         Self {
             role: segment.role.clone(),
             file_id: segment.file_id.clone(),
@@ -456,8 +456,9 @@ pub struct PlaybackService {
     /// listening history it writes, the preferences it plays by, and the
     /// files it streams.
     store: bae_store::Store,
-    /// The library's records and plays: the tracks' audio, and the plays the
-    /// listening history records.
+    /// The library's records: the tracks and their audio.
+    records: bae_records::Records,
+    /// The plays the listening history records.
     database: bae_db::Database,
     /// Mints the id of each play the listening history records.
     ids: coven::IdSourceRef,

@@ -8,8 +8,8 @@
 use bae_app::AppServices;
 use bae_audio::StreamEncodeFormat;
 use bae_catalogs::catalog::Catalog;
-use bae_db::{DbFile, DbRelease, DbTrack, ResolvedTrackAudio};
 use bae_library::LibraryError;
+use bae_records::{DbFile, DbRelease, DbTrack, ResolvedTrackAudio};
 
 use crate::error::SubError;
 use crate::id::SubId;
@@ -161,7 +161,7 @@ async fn resolve_audio_fields(
             let file = files.iter().find(|f| f.id == segment.file_id);
             (
                 audio.content_type.as_str().to_string(),
-                file.and_then(|f| bae_db::stored_name::file_extension(&f.original_filename)),
+                file.and_then(|f| bae_records::stored_name::file_extension(&f.original_filename)),
                 file.map(|f| f.file_size),
             )
         }
@@ -196,7 +196,7 @@ pub(crate) async fn track_child(
     release: &DbRelease,
     album: &AlbumId3,
     files: &[DbFile],
-    mediums: &bae_db::DbReleaseMediums,
+    mediums: &bae_records::DbReleaseMediums,
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
 
@@ -207,7 +207,7 @@ pub(crate) async fn track_child(
         parent: Some(album_wire_id(&release.id)),
         title: track.title.clone(),
         album: Some(album.name.clone()),
-        artist: Some(bae_db::credits::library_line(&credits)).filter(|line| !line.is_empty()),
+        artist: Some(bae_records::credits::library_line(&credits)).filter(|line| !line.is_empty()),
         track: Some(track.track_number.get()),
         year: album.year,
         cover_art: album.cover_art.clone(),
@@ -297,7 +297,7 @@ pub(crate) fn artist_id3(
     name: &str,
     album_count: i64,
     music_brainz_id: Option<String>,
-    image: Option<&bae_db::ImageRef>,
+    image: Option<&bae_records::ImageRef>,
 ) -> ArtistId3 {
     ArtistId3 {
         id: artist_wire_id(id),
@@ -312,6 +312,6 @@ pub(crate) fn artist_id3(
 async fn shown_track_credits(
     services: &AppServices,
     track_id: &str,
-) -> Result<Vec<bae_db::credits::LibraryCredit>, SubError> {
+) -> Result<Vec<bae_records::credits::LibraryCredit>, SubError> {
     services.get_shown_artists_for_track(track_id).await.map_err(lib_err)
 }

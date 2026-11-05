@@ -17,14 +17,14 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeUploadProgress {
-    pub(super) fn from_core(progress: bae_db::UploadProgress) -> Self {
+    pub(super) fn from_core(progress: bae_records::UploadProgress) -> Self {
         let activity = crate::types::BridgeUploadActivity::from_core(progress.activity());
-        let bae_db::UploadProgress { queued, uploading } = progress;
+        let bae_records::UploadProgress { queued, uploading } = progress;
         Self { queued, uploading, activity }
     }
 }
 mirror_enum! {
-    crate::types::BridgeUploadActivity = bae_db::UploadActivity,
+    crate::types::BridgeUploadActivity = bae_records::UploadActivity,
     from_core: pub(super) fn,
     variants: { Uploading, Queued },
 }

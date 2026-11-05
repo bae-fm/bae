@@ -11,11 +11,11 @@ use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
     MbUrlResource, MbWork,
 };
-use bae_db::LibraryImageType;
 use bae_import::{
     ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit, ScanEvent,
     TrackArtistAssignments, TrackUserEdit,
 };
+use bae_records::LibraryImageType;
 use bae_types::pressing::ReleaseLabel;
 use bae_util::test_channels::HANG_GUARD;
 use std::fs;
@@ -93,13 +93,13 @@ async fn import_folder(
 
 async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
     assert!(
-        f.library.database().find_release_by_id(release_id).await.unwrap().is_some(),
+        f.library.records().find_release_by_id(release_id).await.unwrap().is_some(),
         "prior release row should remain"
     );
-    let files = f.library.database().get_files_for_release(release_id).await.unwrap();
+    let files = f.library.records().get_files_for_release(release_id).await.unwrap();
     assert!(!files.is_empty(), "prior release files should remain");
     assert!(
-        f.library.database().external_file(&files[0].id).await.unwrap().is_some(),
+        f.library.records().external_file(&files[0].id).await.unwrap().is_some(),
         "prior local file reference should remain"
     );
 }
@@ -292,7 +292,7 @@ mod works_and_covers;
 /// file's hash once it is stored.
 async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
     f.library
-        .database()
+        .records()
         .find_library_image(release_id, &LibraryImageType::Cover)
         .await
         .unwrap()

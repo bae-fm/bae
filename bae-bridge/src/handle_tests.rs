@@ -1,4 +1,4 @@
-use bae_db::{DbArtist, DbWork};
+use bae_records::{DbArtist, DbWork};
 use bae_views::album_detail::{
     ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading, ComposerSummary,
     WorkDetail, WorkReleaseSummary, WorkSummary,
@@ -369,7 +369,7 @@ fn a_run_s_signals_cross_with_its_runtime() {
 
 #[test]
 fn upload_progress_keeps_the_counts_and_their_phase() {
-    let value = crate::types::BridgeUploadProgress::from_core(bae_db::UploadProgress {
+    let value = crate::types::BridgeUploadProgress::from_core(bae_records::UploadProgress {
         queued: 1,
         uploading: 2,
     });

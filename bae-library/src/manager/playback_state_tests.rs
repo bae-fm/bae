@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::DbRelease;
+use bae_records::DbRelease;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -125,7 +125,7 @@ async fn check_playability(
 
     assert_eq!(
         playability(elsewhere.id.clone()).await,
-        ReleasePlayability::OnOtherDevice(bae_db::OtherDevice::Active {
+        ReleasePlayability::OnOtherDevice(bae_records::OtherDevice::Active {
             name: "Device A".to_string()
         })
     );

@@ -1,5 +1,5 @@
 use super::*;
-use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use tempfile::TempDir;
@@ -23,7 +23,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     )
     .await
     .unwrap();
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
 
     let artist = DbArtist {
         id: bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
@@ -33,16 +33,19 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         musicbrainz_artist_id: None,
         created_at: chrono::Utc::now(),
     };
-    database.insert_artist(&artist).await.unwrap();
+    records.insert_artist(&artist).await.unwrap();
     let album = DbAlbum::new_test("Album Title");
     let release = DbRelease::new_test(&album.id, "c61a9e19-f3ba-4728-842c-c59dbc82e238");
-    database.insert_album(&album).await.unwrap();
-    database
-        .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, &artist.id))
+    records.insert_album(&album).await.unwrap();
+    records
+        .insert_album_artist(&bae_records::DbAlbumArtist::new_test(&album.id, &artist.id))
         .await
         .unwrap();
-    database.insert_release(&release).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
+    records.insert_release(&release).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
     let mut track_ids = Vec::with_capacity(track_count);
     for i in 0..track_count {
         let track_id = bae_util::test_ids::test_uuid(&format!("track-{i}"));
@@ -52,7 +55,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
             &format!("Track {i}"),
             u32::try_from(i + 1).expect("a test track number fits u32"),
         );
-        database.insert_track(&track).await.unwrap();
+        records.insert_track(&track).await.unwrap();
         track_ids.push(track_id);
     }
 
@@ -304,7 +307,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                 album_artist_assignments: vec![bae_import::Credited::plain(
                     bae_import::ArtistAssignment::Picked {
                         credit_name: None,
-                        artist: bae_db::ExistingArtist {
+                        artist: bae_records::ExistingArtist {
                             artist_id: bae_util::test_ids::test_uuid(
                                 "e36744a5-1a36-460f-891c-e7e558034edf",
                             ),

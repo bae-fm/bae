@@ -126,21 +126,21 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
         .await
         .expect("a local import commits with no storage connected");
         assert!(
-            f.library.database().cover_version(&id).await.unwrap().is_some(),
+            f.library.records().cover_version(&id).await.unwrap().is_some(),
             "the import stores the embedded cover"
         );
         release_ids.push(id);
     }
 
     assert_eq!(
-        f.library.database().queued_upload_count_in_table_for_test("release_files").await.unwrap(),
+        f.library.records().queued_upload_count_in_table_for_test("release_files").await.unwrap(),
         0,
         "no release's files wait to upload"
     );
     assert_eq!(
-        f.library.database().queued_upload_count_in_table_for_test("covers").await.unwrap(),
+        f.library.records().queued_upload_count_in_table_for_test("covers").await.unwrap(),
         release_ids.len() as i64,
         "each cover waits to upload"
     );
-    assert!(f.library.database().uploading_releases().await.unwrap().is_empty());
+    assert!(f.library.records().uploading_releases().await.unwrap().is_empty());
 }

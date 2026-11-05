@@ -1,7 +1,7 @@
 //! List and search endpoints: album lists, one song, and combined search.
 
 use bae_app::AppServices;
-use bae_db::{DbAlbum, DbRelease};
+use bae_records::{DbAlbum, DbRelease};
 use bae_views::LibrarySearchQuery;
 use tracing::debug;
 

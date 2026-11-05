@@ -3,10 +3,10 @@
 //! transitions, their progress, and their subscribed storage values.
 
 use bae_app::live_reads::LiveStorageBrowse;
-use bae_db::GallerySource;
-use bae_db::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_library::storage::transfer::TransferProgress;
 use bae_library::{CancellationToken, LibraryManager};
+use bae_records::GallerySource;
+use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_store::SortDirection;
 use bae_util::content_type::ContentType;
 use bae_util::test_channels::HANG_GUARD;
@@ -200,9 +200,9 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
     // import / change_cover does.
     let bytes = b"cover-jpeg-bytes";
     mgr.store_library_image(
-        &bae_db::DbLibraryImage {
+        &bae_records::DbLibraryImage {
             id: release_id.clone(),
-            image_type: bae_db::LibraryImageType::Cover,
+            image_type: bae_records::LibraryImageType::Cover,
             content_type: bae_util::content_type::ContentType::Jpeg,
         },
         bytes,

@@ -1,0 +1,131 @@
+//! Whole albums written in one transaction, for the library fixture a debug
+//! UI test opens the app on.
+
+use super::*;
+
+/// One album as a fixture writes it: the album, the artists it credits after
+/// its own, its one release with that release's tracks, the cover the
+/// release shows with the bytes it stores, and the audio its tracks play.
+pub struct SeededAlbum {
+    pub album: DbAlbum,
+    pub credits: Vec<DbAlbumArtist>,
+    pub release: DbRelease,
+    /// The release's one medium, which its tracks sit on.
+    pub medium: DbReleaseMedium,
+    pub tracks: Vec<DbTrack>,
+    pub cover: Option<(DbLibraryImage, Vec<u8>)>,
+    /// `None` for an album whose tracks play nothing.
+    pub audio: Option<SeededAudio>,
+}
+
+/// The audio of a [`SeededAlbum`]'s tracks: the release's files, each the
+/// user's own file read for the cloud as a cloud import stages it, and how
+/// each track's audio is laid out in them.
+pub struct SeededAudio {
+    pub files: Vec<(NewReleaseFile, coven::PreparedUserFile)>,
+    pub audio_formats: Vec<DbAudioFormat>,
+    pub audio_segments: Vec<DbAudioSegment>,
+}
+
+impl Records {
+    /// Insert `artists`, then every album with its credits, release, tracks
+    /// and cover, in one transaction: the library holds all of them or none.
+    pub async fn insert_seeded_albums(
+        &self,
+        artists: Vec<DbArtist>,
+        mut albums: Vec<SeededAlbum>,
+    ) -> Result<(), DbError> {
+        // Each cover's bytes, then each release file's original, are staged
+        // as coven files in album order, which the rows then reference.
+        let cover_files: Vec<(&'static str, Vec<u8>)> = albums
+            .iter()
+            .filter_map(|seeded| seeded.cover.as_ref())
+            .map(|(image, bytes)| (image.image_type.namespace(), bytes.clone()))
+            .collect();
+        let mut originals = Vec::new();
+        let mut audios = Vec::new();
+        let labels: Vec<super::label_resolution::LabelParts> = albums
+            .iter()
+            .map(|seeded| {
+                LabelParts::new(&*self.ids, self.store.now_utc(), &seeded.release.pressing.labels)
+            })
+            .collect();
+        for seeded in &mut albums {
+            if let Some(audio) = seeded.audio.take() {
+                let mut rows = Vec::with_capacity(audio.files.len());
+                for (file, prepared) in audio.files {
+                    originals.push(prepared);
+                    rows.push(file);
+                }
+                audios.push((rows, audio.audio_formats, audio.audio_segments));
+            }
+        }
+        self.store
+            .write_staged(
+                move |batch| {
+                    Ok(cover_files
+                        .into_iter()
+                        .map(|(namespace, bytes)| {
+                            batch.put_file(namespace, bytes, coven::Place::Cloud)
+                        })
+                        .collect::<Vec<coven::FileId>>())
+                },
+                move |sql, covers| {
+                    let files = originals
+                        .into_iter()
+                        .map(|prepared| {
+                            sql.put_user_file(
+                                crate::synced::RELEASE_FILES_NAMESPACE,
+                                prepared,
+                                coven::Place::Cloud,
+                            )
+                        })
+                        .collect::<Result<Vec<coven::FileId>, _>>()?;
+                    let tx = &sql;
+                    let mut covers = covers.into_iter();
+                    let mut files = files.into_iter();
+                    let staged = |file: Option<coven::FileId>| {
+                        file.ok_or_else(|| {
+                            DbError::Message("a seeded file has no coven file".into())
+                        })
+                    };
+                    for artist in &artists {
+                        insert_artist_row(tx, artist)?;
+                    }
+                    for (seeded, labels) in albums.iter().zip(&labels) {
+                        insert_album_row(tx, &seeded.album)?;
+                        for credit in &seeded.credits {
+                            insert_album_artist_row(tx, credit)?;
+                        }
+                        insert_release_row(tx, &seeded.release, &label_write(labels))
+                            .map_err(identity_write_failure)?;
+                        insert_release_medium_row(tx, &seeded.medium)?;
+                        for track in &seeded.tracks {
+                            insert_track_row(tx, track)?;
+                        }
+                        if let Some((image, _)) = &seeded.cover {
+                            upsert_library_image_row(tx, image, &staged(covers.next())?)?;
+                        }
+                    }
+                    // The files go in after every release, each referencing the
+                    // user's own file as an import stages it, then the layouts
+                    // reading them.
+                    for (rows, audio_formats, audio_segments) in &audios {
+                        for file in rows {
+                            insert_release_file_row(tx, file, staged(files.next())?)?;
+                        }
+                        for format in audio_formats {
+                            insert_audio_format_row(tx, format)?;
+                        }
+                        for segment in audio_segments {
+                            insert_audio_segment_row(tx, segment)?;
+                        }
+                    }
+                    Ok(())
+                },
+            )
+            .await
+            .map(|_| ())
+            .map_err(DbError::from)
+    }
+}

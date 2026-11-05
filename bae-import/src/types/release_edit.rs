@@ -82,7 +82,7 @@ impl ReleaseUserEdit {
 
 /// Per-track user edits. Aligned positionally with the release's existing
 /// tracks — element N edits track N (ordered as
-/// `Database::get_tracks_for_release` returns them).
+/// `Records::get_tracks_for_release` returns them).
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackUserEdit {
@@ -102,7 +102,7 @@ pub enum DraftAlbum {
     /// library holds.
     New,
     /// The album the draft's records name (see
-    /// [`bae_db::Database::album_records_name`]); for a library release
+    /// [`bae_records::Records::album_records_name`]); for a library release
     /// with no catalog applied, the album it is in.
     Named { album_id: String, title: String },
     /// The album the person picked, over what the records name.
@@ -115,7 +115,7 @@ pub enum DraftAlbum {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
-    pub cover: Option<bae_db::ImageRef>,
+    pub cover: Option<bae_records::ImageRef>,
     pub display: crate::ReleaseEditDisplayContext,
     pub album: DraftAlbum,
 }
@@ -129,10 +129,10 @@ pub struct ReleaseEditSeed {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditDraft {
     pub edit: RawReleaseEdit,
-    pub cover: Option<bae_db::ImageRef>,
+    pub cover: Option<bae_records::ImageRef>,
     pub display: crate::ReleaseEditDisplayContext,
     pub album: DraftAlbum,
-    pub artist_resolutions: Vec<bae_db::ResolvedCredit>,
+    pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
     pub changed: bool,
     pub invalid: Option<EditValidationError>,
 }

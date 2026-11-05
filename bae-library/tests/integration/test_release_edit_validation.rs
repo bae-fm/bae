@@ -7,14 +7,14 @@
 //! `LibraryManager::apply_release_metadata_user_edit`. These tests drive that
 //! write path the way those surfaces do, with no editor in front of it.
 
-use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
 use bae_library::LibraryError;
+use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use chrono::Utc;
 use uuid::Uuid;
 
 /// One album, one release, one track — enough for an edit to land on.
-async fn seed(db: &Database) -> (String, String) {
+async fn seed(records: &bae_records::Records) -> (String, String) {
     let artist = DbArtist {
         id: Uuid::new_v4().to_string(),
         name: "Original Artist".to_string(),
@@ -45,17 +45,20 @@ async fn seed(db: &Database) -> (String, String) {
         id: Uuid::new_v4().to_string(),
         release_id: release.id.clone(),
         title: "Original Track".to_string(),
-        medium_id: bae_db::identity::release_medium_id(&release.id, 1),
+        medium_id: bae_records::identity::release_medium_id(&release.id, 1),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
         created_at: Utc::now(),
     };
-    db.insert_artist(&artist).await.unwrap();
-    db.insert_album(&album).await.unwrap();
-    db.insert_release(&release).await.unwrap();
-    db.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
-    db.insert_track(&track).await.unwrap();
+    records.insert_artist(&artist).await.unwrap();
+    records.insert_album(&album).await.unwrap();
+    records.insert_release(&release).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
+    records.insert_track(&track).await.unwrap();
     (album.id, release.id)
 }
 
@@ -91,8 +94,8 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
         ("a blank album artist name", "Album Alpha", &["  "][..]),
     ] {
         let (library, _tmp) = bae_library::test_libraries::setup_test_library().await;
-        let db = library.database().clone();
-        let (album_id, release_id) = seed(&db).await;
+        let records = library.records().clone();
+        let (album_id, release_id) = seed(&records).await;
 
         let result = library
             .apply_release_metadata_user_edit(
@@ -105,7 +108,7 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
             matches!(result, Err(LibraryError::Edit(_))),
             "{case} must be rejected, got {result:?}",
         );
-        let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
+        let album = records.find_album_by_id(&album_id).await.unwrap().unwrap();
         assert_eq!(album.title, "Original Album", "{case}: a rejected edit must not have written",);
     }
 }
@@ -116,8 +119,8 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
 #[tokio::test]
 async fn an_untrimmed_album_title_is_stored_trimmed() {
     let (library, _tmp) = bae_library::test_libraries::setup_test_library().await;
-    let db = library.database().clone();
-    let (album_id, release_id) = seed(&db).await;
+    let records = library.records().clone();
+    let (album_id, release_id) = seed(&records).await;
 
     library
         .apply_release_metadata_user_edit(
@@ -127,7 +130,7 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
         .await
         .unwrap();
 
-    let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
+    let album = records.find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Album Alpha");
 }
 
@@ -135,8 +138,8 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
 #[tokio::test]
 async fn new_artist_names_are_stored_trimmed() {
     let (library, _tmp) = bae_library::test_libraries::setup_test_library().await;
-    let db = library.database().clone();
-    let (album_id, release_id) = seed(&db).await;
+    let records = library.records().clone();
+    let (album_id, release_id) = seed(&records).await;
 
     library
         .apply_release_metadata_user_edit(
@@ -146,7 +149,7 @@ async fn new_artist_names_are_stored_trimmed() {
         .await
         .unwrap();
 
-    let artists = db.get_artists_for_album(&album_id).await.unwrap();
+    let artists = records.get_artists_for_album(&album_id).await.unwrap();
     assert!(
         artists.iter().any(|a| a.artist.name == "Artist Alpha"),
         "expected a trimmed artist name, got {:?}",
@@ -160,8 +163,8 @@ async fn new_artist_names_are_stored_trimmed() {
 #[tokio::test]
 async fn editing_the_album_artist_decides_whether_it_is_a_compilation() {
     let (library, _tmp) = bae_library::test_libraries::setup_test_library().await;
-    let db = library.database().clone();
-    let (album_id, release_id) = seed(&db).await;
+    let records = library.records().clone();
+    let (album_id, release_id) = seed(&records).await;
 
     for (artists, compilation) in [
         (&["Various Artists"][..], true),
@@ -172,7 +175,7 @@ async fn editing_the_album_artist_decides_whether_it_is_a_compilation() {
             .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", artists))
             .await
             .unwrap();
-        let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
+        let album = records.find_album_by_id(&album_id).await.unwrap().unwrap();
         assert_eq!(album.is_compilation, compilation, "credited to {artists:?}");
     }
 }

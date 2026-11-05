@@ -95,7 +95,7 @@ impl PlaybackService {
 
         let prepared = prepare_track_for_playback(
             &self.store,
-            &self.database,
+            &self.records,
             &self.diagnostics,
             track_id,
             start,

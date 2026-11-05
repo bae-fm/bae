@@ -33,7 +33,7 @@ fn mp3_tag_sizes_do_not_make_uniform_audio_mixed() {
     let summary =
         candidate.files.source_audio_summary().expect("MP3 files have source-audio facts");
 
-    let bae_db::source_audio::SourceAudioSummary::Uniform { descriptor } = summary else {
+    let bae_records::source_audio::SourceAudioSummary::Uniform { descriptor } = summary else {
         panic!("equal MP3 streams with different tag sizes must be uniform");
     };
     assert_eq!(descriptor.format.bitrate_kbps, Some(320));
@@ -54,7 +54,7 @@ fn opus_bitrate_comes_from_audio_packets_when_the_stream_has_no_declared_rate() 
     let candidate = candidates.first().expect("scanner returns the album");
     let summary = candidate.files.source_audio_summary().expect("Opus file has source-audio facts");
 
-    let bae_db::source_audio::SourceAudioSummary::Uniform { descriptor } = summary else {
+    let bae_records::source_audio::SourceAudioSummary::Uniform { descriptor } = summary else {
         panic!("one Opus stream must be uniform");
     };
     assert_eq!(descriptor.format.bitrate_kbps, Some(1));

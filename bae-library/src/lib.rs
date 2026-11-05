@@ -70,7 +70,7 @@ pub use tokio_util::sync::CancellationToken;
 #[cfg(desktop)]
 pub(crate) struct SaveTrackPlan {
     resolved: manager::ResolvedSaveTags,
-    audio_meta: bae_db::TrackAudioMeta,
+    audio_meta: bae_records::TrackAudioMeta,
     window: manager::SaveWindow,
 }
 

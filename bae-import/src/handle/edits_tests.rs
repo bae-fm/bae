@@ -23,7 +23,7 @@ async fn a_picked_album_shows_over_what_the_records_name() {
     assert_eq!(pane(&handle, &key).await.draft().unwrap().album, crate::DraftAlbum::New);
 
     let artist = make_artist("Artist Name", None, None);
-    handle.database.insert_artist(&artist).await.unwrap();
+    handle.records.insert_artist(&artist).await.unwrap();
     let (album, _release) =
         insert_library_release(&handle.store, &artist.id, "Library Album").await;
 
@@ -389,7 +389,7 @@ async fn an_edit_with_no_metadata_source_updates_the_draft() {
 async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let existing = make_artist("Existing Artist", Some("discogs-existing"), None);
-    handle.database.insert_artist(&existing).await.unwrap();
+    handle.records.insert_artist(&existing).await.unwrap();
     let assignments = vec![
         crate::ArtistAssignment::picked(existing.clone().into()),
         crate::ArtistAssignment::named("New Artist"),

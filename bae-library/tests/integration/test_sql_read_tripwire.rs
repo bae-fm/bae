@@ -4,7 +4,7 @@
 #[tokio::test]
 async fn pure_reads_use_the_read_connection() {
     let (db, tmp) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
 
     let tables = bae_import::tables::ImportTables::new(db.clone());
 
@@ -17,15 +17,15 @@ async fn pure_reads_use_the_read_connection() {
     .unwrap();
 
     // At least one read per file of bae-db's client.
-    database.find_album_by_id("missing").await.unwrap();
+    records.find_album_by_id("missing").await.unwrap();
     bae_views::LibraryViews::new(db.clone()).get_album_count().await.unwrap();
     bae_views::LibraryViews::new(db.clone()).get_albums(&[]).await.unwrap();
-    database.find_artist_by_id("missing").await.unwrap();
+    records.find_artist_by_id("missing").await.unwrap();
     bae_views::LibraryViews::new(db.clone()).get_artist_count().await.unwrap();
-    database.find_track_by_id("missing").await.unwrap();
-    database.get_track_ids_for_release("missing").await.unwrap();
-    database.find_release_by_id("missing").await.unwrap();
-    database.get_release_records("missing").await.unwrap();
+    records.find_track_by_id("missing").await.unwrap();
+    records.get_track_ids_for_release("missing").await.unwrap();
+    records.find_release_by_id("missing").await.unwrap();
+    records.get_release_records("missing").await.unwrap();
     bae_playback::tables::load_playback_state(&db).await.unwrap();
     bae_playback::tables::queue_value(&db).await.unwrap();
     let queue = bae_playback::tables::PlaybackQueueTables::new(db.clone());
@@ -33,7 +33,7 @@ async fn pure_reads_use_the_read_connection() {
     queue.context_track_count().await.unwrap();
     queue.front().await.unwrap();
     queue.next_in_order().await.unwrap();
-    database.has_pending_cloud_upload("missing").await.unwrap();
+    records.has_pending_cloud_upload("missing").await.unwrap();
 
     // The tables the pane writes read back the same way.
     tables.load_import_candidate_state("missing").await.unwrap();

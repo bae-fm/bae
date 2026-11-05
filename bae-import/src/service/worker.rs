@@ -9,7 +9,7 @@ impl ImportService {
     pub async fn start(
         runtime_handle: tokio::runtime::Handle,
         store: bae_store::Store,
-        database: bae_db::Database,
+        records: bae_records::Records,
         catalogs: crate::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: bae_diagnostics::Diagnostics,
@@ -21,7 +21,7 @@ impl ImportService {
         Self::start_reading_tags_through(
             runtime_handle,
             store,
-            database,
+            records,
             catalogs,
             remote_images,
             diagnostics,
@@ -40,7 +40,7 @@ impl ImportService {
     pub(crate) async fn start_reading_tags_through(
         runtime_handle: tokio::runtime::Handle,
         store: bae_store::Store,
-        database: bae_db::Database,
+        records: bae_records::Records,
         catalogs: crate::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: bae_diagnostics::Diagnostics,
@@ -61,7 +61,7 @@ impl ImportService {
         let services = crate::ImportServices::new(
             event_tx,
             store,
-            database,
+            records,
             catalogs,
             remote_images,
             preparations,
@@ -83,7 +83,7 @@ impl ImportService {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();
         let runtime_for_worker = runtime.clone();
-        let database = services.database.clone();
+        let records = services.records.clone();
         let tables = services.tables.clone();
         let clock = services.clock.clone();
         let ids = services.ids.clone();
@@ -111,7 +111,7 @@ impl ImportService {
                         commands_rx,
                         event_tx: event_tx_for_worker,
                         runtime: runtime_for_worker,
-                        database,
+                        records,
                         tables,
                         catalogs,
                         remote_images,

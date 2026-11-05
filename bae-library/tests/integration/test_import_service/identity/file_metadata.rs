@@ -49,19 +49,19 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
     let (release_id, album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
     // One year the tags state is the album's; it names no pressing.
     assert_eq!(release.pressing.year, None);
     assert!(release.pressing.facts.media.is_empty());
 
-    let records = f.library.database().get_release_records(&release_id).await.unwrap();
+    let records = f.library.records().get_release_records(&release_id).await.unwrap();
     assert!(records.is_empty(), "a draft read off the files names no catalog, got {records:?}",);
 
-    let album = f.library.database().find_album_by_id(&album_id).await.unwrap().unwrap();
+    let album = f.library.records().find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Album From Tags");
     assert_eq!(album.year, Some(2003));
 
-    let tracks = f.library.database().get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2);
     assert_eq!(tracks[0].title, "Track One");
     assert_eq!(tracks[1].title, "Track Two");
@@ -127,10 +127,10 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
-    let album = f.library.database().find_album_by_id(&album_id).await.unwrap().unwrap();
+    let album = f.library.records().find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(draft.album_title, album.title);
 
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, None, "the tags state no year");
     assert!(release.pressing.facts.media.is_empty(), "and no medium");
 
@@ -213,7 +213,7 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     f.library
-        .database()
+        .records()
         .find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
@@ -269,7 +269,7 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     f.library
-        .database()
+        .records()
         .find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
@@ -427,7 +427,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
     let (release_id, album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(2010));
     assert_eq!(
         release.pressing.facts.media,
@@ -445,16 +445,16 @@ async fn file_metadata_import_with_user_edit_overlay() {
     );
     assert_eq!(release.pressing.barcodes, ["4943674000000"]);
 
-    let records = f.library.database().get_release_records(&release_id).await.unwrap();
+    let records = f.library.records().get_release_records(&release_id).await.unwrap();
     assert!(
         records.is_empty(),
         "user_edit must not introduce records for a draft read off the files",
     );
 
-    let album = f.library.database().find_album_by_id(&album_id).await.unwrap().unwrap();
+    let album = f.library.records().find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Edited Title");
 
-    let tracks = f.library.database().get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
     assert_eq!(tracks[0].title, "Edited Track Title");
 }
@@ -499,8 +499,8 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     let (release_id, album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let album = f.library.database().find_album_by_id(&album_id).await.unwrap().unwrap();
+    let album = f.library.records().find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Mystery Rip", "untagged rip takes the folder name as its album title",);
-    let tracks = f.library.database().get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2, "both untagged files import as tracks");
 }

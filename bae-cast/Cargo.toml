@@ -10,8 +10,8 @@ publish = false
 bae-app = { workspace = true }
 bae-library = { workspace = true }
 # The store errors a setting write fails with, and the cover refs it serves.
-bae-db = { workspace = true }
 bae-store = { workspace = true }
+bae-records = { workspace = true }
 # The renderer session, the cast picker and AirPlay's sink, which this crate's
 # protocols drive.
 bae-playback = { workspace = true }

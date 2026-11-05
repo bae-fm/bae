@@ -137,7 +137,10 @@ impl LibraryViews {
                         Ok(crate::LibraryBrowseSection {
                             id: row.get(0)?,
                             title: row.get(1)?,
-                            image: bae_db::artist_image_ref(&row.get::<_, String>(0)?, row.get(4)?),
+                            image: bae_records::artist_image_ref(
+                                &row.get::<_, String>(0)?,
+                                row.get(4)?,
+                            ),
                             window: bae_store::LibraryPageWindow {
                                 offset: row.get::<_, i64>(2)? as u64,
                                 limit: row.get::<_, i64>(3)? as u64,
@@ -368,15 +371,15 @@ fn resolve_album_detail(
     raw: DbAlbumDetail,
     has_cloud_home: bool,
 ) -> crate::album_detail::AlbumDetail {
-    let artist_names = bae_db::credits::library_line(&raw.artists);
+    let artist_names = bae_records::credits::library_line(&raw.artists);
     let primary_release_id = raw.primary_release_id;
 
-    let cover = bae_db::cover_ref(&primary_release_id, raw.primary_cover_version);
+    let cover = bae_records::cover_ref(&primary_release_id, raw.primary_cover_version);
     let mut releases = Vec::with_capacity(raw.releases.len());
     for (i, ReleaseDetailRead { detail, transfers }) in raw.releases.into_iter().enumerate() {
         let ctx = crate::album_detail::ReleaseResolveCtx {
             has_cloud_home,
-            cover: bae_db::cover_ref(&detail.release.id, detail.cover_version.clone()),
+            cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
         };
         releases.push(crate::album_detail::ReleaseDetail::from_raw(detail, transfers, i, &ctx));
@@ -417,7 +420,7 @@ fn search_library_on(
             ORDER BY a.title, a.id
             "#,
         primary_release = album_primary_release_sql(),
-        primary_cover = bae_db::client::files::cover_version_sql(album_primary_release_sql()),
+        primary_cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
         artist_names = album_credits_json_sql(),
         album_matches = album_matches_sql("a.id", "?1"),
     );
@@ -448,7 +451,7 @@ fn search_library_on(
             ORDER BY t.title, t.id
             "#,
             track_credits_json_sql("t"),
-            bae_db::client::files::cover_version_sql("t.release_id"),
+            bae_records::records::files::cover_version_sql("t.release_id"),
         ),
         params![pattern, limit],
         |row| {
@@ -560,7 +563,7 @@ fn find_album_detail_on(
         &format!(
             "SELECT {primary}, {cover} FROM albums a WHERE a.id = ?",
             primary = album_primary_release_sql(),
-            cover = bae_db::client::files::cover_version_sql(album_primary_release_sql()),
+            cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
         ),
         params![album_id],
         |row| Ok((row.get(0)?, row.get(1)?)),

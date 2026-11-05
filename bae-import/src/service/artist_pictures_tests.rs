@@ -13,8 +13,8 @@ use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_util::test_channels::HANG_GUARD;
 use tempfile::TempDir;
 
-fn artist(id: &str, discogs_artist_id: Option<&str>) -> bae_db::DbArtist {
-    bae_db::DbArtist {
+fn artist(id: &str, discogs_artist_id: Option<&str>) -> bae_records::DbArtist {
+    bae_records::DbArtist {
         id: id.to_string(),
         name: id.to_string(),
         sort_name: None,
@@ -86,15 +86,15 @@ impl DiscogsPick {
 
     /// The library artist the release's first track credits as the track
     /// artist.
-    async fn track_artist(&self, release_id: &str) -> bae_db::DbArtist {
-        let first_track = bae_db::test_fixtures::test_database(&self.db)
+    async fn track_artist(&self, release_id: &str) -> bae_records::DbArtist {
+        let first_track = bae_records::test_fixtures::test_records(&self.db)
             .get_tracks_for_release(release_id)
             .await
             .unwrap()
             .into_iter()
             .next()
             .expect("the imported release has its first track");
-        bae_db::test_fixtures::test_database(&self.db)
+        bae_records::test_fixtures::test_records(&self.db)
             .get_shown_artists_for_track(&first_track.id)
             .await
             .unwrap()
@@ -109,9 +109,9 @@ impl DiscogsPick {
     /// The bytes of the picture the library holds for `artist_id`, if any.
     async fn picture_of(&self, artist_id: &str) -> Option<Vec<u8>> {
         let db = &self.db;
-        let database = bae_db::test_fixtures::test_database(db);
-        let file = database
-            .library_image_file(artist_id, &bae_db::LibraryImageType::Artist)
+        let records = bae_records::test_fixtures::test_records(db);
+        let file = records
+            .library_image_file(artist_id, &bae_records::LibraryImageType::Artist)
             .await
             .unwrap()?;
         Some(db.read_file(&file).await.unwrap())
@@ -242,7 +242,7 @@ async fn a_pick_fetches_no_artist_picture_and_the_import_stores_each_as_a_600_pi
 async fn an_artist_the_library_already_has_is_not_fetched_again() {
     let pick = picked_discogs_release().await;
     let existing = make_artist("Track Artist", Some(&pick.track_artist_id), None);
-    bae_db::test_fixtures::test_database(&pick.db).insert_artist(&existing).await.unwrap();
+    bae_records::test_fixtures::test_records(&pick.db).insert_artist(&existing).await.unwrap();
     let picture_url =
         pick.images.serve_image(&pick.picture_path, bae_catalogs::test_image_host::cover_png());
 

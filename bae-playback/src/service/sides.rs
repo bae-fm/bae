@@ -18,20 +18,23 @@ impl PlaybackTrackInfo {
     /// `track_id`'s facts as the library holds them now; `None` when it
     /// holds no such track.
     pub async fn read(
-        database: &bae_db::Database,
+        records: &bae_records::Records,
         track_id: &str,
     ) -> Result<Option<Self>, bae_store::DbError> {
-        let Some(track) = database.find_track_by_id(track_id).await? else {
+        let Some(track) = records.find_track_by_id(track_id).await? else {
             return Ok(None);
         };
-        let mediums = database.get_release_mediums(&track.release_id).await?;
+        let mediums = records.get_release_mediums(&track.release_id).await?;
         Ok(Some(Self::of(&track, &mediums)))
     }
 
     /// The facts of `track`, which sits on one of `mediums`, its release's. A
     /// track on a medium with no physical carrier — a download, a disc of
     /// unstated carrier — is on no side playback pauses at.
-    pub(crate) fn of(track: &bae_db::DbTrack, mediums: &bae_db::DbReleaseMediums) -> Self {
+    pub(crate) fn of(
+        track: &bae_records::DbTrack,
+        mediums: &bae_records::DbReleaseMediums,
+    ) -> Self {
         let place = mediums.place(track);
         let side = mediums
             .medium_of(track)

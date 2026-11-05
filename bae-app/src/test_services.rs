@@ -19,6 +19,7 @@ pub async fn start_services_on(
     crate::start_library_services(
         bae_library::LibraryManager::clone(library),
         library.store().clone(),
+        library.records().clone(),
         library.database().clone(),
         library.catalogs().clone(),
         library.closing().clone(),

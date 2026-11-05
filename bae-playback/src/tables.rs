@@ -47,8 +47,8 @@ mod tests;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod window_cost;
 
-use bae_db::client::query::*;
-use bae_db::client::read::*;
+use bae_records::records::query::*;
+use bae_records::records::read::*;
 use bae_store::read::*;
 use bae_store::*;
 use coven::{CovenError, CovenWrite, SqlReadContext};

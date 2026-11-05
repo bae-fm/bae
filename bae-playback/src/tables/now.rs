@@ -290,8 +290,8 @@ impl<'a> FailureColumns<'a> {
             PlaybackErrorReason::SyncDisconnected => columns("sync_disconnected"),
             PlaybackErrorReason::OnOtherDevice(device) => {
                 let (name, state) = match device {
-                    bae_db::OtherDevice::Active { name } => (name, "active"),
-                    bae_db::OtherDevice::Former { name, state } => (
+                    bae_records::OtherDevice::Active { name } => (name, "active"),
+                    bae_records::OtherDevice::Former { name, state } => (
                         name,
                         match state {
                             bae_store::FormerDeviceState::Removed => "removed",
@@ -422,12 +422,12 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
             let name: String = row.get("failure_device")?;
             let state: String = row.get("failure_device_state")?;
             PlaybackErrorReason::OnOtherDevice(match state.as_str() {
-                "active" => bae_db::OtherDevice::Active { name },
-                "removed" => bae_db::OtherDevice::Former {
+                "active" => bae_records::OtherDevice::Active { name },
+                "removed" => bae_records::OtherDevice::Former {
                     name,
                     state: bae_store::FormerDeviceState::Removed,
                 },
-                "replaced" => bae_db::OtherDevice::Former {
+                "replaced" => bae_records::OtherDevice::Former {
                     name,
                     state: bae_store::FormerDeviceState::Replaced,
                 },

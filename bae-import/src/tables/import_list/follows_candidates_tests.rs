@@ -4,7 +4,7 @@
 
 use crate::tables::import_list::placement::tests::*;
 use crate::tables::import_list::tests::*;
-use bae_db::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
+use bae_records::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
 
 /// The draft counts only while its state describes the folder's current
 /// files: it shows once it is not blank, and an older revision's shows nothing.

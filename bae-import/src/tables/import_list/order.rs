@@ -303,7 +303,7 @@ pub(super) fn uploading_cte() -> String {
              JOIN local_release_origin AS origin ON origin.release_id = released.release_id \
              JOIN scan_candidate AS c ON c.content_hash = origin.content_hash \
              GROUP BY c.path)",
-        releases = bae_db::client::query::UPLOADING_RELEASES,
+        releases = bae_records::records::query::UPLOADING_RELEASES,
     )
 }
 

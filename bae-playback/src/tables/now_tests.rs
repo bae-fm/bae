@@ -79,14 +79,14 @@ async fn each_change_reads_back_as_written() {
 
     for reason in [
         PlaybackErrorReason::SyncDisconnected,
-        PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Active {
+        PlaybackErrorReason::OnOtherDevice(bae_records::OtherDevice::Active {
             name: "Device A".to_string(),
         }),
-        PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Former {
+        PlaybackErrorReason::OnOtherDevice(bae_records::OtherDevice::Former {
             name: "Device B".to_string(),
             state: bae_store::FormerDeviceState::Removed,
         }),
-        PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Former {
+        PlaybackErrorReason::OnOtherDevice(bae_records::OtherDevice::Former {
             name: "Device C".to_string(),
             state: bae_store::FormerDeviceState::Replaced,
         }),

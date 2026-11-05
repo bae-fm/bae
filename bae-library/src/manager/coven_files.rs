@@ -21,7 +21,7 @@ impl LibraryManager {
         &self,
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
-        Ok(self.database.read_release_file(file_id).await?)
+        Ok(self.records.read_release_file(file_id).await?)
     }
 
     /// A library image's file as this device sees it, for tests that check
@@ -41,7 +41,7 @@ impl LibraryManager {
     /// storage after that.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_kept_release_for_test(&self, release_id: &str) {
-        let mut pins = self.database.subscribe_release_file_pins(release_id);
+        let mut pins = self.records.subscribe_release_file_pins(release_id);
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
                 let pins = pins.next().await.expect("the query stays open").unwrap();
@@ -67,7 +67,7 @@ impl LibraryManager {
         file_id: &str,
     ) -> Result<coven::FileRef, LibraryError> {
         let file = self
-            .database
+            .records
             .find_file_by_id(file_id)
             .await?
             .map(|row| row.file)
@@ -79,13 +79,13 @@ impl LibraryManager {
 
     /// Read through the same local-or-attached source used for playback.
     pub(crate) async fn read_release_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
-        Ok(self.database.read_release_file(&file.id).await?)
+        Ok(self.records.read_release_file(&file.id).await?)
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
     /// cover's version — or `None` when the release has no cover row.
     pub async fn cover_ref(&self, release_id: &str) -> Result<Option<ImageRef>, LibraryError> {
-        cover_ref_for(&self.database, release_id).await
+        cover_ref_for(&self.records, release_id).await
     }
 
     /// Read a host-provided library image's whole bytes through coven's
@@ -130,7 +130,7 @@ impl LibraryManager {
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<coven::FileRef>, LibraryError> {
-        Ok(self.database.library_image_file(id, image_type).await?)
+        Ok(self.records.library_image_file(id, image_type).await?)
     }
 
     /// Audio and companion files stay pinned together. Covers use their own
@@ -139,7 +139,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<Vec<PinnableFile>, LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
+        let files = self.records.get_files_for_release(release_id).await?;
         let mut pinnable = Vec::with_capacity(files.len());
         for file in &files {
             pinnable.push(PinnableFile {
@@ -190,7 +190,7 @@ impl LibraryManager {
         image: &DbLibraryImage,
         bytes: &[u8],
     ) -> Result<(), LibraryError> {
-        self.database.write_library_image(image, bytes).await?;
+        self.records.write_library_image(image, bytes).await?;
         Ok(())
     }
 }

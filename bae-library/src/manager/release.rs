@@ -11,16 +11,16 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, LibraryError> {
-        Ok(self.database.get_release_records(release_id).await?)
+        Ok(self.records.get_release_records(release_id).await?)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_audio_format_with_segments_for_test(
         &self,
-        audio_format: &bae_db::DbAudioFormat,
-        segments: &[bae_db::DbAudioSegment],
+        audio_format: &bae_records::DbAudioFormat,
+        segments: &[bae_records::DbAudioSegment],
     ) -> Result<(), LibraryError> {
-        self.database.insert_audio_format_with_segments_for_test(audio_format, segments).await?;
+        self.records.insert_audio_format_with_segments_for_test(audio_format, segments).await?;
         Ok(())
     }
 
@@ -31,7 +31,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_file(
         &self,
-        file: &bae_db::NewReleaseFile,
+        file: &bae_records::NewReleaseFile,
         size: u64,
     ) -> Result<coven::FileId, LibraryError> {
         let folder = self.app_dir.test_originals();
@@ -46,32 +46,32 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_external_file_for_test(
         &self,
-        file: &bae_db::NewReleaseFile,
+        file: &bae_records::NewReleaseFile,
         path: &std::path::Path,
     ) -> Result<coven::FileId, LibraryError> {
-        Ok(self.database.insert_file_for_test(file, path).await?)
+        Ok(self.records.insert_file_for_test(file, path).await?)
     }
 
     pub async fn get_release_by_id(
         &self,
         release_id: &str,
     ) -> Result<Option<DbRelease>, LibraryError> {
-        Ok(self.database.find_release_by_id(release_id).await?)
+        Ok(self.records.find_release_by_id(release_id).await?)
     }
 
     pub async fn get_tracks_for_release(
         &self,
         release_id: &str,
     ) -> Result<Vec<DbTrack>, LibraryError> {
-        Ok(self.database.get_tracks_for_release(release_id).await?)
+        Ok(self.records.get_tracks_for_release(release_id).await?)
     }
 
     /// A release's mediums, in order, which its tracks' places read against.
     pub async fn get_release_mediums(
         &self,
         release_id: &str,
-    ) -> Result<bae_db::DbReleaseMediums, LibraryError> {
-        Ok(self.database.get_release_mediums(release_id).await?)
+    ) -> Result<bae_records::DbReleaseMediums, LibraryError> {
+        Ok(self.records.get_release_mediums(release_id).await?)
     }
 
     /// The audio a catalog release is read against for the library release
@@ -83,7 +83,7 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<bae_catalogs::reading::ReadAudio, LibraryError> {
         use bae_import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
-        resolve_release_identity(&self.database, &self.diagnostics, release_id)
+        resolve_release_identity(&self.records, &self.diagnostics, release_id)
             .await
             .map_err(|error| match error {
                 ReleaseIdentityError::Database(error) => LibraryError::Database(error),
@@ -100,13 +100,13 @@ impl LibraryManager {
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
-        album_artists: &[bae_db::DbAlbumArtist],
+        album_artists: &[bae_records::DbAlbumArtist],
         release: &DbRelease,
-        mediums: &[bae_db::DbReleaseMedium],
+        mediums: &[bae_records::DbReleaseMedium],
         tracks: &[DbTrack],
-        track_artists: &[bae_db::DbTrackArtist],
+        track_artists: &[bae_records::DbTrackArtist],
     ) -> Result<(), LibraryError> {
-        self.database
+        self.records
             .insert_album_with_release_and_tracks(
                 album,
                 album_artists,
@@ -124,11 +124,11 @@ impl LibraryManager {
     pub async fn insert_release_with_tracks(
         &self,
         release: &DbRelease,
-        mediums: &[bae_db::DbReleaseMedium],
+        mediums: &[bae_records::DbReleaseMedium],
         tracks: &[DbTrack],
-        track_artists: &[bae_db::DbTrackArtist],
+        track_artists: &[bae_records::DbTrackArtist],
     ) -> Result<(), LibraryError> {
-        self.database.insert_release_with_tracks(release, mediums, tracks, track_artists).await?;
+        self.records.insert_release_with_tracks(release, mediums, tracks, track_artists).await?;
         Ok(())
     }
 
@@ -136,24 +136,24 @@ impl LibraryManager {
         &self,
         album_id: &str,
     ) -> Result<Vec<DbRelease>, LibraryError> {
-        Ok(self.database.get_releases_for_album(album_id).await?)
+        Ok(self.records.get_releases_for_album(album_id).await?)
     }
 
     pub async fn check_releases_in_library(
         &self,
-        checks: &[bae_db::LibraryCheck],
-    ) -> Result<Vec<bae_db::LibraryStatus>, LibraryError> {
-        Ok(self.database.check_releases_in_library(checks).await?)
+        checks: &[bae_records::LibraryCheck],
+    ) -> Result<Vec<bae_records::LibraryStatus>, LibraryError> {
+        Ok(self.records.check_releases_in_library(checks).await?)
     }
 
     pub fn subscribe_library_statuses(
         &self,
-        initial: std::collections::BTreeSet<bae_db::LibraryCheck>,
+        initial: std::collections::BTreeSet<bae_records::LibraryCheck>,
     ) -> coven::ReconfigurableLiveQuery<
-        std::collections::BTreeSet<bae_db::LibraryCheck>,
-        Vec<bae_db::LibraryStatus>,
+        std::collections::BTreeSet<bae_records::LibraryCheck>,
+        Vec<bae_records::LibraryStatus>,
     > {
-        self.database.subscribe_library_statuses(initial)
+        self.records.subscribe_library_statuses(initial)
     }
 
     /// Every file of a release — audio files, and the metadata files (cover art,
@@ -163,12 +163,12 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<Vec<DbFile>, LibraryError> {
-        Ok(self.database.get_files_for_release(release_id).await?)
+        Ok(self.records.get_files_for_release(release_id).await?)
     }
 
     pub async fn get_album_id_for_release(&self, release_id: &str) -> Result<String, LibraryError> {
         let album_id =
-            self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
+            self.records.find_album_id_for_release(release_id).await?.ok_or_else(|| {
                 LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         Ok(album_id)
@@ -180,7 +180,7 @@ impl LibraryManager {
         album_id: &str,
         primary_release_id: &str,
     ) -> Result<(), LibraryError> {
-        self.database.set_album_primary_release(album_id, primary_release_id).await?;
+        self.records.set_album_primary_release(album_id, primary_release_id).await?;
 
         Ok(())
     }
@@ -189,17 +189,17 @@ impl LibraryManager {
     /// album with them if this was its last release. Coven owns retention of
     /// files still referenced by committed uploads or shared history.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.database
+        self.records
             .find_release_by_id(release_id)
             .await?
             .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
 
         // The queue's rows leave in the delete's own transaction, and the
         // player, following the tracks it holds, moves off a deleted one.
-        let deletion = self.database.plan_release_deletion(release_id).await?;
+        let deletion = self.records.plan_release_deletion(release_id).await?;
         // Deletion is a local transaction. Each coven file of the release goes
         // with its last reference, which takes its upload off the queue.
-        self.database.delete_release_with_cleanup(deletion).await?;
+        self.records.delete_release_with_cleanup(deletion).await?;
 
         Ok(())
     }
@@ -209,10 +209,10 @@ impl LibraryManager {
 /// when it has no cover row. Free function so the manager's `cover_ref`,
 /// the release-edit context, and one track's detail share one construction.
 pub(crate) async fn cover_ref_for(
-    database: &Database,
+    records: &bae_records::Records,
     release_id: &str,
 ) -> Result<Option<ImageRef>, LibraryError> {
-    Ok(bae_db::cover_ref(release_id, database.cover_version(release_id).await?))
+    Ok(bae_records::cover_ref(release_id, records.cover_version(release_id).await?))
 }
 
 #[cfg(test)]

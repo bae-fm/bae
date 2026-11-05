@@ -10,7 +10,7 @@ impl LibraryManager {
     /// Database errors propagate.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn file_local_path(&self, file_id: &str) -> Result<Option<PathBuf>, LibraryError> {
-        Ok(self.database.external_file(file_id).await?.map(|ext| ext.path))
+        Ok(self.records.external_file(file_id).await?.map(|ext| ext.path))
     }
 
     /// This device's id in the store.

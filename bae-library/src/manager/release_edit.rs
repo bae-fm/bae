@@ -24,9 +24,9 @@ use super::*;
 /// A release as the editor reads it: its detail, its album's artists, and
 /// its tracks' audio in release order.
 pub(crate) struct ReleaseEditContext {
-    pub(crate) detail: bae_db::DbReleaseDetail,
-    pub(crate) album_artists: Vec<bae_db::credits::LibraryCredit>,
-    pub(crate) tracks: Vec<bae_db::DbReleaseEditTrack>,
+    pub(crate) detail: bae_records::DbReleaseDetail,
+    pub(crate) album_artists: Vec<bae_records::credits::LibraryCredit>,
+    pub(crate) tracks: Vec<bae_records::DbReleaseEditTrack>,
 }
 
 /// One open editor's session on a library release.
@@ -113,14 +113,15 @@ impl LibraryManager {
         let release_id = release_id.to_string();
         self.store
             .read(move |sql| {
-                let Some(release) = bae_db::client::read::find_release_by_id_on(&sql, &release_id)?
+                let Some(release) =
+                    bae_records::records::read::find_release_by_id_on(&sql, &release_id)?
                 else {
                     return Ok(None);
                 };
                 let album_artists =
-                    bae_db::client::read::get_artists_for_album_on(&sql, &release.album_id)?;
-                let detail = bae_db::client::release_detail_rows_on(&sql, release)?;
-                let tracks = bae_db::client::release_edit_tracks_on(&sql, &release_id)?;
+                    bae_records::records::read::get_artists_for_album_on(&sql, &release.album_id)?;
+                let detail = bae_records::records::release_detail_rows_on(&sql, release)?;
+                let tracks = bae_records::records::release_edit_tracks_on(&sql, &release_id)?;
                 Ok(Some((detail, album_artists, tracks)))
             })
             .process(|rows| {
@@ -149,11 +150,11 @@ impl LibraryManager {
             .await?
             .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
         let release = &detail.release;
-        let album = self.database.find_album_by_id(&release.album_id).await?.ok_or_else(|| {
+        let album = self.records.find_album_by_id(&release.album_id).await?.ok_or_else(|| {
             LibraryError::Refused(format!("Album '{}' not found", release.album_id))
         })?;
         let display = bae_import::ReleaseEditDisplayContext::from_raw(&detail, edit_tracks)?;
-        let cover = bae_db::cover_ref(release_id, detail.cover_version.clone());
+        let cover = bae_records::cover_ref(release_id, detail.cover_version.clone());
 
         let album_artist_assignments: Vec<bae_import::Credited> =
             album_artists.into_iter().map(bae_import::Credited::of_library).collect();
@@ -269,7 +270,7 @@ impl LibraryManager {
         let changed = work.changed(&session.opened);
         let SessionWork { form, display, album, .. } = work;
         let credits: Vec<_> = form.credits().cloned().collect();
-        let artist_resolutions = self.database.resolve_artist_credits(&credits).await?;
+        let artist_resolutions = self.records.resolve_artist_credits(&credits).await?;
         let cover = self.cover_ref(session.release_id()).await?;
         let invalid = form.shape().err();
         Ok(bae_import::ReleaseEditDraft {
@@ -359,7 +360,7 @@ impl LibraryManager {
     ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
         let release_id = session.release_id();
         if let Some(album_id) = &album_id {
-            self.database
+            self.records
                 .find_album_by_id(album_id)
                 .await?
                 .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
@@ -388,7 +389,7 @@ impl LibraryManager {
     ) -> Result<bae_import::DraftAlbum, LibraryError> {
         let title = |album_id: String| async move {
             let album =
-                self.database.find_album_by_id(&album_id).await?.ok_or_else(|| {
+                self.records.find_album_by_id(&album_id).await?.ok_or_else(|| {
                     LibraryError::Refused(format!("Album '{album_id}' not found"))
                 })?;
             Ok::<_, LibraryError>((album_id, album.title))
@@ -436,10 +437,10 @@ impl LibraryManager {
             self.load_release_for_edit(release_id).await?;
         let records = match &applied {
             Some(applied) => applied.records.clone(),
-            None => self.database.get_release_records(release_id).await?,
+            None => self.records.get_release_records(release_id).await?,
         };
         let change = match (&album, &applied) {
-            (Some(picked), _) => Some(bae_db::RecordsChange {
+            (Some(picked), _) => Some(bae_records::RecordsChange {
                 release_id: release_id.to_string(),
                 records: records.clone(),
                 current_album_id: current_album_id.clone(),
@@ -457,9 +458,9 @@ impl LibraryManager {
         // A release the person moved into another album keeps that album's
         // own title and artists.
         let album_fields = if album.as_ref().is_some_and(|picked| *picked != current_album_id) {
-            bae_db::AlbumFields::Kept
+            bae_records::AlbumFields::Kept
         } else {
-            bae_db::AlbumFields::Written
+            bae_records::AlbumFields::Written
         };
         let write = match applied {
             Some(applied) => {
@@ -489,7 +490,7 @@ impl LibraryManager {
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
-                bae_db::ReleaseEditWrite::Applied {
+                bae_records::ReleaseEditWrite::Applied {
                     rows: assembled.parsed,
                     picked: assembled.picked.into_iter().collect(),
                 }
@@ -498,11 +499,11 @@ impl LibraryManager {
                 let album_row = if target_album_id == current_album_id {
                     current_album
                 } else {
-                    self.database.find_album_by_id(&target_album_id).await?.ok_or_else(|| {
+                    self.records.find_album_by_id(&target_album_id).await?.ok_or_else(|| {
                         LibraryError::Refused(format!("Album '{target_album_id}' not found"))
                     })?
                 };
-                bae_db::ReleaseEditWrite::Fields(self.release_metadata_rows(
+                bae_records::ReleaseEditWrite::Fields(self.release_metadata_rows(
                     album_row,
                     release,
                     &existing_tracks,
@@ -510,7 +511,7 @@ impl LibraryManager {
                 )?)
             }
         };
-        self.database.save_release_edit_atomic(change, write, album_fields).await?;
+        self.records.save_release_edit_atomic(change, write, album_fields).await?;
         Ok(())
     }
 }

@@ -15,8 +15,8 @@ use crate::{
 };
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
-use bae_db::test_fixtures::live_query::RELEASE_ID;
 use bae_identify::TerminalVerdict;
+use bae_records::test_fixtures::live_query::RELEASE_ID;
 use bae_store::test_fixtures::{empty_db, exec, exec_batch};
 use bae_store::LibraryPageWindow;
 

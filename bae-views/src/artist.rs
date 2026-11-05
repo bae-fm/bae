@@ -167,7 +167,7 @@ fn find_artist_detail_on(
         select = album_summary_select(),
     );
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
-    let credit_names = bae_db::client::artist_credit_names::credit_names_of_on(
+    let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
         sql,
         std::slice::from_ref(&artist.artist.id),
     )?
@@ -179,7 +179,7 @@ fn find_artist_detail_on(
 #[derive(Clone, PartialEq)]
 struct ArtistDetailRows {
     artist: DbArtistSummary,
-    credit_names: Vec<bae_db::credits::ArtistCreditName>,
+    credit_names: Vec<bae_records::credits::ArtistCreditName>,
     albums: Vec<AlbumSummaryRow>,
 }
 
@@ -258,7 +258,7 @@ pub(crate) fn artist_listing_query(
 pub(crate) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbArtistSummary {
-        image: bae_db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        image: bae_records::artist_image_ref(&artist.id, row.get("artist_image_version")?),
         artist,
         album_count: row.get("album_count")?,
     })

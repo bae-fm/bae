@@ -107,7 +107,7 @@ impl PlaybackService {
                 self.queue_added(added).await;
             }
             PlaybackCommand::AddReleaseToQueue(release_id) => {
-                match self.database.get_track_ids_for_release(&release_id).await {
+                match self.records.get_track_ids_for_release(&release_id).await {
                     Ok(track_ids) if !track_ids.is_empty() => {
                         let added = self.playback_queue.add_to_queue(track_ids).await;
                         self.queue_added(added).await;
@@ -120,7 +120,7 @@ impl PlaybackService {
                 }
             }
             PlaybackCommand::AddReleaseNext(release_id) => {
-                match self.database.get_track_ids_for_release(&release_id).await {
+                match self.records.get_track_ids_for_release(&release_id).await {
                     Ok(track_ids) if !track_ids.is_empty() => {
                         let added = self.playback_queue.add_next(track_ids).await;
                         self.queue_added(added).await;

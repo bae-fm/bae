@@ -114,7 +114,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         let image_path = image_dir.path().join("front.gif");
         let image_bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
         std::fs::write(&image_path, &image_bytes).unwrap();
-        let file = bae_db::NewReleaseFile::new(
+        let file = bae_records::NewReleaseFile::new(
             &release_id,
             "front.gif",
             bae_util::content_type::ContentType::Gif,
@@ -131,7 +131,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
             .await
             .unwrap();
 
-        let changed = |cover: &Option<bae_db::ImageRef>| {
+        let changed = |cover: &Option<bae_records::ImageRef>| {
             cover.as_ref().is_some_and(|cover| {
                 cover.id == release_id
                     && before.as_ref().is_none_or(|before| before.version != cover.version)

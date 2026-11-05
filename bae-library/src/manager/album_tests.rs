@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::LibraryImageType;
+use bae_records::LibraryImageType;
 use uuid::Uuid;
 
 /// delete_album removes each release's cover too (same helper, second wiring
@@ -19,7 +19,7 @@ async fn delete_album_removes_release_covers() {
     .await;
     store_test_cover(&manager, &release.id, b"image").await;
 
-    wait_for_published_file(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await;
+    wait_for_published_file(&manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await;
 
     manager.delete_album(&release.album_id).await.unwrap();
 
@@ -37,7 +37,7 @@ async fn test_delete_album_deletes_all_releases() {
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
 
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
 
@@ -82,8 +82,9 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let mut tracks = Vec::new();
     for (index, release_id) in [&kept, &local, &other.id].into_iter().enumerate() {
         store_test_cover(&manager, release_id, format!("cover {index}").as_bytes()).await;
-        let track = bae_db::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
-        manager.database.insert_track(&track).await.unwrap();
+        let track =
+            bae_records::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
+        manager.records.insert_track(&track).await.unwrap();
         tracks.push(track.id);
     }
     finish_bound_uploads(&manager).await;

@@ -3,8 +3,9 @@
 //! artwork paths for the OCR pass. Reading the rip artifacts themselves lives
 //! in `import::discid`.
 
-use bae_db::{Database, LibraryImageType};
 use bae_diagnostics::Diagnostics;
+use bae_records::LibraryImageType;
+use bae_records::Records;
 use bae_store::DbError;
 use bae_util::task_failure::TaskFailed;
 use std::path::PathBuf;
@@ -52,16 +53,16 @@ impl ReleaseIdentity {
 /// A cloud-only release with no local copy has no files to read, so its
 /// reading proves nothing and computes no disc ID.
 pub async fn resolve_release_identity(
-    database: &Database,
+    records: &Records,
     diagnostics: &Diagnostics,
     release_id: &str,
 ) -> Result<ReleaseIdentity, ReleaseIdentityError> {
-    database
+    records
         .find_release_by_id(release_id)
         .await?
         .ok_or_else(|| ReleaseIdentityError::NotFound { release_id: release_id.to_string() })?;
-    let files = database.get_files_with_originals_for_release(release_id).await?;
-    let tracks = database.get_tracks_for_release(release_id).await?;
+    let files = records.get_files_with_originals_for_release(release_id).await?;
+    let tracks = records.get_tracks_for_release(release_id).await?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
@@ -90,7 +91,7 @@ pub async fn resolve_release_identity(
 /// there now. A release imported elsewhere records no originals here, so it
 /// has no such files. Blocking: it reads the file's metadata.
 fn local_file(
-    file: bae_db::DbFile,
+    file: bae_records::DbFile,
     original: PathBuf,
 ) -> Option<crate::folder_scanner::ScannedFile> {
     let metadata = match std::fs::metadata(&original) {
@@ -136,19 +137,17 @@ fn local_file(
 /// `diagnostics`.
 pub(crate) async fn resolve_release_artwork_paths(
     store: &bae_store::Store,
-    database: &Database,
+    records: &Records,
     diagnostics: &Diagnostics,
     release_id: &str,
 ) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), DbError> {
-    let files = database.get_files_with_originals_for_release(release_id).await?;
+    let files = records.get_files_with_originals_for_release(release_id).await?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
     // The cover is one of several OCR inputs (the image files below are the
     // others), so a read/staging failure skips just the cover, logged, rather than
     // failing the whole resolve.
-    let cover_staging = match database
-        .library_image_file(release_id, &LibraryImageType::Cover)
-        .await
+    let cover_staging = match records.library_image_file(release_id, &LibraryImageType::Cover).await
     {
         Ok(Some(file)) => match store.read_file(&file).await {
             Ok(bytes) => {

@@ -37,7 +37,7 @@ fn build_audio_formats_uses_stored_standalone_facts() {
         "/tests/fixtures/flac/01 Test Track 1.flac"
     ));
     let track = TrackFile {
-        db_track: bae_db::DbTrack::new_test("release-id", "track-0", "Track Title", 1),
+        db_track: bae_records::DbTrack::new_test("release-id", "track-0", "Track Title", 1),
         audio: crate::TrackAudio::Standalone {
             file_path: path.clone(),
             source_audio: scanned_flac(),

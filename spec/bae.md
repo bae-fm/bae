@@ -2692,13 +2692,13 @@ bae declares its four kinds of file when the store opens, each a coven
 `release_files`, the person's own; `covers`, `artist_images` and `avatars`,
 bae's own. Each file is downloaded when it is first read.
 
-Appendix B lists every declaration. A test holds the declarations to exactly
-that list, each table with its identity, audience, owner flag and file
-references with their bindings, and the namespaces with their kinds and
-budgets, so a device-local table such as `local_release_origin` or
-`local_history` can't start syncing by accident. Another holds every table the schema creates to one
-of two lists, declared or device-local, so a new table stays on one device only
-when that was decided.
+Appendix B lists every declaration. Each part that declares synced tables has
+tests holding its declarations to its rows of that list, each table with its
+identity, audience, owner flag and file references with their bindings, and
+its namespaces with their kinds and budgets, and holding every table the part
+creates to one of two lists, declared or device-local, so a new table stays on
+one device only when that was decided. A part that declares no synced table
+keeps every table it creates on the device.
 
 Two devices' edits merge cell by cell: an edit to a column the other left alone
 survives, and of two edits to one column the later wins
@@ -4099,7 +4099,8 @@ bindings export none of their symbols.
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
 | bae-transfers | the transfer queues and storage transitions: the download queue that keeps releases on this device and the export and save queue, each worked through one release at a time, paused, cancelled and retried, their entries as this device's tables hold them, and the storage transition each release is in, ended in the write that changes its files |
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows, the cancellable live queries a surface pulls values from, and the names a person enters |
-| bae-db | the library's own part of the schema, the synced tables and the SQL functions that part calls, the library's records and the row writers that keep them, the people, collections and history a library holds, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
+| bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
+| bae-db | the library's own part of the schema and the synced tables it declares, the people, collections and history a library holds, and the sync status as the status line shows it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do and why the last start failed |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
@@ -4210,9 +4211,10 @@ the iOS builds for both editions, and Swift lint and format.
 
 The schema is one migration, which coven applies as migration 1: each
 crate's parts of it, in crate order, each part a domain's SQL files beside its
-code. bae-library assembles it from bae-db's part,
-`bae-db/migrations/001_initial.sql`, which holds every table no other part
-does, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
+code. bae-library assembles it from bae-records' parts, under
+`bae-records/src/`: the records' (`records.sql`) and release storage's
+(`release_storage.sql`), bae-db's part, `bae-db/migrations/001_initial.sql`,
+which holds every table no other part does, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
 `bae-playback/src/`: the queue's (`tables/queue.sql`), what playback is doing
 (`tables/now.sql`), where it is (`tables/timeline.sql`) and the cast
 picker's (`renderer/picker.sql`) and, on a desktop,
@@ -4271,7 +4273,7 @@ caches, reached only by a library larger than that whose every connection has
 read that much of it. The three connections to coven's own input database
 keep SQLite's default.
 
-### A.1 The library
+### A.1 The library (bae-records)
 
 All sync.
 
@@ -4508,7 +4510,7 @@ queue empty and running, and no release in a storage transition.
 
 ## Appendix B. Synced tables
 
-From `bae_db::synced::synced_tables`. *Shared key* rows take an id computed
+From each schema part's synced tables: records' (`bae_records::synced`) and people's (`bae_db::synced`). *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*

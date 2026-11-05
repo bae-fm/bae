@@ -94,7 +94,7 @@ fn resolve_release_detail(
     let ReleaseDetailContext { detail, transfers, release_index, is_compilation } = context;
     let ctx = ReleaseResolveCtx {
         has_cloud_home,
-        cover: bae_db::cover_ref(release_id, detail.cover_version.clone()),
+        cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
     };
     ReleaseDetail::from_raw(detail, transfers, release_index, &ctx)

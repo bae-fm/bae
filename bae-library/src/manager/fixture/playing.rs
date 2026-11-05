@@ -3,8 +3,8 @@
 //! resume row playback starts from.
 
 use super::*;
-use bae_db::{NewReleaseFile, SeededAudio};
 use bae_import::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
+use bae_records::{NewReleaseFile, SeededAudio};
 
 /// The album a [`LibraryFixture`]'s library is playing, added after its
 /// albums.
@@ -119,8 +119,8 @@ impl LibraryManager {
                 added,
             );
             // What the scan read of it, as an import records it.
-            file.source_audio = Some(bae_db::source_audio::SourceAudioFile {
-                layout: Some(bae_db::source_audio::SourceAudioLayout::Cue),
+            file.source_audio = Some(bae_records::source_audio::SourceAudioFile {
+                layout: Some(bae_records::source_audio::SourceAudioLayout::Cue),
                 format: scanned.format,
                 content_type: scanned.content_type,
                 duration_ms: scanned.duration_ms,

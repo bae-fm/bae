@@ -75,13 +75,13 @@ use composer::{
 use release::{build_release_detail_on, ReleaseDetailRows};
 
 use album_search::*;
-use bae_db::client::files::{artist_image_version_sql, cover_version_sql};
-use bae_db::client::pressing_columns::{read_media, release_media_sql};
-use bae_db::client::query::*;
-use bae_db::client::read::*;
-use bae_db::client::{release_detail_rows_on, unstored_audio_in_row, DbReleaseDetailRows};
-use bae_db::credits::LibraryCredit;
-use bae_db::*;
+use bae_records::credits::LibraryCredit;
+use bae_records::records::files::{artist_image_version_sql, cover_version_sql};
+use bae_records::records::pressing_columns::{read_media, release_media_sql};
+use bae_records::records::query::*;
+use bae_records::records::read::*;
+use bae_records::records::{release_detail_rows_on, unstored_audio_in_row, DbReleaseDetailRows};
+use bae_records::*;
 use bae_store::cloud_home_on;
 use bae_store::list_windows::{
     list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
@@ -112,11 +112,13 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(
 /// The SQL functions the views' SQL names.
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::FOLD_CASE];
 
-/// The schema this crate's tests open their stores on: bae-db's part,
+/// The schema this crate's tests open their stores on: records' and release
+/// storage's parts, bae-db's part,
 /// playback's (the tables its tests read), the transfers' (the queues the
 /// release listing's pin triggers fire on) and the views'.
 #[cfg(test)]
 const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
+    bae_records::SCHEMA_PARTS,
     bae_db::SCHEMA_PARTS,
     bae_playback::SCHEMA_PARTS,
     bae_transfers::SCHEMA_PARTS,

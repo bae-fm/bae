@@ -27,7 +27,7 @@ use tracing::debug;
 /// import whose authority the user already chose, and would write something
 /// the table never displayed.
 pub(crate) fn resolve_track_files(
-    rows: Vec<(bae_db::TrackRow, AudioFile)>,
+    rows: Vec<(bae_records::TrackRow, AudioFile)>,
     files: &CategorizedFiles,
 ) -> Result<Vec<TrackFile>, ImportError> {
     debug!("Binding {} tracks to the folder's audio", rows.len());

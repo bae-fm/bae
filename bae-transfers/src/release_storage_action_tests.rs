@@ -2,7 +2,7 @@
 //! time, and its reads show it.
 
 use super::*;
-use bae_db::test_fixtures::*;
+use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::*;
 
 const LIBRARY: &str = "

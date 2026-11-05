@@ -357,7 +357,7 @@ pub(crate) fn enqueue_pinnable_releases_on(
              ORDER BY requested.key \
              ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL \
              WHERE download_queue.state = 'failed'",
-            pinned = bae_db::client::query::RELEASE_STORAGE_PINNED,
+            pinned = bae_records::records::query::RELEASE_STORAGE_PINNED,
         ),
         rusqlite::named_params! {
             ":created_at": created_at,

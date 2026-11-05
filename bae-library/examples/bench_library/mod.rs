@@ -125,10 +125,10 @@ impl BenchLibrary {
     }
 
     async fn fill(&self, storage: &BenchStorage, name: &str, tracks: usize) -> Result<(), String> {
-        let track_ids = bae_db::test_fixtures::chunked_tracks::track_ids(tracks);
+        let track_ids = bae_records::test_fixtures::chunked_tracks::track_ids(tracks);
         self.handle
             .write(move |sql| {
-                Ok(bae_db::test_fixtures::chunked_tracks::seed_release(&sql, &track_ids)?)
+                Ok(bae_records::test_fixtures::chunked_tracks::seed_release(&sql, &track_ids)?)
             })
             .await
             .map_err(|error| format!("writing the library's tracks failed: {error}"))?;

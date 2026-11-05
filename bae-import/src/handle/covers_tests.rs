@@ -136,10 +136,10 @@ async fn unlinked_cover_gallery_for_file_tags() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_library_release() {
-    let (parts, database, _tmp) = setup_test_import().await;
+    let (parts, records, _tmp) = setup_test_import().await;
     let artist = make_artist("Artist Name", None, None);
-    bae_db::test_fixtures::test_database(&database).insert_artist(&artist).await.unwrap();
-    let (_album, release) = insert_library_release(&database, &artist.id, "Album Title").await;
+    bae_records::test_fixtures::test_records(&records).insert_artist(&artist).await.unwrap();
+    let (_album, release) = insert_library_release(&records, &artist.id, "Album Title").await;
     let handle = parts.start().await.unwrap();
     let gallery = handle.fetch_remote_covers(CoverTarget::Release(release.id)).await.unwrap();
     shut_down(handle).await;
@@ -148,11 +148,11 @@ async fn unlinked_cover_gallery_for_library_release() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
-    let (parts, database, _tmp) = setup_test_import().await;
+    let (parts, records, _tmp) = setup_test_import().await;
     let artist = make_artist("Artist Name", None, None);
-    bae_db::test_fixtures::test_database(&database).insert_artist(&artist).await.unwrap();
-    let (_album, release) = insert_library_release(&database, &artist.id, "Album Title").await;
-    bae_db::test_fixtures::test_database(&database)
+    bae_records::test_fixtures::test_records(&records).insert_artist(&artist).await.unwrap();
+    let (_album, release) = insert_library_release(&records, &artist.id, "Album Title").await;
+    bae_records::test_fixtures::test_records(&records)
         .insert_release_records(
             &release.id,
             &[bae_catalogs::records::ReleaseRecord::new(

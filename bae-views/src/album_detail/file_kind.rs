@@ -25,7 +25,7 @@ pub enum FileKind {
 
 impl FileKind {
     pub(crate) fn of(content_type: &ContentType, filename: &str) -> Self {
-        let extension = bae_db::stored_name::file_extension(filename);
+        let extension = bae_records::stored_name::file_extension(filename);
         match (content_type, extension.as_deref()) {
             (content_type, _) if content_type.is_audio() => {
                 Self::Audio { format: content_type.display_name().to_string() }

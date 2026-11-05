@@ -29,11 +29,11 @@ use crate::triage::{
 };
 use crate::RelativeFolder;
 use crate::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
-use bae_db::client::files::cover_version_sql;
-use bae_db::client::queued_uploads::release_upload_on;
-use bae_db::client::read::get_release_records_on;
-use bae_db::UploadProgress;
 use bae_identify::PressingLink;
+use bae_records::records::files::cover_version_sql;
+use bae_records::records::queued_uploads::release_upload_on;
+use bae_records::records::read::get_release_records_on;
+use bae_records::UploadProgress;
 use std::path::{Path, PathBuf};
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
@@ -364,7 +364,7 @@ fn candidate_item(
             release_link: None,
             reading: TriageReading::of_library(get_release_records_on(sql, &imported.release_id)?),
             picked: None,
-            cover: bae_db::cover_ref(&imported.release_id, release.library_cover.clone())
+            cover: bae_records::cover_ref(&imported.release_id, release.library_cover.clone())
                 .map(|image| crate::CoverImageSource::Library { image }),
         },
         None => {

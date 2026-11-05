@@ -6,7 +6,7 @@ use std::sync::Arc;
 /// A test library under `root` holding one release of one album and artist,
 /// with no files or tracks yet.
 async fn library_with_release(root: &std::path::Path) -> (Store, String) {
-    use bae_db::{DbAlbum, DbArtist, DbRelease};
+    use bae_records::{DbAlbum, DbArtist, DbRelease};
     use chrono::Utc;
     use uuid::Uuid;
 
@@ -19,7 +19,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
     )
     .await
     .unwrap();
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let artist = DbArtist {
         id: bae_util::test_ids::test_uuid("artist-1"),
         name: "Test Artist".to_string(),
@@ -28,7 +28,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         musicbrainz_artist_id: None,
         created_at: Utc::now(),
     };
-    database.insert_artist(&artist).await.unwrap();
+    records.insert_artist(&artist).await.unwrap();
     let album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Test Album".to_string(),
@@ -36,9 +36,9 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         is_compilation: false,
         created_at: Utc::now(),
     };
-    database.insert_album(&album).await.unwrap();
-    database
-        .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, &artist.id))
+    records.insert_album(&album).await.unwrap();
+    records
+        .insert_album_artist(&bae_records::DbAlbumArtist::new_test(&album.id, &artist.id))
         .await
         .unwrap();
     let release = DbRelease {
@@ -51,19 +51,19 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         album_peak_linear: None,
         created_at: Utc::now(),
     };
-    database.insert_release(&release).await.unwrap();
+    records.insert_release(&release).await.unwrap();
     (db, release.id)
 }
 
 #[tokio::test]
 async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
-    use bae_db::NewReleaseFile;
+    use bae_records::NewReleaseFile;
     use bae_util::content_type::ContentType;
     use chrono::Utc;
 
     let temp = tempfile::TempDir::new().unwrap();
     let (db, release_id) = library_with_release(temp.path()).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
 
     let file = NewReleaseFile {
         id: "4c3b28d5-7315-48f1-8352-500492675441".to_string(),
@@ -77,13 +77,13 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
     std::fs::create_dir_all(&missing_dir).unwrap();
     let missing_path = missing_dir.join(&file.original_filename);
     std::fs::write(&missing_path, b"cover").unwrap();
-    database.insert_file_for_test(&file, &missing_path).await.unwrap();
+    records.insert_file_for_test(&file, &missing_path).await.unwrap();
     std::fs::remove_file(&missing_path).unwrap();
 
     let logs = capture_warn_logs_async(|| async {
         let (paths, cover_staging) = resolve_release_artwork_paths(
             &db,
-            &bae_db::test_fixtures::test_database(&db),
+            &bae_records::test_fixtures::test_records(&db),
             &bae_diagnostics::Diagnostics::noop(),
             &release_id,
         )
@@ -110,7 +110,7 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
 /// would have computed.
 #[tokio::test]
 async fn test_resolve_release_identity_local() {
-    use bae_db::{DbTrack, NewReleaseFile};
+    use bae_records::{DbTrack, NewReleaseFile};
     use bae_util::content_type::ContentType;
     use chrono::Utc;
     use uuid::Uuid;
@@ -131,7 +131,7 @@ async fn test_resolve_release_identity_local() {
         .unwrap();
 
     let (db, release_id) = library_with_release(temp.path()).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
 
     for (filename, content_type) in [
         ("test_album.log", ContentType::PlainText),
@@ -147,19 +147,22 @@ async fn test_resolve_release_identity_local() {
             source_audio: None,
             created_at: Utc::now(),
         };
-        database.insert_file_for_test(&file, &abs).await.unwrap();
+        records.insert_file_for_test(&file, &abs).await.unwrap();
     }
 
     // Two track rows, so the assertion below pins the count and the
     // lengths to the DB rather than to whatever a folder walk would have
     // read.
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release_id)).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release_id))
+        .await
+        .unwrap();
     for n in 1..=2 {
         let track = DbTrack {
             id: Uuid::new_v4().to_string(),
             release_id: release_id.clone(),
             title: format!("Track {n}"),
-            medium_id: bae_db::identity::release_medium_id(&release_id, 1),
+            medium_id: bae_records::identity::release_medium_id(&release_id, 1),
             side: std::num::NonZeroU8::MIN,
             track_number: std::num::NonZeroU32::new(
                 u32::try_from(n).expect("a test track number fits u32"),
@@ -168,11 +171,11 @@ async fn test_resolve_release_identity_local() {
             duration_ms: 180_000 + n as u64,
             created_at: Utc::now(),
         };
-        database.insert_track(&track).await.unwrap();
+        records.insert_track(&track).await.unwrap();
     }
 
     let identity =
-        resolve_release_identity(&database, &bae_diagnostics::Diagnostics::noop(), &release_id)
+        resolve_release_identity(&records, &bae_diagnostics::Diagnostics::noop(), &release_id)
             .await
             .unwrap();
     let (rip, track_count) = (identity.rip, identity.audio.track_count);
@@ -191,7 +194,7 @@ async fn test_resolve_release_identity_local() {
 /// file the scan found, each with its scanned audio facts and its original at
 /// the file's path.
 async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, Vec<String>) {
-    use bae_db::NewReleaseFile;
+    use bae_records::NewReleaseFile;
     use bae_util::content_type::ContentType;
     use chrono::Utc;
     use uuid::Uuid;
@@ -209,7 +212,7 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
 
     let library = tempfile::TempDir::new().unwrap();
     let (db, release_id) = library_with_release(library.path()).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     for file in categorized.release_files() {
         let row = NewReleaseFile {
             id: Uuid::new_v4().to_string(),
@@ -220,8 +223,8 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
                 .as_ref()
                 .map_or(ContentType::PlainText, |audio| audio.content_type.clone()),
             source_audio: file.source_audio.as_ref().map(|audio| {
-                bae_db::source_audio::SourceAudioFile {
-                    layout: Some(bae_db::source_audio::SourceAudioLayout::Cue),
+                bae_records::source_audio::SourceAudioFile {
+                    layout: Some(bae_records::source_audio::SourceAudioLayout::Cue),
                     format: audio.format.clone(),
                     content_type: audio.content_type.clone(),
                     duration_ms: audio.duration_ms,
@@ -229,10 +232,10 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
             }),
             created_at: Utc::now(),
         };
-        database.insert_file_for_test(&row, &file.version.path).await.unwrap();
+        records.insert_file_for_test(&row, &file.version.path).await.unwrap();
     }
     let identity =
-        resolve_release_identity(&database, &bae_diagnostics::Diagnostics::noop(), &release_id)
+        resolve_release_identity(&records, &bae_diagnostics::Diagnostics::noop(), &release_id)
             .await
             .unwrap();
     (scanned, disc_ids(identity.rip))

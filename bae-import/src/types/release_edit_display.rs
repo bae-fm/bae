@@ -2,7 +2,7 @@
 //! tracks laid out by side and by the file each plays from, and the summary of
 //! its audio.
 
-use bae_db::source_audio::{SourceAudioLayout, SourceAudioSummary};
+use bae_records::source_audio::{SourceAudioLayout, SourceAudioSummary};
 use bae_types::mediums::TrackSide;
 
 /// The file a persisted track's body plays from: its main segment's file. A
@@ -180,8 +180,8 @@ impl ReleaseEditDisplayContext {
     /// `tracks` reads it in release order.
     #[cfg(desktop)]
     pub fn from_raw(
-        raw: &bae_db::DbReleaseDetail,
-        tracks: Vec<bae_db::DbReleaseEditTrack>,
+        raw: &bae_records::DbReleaseDetail,
+        tracks: Vec<bae_records::DbReleaseEditTrack>,
     ) -> Result<Self, ReleaseEditLoadError> {
         let mut contexts = Vec::with_capacity(tracks.len());
         for entry in tracks {
@@ -194,7 +194,7 @@ impl ReleaseEditDisplayContext {
             let mut mains = entry
                 .segments
                 .into_iter()
-                .filter(|segment| segment.role == bae_db::DbAudioSegmentRole::Main);
+                .filter(|segment| segment.role == bae_records::DbAudioSegmentRole::Main);
             let main = match (mains.next(), mains.next()) {
                 (Some(main), None) => main,
                 (None, _) => return Err(ReleaseEditLoadError::MissingMainSegment { track_id }),

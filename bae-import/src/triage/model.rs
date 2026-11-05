@@ -189,7 +189,7 @@ pub struct TriageRow {
     /// are being sent, as the Storage Manager counts them: read only for a
     /// row with an imported release, and `None` while none of its files
     /// waits. How far the bytes have got is the release's upload transfer.
-    pub upload: Option<bae_db::UploadProgress>,
+    pub upload: Option<bae_records::UploadProgress>,
     /// Where the candidate's draft was read from, once a source was applied;
     /// none for a release this device imported, which reads the library.
     pub metadata_provenance: Option<crate::MetadataProvenance>,

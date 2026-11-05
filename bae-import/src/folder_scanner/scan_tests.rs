@@ -774,10 +774,18 @@ fn sibling_folders_keep_their_own_audio_layouts() {
     let top = result.top_level_paths();
     assert_eq!(top.len(), 2);
     let track_files = &result.candidate("Collection/Track Files").files;
-    assert_uniform_source_audio(track_files, bae_db::source_audio::SourceAudioLayout::File, "FLAC");
+    assert_uniform_source_audio(
+        track_files,
+        bae_records::source_audio::SourceAudioLayout::File,
+        "FLAC",
+    );
     assert!(track_files.bound_sheets().is_empty());
     let cue_image = &result.candidate("Collection/Cue Image").files;
-    assert_uniform_source_audio(cue_image, bae_db::source_audio::SourceAudioLayout::Cue, "FLAC");
+    assert_uniform_source_audio(
+        cue_image,
+        bae_records::source_audio::SourceAudioLayout::Cue,
+        "FLAC",
+    );
     assert_eq!(cue_image.bound_sheets().len(), 1);
 }
 

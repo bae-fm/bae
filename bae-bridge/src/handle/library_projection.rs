@@ -294,7 +294,7 @@ impl BridgeAlbumDetail {
             cover,
         } = detail;
         let release_ids: Vec<String> = releases.iter().map(|r| r.summary.id.clone()).collect();
-        let bae_db::DbAlbum {
+        let bae_records::DbAlbum {
             id,
             title,
             year,
@@ -359,7 +359,7 @@ impl BridgeComposerSummary {
             linked_release_count,
             unlinked_credit_count,
         } = raw;
-        let bae_db::DbArtist {
+        let bae_records::DbArtist {
             id: artist_id,
             name,
             sort_name,
@@ -386,7 +386,7 @@ impl BridgeArtistSummary {
         let bae_views::album_detail::ArtistSummary { raw } = s;
         // The album count is read as the count line above.
         let bae_views::DbArtistSummary { artist, image, album_count: _ } = raw;
-        let bae_db::DbArtist {
+        let bae_records::DbArtist {
             id: artist_id,
             name,
             // The MB-only sort name, per-source dedup ids, and the row
@@ -425,7 +425,7 @@ impl BridgeWorkSummary {
             composer_names,
             linked_release_count,
         } = raw;
-        let bae_db::DbWork {
+        let bae_records::DbWork {
             id: work_id,
             title,
             disambiguation,
@@ -451,7 +451,7 @@ impl BridgeWorkSummary {
 impl BridgeReleaseRoleSummary {
     pub(super) fn from_core(s: bae_views::album_detail::ReleaseRoleSummary) -> Self {
         let bae_views::DbReleaseRoleSummary { role, album } = s;
-        let bae_db::DbReleaseArtistRole {
+        let bae_records::DbReleaseArtistRole {
             release_id,
             source,
             source_credit,
@@ -460,7 +460,7 @@ impl BridgeReleaseRoleSummary {
             position: _,
             created_at: _,
         } = role;
-        let bae_db::DbAlbum {
+        let bae_records::DbAlbum {
             id: album_id,
             title: album_title,
             year: _,
@@ -480,7 +480,7 @@ impl BridgeReleaseRoleSummary {
 impl BridgeTrackRoleSummary {
     pub(super) fn from_core(s: bae_views::album_detail::TrackRoleSummary) -> Self {
         let bae_views::DbTrackRoleSummary { role, track, album, artist } = s;
-        let bae_db::DbTrackArtistRole {
+        let bae_records::DbTrackArtistRole {
             track_id,
             artist_id,
             source,
@@ -489,7 +489,7 @@ impl BridgeTrackRoleSummary {
             position: _,
             created_at: _,
         } = role;
-        let bae_db::DbTrack {
+        let bae_records::DbTrack {
             title: track_title,
             release_id,
             id: _,
@@ -499,14 +499,14 @@ impl BridgeTrackRoleSummary {
             duration_ms: _,
             created_at: _,
         } = track;
-        let bae_db::DbAlbum {
+        let bae_records::DbAlbum {
             id: album_id,
             title: album_title,
             year: _,
             is_compilation: _,
             created_at: _,
         } = album;
-        let bae_db::DbArtist {
+        let bae_records::DbArtist {
             name: artist_name,
             id: _,
             sort_name: _,
@@ -531,7 +531,7 @@ impl BridgeTrackRoleSummary {
 impl BridgeWorkTrackSummary {
     pub(super) fn from_core(s: bae_views::album_detail::WorkTrackSummary) -> Self {
         let bae_views::DbWorkTrackSummary { link, track, album } = s;
-        let bae_db::DbTrackWork {
+        let bae_records::DbTrackWork {
             track_id,
             id: _,
             work_id: _,
@@ -539,7 +539,7 @@ impl BridgeWorkTrackSummary {
             source: _,
             created_at: _,
         } = link;
-        let bae_db::DbTrack {
+        let bae_records::DbTrack {
             title: track_title,
             release_id,
             id: _,
@@ -549,7 +549,7 @@ impl BridgeWorkTrackSummary {
             duration_ms: _,
             created_at: _,
         } = track;
-        let bae_db::DbAlbum {
+        let bae_records::DbAlbum {
             id: album_id,
             title: album_title,
             year: _,

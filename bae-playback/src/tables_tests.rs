@@ -2,7 +2,7 @@
 //! and the queue rows of tracks queued in Up Next.
 
 use super::*;
-pub(super) use bae_db::test_fixtures::*;
+pub(super) use bae_records::test_fixtures::*;
 pub(super) use bae_store::test_fixtures::*;
 
 /// The queue rows of `track_ids` queued in Up Next, as the queue value shows
@@ -24,7 +24,7 @@ pub(super) async fn release_db(count: usize) -> (Store, tempfile::TempDir, Vec<S
     let seed = track_ids.clone();
     db.call(move |conn| {
         seed_artist_album_release(conn)?;
-        let medium_id = bae_db::identity::release_medium_id(RELEASE_A, 1);
+        let medium_id = bae_records::identity::release_medium_id(RELEASE_A, 1);
         conn.execute(
             "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
              VALUES (?1, ?2, 1, 'cd', 1, '2026-01-01T00:00:00Z')",

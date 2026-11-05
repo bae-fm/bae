@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::identification::tests::*;
-use bae_db::test_fixtures::{
+use bae_records::test_fixtures::{
     ALBUM_A, ARTIST_ALBUM, ARTIST_COMPOSER, RELEASE_A, RELEASE_ROLE_A, TRACK_A, TRACK_ROLE_A,
     TRACK_WORK_A, WORK_A,
 };
@@ -80,7 +80,7 @@ fn test_track(
         id: id.to_string(),
         release_id: release_id.to_string(),
         title: title.to_string(),
-        medium_id: bae_db::identity::release_medium_id(release_id, 1),
+        medium_id: bae_records::identity::release_medium_id(release_id, 1),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 1000,
@@ -105,7 +105,7 @@ struct Commit<'a> {
 /// by seeding the DB directly rather than going through the import queue. Its
 /// tracks sit on its one CD ([`test_track`]).
 async fn commit_import(db: &Store, release: &DbRelease, commit: Commit<'_>) {
-    let mediums = [bae_db::DbReleaseMedium::new_test(&release.id)];
+    let mediums = [bae_records::DbReleaseMedium::new_test(&release.id)];
     ImportTables::new(db.clone())
         .finalize_import_atomic(
             &coven::UuidIds,
@@ -125,7 +125,7 @@ async fn commit_import(db: &Store, release: &DbRelease, commit: Commit<'_>) {
 #[tokio::test]
 async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = tmp.path().join("watch").to_path_buf();
     let candidate_path = std::path::PathBuf::from(&root).join("Album");
@@ -199,13 +199,13 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         .expect_err("the final transaction must re-check the queued metadata revision");
 
     assert!(error.to_string().contains("prepared metadata changed"));
-    assert!(database.find_release_by_id("release-never-written").await.unwrap().is_none());
+    assert!(records.find_release_by_id("release-never-written").await.unwrap().is_none());
 }
 
 #[tokio::test]
 async fn finalize_import_persists_composer_work_and_role_rows() {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -216,11 +216,11 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         musicbrainz_artist_id: Some("mb-artist-composer-a".to_string()),
         ..test_artist(ARTIST_COMPOSER, "Composer Artist A", now)
     };
-    database.insert_artist(&album_artist).await.unwrap();
-    database.insert_artist(&composer).await.unwrap();
+    records.insert_artist(&album_artist).await.unwrap();
+    records.insert_artist(&composer).await.unwrap();
 
     let album = test_album(ALBUM_A, "Album Title A", now);
-    let album_artists = [bae_db::DbAlbumArtist::new(&album.id, &album_artist.id, 0, now)];
+    let album_artists = [bae_records::DbAlbumArtist::new(&album.id, &album_artist.id, 0, now)];
     let release = DbRelease { ..test_release(RELEASE_A, &album.id, now) };
     let track_files = vec![crate::TrackFile {
         db_track: test_track(TRACK_A, &release.id, "Track Title A", now),
@@ -280,7 +280,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
             album: Some(&album),
             track_files: &track_files,
             rows: crate::tables::ImportRows {
-                artists: bae_db::ArtistCredits { credits: &credits, picked: &picked },
+                artists: bae_records::ArtistCredits { credits: &credits, picked: &picked },
                 works: &works,
                 work_artists: &work_artists,
                 track_works: &track_works,
@@ -411,7 +411,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
 #[tokio::test]
 async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
@@ -424,9 +424,9 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         ..test_artist("artist-by-musicbrainz", "Artist Name", now)
     };
     for artist in [&by_discogs, &by_musicbrainz] {
-        database.insert_artist(artist).await.unwrap();
+        records.insert_artist(artist).await.unwrap();
     }
-    use bae_db::test_fixtures::labels::{add_label, label, with_ids};
+    use bae_records::test_fixtures::labels::{add_label, label, with_ids};
     add_label(&db, "label-by-discogs", "Label Name", None, Some("7190")).await;
     add_label(&db, "label-by-musicbrainz", "Label Name", Some("mb-label"), None).await;
 
@@ -448,8 +448,8 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         },
     }];
     let credits = [incoming.clone()];
-    let album_artists = [bae_db::DbAlbumArtist::new(&album.id, &incoming.id, 0, now)];
-    let track_artists = [bae_db::DbTrackArtist::new(&track.id, &incoming.id, 0, now)];
+    let album_artists = [bae_records::DbAlbumArtist::new(&album.id, &incoming.id, 0, now)];
+    let track_artists = [bae_records::DbTrackArtist::new(&track.id, &incoming.id, 0, now)];
 
     commit_import(
         &db,
@@ -458,7 +458,7 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
             album: Some(&album),
             track_files: &track_files,
             rows: crate::tables::ImportRows {
-                artists: bae_db::ArtistCredits { credits: &credits, picked: &[] },
+                artists: bae_records::ArtistCredits { credits: &credits, picked: &[] },
                 album_artists: &album_artists,
                 track_artists: &track_artists,
                 ..Default::default()
@@ -468,7 +468,7 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
     )
     .await;
 
-    let credited: Vec<String> = database
+    let credited: Vec<String> = records
         .get_artists_for_album(&album.id)
         .await
         .unwrap()
@@ -477,7 +477,7 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         .collect();
     assert_eq!(credited, std::slice::from_ref(&by_musicbrainz.id));
     for artist in [&by_discogs, &by_musicbrainz] {
-        let stored = database.find_artist_by_id(&artist.id).await.unwrap().unwrap();
+        let stored = records.find_artist_by_id(&artist.id).await.unwrap().unwrap();
         assert_eq!(
             (stored.discogs_artist_id, stored.musicbrainz_artist_id),
             (artist.discogs_artist_id.clone(), artist.musicbrainz_artist_id.clone())

@@ -7,7 +7,7 @@ impl LibraryManager {
     /// `find_album_detail` / `get_album_page`, never as a bare row.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, LibraryError> {
-        Ok(self.database.find_album_by_id(album_id).await?)
+        Ok(self.records.find_album_by_id(album_id).await?)
     }
 
     /// Delete an album: every release it holds goes, with what each owns, in
@@ -27,10 +27,10 @@ impl LibraryManager {
         for release in &releases {
             // Each plan names the rows and coven files it was read against;
             // the write refuses a release that changed since.
-            deletions.push(self.database.plan_release_deletion(&release.id).await?);
+            deletions.push(self.records.plan_release_deletion(&release.id).await?);
         }
 
-        self.database.delete_album_with_cleanup(album_id, deletions).await?;
+        self.records.delete_album_with_cleanup(album_id, deletions).await?;
 
         Ok(())
     }

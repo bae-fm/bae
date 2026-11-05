@@ -2,11 +2,11 @@
 //! the library's state as writes, transfers and transitions change it, and
 //! moves to another id or view in place.
 
-use bae_db::{DbAlbum, DbRelease};
 use bae_library::test_libraries::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
     storage_library, test_album, test_release, TestLibrary,
 };
+use bae_records::{DbAlbum, DbRelease};
 use bae_transfers::StoredTransition;
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::test_channels::HANG_GUARD;
@@ -38,8 +38,8 @@ async fn library_with_release() -> (TestLibrary, TempDir, DbAlbum, DbRelease) {
     let (library, _storage, dir) = open_library().await;
     let album = test_album();
     let release = test_release(&album.id);
-    library.database().insert_album(&album).await.unwrap();
-    insert_release(library.database(), &release).await;
+    library.records().insert_album(&album).await.unwrap();
+    insert_release(library.records(), &release).await;
     (library, dir, album, release)
 }
 
@@ -48,8 +48,8 @@ async fn seed_albums(library: &TestLibrary, count: usize) {
     for i in 0..count {
         let mut album = test_album();
         album.title = format!("Album {i}");
-        library.database().insert_album(&album).await.unwrap();
-        insert_release(library.database(), &test_release(&album.id)).await;
+        library.records().insert_album(&album).await.unwrap();
+        insert_release(library.records(), &test_release(&album.id)).await;
     }
 }
 
@@ -67,8 +67,7 @@ async fn queued_upload_library(
         &[("a.flac", &vec![b'a'; 1000])],
     )
     .await;
-    let file_id =
-        library.database().get_files_for_release(&release.id).await.unwrap()[0].id.clone();
+    let file_id = library.records().get_files_for_release(&release.id).await.unwrap()[0].id.clone();
     (library, storage, dir, release, file_id)
 }
 
@@ -109,18 +108,18 @@ async fn until<Value, Error: std::fmt::Debug>(
 async fn album_detail_delivers_while_sync_shaped_load_runs() {
     let (manager, _storage, _temp_dir) = open_library().await;
     let album = test_album();
-    manager.database().insert_album(&album).await.unwrap();
+    manager.records().insert_album(&album).await.unwrap();
     let mut releases = Vec::new();
     for _ in 0..25 {
         let release = test_release(&album.id);
-        insert_release(manager.database(), &release).await;
+        insert_release(manager.records(), &release).await;
         releases.push(release.id);
     }
 
     let mut load = Vec::new();
     for _ in 0..8 {
         let db = manager.store().clone();
-        let database = bae_db::test_fixtures::test_database(&db);
+        let records = bae_records::test_fixtures::test_records(&db);
         let album_id = album.id.clone();
         load.push(tokio::spawn(async move {
             loop {
@@ -128,7 +127,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
                     clippy::let_underscore_must_use,
                     reason = "this is load on the db; each read's answer is not the point"
                 )]
-                let _ = database.get_releases_for_album(&album_id).await;
+                let _ = records.get_releases_for_album(&album_id).await;
             }
         }));
     }
@@ -186,8 +185,8 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
     for title in ["Album One", "Album Two"] {
         let mut album = test_album();
         album.title = title.to_string();
-        manager.database().insert_album(&album).await.unwrap();
-        insert_release(manager.database(), &test_release(&album.id)).await;
+        manager.records().insert_album(&album).await.unwrap();
+        insert_release(manager.records(), &test_release(&album.id)).await;
         albums.push(album);
     }
     let values = bae_app::live_reads::subscribe_album_detail(&manager, &views(&manager));

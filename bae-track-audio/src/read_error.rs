@@ -29,7 +29,7 @@ pub enum TrackReadError {
     /// it stays there until that device uploads it, so this device has
     /// nothing to read.
     #[error("This release's audio is only on another device: {0:?}")]
-    OnOtherDevice(bae_db::OtherDevice),
+    OnOtherDevice(bae_records::OtherDevice),
     /// A local release's original file on this device is gone or changed
     /// since import.
     #[error("This release's original files are missing or changed on this device")]

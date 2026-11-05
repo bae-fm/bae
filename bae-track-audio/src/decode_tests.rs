@@ -31,7 +31,7 @@ fn verified_window_reads() -> (Vec<u64>, u64, u64) {
     let decode = StreamDecodeParams::new(
         vec![SegmentDecodeParams::new(
             buffer.clone(),
-            bae_db::SegmentSpan {
+            bae_records::SegmentSpan {
                 start_sample,
                 end_sample: Some(start_sample + 44_100),
                 start_byte: Some(landing),
@@ -86,7 +86,7 @@ fn multi_segment_track_finishes_only_after_last_segment() {
     let buffer = filled_sparse_buffer(&flac);
 
     let split = sample_rate as u64;
-    let span = |start: u64, end: u64| bae_db::SegmentSpan {
+    let span = |start: u64, end: u64| bae_records::SegmentSpan {
         start_sample: start,
         end_sample: Some(end),
         start_byte: None,
@@ -136,7 +136,7 @@ fn multi_segment_track_finishes_only_after_last_segment() {
 /// the segment or a decode from the stream's start.
 #[test]
 fn a_window_first_reads_where_its_decode_starts() {
-    let span = bae_db::SegmentSpan {
+    let span = bae_records::SegmentSpan {
         start_sample: 44_100,
         end_sample: None,
         start_byte: Some(70_000),
@@ -153,7 +153,7 @@ fn a_window_first_reads_where_its_decode_starts() {
         )
         .first_read_byte(id)
     };
-    let point = bae_db::ScrubPoint { sample: 88_200, byte: 300_000, exact_from: 88_200 };
+    let point = bae_records::ScrubPoint { sample: 88_200, byte: 300_000, exact_from: 88_200 };
 
     assert_eq!(first_read(0, SegmentStart::Span), Some(70_000));
     assert_eq!(first_read(50_000, SegmentStart::ScrubPoint(point)), Some(300_000));

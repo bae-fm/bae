@@ -14,8 +14,8 @@ use crate::tables::tests::*;
 use crate::ImportListProjection;
 use crate::{MetadataProvenance, TriageTab};
 use bae_catalogs::catalog::LookupCatalog;
-use bae_db::test_fixtures::live_query::{live_db, ALBUM_ID, RELEASE_ID};
-use bae_db::test_fixtures::write_cover;
+use bae_records::test_fixtures::live_query::{live_db, ALBUM_ID, RELEASE_ID};
+use bae_records::test_fixtures::write_cover;
 use bae_store::test_fixtures::exec;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -639,13 +639,13 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
 #[tokio::test]
 async fn a_done_row_reads_its_library_release() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scan_finished(&db, root, "release").await;
     record_import(&db, &candidate.files.content_hash()).await;
-    let version = write_cover(&database, RELEASE_ID, "the library cover").await;
+    let version = write_cover(&records, RELEASE_ID, "the library cover").await;
     exec(
         &db,
         "INSERT INTO release_records (id, release_id, catalog, key, album_key, kind) \
@@ -679,7 +679,7 @@ async fn a_done_row_reads_its_library_release() {
     assert_eq!(
         done.cover,
         Some(crate::CoverImageSource::Library {
-            image: bae_db::ImageRef {
+            image: bae_records::ImageRef {
                 id: RELEASE_ID.to_string(),
                 version,
                 image_type: LibraryImageType::Cover,

@@ -98,7 +98,7 @@ struct ExtractionServiceInner {
     /// The library a `Release` re-identify reads the release's files from.
     store: bae_store::Store,
     /// The library a `Release` re-identify reads the release's rows from.
-    database: bae_db::Database,
+    records: bae_records::Records,
     /// Where a panic in a pass is reported as the bug it is.
     diagnostics: bae_diagnostics::Diagnostics,
     /// Each folder's settled snapshot this session, so a later run over the
@@ -160,7 +160,7 @@ impl ExtractionService {
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
         store: bae_store::Store,
-        database: bae_db::Database,
+        records: bae_records::Records,
         diagnostics: bae_diagnostics::Diagnostics,
     ) -> ExtractionService {
         let inner = Arc::new(ExtractionServiceInner {
@@ -168,7 +168,7 @@ impl ExtractionService {
             event_tx,
             analyzer: Mutex::new(None),
             store,
-            database,
+            records,
             diagnostics,
             settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
             candidates,
@@ -332,7 +332,7 @@ async fn extract(
         // from the library.
         ExtractionSource::Release { release_id } => {
             let (origin, audio, disc_id) =
-                match resolve_release_identity(&inner.database, &inner.diagnostics, &release_id)
+                match resolve_release_identity(&inner.records, &inner.diagnostics, &release_id)
                     .await
                 {
                     Ok(identity) => {
@@ -360,7 +360,7 @@ async fn extract(
             let (artwork, _cover_staging) = if let Some(analyzer) = analyzer {
                 match resolve_release_artwork_paths(
                     &inner.store,
-                    &inner.database,
+                    &inner.records,
                     &inner.diagnostics,
                     &release_id,
                 )

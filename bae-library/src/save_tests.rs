@@ -287,7 +287,7 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
         decode: bae_track_audio::StreamDecodeParams::new(
             vec![bae_track_audio::SegmentDecodeParams::new(
                 buffer,
-                bae_db::SegmentSpan::whole_file(),
+                bae_records::SegmentSpan::whole_file(),
                 0,
             )],
             true,

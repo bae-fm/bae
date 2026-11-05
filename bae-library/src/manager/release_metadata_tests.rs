@@ -9,14 +9,14 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
-    manager.database.insert_album(&album).await.unwrap();
+    let track = bae_records::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager.database.insert_track(&track).await.unwrap();
+    manager.records.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         &manager,
         &track,
-        &[("track.flac", bae_db::source_audio::SourceAudioLayout::File)],
+        &[("track.flac", bae_records::source_audio::SourceAudioLayout::File)],
     )
     .await;
     let identity = bae_catalogs::records::ReleaseRecord::new(
@@ -27,7 +27,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         Some("source-group".to_string()),
     );
     manager
-        .database
+        .records
         .insert_release_records(&release.id, std::slice::from_ref(&identity))
         .await
         .unwrap();
@@ -81,7 +81,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .await
         .unwrap()
         .expect("the edited release remains stored");
-    let segments = |tracks: &[bae_db::DbReleaseEditTrack]| {
+    let segments = |tracks: &[bae_records::DbReleaseEditTrack]| {
         tracks
             .iter()
             .map(|track| (track.audio_format_count, track.segments.clone()))
@@ -89,7 +89,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     };
     assert_eq!(segments(&audio_after), segments(&audio_before));
     assert_eq!(stored_after.files, stored_before.files);
-    assert_eq!(manager.database.get_release_records(&release.id).await.unwrap(), vec![identity]);
+    assert_eq!(manager.records.get_release_records(&release.id).await.unwrap(), vec![identity]);
     assert_eq!(stored_after.release.id, release.id);
     assert_eq!(stored_after.release.album_id, album.id);
     assert_eq!(stored_after.release.pressing.year, Some(1991));
@@ -204,7 +204,7 @@ async fn queued_write_rows(manager: &LibraryManager) -> Vec<Vec<String>> {
 #[tokio::test]
 async fn saving_unchanged_metadata_writes_nothing() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    insert_n_tracks(&manager.database, &release.id, 2).await;
+    insert_n_tracks(&manager.records, &release.id, 2).await;
     let edit = credited_release_edit([
         &["Track Artist One", "Track Artist Two"],
         &["Track Artist One", "Track Artist Three"],
@@ -223,7 +223,7 @@ async fn saving_unchanged_metadata_writes_nothing() {
 #[tokio::test]
 async fn changing_one_track_credit_writes_only_that_credit() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    insert_n_tracks(&manager.database, &release.id, 2).await;
+    insert_n_tracks(&manager.records, &release.id, 2).await;
     manager
         .apply_release_metadata_user_edit(
             &release.id,

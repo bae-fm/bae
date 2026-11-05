@@ -14,56 +14,38 @@ name = "bae_db"
 path = "src/lib.rs"
 
 [dependencies]
-# The catalogs a record names and ranks, and the release values the row
-# writers store.
-bae-catalogs = { workspace = true }
 # The error categories a person is shown for a failed people, collection or
 # sync-start write.
 bae-diagnostics = { workspace = true }
+# The records the people, ratings and plays name.
+bae-records = { workspace = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }
-# Mediums, pressings, credits and track times: the values the records hold.
-bae-types = { workspace = true }
-# Content types and the text matching keys the rows are written with.
-bae-util = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.
 coven = { workspace = true }
 rusqlite = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
 # The locks people and history writes take.
 tokio = { workspace = true, features = ["sync"] }
 # Row ids, and the ids derived from catalog ids.
 uuid = { workspace = true, features = ["v4", "v5"] }
 chrono = { workspace = true, features = ["serde"] }
-# Stored paths are hex-encoded bytes.
-hex = { workspace = true }
-# The temporary directory a test database lives in.
-tempfile = { workspace = true, optional = true }
 
 [dev-dependencies]
 bae-store = { workspace = true, features = ["test-utils"] }
-bae-catalogs = { workspace = true, features = ["test-utils"] }
-bae-util = { workspace = true, features = ["test-utils"] }
-bae-types = { workspace = true, features = ["test-utils"] }
+bae-records = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
-tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
 # The schema tests read the tables the schema creates.
 regex = { workspace = true }
 
 [features]
 default = []
-# Test databases with bae's schema, the rows and fixtures tests seed them
-# with, and the store-level harness two-device sync tests run on, for the
-# tests of every crate that builds on this one. Dev/test-only: a production
-# build never enables it.
+# Test databases with bae's schema, for the tests of every crate that builds on
+# this one. Dev/test-only: a production build never enables it.
 test-utils = [
     "bae-store/test-utils",
-    "dep:tempfile",
-    "bae-util/test-utils",
+    "bae-records/test-utils",
     "coven/test-utils",
     "tokio/rt",
     "tokio/rt-multi-thread",

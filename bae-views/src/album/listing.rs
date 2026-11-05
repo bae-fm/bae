@@ -76,7 +76,7 @@ impl AlbumAppearanceRow {
                 .filter(|credit| credit.artist.id != group)
                 .cloned()
                 .collect::<Vec<_>>();
-            (!others.is_empty()).then(|| bae_db::credits::library_line(&others))
+            (!others.is_empty()).then(|| bae_records::credits::library_line(&others))
         });
         Ok(DbAlbumAppearance { album: self.row.process_with(&credits)?, credited_with })
     }
@@ -155,7 +155,7 @@ pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
                 {image} AS image_version \
          FROM artist_listing artist \
          ORDER BY {order}",
-        image = bae_db::client::files::artist_image_version_sql("artist.artist_id"),
+        image = bae_records::records::files::artist_image_version_sql("artist.artist_id"),
     )
 }
 

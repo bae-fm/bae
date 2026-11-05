@@ -13,8 +13,8 @@
 //! URL and the declared content type never disagree.
 
 use bae_audio::StreamEncodeFormat;
-use bae_db::ResolvedTrackAudio;
 use bae_preferences::CastTranscodeFormat;
+use bae_records::ResolvedTrackAudio;
 use bae_util::content_type::ContentType;
 
 /// The bitrate an MP3 conversion is encoded at, in kbps. Shared across

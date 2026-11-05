@@ -2,8 +2,8 @@
 //! detail, and the list's live query.
 
 use crate::*;
-use bae_db::test_fixtures::live_query::*;
-use bae_db::test_fixtures::{ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
+use bae_records::test_fixtures::live_query::*;
+use bae_records::test_fixtures::{ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
 use bae_store::test_fixtures::live_query::*;
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
@@ -323,7 +323,7 @@ async fn artist_detail_absent_or_album_less_artist_is_none() {
 #[tokio::test]
 async fn artist_browse_reads_its_windows_and_their_images() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_artist_browse(&[], first_page());
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();
@@ -331,7 +331,7 @@ async fn artist_browse_reads_its_windows_and_their_images() {
     assert_eq!(initial.windows[0].rows[0].artist.id, ARTIST_ID);
     assert!(initial.windows[0].rows[0].image.is_none());
 
-    let artist_image = write_artist_image(&database, ARTIST_ID, "artist image bytes").await;
+    let artist_image = write_artist_image(&records, ARTIST_ID, "artist image bytes").await;
     let imaged = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("an image on a listed artist wakes artist browse")

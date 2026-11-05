@@ -12,11 +12,11 @@ use crate::{
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::search::MetadataResult;
-use bae_db::DbArtist;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
+use bae_records::DbArtist;
 use bae_store::test_fixtures::empty_db;
 use bae_store::test_fixtures::fixed_now;
 use bae_store::Store;

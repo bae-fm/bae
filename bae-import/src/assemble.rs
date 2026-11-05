@@ -13,7 +13,7 @@ use crate::{
     TrackBinding,
 };
 use bae_catalogs::catalog::Catalog;
-use bae_db::{
+use bae_records::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart, ReleaseRows, WorkGraphRows,
 };
@@ -127,12 +127,12 @@ pub fn assemble_rows<Binding: TrackBinding>(
 
     let works = work_rows(draft, &mut artists, now);
 
-    let mediums: Vec<bae_db::DbReleaseMedium> = draft
+    let mediums: Vec<bae_records::DbReleaseMedium> = draft
         .mediums
         .iter()
         .enumerate()
         .map(|(index, medium)| {
-            bae_db::DbReleaseMedium::new(
+            bae_records::DbReleaseMedium::new(
                 &release.id,
                 bae_types::mediums::medium_position(index),
                 *medium,
@@ -147,7 +147,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
     let mut track_artist_roles = Vec::new();
     let mut track_works = Vec::new();
     for (track, shaped) in draft.tracks.iter().zip(&edit.tracks) {
-        let row = bae_db::TrackRow {
+        let row = bae_records::TrackRow {
             id: (keys.track_id)(&track.edit.file),
             release_id: release.id.clone(),
             title: shaped.title.clone(),
@@ -262,7 +262,7 @@ impl<'a> ArtistRows<'a> {
 
     /// The row a role or a composer credit links.
     fn credited(&mut self, credit: &bae_catalogs::credits::ArtistCredit) -> String {
-        let row = bae_db::DbArtist::of_credit(credit, self.ids, self.now);
+        let row = bae_records::DbArtist::of_credit(credit, self.ids, self.now);
         let id = row.id.clone();
         self.rows.push(row);
         id
@@ -293,7 +293,7 @@ fn work_rows<Binding>(
         ids: HashMap::new(),
     };
     for work in &draft.works.works {
-        let work_id = bae_db::identity::work_id(&work.musicbrainz_work_id);
+        let work_id = bae_records::identity::work_id(&work.musicbrainz_work_id);
         rows.ids.insert(work.musicbrainz_work_id.clone(), work_id.clone());
         for (position, composer) in work.composers.iter().enumerate() {
             rows.work_artists.push(DbWorkArtist::new(
@@ -317,8 +317,8 @@ fn work_rows<Binding>(
     for part in &draft.works.parts {
         let position = parts_of.entry(part.parent.as_str()).or_default();
         rows.work_parts.push(DbWorkPart::new(
-            &bae_db::identity::work_id(&part.parent),
-            &bae_db::identity::work_id(&part.child),
+            &bae_records::identity::work_id(&part.parent),
+            &bae_records::identity::work_id(&part.child),
             *position,
             Catalog::MusicBrainz,
             now,

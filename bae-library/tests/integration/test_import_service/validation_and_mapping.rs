@@ -59,7 +59,7 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         "a failed import writes no album",
     );
     assert!(
-        f.library.database().get_all_track_ids().await.unwrap().is_empty(),
+        f.library.records().get_all_track_ids().await.unwrap().is_empty(),
         "a failed import writes no track",
     );
 }
@@ -134,7 +134,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let mut rx = f.handle.subscribe_import(import_id);
     let (_release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
 
-    let artists = f.library.database().get_artists_for_album(&album_id).await.unwrap();
+    let artists = f.library.records().get_artists_for_album(&album_id).await.unwrap();
     let names: Vec<&str> = artists.iter().map(|a| a.artist.name.as_str()).collect();
     assert_eq!(names, vec!["Artist A", "Artist B"]);
     assert_eq!(artists[1].artist.musicbrainz_artist_id.as_deref(), Some("mb-artist-b"));
@@ -203,7 +203,7 @@ fn seed_mb_release_with_media(
 /// A release's tracks in track order, each with the file its samples come from.
 async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(String, String)> {
     f.library
-        .database()
+        .records()
         .committed_track_files_for_test(release_id)
         .await
         .expect("read committed track files")
@@ -545,7 +545,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     .expect("the import succeeds");
 
     f.library
-        .database()
+        .records()
         .find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()

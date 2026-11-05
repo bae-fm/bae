@@ -522,7 +522,7 @@ impl PlaybackService {
             PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: track_id.to_string() });
         self.emit_state();
 
-        let resolved = match ResolvedTrackAudio::resolve(&self.database, track_id).await {
+        let resolved = match ResolvedTrackAudio::resolve(&self.records, track_id).await {
             Ok(resolved) => resolved,
             Err(e) => {
                 error!("remote: failed to resolve track {track_id}: {e}");

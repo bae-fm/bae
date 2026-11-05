@@ -20,11 +20,12 @@ use tracing::{debug, warn};
 #[cfg(desktop)]
 use crate::save::SaveService;
 use crate::sync::S3ConfigData;
-use bae_db::GallerySource;
-use bae_db::{Database, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryImageType};
-#[cfg(desktop)]
-use bae_db::{DbAlbum, DbArtist};
+use bae_db::Database;
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
+use bae_records::GallerySource;
+#[cfg(desktop)]
+use bae_records::{DbAlbum, DbArtist};
+use bae_records::{DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryImageType};
 use bae_store::Store;
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{blocking, caught, joined, Bug, TaskFailed};
@@ -232,10 +233,10 @@ impl LibraryError {
     }
 }
 
-impl From<bae_db::TrackAudioError> for LibraryError {
-    fn from(error: bae_db::TrackAudioError) -> Self {
+impl From<bae_records::TrackAudioError> for LibraryError {
+    fn from(error: bae_records::TrackAudioError) -> Self {
         match error {
-            bae_db::TrackAudioError::Database(error) => Self::Database(error),
+            bae_records::TrackAudioError::Database(error) => Self::Database(error),
             error => Self::TrackMapping(error.to_string()),
         }
     }
@@ -253,11 +254,11 @@ impl From<coven::CovenError> for LibraryError {
     }
 }
 
-impl From<bae_db::IdentityWriteError> for LibraryError {
-    fn from(error: bae_db::IdentityWriteError) -> Self {
+impl From<bae_records::IdentityWriteError> for LibraryError {
+    fn from(error: bae_records::IdentityWriteError) -> Self {
         match error {
-            bae_db::IdentityWriteError::Db(error) => Self::Database(error),
-            bae_db::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
+            bae_records::IdentityWriteError::Db(error) => Self::Database(error),
+            bae_records::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
         }
     }
 }
@@ -281,8 +282,8 @@ pub enum UploadReleasesOutcome {
 
 /// A stored name that names no file refuses the write it was for: the row it
 /// came from is unusable, and the copy does not run.
-impl From<bae_db::stored_name::StoredNameError> for LibraryError {
-    fn from(error: bae_db::stored_name::StoredNameError) -> Self {
+impl From<bae_records::stored_name::StoredNameError> for LibraryError {
+    fn from(error: bae_records::stored_name::StoredNameError) -> Self {
         LibraryError::Refused(error.to_string())
     }
 }
@@ -436,6 +437,7 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
 #[derive(Clone)]
 pub struct LibraryManager {
     store: Store,
+    records: bae_records::Records,
     database: Database,
     /// The app directory this library is registered under: where renaming
     /// another library finds it, where the active-library pointer is written,

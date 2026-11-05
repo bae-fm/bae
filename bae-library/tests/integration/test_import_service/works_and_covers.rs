@@ -134,7 +134,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     .expect("second local MB import succeeds");
 
     let (work_ids, linked_release_ids) =
-        f.library.database().work_links_for_test(V3_WORK).await.unwrap();
+        f.library.records().work_links_for_test(V3_WORK).await.unwrap();
 
     assert_eq!(work_ids.len(), 1, "the work the two releases share is one row",);
     assert_ne!(work_ids[0], V3_WORK, "the row id is minted, not the MusicBrainz MBID",);
@@ -180,7 +180,7 @@ async fn import_with_cover_art() {
     // Cover image row in DB
     let cover = f
         .library
-        .database()
+        .records()
         .find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap();
@@ -231,7 +231,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     // The row records the stored format (JPEG), not the source PNG.
     let cover = f
         .library
-        .database()
+        .records()
         .find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
@@ -286,7 +286,7 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
                 .unwrap_or_else(|error| panic!("{name}: {error}"));
         let cover = f
             .library
-            .database()
+            .records()
             .find_library_image(&release_id, &LibraryImageType::Cover)
             .await
             .unwrap()

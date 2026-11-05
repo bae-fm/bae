@@ -40,6 +40,7 @@ impl LibraryManager {
     /// process outlives is cleared. `closing` ends its tasks when it closes.
     pub(crate) async fn open(
         store: Store,
+        records: bae_records::Records,
         database: Database,
         app_dir: bae_app_dir::AppDir,
         clock: ClockRef,
@@ -68,6 +69,7 @@ impl LibraryManager {
             #[cfg(desktop)]
             catalogs,
             store,
+            records,
             database,
             app_dir,
             #[cfg(desktop)]
@@ -410,7 +412,7 @@ impl LibraryManager {
     /// the files being sent together, told as each one moves.
     pub fn watch_outbox_transfers(&self) -> crate::OutboxTransfersWatch {
         crate::OutboxTransfersWatch::of(
-            self.database.subscribe_sending_uploads(),
+            self.records.subscribe_sending_uploads(),
             self.store.subscribe_upload_transfers(),
             self.clock.clone(),
         )
@@ -419,7 +421,7 @@ impl LibraryManager {
     /// The files being sent together, told each time they move.
     pub fn watch_outbox_total_transfer(&self) -> crate::OutboxTotalTransferWatch {
         crate::OutboxTotalTransferWatch::of(
-            self.database.subscribe_sending_uploads(),
+            self.records.subscribe_sending_uploads(),
             self.store.subscribe_upload_transfers(),
             self.clock.clone(),
         )

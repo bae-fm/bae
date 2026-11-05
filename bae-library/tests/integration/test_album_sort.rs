@@ -1,4 +1,4 @@
-use bae_db::{Database, DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
+use bae_records::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
 use bae_store::SortDirection;
 use bae_views::{AlbumSortCriterion, AlbumSortField, LibraryViews};
 use chrono::{Duration, Utc};
@@ -29,15 +29,16 @@ fn make_album(
 }
 
 /// Insert `listed` with one release: listings show only albums that hold one.
-async fn insert_listed_album(db: &Database, listed: &ListedAlbum) {
-    db.insert_album(&listed.album).await.unwrap();
-    db.insert_album_artist(&listed.credit).await.unwrap();
-    db.insert_release(&DbRelease::new_test(&listed.album.id, &Uuid::new_v4().to_string()))
+async fn insert_listed_album(records: &bae_records::Records, listed: &ListedAlbum) {
+    records.insert_album(&listed.album).await.unwrap();
+    records.insert_album_artist(&listed.credit).await.unwrap();
+    records
+        .insert_release(&DbRelease::new_test(&listed.album.id, &Uuid::new_v4().to_string()))
         .await
         .unwrap();
 }
 
-async fn insert_default_artist(db: &Database) -> String {
+async fn insert_default_artist(records: &bae_records::Records) -> String {
     let artist = DbArtist {
         id: bae_util::test_ids::test_uuid("default-test-artist"),
         name: "Default Artist".to_string(),
@@ -46,7 +47,7 @@ async fn insert_default_artist(db: &Database) -> String {
         musicbrainz_artist_id: None,
         created_at: Utc::now(),
     };
-    db.insert_artist(&artist).await.unwrap();
+    records.insert_artist(&artist).await.unwrap();
     artist.id
 }
 
@@ -65,13 +66,13 @@ fn make_artist(name: &str, sort_name: Option<&str>) -> DbArtist {
 #[tokio::test]
 async fn test_default_sort_is_date_added_desc() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let old = make_album("Old Album", &aid, Some(2020), -2);
     let new = make_album("New Album", &aid, Some(2024), 0);
-    insert_listed_album(&database, &old).await;
-    insert_listed_album(&database, &new).await;
+    insert_listed_album(&records, &old).await;
+    insert_listed_album(&records, &new).await;
 
     // Empty criteria = default = created_at DESC (newest first)
     let albums = LibraryViews::new(db.clone()).get_albums(&[]).await.unwrap();
@@ -83,15 +84,15 @@ async fn test_default_sort_is_date_added_desc() {
 #[tokio::test]
 async fn test_sort_by_title_ascending() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let c = make_album("Charlie", &aid, Some(2020), 0);
     let a = make_album("Alpha", &aid, Some(2021), 1);
     let b = make_album("Bravo", &aid, Some(2022), 2);
-    insert_listed_album(&database, &c).await;
-    insert_listed_album(&database, &a).await;
-    insert_listed_album(&database, &b).await;
+    insert_listed_album(&records, &c).await;
+    insert_listed_album(&records, &a).await;
+    insert_listed_album(&records, &b).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -109,13 +110,13 @@ async fn test_sort_by_title_ascending() {
 #[tokio::test]
 async fn test_sort_by_title_descending() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let a = make_album("Alpha", &aid, Some(2020), 0);
     let b = make_album("Bravo", &aid, Some(2021), 1);
-    insert_listed_album(&database, &a).await;
-    insert_listed_album(&database, &b).await;
+    insert_listed_album(&records, &a).await;
+    insert_listed_album(&records, &b).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -132,13 +133,13 @@ async fn test_sort_by_title_descending() {
 #[tokio::test]
 async fn test_sort_by_title_is_case_insensitive() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let lower = make_album("alpha", &aid, Some(2020), 0);
     let upper = make_album("Bravo", &aid, Some(2021), 1);
-    insert_listed_album(&database, &lower).await;
-    insert_listed_album(&database, &upper).await;
+    insert_listed_album(&records, &lower).await;
+    insert_listed_album(&records, &upper).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -155,15 +156,15 @@ async fn test_sort_by_title_is_case_insensitive() {
 #[tokio::test]
 async fn test_sort_by_year_ascending_nulls_last() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let no_year = make_album("No Year", &aid, None, 0);
     let y2020 = make_album("Year 2020", &aid, Some(2020), 1);
     let y2010 = make_album("Year 2010", &aid, Some(2010), 2);
-    insert_listed_album(&database, &no_year).await;
-    insert_listed_album(&database, &y2020).await;
-    insert_listed_album(&database, &y2010).await;
+    insert_listed_album(&records, &no_year).await;
+    insert_listed_album(&records, &y2020).await;
+    insert_listed_album(&records, &y2010).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -181,15 +182,15 @@ async fn test_sort_by_year_ascending_nulls_last() {
 #[tokio::test]
 async fn test_sort_by_year_descending_nulls_first() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let no_year = make_album("No Year", &aid, None, 0);
     let y2020 = make_album("Year 2020", &aid, Some(2020), 1);
     let y2010 = make_album("Year 2010", &aid, Some(2010), 2);
-    insert_listed_album(&database, &no_year).await;
-    insert_listed_album(&database, &y2020).await;
-    insert_listed_album(&database, &y2010).await;
+    insert_listed_album(&records, &no_year).await;
+    insert_listed_album(&records, &y2020).await;
+    insert_listed_album(&records, &y2010).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -207,15 +208,15 @@ async fn test_sort_by_year_descending_nulls_first() {
 #[tokio::test]
 async fn test_sort_by_date_added_ascending() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let oldest = make_album("Oldest", &aid, Some(2024), -3);
     let newest = make_album("Newest", &aid, Some(2024), 0);
     let middle = make_album("Middle", &aid, Some(2024), -1);
-    insert_listed_album(&database, &oldest).await;
-    insert_listed_album(&database, &newest).await;
-    insert_listed_album(&database, &middle).await;
+    insert_listed_album(&records, &oldest).await;
+    insert_listed_album(&records, &newest).await;
+    insert_listed_album(&records, &middle).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -233,17 +234,17 @@ async fn test_sort_by_date_added_ascending() {
 #[tokio::test]
 async fn test_sort_by_artist_ascending() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
 
     let artist_z = make_artist("Zebra", None);
     let artist_a = make_artist("Alpha", None);
-    database.insert_artist(&artist_z).await.unwrap();
-    database.insert_artist(&artist_a).await.unwrap();
+    records.insert_artist(&artist_z).await.unwrap();
+    records.insert_artist(&artist_a).await.unwrap();
 
     let album_z = make_album("Some Album", &artist_z.id, Some(2020), 0);
     let album_a = make_album("Another Album", &artist_a.id, Some(2021), 1);
-    insert_listed_album(&database, &album_z).await;
-    insert_listed_album(&database, &album_a).await;
+    insert_listed_album(&records, &album_z).await;
+    insert_listed_album(&records, &album_a).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -260,17 +261,17 @@ async fn test_sort_by_artist_ascending() {
 #[tokio::test]
 async fn test_sort_by_artist_uses_sort_name() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
 
     let artist_the = make_artist("The Zebras", Some("Zebras, The"));
     let artist_a = make_artist("Alpha", None);
-    database.insert_artist(&artist_the).await.unwrap();
-    database.insert_artist(&artist_a).await.unwrap();
+    records.insert_artist(&artist_the).await.unwrap();
+    records.insert_artist(&artist_a).await.unwrap();
 
     let album_the = make_album("Album By The Zebras", &artist_the.id, Some(2020), 0);
     let album_a = make_album("Album By Alpha", &artist_a.id, Some(2021), 1);
-    insert_listed_album(&database, &album_the).await;
-    insert_listed_album(&database, &album_a).await;
+    insert_listed_album(&records, &album_the).await;
+    insert_listed_album(&records, &album_a).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[AlbumSortCriterion {
@@ -288,17 +289,17 @@ async fn test_sort_by_artist_uses_sort_name() {
 #[tokio::test]
 async fn test_multi_criteria_artist_then_year() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
 
     let artist = make_artist("Same Artist", None);
-    database.insert_artist(&artist).await.unwrap();
+    records.insert_artist(&artist).await.unwrap();
 
     let album_2020 = make_album("Album 2020", &artist.id, Some(2020), 0);
     let album_2024 = make_album("Album 2024", &artist.id, Some(2024), 1);
     let album_2022 = make_album("Album 2022", &artist.id, Some(2022), 2);
 
     for album in [&album_2020, &album_2024, &album_2022] {
-        insert_listed_album(&database, album).await;
+        insert_listed_album(&records, album).await;
     }
 
     // Sort by artist ASC, then year DESC
@@ -325,13 +326,13 @@ async fn test_multi_criteria_artist_then_year() {
 #[tokio::test]
 async fn test_album_index_matches_page_position() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     // A handful of albums with distinct titles so a title sort is total.
     let titles = ["Delta", "alpha", "Charlie", "Bravo", "echo"];
     for (i, title) in titles.iter().enumerate() {
-        insert_listed_album(&database, &make_album(title, &aid, Some(2000), i as i64)).await;
+        insert_listed_album(&records, &make_album(title, &aid, Some(2000), i as i64)).await;
     }
 
     let sort =
@@ -356,11 +357,11 @@ async fn test_album_index_matches_page_position() {
 #[tokio::test]
 async fn test_album_index_matches_page_position_default_sort() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     for i in 0..4 {
-        insert_listed_album(&database, &make_album(&format!("Album {i}"), &aid, Some(2000), i))
+        insert_listed_album(&records, &make_album(&format!("Album {i}"), &aid, Some(2000), i))
             .await;
     }
 
@@ -377,15 +378,15 @@ async fn test_album_index_matches_page_position_default_sort() {
 #[tokio::test]
 async fn test_album_index_matches_page_position_on_ties() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     // Many albums sharing one title and one created_at offset: the sort value
     // ties on every row, so only the `a.id` tiebreaker gives a total order.
     // The window-function index query and the LIMIT/OFFSET page query must
     // still agree row-for-row.
     for _ in 0..8 {
-        insert_listed_album(&database, &make_album("Same Title", &aid, Some(2000), 0)).await;
+        insert_listed_album(&records, &make_album("Same Title", &aid, Some(2000), 0)).await;
     }
 
     let sort =
@@ -402,15 +403,15 @@ async fn test_album_index_matches_page_position_on_ties() {
 #[tokio::test]
 async fn test_multi_criteria_year_asc_then_title_asc() {
     let (db, _dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    let aid = insert_default_artist(&database).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let aid = insert_default_artist(&records).await;
 
     let a = make_album("Bravo", &aid, Some(2020), 0);
     let b = make_album("Alpha", &aid, Some(2020), 1);
     let c = make_album("Charlie", &aid, Some(2019), 2);
-    insert_listed_album(&database, &a).await;
-    insert_listed_album(&database, &b).await;
-    insert_listed_album(&database, &c).await;
+    insert_listed_album(&records, &a).await;
+    insert_listed_album(&records, &b).await;
+    insert_listed_album(&records, &c).await;
 
     let albums = LibraryViews::new(db.clone())
         .get_albums(&[

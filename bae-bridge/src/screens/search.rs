@@ -154,7 +154,7 @@ impl LibraryStatusSubscription {
     /// carry.
     pub fn set_checks(&self, checks: Vec<BridgeLibraryCheck>) -> Result<u64, BridgeError> {
         self.inner
-            .set_checks(checks.into_iter().map(|check| bae_db::LibraryCheck {
+            .set_checks(checks.into_iter().map(|check| bae_records::LibraryCheck {
                 release_id: check.release_id,
                 source: check.source.into_core().catalog(),
                 source_group_id: check.source_group_id,

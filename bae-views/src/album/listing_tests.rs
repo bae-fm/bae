@@ -5,8 +5,8 @@
 use crate::album::album_browse_order;
 use crate::tests::{assert_seeks_search_sorting, both_ways, key_at, library};
 use crate::*;
-use bae_db::test_fixtures::album_listing::*;
-use bae_db::test_fixtures::{ARTIST_A, ARTIST_B, ARTIST_C};
+use bae_records::test_fixtures::album_listing::*;
+use bae_records::test_fixtures::{ARTIST_A, ARTIST_B, ARTIST_C};
 use bae_store::test_fixtures::{exec, exec_batch, temp_db};
 use bae_store::{LibraryPageWindow, LibraryPageWindows};
 use std::collections::BTreeSet;
@@ -459,13 +459,13 @@ async fn a_grouped_row_names_the_albums_other_credits() {
 #[tokio::test]
 async fn an_artist_section_carries_the_artists_picture() {
     let (db, _dir) = grouped_library().await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let mut browse =
         LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, BTreeSet::new());
     let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert!(initial.sections.iter().all(|section| section.image.is_none()));
-    let version = bae_db::test_fixtures::live_query::write_artist_image(
-        &database,
+    let version = bae_records::test_fixtures::live_query::write_artist_image(
+        &records,
         ARTIST_B,
         "artist image bytes",
     )

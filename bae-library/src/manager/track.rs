@@ -6,7 +6,7 @@ impl LibraryManager {
     /// Every track id in the library, in a deterministic base order, for a
     /// listing that pages through every song.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, LibraryError> {
-        Ok(self.database.get_all_track_ids().await?)
+        Ok(self.records.get_all_track_ids().await?)
     }
 
     /// The subset of `ids` that still exist in the tracks table, in one query
@@ -15,7 +15,7 @@ impl LibraryManager {
         &self,
         ids: &[String],
     ) -> Result<Vec<String>, LibraryError> {
-        Ok(self.database.filter_existing_track_ids(ids).await?)
+        Ok(self.records.filter_existing_track_ids(ids).await?)
     }
 
     /// Resolve a mix of album and track IDs into track IDs. An album expands to the
@@ -24,10 +24,10 @@ impl LibraryManager {
         let mut track_ids = Vec::new();
         for id in ids {
             if let Some(album_track_ids) =
-                self.database.get_primary_release_track_ids_for_album(id).await?
+                self.records.get_primary_release_track_ids_for_album(id).await?
             {
                 track_ids.extend(album_track_ids);
-            } else if self.database.find_track_by_id(id).await?.is_some() {
+            } else if self.records.find_track_by_id(id).await?.is_some() {
                 track_ids.push(id.clone());
             } else {
                 return Err(LibraryError::TrackMapping(format!(
@@ -64,7 +64,7 @@ impl LibraryManager {
     /// The file record for a file id — streaming looks the id up on the track's
     /// audio segments, then fetches the row here.
     pub async fn get_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, LibraryError> {
-        Ok(self.database.find_file_by_id(file_id).await?)
+        Ok(self.records.find_file_by_id(file_id).await?)
     }
 
     /// Test-only. Production reads audio format as part of the resolved track-audio
@@ -73,8 +73,8 @@ impl LibraryManager {
     pub async fn get_audio_format_by_track_id(
         &self,
         track_id: &str,
-    ) -> Result<Option<bae_db::DbAudioFormat>, LibraryError> {
-        Ok(self.database.find_audio_format_by_track_id(track_id).await?)
+    ) -> Result<Option<bae_records::DbAudioFormat>, LibraryError> {
+        Ok(self.records.find_audio_format_by_track_id(track_id).await?)
     }
 
     /// Resolve a track's audio into a `ResolvedTrackAudio` with its sample window
@@ -82,8 +82,8 @@ impl LibraryManager {
     pub async fn resolve_track_audio(
         &self,
         track_id: &str,
-    ) -> Result<bae_db::ResolvedTrackAudio, LibraryError> {
-        Ok(bae_db::ResolvedTrackAudio::resolve(&self.database, track_id).await?)
+    ) -> Result<bae_records::ResolvedTrackAudio, LibraryError> {
+        Ok(bae_records::ResolvedTrackAudio::resolve(&self.records, track_id).await?)
     }
 
     /// What playback decides a side or disc pause with about a track: its
@@ -93,7 +93,7 @@ impl LibraryManager {
         &self,
         track_id: &str,
     ) -> Result<bae_playback::PlaybackTrackInfo, LibraryError> {
-        bae_playback::PlaybackTrackInfo::read(&self.database, track_id)
+        bae_playback::PlaybackTrackInfo::read(&self.records, track_id)
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
     }

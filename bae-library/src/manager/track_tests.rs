@@ -3,8 +3,8 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::LibraryImageType;
-use bae_db::{DbScrubPoints, ScrubPoint};
+use bae_records::LibraryImageType;
+use bae_records::{DbScrubPoints, ScrubPoint};
 use chrono::Utc;
 
 /// A track's display carries the cover reference the UI caches its art under,
@@ -16,17 +16,17 @@ async fn track_display_carries_the_cover_version() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = bae_db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
-    let track_artist = bae_db::DbTrackArtist::new(
+    let track = bae_records::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
+    let track_artist = bae_records::DbTrackArtist::new(
         &track.id,
         &bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         0,
         Utc::now(),
     );
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager.database.insert_track(&track).await.unwrap();
-    manager.database.insert_track_artist(&track_artist).await.unwrap();
+    manager.records.insert_track(&track).await.unwrap();
+    manager.records.insert_track_artist(&track_artist).await.unwrap();
 
     // No cover row yet: nothing to reference.
     let display = manager.get_track_display(&track.id).await.unwrap();
@@ -34,7 +34,7 @@ async fn track_display_carries_the_cover_version() {
 
     store_test_cover(&manager, &release.id, b"cover").await;
     let version = manager
-        .database
+        .records
         .cover_version(&release.id)
         .await
         .unwrap()
@@ -42,7 +42,7 @@ async fn track_display_carries_the_cover_version() {
     let display = manager.get_track_display(&track.id).await.unwrap();
     assert_eq!(
         display.cover_image,
-        Some(bae_db::ImageRef {
+        Some(bae_records::ImageRef {
             id: release.id.clone(),
             version,
             image_type: LibraryImageType::Cover,
@@ -53,14 +53,14 @@ async fn track_display_carries_the_cover_version() {
 /// Seed an album with two releases, each holding two tracks inserted in
 /// playing order, so the library order is deterministic.
 async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) {
-    use bae_db::DbTrack;
+    use bae_records::DbTrack;
     let mut album = create_test_album();
     album.id = "1250a7bb-41ed-4500-8ab4-04f5d3461e30".to_string();
     let mut rel1 = create_test_release(&album.id);
     rel1.id = REL_1.to_string();
     let mut rel2 = create_test_release(&album.id);
     rel2.id = REL_2.to_string();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &rel1).await;
     insert_release(manager, &rel2).await;
 
@@ -69,8 +69,8 @@ async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) 
             side: std::num::NonZeroU8::new(side).expect("sides count from one"),
             ..DbTrack::new_test(release_id, id, "Track Title", number)
         };
-        let database = &manager.database;
-        async move { database.insert_track(&t).await.unwrap() }
+        let records = &manager.records;
+        async move { records.insert_track(&t).await.unwrap() }
     };
     // rel-1: side 1 then side 2; rel-2: two side-1 tracks.
     track(REL_1, "48ae00a1-d7a5-443c-8240-f999fc4ddfcc", 1, 1).await;
@@ -137,18 +137,18 @@ async fn test_library_play_unshuffles_into_the_library_order() {
 async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<String> {
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     let mut track_ids = Vec::with_capacity(count);
     for i in 0..count {
         let track_id = bae_util::test_ids::test_uuid(&format!("track-{i}"));
-        let track = bae_db::DbTrack::new_test(
+        let track = bae_records::DbTrack::new_test(
             &release.id,
             &track_id,
             &format!("Track Title {i}"),
             u32::try_from(i + 1).expect("a test track number fits u32"),
         );
-        manager.database.insert_track(&track).await.unwrap();
+        manager.records.insert_track(&track).await.unwrap();
         track_ids.push(track_id);
     }
     track_ids
@@ -158,7 +158,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
 async fn play_seeded(manager: &LibraryManager, first_track: &str) {
     let tables = bae_playback::tables::PlaybackQueueTables::new(manager.store.clone());
     let release_id =
-        manager.database.find_track_by_id(first_track).await.unwrap().unwrap().release_id;
+        manager.records.find_track_by_id(first_track).await.unwrap().unwrap().release_id;
     tables
         .fill(bae_playback::tables::ContextFill::Release {
             release_id,
@@ -257,19 +257,31 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     release1.created_at = Utc::now() - chrono::Duration::days(1);
     let release2 = create_test_release(&album.id);
 
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
 
-    let old =
-        bae_db::DbTrack::new_test(&release1.id, "48ae00a1-d7a5-443c-8240-f999fc4ddfcc", "Old A", 1);
-    let p1 =
-        bae_db::DbTrack::new_test(&release2.id, "cc4180bc-58f5-456f-8116-f9b2099f5b7f", "New A", 1);
-    let p2 =
-        bae_db::DbTrack::new_test(&release2.id, "cc4181bc-58f5-4722-8116-fab2099f5d32", "New B", 2);
-    manager.database.insert_track(&old).await.unwrap();
-    manager.database.insert_track(&p1).await.unwrap();
-    manager.database.insert_track(&p2).await.unwrap();
+    let old = bae_records::DbTrack::new_test(
+        &release1.id,
+        "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
+        "Old A",
+        1,
+    );
+    let p1 = bae_records::DbTrack::new_test(
+        &release2.id,
+        "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
+        "New A",
+        1,
+    );
+    let p2 = bae_records::DbTrack::new_test(
+        &release2.id,
+        "cc4181bc-58f5-4722-8116-fab2099f5d32",
+        "New B",
+        2,
+    );
+    manager.records.insert_track(&old).await.unwrap();
+    manager.records.insert_track(&p1).await.unwrap();
+    manager.records.insert_track(&p2).await.unwrap();
 
     manager.set_album_primary_release(&album.id, &release2.id).await.unwrap();
 
@@ -304,31 +316,31 @@ async fn check_scrub_points_sync(devices: &mut crate::test_libraries::TwoDevices
     let manager = devices.a().manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
-    manager.database.insert_album(&album).await.unwrap();
+    let track = bae_records::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
-    manager.database.insert_track(&track).await.unwrap();
+    manager.records.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         manager,
         &track,
-        &[("Album Title.flac", bae_db::source_audio::SourceAudioLayout::File)],
+        &[("Album Title.flac", bae_records::source_audio::SourceAudioLayout::File)],
     )
     .await;
     let format = manager
-        .database
+        .records
         .find_audio_format_by_track_id(&track.id)
         .await
         .unwrap()
         .expect("the track's audio format");
     let segment =
-        manager.database.get_audio_segments_for_format(&format.id).await.unwrap().remove(0);
+        manager.records.get_audio_segments_for_format(&format.id).await.unwrap().remove(0);
     let points = [
         ScrubPoint { sample: 0, byte: 8_288, exact_from: 0 },
         ScrubPoint { sample: 442_368, byte: 1_760_512, exact_from: 442_368 },
         ScrubPoint { sample: 884_736, byte: 3_512_840, exact_from: 884_736 },
     ];
     manager
-        .database
+        .records
         .insert_scrub_points_for_test(&DbScrubPoints {
             audio_segment_id: segment.id.clone(),
             points: points.to_vec(),

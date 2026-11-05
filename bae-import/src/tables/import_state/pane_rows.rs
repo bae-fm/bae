@@ -94,7 +94,7 @@ pub(super) fn edit_row_values(
 ) -> Vec<rusqlite::types::Value> {
     use rusqlite::types::Value;
     let release_edit = draft.release_edit();
-    let facts = bae_db::client::pressing_columns::FactColumns::of(&draft.pressing.facts);
+    let facts = bae_records::records::pressing_columns::FactColumns::of(&draft.pressing.facts);
     let text = |value: &str| Value::Text(value.to_string());
     let optional = |value: Option<&str>| value.map_or(Value::Null, text);
     vec![
@@ -104,7 +104,9 @@ pub(super) fn edit_row_values(
         text(&draft.pressing.year),
         optional(facts.country),
         optional(facts.region),
-        Value::Text(bae_db::client::pressing_columns::media_column(&draft.pressing.facts.media)),
+        Value::Text(bae_records::records::pressing_columns::media_column(
+            &draft.pressing.facts.media,
+        )),
         optional(facts.status),
         optional(facts.packaging),
         Value::Text(facts.discogs_details),
@@ -409,8 +411,8 @@ pub(crate) fn load_drafts_on(
                 album_year: row.get("album_year")?,
                 year: row.get("year")?,
                 labels: read_label_rows(row)?,
-                barcodes: bae_db::client::pressing_columns::read_barcodes(row, "barcodes")?,
-                facts: bae_db::client::pressing_columns::read_facts(row, "")?,
+                barcodes: bae_records::records::pressing_columns::read_barcodes(row, "barcodes")?,
+                facts: bae_records::records::pressing_columns::read_facts(row, "")?,
                 album_assignments: row.get("album_assignments")?,
                 mediums: row.get("mediums")?,
                 tracks: row.get("tracks")?,
@@ -679,7 +681,7 @@ impl StoredAssignment {
                     discogs_artist_id: self.discogs_artist_id,
                 },
                 credit_name: match (self.credit_key, self.credit_name) {
-                    (Some(key), Some(name)) => Some(bae_db::credits::CreditName { key, name }),
+                    (Some(key), Some(name)) => Some(bae_records::credits::CreditName { key, name }),
                     _ => None,
                 },
             },

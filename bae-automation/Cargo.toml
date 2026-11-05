@@ -17,8 +17,8 @@ path = "src/lib.rs"
 bae-app = { workspace = true }
 bae-library = { workspace = true }
 # The library's records its answers carry.
-bae-db = { workspace = true }
 bae-store = { workspace = true }
+bae-records = { workspace = true }
 # The identify views its answers carry.
 bae-identify = { workspace = true }
 # The import queue, candidates and release drafts its tools read and drive.

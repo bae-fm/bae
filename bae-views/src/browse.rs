@@ -12,7 +12,7 @@ pub struct LibraryBrowseSection {
     /// The artist's name.
     pub title: String,
     /// The artist's picture, if it has one.
-    pub image: Option<bae_db::ImageRef>,
+    pub image: Option<bae_records::ImageRef>,
     /// Where the artist's albums start in the grid's rows, and all of them:
     /// never a page of them, so `limit` is how many albums the artist has.
     pub window: LibraryPageWindow,

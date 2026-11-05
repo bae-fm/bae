@@ -106,14 +106,16 @@ fn placed_tracks_are_laid_out_again_at_their_new_places() {
 /// One track's release with its audio as the editor reads it, the track's
 /// segments in order.
 fn one_track(
-    segments: Vec<bae_db::DbReleaseEditSegment>,
-) -> (bae_db::DbReleaseDetail, Vec<bae_db::DbReleaseEditTrack>) {
-    let release = bae_db::DbRelease::new_test("album-id", "release-id");
-    let track = bae_db::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
-    let raw = bae_db::DbReleaseDetail {
-        mediums: bae_db::DbReleaseMediums(vec![bae_db::DbReleaseMedium::new_test(&release.id)]),
+    segments: Vec<bae_records::DbReleaseEditSegment>,
+) -> (bae_records::DbReleaseDetail, Vec<bae_records::DbReleaseEditTrack>) {
+    let release = bae_records::DbRelease::new_test("album-id", "release-id");
+    let track = bae_records::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
+    let raw = bae_records::DbReleaseDetail {
+        mediums: bae_records::DbReleaseMediums(vec![bae_records::DbReleaseMedium::new_test(
+            &release.id,
+        )]),
         release,
-        tracks: vec![bae_db::DbTrackWithArtists {
+        tracks: vec![bae_records::DbTrackWithArtists {
             track: track.clone(),
             artists: Vec::new(),
             shown_artists: Vec::new(),
@@ -126,15 +128,18 @@ fn one_track(
         upload: None,
         cover_version: None,
     };
-    (raw, vec![bae_db::DbReleaseEditTrack { track, audio_format_count: 1, segments }])
+    (raw, vec![bae_records::DbReleaseEditTrack { track, audio_format_count: 1, segments }])
 }
 
 /// A segment of `role` over the stored file `file_id`.
-fn segment(role: bae_db::DbAudioSegmentRole, file_id: &str) -> bae_db::DbReleaseEditSegment {
-    bae_db::DbReleaseEditSegment {
+fn segment(
+    role: bae_records::DbAudioSegmentRole,
+    file_id: &str,
+) -> bae_records::DbReleaseEditSegment {
+    bae_records::DbReleaseEditSegment {
         role,
         file_id: file_id.to_string(),
-        file: Some(bae_db::DbReleaseEditSourceFile {
+        file: Some(bae_records::DbReleaseEditSourceFile {
             name: format!("{file_id}.flac"),
             layout: Some(SourceAudioLayout::Cue),
         }),
@@ -145,7 +150,7 @@ fn segment(role: bae_db::DbAudioSegmentRole, file_id: &str) -> bae_db::DbRelease
 /// the file its body plays from.
 #[test]
 fn a_track_s_source_is_its_body_s_file_not_its_pregap_s() {
-    use bae_db::DbAudioSegmentRole::{AudioPregap, Main};
+    use bae_records::DbAudioSegmentRole::{AudioPregap, Main};
     let (raw, tracks) =
         one_track(vec![segment(AudioPregap, "first-file"), segment(Main, "second-file")]);
 
@@ -157,7 +162,7 @@ fn a_track_s_source_is_its_body_s_file_not_its_pregap_s() {
 
 #[test]
 fn a_track_without_one_body_is_an_editor_load_error() {
-    use bae_db::DbAudioSegmentRole::{AudioPregap, Main};
+    use bae_records::DbAudioSegmentRole::{AudioPregap, Main};
     let (raw, tracks) = one_track(vec![segment(AudioPregap, "file")]);
     assert!(matches!(
         ReleaseEditDisplayContext::from_raw(&raw, tracks),
@@ -173,8 +178,8 @@ fn a_track_without_one_body_is_an_editor_load_error() {
 
 #[test]
 fn missing_segment_file_is_an_editor_load_error() {
-    let (raw, tracks) = one_track(vec![bae_db::DbReleaseEditSegment {
-        role: bae_db::DbAudioSegmentRole::Main,
+    let (raw, tracks) = one_track(vec![bae_records::DbReleaseEditSegment {
+        role: bae_records::DbAudioSegmentRole::Main,
         file_id: "missing-file-id".to_string(),
         file: None,
     }]);

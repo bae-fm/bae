@@ -116,7 +116,11 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
         "the sheet the user cleared describes nothing, proposal or not",
     );
     assert_eq!(cleared.track_count(), 1);
-    assert_uniform_source_audio(&cleared, bae_db::source_audio::SourceAudioLayout::File, "FLAC");
+    assert_uniform_source_audio(
+        &cleared,
+        bae_records::source_audio::SourceAudioLayout::File,
+        "FLAC",
+    );
     assert!(cleared.bound_sheets().is_empty());
 }
 
@@ -358,7 +362,7 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
         assert_eq!(files.track_count(), 1, "{folder}: it imports as one track");
         assert_uniform_source_audio(
             files,
-            bae_db::source_audio::SourceAudioLayout::File,
+            bae_records::source_audio::SourceAudioLayout::File,
             source_codec,
         );
     }
@@ -390,7 +394,7 @@ fn cue_with_supported_codec_yields_valid_source_audio() {
         assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
         assert_uniform_source_audio(
             &candidates[0].files,
-            bae_db::source_audio::SourceAudioLayout::Cue,
+            bae_records::source_audio::SourceAudioLayout::Cue,
             codec,
         );
     }
@@ -466,7 +470,11 @@ fn cue_flac_pair_binds_and_reports_source_audio() {
         file("Album/Album.cue", FileKind::CueFor { stem: "Album.flac", n_tracks: 8 }),
     ]);
     let c = result.candidate("Album");
-    assert_uniform_source_audio(&c.files, bae_db::source_audio::SourceAudioLayout::Cue, "FLAC");
+    assert_uniform_source_audio(
+        &c.files,
+        bae_records::source_audio::SourceAudioLayout::Cue,
+        "FLAC",
+    );
     assert_eq!(c.files.bound_sheets().len(), 1);
 }
 

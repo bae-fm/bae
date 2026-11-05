@@ -622,7 +622,7 @@ mod window_cost {
     /// files, staged on this device only from originals under `originals`, one
     /// original for each size, which every file of that size names.
     pub(crate) async fn seed(db: &Store, originals: &std::path::Path, start: u64, end: u64) {
-        let database = bae_db::test_fixtures::test_database(db);
+        let records = bae_records::test_fixtures::test_records(db);
         let sql = seed_sql(start, end);
         db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await.unwrap();
         std::fs::create_dir_all(originals).unwrap();
@@ -652,7 +652,7 @@ mod window_cost {
                 ));
             }
         }
-        database.insert_files_for_test(files).await.unwrap();
+        records.insert_files_for_test(files).await.unwrap();
     }
 
     /// What the download queue's windows cost to read.

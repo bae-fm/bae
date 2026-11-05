@@ -20,7 +20,7 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     let files = scan_files(&album);
 
     assert_eq!(files.track_count(), 3);
-    assert_uniform_source_audio(&files, bae_db::source_audio::SourceAudioLayout::Cue, "FLAC");
+    assert_uniform_source_audio(&files, bae_records::source_audio::SourceAudioLayout::Cue, "FLAC");
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
         &SheetBinding::Resolved {

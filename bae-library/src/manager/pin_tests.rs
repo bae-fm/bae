@@ -4,8 +4,8 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::DbFilePin;
-use bae_db::DbRelease;
+use bae_records::DbFilePin;
+use bae_records::DbRelease;
 use std::collections::BTreeMap;
 
 fn file(n: u128) -> coven::FileId {
@@ -491,7 +491,7 @@ async fn album_detail_releases_carry_their_own_pin_state() {
 
     let mut album = create_test_album();
     album.title = "Two Pressings".to_string();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
 
     let mut pressings = Vec::new();
     for (index, pin) in [false, true].into_iter().enumerate() {
@@ -554,7 +554,7 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     assert!(
-        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
         "upload without pin leaves the cover evictable"
     );
 
@@ -573,11 +573,11 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
 
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
-        file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        file_pinned(&manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file pinned"
     );
     assert!(
-        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
     let last = progress.last().expect("the pin reports progress");

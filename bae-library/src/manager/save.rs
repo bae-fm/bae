@@ -6,7 +6,7 @@
 use super::output::output_percent;
 use super::*;
 use crate::SaveTrackPlan;
-use bae_db::TrackAudioMeta;
+use bae_records::TrackAudioMeta;
 use bae_track_audio::track_sources::SourceStream;
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use std::collections::HashMap;
@@ -25,16 +25,16 @@ impl LibraryManager {
         release: &DbRelease,
         track: &DbTrack,
     ) -> Result<ResolvedSaveTags, LibraryError> {
-        let album = self.database.get_album_for_release(release).await?;
+        let album = self.records.get_album_for_release(release).await?;
 
-        let album_artists = self.database.get_artists_for_album(&album.id).await?;
-        let album_artist = bae_db::credits::library_line(&album_artists);
-        let artist = bae_db::credits::library_line(
-            &self.database.get_shown_artists_for_track(&track.id).await?,
+        let album_artists = self.records.get_artists_for_album(&album.id).await?;
+        let album_artist = bae_records::credits::library_line(&album_artists);
+        let artist = bae_records::credits::library_line(
+            &self.records.get_shown_artists_for_track(&track.id).await?,
         );
 
-        let total_tracks = self.database.count_tracks_for_release(&release.id).await?;
-        let disc = self.database.get_release_mediums(&release.id).await?.disc_number(track);
+        let total_tracks = self.records.count_tracks_for_release(&release.id).await?;
+        let disc = self.records.get_release_mediums(&release.id).await?.disc_number(track);
 
         let year = release.shown_year(album.year);
 
@@ -86,7 +86,7 @@ impl LibraryManager {
     /// store, the cache, or the cloud with decrypt). A read failure — or a
     /// file shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
-    fn open_save_source(&self, file: &bae_db::DbFile) -> SourceStream {
+    fn open_save_source(&self, file: &bae_records::DbFile) -> SourceStream {
         let reader = self.create_audio_reader(&file.id);
         let file_id = file.id.clone();
         SourceStream::start(
@@ -102,7 +102,7 @@ impl LibraryManager {
     /// reaches the tracks reading them.
     fn save_source_files<'a>(
         plans: impl IntoIterator<Item = &'a SaveTrackPlan>,
-    ) -> HashMap<String, bae_db::DbFile> {
+    ) -> HashMap<String, bae_records::DbFile> {
         plans
             .into_iter()
             .flat_map(|plan| {
@@ -132,7 +132,7 @@ impl LibraryManager {
         preset_id: &str,
     ) -> Result<String, LibraryError> {
         let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Track).await?;
-        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
+        let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
         let stem = crate::save::render_save_filename(&preset.filename_tokens, &resolved);
         let extension = preset.codec.extension();
@@ -155,15 +155,15 @@ impl LibraryManager {
         preset_id: &str,
     ) -> Result<(), LibraryError> {
         let preset = self.save_preset_for(preset_id, bae_preferences::SaveLevel::Track).await?;
-        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let neighbors = self.database.track_neighbors(&meta.track.id).await?.ok_or_else(|| {
+        let meta = TrackAudioMeta::resolve(&self.records, track_id).await?;
+        let neighbors = self.records.track_neighbors(&meta.track.id).await?.ok_or_else(|| {
             LibraryError::Save(format!(
                 "track {} is not ordered in release {}",
                 meta.track.id, meta.release.id
             ))
         })?;
         let next = match &neighbors.next {
-            Some(next) => Some(TrackAudioMeta::resolve(&self.database, next).await?),
+            Some(next) => Some(TrackAudioMeta::resolve(&self.records, next).await?),
             None => None,
         };
         let cover = self.save_cover_image(&meta.release.id, preset.embed_cover).await?;
@@ -201,7 +201,7 @@ impl LibraryManager {
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
         let release_id = release.id.as_str();
-        let tracks = self.database.get_tracks_for_release(release_id).await?;
+        let tracks = self.records.get_tracks_for_release(release_id).await?;
         let total = tracks.len();
         if preset.pregap_placement == bae_preferences::SavePregapPlacement::SingleFileWithCue {
             self.save_release_image_with_cue_to_dir(release, folder, preset, &tracks, staging_dir)
@@ -212,7 +212,7 @@ impl LibraryManager {
         let cover = self.save_cover_image(release_id, preset.embed_cover).await?;
         let mut metas = Vec::with_capacity(tracks.len());
         for track in &tracks {
-            metas.push(TrackAudioMeta::resolve(&self.database, &track.id).await?);
+            metas.push(TrackAudioMeta::resolve(&self.records, &track.id).await?);
         }
         // Each track's plan carries the track after it, whose audio pregap a
         // placement may append to this one's file.
@@ -290,7 +290,7 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let mut plans = Vec::with_capacity(tracks.len());
         for track in tracks {
-            let meta = TrackAudioMeta::resolve(&self.database, &track.id).await?;
+            let meta = TrackAudioMeta::resolve(&self.records, &track.id).await?;
             plans.push(self.save_track_plan(meta, SaveWindow::ImageTrack).await?);
         }
         let cover = self.save_cover_image(&release.id, preset.embed_cover).await?;
@@ -333,7 +333,7 @@ pub(crate) enum SaveWindow {
 /// The segments a saved track file decodes, in order, and the silence around
 /// them.
 struct SaveSegments<'a> {
-    segments: Vec<&'a bae_db::DbAudioSegment>,
+    segments: Vec<&'a bae_records::DbAudioSegment>,
     leading_silence_frames: u64,
     trailing_silence_frames: u64,
 }
@@ -359,7 +359,7 @@ impl SaveTrackPlan {
                     .iter()
                     .map(|entry| &entry.segment)
                     .filter(|segment| {
-                        include_own_pregap || segment.role == bae_db::DbAudioSegmentRole::Main
+                        include_own_pregap || segment.role == bae_records::DbAudioSegmentRole::Main
                     })
                     .collect();
                 let leading_silence_frames = if includes_htoa {
@@ -378,7 +378,7 @@ impl SaveTrackPlan {
                             segments.extend(
                                 next.audio_segments.iter().map(|entry| &entry.segment).filter(
                                     |segment| {
-                                        segment.role == bae_db::DbAudioSegmentRole::AudioPregap
+                                        segment.role == bae_records::DbAudioSegmentRole::AudioPregap
                                     },
                                 ),
                             );

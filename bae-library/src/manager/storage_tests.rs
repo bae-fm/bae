@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::{DbAlbum, DbRelease, NewReleaseFile};
+use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
 use chrono::Utc;
 
 /// Two release ids whose lexical order is fixed, for the `r.id` tiebreaker.
@@ -21,15 +21,15 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
     let now = Utc::now();
     let mut album = create_test_album();
     album.title = "Same Title".to_string();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     let mut release_a = create_test_release(&album.id);
     release_a.id = TIEBREAK_LO.to_string();
     release_a.created_at = now;
     let mut release_b = create_test_release(&album.id);
     release_b.id = TIEBREAK_HI.to_string();
     release_b.created_at = now;
-    manager.database.insert_release(&release_a).await.unwrap();
-    manager.database.insert_release(&release_b).await.unwrap();
+    manager.records.insert_release(&release_a).await.unwrap();
+    manager.records.insert_release(&release_b).await.unwrap();
 
     let sort = bae_views::StorageSortCriterion {
         field: bae_views::StorageSortField::AlbumTitle,
@@ -231,7 +231,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
         let probed = probed_uploading_releases(&manager).await;
         most_uploading = most_uploading.max(probed.len());
         assert_eq!(
-            manager.database.uploading_releases().await.unwrap(),
+            manager.records.uploading_releases().await.unwrap(),
             probed,
             "the releases uploading after step {step}, {op}"
         );
@@ -261,7 +261,7 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
     // release1 is the album's primary, so its cover is the album-level cover.
@@ -307,7 +307,7 @@ async fn seed_albums(manager: &LibraryManager, count: usize) -> (Vec<DbAlbum>, V
         let mut album = create_test_album();
         album.title = format!("Album {i}");
         let release = create_test_release(&album.id);
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
         albums.push(album);
         releases.push(release);
@@ -394,7 +394,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     let mut local_album = create_test_album();
     local_album.title = "Local Album".to_string();
     let local = create_test_release(&local_album.id);
-    manager.database.insert_album(&local_album).await.unwrap();
+    manager.records.insert_album(&local_album).await.unwrap();
     insert_release(&manager, &local).await;
 
     let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
@@ -416,7 +416,7 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
@@ -579,14 +579,14 @@ async fn storage_page_sort_by_artist_names() {
             musicbrainz_artist_id: None,
             created_at: Utc::now(),
         };
-        manager.database.insert_artist(&artist).await.unwrap();
+        manager.records.insert_artist(&artist).await.unwrap();
         let mut album = create_test_album();
         album.title = format!("Album by {artist_name}");
         let release = create_test_release(&album.id);
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         manager
-            .database
-            .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, artist_id))
+            .records
+            .insert_album_artist(&bae_records::DbAlbumArtist::new_test(&album.id, artist_id))
             .await
             .unwrap();
         insert_release(&manager, &release).await;
@@ -627,7 +627,7 @@ async fn storage_page_sort_by_media_nulls_last() {
         let mut release = create_test_release(&album.id);
         release.pressing.facts =
             media.map(|medium| bae_types::pressing::made_of(medium, 1)).unwrap_or_default();
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
     }
 
@@ -662,7 +662,7 @@ async fn storage_page_sort_by_file_count() {
         let mut album = create_test_album();
         album.title = title.to_string();
         let release = create_test_release(&album.id);
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
         for i in 0..*file_count {
             let file = NewReleaseFile {
@@ -697,7 +697,7 @@ async fn storage_page_sort_by_total_size() {
         let mut album = create_test_album();
         album.title = title.to_string();
         let release = create_test_release(&album.id);
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
         let file = NewReleaseFile {
             id: bae_util::test_ids::test_uuid(&format!("{}-file", release.id)),
@@ -737,7 +737,7 @@ async fn storage_page_sort_by_date_added() {
         album.title = title.to_string();
         let mut release = create_test_release(&album.id);
         release.created_at = *added;
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
     }
 

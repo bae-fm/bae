@@ -125,7 +125,7 @@ pub(super) fn replace_source_release_on(
     let key = release.release.key.as_str();
     let metadata = &release.metadata;
     let pressing = &metadata.pressing;
-    let facts = bae_db::client::pressing_columns::FactColumns::of(&pressing.facts);
+    let facts = bae_records::records::pressing_columns::FactColumns::of(&pressing.facts);
     sql.execute(
         "INSERT INTO source_release \
              (catalog, release_id, source_group_id, album_title, \
@@ -395,7 +395,9 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                         // Read from their rows below.
                         labels: Vec::new(),
                         barcodes: Vec::new(),
-                        facts: bae_db::client::pressing_columns::read_facts_without_media(row, "")?,
+                        facts: bae_records::records::pressing_columns::read_facts_without_media(
+                            row, "",
+                        )?,
                     },
                     row.get::<_, Option<String>>(3)?,
                     row.get::<_, Option<String>>(4)?,
@@ -520,7 +522,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                     params![catalog, key],
                     |row| {
                         Ok(StatedFormat {
-                            medium: bae_db::client::pressing_columns::keyed(
+                            medium: bae_records::records::pressing_columns::keyed(
                                 row,
                                 "medium",
                                 Medium::from_key,

@@ -4,8 +4,8 @@
 //! Pins independently keep its audio available offline; covers remain shared.
 
 use bae_app::live_reads::LiveStorageBrowse;
-use bae_db::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_library::{CancellationToken, LibraryManager};
+use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
 use bae_store::SortDirection;
 use bae_store::Store;
 use bae_util::content_type::ContentType;
@@ -55,7 +55,7 @@ async fn create_local_release(
     // inserts it.
     let artist_id = bae_util::test_ids::test_uuid("test-storage-artist");
     if mgr.get_artist_by_id(&artist_id).await.unwrap().is_none() {
-        mgr.insert_artist(&bae_db::DbArtist {
+        mgr.insert_artist(&bae_records::DbArtist {
             id: artist_id.to_string(),
             name: "Artist Name".to_string(),
             sort_name: None,
@@ -84,7 +84,7 @@ async fn create_local_release(
         created_at: now,
     };
     let release_id = release.id.clone();
-    let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist_id);
+    let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist_id);
     mgr.insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();

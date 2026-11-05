@@ -1,7 +1,7 @@
 //! The import origin's table: one hash is one release on this device, and a
 //! lookup by the hash uses its unique index.
 
-use bae_db::test_fixtures::live_query::{live_db, RELEASE_ID};
+use bae_records::test_fixtures::live_query::{live_db, RELEASE_ID};
 use bae_store::test_fixtures::exec;
 
 /// Whether this device imported a folder's files is a lookup by its hash,
@@ -32,16 +32,16 @@ fn imported_content_hash_lookup_uses_its_unique_index() {
 #[tokio::test]
 async fn one_folder_hash_records_one_release() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     exec(
         &db,
         "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
         &[RELEASE_ID, "folder-hash"],
     )
     .await;
-    let mut copy = database.find_release_by_id(RELEASE_ID).await.unwrap().unwrap();
+    let mut copy = records.find_release_by_id(RELEASE_ID).await.unwrap().unwrap();
     copy.id = bae_util::test_ids::test_uuid("second-imported-copy");
-    database.insert_release(&copy).await.unwrap();
+    records.insert_release(&copy).await.unwrap();
     let second = copy.id.clone();
     let refused = db
         .call(move |conn| {

@@ -27,9 +27,9 @@ impl bae_audio::DecodedSink for TakesScrubPoints {
 /// `content_type` file holding `bytes`, which must be one that gets them.
 fn import_scrub_points(
     bytes: &[u8],
-    span: bae_db::SegmentSpan,
+    span: bae_records::SegmentSpan,
     content_type: &bae_util::content_type::ContentType,
-) -> Vec<bae_db::ScrubPoint> {
+) -> Vec<bae_records::ScrubPoint> {
     use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
     let decode = StreamDecodeParams::new(
         vec![SegmentDecodeParams::new(filled_sparse_buffer(bytes), span, 0)],
@@ -52,8 +52,8 @@ mod scrub_points {
 
     use super::*;
     use bae_audio::{encode_i32, EncodeFormat, AVIO_BUFFER_SIZE};
-    use bae_db::ScrubPoints;
-    use bae_db::{ScrubPoint, SegmentSpan};
+    use bae_records::ScrubPoints;
+    use bae_records::{ScrubPoint, SegmentSpan};
     use bae_track_audio::data_source::FILL_WINDOW_SIZE;
     use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
     use bae_util::content_type::ContentType;
@@ -304,8 +304,8 @@ mod mp3_scrub_points {
 
     use super::*;
     use bae_audio::{encode_i32, EncodeFormat};
-    use bae_db::ScrubPoints;
-    use bae_db::{ScrubPoint, SegmentSpan};
+    use bae_records::ScrubPoints;
+    use bae_records::{ScrubPoint, SegmentSpan};
     use bae_track_audio::data_source::FILL_WINDOW_SIZE;
     use bae_track_audio::{SegmentDecodeParams, SegmentStart, StreamDecodeParams};
     use bae_util::content_type::ContentType;
@@ -866,7 +866,7 @@ mod image_track_starts {
 
     use super::*;
     use bae_audio::EncodeFormat;
-    use bae_db::SegmentSpan;
+    use bae_records::SegmentSpan;
     use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
     use bae_util::content_type::ContentType;
 

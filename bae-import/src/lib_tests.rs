@@ -167,7 +167,7 @@ pub(crate) mod import {
             crate::ImportService::start(
                 tokio::runtime::Handle::current(),
                 self.db.clone(),
-                bae_db::test_fixtures::test_database(&self.db),
+                bae_records::test_fixtures::test_records(&self.db),
                 self.catalogs.clone(),
                 self.remote_images.clone(),
                 self.diagnostics.clone(),
@@ -187,7 +187,7 @@ pub(crate) mod import {
             crate::ImportService::start_reading_tags_through(
                 tokio::runtime::Handle::current(),
                 self.db.clone(),
-                bae_db::test_fixtures::test_database(&self.db),
+                bae_records::test_fixtures::test_records(&self.db),
                 self.catalogs.clone(),
                 self.remote_images.clone(),
                 self.diagnostics.clone(),

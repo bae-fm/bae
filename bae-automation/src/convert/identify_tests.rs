@@ -2,13 +2,13 @@
 
 use super::*;
 use bae_catalogs::search::MetadataResult;
-use bae_db::LibraryStatus;
 use bae_identify::signals::{DiscIdSignal, SourcedValue};
 use bae_identify::state::{DiscIdEvidence, SignalsContext};
 use bae_identify::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState, ProviderLookup,
     ValueLookup,
 };
+use bae_records::LibraryStatus;
 
 /// A result with every field the mirrors render filled in.
 fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {

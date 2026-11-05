@@ -1,6 +1,6 @@
 use super::*;
-use bae_db::ResolvedTrackAudioSegment;
-use bae_db::{DbAudioSegmentRole, SegmentSpan};
+use bae_records::ResolvedTrackAudioSegment;
+use bae_records::{DbAudioSegmentRole, SegmentSpan};
 
 /// A track stored as `content_type`, as one whole file when `whole_file`,
 /// else as a window of a CUE image.
@@ -23,7 +23,7 @@ fn track(content_type: ContentType, whole_file: bool) -> ResolvedTrackAudio {
             file_id: "file".to_string(),
             file_size: 1_000_000,
             span,
-            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
+            scrub_points: bae_records::ScrubPoints::new(Vec::new()),
         }],
         duration_ms: 10_000,
         pregap_samples: None,

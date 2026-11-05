@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::OtherDevice;
+use bae_records::OtherDevice;
 use bae_store::FormerDeviceState;
 use bae_transfers::StoredTransition;
 use bae_types::release_storage::ReleaseStorageAction;
@@ -32,7 +32,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     let original = TempDir::new().unwrap();
     let destination = TempDir::new().unwrap();
     let album = create_test_album();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     let release = insert_local_release_in_album(
         manager,
         &album.id,
@@ -60,7 +60,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         // The second device has cached the audio; detachment must still prevent playback.
         for file in &files {
             let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
-            assert_eq!(devices.b().database().read_release_file(&file.id).await.unwrap(), expected);
+            assert_eq!(devices.b().records().read_release_file(&file.id).await.unwrap(), expected);
         }
         devices.pause().await;
         manager.store.unlock_store_key().await.unwrap();
@@ -76,14 +76,14 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     // changes either way.
     assert_eq!(moving_file_count(manager, &release.id).await, 0);
     for file in &files {
-        let row = manager.database.find_file_by_id(&file.id).await.unwrap().unwrap();
+        let row = manager.records.find_file_by_id(&file.id).await.unwrap().unwrap();
         assert_eq!(row.file, file.file);
-        assert!(!manager.database.find_file_by_id(&file.id).await.unwrap().unwrap().stored);
+        assert!(!manager.records.find_file_by_id(&file.id).await.unwrap().unwrap().stored);
         let path = if uploaded { destination.path() } else { original.path() }
             .join(&file.original_filename);
         assert_eq!(manager.file_local_path(&file.id).await.unwrap(), Some(path));
         let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
-        assert_eq!(manager.database.read_release_file(&file.id).await.unwrap(), expected);
+        assert_eq!(manager.records.read_release_file(&file.id).await.unwrap(), expected);
     }
     assert_eq!(cover_file(manager, &release.id).await.id(), cover);
     manager.store.set_uploads_paused(false).await.unwrap();
@@ -95,9 +95,9 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         )
         .await;
     for file in &files {
-        assert!(!devices.b().database().find_file_by_id(&file.id).await.unwrap().unwrap().stored);
+        assert!(!devices.b().records().find_file_by_id(&file.id).await.unwrap().unwrap().stored);
         assert!(devices.b().manager().file_local_path(&file.id).await.unwrap().is_none());
-        let read = devices.b().database().read_release_file(&file.id).await;
+        let read = devices.b().records().read_release_file(&file.id).await;
         assert!(
             matches!(
                 read,
@@ -133,7 +133,7 @@ async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
     assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     let files = release_files(&manager, &release.id).await;
     assert!(files.iter().all(|file| !file.stored));
-    assert_eq!(manager.database.read_release_file(&files[0].id).await.unwrap(), b"audio");
+    assert_eq!(manager.records.read_release_file(&files[0].id).await.unwrap(), b"audio");
 }
 
 /// The next value of a release's live read for which `wanted` holds.
@@ -311,22 +311,22 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     wait_for_kept_release(&manager, &release.id).await;
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
-        file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        file_pinned(&manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "a move to be kept here leaves the release file pinned"
     );
     assert!(
-        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
         "covers remain evictable when audio is pinned"
     );
 
     manager.unpin_release(&release.id).await.unwrap();
 
     assert!(
-        !file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        !file_pinned(&manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file unpinned"
     );
     assert!(
-        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_records::synced::COVERS_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
 }
@@ -388,8 +388,9 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     manager.drain_uploads_expecting_work().await.unwrap();
     wait_for_kept_release(&manager, &release.id).await;
     let file = release_files(&manager, &release.id).await.remove(0);
-    let pinned =
-        || async { file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file.id).await };
+    let pinned = || async {
+        file_pinned(&manager, bae_records::synced::RELEASE_FILES_NAMESPACE, &file.id).await
+    };
     assert!(pinned().await);
 
     let refused = bae_transfers::release_storage_action::unpin_release(
@@ -437,7 +438,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         .iter()
         .map(|file| {
             let path =
-                bae_db::stored_name::file_path(&release.id, &file.id, &file.original_filename)
+                bae_records::stored_name::file_path(&release.id, &file.id, &file.original_filename)
                     .unwrap();
             (file.file, path)
         })
@@ -544,7 +545,7 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
 async fn insert_release_without_files(manager: &TestManager) -> String {
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     release.id
 }

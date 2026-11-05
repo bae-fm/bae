@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::DbLibraryImage;
+use bae_records::DbLibraryImage;
 
 /// A cover reaches another device together with its stored file. The cover's
 /// reference is bound, so the write naming it waits for its upload, and the
@@ -16,7 +16,7 @@ fn a_cover_reaches_another_device_with_its_stored_file() {
         let manager = devices.a().manager();
         let album = create_test_album();
         let release = create_test_release(&album.id);
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
         devices.converge("SELECT id FROM releases").await;
 
@@ -59,7 +59,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         let manager = devices.a().manager();
         let album = create_test_album();
         let release = create_test_release(&album.id);
-        manager.database.insert_album(&album).await.unwrap();
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
         devices.converge("SELECT id FROM releases").await;
 
@@ -97,7 +97,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         })
         .await;
         assert_eq!(
-            b.database().cover_version(&release.id).await.unwrap(),
+            b.records().cover_version(&release.id).await.unwrap(),
             None,
             "the old app shows no cover row past the slot it stops at"
         );
@@ -122,7 +122,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         devices.b_mut().reopen_with(raised).await;
         let b = devices.b();
         b.wait_until("the cover's row on the second device", || async {
-            b.database().cover_version(&release.id).await.unwrap().is_some()
+            b.records().cover_version(&release.id).await.unwrap().is_some()
         })
         .await;
         let early = cover_file(b.manager(), &release.id).await;
@@ -133,7 +133,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
             "the row arrives naming a file on its uploader only"
         );
         assert_eq!(
-            b.database().cover_version(&release.id).await.unwrap(),
+            b.records().cover_version(&release.id).await.unwrap(),
             Some(format!("{}@{}", cover.0, hex::encode(uploader.0.to_be_bytes())))
         );
         assert!(
@@ -151,7 +151,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         })
         .await;
         assert_eq!(
-            b.database().cover_version(&release.id).await.unwrap(),
+            b.records().cover_version(&release.id).await.unwrap(),
             Some(cover.0.to_string()),
             "the version moves to the file's alone as the file lands"
         );
@@ -174,7 +174,7 @@ async fn an_image_over_the_bound_limit_is_refused() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     store_test_cover(&manager, &release.id, b"the first cover").await;
     let first = cover_file(&manager, &release.id).await;
@@ -237,7 +237,7 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     let late = DbLibraryImage::cover(&release.id);
 
     let error = manager
-        .database
+        .records
         .write_library_image_after_planning_for_test(&late, b"late cover", move || async move {
             store_test_cover(&concurrent, &concurrent_release, b"between cover").await;
         })

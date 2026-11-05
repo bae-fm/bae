@@ -30,7 +30,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     let (release_id, _album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(1996));
     assert_eq!(
         release.pressing.labels,
@@ -56,7 +56,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     );
 
     // The record the draft was read from points at the picked release.
-    let records = f.library.database().get_release_records(&release.id).await.unwrap();
+    let records = f.library.records().get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].catalog(), Catalog::Discogs);
     assert_eq!(
@@ -122,7 +122,7 @@ async fn a_user_edit_overlays_the_picked_release() {
     let (release_id, _album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(
         release.pressing.facts.area,
         Some(bae_types::pressing::ReleaseArea::Country(
@@ -134,16 +134,16 @@ async fn a_user_edit_overlays_the_picked_release() {
     assert!(release.pressing.year.is_none());
     assert!(release.pressing.facts.media.is_empty());
 
-    let album = f.library.database().find_album_by_id(&release.album_id).await.unwrap().unwrap();
+    let album = f.library.records().find_album_by_id(&release.album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Edited Title");
 
-    let tracks = f.library.database().get_tracks_for_release(&release.id).await.unwrap();
+    let tracks = f.library.records().get_tracks_for_release(&release.id).await.unwrap();
     assert_eq!(tracks.len(), 1);
     assert_eq!(tracks[0].title, "Edited Track");
 
     // The record still names the picked pressing — a user edit does not change
     // which catalog release describes it.
-    let records = f.library.database().get_release_records(&release.id).await.unwrap();
+    let records = f.library.records().get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].key(), release_id_key);
 }
@@ -188,14 +188,14 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
     let (release_id, _album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
-    let album = f.library.database().find_album_by_id(&release.album_id).await.unwrap().unwrap();
+    let release = f.library.records().find_release_by_id(&release_id).await.unwrap().unwrap();
+    let album = f.library.records().find_album_by_id(&release.album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Tagged Title");
-    let tracks = f.library.database().get_tracks_for_release(&release.id).await.unwrap();
+    let tracks = f.library.records().get_tracks_for_release(&release.id).await.unwrap();
     assert_eq!(tracks.len(), 1);
     assert_eq!(tracks[0].title, "Tagged Track");
 
-    let records = f.library.database().get_release_records(&release.id).await.unwrap();
+    let records = f.library.records().get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1, "the link's release is recorded: {records:?}");
     assert_eq!(records[0].key(), release_id_key);
 }
@@ -322,7 +322,7 @@ async fn a_cross_link_writes_both_catalogs_records() {
     let (release_id, _) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let records = f.library.database().get_release_records(&release_id).await.unwrap();
+    let records = f.library.records().get_release_records(&release_id).await.unwrap();
     assert_eq!(records.len(), 2, "expected MB + Discogs records");
 
     let mb = records
@@ -388,7 +388,7 @@ async fn a_pick_with_a_partner_writes_both_records() {
     let (release_id, _) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let records = f.library.database().get_release_records(&release_id).await.unwrap();
+    let records = f.library.records().get_release_records(&release_id).await.unwrap();
     assert_eq!(records.len(), 2, "expected MB + Discogs records");
 
     let mb = records
@@ -455,7 +455,7 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
     let (release_id, _) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    let records = f.library.database().get_release_records(&release_id).await.unwrap();
+    let records = f.library.records().get_release_records(&release_id).await.unwrap();
     let discogs: Vec<_> =
         records.iter().filter(|record| record.catalog() == Catalog::Discogs).collect();
     assert_eq!(discogs.len(), 1, "one row per catalog");

@@ -6,7 +6,7 @@ use super::*;
 use crate::manager::tests::*;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::LookupRef;
-use bae_db::DbAlbum;
+use bae_records::DbAlbum;
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -54,14 +54,14 @@ fn seed_musicbrainz(manager: &TestManager, release_id: &str, group_id: &str, tra
 /// [`insert_n_tracks`], each track playing a file of its own, as the editor
 /// reads a release's tracks.
 async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: usize) {
-    insert_n_tracks(&manager.database, release_id, n).await;
+    insert_n_tracks(&manager.records, release_id, n).await;
     for (index, track) in
-        manager.database.get_tracks_for_release(release_id).await.unwrap().iter().enumerate()
+        manager.records.get_tracks_for_release(release_id).await.unwrap().iter().enumerate()
     {
         add_track_audio_sources(
             manager,
             track,
-            &[(&format!("{index:02}.flac"), bae_db::source_audio::SourceAudioLayout::File)],
+            &[(&format!("{index:02}.flac"), bae_records::source_audio::SourceAudioLayout::File)],
         )
         .await;
     }
@@ -148,10 +148,10 @@ async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager
-        .database
+        .records
         .insert_release_records(&release.id, &[mb_identity("g-old", "mb-rel-old")])
         .await
         .unwrap();
@@ -162,12 +162,12 @@ async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
     seed_musicbrainz(&manager, new_release_id, new_group_id, 3);
     reidentify(&manager, &release.id, musicbrainz_link(new_release_id)).await;
 
-    let records = manager.database.get_release_records(&release.id).await.unwrap();
+    let records = manager.records.get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].key(), new_release_id);
     assert_eq!(records[0].album_ref().expect("known parent album").key, new_group_id);
     let titles: Vec<String> = manager
-        .database
+        .records
         .get_tracks_for_release(&release.id)
         .await
         .unwrap()
@@ -208,7 +208,7 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
         },
         "the editor names the refusal, not a generic import failure: {err}"
     );
-    assert!(manager.database.get_release_records(&release.id).await.unwrap().is_empty());
+    assert!(manager.records.get_release_records(&release.id).await.unwrap().is_empty());
 }
 
 /// Discarding a session with a catalog applied writes nothing: the library's
@@ -218,7 +218,7 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let session = manager.open_release_edit(&release.id).await.unwrap();
@@ -238,7 +238,7 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     drop(session);
 
     assert_eq!(manager.open_release_edit(&release.id).await.unwrap().opened(), &before);
-    assert!(manager.database.get_release_records(&release.id).await.unwrap().is_empty());
+    assert!(manager.records.get_release_records(&release.id).await.unwrap().is_empty());
 }
 
 /// Re-identifying a MusicBrainz release as a Discogs release and saving
@@ -254,10 +254,10 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         .unwrap();
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 1).await;
-    let track = manager.database.get_tracks_for_release(&release.id).await.unwrap()[0].clone();
+    let track = manager.records.get_tracks_for_release(&release.id).await.unwrap()[0].clone();
     let composer = DbArtist {
         id: Uuid::new_v4().to_string(),
         name: "Composer Name".to_string(),
@@ -266,8 +266,8 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         musicbrainz_artist_id: Some("mb-composer-1".to_string()),
         created_at: Utc::now(),
     };
-    manager.database.insert_artist(&composer).await.unwrap();
-    let work_id = bae_db::identity::work_id("mb-work-1");
+    manager.records.insert_artist(&composer).await.unwrap();
+    let work_id = bae_records::identity::work_id("mb-work-1");
     for (statement, params) in [
         (
             "INSERT INTO works (id, title, musicbrainz_work_id, created_at) \
@@ -326,7 +326,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     }
     assert_eq!(left, [0, 0]);
     assert_eq!(
-        manager.database.get_tracks_for_release(&release.id).await.unwrap()[0].title,
+        manager.records.get_tracks_for_release(&release.id).await.unwrap()[0].title,
         "Track One"
     );
 }
@@ -338,29 +338,29 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
     let (manager, _temp_dir) = setup_test_manager().await;
     let grouped = create_test_album();
     let sibling = create_test_release(&grouped.id);
-    manager.database.insert_album(&grouped).await.unwrap();
+    manager.records.insert_album(&grouped).await.unwrap();
     insert_release(&manager, &sibling).await;
     manager
-        .database
+        .records
         .insert_release_records(&sibling.id, &[mb_identity("move-group", "move-sibling")])
         .await
         .unwrap();
 
     let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
     let release = create_test_release(&own.id);
-    manager.database.insert_album(&own).await.unwrap();
+    manager.records.insert_album(&own).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 1).await;
 
     seed_musicbrainz(&manager, "move-new", "move-group", 1);
     reidentify(&manager, &release.id, musicbrainz_link("move-new")).await;
     assert_eq!(
-        manager.database.find_album_id_for_release(&release.id).await.unwrap(),
+        manager.records.find_album_id_for_release(&release.id).await.unwrap(),
         Some(grouped.id.clone())
     );
 
     let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
-    manager.database.insert_album(&picked).await.unwrap();
+    manager.records.insert_album(&picked).await.unwrap();
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(
         manager.set_release_edit_album(&session, Some(picked.id.clone())).await.unwrap().album,
@@ -371,11 +371,11 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
     );
     manager.save_release_edit(&session).await.unwrap();
     assert_eq!(
-        manager.database.find_album_id_for_release(&release.id).await.unwrap(),
+        manager.records.find_album_id_for_release(&release.id).await.unwrap(),
         Some(picked.id.clone())
     );
     assert_eq!(
-        manager.database.find_album_by_id(&picked.id).await.unwrap().unwrap().title,
+        manager.records.find_album_by_id(&picked.id).await.unwrap().unwrap().title,
         "Picked Album",
         "a picked album keeps its own title"
     );
@@ -391,20 +391,20 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let grouped = DbAlbum { title: "Grouped Album".to_string(), ..create_test_album() };
     let sibling = create_test_release(&grouped.id);
-    manager.database.insert_album(&grouped).await.unwrap();
+    manager.records.insert_album(&grouped).await.unwrap();
     insert_release(&manager, &sibling).await;
     manager
-        .database
+        .records
         .insert_release_records(&sibling.id, &[mb_identity("named-group", "named-sibling")])
         .await
         .unwrap();
     let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
     let release = create_test_release(&own.id);
-    manager.database.insert_album(&own).await.unwrap();
+    manager.records.insert_album(&own).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 1).await;
     let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
-    manager.database.insert_album(&picked).await.unwrap();
+    manager.records.insert_album(&picked).await.unwrap();
     seed_musicbrainz(&manager, "named-new", "named-group", 1);
     seed_musicbrainz(&manager, "unnamed-new", "unnamed-group", 1);
     let named = |album: &DbAlbum| DraftAlbum::Named {
@@ -468,11 +468,11 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
     let release = create_test_release(&own.id);
-    manager.database.insert_album(&own).await.unwrap();
+    manager.records.insert_album(&own).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
-    manager.database.insert_album(&picked).await.unwrap();
+    manager.records.insert_album(&picked).await.unwrap();
     seed_musicbrainz(&manager, "two-sessions-new", "two-sessions-group", 2);
 
     let sheet = manager.open_release_edit(&release.id).await.unwrap();
@@ -497,11 +497,11 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
     manager.save_release_edit(&sheet).await.unwrap();
 
     assert_eq!(
-        manager.database.find_album_id_for_release(&release.id).await.unwrap(),
+        manager.records.find_album_id_for_release(&release.id).await.unwrap(),
         Some(picked.id.clone()),
         "opening other sessions left this one's pick in place"
     );
-    let records = manager.database.get_release_records(&release.id).await.unwrap();
+    let records = manager.records.get_release_records(&release.id).await.unwrap();
     assert_eq!(
         records.iter().map(|record| record.key()).collect::<Vec<_>>(),
         ["two-sessions-new"],
@@ -518,7 +518,7 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let first = manager.open_release_edit(&release.id).await.unwrap();
@@ -595,7 +595,7 @@ async fn a_session_holds_each_change_until_its_save() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let session = manager.open_release_edit(&release.id).await.unwrap();
@@ -606,7 +606,7 @@ async fn a_session_holds_each_change_until_its_save() {
         let manager = manager.clone();
         async move {
             manager
-                .database
+                .records
                 .get_tracks_for_release(&release_id)
                 .await
                 .unwrap()
@@ -668,10 +668,10 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     let album = create_test_album();
     let release = create_test_release(&album.id);
 
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager
-        .database
+        .records
         .insert_release_records(
             &release.id,
             &[mb_identity("g-old", "partner-re-identify-mb-rel-old")],
@@ -730,7 +730,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     )
     .await;
 
-    let identities = manager.database.get_release_records(&release.id).await.unwrap();
+    let identities = manager.records.get_release_records(&release.id).await.unwrap();
     assert_eq!(identities.len(), 2, "one row per claimed catalog");
 
     let mb = identities
@@ -764,14 +764,14 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
-    manager.database.insert_album(&album).await.unwrap();
+    let track = bae_records::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager.database.insert_track(&track).await.unwrap();
+    manager.records.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         &manager,
         &track,
-        &[("track.flac", bae_db::source_audio::SourceAudioLayout::File)],
+        &[("track.flac", bae_records::source_audio::SourceAudioLayout::File)],
     )
     .await;
 
@@ -785,7 +785,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let persisted_ids = manager
-        .database
+        .records
         .get_tracks_for_release(&release.id)
         .await
         .unwrap()
@@ -865,10 +865,10 @@ async fn release_edit_seed_refuses_a_track_without_stored_audio() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
-    manager.database.insert_album(&album).await.unwrap();
+    let track = bae_records::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager.database.insert_track(&track).await.unwrap();
+    manager.records.insert_track(&track).await.unwrap();
 
     let error = manager
         .open_release_edit(&release.id)
@@ -884,32 +884,32 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2);
-    let first = bae_db::DbTrack::new_test(&release.id, TRACK_1, "First Track", 1);
-    let mut second = bae_db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", 1);
-    let second_disc = bae_db::DbReleaseMedium::new(
+    let first = bae_records::DbTrack::new_test(&release.id, TRACK_1, "First Track", 1);
+    let mut second = bae_records::DbTrack::new_test(&release.id, TRACK_2, "Second Track", 1);
+    let second_disc = bae_records::DbReleaseMedium::new(
         &release.id,
         std::num::NonZeroU16::new(2).expect("disc 2"),
         bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
         chrono::Utc::now(),
     );
     second.medium_id.clone_from(&second_disc.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager.database.insert_release_medium(&second_disc).await.unwrap();
-    manager.database.insert_track(&first).await.unwrap();
-    manager.database.insert_track(&second).await.unwrap();
+    manager.records.insert_release_medium(&second_disc).await.unwrap();
+    manager.records.insert_track(&first).await.unwrap();
+    manager.records.insert_track(&second).await.unwrap();
     add_track_audio_sources(
         &manager,
         &first,
-        &[("first.flac", bae_db::source_audio::SourceAudioLayout::File)],
+        &[("first.flac", bae_records::source_audio::SourceAudioLayout::File)],
     )
     .await;
     add_track_audio_sources(
         &manager,
         &second,
         &[
-            ("pregap.flac", bae_db::source_audio::SourceAudioLayout::Cue),
-            ("body.flac", bae_db::source_audio::SourceAudioLayout::Cue),
+            ("pregap.flac", bae_records::source_audio::SourceAudioLayout::Cue),
+            ("body.flac", bae_records::source_audio::SourceAudioLayout::Cue),
         ],
     )
     .await;
@@ -930,7 +930,7 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
         panic!("a track on its own file is a run of its own");
     };
     assert_eq!(first_context.track_id, first.id);
-    assert_eq!(first_context.source.layout, bae_db::source_audio::SourceAudioLayout::File);
+    assert_eq!(first_context.source.layout, bae_records::source_audio::SourceAudioLayout::File);
     // A pregap stored in the file before is not the track's source.
     let bae_import::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
         panic!("the one track of its disc is a run of its own");
@@ -939,6 +939,6 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     assert_eq!(second_context.source.name, "body.flac");
     assert!(matches!(
         seed.display.source_audio,
-        Some(bae_db::source_audio::SourceAudioSummary::Mixed { .. })
+        Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })
     ));
 }

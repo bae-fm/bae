@@ -11,7 +11,7 @@
 //! target; any other start reads from what the segment's span records
 //! ([`SegmentStart::Span`]).
 
-use bae_db::ScrubPoints;
+use bae_records::ScrubPoints;
 use bae_track_audio::SegmentStart;
 use bae_util::content_type::ContentType;
 use tracing::warn;

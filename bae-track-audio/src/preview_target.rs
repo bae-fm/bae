@@ -9,18 +9,18 @@ use std::time::Duration;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreviewTarget {
     path: PathBuf,
-    span: bae_db::SegmentSpan,
+    span: bae_records::SegmentSpan,
 }
 
 impl PreviewTarget {
     pub fn whole_file(path: PathBuf) -> Self {
-        Self { path, span: bae_db::SegmentSpan::whole_file() }
+        Self { path, span: bae_records::SegmentSpan::whole_file() }
     }
 
     pub fn sample_range(path: PathBuf, start_sample: u64, end_sample: Option<u64>) -> Self {
         Self {
             path,
-            span: bae_db::SegmentSpan {
+            span: bae_records::SegmentSpan {
                 start_sample,
                 end_sample,
                 start_byte: None,
@@ -44,7 +44,7 @@ impl PreviewTarget {
     }
 
     /// The stretch of the file, in samples.
-    pub fn span(&self) -> bae_db::SegmentSpan {
+    pub fn span(&self) -> bae_records::SegmentSpan {
         self.span
     }
 

@@ -1,8 +1,8 @@
 //! The gain a track plays at, from the loudness it and its release were
 //! measured at.
 
-use bae_db::ResolvedTrackAudio;
 use bae_preferences::ReplayGainMode;
+use bae_records::ResolvedTrackAudio;
 
 /// Target playback loudness the replay gain aims each track/album at, in LUFS.
 /// -18 LUFS is a common reference for quiet-listening normalization.

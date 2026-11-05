@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::{DbLibraryImage, DbRelease, NewReleaseFile};
+use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};
 use chrono::Utc;
 use tempfile::TempDir;
 
@@ -26,7 +26,7 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     for release in [&first, &second] {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
-            assert!(manager.database.external_file(&file.id).await.unwrap().is_some());
+            assert!(manager.records.external_file(&file.id).await.unwrap().is_some());
         }
     }
     assert_eq!(
@@ -156,7 +156,7 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     assert_eq!(
         queued.upload,
         Some(bae_views::album_detail::ReleaseUpload {
-            progress: bae_db::UploadProgress { queued: 2, uploading: 0 },
+            progress: bae_records::UploadProgress { queued: 2, uploading: 0 },
             summary: vec![bae_transfers::TransferCount {
                 label: bae_types::count_label::CountLabel {
                     key: "core.queue.queued".into(),
@@ -293,7 +293,7 @@ async fn uploading_releases_keep_their_admission_order() {
     )
     .await;
 
-    assert_eq!(manager.database.uploading_releases().await.unwrap(), vec![first.id, second.id],);
+    assert_eq!(manager.records.uploading_releases().await.unwrap(), vec![first.id, second.id],);
 }
 
 #[tokio::test]
@@ -302,7 +302,7 @@ async fn upload_keeps_every_file_in_the_queue() {
     connect_test_cloud(&manager).await;
     let mut album = create_test_album();
     album.title = "Album Title".to_string();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     let release = create_test_release(&album.id);
     insert_release(&manager, &release).await;
     let source_dir = temp_dir.path().join("ordered-upload");
@@ -329,15 +329,15 @@ async fn upload_keeps_every_file_in_the_queue() {
 
     assert_eq!(
         manager
-            .database
+            .records
             .queued_upload_rows_for_root_for_test("releases", &release.id)
             .await
             .unwrap()
             .into_iter()
             .collect::<std::collections::BTreeSet<_>>(),
         vec![
-            (bae_db::synced::RELEASE_FILES_NAMESPACE.to_string(), files[0].id.clone(),),
-            (bae_db::synced::RELEASE_FILES_NAMESPACE.to_string(), files[1].id.clone(),),
+            (bae_records::synced::RELEASE_FILES_NAMESPACE.to_string(), files[0].id.clone(),),
+            (bae_records::synced::RELEASE_FILES_NAMESPACE.to_string(), files[1].id.clone(),),
         ]
         .into_iter()
         .collect::<std::collections::BTreeSet<_>>(),
@@ -359,7 +359,7 @@ fn playing_a_file_on_another_device_names_the_device() {
         let reason = playback_error_reason_for_file(manager, file).await;
         assert_eq!(
             reason,
-            PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Active {
+            PlaybackErrorReason::OnOtherDevice(bae_records::OtherDevice::Active {
                 name: "Device A".to_string()
             })
         );
@@ -420,7 +420,7 @@ async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
     assert!(!manager.pending().await.unwrap().is_empty());
     manager.cancel_release_upload(&release.id).await.unwrap();
-    assert!(!manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().stored);
+    assert!(!manager.records.find_file_by_id(&file_id).await.unwrap().unwrap().stored);
     assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.pending().await.unwrap().is_empty());
 }
@@ -443,13 +443,13 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
             assert!(
-                manager.database.external_file(&file.id).await.unwrap().is_some(),
+                manager.records.external_file(&file.id).await.unwrap().is_some(),
                 "the original plays again"
             );
             assert_eq!(
-                manager.database.read_release_file(&file.id).await.unwrap().len(),
+                manager.records.read_release_file(&file.id).await.unwrap().len(),
                 std::fs::metadata(
-                    manager.database.external_file(&file.id).await.unwrap().unwrap().path
+                    manager.records.external_file(&file.id).await.unwrap().unwrap().path
                 )
                 .unwrap()
                 .len() as usize
@@ -565,7 +565,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
         "the release's upload is its own file"
     );
     assert_eq!(
-        manager.database.queued_upload_count_in_table_for_test("covers").await.unwrap(),
+        manager.records.queued_upload_count_in_table_for_test("covers").await.unwrap(),
         0,
         "the cover uploads through the pause"
     );

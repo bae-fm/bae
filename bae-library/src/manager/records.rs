@@ -11,7 +11,7 @@ impl LibraryManager {
         release_id: &str,
         records: &[bae_catalogs::records::ReleaseRecord],
     ) -> Result<(), LibraryError> {
-        Ok(self.database.insert_release_records(release_id, records).await?)
+        Ok(self.records.insert_release_records(release_id, records).await?)
     }
 
     /// Replace a release's records in one shot, moving the release between
@@ -29,7 +29,7 @@ impl LibraryManager {
     /// `new_records` on `(catalog, album key)`, that release's album is the
     /// destination (per-catalog agreement makes the candidate unique). With no
     /// merge candidate, a release alone in its album moves to its group's own
-    /// album (`bae_db::identity::album_id_for_records`); one with siblings stays put
+    /// album (`bae_records::identity::album_id_for_records`); one with siblings stays put
     /// if no sibling disagrees on a shared catalog, and moves to its group's
     /// album (or a fresh one, with no group) if one does. A vacated album stays,
     /// empty (see `vacate_album_on`).
@@ -50,7 +50,7 @@ impl LibraryManager {
         // The atomic call does all source-album bookkeeping inside its transaction
         // (empty-check, the moved release's order, album_artists copy) — those
         // decisions live there so a separate read and write can't race.
-        self.database.set_records_atomic(change).await?;
+        self.records.set_records_atomic(change).await?;
         Ok(())
     }
 
@@ -60,14 +60,14 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_records: Vec<bae_catalogs::records::ReleaseRecord>,
-    ) -> Result<bae_db::RecordsChange, LibraryError> {
+    ) -> Result<bae_records::RecordsChange, LibraryError> {
         let current_album_id =
-            self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
+            self.records.find_album_id_for_release(release_id).await?.ok_or_else(|| {
                 LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         let target =
             self.resolve_records_target_album(release_id, &current_album_id, &new_records).await?;
-        Ok(bae_db::RecordsChange {
+        Ok(bae_records::RecordsChange {
             release_id: release_id.to_string(),
             records: new_records,
             current_album_id,
@@ -108,7 +108,7 @@ impl LibraryManager {
         // least one catalog. The lookup excludes `release_id`'s own rows, so it
         // never matches against the records we are about to overwrite.
         if let Some(candidate_album_id) =
-            self.database.album_records_name(new_records, &[release_id.to_string()]).await?
+            self.records.album_records_name(new_records, &[release_id.to_string()]).await?
         {
             return Ok(RecordsTargetAlbum { album_id: candidate_album_id, new_album: None });
         }
@@ -117,8 +117,8 @@ impl LibraryManager {
         // own album, the one every device files this group under, so two
         // devices identifying one group while apart land in one album.
         let beside =
-            self.database.album_beside_release(current_album_id, release_id, new_records).await?;
-        let group_album_id = bae_db::identity::album_id_for_records(new_records);
+            self.records.album_beside_release(current_album_id, release_id, new_records).await?;
+        let group_album_id = bae_records::identity::album_id_for_records(new_records);
         if !beside.holds_others {
             return match group_album_id {
                 Some(group_album_id) if group_album_id != current_album_id => {
@@ -163,7 +163,7 @@ impl LibraryManager {
         current_album_id: &str,
         group_album_id: String,
     ) -> Result<RecordsTargetAlbum, LibraryError> {
-        if self.database.album_holds_releases(&group_album_id).await? {
+        if self.records.album_holds_releases(&group_album_id).await? {
             return Ok(RecordsTargetAlbum { album_id: group_album_id, new_album: None });
         }
         let new_album =
@@ -176,7 +176,7 @@ impl LibraryManager {
     /// metadata, so the new album reflects what the release already had; the caller
     /// can reseed it.
     async fn fresh_album_for_release(&self, seed_album_id: &str) -> Result<DbAlbum, LibraryError> {
-        let source = self.database.find_album_by_id(seed_album_id).await?.ok_or_else(|| {
+        let source = self.records.find_album_by_id(seed_album_id).await?.ok_or_else(|| {
             LibraryError::Refused(format!("Source album '{seed_album_id}' not found"))
         })?;
         let now = bae_store::utc_now(self.clock.as_ref());

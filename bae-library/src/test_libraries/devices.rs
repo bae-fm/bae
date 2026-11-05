@@ -27,6 +27,7 @@ pub struct TestDevice {
 struct RunningLibrary {
     manager: LibraryManager,
     store: Store,
+    records: bae_records::Records,
     database: Database,
     cycles: SyncCycles,
 }
@@ -38,6 +39,10 @@ impl TestDevice {
 
     pub fn store(&self) -> &Store {
         &self.library.store
+    }
+
+    pub fn records(&self) -> &bae_records::Records {
+        &self.library.records
     }
 
     pub fn database(&self) -> &Database {
@@ -265,7 +270,13 @@ impl RunningLibrary {
         .await;
         let manager = LibraryManager::clone(&library);
         let cycles = SyncCycles::follow(&store);
-        Self { manager, store, database: library.database().clone(), cycles }
+        Self {
+            manager,
+            store,
+            records: library.records().clone(),
+            database: library.database().clone(),
+            cycles,
+        }
     }
 }
 

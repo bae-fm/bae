@@ -72,7 +72,7 @@ impl ImportCover {
         discovered_files: &[CandidateFile],
         release_id: &str,
         diagnostics: &bae_diagnostics::Diagnostics,
-    ) -> Result<(bae_db::DbLibraryImage, Vec<u8>), ImportError> {
+    ) -> Result<(bae_records::DbLibraryImage, Vec<u8>), ImportError> {
         let source = match self {
             Self::Remote(bytes) | Self::Embedded(bytes) => bytes,
             Self::Local(path) => folder_cover(discovered_files, &path, diagnostics).await?,
@@ -84,7 +84,7 @@ impl ImportCover {
         .await
         .map_err(|failed| diagnostics.bug(failed))?
         .map_err(|detail| ImportError::CoverArt { detail })?;
-        Ok((bae_db::DbLibraryImage::cover(release_id), bytes))
+        Ok((bae_records::DbLibraryImage::cover(release_id), bytes))
     }
 }
 

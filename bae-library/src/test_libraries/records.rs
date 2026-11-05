@@ -3,7 +3,7 @@
 //! test made, imported as an import leaves them.
 
 use super::TestLibrary;
-use bae_db::{Database, DbAlbum, DbRelease, NewReleaseFile};
+use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
 use chrono::Utc;
 
 /// An album with a fresh id, titled "Test Album".
@@ -37,9 +37,12 @@ pub fn test_release(album_id: &str) -> DbRelease {
 }
 
 /// Write `release` and its one medium.
-pub async fn insert_release(database: &Database, release: &DbRelease) {
-    database.insert_release(release).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
+pub async fn insert_release(records: &bae_records::Records, release: &DbRelease) {
+    records.insert_release(release).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
 }
 
 /// A local release on an album titled `album_title`, its `files` written
@@ -52,9 +55,9 @@ pub async fn insert_local_release_with_files(
 ) -> DbRelease {
     let mut album = test_album();
     album.title = album_title.to_string();
-    library.database().insert_album(&album).await.unwrap();
+    library.records().insert_album(&album).await.unwrap();
     let release = test_release(&album.id);
-    insert_release(library.database(), &release).await;
+    insert_release(library.records(), &release).await;
     std::fs::create_dir_all(dir).unwrap();
     let created_at = Utc::now();
     for (index, (name, bytes)) in files.iter().enumerate() {
@@ -85,7 +88,7 @@ pub async fn insert_release_with_queued_uploads(
     library.upload_release(&release.id, false).await.unwrap();
     assert_eq!(
         library
-            .database()
+            .records()
             .queued_upload_count_for_root_for_test("releases", &release.id)
             .await
             .unwrap(),

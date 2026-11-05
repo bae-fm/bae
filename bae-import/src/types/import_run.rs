@@ -4,7 +4,7 @@
 
 use crate::cue_sheet::CueSheet;
 use bae_audio::ProbeResult;
-use bae_db::DbTrack;
+use bae_records::DbTrack;
 use std::{path::PathBuf, sync::Arc};
 
 /// Import command sent to the service worker.

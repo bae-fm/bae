@@ -1,0 +1,413 @@
+//! Reading and writing a release's records — every catalog's description of
+//! it.
+
+use super::*;
+
+impl Records {
+    /// Test seam: write a release's records outside the atomic import path,
+    /// replacing any it had.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_release_records(
+        &self,
+        release_id: &str,
+        records: &[bae_catalogs::records::ReleaseRecord],
+    ) -> Result<(), DbError> {
+        let release_id = release_id.to_string();
+        let records = records.to_vec();
+        self.store.call_sql(move |sql| write_release_records(&sql, &release_id, &records)).await
+    }
+
+    /// Every record for a release. Empty if no catalog describes it.
+    pub async fn get_release_records(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
+        let release_id = release_id.to_string();
+        self.store.read(move |sql| get_release_records_on(&sql, &release_id)).await
+    }
+
+    /// The library album `records` file a release under, leaving out the
+    /// releases `excluding`. The applied record — the list's first — decides,
+    /// then each other record in order: the first that names an
+    /// album the library holds names it, by a copy of its pressing, else by
+    /// its album (MusicBrainz release group, Discogs master). Where one record
+    /// names several, its group's own album is it if the library holds it,
+    /// else the oldest.
+    pub async fn album_records_name(
+        &self,
+        records: &[bae_catalogs::records::ReleaseRecord],
+        excluding: &[String],
+    ) -> Result<Option<String>, DbError> {
+        let records = records.to_vec();
+        let excluding = excluding.to_vec();
+        self.store.read(move |sql| album_records_name_on(&sql, &records, &excluding)).await
+    }
+
+    /// Where an album stands for a release whose records are about to be
+    /// `records`: whether it holds releases besides `release_id`, and whether
+    /// one of those names another album than `records` do on a catalog they
+    /// share. Read by the albums' releases index and each release's records.
+    pub async fn album_beside_release(
+        &self,
+        album_id: &str,
+        release_id: &str,
+        records: &[bae_catalogs::records::ReleaseRecord],
+    ) -> Result<AlbumBesideRelease, DbError> {
+        let album_refs = serde_json::Value::from(
+            records
+                .iter()
+                .filter_map(bae_catalogs::records::ReleaseRecord::album_ref)
+                .map(|album| serde_json::json!([album.catalog.as_str(), album.key]))
+                .collect::<Vec<_>>(),
+        )
+        .to_string();
+        let (album_id, release_id) = (album_id.to_string(), release_id.to_string());
+        self.store
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    ALBUM_BESIDE_RELEASE,
+                    rusqlite::named_params! {
+                        ":album": album_id,
+                        ":release": release_id,
+                        ":album_refs": album_refs,
+                    },
+                    |row| {
+                        Ok(AlbumBesideRelease { holds_others: row.get(0)?, disagrees: row.get(1)? })
+                    },
+                )?)
+            })
+            .await
+    }
+
+    /// Whether the album `album_id` holds any release, by the albums'
+    /// releases index.
+    pub async fn album_holds_releases(&self, album_id: &str) -> Result<bool, DbError> {
+        let album_id = album_id.to_string();
+        self.store
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?1)",
+                    [album_id],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+    }
+
+    /// Replace a release's record rows and move the release between albums
+    /// when the target differs from the source, in one transaction (see
+    /// `set_records_on`).
+    #[cfg(all(desktop, any(test, feature = "test-utils")))]
+    pub async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
+        let now = self.store.now_utc();
+        self.store.call_sql(move |sql| set_records_on(&sql, &change, now)).await
+    }
+
+    /// Check, for each candidate in `checks`, whether the library already
+    /// holds the same pressing or the same album (group). Drives the
+    /// "in library" badges shown in the identify-pipeline result lists.
+    ///
+    /// Per check, every album holding a release whose record matches
+    /// `(check.catalog, check.release_id)` — a copy of this pressing — or
+    /// `(check.catalog, check.source_group_id)` — another release of its
+    /// group — each once, those holding the pressing first, then by age.
+    pub async fn check_releases_in_library(
+        &self,
+        checks: &[LibraryCheck],
+    ) -> Result<Vec<LibraryStatus>, DbError> {
+        let checks = checks.to_vec();
+        self.store.read(move |sql| check_releases_in_library_on(&sql, &checks)).await
+    }
+
+    /// Follow the library membership of every release `initial` checks, in
+    /// one read per change. The releases on offer change by pointing the same
+    /// query at new checks through its request handle, not by opening another.
+    pub fn subscribe_library_statuses(
+        &self,
+        initial: BTreeSet<LibraryCheck>,
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>> {
+        self.store
+            .subscribe_reconfigurable(initial, |checks, sql| {
+                let checks: Vec<LibraryCheck> = checks.iter().cloned().collect();
+                check_releases_in_library_on(&sql, &checks).map_err(CovenError::from)
+            })
+            .process(Ok)
+    }
+}
+
+/// A release's new records and the album they file it under: what
+/// `set_records_on` writes.
+#[cfg(desktop)]
+pub struct RecordsChange {
+    pub release_id: String,
+    pub records: Vec<bae_catalogs::records::ReleaseRecord>,
+    /// The album the release is in now.
+    pub current_album_id: String,
+    /// The album the release lands in.
+    pub target_album_id: String,
+    /// The target album's row, when the release is the first to land in it.
+    pub new_album: Option<DbAlbum>,
+}
+
+/// Write `change`:
+///
+/// 1. Write the destination album when `new_album` is `Some` and that album
+///    holds no release, with a copy of `current_album_id`'s credit list (so it
+///    lands credited as the source was, not a bare row with no artist).
+/// 2. Replace the release's records.
+/// 3. UPDATE the release's `album_id`; a release that moves is ordered after
+///    the destination album's others.
+/// 4. If the release vacated `current_album_id` (the source), the source's
+///    primary release is whichever release left there is ordered lowest. An
+///    emptied source stays.
+///
+/// Metadata columns (pressing fields, album fields, tracks) are deliberately
+/// untouched. Caller decides whether to reseed the metadata.
+///
+/// Nothing is done to the stored catalog releases: they are keyed by the
+/// *catalog's* release, so re-pointing the records at a different one already
+/// reads a different row. There is nothing stale to wipe, and the rows this
+/// release used may be another candidate's.
+#[cfg(desktop)]
+pub(super) fn set_records_on(
+    tx: &CovenWrite<'_>,
+    change: &RecordsChange,
+    now_dt: chrono::DateTime<chrono::Utc>,
+) -> Result<(), DbError> {
+    let now = now_dt.to_rfc3339();
+    let RecordsChange { release_id, records, current_album_id, target_album_id, new_album } =
+        change;
+
+    // 1. Write the destination album when it is new to this release's
+    //    history: absent, or here but empty (a group's album another release
+    //    vacated). Must come before the release UPDATE so the FK on
+    //    `releases.album_id` points at an existing row. The album takes the
+    //    source's fields and credits; one that holds releases by the time this
+    //    transaction runs is left as it is.
+    if let Some(album) = new_album {
+        let holds_releases: bool = tx.query_row(
+            "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?)",
+            params![album.id],
+            |row| row.get(0),
+        )?;
+        if !holds_releases {
+            upsert_album_row(tx, album)?;
+            let source_artists: Vec<DbAlbumArtist> = tx.query(
+                &format!(
+                    "SELECT aa.artist_id, aa.position, aa.join_phrase, ac.name_key, ac.name \
+                     FROM album_artists aa {credit_name} \
+                     WHERE aa.album_id = ? ORDER BY aa.position",
+                    credit_name = super::read::credit_name_join("aa", "ac"),
+                ),
+                params![current_album_id],
+                |row| {
+                    Ok(DbAlbumArtist {
+                        credit: super::read::credit_name_column(row, "name_key", "name")?,
+                        join_phrase: row.get("join_phrase")?,
+                        ..DbAlbumArtist::new(
+                            &album.id,
+                            &row.get::<_, String>("artist_id")?,
+                            row.get::<_, u32>("position")?,
+                            now_dt,
+                        )
+                    })
+                },
+            )?;
+            replace_album_artists(tx, &album.id, &source_artists, &now)?;
+        }
+    }
+
+    // 2. Replace the records and the catalog the draft was read from.
+    write_release_records(tx, release_id, records)?;
+
+    // 3. Update release: album and where its draft was read. A release
+    //    joining another album goes after that album's others.
+    if target_album_id != current_album_id {
+        tx.execute(
+            &format!(
+                "UPDATE releases SET album_order = {} WHERE id = ?2",
+                next_album_order_sql("?1")
+            ),
+            params![target_album_id, release_id],
+        )?;
+    }
+    tx.execute(
+        "UPDATE releases SET album_id = ? WHERE id = ?",
+        params![target_album_id, release_id],
+    )?;
+
+    // 4. Source-album cleanup. Only runs when the release actually moved;
+    //    same-album updates don't vacate anything. Recheck inside the
+    //    transaction (TOCTOU: a writer may have added a release to the source
+    //    since the manager's pre-flight read).
+    if target_album_id != current_album_id {
+        vacate_album_on(tx, current_album_id)?;
+    }
+
+    Ok(())
+}
+
+/// The library album `records` file a release under, leaving out the
+/// releases `excluding`. The applied record — the list's first — decides,
+/// then each other record in order: the first that names an album
+/// the library holds names it, by a copy of its pressing, else by its album
+/// (MusicBrainz release group, Discogs master). Library albums are the
+/// curator's: two albums the records name stay two, and the applied record's
+/// wins over a partner's. Where one record names several, its group's own
+/// album is it if the library holds it, else the oldest.
+pub fn album_records_name_on(
+    sql: &SqlReadContext<'_>,
+    records: &[bae_catalogs::records::ReleaseRecord],
+    excluding: &[String],
+) -> Result<Option<String>, DbError> {
+    let excluding = serde_json::Value::from(excluding.to_vec()).to_string();
+    for record in records {
+        let pressing = record.release_ref();
+        let album = record.album_ref();
+        let own = crate::identity::album_id_for_records(std::slice::from_ref(record));
+        let named: Option<String> = sql
+            .query_row(
+                ALBUM_NAMED_BY_RECORD,
+                rusqlite::named_params! {
+                    ":pressing_catalog": pressing.as_ref().map(|r| r.catalog.as_str()),
+                    ":pressing_key": pressing.as_ref().map(|r| r.key.as_str()),
+                    ":album_catalog": album.as_ref().map(|r| r.catalog.as_str()),
+                    ":album_key": album.as_ref().map(|r| r.key.as_str()),
+                    ":own": own,
+                    ":excluding": excluding,
+                },
+                |row| row.get(0),
+            )
+            .optional()?;
+        if named.is_some() {
+            return Ok(named);
+        }
+    }
+    Ok(None)
+}
+
+/// The album one record names in the library, as [`album_records_name_on`]
+/// reads it: an album holding a copy of the record's pressing (a pressing
+/// record naming the same release, on `idx_release_records_catalog_key`)
+/// when one does, else one holding another release of its album (a record
+/// naming the same release group or master, on
+/// `idx_release_records_catalog_album`), records of `:excluding` releases
+/// aside; among those, the record's own group album first, then the oldest
+/// (ties by id), so every device reads the same one.
+const ALBUM_NAMED_BY_RECORD: &str = "SELECT a.id FROM ( \
+         SELECT r.album_id, 0 AS match_rank FROM release_records rr \
+         JOIN releases r ON r.id = rr.release_id \
+         WHERE rr.catalog = :pressing_catalog AND rr.kind = 'pressing' \
+           AND rr.key = :pressing_key \
+           AND rr.release_id NOT IN (SELECT value FROM json_each(:excluding)) \
+         UNION ALL \
+         SELECT r.album_id, 1 AS match_rank FROM release_records rr \
+         JOIN releases r ON r.id = rr.release_id \
+         WHERE rr.catalog = :album_catalog \
+           AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = :album_key \
+           AND rr.release_id NOT IN (SELECT value FROM json_each(:excluding)) \
+     ) AS named \
+     JOIN albums a ON a.id = named.album_id \
+     ORDER BY named.match_rank, a.id IS :own DESC, a.created_at, a.id \
+     LIMIT 1";
+
+/// Where an album stands beside one of its releases, as
+/// [`Records::album_beside_release`] reads it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AlbumBesideRelease {
+    /// The album holds releases besides the one asked about.
+    pub holds_others: bool,
+    /// One of those names another album than the records asked about on a
+    /// catalog they share.
+    pub disagrees: bool,
+}
+
+const ALBUM_BESIDE_RELEASE: &str = "SELECT \
+        EXISTS (SELECT 1 FROM releases r WHERE r.album_id = :album AND r.id <> :release), \
+        EXISTS (SELECT 1 FROM releases r \
+                JOIN release_records rr ON rr.release_id = r.id \
+                JOIN json_each(:album_refs) AS new \
+                  ON rr.catalog = json_extract(new.value, '$[0]') \
+                WHERE r.album_id = :album AND r.id <> :release \
+                  AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
+                      <> json_extract(new.value, '$[1]'))";
+
+/// One statement answers every check: the checks go in as one JSON array,
+/// each matched by plain equality on the index its kind of record has — its
+/// pressing on `idx_release_records_catalog_key`, its album on
+/// `idx_release_records_catalog_album` — and the rows come back in check
+/// order, each check's albums holding its pressing first, then by age.
+pub fn check_releases_in_library_on(
+    sql: &(impl bae_store::query::QueryOne + bae_store::query::QueryRows),
+    checks: &[LibraryCheck],
+) -> Result<Vec<LibraryStatus>, DbError> {
+    let mut statuses = checks
+        .iter()
+        .map(|check| LibraryStatus { release_id: check.release_id.clone(), albums: Vec::new() })
+        .collect::<Vec<_>>();
+    if checks.is_empty() {
+        return Ok(statuses);
+    }
+    let checks_json = serde_json::Value::Array(
+        checks
+            .iter()
+            .map(|check| {
+                serde_json::json!([check.release_id, check.source.as_str(), check.source_group_id])
+            })
+            .collect(),
+    )
+    .to_string();
+    let rows = sql.query(
+        r#"
+            WITH checks(position, release_id, catalog, group_id) AS (
+                SELECT key, value ->> 0, value ->> 1, value ->> 2 FROM json_each(?1)
+            ),
+            matches(position, album_id, holds_release) AS (
+                SELECT checks.position, r.album_id, 1
+                FROM checks
+                JOIN release_records rr
+                  ON rr.catalog = checks.catalog
+                 AND rr.kind = 'pressing'
+                 AND rr.key = checks.release_id
+                JOIN releases r ON r.id = rr.release_id
+                UNION ALL
+                SELECT checks.position, r.album_id, 0
+                FROM checks
+                JOIN release_records rr
+                  ON rr.catalog = checks.catalog
+                 AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = checks.group_id
+                JOIN releases r ON r.id = rr.release_id
+                WHERE checks.group_id IS NOT NULL
+            )
+            SELECT
+                matches.position,
+                a.id AS album_id,
+                a.title AS album_title,
+                MAX(matches.holds_release) AS holds_release
+            FROM matches
+            JOIN albums a ON a.id = matches.album_id
+            GROUP BY matches.position, a.id
+            ORDER BY matches.position, holds_release DESC, a.created_at, a.id
+        "#,
+        params![checks_json],
+        |row| {
+            Ok((
+                row.get::<_, i64>("position")?,
+                crate::LibraryAlbumMatch {
+                    album_id: row.get("album_id")?,
+                    album_title: row.get("album_title")?,
+                    holds_release: row.get::<_, i64>("holds_release")? != 0,
+                },
+            ))
+        },
+    )?;
+    for (position, album) in rows {
+        let position = usize::try_from(position).expect("a check's position is an index");
+        statuses[position].albums.push(album);
+    }
+    Ok(statuses)
+}
+
+#[cfg(test)]
+#[path = "release_records_tests.rs"]
+mod tests;

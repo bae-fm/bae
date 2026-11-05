@@ -1,7 +1,7 @@
 //! Whether this device can play a release now, decided from what the library
 //! records of where its files are.
 
-use bae_db::{DbUnstoredAudio, OtherDevice};
+use bae_records::{DbUnstoredAudio, OtherDevice};
 
 /// Whether this device can play a release now, and why not.
 ///

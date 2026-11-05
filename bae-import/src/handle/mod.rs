@@ -61,7 +61,7 @@ pub struct ImportServiceHandle {
     /// The library's store, which the handle reads and writes directly.
     store: bae_store::Store,
     /// The library's records, which the handle reads.
-    database: bae_db::Database,
+    records: bae_records::Records,
     /// Import's own tables in that store.
     tables: crate::tables::ImportTables,
     /// The catalogs as this library may ask them.
@@ -135,7 +135,7 @@ impl ImportServiceHandle {
         let crate::ImportServices {
             event_tx,
             store,
-            database,
+            records,
             tables,
             catalogs,
             remote_images,
@@ -164,13 +164,13 @@ impl ImportServiceHandle {
             event_tx.clone(),
             runtime.clone(),
             store.clone(),
-            database.clone(),
+            records.clone(),
             diagnostics.clone(),
         );
         Ok(Self {
             worker,
             store,
-            database,
+            records,
             tables,
             catalogs,
             release_reads,

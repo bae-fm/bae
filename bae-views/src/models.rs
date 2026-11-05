@@ -1,7 +1,7 @@
 //! The raw rows the library's views read, before they are resolved into
 //! what a screen shows.
 
-use bae_db::*;
+use bae_records::*;
 use bae_store::*;
 use chrono::{DateTime, Utc};
 
@@ -67,7 +67,7 @@ pub struct AlbumSortCriterion {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumDetail {
     pub album: DbAlbum,
-    pub artists: Vec<bae_db::credits::LibraryCredit>,
+    pub artists: Vec<bae_records::credits::LibraryCredit>,
     /// The album's releases in album order.
     pub releases: Vec<ReleaseDetailRead>,
     /// The album's lowest-ordered release.
@@ -91,7 +91,7 @@ pub struct DbAlbumAppearance {
 pub struct DbComposerSummary {
     pub artist: DbArtist,
     /// The artist's image, at the version its row read; `None` when it has none.
-    pub image: Option<bae_db::ImageRef>,
+    pub image: Option<bae_records::ImageRef>,
     pub work_count: i64,
     pub linked_release_count: i64,
     pub unlinked_credit_count: i64,
@@ -103,7 +103,7 @@ pub struct DbComposerSummary {
 pub struct DbArtistSummary {
     pub artist: DbArtist,
     /// The artist's image, at the version its row read; `None` when it has none.
-    pub image: Option<bae_db::ImageRef>,
+    pub image: Option<bae_records::ImageRef>,
     pub album_count: i64,
 }
 
@@ -113,7 +113,7 @@ pub struct DbArtistSummary {
 pub struct DbArtistDetail {
     pub artist: DbArtistSummary,
     /// The artist's other printed names, its merged artists' too.
-    pub credit_names: Vec<bae_db::credits::ArtistCreditName>,
+    pub credit_names: Vec<bae_records::credits::ArtistCreditName>,
     pub albums: Vec<DbAlbumSummary>,
 }
 
@@ -123,7 +123,7 @@ pub struct DbWorkSummary {
     pub representative_release_id: Option<String>,
     /// That release's cover, at the version its row read; `None` when it has
     /// none.
-    pub representative_cover: Option<bae_db::ImageRef>,
+    pub representative_cover: Option<bae_records::ImageRef>,
     pub composer_names: Option<String>,
     pub linked_release_count: i64,
 }

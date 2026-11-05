@@ -6,7 +6,7 @@
 
 use super::upload_throughput::UploadThroughput;
 use super::UploadBar;
-use bae_db::DbSendingUploads;
+use bae_records::DbSendingUploads;
 use std::collections::{BTreeMap, HashMap};
 
 /// How far the files being sent have gone together and how fast they go.

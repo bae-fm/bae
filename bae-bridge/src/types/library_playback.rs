@@ -204,7 +204,7 @@ pub enum BridgeLibraryImageType {
 }
 
 mirror_enum! {
-    BridgeLibraryImageType = bae_db::LibraryImageType,
+    BridgeLibraryImageType = bae_records::LibraryImageType,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Cover, Artist },
@@ -217,7 +217,7 @@ mirror_enum! {
 /// `version` is the coven file the image's row names, with the device that has
 /// the file while it is on one device only, so it moves whenever the bytes do
 /// and again when such a file is stored. Mirrors
-/// `bae_db::ImageRef`.
+/// `bae_records::ImageRef`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImageRef {
     pub id: String,
@@ -226,7 +226,7 @@ pub struct BridgeImageRef {
 }
 
 mirror_struct! {
-    BridgeImageRef = bae_db::ImageRef,
+    BridgeImageRef = bae_records::ImageRef,
     from_core: pub fn,
     into_core: pub fn,
     fields: { id, version, image_type: (BridgeLibraryImageType) },
@@ -692,19 +692,19 @@ pub enum BridgeSourceAudioDifference {
 }
 
 mirror_enum! {
-    BridgeSourceAudioLayout = bae_db::source_audio::SourceAudioLayout,
+    BridgeSourceAudioLayout = bae_records::source_audio::SourceAudioLayout,
     from_core: pub(crate) fn,
     variants: { File, Cue },
 }
 
 mirror_struct! {
-    BridgeSourceAudioDescriptor = bae_db::source_audio::SourceAudioDescriptor,
+    BridgeSourceAudioDescriptor = bae_records::source_audio::SourceAudioDescriptor,
     from_core: pub(crate) fn,
     fields: { layout: (BridgeSourceAudioLayout), format: (BridgeAudioFormat) },
 }
 
 mirror_enum! {
-    BridgeSourceAudioSummary = bae_db::source_audio::SourceAudioSummary,
+    BridgeSourceAudioSummary = bae_records::source_audio::SourceAudioSummary,
     from_core: pub(crate) fn,
     variants: {
         Uniform { descriptor: (BridgeSourceAudioDescriptor) },
@@ -713,7 +713,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSourceAudioDifference = bae_db::source_audio::SourceAudioDifference,
+    BridgeSourceAudioDifference = bae_records::source_audio::SourceAudioDifference,
     from_core: pub(crate) fn,
     variants: {
         Layout { layouts: (each BridgeSourceAudioLayout) },
@@ -730,15 +730,15 @@ mod source_audio_bridge_tests {
 
     #[test]
     fn mixed_source_audio_crosses_with_every_difference() {
-        let summary = bae_db::source_audio::SourceAudioSummary::Mixed {
+        let summary = bae_records::source_audio::SourceAudioSummary::Mixed {
             differences: vec![
-                bae_db::source_audio::SourceAudioDifference::Layout {
+                bae_records::source_audio::SourceAudioDifference::Layout {
                     layouts: vec![
-                        bae_db::source_audio::SourceAudioLayout::Cue,
-                        bae_db::source_audio::SourceAudioLayout::File,
+                        bae_records::source_audio::SourceAudioLayout::Cue,
+                        bae_records::source_audio::SourceAudioLayout::File,
                     ],
                 },
-                bae_db::source_audio::SourceAudioDifference::Codec {
+                bae_records::source_audio::SourceAudioDifference::Codec {
                     codecs: vec!["FLAC".to_string(), "MP3".to_string()],
                 },
             ],
@@ -822,7 +822,7 @@ pub enum BridgeGallerySource {
 }
 
 mirror_enum! {
-    BridgeGallerySource = bae_db::GallerySource,
+    BridgeGallerySource = bae_records::GallerySource,
     from_core: pub(crate) fn,
     into_core: pub fn,
     variants: {

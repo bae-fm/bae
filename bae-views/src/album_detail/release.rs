@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::DbReleaseSummary;
-use bae_db::DbReleaseDetail;
+use bae_records::DbReleaseDetail;
 
 /// The per-release inputs the library's views read beside the release's rows and
 /// threads into the release projections: whether a cloud home exists at all
@@ -93,15 +93,15 @@ impl ReleaseSummary {
 /// transfer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseUpload {
-    pub progress: bae_db::UploadProgress,
+    pub progress: bae_records::UploadProgress,
     /// How many of the release's files are uploading, queued and stored,
     /// each left out at zero.
     pub summary: Vec<bae_transfers::TransferCount>,
 }
 
 impl ReleaseUpload {
-    pub(crate) fn from_raw(raw: bae_db::DbReleaseUpload) -> Self {
-        let progress = bae_db::UploadProgress::of_release(&raw);
+    pub(crate) fn from_raw(raw: bae_records::DbReleaseUpload) -> Self {
+        let progress = bae_records::UploadProgress::of_release(&raw);
         use bae_transfers::TransferStage;
         Self {
             summary: bae_transfers::transfer_summary([
@@ -170,7 +170,7 @@ impl ReleaseDetail {
             .tracks
             .into_iter()
             .map(|entry| {
-                let artist_names = bae_db::credits::library_line(&entry.shown_artists);
+                let artist_names = bae_records::credits::library_line(&entry.shown_artists);
                 let position = raw.mediums.position(&entry.track);
                 let position_text = position.text();
                 // On a compilation each row carries its own artist, because the

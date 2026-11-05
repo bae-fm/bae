@@ -92,7 +92,7 @@ impl ImportServiceHandle {
         &self,
         release_id: &str,
     ) -> Result<RemoteCoverGallery, crate::ImportError> {
-        let records = self.database.get_release_records(release_id).await?;
+        let records = self.records.get_release_records(release_id).await?;
 
         if records.is_empty() {
             return Ok(RemoteCoverGallery::Unlinked);

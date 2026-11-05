@@ -5,6 +5,7 @@
 /// import's, the transfers' and the library views'.
 #[cfg(desktop)]
 pub const SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
+    bae_records::SCHEMA_PARTS,
     bae_db::SCHEMA_PARTS,
     bae_preferences::SCHEMA_PARTS,
     bae_playback::SCHEMA_PARTS,
@@ -18,6 +19,7 @@ pub const SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
 /// nothing on a phone reads them.
 #[cfg(not(desktop))]
 pub const SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
+    bae_records::SCHEMA_PARTS,
     bae_db::SCHEMA_PARTS,
     bae_preferences::SCHEMA_PARTS,
     bae_playback::SCHEMA_PARTS,

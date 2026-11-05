@@ -207,7 +207,7 @@ fn storage_inspector_on(
     }
     Ok(Some(DbStorageInspector {
         files: inspector_files_on(sql, release_id)?,
-        upload: bae_db::client::queued_uploads::release_upload_on(sql, release_id)?,
+        upload: bae_records::records::queued_uploads::release_upload_on(sql, release_id)?,
         entries: bae_transfers::tables::release_queue_entries_on(sql, release_id)?,
     }))
 }
@@ -241,7 +241,7 @@ impl LibraryViews {
 /// `coven_downloading` before `coven_pins` holds a row for it.
 pub(crate) const INSPECTOR_FILES: &str = concat!(
     "SELECT ",
-    bae_db::release_file_columns!(),
+    bae_records::release_file_columns!(),
     ", pin.file IS NOT NULL AS pin_kept, \
         downloading.file AS downloading_file, \
         upload.file AS upload_file, upload.sending AS upload_sending, \

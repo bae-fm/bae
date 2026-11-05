@@ -16,7 +16,7 @@ impl LibraryManager {
         folder: &str,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
+        let files = self.records.get_files_for_release(release_id).await?;
         info!(
             release_id,
             folder,
@@ -34,7 +34,7 @@ impl LibraryManager {
 
     /// Copy one release file's verbatim bytes to the path its name in the
     /// release gives below `staging_dir`, each name written as coven writes it
-    /// (see [`bae_db::stored_name`]). The name may name a subfolder
+    /// (see [`bae_records::stored_name`]). The name may name a subfolder
     /// (e.g. `CD1/CDImage.ape`), so its parent is created first. No per-file
     /// temp is needed: the whole staging directory is the atomic unit, renamed
     /// into place only once every file is written.
@@ -51,10 +51,13 @@ impl LibraryManager {
         file: &DbFile,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
-        let relative =
-            bae_db::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)?
-                .local_path();
-        let stream = self.database.open_release_file(&file.id).await?;
+        let relative = bae_records::stored_name::file_path(
+            &file.release_id,
+            &file.id,
+            &file.original_filename,
+        )?
+        .local_path();
+        let stream = self.records.open_release_file(&file.id).await?;
         let size = stream.plaintext_size();
 
         let file_path = staging_dir.join(&relative);

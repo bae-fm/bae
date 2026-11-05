@@ -13,7 +13,7 @@ pub struct TrackDisplay {
     pub album_title: String,
     /// The track's own release's cover, versioned, so new bytes replace the
     /// copy a UI decoded; `None` when that release has no cover.
-    pub cover_image: Option<bae_db::ImageRef>,
+    pub cover_image: Option<bae_records::ImageRef>,
 }
 
 /// The playing track as the playback service knows it: which track, and the

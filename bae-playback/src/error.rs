@@ -26,10 +26,12 @@ impl From<bae_store::DbError> for PlaybackError {
     }
 }
 
-impl From<bae_db::TrackAudioError> for PlaybackError {
-    fn from(error: bae_db::TrackAudioError) -> Self {
+impl From<bae_records::TrackAudioError> for PlaybackError {
+    fn from(error: bae_records::TrackAudioError) -> Self {
         match error {
-            bae_db::TrackAudioError::TrackNotFound(track_id) => Self::not_found("Track", track_id),
+            bae_records::TrackAudioError::TrackNotFound(track_id) => {
+                Self::not_found("Track", track_id)
+            }
             error => Self::database(error),
         }
     }

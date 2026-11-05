@@ -93,18 +93,18 @@ fn file_ids(units: &[AudioFile]) -> Vec<&str> {
 
 /// A blank row over every unit, in the units' order — what the draft commits
 /// when nobody named anything.
-pub(crate) fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_db::TrackRow, AudioFile)> {
+pub(crate) fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_records::TrackRow, AudioFile)> {
     let now = chrono::Utc::now();
     units
         .into_iter()
         .enumerate()
         .map(|(index, unit)| {
             (
-                bae_db::TrackRow {
+                bae_records::TrackRow {
                     id: format!("track-{index}"),
                     release_id: "release-1".to_string(),
                     title: format!("Track Title {}", index + 1),
-                    medium_id: bae_db::identity::release_medium_id("release-1", 1),
+                    medium_id: bae_records::identity::release_medium_id("release-1", 1),
                     side: std::num::NonZeroU8::MIN,
                     track_number: std::num::NonZeroU32::new(
                         u32::try_from(index + 1).expect("a test track number fits u32"),

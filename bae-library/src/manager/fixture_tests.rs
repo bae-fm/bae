@@ -417,8 +417,8 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
             ))
             .collect::<Vec<_>>(),
         [
-            (bae_db::DbAudioSegmentRole::AudioPregap, 132_300, Some(220_500)),
-            (bae_db::DbAudioSegmentRole::Main, 220_500, None),
+            (bae_records::DbAudioSegmentRole::AudioPregap, 132_300, Some(220_500)),
+            (bae_records::DbAudioSegmentRole::Main, 220_500, None),
         ]
     );
     let files = manager.get_files_for_release(&release_id).await.unwrap();

@@ -11,7 +11,7 @@ impl LibraryManager {
         file_id: &str,
     ) -> Box<dyn bae_track_audio::data_source::AudioDataReader> {
         Box::new(bae_track_audio::data_source::CovenFileReader::new(
-            self.database.clone(),
+            self.records.clone(),
             file_id.to_string(),
             self.diagnostics.clone(),
         ))
@@ -43,7 +43,7 @@ impl LibraryManager {
     /// then positions in the track's stream, which a remote renderer reports
     /// and seeks by. One stream per file the segments read; they close when
     /// the returned decode is dropped.
-    pub fn open_track_decode(&self, audio: &bae_db::ResolvedTrackAudio) -> crate::TrackDecode {
+    pub fn open_track_decode(&self, audio: &bae_records::ResolvedTrackAudio) -> crate::TrackDecode {
         let mut streams: std::collections::HashMap<
             String,
             bae_audio::sparse_buffer::SharedSparseBuffer,

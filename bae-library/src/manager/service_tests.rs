@@ -202,7 +202,7 @@ async fn done_runs_the_releases_still_uploading_first() {
 /// Each Done row's name and how its release's upload stands, in order.
 fn done_uploads(
     windows: &[bae_import::ImportListWindow],
-) -> Vec<(String, Option<bae_db::UploadProgress>)> {
+) -> Vec<(String, Option<bae_records::UploadProgress>)> {
     windows
         .iter()
         .flat_map(|window| &window.items)
@@ -233,7 +233,7 @@ async fn a_done_row_carries_its_release_upload() {
     )
     .await
     .unwrap();
-    let waiting = Some(bae_db::UploadProgress { queued: 1, uploading: 0 });
+    let waiting = Some(bae_records::UploadProgress { queued: 1, uploading: 0 });
     assert_eq!(
         done_uploads(&subscription.next().await.unwrap().windows),
         [
@@ -259,7 +259,7 @@ async fn a_done_row_carries_its_release_upload() {
         let manager = manager.library.clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    let sending = Some(bae_db::UploadProgress { queued: 0, uploading: 1 });
+    let sending = Some(bae_records::UploadProgress { queued: 0, uploading: 1 });
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while !done_uploads(&subscription.next().await.unwrap().windows)
             .iter()

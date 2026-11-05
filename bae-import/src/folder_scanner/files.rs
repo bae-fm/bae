@@ -27,7 +27,7 @@ pub struct ScannedFile {
     ///
     /// Always `/`-separated, on every platform: it is stored and synced, and
     /// whichever device exports the release or makes it local writes the file
-    /// under these names (see [`bae_db::stored_name`]), so it cannot
+    /// under these names (see [`bae_records::stored_name`]), so it cannot
     /// carry the writing platform's separator.
     pub relative_path: String,
     /// Directory prefix of relative_path (e.g. "Disc 1/"). `None` when the
@@ -240,8 +240,8 @@ impl CategorizedFiles {
 
     /// What the candidate's audio is, summarized over every audio file whose
     /// format the scan read.
-    pub fn source_audio_summary(&self) -> Option<bae_db::source_audio::SourceAudioSummary> {
-        use bae_db::source_audio::{
+    pub fn source_audio_summary(&self) -> Option<bae_records::source_audio::SourceAudioSummary> {
+        use bae_records::source_audio::{
             SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary, SummarizedAudio,
         };
         let carved_audio: std::collections::HashSet<&str> = self

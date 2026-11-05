@@ -17,9 +17,9 @@ use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::load_source_release_on;
 use crate::{CoverSelection, ImportedRelease, ReleaseLink};
 use crate::{DraftProjection, ProjectedStage};
-use bae_db::client::records::{album_records_name_on, check_releases_in_library_on};
 use bae_identify::PressingLink;
 use bae_identify::VerdictSummary;
+use bae_records::records::release_records::{album_records_name_on, check_releases_in_library_on};
 
 #[derive(Clone, PartialEq)]
 pub(super) struct CandidateDetailRows {
@@ -46,7 +46,7 @@ enum StageRows {
 struct DraftRows {
     pane_rows: DbCandidatePaneRows,
     cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
-    artist_resolutions: Vec<bae_db::ResolvedCredit>,
+    artist_resolutions: Vec<bae_records::ResolvedCredit>,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::DraftAlbum,
@@ -133,9 +133,9 @@ fn draft_rows_on(
     let pane_rows = load_pane_rows_on(sql, content_hash)?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions = bae_db::client::artist_resolution::resolve_credits_with(
+    let artist_resolutions = bae_records::records::artist_resolution::resolve_credits_with(
         pane_rows.draft.credits(),
-        |credit| bae_db::client::artist_resolution::resolve_credit_on(sql, credit),
+        |credit| bae_records::records::artist_resolution::resolve_credit_on(sql, credit),
     )?;
     // The linked pressing's stored releases: what names its records and
     // checks it against the library.
@@ -155,7 +155,7 @@ fn draft_rows_on(
     let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {
         Some(release) => {
-            check_releases_in_library_on(sql, &[bae_db::LibraryCheck::of_release(release)])?
+            check_releases_in_library_on(sql, &[bae_records::LibraryCheck::of_release(release)])?
                 .into_iter()
                 .next()
         }

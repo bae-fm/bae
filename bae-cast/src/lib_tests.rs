@@ -297,10 +297,10 @@ fn stream_url_encodes_format_and_track() {
 #[test]
 fn cover_url_names_the_cover_by_its_cover_art_id() {
     let provider = cover_url_provider("http://10.0.0.5:9000".to_string(), credential());
-    let url = provider(&bae_db::ImageRef {
+    let url = provider(&bae_records::ImageRef {
         id: "release-1".to_string(),
         version: "v2".to_string(),
-        image_type: bae_db::LibraryImageType::Cover,
+        image_type: bae_records::LibraryImageType::Cover,
     });
     assert!(url.starts_with("http://10.0.0.5:9000/rest/getCoverArt?id=al-release-1~v2&"), "{url}");
     assert!(!url.contains("cover="), "{url}");

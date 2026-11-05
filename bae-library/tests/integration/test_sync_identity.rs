@@ -5,10 +5,10 @@
 
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
-use bae_db::ExistingArtist;
-use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 use bae_import::{ArtistAssignment, ReleaseUserEdit};
 use bae_library::test_libraries::{run_two_device_test, TestDevice, TwoDevices};
+use bae_records::ExistingArtist;
+use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 
 const MB_ARTIST: &str = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";
 const DISCOGS_ARTIST: &str = "3840";
@@ -67,10 +67,10 @@ async fn album_credited_to(device: &TestDevice, artist_id: &str, title: &str) ->
     // The album arrives with its release in one write, as an import writes
     // them.
     let album = DbAlbum::new_test(title);
-    let credit = bae_db::DbAlbumArtist::new_test(&album.id, artist_id);
+    let credit = bae_records::DbAlbumArtist::new_test(&album.id, artist_id);
     let release = DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
     device
-        .database()
+        .records()
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
@@ -79,7 +79,7 @@ async fn album_credited_to(device: &TestDevice, artist_id: &str, title: &str) ->
 
 async fn remote_release_in(device: &TestDevice, album_id: &str) -> String {
     let release = DbRelease { ..DbRelease::new_test(album_id, &uuid::Uuid::new_v4().to_string()) };
-    device.database().insert_release(&release).await.unwrap();
+    device.records().insert_release(&release).await.unwrap();
     release.id
 }
 
@@ -109,8 +109,8 @@ async fn listed_albums(db: &bae_store::Store) -> Vec<String> {
         .collect()
 }
 
-async fn album_artist_ids(database: &Database, album_id: &str) -> Vec<String> {
-    database
+async fn album_artist_ids(records: &bae_records::Records, album_id: &str) -> Vec<String> {
+    records
         .get_artists_for_album(album_id)
         .await
         .unwrap()
@@ -177,25 +177,25 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 .unwrap()
                 .remove(0);
             let album = DbAlbum::new_test("Album");
-            let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist_id);
+            let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist_id);
             let release =
                 DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
             let track =
                 DbTrack::new_test(&release.id, &uuid::Uuid::new_v4().to_string(), "Track", 1);
             device
-                .database()
+                .records()
                 .insert_album_with_release_and_tracks(
                     &album,
                     &[credit],
                     &release,
-                    &[bae_db::DbReleaseMedium::new_test(&release.id)],
+                    &[bae_records::DbReleaseMedium::new_test(&release.id)],
                     std::slice::from_ref(&track),
                     &[],
                 )
                 .await
                 .unwrap();
             let work = DbWork {
-                id: bae_db::identity::work_id(MB_WORK),
+                id: bae_records::identity::work_id(MB_WORK),
                 title: "Work".to_string(),
                 disambiguation: None,
                 work_type: None,
@@ -210,11 +210,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 uuid::Uuid::new_v4().to_string(),
                 chrono::Utc::now(),
             );
-            device
-                .database()
-                .insert_composition_fixture_rows(&[work], &[track_work])
-                .await
-                .unwrap();
+            device.records().insert_composition_fixture_rows(&[work], &[track_work]).await.unwrap();
             releases.push(release.id);
         }
         devices.resume().await;
@@ -277,7 +273,7 @@ async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseU
     let mut assignments = Vec::new();
     for id in artist_ids {
         let artist = device
-            .database()
+            .records()
             .find_artist_by_id(id)
             .await
             .unwrap()
@@ -319,7 +315,7 @@ fn the_same_album_credit_added_on_two_devices_merges() {
             .await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                album_artist_ids(&bae_db::test_fixtures::test_database(db), &album_id).await,
+                album_artist_ids(&bae_records::test_fixtures::test_records(db), &album_id).await,
                 vec![first.clone(), second.clone()]
             );
         }
@@ -430,7 +426,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                album_artist_ids(&bae_db::test_fixtures::test_database(db), &album_id).await,
+                album_artist_ids(&bae_records::test_fixtures::test_records(db), &album_id).await,
                 vec![survivor.clone()]
             );
         }
@@ -457,7 +453,7 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
         devices.converge("SELECT id || ' ' || into_artist_id FROM artist_merges").await;
         for db in [devices.a().store(), devices.b().store()] {
             assert_eq!(
-                album_artist_ids(&bae_db::test_fixtures::test_database(db), &new_album).await,
+                album_artist_ids(&bae_records::test_fixtures::test_records(db), &new_album).await,
                 vec![survivor.clone()]
             );
         }

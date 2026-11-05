@@ -277,12 +277,9 @@ async fn with_profile(
 ) -> JoinedLibrary {
     let profile = match invitee {
         Some(name) => Some(
-            bae_db::Database::new(
-                bae_store::Store::new(handle.clone(), clock),
-                std::sync::Arc::new(coven::UuidIds),
-            )
-            .create_profile(name)
-            .await,
+            bae_db::Database::new(bae_store::Store::new(handle.clone(), clock))
+                .create_profile(name)
+                .await,
         ),
         None => None,
     };

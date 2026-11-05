@@ -663,7 +663,7 @@ fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> Medi
 /// id, which carries its version, so a replaced cover has a new URL, which a
 /// receiver that cached the old art fetches again.
 fn cover_url_provider(base_url: String, credential: SubsonicCredential) -> CoverUrlProvider {
-    Arc::new(move |cover: &bae_db::ImageRef| {
+    Arc::new(move |cover: &bae_records::ImageRef| {
         format!(
             "{base_url}/rest/getCoverArt?id={cover_art}&{auth}&v=1.16.1&c=bae-cast",
             cover_art = bae_subsonic::album_cover_art_id(&cover.id, &cover.version),

@@ -1,5 +1,5 @@
 use super::*;
-use bae_db::{DbSendingFile, DbSendingRelease};
+use bae_records::{DbSendingFile, DbSendingRelease};
 use bae_transfers::ReleaseTransferChange;
 
 fn file(n: u128) -> coven::FileId {

@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::{DbRelease, NewReleaseFile};
+use bae_records::{DbRelease, NewReleaseFile};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -98,7 +98,7 @@ async fn insert_export_release_rows(
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.source_folder_name = Some(folder_name.to_string());
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     std::fs::create_dir_all(source_dir).unwrap();
     let created_at = Utc::now();
@@ -136,10 +136,10 @@ async fn insert_local_export_release_named(
             .await;
     match name {
         PeerName::OriginalFilename(value) => {
-            manager.database.set_original_filename_for_test(&db_files[0].id, value).await.unwrap()
+            manager.records.set_original_filename_for_test(&db_files[0].id, value).await.unwrap()
         }
         PeerName::SourceFolderName(value) => {
-            manager.database.set_source_folder_name_for_test(&release.id, value).await.unwrap()
+            manager.records.set_source_folder_name_for_test(&release.id, value).await.unwrap()
         }
     }
     release.id
@@ -356,7 +356,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.source_folder_name = Some("Album Title".to_string());
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     let files: &[(&str, &[u8])] = &[("01.flac", b"first-ok"), ("02.flac", b"second-fails")];

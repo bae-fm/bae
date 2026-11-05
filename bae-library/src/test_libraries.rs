@@ -35,6 +35,7 @@ use std::sync::Arc;
 pub struct TestLibrary {
     manager: LibraryManager,
     store: Store,
+    records: bae_records::Records,
     database: Database,
     catalogs: CatalogSessions,
     closing: CancellationToken,
@@ -87,7 +88,8 @@ impl TestLibrary {
         diagnostics: Diagnostics,
     ) -> Self {
         let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
-        let database = Database::new(store.clone(), ids.clone());
+        let records = bae_records::Records::new(store.clone(), ids.clone());
+        let database = Database::new(store.clone());
         let catalogs = CatalogSessions::new(
             providers,
             store.clone(),
@@ -97,6 +99,7 @@ impl TestLibrary {
         let closing = CancellationToken::new();
         let manager = crate::open_library_manager(
             store.clone(),
+            records.clone(),
             database.clone(),
             catalogs.clone(),
             closing.clone(),
@@ -109,7 +112,18 @@ impl TestLibrary {
         )
         .await
         .expect("open the test library");
-        Self { manager, store, database, catalogs, closing, clock, ids, diagnostics, remote_images }
+        Self {
+            manager,
+            store,
+            records,
+            database,
+            catalogs,
+            closing,
+            clock,
+            ids,
+            diagnostics,
+            remote_images,
+        }
     }
 
     /// The library's store.
@@ -117,7 +131,12 @@ impl TestLibrary {
         &self.store
     }
 
-    /// The library's records, people, membership and sync status.
+    /// The library's records.
+    pub fn records(&self) -> &bae_records::Records {
+        &self.records
+    }
+
+    /// The library's people, membership and sync status.
     pub fn database(&self) -> &Database {
         &self.database
     }
@@ -163,7 +182,7 @@ impl TestLibrary {
         bae_import::ImportService::start(
             tokio::runtime::Handle::current(),
             self.store.clone(),
-            self.database.clone(),
+            self.records.clone(),
             self.catalogs.clone(),
             self.remote_images.clone(),
             self.diagnostics.clone(),
@@ -272,6 +291,7 @@ impl TestLibrary {
             .expect("settle the playback queue");
         bae_playback::PlaybackService::start_with_audio_device(
             self.store.clone(),
+            self.records.clone(),
             self.database.clone(),
             self.ids.clone(),
             bae_playback::tables::PlaybackQueueTables::new(self.store.clone()),

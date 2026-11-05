@@ -3,7 +3,7 @@
 
 use crate::*;
 use crate::{ArtistSearchView, LibrarySearchQuery};
-use bae_db::test_fixtures::live_query::write_artist_image;
+use bae_records::test_fixtures::live_query::write_artist_image;
 use bae_store::test_fixtures::{exec, exec_batch, temp_db};
 use bae_store::LibraryPageWindow;
 use bae_util::test_channels::HANG_GUARD;
@@ -77,7 +77,7 @@ async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
 #[tokio::test]
 async fn artist_search_follows_writes_to_what_it_finds() {
     let (db, _tmp) = seeded().await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let mut live = LibraryViews::new(db.clone())
         .subscribe_artist_search(view("artist name", &[window(0, 10)]));
     let first = live.next().await.expect("the query stays open").result.unwrap();
@@ -103,7 +103,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .unwrap();
     assert_eq!(added.total_count, 4);
 
-    database
+    records
         .add_artist_credit_name(FIRST, &bae_store::EnteredName::parse("Artist Alias").unwrap())
         .await
         .unwrap();
@@ -129,16 +129,16 @@ async fn artist_search_follows_writes_to_what_it_finds() {
 #[tokio::test]
 async fn a_found_artist_reads_its_image_and_names_in_its_row() {
     let (db, _tmp) = seeded().await;
-    let database = bae_db::test_fixtures::test_database(&db);
-    database
+    let records = bae_records::test_fixtures::test_records(&db);
+    records
         .add_artist_credit_name(FIRST, &bae_store::EnteredName::parse("Zed Alias").unwrap())
         .await
         .unwrap();
-    database
+    records
         .add_artist_credit_name(FIRST, &bae_store::EnteredName::parse("Alpha Alias").unwrap())
         .await
         .unwrap();
-    let image = write_artist_image(&database, FIRST, "artist image bytes").await;
+    let image = write_artist_image(&records, FIRST, "artist image bytes").await;
 
     let found = LibraryViews::new(db.clone())
         .subscribe_artist_search(view("artist name", &[window(0, 10)]))

@@ -1,11 +1,11 @@
-//! One read of the import list against a database, and its live query: what
+//! One read of the import list against a records, and its live query: what
 //! reruns it, what it withholds, how Done follows what this device imported,
 //! and a window read from the last read's rows only while none has moved.
 
 use super::*;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
-use bae_db::test_fixtures::live_query::{live_db, RELEASE_ID};
+use bae_records::test_fixtures::live_query::{live_db, RELEASE_ID};
 use bae_store::test_fixtures::live_query::next_run_is_only_the_request;
 use bae_store::test_fixtures::window_cost::{offsets, report, LIMIT, RUNS, SIZES};
 use bae_store::test_fixtures::{empty_db, exec};
@@ -84,12 +84,12 @@ async fn overlapping_stored_roots_fail_the_list_read() {
 #[tokio::test]
 async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scan_finished(&db, root, "release").await;
-    assert!(database.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
+    assert!(records.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
 
     let projection = tables
         .load_import_list(list_request(&db, crate::TriageTab::Pending, [(0, 50)]).await)

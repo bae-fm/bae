@@ -3,79 +3,21 @@ use coven::Binding;
 use std::collections::BTreeSet;
 
 #[test]
-fn library_declarations_match_the_store_audience_and_file_contract() {
+fn people_declarations_match_the_store_audience_and_file_contract() {
     let tables = synced_tables();
     let names: BTreeSet<_> = tables.iter().map(SyncedTable::name).collect();
     assert_eq!(
         names,
-        BTreeSet::from([
-            "artists",
-            "artist_merges",
-            "artist_credits",
-            "albums",
-            "album_artists",
-            "releases",
-            "release_records",
-            "release_mediums",
-            "release_media",
-            "release_barcodes",
-            "labels",
-            "label_merges",
-            "release_labels",
-            "tracks",
-            "track_artists",
-            "works",
-            "work_artists",
-            "work_parts",
-            "track_works",
-            "release_artist_roles",
-            "track_artist_roles",
-            "release_files",
-            "audio_formats",
-            "audio_format_segments",
-            "audio_segment_scrub_points",
-            "covers",
-            "artist_images",
-            "people",
-            "history",
-            "ratings",
-            "playlists",
-            "playlist_entries",
-        ])
+        BTreeSet::from(["people", "history", "ratings", "playlists", "playlist_entries"])
     );
     for table in &tables {
-        let shared = matches!(
-            table.name(),
-            "artists"
-                | "artist_merges"
-                | "artist_credits"
-                | "albums"
-                | "album_artists"
-                | "release_records"
-                | "release_mediums"
-                | "release_media"
-                | "release_barcodes"
-                | "labels"
-                | "label_merges"
-                | "release_labels"
-                | "track_artists"
-                | "works"
-                | "work_artists"
-                | "work_parts"
-                | "covers"
-                | "artist_images"
-                | "people"
-                | "ratings"
-                | "playlist_entries"
-        );
+        let shared = matches!(table.name(), "people" | "ratings" | "playlist_entries");
         assert_eq!(
             table.identity(),
             if shared { &RowIdentity::SharedKey } else { &RowIdentity::IndependentUuid }
         );
         let keys: &[&str] = match table.name() {
             "playlist_entries" => &["playlist_id", "position_id"],
-            "artist_credits" => &["artist_id", "name_key"],
-            "audio_segment_scrub_points" => &["audio_format_segment_id"],
             _ => &["id"],
         };
         assert_eq!(table.get_key_columns(), keys);
@@ -87,13 +29,7 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
             table.get_audience_from(),
             (table.name() == "playlist_entries").then_some("playlist_id")
         );
-        assert_eq!(
-            table.is_owner_only(),
-            matches!(
-                table.name(),
-                "people" | "ratings" | "history" | "playlists" | "playlist_entries"
-            )
-        );
+        assert!(table.is_owner_only(), "{}", table.name());
         let columns: Vec<(&str, &Binding, bool)> = table
             .file_columns()
             .iter()
@@ -101,8 +37,6 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
             .collect();
         let bound = Binding::Bound { limit: coven::BOUND_FILE_LIMIT };
         let expected: &[(&str, &Binding, bool)] = match table.name() {
-            "release_files" => &[("file", &Binding::Trailing, false)],
-            "covers" | "artist_images" => &[("file", &bound, false)],
             "people" => &[("avatar_id", &bound, false)],
             _ => &[],
         };
@@ -113,26 +47,13 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
         .iter()
         .map(|namespace| (namespace.name(), namespace.kind(), namespace.cache_budget()))
         .collect();
-    assert_eq!(
-        namespaces,
-        [
-            (RELEASE_FILES_NAMESPACE, &Provenance::UserProvided, 20 * 1024 * 1024 * 1024),
-            (COVERS_NAMESPACE, &Provenance::AppProvided, 512 * 1024 * 1024),
-            (ARTIST_IMAGES_NAMESPACE, &Provenance::AppProvided, 256 * 1024 * 1024),
-            (AVATARS_NAMESPACE, &Provenance::AppProvided, 64 * 1024 * 1024),
-        ]
-    );
-    assert_eq!(
-        tables.iter().find(|t| t.name() == "covers").unwrap().identity(),
-        &RowIdentity::SharedKey
-    );
+    assert_eq!(namespaces, [(AVATARS_NAMESPACE, &Provenance::AppProvided, 64 * 1024 * 1024)]);
 }
 
-/// Tables of bae-db's part of the schema whose rows never leave this device.
-/// A table its part creates is either declared in `synced_tables()` or named
-/// here, so a new table is a decision rather than a row that silently stays
-/// on one device. A synced table is one of bae-db's part, so every table of
-/// another crate's part stays on the device.
+/// Tables of this crate's part of the schema whose rows never leave this
+/// device. A table the part creates is either declared in `synced_tables()` or
+/// named here, so a new table is a decision rather than a row that silently
+/// stays on one device.
 const DEVICE_LOCAL_TABLES: &[&str] = &[
     // This device's own copies: plays before a person exists.
     "local_history",
@@ -142,12 +63,6 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // What each admin change this device asked for changes, while coven
     // lists its operation.
     "admin_operations",
-    // The artist each artist shows as, kept from the artists and their
-    // merges by local triggers.
-    "artist_shown_as",
-    // Where each release's files are on this device, kept from them and
-    // coven's records by local triggers.
-    "release_storage",
     // Why this device's last attempt to start sync failed.
     "sync_start_failure",
 ];
@@ -156,12 +71,12 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
 fn every_schema_table_is_synced_or_declared_device_local() {
     let create =
         regex::Regex::new(r"(?m)^\s*CREATE (?:VIRTUAL )?TABLE (?:IF NOT EXISTS )?(\w+)").unwrap();
-    let schema: BTreeSet<&str> = crate::test_fixtures::TEST_SCHEMA
+    let schema: BTreeSet<&str> = bae_store::Schema::new(&[crate::SCHEMA_PARTS])
         .sql()
         .flat_map(|sql| create.captures_iter(sql))
         .map(|captures| captures.get(1).unwrap().as_str())
         .collect();
-    let tables = crate::test_fixtures::TEST_SCHEMA.synced_tables();
+    let tables = bae_store::Schema::new(&[crate::SCHEMA_PARTS]).synced_tables();
     let synced: BTreeSet<&str> = tables.iter().map(SyncedTable::name).collect();
     let local: BTreeSet<&str> = DEVICE_LOCAL_TABLES.iter().copied().collect();
     assert_eq!(local.len(), DEVICE_LOCAL_TABLES.len(), "a device-local table is listed twice");

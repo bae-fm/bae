@@ -19,7 +19,7 @@ pub(super) struct Fixture {
 /// A library holding `releases`, each `(release name, track names)` with its
 /// tracks in that order, and an empty queue over it.
 pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
-    use bae_db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
+    use bae_records::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
     let home = tempfile::TempDir::new().unwrap();
     let db = Store::new_test(
         crate::TEST_SCHEMA,
@@ -28,7 +28,7 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     )
     .await
     .unwrap();
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     let artist = DbArtist {
         id: uuid::Uuid::new_v4().to_string(),
         name: "Artist Name".to_string(),
@@ -37,24 +37,21 @@ pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
         musicbrainz_artist_id: None,
         created_at: chrono::Utc::now(),
     };
-    database.insert_artist(&artist).await.unwrap();
+    records.insert_artist(&artist).await.unwrap();
     let mut ids = HashMap::new();
     for (release_name, track_names) in releases {
         let release_id = uuid::Uuid::new_v4().to_string();
         ids.insert(release_name.to_string(), release_id.clone());
         let album = DbAlbum::new_test("Album Title");
-        database.insert_album(&album).await.unwrap();
-        database
-            .insert_album_artist(&DbAlbumArtist::new_test(&album.id, &artist.id))
-            .await
-            .unwrap();
-        database.insert_release(&DbRelease::new_test(&album.id, &release_id)).await.unwrap();
-        database.insert_release_medium(&DbReleaseMedium::new_test(&release_id)).await.unwrap();
+        records.insert_album(&album).await.unwrap();
+        records.insert_album_artist(&DbAlbumArtist::new_test(&album.id, &artist.id)).await.unwrap();
+        records.insert_release(&DbRelease::new_test(&album.id, &release_id)).await.unwrap();
+        records.insert_release_medium(&DbReleaseMedium::new_test(&release_id)).await.unwrap();
         for (index, name) in track_names.iter().enumerate() {
             let track_id = uuid::Uuid::new_v4().to_string();
             ids.insert(name.to_string(), track_id.clone());
             let number = u32::try_from(index + 1).unwrap();
-            database
+            records
                 .insert_track(&DbTrack::new_test(&release_id, &track_id, "Track Title", number))
                 .await
                 .unwrap();

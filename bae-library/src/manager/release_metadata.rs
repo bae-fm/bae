@@ -12,19 +12,19 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<(String, DbRelease, DbAlbum, Vec<DbTrack>), LibraryError> {
         let album_id =
-            self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
+            self.records.find_album_id_for_release(release_id).await?.ok_or_else(|| {
                 LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         let release =
-            self.database.find_release_by_id(release_id).await?.ok_or_else(|| {
+            self.records.find_release_by_id(release_id).await?.ok_or_else(|| {
                 LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
             })?;
         let album = self
-            .database
+            .records
             .find_album_by_id(&album_id)
             .await?
             .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
-        let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
+        let existing_tracks = self.records.get_tracks_for_release(release_id).await?;
         Ok((album_id, release, album, existing_tracks))
     }
 
@@ -50,7 +50,7 @@ impl LibraryManager {
         let _writing = self.release_writes.lock().await;
         let (_, release, album, existing_tracks) = self.load_release_for_edit(release_id).await?;
         let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
-        self.database.update_release_metadata_user_edit(metadata).await?;
+        self.records.update_release_metadata_user_edit(metadata).await?;
         Ok(())
     }
 
@@ -58,7 +58,7 @@ impl LibraryManager {
     /// and artists, release pressing fields, and per-track titles and
     /// artists. A picked
     /// library artist is linked as itself; every other credit is resolved by the
-    /// artist rule (`bae_db::client::artist_resolution`) inside the commit that writes the
+    /// artist rule (`bae_records::records::artist_resolution`) inside the commit that writes the
     /// album/release/track rows and replaces the `album_artists` /
     /// `track_artists` junctions.
     ///
@@ -83,8 +83,8 @@ impl LibraryManager {
         release: DbRelease,
         existing_tracks: &[DbTrack],
         edit: &bae_import::ReleaseUserEdit,
-    ) -> Result<bae_db::ReleaseMetadataRows, LibraryError> {
-        use bae_db::{DbAlbumArtist, DbTrackArtist};
+    ) -> Result<bae_records::ReleaseMetadataRows, LibraryError> {
+        use bae_records::{DbAlbumArtist, DbTrackArtist};
 
         if existing_tracks.len() != edit.tracks.len() {
             return Err(LibraryError::Refused(format!(
@@ -166,7 +166,7 @@ impl LibraryManager {
             }
         }
 
-        Ok(bae_db::ReleaseMetadataRows {
+        Ok(bae_records::ReleaseMetadataRows {
             album: updated_album,
             release: updated_release,
             track_updates,

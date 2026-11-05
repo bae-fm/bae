@@ -333,11 +333,11 @@ impl ImportService {
         for track_file in tracks_to_files {
             let (file_paths, layout): (Vec<&Path>, _) = match &track_file.audio {
                 TrackAudio::Standalone { file_path, .. } => {
-                    (vec![file_path.as_path()], bae_db::source_audio::SourceAudioLayout::File)
+                    (vec![file_path.as_path()], bae_records::source_audio::SourceAudioLayout::File)
                 }
                 TrackAudio::CueBacked { cue_pair, .. } => (
                     cue_pair.audio_files.iter().map(|audio| audio.path.as_path()).collect(),
-                    bae_db::source_audio::SourceAudioLayout::Cue,
+                    bae_records::source_audio::SourceAudioLayout::Cue,
                 ),
             };
             for file_path in file_paths {
@@ -449,13 +449,14 @@ impl ImportService {
                 self.ids.new_id().to_string(),
                 files_now,
             );
-            db_file.source_audio =
-                file.source_audio.as_ref().map(|audio| bae_db::source_audio::SourceAudioFile {
+            db_file.source_audio = file.source_audio.as_ref().map(|audio| {
+                bae_records::source_audio::SourceAudioFile {
                     layout: source_audio_layouts.get(file.version.path.as_path()).copied(),
                     format: audio.format.clone(),
                     content_type: audio.content_type.clone(),
                     duration_ms: audio.duration_ms,
-                });
+                }
+            });
             file_ids.insert(file.version.path.clone(), db_file.id.clone());
             prepared_files.push(PreparedImportFile { row: db_file, original, place });
             debug!("Read file {}/{}: {}", idx + 1, total_files, file.relative_path,);
@@ -584,7 +585,10 @@ impl ImportService {
                 track_works: &work_graph.track_works,
                 release_artist_roles,
                 track_artist_roles,
-                artists: bae_db::ArtistCredits { credits: artist_credits, picked: picked_artists },
+                artists: bae_records::ArtistCredits {
+                    credits: artist_credits,
+                    picked: picked_artists,
+                },
                 audio_formats: &built_audio.audio_formats,
                 audio_segments: &built_audio.audio_segments,
                 scrub_points: &loudness.scrub_points,
@@ -636,7 +640,7 @@ impl ImportService {
         tracks_to_files: &[TrackFile],
         rows: crate::tables::ImportRows<'_>,
         files: Vec<PreparedImportFile>,
-        library_image: Option<(&bae_db::DbLibraryImage, &[u8])>,
+        library_image: Option<(&bae_records::DbLibraryImage, &[u8])>,
         artist_images: &[DiscogsArtistImage],
     ) -> Result<(), crate::ImportError> {
         let pictures = self.staged_artist_pictures(&rows.artists, artist_images).await?;

@@ -16,11 +16,11 @@ fn an_unnamed_slot_is_titled_after_its_file() {
 
     let track_files = resolve_track_files(
         vec![(
-            bae_db::TrackRow {
+            bae_records::TrackRow {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "   ".to_string(),
-                medium_id: bae_db::identity::release_medium_id("release-1", 1),
+                medium_id: bae_records::identity::release_medium_id("release-1", 1),
                 side: std::num::NonZeroU8::MIN,
                 track_number: std::num::NonZeroU32::MIN,
                 created_at: chrono::Utc::now(),
@@ -76,11 +76,11 @@ fn audio_that_left_the_folder_refuses() {
 
     let err = resolve_track_files(
         vec![(
-            bae_db::TrackRow {
+            bae_records::TrackRow {
                 id: "track-0".to_string(),
                 release_id: "release-1".to_string(),
                 title: "Track Title".to_string(),
-                medium_id: bae_db::identity::release_medium_id("release-1", 1),
+                medium_id: bae_records::identity::release_medium_id("release-1", 1),
                 side: std::num::NonZeroU8::MIN,
                 track_number: std::num::NonZeroU32::MIN,
                 created_at: chrono::Utc::now(),

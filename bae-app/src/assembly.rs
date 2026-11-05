@@ -35,6 +35,7 @@ pub enum PlaybackOutput {
 pub async fn start_library_services(
     manager: LibraryManager,
     store: Store,
+    records: bae_records::Records,
     database: Database,
     #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
     #[cfg(desktop)] closing: CancellationToken,
@@ -60,6 +61,7 @@ pub async fn start_library_services(
     let playback = match playback_output {
         PlaybackOutput::System(audio_focus) => bae_playback::PlaybackService::start(
             store.clone(),
+            records.clone(),
             database.clone(),
             ids.clone(),
             queue_tables,
@@ -75,6 +77,7 @@ pub async fn start_library_services(
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackOutput::Device(device) => bae_playback::PlaybackService::start_with_audio_device(
             store.clone(),
+            records.clone(),
             database.clone(),
             ids.clone(),
             queue_tables,
@@ -96,7 +99,7 @@ pub async fn start_library_services(
         let import = bae_import::ImportService::start(
             runtime_handle,
             store.clone(),
-            database,
+            records,
             catalogs,
             remote_images,
             diagnostics,

@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::album_detail::{StoragePage, StorageRow};
-use bae_db::client::queued_uploads::{RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS};
+use bae_records::records::queued_uploads::{RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS};
 
 /// The SQL creating this part's tables and triggers.
 pub(super) const SQL: &str = include_str!("storage.sql");
@@ -261,7 +261,7 @@ fn row_to_release_summary(
         media: read_media(row, "release_media")?,
         remote: row.get("remote")?,
         pinned: row.get("pinned")?,
-        upload: bae_db::client::queued_uploads::release_upload_in_row(row)?,
+        upload: bae_records::records::queued_uploads::release_upload_in_row(row)?,
         transfer_action: transfer_action_column(row, "transfer_action")?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,

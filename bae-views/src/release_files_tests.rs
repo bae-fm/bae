@@ -1,8 +1,8 @@
 //! A release's files in each order the Storage sheet sorts them by.
 
 use crate::*;
-use bae_db::test_fixtures::aggregate_ordering::*;
-use bae_db::test_fixtures::*;
+use bae_records::test_fixtures::aggregate_ordering::*;
+use bae_records::test_fixtures::*;
 
 /// A release's files come back in each order the Storage sheet sorts them
 /// by — name, size, or kind, each forward or backward, ties by name and then

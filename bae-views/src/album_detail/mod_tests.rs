@@ -33,7 +33,8 @@ fn on_one_device_with_cloud_offers_upload() {
 /// imported offers nothing to upload.
 #[test]
 fn on_one_device_without_its_originals_here_offers_nothing() {
-    let elsewhere = OnOtherDevice(bae_db::OtherDevice::Active { name: "Device A".to_string() });
+    let elsewhere =
+        OnOtherDevice(bae_records::OtherDevice::Active { name: "Device A".to_string() });
     assert_eq!(
         available_storage_actions(OnOneDevice, &elsewhere, true),
         Vec::<ReleaseStorageAction>::new(),

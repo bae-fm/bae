@@ -673,16 +673,16 @@ pub(super) fn make_cue_content(flac_filename: &str, title: &str) -> String {
 
 pub(super) fn assert_uniform_source_audio(
     files: &CategorizedFiles,
-    layout: bae_db::source_audio::SourceAudioLayout,
+    layout: bae_records::source_audio::SourceAudioLayout,
     codec: &str,
 ) {
     let summary = files.source_audio_summary().expect("candidate has source audio");
     match summary {
-        bae_db::source_audio::SourceAudioSummary::Uniform { descriptor } => {
+        bae_records::source_audio::SourceAudioSummary::Uniform { descriptor } => {
             assert_eq!(descriptor.layout, layout);
             assert_eq!(descriptor.format.codec, codec);
         }
-        bae_db::source_audio::SourceAudioSummary::Mixed { differences } => {
+        bae_records::source_audio::SourceAudioSummary::Mixed { differences } => {
             panic!("expected uniform source audio, got {differences:?}")
         }
     }

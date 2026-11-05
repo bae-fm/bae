@@ -4,7 +4,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_catalogs::catalog::Catalog;
-use bae_db::{DbRelease, DbTrackWork, DbWork, LibraryImageType, NewReleaseFile};
+use bae_records::{DbRelease, DbTrackWork, DbWork, LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use uuid::Uuid;
@@ -15,7 +15,7 @@ async fn work_detail_release_rows_are_display_ready() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
-    let track = bae_db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
+    let track = bae_records::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
     let now = Utc::now();
     let work = DbWork {
         id: WORK_A.to_string(),
@@ -34,11 +34,11 @@ async fn work_detail_release_rows_are_display_ready() {
         now,
     );
 
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager.database.insert_track(&track).await.unwrap();
+    manager.records.insert_track(&track).await.unwrap();
     manager
-        .database
+        .records
         .insert_composition_fixture_rows(std::slice::from_ref(&work), &[track_work])
         .await
         .unwrap();
@@ -62,7 +62,7 @@ async fn work_detail_release_rows_are_display_ready() {
     let cover = row.cover.as_ref().expect("work release cover");
     assert_eq!(cover.id, release.id);
     assert!(!cover.version.is_empty());
-    assert_eq!(cover.image_type, bae_db::LibraryImageType::Cover);
+    assert_eq!(cover.image_type, bae_records::LibraryImageType::Cover);
 }
 
 #[tokio::test]
@@ -100,7 +100,7 @@ async fn test_delete_release_with_multiple_releases_preserves_album() {
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
 
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
 
@@ -190,7 +190,7 @@ async fn delete_release_removes_its_cover_image() {
     // Give release1 a cover: a `covers` row plus its file in one coven batch.
     store_test_cover(&manager, &release1.id, b"image").await;
 
-    wait_for_published_file(&manager, bae_db::synced::COVERS_NAMESPACE, &release1.id).await;
+    wait_for_published_file(&manager, bae_records::synced::COVERS_NAMESPACE, &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
@@ -209,11 +209,11 @@ async fn delete_release_removes_its_cover_image() {
 async fn delete_release_refuses_a_plan_whose_cover_changed() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     store_test_cover(&manager, &release.id, b"cover").await;
-    let plan = manager.database.plan_release_deletion(&release.id).await.unwrap();
+    let plan = manager.records.plan_release_deletion(&release.id).await.unwrap();
     store_test_cover(&manager, &release.id, b"replacement cover").await;
 
     let error = manager
-        .database
+        .records
         .delete_release_with_cleanup(plan)
         .await
         .expect_err("a stale delete plan is refused");
@@ -242,7 +242,7 @@ async fn primary_of(db: &bae_store::Store, album_id: &str) -> String {
 async fn check_converging_primaries(devices: &mut crate::test_libraries::TwoDevices) {
     let manager = devices.a().manager();
     let album = create_test_album();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     let releases: Vec<DbRelease> = (0..3).map(|_| create_test_release(&album.id)).collect();
     for release in &releases {
         insert_release(manager, release).await;
@@ -287,7 +287,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
 
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     // An image file whose stored filename is a traversal token, written
@@ -303,7 +303,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         Utc::now(),
     );
     manager.add_file(&file, 5).await.unwrap();
-    manager.database.set_original_filename_for_test(&file.id, "../../etc/y").await.unwrap();
+    manager.records.set_original_filename_for_test(&file.id, "../../etc/y").await.unwrap();
 
     // The resolver that fires when a synced release surfaces in the UI. The
     // name must resolve to "no cover" / "no local gallery path", not a panic.
@@ -317,7 +317,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         detail
             .gallery_items
             .iter()
-            .all(|item| matches!(item.source, bae_db::GallerySource::ReleaseFile { .. })),
+            .all(|item| matches!(item.source, bae_records::GallerySource::ReleaseFile { .. })),
         "with no cover row there is no cover slot; the traversal image file is a \
              release-file item, read by id"
     );
@@ -395,7 +395,7 @@ async fn album_detail_cover_is_versioned_and_moves_on_overwrite() {
 async fn find_album_detail_returns_none_when_releases_vanish() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
 
     let detail = views(&manager)
         .find_album_detail(&album.id)
@@ -413,7 +413,7 @@ async fn find_release_detail_returns_some_for_known_id() {
     release.pressing.year = None;
     release.pressing.facts = Default::default();
     release.release_name = None;
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     let detail = views(&manager)
@@ -434,7 +434,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     let source = |content_type, layout, codec: &str, bitrate_kbps: Option<i64>| {
-        bae_db::source_audio::SourceAudioFile {
+        bae_records::source_audio::SourceAudioFile {
             layout: Some(layout),
             content_type,
             duration_ms: 90_000,
@@ -448,9 +448,13 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
         }
     };
     let flac =
-        source(ContentType::Flac, bae_db::source_audio::SourceAudioLayout::Cue, "FLAC", None);
-    let mp3 =
-        source(ContentType::Mp3, bae_db::source_audio::SourceAudioLayout::File, "MP3", Some(320));
+        source(ContentType::Flac, bae_records::source_audio::SourceAudioLayout::Cue, "FLAC", None);
+    let mp3 = source(
+        ContentType::Mp3,
+        bae_records::source_audio::SourceAudioLayout::File,
+        "MP3",
+        Some(320),
+    );
     for (name, facts) in [("01-disc.flac", flac.clone()), ("02-bonus.mp3", mp3.clone())] {
         let mut file = NewReleaseFile::new(
             &release.id,
@@ -468,15 +472,15 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     assert!(detail.tracks.is_empty());
     assert_eq!(
         detail.source_audio,
-        Some(bae_db::source_audio::SourceAudioSummary::Mixed {
+        Some(bae_records::source_audio::SourceAudioSummary::Mixed {
             differences: vec![
-                bae_db::source_audio::SourceAudioDifference::Layout {
+                bae_records::source_audio::SourceAudioDifference::Layout {
                     layouts: vec![
-                        bae_db::source_audio::SourceAudioLayout::Cue,
-                        bae_db::source_audio::SourceAudioLayout::File,
+                        bae_records::source_audio::SourceAudioLayout::Cue,
+                        bae_records::source_audio::SourceAudioLayout::File,
                     ],
                 },
-                bae_db::source_audio::SourceAudioDifference::Codec {
+                bae_records::source_audio::SourceAudioDifference::Codec {
                     codecs: vec!["FLAC".to_string(), "MP3".to_string()],
                 },
             ],
@@ -490,10 +494,10 @@ async fn find_release_detail_surfaces_seeded_tracks() {
 
     // Seed two tracks; the detail resolver must surface both with their
     // titles and track numbers (not just report emptiness).
-    let t1 = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Opening", 1);
-    let t2 = bae_db::DbTrack::new_test(&release.id, TRACK_2, "Closing", 2);
-    manager.database.insert_track(&t1).await.unwrap();
-    manager.database.insert_track(&t2).await.unwrap();
+    let t1 = bae_records::DbTrack::new_test(&release.id, TRACK_1, "Opening", 1);
+    let t2 = bae_records::DbTrack::new_test(&release.id, TRACK_2, "Closing", 2);
+    manager.records.insert_track(&t1).await.unwrap();
+    manager.records.insert_track(&t2).await.unwrap();
 
     let detail =
         views(&manager).find_release_detail(&release.id).await.unwrap().expect("detail present");
@@ -515,7 +519,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
         let mut album = create_test_album();
         album.is_compilation = is_compilation;
         let release = create_test_release(&album.id);
-        let track = bae_db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
+        let track = bae_records::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
         let guest = DbArtist {
             id: "75c512c4-41b6-438d-89a6-d5929fa0697d".to_string(),
             name: "Guest Performer".to_string(),
@@ -524,12 +528,12 @@ async fn display_artist_is_set_only_for_a_compilation() {
             musicbrainz_artist_id: None,
             created_at: Utc::now(),
         };
-        let track_artist = bae_db::DbTrackArtist::new(&track.id, &guest.id, 0, Utc::now());
-        manager.database.insert_album(&album).await.unwrap();
+        let track_artist = bae_records::DbTrackArtist::new(&track.id, &guest.id, 0, Utc::now());
+        manager.records.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
-        manager.database.insert_artist(&guest).await.unwrap();
-        manager.database.insert_track(&track).await.unwrap();
-        manager.database.insert_track_artist(&track_artist).await.unwrap();
+        manager.records.insert_artist(&guest).await.unwrap();
+        manager.records.insert_track(&track).await.unwrap();
+        manager.records.insert_track_artist(&track_artist).await.unwrap();
 
         let detail = views(&manager)
             .find_release_detail(&release.id)
@@ -557,7 +561,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
 
     // An image file for the release with no local copy on this device — the
     // release's images live only in the cloud here.
-    let image = bae_db::NewReleaseFile::new(
+    let image = bae_records::NewReleaseFile::new(
         &release.id,
         "back.jpg",
         bae_util::content_type::ContentType::Jpeg,
@@ -579,7 +583,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         .expect("image file surfaced in gallery");
     assert_eq!(item.label, "back.jpg");
     assert!(
-        matches!(item.source, bae_db::GallerySource::ReleaseFile { .. }),
+        matches!(item.source, bae_records::GallerySource::ReleaseFile { .. }),
         "a release-file image is read by file id, not as the cover"
     );
 }
@@ -631,7 +635,7 @@ async fn find_release_detail_name_uses_year_and_media() {
     let mut release = create_test_release(&album.id);
     release.pressing.year = Some(2024);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     let detail = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap();
@@ -652,7 +656,7 @@ async fn find_release_detail_name_prefers_release_name() {
     release.release_name = Some("Deluxe Edition".to_string());
     release.pressing.year = Some(2024);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     let detail = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap();
@@ -672,7 +676,7 @@ async fn find_release_detail_uses_position_for_second_release() {
     let mut release2 = create_test_release(&album.id);
     release2.pressing.year = None;
     release2.pressing.facts = Default::default();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
 
@@ -708,7 +712,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
     let error = manager
         .read_gallery_bytes(
             &release.id,
-            &bae_db::GallerySource::ReleaseFile { file_id: file.id.clone() },
+            &bae_records::GallerySource::ReleaseFile { file_id: file.id.clone() },
         )
         .await
         .expect_err("the file is another release's");

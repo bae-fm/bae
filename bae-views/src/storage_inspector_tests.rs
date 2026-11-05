@@ -2,8 +2,8 @@
 
 use super::*;
 use crate::album_detail::FilePin;
-use bae_db::test_fixtures::*;
-use bae_db::UploadProgress;
+use bae_records::test_fixtures::*;
+use bae_records::UploadProgress;
 use bae_store::test_fixtures::*;
 use bae_transfers::ReleaseQueueEntries;
 use bae_transfers::{OutputKind, OutputRequest, ReleaseQueueEntry};
@@ -30,7 +30,7 @@ fn waiting() -> ReleaseUpload {
 
 fn file(id: &str, pin: Option<FilePin>) -> crate::DbStorageInspectorFile {
     crate::DbStorageInspectorFile {
-        file: bae_db::DbFile {
+        file: bae_records::DbFile {
             id: id.to_string(),
             release_id: "selected".to_string(),
             original_filename: format!("{id}.flac"),

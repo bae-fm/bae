@@ -38,7 +38,7 @@ impl DiscogsArtistImage {
 /// create, and a library image row with its bytes for each that has one.
 pub(super) struct StagedArtistPictures {
     pub(super) expected_new_artists: Vec<String>,
-    pub(super) images: Vec<(bae_db::DbLibraryImage, Vec<u8>)>,
+    pub(super) images: Vec<(bae_records::DbLibraryImage, Vec<u8>)>,
 }
 
 impl ImportService {
@@ -48,7 +48,7 @@ impl ImportService {
     /// not among them.
     pub(super) async fn new_discogs_artists(
         &self,
-        credits: &[bae_db::DbArtist],
+        credits: &[bae_records::DbArtist],
         picked: &[String],
     ) -> Result<std::collections::BTreeSet<String>, crate::ImportError> {
         let resolved = self.tables.resolve_artists(credits, picked).await?;
@@ -60,7 +60,7 @@ impl ImportService {
     /// refuses to commit if it would create others.
     pub(super) async fn staged_artist_pictures(
         &self,
-        artists: &bae_db::ArtistCredits<'_>,
+        artists: &bae_records::ArtistCredits<'_>,
         fetched: &[DiscogsArtistImage],
     ) -> Result<StagedArtistPictures, crate::ImportError> {
         let expected = self.tables.resolve_artists(artists.credits, artists.picked).await?;
@@ -113,9 +113,9 @@ impl ImportService {
 /// when the import fetched its pictures and is not one now: the library's
 /// artists changed under the import, which fails so it can be run again.
 fn artist_image_rows(
-    inserted_artists: &[bae_db::DbArtist],
+    inserted_artists: &[bae_records::DbArtist],
     fetched: &[DiscogsArtistImage],
-) -> Result<Vec<(bae_db::DbLibraryImage, Vec<u8>)>, crate::ImportError> {
+) -> Result<Vec<(bae_records::DbLibraryImage, Vec<u8>)>, crate::ImportError> {
     let by_discogs_id: HashMap<_, _> =
         fetched.iter().map(|answer| (answer.discogs_artist_id(), answer)).collect();
     if by_discogs_id.len() != fetched.len() {
@@ -134,7 +134,10 @@ fn artist_image_rows(
         let DiscogsArtistImage::Image { jpeg, .. } = answer else {
             continue;
         };
-        let row = bae_db::DbLibraryImage::stored_jpeg(bae_db::LibraryImageType::Artist, &artist.id);
+        let row = bae_records::DbLibraryImage::stored_jpeg(
+            bae_records::LibraryImageType::Artist,
+            &artist.id,
+        );
         images.push((row, jpeg.clone()));
     }
     Ok(images)

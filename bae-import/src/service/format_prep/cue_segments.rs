@@ -8,7 +8,7 @@ use super::{
 use crate::types::CueFlacAnalysis;
 use crate::ImportError;
 use bae_audio::ProbeResult;
-use bae_db::{DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
+use bae_records::{DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 

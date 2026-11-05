@@ -7,7 +7,7 @@ use crate::service::format_prep::tests::*;
 use crate::service::format_prep::*;
 use crate::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
 use bae_audio::ProbeResult;
-use bae_db::DbTrack;
+use bae_records::DbTrack;
 use bae_util::content_type::ContentType;
 use coven::SequentialIds;
 use std::sync::Arc;
@@ -125,7 +125,7 @@ INDEX 01 01:00:00
         .playable_tracks()
         .enumerate()
         .map(|(index, track)| TrackFile {
-            db_track: bae_db::DbTrack::new_test(
+            db_track: bae_records::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 track.title.as_deref().unwrap_or("Track Title"),
@@ -275,7 +275,7 @@ INDEX 01 11:01:30
         .playable_tracks()
         .enumerate()
         .map(|(index, track)| TrackFile {
-            db_track: bae_db::DbTrack::new_test(
+            db_track: bae_records::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 track.title.as_deref().unwrap_or("Track Title"),
@@ -454,7 +454,7 @@ FILE "second.flac" WAVE
     });
     let tracks_to_files: Vec<_> = (0..2u32)
         .map(|index| TrackFile {
-            db_track: bae_db::DbTrack::new_test(
+            db_track: bae_records::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 "Track Title",
@@ -622,7 +622,7 @@ fn an_image_whose_track_starts_cannot_be_read_is_reported_as_a_bug() {
     });
     let tracks_to_files: Vec<_> = (0..2u32)
         .map(|index| TrackFile {
-            db_track: bae_db::DbTrack::new_test(
+            db_track: bae_records::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 "Track Title",
@@ -682,7 +682,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 id: format!("track-{index}"),
                 release_id: "rel".to_string(),
                 title: format!("Track {index}"),
-                medium_id: bae_db::identity::release_medium_id("rel", 1),
+                medium_id: bae_records::identity::release_medium_id("rel", 1),
                 side: std::num::NonZeroU8::MIN,
                 track_number: std::num::NonZeroU32::new(
                     u32::try_from(index + 1).expect("a test track number fits u32"),
@@ -730,7 +730,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     let main_segments: Vec<_> = built
         .audio_segments
         .iter()
-        .filter(|segment| segment.role == bae_db::DbAudioSegmentRole::Main)
+        .filter(|segment| segment.role == bae_records::DbAudioSegmentRole::Main)
         .collect();
     let ends: Vec<Option<u64>> = main_segments.iter().map(|segment| segment.end_byte).collect();
     // Non-last tracks carry a real, ascending, in-file end byte.
@@ -755,7 +755,7 @@ fn cue_image(
     dir: &std::path::Path,
     name: &str,
     format: bae_audio::EncodeFormat,
-) -> (Vec<u8>, Vec<bae_db::DbAudioSegment>) {
+) -> (Vec<u8>, Vec<bae_records::DbAudioSegment>) {
     let samples: Vec<i32> = (0..44_100 * 10 * 2)
         .map(|i| (((i / 2) as f64 * 0.031).sin() * 0.3 * i32::MAX as f64) as i32)
         .collect();
@@ -782,7 +782,7 @@ fn cue_image(
     });
     let tracks: Vec<_> = (0..2u32)
         .map(|index| TrackFile {
-            db_track: bae_db::DbTrack::new_test(
+            db_track: bae_records::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 "Track Title",

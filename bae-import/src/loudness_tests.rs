@@ -166,8 +166,8 @@ fn now() -> chrono::DateTime<chrono::Utc> {
         .with_timezone(&chrono::Utc)
 }
 
-fn audio_format(track_id: &str, id: &str) -> bae_db::DbAudioFormat {
-    bae_db::DbAudioFormat::new(
+fn audio_format(track_id: &str, id: &str) -> bae_records::DbAudioFormat {
+    bae_records::DbAudioFormat::new(
         track_id,
         bae_util::content_type::ContentType::Flac,
         std::num::NonZeroU32::new(44_100).unwrap(),
@@ -178,12 +178,12 @@ fn audio_format(track_id: &str, id: &str) -> bae_db::DbAudioFormat {
     )
 }
 
-fn whole_file_main_segment(format_id: &str, file_id: &str) -> bae_db::DbAudioSegment {
-    bae_db::DbAudioSegment {
+fn whole_file_main_segment(format_id: &str, file_id: &str) -> bae_records::DbAudioSegment {
+    bae_records::DbAudioSegment {
         id: format!("seg-{format_id}"),
         audio_format_id: format_id.to_string(),
         segment_index: 0,
-        role: bae_db::DbAudioSegmentRole::Main,
+        role: bae_records::DbAudioSegmentRole::Main,
         file_id: file_id.to_string(),
         start_sample: 0,
         end_sample: None,
@@ -195,7 +195,7 @@ fn whole_file_main_segment(format_id: &str, file_id: &str) -> bae_db::DbAudioSeg
 
 fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
     TrackFile {
-        db_track: bae_db::DbTrack::new_test("release-id", track_id, "Track Title", 1),
+        db_track: bae_records::DbTrack::new_test("release-id", track_id, "Track Title", 1),
         audio: crate::TrackAudio::Standalone {
             file_path: path.to_path_buf(),
             source_audio: crate::folder_scanner::ScannedAudio {
@@ -234,8 +234,8 @@ fn loudness_percents(rx: &mut crate::ImportEvents) -> Vec<u8> {
 /// asserts on one.
 async fn measure(
     event_tx: &crate::ImportEventBus,
-    audio_formats: &mut [bae_db::DbAudioFormat],
-    audio_segments: &[bae_db::DbAudioSegment],
+    audio_formats: &mut [bae_records::DbAudioFormat],
+    audio_segments: &[bae_records::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,
     source_file_sizes: &HashMap<PathBuf, u64>,
     tracks_to_files: &[TrackFile],
@@ -376,7 +376,7 @@ async fn a_read_that_panics_is_reported_and_measures_nothing() {
 async fn measure_loudness_skips_track_with_no_segments() {
     let event_tx = crate::ImportEventBus::new(crate::CandidateRuntime::for_test().await);
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
-    let audio_segments: Vec<bae_db::DbAudioSegment> = Vec::new();
+    let audio_segments: Vec<bae_records::DbAudioSegment> = Vec::new();
     let file_ids = HashMap::new();
     let source_file_sizes = HashMap::new();
     let tracks = vec![standalone_track("track-0", &PathBuf::from("/unused.flac"))];
@@ -507,8 +507,8 @@ async fn measure_loudness_leaves_ungated_track_unmeasured() {
 async fn peak_open_sources(
     dir: &std::path::Path,
     parallelism: usize,
-    audio_formats: &mut [bae_db::DbAudioFormat],
-    audio_segments: &[bae_db::DbAudioSegment],
+    audio_formats: &mut [bae_records::DbAudioFormat],
+    audio_segments: &[bae_records::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,
     tracks: &[TrackFile],
 ) -> usize {
@@ -539,7 +539,7 @@ async fn peak_open_sources(
 }
 
 /// Each track's measured loudness, in track order.
-fn track_loudness(audio_formats: &[bae_db::DbAudioFormat]) -> Vec<Option<f64>> {
+fn track_loudness(audio_formats: &[bae_records::DbAudioFormat]) -> Vec<Option<f64>> {
     audio_formats.iter().map(|format| format.track_loudness_lufs).collect()
 }
 
@@ -653,7 +653,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         .unwrap()
         .with_timezone(&chrono::Utc);
     // The track's stored length is the probe's, as an import measures it.
-    let mut db_track = bae_db::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
+    let mut db_track = bae_records::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
     db_track.duration_ms =
         u64::try_from(probe.duration.as_millis()).expect("the probe's length fits");
     let track = TrackFile {
@@ -673,7 +673,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
             },
         },
     };
-    let mut formats = vec![bae_db::DbAudioFormat::new(
+    let mut formats = vec![bae_records::DbAudioFormat::new(
         "track-id",
         probe.content_type,
         probe.sample_rate,
@@ -682,11 +682,11 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         "format-id".to_string(),
         now,
     )];
-    let segments = vec![bae_db::DbAudioSegment {
+    let segments = vec![bae_records::DbAudioSegment {
         id: "segment-id".to_string(),
         audio_format_id: "format-id".to_string(),
         segment_index: 0,
-        role: bae_db::DbAudioSegmentRole::Main,
+        role: bae_records::DbAudioSegmentRole::Main,
         file_id: "file-id".to_string(),
         start_sample: 0,
         end_sample: None,

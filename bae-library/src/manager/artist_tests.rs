@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::{DbAlbum, DbRelease};
+use bae_records::{DbAlbum, DbRelease};
 use chrono::Utc;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         id: bae_util::test_ids::test_uuid("1da4c08e-afdf-45f9-aad8-0e5d681d2f29"),
         name: "Artist Group".to_string(),
         sort_name: None,
-        discogs_artist_id: Some(bae_db::VARIOUS_ARTISTS.discogs.to_string()),
+        discogs_artist_id: Some(bae_records::VARIOUS_ARTISTS.discogs.to_string()),
         musicbrainz_artist_id: None,
         created_at: manager.clock.now().into(),
     };
@@ -25,7 +25,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         name: "Artist Group".to_string(),
         sort_name: None,
         discogs_artist_id: None,
-        musicbrainz_artist_id: Some(bae_db::VARIOUS_ARTISTS.musicbrainz.to_string()),
+        musicbrainz_artist_id: Some(bae_records::VARIOUS_ARTISTS.musicbrainz.to_string()),
         created_at: manager.clock.now().into(),
     };
     manager.insert_artist(&discogs_artist).await.unwrap();
@@ -36,7 +36,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         name: "Artist Group".to_string(),
         sort_name: None,
         discogs_artist_id: None,
-        musicbrainz_artist_id: Some(bae_db::VARIOUS_ARTISTS.musicbrainz.to_string()),
+        musicbrainz_artist_id: Some(bae_records::VARIOUS_ARTISTS.musicbrainz.to_string()),
         created_at: manager.clock.now().into(),
     };
     let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
@@ -112,7 +112,7 @@ async fn credited_library() -> CreditedLibrary {
     let (manager, temp_dir, album, release) = manager_with_release().await;
     for (id, name) in [(CREDIT_ARTIST_A, "Artist A"), (CREDIT_ARTIST_B, "Artist B")] {
         manager
-            .database
+            .records
             .insert_artist(&DbArtist {
                 id: id.to_string(),
                 name: name.to_string(),
@@ -129,27 +129,27 @@ async fn credited_library() -> CreditedLibrary {
         [(CREDIT_ARTIST_A, 0, None, Some(" & ")), (CREDIT_ARTIST_B, 1, Some("B Alias"), None)]
     {
         manager
-            .database
-            .insert_album_artist(&bae_db::DbAlbumArtist {
-                credit: credit.map(bae_db::credits::CreditName::of),
+            .records
+            .insert_album_artist(&bae_records::DbAlbumArtist {
+                credit: credit.map(bae_records::credits::CreditName::of),
                 join_phrase: join.map(str::to_string),
-                ..bae_db::DbAlbumArtist::new(&album.id, artist, position, now)
+                ..bae_records::DbAlbumArtist::new(&album.id, artist, position, now)
             })
             .await
             .unwrap();
     }
     let featured = DbTrack::new_test(&release.id, &Uuid::new_v4().to_string(), "Featured", 1);
     let plain = DbTrack::new_test(&release.id, &Uuid::new_v4().to_string(), "Plain", 2);
-    manager.database.insert_track(&featured).await.unwrap();
-    manager.database.insert_track(&plain).await.unwrap();
+    manager.records.insert_track(&featured).await.unwrap();
+    manager.records.insert_track(&plain).await.unwrap();
     for (artist, position, join) in
         [(CREDIT_ARTIST_A, 0, Some(" feat. ")), (CREDIT_ARTIST_B, 1, None)]
     {
         manager
-            .database
-            .insert_track_artist(&bae_db::DbTrackArtist {
+            .records
+            .insert_track_artist(&bae_records::DbTrackArtist {
                 join_phrase: join.map(str::to_string),
-                ..bae_db::DbTrackArtist::new(&featured.id, artist, position, now)
+                ..bae_records::DbTrackArtist::new(&featured.id, artist, position, now)
             })
             .await
             .unwrap();
@@ -274,7 +274,7 @@ async fn a_merged_artists_credit_prints_the_survivor_unless_a_printed_name_was_s
 async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
     let library = credited_library().await;
     let manager = &library.manager;
-    let artist_a = bae_db::ExistingArtist::from(
+    let artist_a = bae_records::ExistingArtist::from(
         manager.get_artist_by_id(CREDIT_ARTIST_A).await.unwrap().expect("Artist A"),
     );
     let edit = |album_artists: Vec<bae_import::Credited>| bae_import::ReleaseUserEdit {

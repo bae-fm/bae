@@ -1,6 +1,6 @@
 //! Transfer rates from the bytes coven's upload watch tells each file has
 //! handed to the connection.
-use bae_db::DbSendingUploads;
+use bae_records::DbSendingUploads;
 use coven::FileId;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::Duration;

@@ -1,7 +1,7 @@
 //! Where each watched folder's scan stands, as its live query reads it.
 
 use crate::tables::tests::*;
-use bae_db::test_fixtures::live_query::live_db;
+use bae_records::test_fixtures::live_query::live_db;
 use bae_util::test_channels::HANG_GUARD;
 
 /// The scan progress counts the folders the walk in flight has reached, and

@@ -16,7 +16,7 @@ use bae_util::content_type_hint::ContentTypeHint;
 pub enum CoverImageSource {
     /// The cover of the library release imported from the folder's files.
     Library {
-        image: bae_db::ImageRef,
+        image: bae_records::ImageRef,
     },
     Remote {
         image: RemoteImageSet,

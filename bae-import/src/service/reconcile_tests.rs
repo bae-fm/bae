@@ -6,7 +6,7 @@ fn artists_replaced_by_edits_are_not_reconciled() {
         .unwrap()
         .with_timezone(&chrono::Utc);
     let mut artists = vec![
-        bae_db::DbArtist {
+        bae_records::DbArtist {
             id: "artist-referenced".into(),
             name: "Artist Name".into(),
             sort_name: None,
@@ -14,7 +14,7 @@ fn artists_replaced_by_edits_are_not_reconciled() {
             musicbrainz_artist_id: None,
             created_at: now,
         },
-        bae_db::DbArtist {
+        bae_records::DbArtist {
             id: "artist-replaced".into(),
             name: "Replaced Artist".into(),
             sort_name: None,
@@ -23,14 +23,14 @@ fn artists_replaced_by_edits_are_not_reconciled() {
             created_at: now,
         },
     ];
-    let album = bae_db::DbAlbum {
+    let album = bae_records::DbAlbum {
         id: "album-1".into(),
         title: "Album Title".into(),
         year: None,
         is_compilation: false,
         created_at: now,
     };
-    let credits = [bae_db::DbAlbumArtist::new(&album.id, "artist-referenced", 0, now)];
+    let credits = [bae_records::DbAlbumArtist::new(&album.id, "artist-referenced", 0, now)];
 
     retain_referenced_artists(&mut artists, Some((&album, &credits)), &[], &[], &[], &[]);
 
@@ -43,7 +43,7 @@ fn existing_album_does_not_retain_its_transient_album_artist() {
     let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
-    let mut artists = vec![bae_db::DbArtist {
+    let mut artists = vec![bae_records::DbArtist {
         id: "artist-album-only".into(),
         name: "Album Artist".into(),
         sort_name: None,

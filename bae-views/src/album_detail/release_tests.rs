@@ -2,18 +2,18 @@ use super::*;
 
 /// A track on side `side` of the release's record, `duration_ms` long when
 /// measured.
-fn track(id: &str, side: u8, number: u32, duration_ms: u64) -> bae_db::DbTrackWithArtists {
-    let mut track = bae_db::DbTrack::new_test("release-id", id, "Track Title", number);
+fn track(id: &str, side: u8, number: u32, duration_ms: u64) -> bae_records::DbTrackWithArtists {
+    let mut track = bae_records::DbTrack::new_test("release-id", id, "Track Title", number);
     track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
     track.duration_ms = duration_ms;
-    bae_db::DbTrackWithArtists { track, artists: Vec::new(), shown_artists: Vec::new() }
+    bae_records::DbTrackWithArtists { track, artists: Vec::new(), shown_artists: Vec::new() }
 }
 
 /// The detail of a release holding `tracks`.
-fn detail(tracks: Vec<bae_db::DbTrackWithArtists>) -> ReleaseDetail {
-    let raw = bae_db::DbReleaseDetail {
-        release: bae_db::DbRelease::new_test("album-id", "release-id"),
-        mediums: bae_db::DbReleaseMediums(vec![bae_db::DbReleaseMedium::new(
+fn detail(tracks: Vec<bae_records::DbTrackWithArtists>) -> ReleaseDetail {
+    let raw = bae_records::DbReleaseDetail {
+        release: bae_records::DbRelease::new_test("album-id", "release-id"),
+        mediums: bae_records::DbReleaseMediums(vec![bae_records::DbReleaseMedium::new(
             "release-id",
             std::num::NonZeroU16::MIN,
             bae_types::mediums::ReleaseMedium {

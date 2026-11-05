@@ -21,7 +21,7 @@ fn two_track_album(f: &ImportFixture, title: &str) -> std::path::PathBuf {
 async fn release_file_ids(f: &ImportFixture, release_id: &str) -> Vec<(String, coven::FileId)> {
     let mut files: Vec<_> = f
         .library
-        .database()
+        .records()
         .get_files_for_release(release_id)
         .await
         .unwrap()
@@ -36,16 +36,16 @@ async fn release_file_ids(f: &ImportFixture, release_id: &str) -> Vec<(String, c
 /// upload, and each reads the bytes of its original under `folder`.
 async fn assert_on_this_device(f: &ImportFixture, release_id: &str, folder: &Path) {
     assert_eq!(
-        f.library.database().count_pending_uploads_for_release(release_id).await.unwrap(),
+        f.library.records().count_pending_uploads_for_release(release_id).await.unwrap(),
         0,
         "nothing of the release waits to upload"
     );
-    for file in f.library.database().get_files_for_release(release_id).await.unwrap() {
+    for file in f.library.records().get_files_for_release(release_id).await.unwrap() {
         assert!(!file.stored, "{} is on this device only", file.original_filename);
         let original = folder.join(&file.original_filename);
         assert_eq!(
             f.library
-                .database()
+                .records()
                 .external_file(&file.id)
                 .await
                 .unwrap()
@@ -79,7 +79,7 @@ async fn finish_move(f: &ImportFixture, release_id: &str, files: &[(String, cove
     );
     assert!(
         f.library
-            .database()
+            .records()
             .get_files_for_release(release_id)
             .await
             .unwrap()
@@ -115,7 +115,7 @@ async fn a_local_import_moves_to_the_cloud_and_cancelling_the_move_keeps_it_here
 
     move_to_cloud(&f, &id).await;
     assert_eq!(
-        f.library.database().count_pending_uploads_for_release(&id).await.unwrap(),
+        f.library.records().count_pending_uploads_for_release(&id).await.unwrap(),
         2,
         "every file of the release moves"
     );
@@ -150,7 +150,7 @@ async fn a_cloud_import_s_upload_cancels_to_a_release_on_this_device() {
     .unwrap();
     let files = release_file_ids(&f, &id).await;
     assert_eq!(
-        f.library.database().count_pending_uploads_for_release(&id).await.unwrap(),
+        f.library.records().count_pending_uploads_for_release(&id).await.unwrap(),
         2,
         "every file of the import waits to upload"
     );

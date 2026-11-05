@@ -121,7 +121,7 @@ impl PlaybackService {
         // the track's first sample to its end.
         let prepared = prepare_track_for_playback(
             &self.store,
-            &self.database,
+            &self.records,
             &self.diagnostics,
             track_id,
             TrackStart::Natural,
@@ -286,7 +286,7 @@ impl PlaybackService {
         &self,
         track_id: &str,
     ) -> Result<PlaybackTrackInfo, PlaybackError> {
-        PlaybackTrackInfo::read(&self.database, track_id)
+        PlaybackTrackInfo::read(&self.records, track_id)
             .await?
             .ok_or_else(|| PlaybackError::not_found("Track", track_id))
     }

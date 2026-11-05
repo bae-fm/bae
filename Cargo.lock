@@ -743,6 +743,7 @@ dependencies = [
  "bae-library",
  "bae-playback",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-track-audio",
  "bae-transfers",
@@ -794,13 +795,13 @@ version = "0.1.0"
 dependencies = [
  "bae-app",
  "bae-catalogs",
- "bae-db",
  "bae-diagnostics",
  "bae-identify",
  "bae-import",
  "bae-library",
  "bae-mirror",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-transfers",
  "bae-types",
@@ -834,6 +835,7 @@ dependencies = [
  "bae-mirror",
  "bae-playback",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-track-audio",
  "bae-transfers",
@@ -863,11 +865,11 @@ dependencies = [
  "aes",
  "axum",
  "bae-app",
- "bae-db",
  "bae-diagnostics",
  "bae-library",
  "bae-playback",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-subsonic",
  "bae-util",
@@ -921,22 +923,15 @@ dependencies = [
 name = "bae-db"
 version = "0.0.0-dev"
 dependencies = [
- "bae-catalogs",
  "bae-diagnostics",
+ "bae-records",
  "bae-store",
- "bae-types",
- "bae-util",
  "chrono",
  "coven",
- "hex",
  "regex",
  "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
  "thiserror 2.0.18",
  "tokio",
- "tracing",
  "uuid",
 ]
 
@@ -993,10 +988,10 @@ dependencies = [
  "bae-app-dir",
  "bae-audio",
  "bae-catalogs",
- "bae-db",
  "bae-diagnostics",
  "bae-identify",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-track-audio",
  "bae-types",
@@ -1045,6 +1040,7 @@ dependencies = [
  "bae-import",
  "bae-playback",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-track-audio",
  "bae-transfers",
@@ -1114,6 +1110,7 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-track-audio",
  "bae-types",
@@ -1157,6 +1154,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-records"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-catalogs",
+ "bae-store",
+ "bae-types",
+ "bae-util",
+ "chrono",
+ "coven",
+ "hex",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "bae-store"
 version = "0.0.0-dev"
 dependencies = [
@@ -1183,12 +1202,12 @@ dependencies = [
  "bae-app",
  "bae-audio",
  "bae-catalogs",
- "bae-db",
  "bae-diagnostics",
  "bae-identify",
  "bae-import",
  "bae-library",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-track-audio",
  "bae-types",
@@ -1219,8 +1238,8 @@ name = "bae-track-audio"
 version = "0.0.0-dev"
 dependencies = [
  "bae-audio",
- "bae-db",
  "bae-diagnostics",
+ "bae-records",
  "bae-store",
  "bae-util",
  "coven",
@@ -1234,8 +1253,8 @@ dependencies = [
 name = "bae-transfers"
 version = "0.0.0-dev"
 dependencies = [
- "bae-db",
  "bae-preferences",
+ "bae-records",
  "bae-store",
  "bae-types",
  "bae-util",
@@ -1298,6 +1317,7 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "bae-playback",
+ "bae-records",
  "bae-store",
  "bae-transfers",
  "bae-types",

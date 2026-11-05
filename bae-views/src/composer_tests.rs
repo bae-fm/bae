@@ -2,10 +2,10 @@
 //! search over composers and works, and the list's live query.
 
 use crate::*;
-use bae_db::test_fixtures::aggregate_ordering::*;
-use bae_db::test_fixtures::composed_work::*;
-use bae_db::test_fixtures::live_query::*;
-use bae_db::test_fixtures::*;
+use bae_records::test_fixtures::aggregate_ordering::*;
+use bae_records::test_fixtures::composed_work::*;
+use bae_records::test_fixtures::live_query::*;
+use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::live_query::*;
 use bae_store::test_fixtures::*;
 use bae_store::test_fixtures::{exec, exec_batch};
@@ -495,7 +495,7 @@ async fn next_composer_page_is_only_a_rename(
 #[tokio::test]
 async fn composer_browse_subscription_reconfigures_bounded_windows() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let database = bae_db::test_fixtures::test_database(&db);
+    let records = bae_records::test_fixtures::test_records(&db);
     exec_batch(
         &db,
         &format!(
@@ -574,7 +574,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     .await;
 
     let composer_image =
-        write_artist_image(&database, OTHER_COMPOSER_ID, "composer image bytes").await;
+        write_artist_image(&records, OTHER_COMPOSER_ID, "composer image bytes").await;
     // Only the requested rows' images are read, so an image on the composer
     // outside the window changes nothing the browse delivers.
     next_composer_page_is_only_a_rename(&db, &mut live, shown, "Composer Name First Again").await;
@@ -589,7 +589,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     );
 
     let replaced_composer_image =
-        write_artist_image(&database, OTHER_COMPOSER_ID, "replaced composer image bytes").await;
+        write_artist_image(&records, OTHER_COMPOSER_ID, "replaced composer image bytes").await;
     let image_updated = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a requested composer's image version wakes composer browse")

@@ -1,8 +1,8 @@
 //! Where an import keeps its files, and what deleting a release leaves.
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_db::LibraryImageType;
 use bae_import::test_imports::wait_for_import_complete;
 use bae_import::{CoverSelection, ImportCommand};
+use bae_records::LibraryImageType;
 use bae_util::content_type::ContentType;
 use std::fs;
 use std::path::Path;
@@ -45,7 +45,7 @@ async fn test_local_import() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let database = library.database().clone();
+    let records = library.records().clone();
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
@@ -89,8 +89,8 @@ async fn test_local_import() {
 
     info!("All tracks have audio_format records with segment file links");
 
-    assert!(database.find_release_by_id(&release_id).await.unwrap().is_some());
-    assert!(database
+    assert!(records.find_release_by_id(&release_id).await.unwrap().is_some());
+    assert!(records
         .get_files_for_release(&release_id)
         .await
         .unwrap()
@@ -211,8 +211,8 @@ async fn run_import_with_cover_test() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let database = library.database().clone();
     let db = library.store().clone();
+    let records = library.records().clone();
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
@@ -234,12 +234,12 @@ async fn run_import_with_cover_test() {
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
 
     // With no cloud home the import is local and keeps the files in place.
-    let release = database
+    let release = records
         .find_release_by_id(&release_id)
         .await
         .expect("Failed to query release")
         .expect("release should exist");
-    assert!(database
+    assert!(records
         .get_files_for_release(&release_id)
         .await
         .unwrap()

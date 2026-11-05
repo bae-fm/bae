@@ -209,10 +209,7 @@ impl Household {
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         let (dir, owner, storage, clock) = Self::owner(provider, sign_in).await;
-        let database = bae_db::Database::new(
-            bae_store::Store::new(owner.clone(), clock.clone()),
-            std::sync::Arc::new(coven::UuidIds),
-        );
+        let database = bae_db::Database::new(bae_store::Store::new(owner.clone(), clock.clone()));
         let robin = made_profile_on(&owner, &database, "Robin").await;
         Self { _dir: dir, owner, storage, clock, robin }
     }
@@ -379,10 +376,8 @@ async fn joined_profile(
     requested: Option<Result<(), ProfileError>>,
 ) -> bae_db::people::PersonProfile {
     requested.expect("a new person's profile").unwrap();
-    let database = bae_db::Database::new(
-        bae_store::Store::new(guest.clone(), household.clock.clone()),
-        std::sync::Arc::new(coven::UuidIds),
-    );
+    let database =
+        bae_db::Database::new(bae_store::Store::new(guest.clone(), household.clock.clone()));
     requested_profile_on(guest, &database).await
 }
 
@@ -421,10 +416,7 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
         owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     let made = landed_circle(&owner, &name).await;
-    let database = bae_db::Database::new(
-        bae_store::Store::new(owner.clone(), clock.clone()),
-        std::sync::Arc::new(coven::UuidIds),
-    );
+    let database = bae_db::Database::new(bae_store::Store::new(owner.clone(), clock.clone()));
     database.create_profile("Robin").await.unwrap();
     let profile = database.profile(member).await.unwrap().unwrap();
     assert_eq!(profile.private_circle, made);
@@ -437,10 +429,7 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     for _ in 0..2 {
         landed_circle(&owner, &name).await;
     }
-    let database = bae_db::Database::new(
-        bae_store::Store::new(owner.clone(), clock),
-        std::sync::Arc::new(coven::UuidIds),
-    );
+    let database = bae_db::Database::new(bae_store::Store::new(owner.clone(), clock));
     assert!(matches!(
         database.create_profile("Robin").await,
         Err(ProfileError::InvalidPrivateCircle)
@@ -555,18 +544,18 @@ fn a_replacement_invite_writes_no_profile() {
         .unwrap();
         let (replacement, profile) = joined.unwrap().unwrap();
         assert!(profile.is_none());
-        let database = bae_db::Database::new(
-            bae_store::Store::new(replacement.clone(), household.clock.clone()),
-            std::sync::Arc::new(coven::UuidIds),
-        );
+        let database = bae_db::Database::new(bae_store::Store::new(
+            replacement.clone(),
+            household.clock.clone(),
+        ));
         assert_eq!(database.profile(rowan.id).await.unwrap(), Some(rowan.clone()));
         // The owner's membership lists each member's devices that can sync
         // apart from those that lost access, as coven's own member list has
         // them.
-        let owner = bae_db::Database::new(
-            bae_store::Store::new(household.owner.clone(), household.clock.clone()),
-            std::sync::Arc::new(coven::UuidIds),
-        );
+        let owner = bae_db::Database::new(bae_store::Store::new(
+            household.owner.clone(),
+            household.clock.clone(),
+        ));
         let membership = owner.membership().await.unwrap();
         assert!(membership.self_is_admin);
         let listed: Vec<_> = household

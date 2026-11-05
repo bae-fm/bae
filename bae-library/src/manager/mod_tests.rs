@@ -5,9 +5,9 @@
 use super::*;
 use crate::test_libraries::TestLibrary;
 use crate::LibraryError;
-use bae_db::{DbAlbum, DbFile, DbLibraryImage, DbRelease, LibraryImageType, NewReleaseFile};
 use bae_diagnostics::UiErrorCategory;
 use bae_import::ImportError;
+use bae_records::{DbAlbum, DbFile, DbLibraryImage, DbRelease, LibraryImageType, NewReleaseFile};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::content_type::ContentType;
 use chrono::Utc;
@@ -91,7 +91,7 @@ pub(super) async fn setup_test_manager_with(
         musicbrainz_artist_id: None,
         created_at: Utc::now(),
     };
-    manager.database.insert_artist(&artist).await.unwrap();
+    manager.records.insert_artist(&artist).await.unwrap();
     (TestManager { library: manager, fakes, storage, installation }, temp_dir)
 }
 
@@ -99,15 +99,15 @@ pub(super) async fn setup_test_manager_with(
 // call site each is `manager.database.x(..).await.unwrap()`, which rustfmt
 // breaks across five lines.
 pub(super) async fn find_release(manager: &LibraryManager, release_id: &str) -> Option<DbRelease> {
-    manager.database.find_release_by_id(release_id).await.unwrap()
+    manager.records.find_release_by_id(release_id).await.unwrap()
 }
 
 pub(super) async fn find_album(manager: &LibraryManager, album_id: &str) -> Option<DbAlbum> {
-    manager.database.find_album_by_id(album_id).await.unwrap()
+    manager.records.find_album_by_id(album_id).await.unwrap()
 }
 
 pub(super) async fn release_files(manager: &LibraryManager, release_id: &str) -> Vec<DbFile> {
-    manager.database.get_files_for_release(release_id).await.unwrap()
+    manager.records.get_files_for_release(release_id).await.unwrap()
 }
 
 /// The coven file the release's cover row references.
@@ -126,11 +126,11 @@ pub(super) async fn moving_file_count(manager: &LibraryManager, release_id: &str
 }
 
 pub(super) async fn album_releases(manager: &LibraryManager, album_id: &str) -> Vec<DbRelease> {
-    manager.database.get_releases_for_album(album_id).await.unwrap()
+    manager.records.get_releases_for_album(album_id).await.unwrap()
 }
 
 pub(super) async fn has_pending_uploads(manager: &LibraryManager, release_id: &str) -> bool {
-    manager.database.has_pending_uploads_for_release(release_id).await.unwrap()
+    manager.records.has_pending_uploads_for_release(release_id).await.unwrap()
 }
 
 /// Insert `release` with its first medium, one CD side, which
@@ -143,7 +143,7 @@ pub(super) async fn download_queue_now(
 }
 
 pub(super) async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
-    crate::test_libraries::insert_release(&manager.database, release).await;
+    crate::test_libraries::insert_release(&manager.records, release).await;
 }
 
 pub(super) fn create_test_album() -> DbAlbum {
@@ -161,7 +161,7 @@ pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, Db
     let (manager, temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     (manager, temp_dir, album, release)
 }
@@ -215,7 +215,7 @@ pub(super) async fn insert_release_with_queued_uploads(
     manager.upload_release(&release.id, false).await.unwrap();
     assert_eq!(
         manager
-            .database
+            .records
             .queued_upload_count_for_root_for_test("releases", &release.id)
             .await
             .unwrap(),
@@ -242,7 +242,7 @@ impl ReleaseRef {
 
 /// Wait for the current file's upload to leave coven's durable queue.
 pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
-    let mut queued = manager.database.subscribe_row_file_queued_for_test(table, row_id);
+    let mut queued = manager.records.subscribe_row_file_queued_for_test(table, row_id);
     manager.store.sync_now();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while queued.next().await.expect("the query stays open").unwrap() {}
@@ -326,7 +326,7 @@ pub(super) async fn insert_local_release_with_files(
 ) -> DbRelease {
     let mut album = create_test_album();
     album.title = album_title.to_string();
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_local_release_in_album(manager, &album.id, dir, files).await
 }
 
@@ -443,8 +443,10 @@ pub(super) async fn finish_bound_uploads(manager: &LibraryManager) {
 /// which counts the release's files and never its cover.
 pub(super) async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
     let file = match namespace {
-        bae_db::synced::RELEASE_FILES_NAMESPACE => manager.release_file_ref(row_id).await.unwrap(),
-        bae_db::synced::COVERS_NAMESPACE => cover_file(manager, row_id).await,
+        bae_records::synced::RELEASE_FILES_NAMESPACE => {
+            manager.release_file_ref(row_id).await.unwrap()
+        }
+        bae_records::synced::COVERS_NAMESPACE => cover_file(manager, row_id).await,
         other => panic!("no pinned files in {other}"),
     };
     manager
@@ -471,13 +473,13 @@ pub(super) async fn insert_pinnable_release(manager: &TestManager) -> String {
 /// Insert `n` plain track rows on the release's one CD. Mirrors the row shape
 /// `prepared.parsed.tracks` would produce so the track-count check in
 /// `re_identify_release` accepts the picked release.
-pub(super) async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
+pub(super) async fn insert_n_tracks(records: &bae_records::Records, release_id: &str, n: usize) {
     for i in 1..=n {
-        let track = bae_db::DbTrack {
+        let track = bae_records::DbTrack {
             id: Uuid::new_v4().to_string(),
             release_id: release_id.to_string(),
             title: format!("Track {i}"),
-            medium_id: bae_db::identity::release_medium_id(release_id, 1),
+            medium_id: bae_records::identity::release_medium_id(release_id, 1),
             side: std::num::NonZeroU8::MIN,
             track_number: std::num::NonZeroU32::new(
                 u32::try_from(i).expect("a test track number fits u32"),
@@ -486,7 +488,7 @@ pub(super) async fn insert_n_tracks(database: &Database, release_id: &str, n: us
             duration_ms: 200_000,
             created_at: Utc::now(),
         };
-        database.insert_track(&track).await.unwrap();
+        records.insert_track(&track).await.unwrap();
     }
 }
 
@@ -702,8 +704,8 @@ pub(super) fn every_storage_setup_failure_keeps_its_exact_user_action() {
 /// body plays from.
 pub(super) async fn add_track_audio_sources(
     manager: &LibraryManager,
-    track: &bae_db::DbTrack,
-    sources: &[(&str, bae_db::source_audio::SourceAudioLayout)],
+    track: &bae_records::DbTrack,
+    sources: &[(&str, bae_records::source_audio::SourceAudioLayout)],
 ) -> Vec<NewReleaseFile> {
     assert!(matches!(sources.len(), 1 | 2), "a track's audio is a body and at most one pregap");
     let now = Utc::now();
@@ -716,7 +718,7 @@ pub(super) async fn add_track_audio_sources(
             Uuid::new_v4().to_string(),
             now,
         );
-        file.source_audio = Some(bae_db::source_audio::SourceAudioFile {
+        file.source_audio = Some(bae_records::source_audio::SourceAudioFile {
             layout: Some(*layout),
             format: bae_types::audio_format::AudioFormat {
                 codec: "FLAC".to_string(),
@@ -731,7 +733,7 @@ pub(super) async fn add_track_audio_sources(
         manager.add_file(&file, 1_000).await.unwrap();
         files.push(file);
     }
-    let audio_format = bae_db::DbAudioFormat {
+    let audio_format = bae_records::DbAudioFormat {
         id: Uuid::new_v4().to_string(),
         track_id: track.id.clone(),
         content_type: ContentType::Flac,
@@ -747,14 +749,14 @@ pub(super) async fn add_track_audio_sources(
     let segments = files
         .iter()
         .enumerate()
-        .map(|(index, file)| bae_db::DbAudioSegment {
+        .map(|(index, file)| bae_records::DbAudioSegment {
             id: Uuid::new_v4().to_string(),
             audio_format_id: audio_format.id.clone(),
             segment_index: i64::try_from(index).unwrap(),
             role: if index + 1 == files.len() {
-                bae_db::DbAudioSegmentRole::Main
+                bae_records::DbAudioSegmentRole::Main
             } else {
-                bae_db::DbAudioSegmentRole::AudioPregap
+                bae_records::DbAudioSegmentRole::AudioPregap
             },
             file_id: file.id.clone(),
             start_sample: 0,

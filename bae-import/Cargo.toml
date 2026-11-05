@@ -21,8 +21,8 @@ bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }
 # The store import reads and writes its own tables and the library's records
 # in.
-bae-db = { workspace = true }
 bae-store = { workspace = true }
+bae-records = { workspace = true }
 # The bugs and telemetry an import reports, and the error categories a pane
 # shows.
 bae-diagnostics = { workspace = true }
@@ -95,8 +95,8 @@ bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"
 # A store laid out where a test puts it.
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 # Test databases with bae's schema and the rows db's fixtures seed them with.
-bae-db = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
+bae-records = { workspace = true, features = ["test-utils"] }
 # What the tests read back of an identify run.
 bae-identify = { workspace = true, features = ["test-utils"] }
 # A new library's preferences, built without a library.
@@ -127,12 +127,12 @@ default = []
 # The fixture audio (tests/fixtures) and copies of it tagged as a test says,
 # an import service run over a test store's folder, the test seams of the
 # import service and its parts, and the values a test reads back, for the
-# tests of every crate that builds on this one; coven's and bae-db's give
+# tests of every crate that builds on this one; coven's and bae-records' give
 # those seams the live queries' runs and test databases they read,
 # bae-catalogs' and bae-util's the catalog fakes, the stand-in image host and
 # the test transport the runs ask. Dev/test-only: a production build never
 # enables it.
-test-utils = ["coven/test-utils", "bae-db/test-utils", "bae-store/test-utils", "bae-catalogs/test-utils", "bae-util/test-utils"]
+test-utils = ["coven/test-utils", "bae-store/test-utils", "bae-records/test-utils", "bae-catalogs/test-utils", "bae-util/test-utils"]
 
 [lints]
 workspace = true

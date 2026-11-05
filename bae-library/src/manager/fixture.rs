@@ -3,7 +3,7 @@
 //! identification, no import.
 
 use super::*;
-use bae_db::{DbAlbumArtist, DbArtist, DbLibraryImage, DbRelease, DbTrack, SeededAlbum};
+use bae_records::{DbAlbumArtist, DbArtist, DbLibraryImage, DbRelease, DbTrack, SeededAlbum};
 
 mod import_list;
 mod playing;
@@ -97,10 +97,7 @@ impl LibraryManager {
         // A write that changes nothing is refused, so a fixture of no albums
         // writes none.
         if !albums.is_empty() {
-            self.database
-                .insert_seeded_albums(artists, albums)
-                .await
-                .map_err(LibraryError::from)?;
+            self.records.insert_seeded_albums(artists, albums).await.map_err(LibraryError::from)?;
         }
         self.write_fixture_watched_folders(&fixture.watched_folders).await?;
         if let Some((release_id, track_id, position_ms)) = resume {
@@ -138,7 +135,7 @@ impl LibraryManager {
             })
             .collect();
         // One disc of unstated carrier, its tracks numbered in order.
-        let medium = bae_db::DbReleaseMedium::new(
+        let medium = bae_records::DbReleaseMedium::new(
             &release_id,
             std::num::NonZeroU16::MIN,
             bae_types::mediums::ReleaseMedium::one_sided(None),

@@ -11,9 +11,9 @@ use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_catalogs::test_releases::seed_mb_release_with_works;
-use bae_db::{DbAlbum, DbArtist, DbRelease};
 use bae_identify::AlbumLink;
 use bae_identify::LookupChoiceEdit;
+use bae_records::{DbAlbum, DbArtist, DbRelease};
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
@@ -85,13 +85,18 @@ pub(super) async fn insert_library_release(
 ) -> (DbAlbum, DbRelease) {
     let album = DbAlbum::new_test(title);
     let release = DbRelease::new_test(&album.id, &Uuid::new_v4().to_string());
-    bae_db::test_fixtures::test_database(db)
+    bae_records::test_fixtures::test_records(db)
         .insert_album_with_release_and_tracks(
             &album,
-            &[bae_db::DbAlbumArtist::new_test(&album.id, artist_id)],
+            &[bae_records::DbAlbumArtist::new_test(&album.id, artist_id)],
             &release,
-            &[bae_db::DbReleaseMedium::new_test(&release.id)],
-            &[bae_db::DbTrack::new_test(&release.id, &Uuid::new_v4().to_string(), "Track 1", 1)],
+            &[bae_records::DbReleaseMedium::new_test(&release.id)],
+            &[bae_records::DbTrack::new_test(
+                &release.id,
+                &Uuid::new_v4().to_string(),
+                "Track 1",
+                1,
+            )],
             &[],
         )
         .await

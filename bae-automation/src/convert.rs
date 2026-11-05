@@ -375,7 +375,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationLibraryAlbumMatch = bae_db::LibraryAlbumMatch,
+    AutomationLibraryAlbumMatch = bae_records::LibraryAlbumMatch,
     from_core: pub(crate) fn,
     fields: { album_id, album_title, holds_release },
 }
@@ -470,7 +470,7 @@ impl AutomationTrackUserEdit {
 }
 
 mirror_struct! {
-    AutomationExistingArtist = bae_db::ExistingArtist,
+    AutomationExistingArtist = bae_records::ExistingArtist,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
@@ -490,7 +490,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationCreditName = bae_db::credits::CreditName,
+    AutomationCreditName = bae_records::credits::CreditName,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { key, name },

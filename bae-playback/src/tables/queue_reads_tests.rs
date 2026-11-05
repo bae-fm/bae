@@ -101,7 +101,8 @@ async fn next(additions: &mut coven::LiveQuery<Option<QueueAddition>>) -> Option
 
 #[tokio::test]
 async fn queue_items_order_track_artist_names_inside_the_aggregate() {
-    let (db, _tmp) = bae_db::test_fixtures::aggregate_ordering::queue_db(crate::TEST_SCHEMA).await;
+    let (db, _tmp) =
+        bae_records::test_fixtures::aggregate_ordering::queue_db(crate::TEST_SCHEMA).await;
     let items = queue_items(&db, &[TRACK_A]).await;
 
     assert_eq!(items.len(), 1);
@@ -114,7 +115,7 @@ async fn queue_items_order_track_artist_names_inside_the_aggregate() {
 #[tokio::test]
 async fn a_queue_longer_than_one_in_clause_reads_every_track() {
     let (db, _tmp, track_ids) =
-        bae_db::test_fixtures::chunked_tracks::chunked_track_db(crate::TEST_SCHEMA).await;
+        bae_records::test_fixtures::chunked_tracks::chunked_track_db(crate::TEST_SCHEMA).await;
     let mut requested = track_ids.clone();
     requested.insert(SQL_MAX_IN_VARS / 2, bae_util::test_ids::test_uuid("missing-track"));
 

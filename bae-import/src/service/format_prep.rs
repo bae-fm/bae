@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use crate::folder_scanner::track_bit_depth;
 use crate::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::ImportError;
-use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
+use bae_records::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 
 mod cue_segments;
 
@@ -98,7 +98,7 @@ fn standalone_audio_format(
     source_audio: &crate::folder_scanner::ScannedAudio,
     id: String,
     now: chrono::DateTime<chrono::Utc>,
-) -> Result<bae_db::DbAudioFormat, ImportError> {
+) -> Result<bae_records::DbAudioFormat, ImportError> {
     // A per-track file is its own whole-file source; the sample window lives in
     // its `audio_format_segments` row.
     let probe = source_audio.probe(file_path)?;

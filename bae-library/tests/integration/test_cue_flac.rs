@@ -9,7 +9,7 @@
 //! is independent of storage configuration).
 use bae_audio::test_samples::{assert_captured_matches_reference, samples_as_f32};
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_db::DbAudioSegmentRole;
+use bae_records::DbAudioSegmentRole;
 use bae_util::content_type::ContentType;
 use std::path::Path;
 use tempfile::TempDir;

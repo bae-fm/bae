@@ -27,7 +27,7 @@ pub(super) struct LoudnessResult {
     pub album_peak_linear: Option<f64>,
     /// The frames a scrub starts its decode at, for every segment whose file
     /// is a FLAC the demuxer can only binary-search or an MP3.
-    pub scrub_points: Vec<bae_db::DbScrubPoints>,
+    pub scrub_points: Vec<bae_records::DbScrubPoints>,
 }
 
 /// One track's decode outcome from the blocking measure task.
@@ -42,7 +42,7 @@ enum TrackOutcome {
     Decoded {
         measured: Option<(ebur128::EbuR128, f64, f64)>,
         broken: Option<String>,
-        scrub_points: Vec<bae_db::DbScrubPoints>,
+        scrub_points: Vec<bae_records::DbScrubPoints>,
     },
     /// A read of the source failed, so the decode never saw the track's bytes.
     /// Says nothing about the audio.
@@ -187,7 +187,7 @@ impl LoudnessProgressSink {
 
     /// Each decoded segment's scrub points, in decode order: `None` for a
     /// segment whose file needs none.
-    fn take_scrub_points(&mut self) -> Vec<Option<Vec<bae_db::ScrubPoint>>> {
+    fn take_scrub_points(&mut self) -> Vec<Option<Vec<bae_records::ScrubPoint>>> {
         std::mem::take(&mut self.scrub_point_takers)
             .into_iter()
             .map(|taker| taker.map(bae_track_audio::scrub_points::ScrubPointTaker::finish))
@@ -328,7 +328,7 @@ struct MeasuredTrack {
     /// sample rate. With neither, the whole bar is indeterminate.
     total_frames: Option<u64>,
     /// Its segments in play order.
-    segments: Vec<bae_db::DbAudioSegment>,
+    segments: Vec<bae_records::DbAudioSegment>,
     /// Whether the demuxer may jump to a segment's recorded start byte (not
     /// APE, which sample-seeks its index).
     byte_seekable: bool,
@@ -395,7 +395,7 @@ fn decode_track(
     track: &MeasuredTrack,
     streams: &HashMap<String, SharedSparseBuffer>,
     sink: &mut LoudnessProgressSink,
-) -> Result<Vec<bae_db::DbScrubPoints>, DecodeStop> {
+) -> Result<Vec<bae_records::DbScrubPoints>, DecodeStop> {
     let segments = track
         .segments
         .iter()
@@ -429,7 +429,10 @@ fn decode_track(
                 .zip(per_segment)
                 .filter_map(|(segment, points)| {
                     let points = points.filter(|points| !points.is_empty())?;
-                    Some(bae_db::DbScrubPoints { audio_segment_id: segment.id.clone(), points })
+                    Some(bae_records::DbScrubPoints {
+                        audio_segment_id: segment.id.clone(),
+                        points,
+                    })
                 })
                 .collect())
         }
@@ -479,8 +482,8 @@ fn decode_track(
 pub(super) async fn measure_loudness(
     event_tx: &crate::ImportEventBus,
     parallelism: NonZeroUsize,
-    audio_formats: &mut [bae_db::DbAudioFormat],
-    audio_segments: &[bae_db::DbAudioSegment],
+    audio_formats: &mut [bae_records::DbAudioFormat],
+    audio_segments: &[bae_records::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,
     source_file_sizes: &HashMap<PathBuf, u64>,
     tracks_to_files: &[TrackFile],
@@ -502,7 +505,7 @@ pub(super) async fn measure_loudness(
     // Each track's segments in play order. `audio_formats` and
     // `tracks_to_files` are index-aligned (the formats are built from the same
     // tracks), so an index keys all three.
-    let track_segments: Vec<Vec<&bae_db::DbAudioSegment>> = audio_formats
+    let track_segments: Vec<Vec<&bae_records::DbAudioSegment>> = audio_formats
         .iter()
         .map(|audio_format| {
             let mut segments: Vec<_> = audio_segments
@@ -625,7 +628,7 @@ pub(super) async fn measure_loudness(
     let mut meters: Vec<ebur128::EbuR128> = Vec::new();
     let mut track_peaks: Vec<f64> = Vec::new();
     let mut broken_tracks: Vec<String> = Vec::new();
-    let mut all_scrub_points: Vec<bae_db::DbScrubPoints> = Vec::new();
+    let mut all_scrub_points: Vec<bae_records::DbScrubPoints> = Vec::new();
     for (index, measured, broken, scrub_points) in outcomes {
         all_scrub_points.extend(scrub_points);
         if let Some((meter, loudness_lufs, peak_linear)) = measured {

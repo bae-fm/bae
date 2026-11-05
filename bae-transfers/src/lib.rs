@@ -42,11 +42,15 @@ pub use release_transfers::{
 pub const SCHEMA_PARTS: &[bae_store::SchemaPart] =
     &[bae_store::SchemaPart::new(&[queued_releases::tables::SQL, release_storage_action::SQL])];
 
-/// The schema this crate's tests open their stores on: bae-db's part,
-/// preferences' (the save presets a queued save names) and the transfers'.
+/// The schema this crate's tests open their stores on: records' and release
+/// storage's parts, preferences' (the save presets a queued save names) and
+/// the transfers'.
 #[cfg(test)]
-const TEST_SCHEMA: bae_store::Schema =
-    bae_store::Schema::new(&[bae_db::SCHEMA_PARTS, bae_preferences::SCHEMA_PARTS, SCHEMA_PARTS]);
+const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
+    bae_records::SCHEMA_PARTS,
+    bae_preferences::SCHEMA_PARTS,
+    SCHEMA_PARTS,
+]);
 
 /// The pin queue: its table, and the bytes its active download has moved.
 pub type Downloads = QueuedReleases<(), DownloadTransferProgress>;

@@ -146,18 +146,19 @@ impl LibraryManager {
     /// `original_filename` is a synced column another device may have
     /// written, so each path is its names, split at `/`, and coven writes
     /// each name through the rule it uses for its own copies (see
-    /// [`bae_db::stored_name`]): every name is one name inside the
+    /// [`bae_records::stored_name`]): every name is one name inside the
     /// person's folder. A release carrying a name that names no file makes
     /// no file local.
     async fn local_copy_paths(
         &self,
         release_id: &str,
     ) -> Result<Vec<(coven::FileId, coven::RelativePath)>, LibraryError> {
-        let files = self.database.get_files_for_release(release_id).await?;
+        let files = self.records.get_files_for_release(release_id).await?;
         files
             .iter()
             .map(|f| {
-                let path = bae_db::stored_name::file_path(release_id, &f.id, &f.original_filename)?;
+                let path =
+                    bae_records::stored_name::file_path(release_id, &f.id, &f.original_filename)?;
                 Ok((f.file, path))
             })
             .collect()
@@ -214,7 +215,7 @@ impl LibraryManager {
         if self.downloads.contains(release_id).await? {
             self.cancel_download(release_id).await?;
         }
-        if self.database.has_pending_uploads_for_release(release_id).await? {
+        if self.records.has_pending_uploads_for_release(release_id).await? {
             return self.cancel_release_upload(release_id).await;
         }
         Ok(())

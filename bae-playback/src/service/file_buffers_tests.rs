@@ -17,8 +17,8 @@ fn every_file_the_playing_track_reads_fetches_as_the_playing_one() {
             role: DbAudioSegmentRole::AudioPregap,
             file_id: "pregap-file".to_string(),
             buffer: pregap.clone(),
-            span: bae_db::SegmentSpan::whole_file(),
-            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
+            span: bae_records::SegmentSpan::whole_file(),
+            scrub_points: bae_records::ScrubPoints::new(Vec::new()),
         },
     );
 

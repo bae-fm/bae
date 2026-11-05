@@ -16,8 +16,8 @@ bae-library = { workspace = true }
 # The library's views the endpoints list and search, and the shapes they show.
 bae-views = { workspace = true }
 # The library's records the API serves.
-bae-db = { workspace = true }
 bae-store = { workspace = true }
+bae-records = { workspace = true }
 # The Subsonic server's settings and credential.
 bae-preferences = { workspace = true }
 bae-diagnostics = { workspace = true }

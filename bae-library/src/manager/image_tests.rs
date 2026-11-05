@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_db::{LibraryImageType, NewReleaseFile};
+use bae_records::{LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use tempfile::TempDir;
@@ -42,7 +42,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     let source_dir = TempDir::new().unwrap();
     let source_path = source_dir.path().join("broken.png");
@@ -78,7 +78,7 @@ async fn assert_changed_cover(
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     let source_dir = TempDir::new().unwrap();
@@ -127,7 +127,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
     // Two visibly different release images, so the two stored thumbnails differ.
@@ -214,7 +214,7 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
     connect_test_cloud(&manager).await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
+    manager.records.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     store_test_cover(&manager, &release.id, b"first cover").await;
     finish_bound_uploads(&manager).await;

@@ -9,7 +9,7 @@ use bae_catalogs::search::SearchQuery;
 #[derive(Debug, Clone)]
 pub struct GroupedSearchResults {
     pub groups: Vec<bae_identify::release_group::ReleaseGroup>,
-    pub statuses: Vec<bae_db::LibraryStatus>,
+    pub statuses: Vec<bae_records::LibraryStatus>,
 }
 
 impl ImportServiceHandle {
@@ -124,7 +124,7 @@ impl ImportServiceHandle {
         query: SearchQuery,
         source: LookupCatalog,
     ) -> Result<GroupedSearchResults, crate::ImportError> {
-        use bae_db::LibraryCheck;
+        use bae_records::LibraryCheck;
 
         let results = bae_catalogs::search::search_provider(
             &self.catalogs.search_session(source).await?,
@@ -136,9 +136,9 @@ impl ImportServiceHandle {
 
         let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
 
-        let statuses = self.database.check_releases_in_library(&checks).await?;
+        let statuses = self.records.check_releases_in_library(&checks).await?;
 
-        let status_map: HashMap<String, bae_db::LibraryStatus> =
+        let status_map: HashMap<String, bae_records::LibraryStatus> =
             statuses.into_iter().map(|s| (s.release_id.clone(), s)).collect();
 
         // `check_releases_in_library` returns exactly one status per input check,

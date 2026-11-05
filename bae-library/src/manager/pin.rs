@@ -14,7 +14,7 @@ struct PinCount {
     fetched: std::collections::BTreeSet<coven::FileId>,
     /// Where each file stood at the last read of the pins; `None` until the
     /// first.
-    read: Option<std::collections::BTreeMap<String, bae_db::DbFilePin>>,
+    read: Option<std::collections::BTreeMap<String, bae_records::DbFilePin>>,
 }
 
 impl PinCount {
@@ -40,7 +40,7 @@ impl PinCount {
     /// when a download ends, in either order: a file the last read showed
     /// downloading that this one shows neither downloading nor kept has
     /// ended its download whole, whether or not the watch has said so yet.
-    fn read(&mut self, pins: std::collections::BTreeMap<String, bae_db::DbFilePin>) {
+    fn read(&mut self, pins: std::collections::BTreeMap<String, bae_records::DbFilePin>) {
         if let Some(last) = &self.read {
             for (id, pin) in last {
                 let Some(file) = pin.downloading else { continue };
@@ -69,7 +69,7 @@ impl PinCount {
                 .map(|(id, (file, size))| match pins.get(id) {
                     Some(pin) if pin.kept => *size,
                     _ if self.fetched.contains(file) => *size,
-                    Some(bae_db::DbFilePin { downloading: Some(file), .. }) => {
+                    Some(bae_records::DbFilePin { downloading: Some(file), .. }) => {
                         self.moved.get(file).map_or(0, |progress| {
                             (*size as f64 * crate::file_transfers::fraction(*progress)) as u64
                         })
@@ -124,7 +124,7 @@ impl LibraryManager {
                 // neither kept nor downloading, and the bytes would fall
                 // back. So each count reads the pins itself, after the
                 // watch's state it joins.
-                let pins = manager.database.subscribe_release_file_pins(&release);
+                let pins = manager.records.subscribe_release_file_pins(&release);
                 #[cfg(test)]
                 let pins = {
                     let hold = manager.pin_reads_hold.clone();
@@ -159,7 +159,7 @@ impl LibraryManager {
                         }
                     };
                     if reread {
-                        count.read(manager.database.release_file_pins(&release).await?);
+                        count.read(manager.records.release_file_pins(&release).await?);
                     }
                     let Some(bytes) = count.bytes(&sizes) else {
                         continue;

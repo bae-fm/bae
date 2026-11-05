@@ -1,4 +1,4 @@
-use bae_db::{DbAlbum, DbRelease, DbTrack};
+use bae_records::{DbAlbum, DbRelease, DbTrack};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -36,7 +36,7 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", track_number),
-        medium_id: bae_db::identity::release_medium_id(release_id, 1),
+        medium_id: bae_records::identity::release_medium_id(release_id, 1),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::new(
             u32::try_from(track_number).expect("a test track number fits u32"),
@@ -50,18 +50,21 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
 #[tokio::test]
 async fn test_delete_album_integration() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
-    let database = library.database().clone();
     let db = library.store().clone();
+    let records = library.records().clone();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     let track1 = create_test_track(&release.id, 1);
     let track2 = create_test_track(&release.id, 2);
 
-    database.insert_album(&album).await.unwrap();
-    database.insert_release(&release).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
-    database.insert_track(&track1).await.unwrap();
-    database.insert_track(&track2).await.unwrap();
+    records.insert_album(&album).await.unwrap();
+    records.insert_release(&release).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
+    records.insert_track(&track1).await.unwrap();
+    records.insert_track(&track2).await.unwrap();
 
     library.delete_album(&album.id).await.unwrap();
 
@@ -79,20 +82,26 @@ async fn test_delete_album_integration() {
 #[tokio::test]
 async fn test_delete_release_integration() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
-    let database = library.database().clone();
+    let records = library.records().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
     let track1 = create_test_track(&release1.id, 1);
     let track2 = create_test_track(&release2.id, 1);
 
-    database.insert_album(&album).await.unwrap();
-    database.insert_release(&release1).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release1.id)).await.unwrap();
-    database.insert_release(&release2).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release2.id)).await.unwrap();
-    database.insert_track(&track1).await.unwrap();
-    database.insert_track(&track2).await.unwrap();
+    records.insert_album(&album).await.unwrap();
+    records.insert_release(&release1).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release1.id))
+        .await
+        .unwrap();
+    records.insert_release(&release2).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release2.id))
+        .await
+        .unwrap();
+    records.insert_track(&track1).await.unwrap();
+    records.insert_track(&track2).await.unwrap();
 
     library.delete_release(&release1.id).await.unwrap();
 
@@ -113,14 +122,17 @@ async fn test_delete_release_integration() {
 #[tokio::test]
 async fn test_delete_last_release_empties_album() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
-    let database = library.database().clone();
     let db = library.store().clone();
+    let records = library.records().clone();
     let album = create_test_album();
     let release = create_test_release(&album.id);
 
-    database.insert_album(&album).await.unwrap();
-    database.insert_release(&release).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
+    records.insert_album(&album).await.unwrap();
+    records.insert_release(&release).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
 
     library.delete_release(&release.id).await.unwrap();
 
@@ -147,18 +159,18 @@ async fn primary_release_of(db: &bae_store::Store, album_id: &str) -> String {
 #[tokio::test]
 async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
-    let database = library.database().clone();
     let db = library.store().clone();
+    let records = library.records().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
     let release3 = create_test_release(&album.id);
 
-    database.insert_album(&album).await.unwrap();
+    records.insert_album(&album).await.unwrap();
     for release in [&release1, &release2, &release3] {
-        database.insert_release(release).await.unwrap();
-        database
-            .insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id))
+        records.insert_release(release).await.unwrap();
+        records
+            .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release.id))
             .await
             .unwrap();
     }
@@ -182,17 +194,23 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
 #[tokio::test]
 async fn test_deleting_another_release_keeps_the_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
-    let database = library.database().clone();
     let db = library.store().clone();
+    let records = library.records().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
 
-    database.insert_album(&album).await.unwrap();
-    database.insert_release(&release1).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release1.id)).await.unwrap();
-    database.insert_release(&release2).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release2.id)).await.unwrap();
+    records.insert_album(&album).await.unwrap();
+    records.insert_release(&release1).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release1.id))
+        .await
+        .unwrap();
+    records.insert_release(&release2).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release2.id))
+        .await
+        .unwrap();
 
     library.set_album_primary_release(&album.id, &release2.id).await.unwrap();
 
@@ -205,19 +223,22 @@ async fn test_deleting_another_release_keeps_the_primary() {
 #[tokio::test]
 async fn test_a_release_of_another_album_cannot_be_made_primary() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
-    let database = library.database().clone();
     let db = library.store().clone();
+    let records = library.records().clone();
     let album = create_test_album();
     let other = create_test_album();
     let release = create_test_release(&album.id);
     let elsewhere = create_test_release(&other.id);
-    database.insert_album(&album).await.unwrap();
-    database.insert_album(&other).await.unwrap();
-    database.insert_release(&release).await.unwrap();
-    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
-    database.insert_release(&elsewhere).await.unwrap();
-    database
-        .insert_release_medium(&bae_db::DbReleaseMedium::new_test(&elsewhere.id))
+    records.insert_album(&album).await.unwrap();
+    records.insert_album(&other).await.unwrap();
+    records.insert_release(&release).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release.id))
+        .await
+        .unwrap();
+    records.insert_release(&elsewhere).await.unwrap();
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&elsewhere.id))
         .await
         .unwrap();
 

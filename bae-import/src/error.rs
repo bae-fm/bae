@@ -287,9 +287,9 @@ impl ImportError {
 /// An import's write to the library's records failed: credits or labels
 /// that cannot be written, or the store.
 #[cfg(desktop)]
-impl From<bae_db::IdentityWriteError> for ImportError {
-    fn from(error: bae_db::IdentityWriteError) -> Self {
-        use bae_db::IdentityWriteError as E;
+impl From<bae_records::IdentityWriteError> for ImportError {
+    fn from(error: bae_records::IdentityWriteError) -> Self {
+        use bae_records::IdentityWriteError as E;
         match error {
             E::Unresolvable(detail) => Self::Unresolvable { detail },
             E::Db(error) => Self::Database(error),

@@ -561,7 +561,7 @@ mod playback_queue_bench {
             conn.execute(
                 "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
                  VALUES (?1, ?2, 1, 'cd', 1, '2026-01-01T00:00:00Z')",
-                params![bae_db::identity::release_medium_id(RELEASE_A, 1), RELEASE_A],
+                params![bae_records::identity::release_medium_id(RELEASE_A, 1), RELEASE_A],
             )?;
             Ok(())
         })
@@ -585,7 +585,7 @@ mod playback_queue_bench {
                             ?1, 'Track Title ' || i, ?2, 1, i + 1, 1000, '2026-01-01T00:00:00Z' \
                      FROM n"
                 ),
-                params![RELEASE_A, bae_db::identity::release_medium_id(RELEASE_A, 1)],
+                params![RELEASE_A, bae_records::identity::release_medium_id(RELEASE_A, 1)],
             )
             .unwrap();
         (db, tmp, path)

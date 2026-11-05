@@ -5,7 +5,7 @@
 
 use crate::tables::import_list::placement::tests::*;
 use crate::tables::import_list::tests::*;
-use bae_db::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
+use bae_records::test_fixtures::{ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A};
 
 /// An imported release's Done row, showing `title` and `artists`.
 fn done(title: &str, artists: &str) -> Placed {

@@ -166,7 +166,7 @@ impl LibraryManager {
 
     /// Copy a release's files verbatim to `<target_dir>/<source_folder_name>/`,
     /// the folder name written as coven writes a name (see
-    /// [`bae_db::stored_name`]), reading each file through coven's
+    /// [`bae_records::stored_name`]), reading each file through coven's
     /// locality-aware read (a Remote release fetches from cloud/cache and
     /// decrypts). The export is all-or-nothing: every
     /// file is written into a hidden staging directory alongside the final one, and
@@ -192,7 +192,7 @@ impl LibraryManager {
         })?;
         let final_dir = request
             .target_dir
-            .join(bae_db::stored_name::folder_path(release_id, &folder)?.local_path());
+            .join(bae_records::stored_name::folder_path(release_id, &folder)?.local_path());
         // Stage under the target dir (not a temp dir elsewhere) so the final rename
         // stays on one filesystem and is atomic. The name is hidden and carries the
         // release id so a concurrent export of a different release can't collide.
@@ -260,7 +260,7 @@ pub(super) fn output_percent(done: usize, total: usize) -> u8 {
 
 /// The hidden folder beside a release's output folder that an output uses
 /// for `purpose`, named after the release's folder name and id, written as
-/// coven writes a name (see [`bae_db::stored_name`]).
+/// coven writes a name (see [`bae_records::stored_name`]).
 fn output_sibling(folder: &str, purpose: &str, release_id: &str) -> std::path::PathBuf {
     coven::RelativePath::new([format!(".{folder}.{purpose}-{release_id}")])
         .expect("a name holding the release id is not empty")

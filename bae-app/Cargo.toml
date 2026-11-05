@@ -25,6 +25,7 @@ bae-library = { workspace = true }
 # The store the bootstrap opens, and the live reads the services pass on.
 bae-db = { workspace = true }
 bae-store = { workspace = true }
+bae-records = { workspace = true }
 # The bugs, anomalies and telemetry the bootstrap and services report.
 bae-diagnostics = { workspace = true }
 # The identify choices a release being identified again asks about.
@@ -65,6 +66,7 @@ bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-library = { workspace = true, features = ["test-utils"] }
 bae-db = { workspace = true, features = ["test-utils"] }
 bae-store = { workspace = true, features = ["test-utils"] }
+bae-records = { workspace = true, features = ["test-utils"] }
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 bae-import = { workspace = true, features = ["test-utils"] }
 bae-playback = { workspace = true, features = ["test-utils"] }

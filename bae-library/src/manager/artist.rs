@@ -5,23 +5,23 @@ use super::*;
 impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), LibraryError> {
-        self.database.insert_artist(artist).await?;
+        self.records.insert_artist(artist).await?;
         Ok(())
     }
 
     pub async fn get_artists_for_album(
         &self,
         album_id: &str,
-    ) -> Result<Vec<bae_db::credits::LibraryCredit>, LibraryError> {
-        Ok(self.database.get_artists_for_album(album_id).await?)
+    ) -> Result<Vec<bae_records::credits::LibraryCredit>, LibraryError> {
+        Ok(self.records.get_artists_for_album(album_id).await?)
     }
 
     /// The credits the track shows: its own, else its album's.
     pub async fn get_shown_artists_for_track(
         &self,
         track_id: &str,
-    ) -> Result<Vec<bae_db::credits::LibraryCredit>, LibraryError> {
-        Ok(self.database.get_shown_artists_for_track(track_id).await?)
+    ) -> Result<Vec<bae_records::credits::LibraryCredit>, LibraryError> {
+        Ok(self.records.get_shown_artists_for_track(track_id).await?)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -29,7 +29,7 @@ impl LibraryManager {
         &self,
         artist_id: &str,
     ) -> Result<Option<DbArtist>, LibraryError> {
-        Ok(self.database.find_artist_by_id(artist_id).await?)
+        Ok(self.records.find_artist_by_id(artist_id).await?)
     }
 
     /// Give an artist another printed name, which credits can then print for
@@ -40,7 +40,7 @@ impl LibraryManager {
         name: &str,
     ) -> Result<(), LibraryError> {
         let name = credit_name(name)?;
-        Ok(self.database.add_artist_credit_name(artist_id, &name).await?)
+        Ok(self.records.add_artist_credit_name(artist_id, &name).await?)
     }
 
     /// Rename one of an artist's other printed names; every credit printing
@@ -52,7 +52,7 @@ impl LibraryManager {
         name: &str,
     ) -> Result<(), LibraryError> {
         let name = credit_name(name)?;
-        Ok(self.database.rename_artist_credit_name(artist_id, key, &name).await?)
+        Ok(self.records.rename_artist_credit_name(artist_id, key, &name).await?)
     }
 
     /// Remove one of an artist's other printed names; every credit printing
@@ -62,7 +62,7 @@ impl LibraryManager {
         artist_id: &str,
         key: &str,
     ) -> Result<(), LibraryError> {
-        Ok(self.database.remove_artist_credit_name(artist_id, key).await?)
+        Ok(self.records.remove_artist_credit_name(artist_id, key).await?)
     }
 
     /// Resolve `artists` as credits and write the new and filled-in rows, in
@@ -74,7 +74,7 @@ impl LibraryManager {
         &self,
         artists: &[DbArtist],
     ) -> Result<Vec<String>, LibraryError> {
-        Ok(self.database.find_or_create_artists(artists).await?)
+        Ok(self.records.find_or_create_artists(artists).await?)
     }
 }
 

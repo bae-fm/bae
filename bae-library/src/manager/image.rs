@@ -31,12 +31,11 @@ impl LibraryManager {
         release_id: &str,
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
-        let file =
-            self.database.find_release_file(release_id, file_id).await?.ok_or_else(|| {
-                LibraryError::Refused(format!(
-                    "Image file {file_id} is not part of release {release_id}"
-                ))
-            })?;
+        let file = self.records.find_release_file(release_id, file_id).await?.ok_or_else(|| {
+            LibraryError::Refused(format!(
+                "Image file {file_id} is not part of release {release_id}"
+            ))
+        })?;
         self.read_release_file(&file).await
     }
 
@@ -45,7 +44,7 @@ impl LibraryManager {
         id: &str,
         image_type: &LibraryImageType,
     ) -> Result<Option<DbLibraryImage>, LibraryError> {
-        Ok(self.database.find_library_image(id, image_type).await?)
+        Ok(self.records.find_library_image(id, image_type).await?)
     }
 
     /// Change the cover art for an album's release. A `ReleaseImage` selection

@@ -1,7 +1,7 @@
 //! What the transfer queues hold and show. Downloading for offline and
 //! exporting or saving each work through one release at a time from a queue
 //! that can be paused, cancelled and retried. Each queue is a table of this
-//! device's ([`bae_db`]): its entries in the order queued, each one's
+//! device's ([`bae_store`]): its entries in the order queued, each one's
 //! phase, and whether the queue is paused. How far the active entry has got
 //! moves too often to be written, and travels apart from the table, keyed by
 //! release (the library's release transfers watch).

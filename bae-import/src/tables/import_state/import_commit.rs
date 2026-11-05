@@ -4,11 +4,11 @@
 //! are one.
 
 use super::*;
-use bae_db::client::artist_resolution::{
+use bae_records::records::artist_resolution::{
     identity_write_failure, relink, relink_album_artists, relink_track_artists,
 };
-use bae_db::client::label_resolution::label_write;
-use bae_db::client::write::{
+use bae_records::records::label_resolution::label_write;
+use bae_records::records::write::{
     insert_audio_format_row, insert_audio_segment_row, insert_release_artist_role_row,
     insert_release_file_row, insert_release_medium_row, insert_release_row,
     insert_scrub_points_row, insert_track_artist_role_row, insert_track_artist_row,
@@ -62,15 +62,15 @@ fn import_commit_error(error: CovenError) -> ImportCommitError {
             match host.downcast::<ImportCommitError>() {
                 Ok(error) => *error,
                 Err(other) => ImportCommitError::Write(
-                    bae_db::client::artist_resolution::identity_write_error(
+                    bae_records::records::artist_resolution::identity_write_error(
                         rusqlite::Error::UserFunctionError(other).into(),
                     ),
                 ),
             }
         }
-        other => {
-            ImportCommitError::Write(bae_db::client::artist_resolution::identity_write_error(other))
-        }
+        other => ImportCommitError::Write(
+            bae_records::records::artist_resolution::identity_write_error(other),
+        ),
     }
 }
 
@@ -268,7 +268,7 @@ pub(crate) struct ImportRows<'a> {
     pub track_works: &'a [DbTrackWork],
     pub release_artist_roles: &'a [DbReleaseArtistRole],
     pub track_artist_roles: &'a [DbTrackArtistRole],
-    pub artists: bae_db::ArtistCredits<'a>,
+    pub artists: bae_records::ArtistCredits<'a>,
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
     pub scrub_points: &'a [DbScrubPoints],
@@ -344,7 +344,7 @@ impl ImportTables {
         let records = rows.records.to_vec();
         let now_dt = chrono::DateTime::<chrono::Utc>::from(self.store.now());
         let now = now_dt.to_rfc3339();
-        let labels = bae_db::LabelParts::new(ids, now_dt, &release.pressing.labels);
+        let labels = bae_records::LabelParts::new(ids, now_dt, &release.pressing.labels);
         self.store
             .write_staged(
                 move |w| {
@@ -358,7 +358,7 @@ impl ImportTables {
                         .into_iter()
                         .map(|(original, place)| {
                             sql.put_user_file(
-                                bae_db::synced::RELEASE_FILES_NAMESPACE,
+                                bae_records::synced::RELEASE_FILES_NAMESPACE,
                                 original,
                                 place,
                             )
@@ -497,12 +497,15 @@ impl ImportTables {
         &self,
         credits: &[DbArtist],
         picked: &[String],
-    ) -> Result<bae_db::client::artist_resolution::ResolvedArtists, bae_db::IdentityWriteError>
-    {
+    ) -> Result<
+        bae_records::records::artist_resolution::ResolvedArtists,
+        bae_records::IdentityWriteError,
+    > {
         let (credits, picked) = (credits.to_vec(), picked.to_vec());
-        bae_db::client::artist_resolution::read_resolving_identities(&self.store, move |sql| {
-            ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql)
-        })
+        bae_records::records::artist_resolution::read_resolving_identities(
+            &self.store,
+            move |sql| ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql),
+        )
         .await
     }
 }

@@ -31,7 +31,7 @@ pub struct StreamDecodeParams {
 #[derive(Clone)]
 pub struct SegmentDecodeParams {
     buffer: SharedSparseBuffer,
-    span: bae_db::SegmentSpan,
+    span: bae_records::SegmentSpan,
     start_offset: u64,
     start: SegmentStart,
 }
@@ -44,7 +44,7 @@ pub enum SegmentStart {
     /// sample to the target.
     Span,
     /// A stored scrub point that plays the target exactly.
-    ScrubPoint(bae_db::ScrubPoint),
+    ScrubPoint(bae_records::ScrubPoint),
     /// The stream's first frame: an MP3 target before every stored point's
     /// exact start.
     StreamStart,
@@ -53,7 +53,11 @@ pub enum SegmentStart {
 impl SegmentDecodeParams {
     /// A window with no scrub point to start at: a natural start jumps to the
     /// span's landing byte, a mid-track seek seeks by sample.
-    pub fn new(buffer: SharedSparseBuffer, span: bae_db::SegmentSpan, start_offset: u64) -> Self {
+    pub fn new(
+        buffer: SharedSparseBuffer,
+        span: bae_records::SegmentSpan,
+        start_offset: u64,
+    ) -> Self {
         Self { buffer, span, start_offset, start: SegmentStart::Span }
     }
 
@@ -61,7 +65,7 @@ impl SegmentDecodeParams {
     /// reading the file at `start`, then decodes forward to the target.
     pub fn with_start(
         buffer: SharedSparseBuffer,
-        span: bae_db::SegmentSpan,
+        span: bae_records::SegmentSpan,
         start_offset: u64,
         start: SegmentStart,
     ) -> Self {

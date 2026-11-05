@@ -1,7 +1,7 @@
 //! Whether the releases an import pane offers are already in the library,
 //! read through one live query whose checks change as the offers do.
 
-use bae_db::{LibraryCheck, LibraryStatus};
+use bae_records::{LibraryCheck, LibraryStatus};
 use bae_store::live_query::{CancellableLiveQuery, LiveQueryError};
 use std::collections::BTreeSet;
 

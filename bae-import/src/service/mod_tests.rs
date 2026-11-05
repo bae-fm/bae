@@ -10,7 +10,7 @@ use bae_store::Store;
 use tempfile::TempDir;
 
 /// A worker for a test, with the candidate-preparations writer over the same
-/// database.
+/// records.
 pub(crate) struct TestService {
     pub(crate) service: ImportService,
     pub(crate) preparations: crate::CandidatePreparations,
@@ -51,7 +51,7 @@ impl TestService {
         crate::ImportServices {
             event_tx,
             store: self.db.clone(),
-            database: bae_db::test_fixtures::test_database(&self.db),
+            records: bae_records::test_fixtures::test_records(&self.db),
             tables: service.tables.clone(),
             catalogs: service.catalogs.clone(),
             remote_images: service.remote_images.clone(),
@@ -130,7 +130,7 @@ pub(crate) async fn setup_import_service() -> TestService {
             commands_rx,
             event_tx,
             runtime,
-            database: bae_db::test_fixtures::test_database(&db),
+            records: bae_records::test_fixtures::test_records(&db),
             tables,
             catalogs,
             remote_images: bae_catalogs::remote_image::RemoteImageCache::for_test(

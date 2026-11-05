@@ -109,7 +109,7 @@ pub(super) async fn collect_snapshots(
     out
 }
 
-/// A throwaway library database over a temp dir, which must outlive it.
+/// A throwaway library records over a temp dir, which must outlive it.
 pub(super) async fn make_database() -> (bae_store::Store, TempDir) {
     let tmp = TempDir::new().unwrap();
     let db = bae_store::Store::new_test(
@@ -134,7 +134,7 @@ pub(super) async fn make_service(
         tx.clone(),
         candidates,
         db.clone(),
-        bae_db::test_fixtures::test_database(&db),
+        bae_records::test_fixtures::test_records(&db),
         bae_diagnostics::Diagnostics::noop(),
     );
     (handle, tx, rx, lib_tmp)
@@ -567,7 +567,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         runtime_handle: tokio::runtime::Handle::current(),
         event_tx: tx,
         analyzer: std::sync::Mutex::new(None),
-        database: bae_db::test_fixtures::test_database(&db),
+        records: bae_records::test_fixtures::test_records(&db),
         store: db,
         diagnostics: bae_diagnostics::Diagnostics::noop(),
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),

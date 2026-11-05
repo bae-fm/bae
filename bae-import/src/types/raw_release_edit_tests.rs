@@ -1,5 +1,5 @@
 use super::*;
-use bae_db::ExistingArtist;
+use bae_records::ExistingArtist;
 
 fn existing_artist() -> ExistingArtist {
     ExistingArtist {

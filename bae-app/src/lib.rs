@@ -431,7 +431,8 @@ where
             runtime.block_on(open_store(builder, Arc::clone(&clock)))
         })
         .map_err(classify_open_error)?;
-    let database = bae_db::Database::new(store.clone(), ids.clone());
+    let records = bae_records::Records::new(store.clone(), ids.clone());
+    let database = bae_db::Database::new(store.clone());
     #[cfg(desktop)]
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
         &app_dir.registered_library(&library_id),
@@ -452,6 +453,7 @@ where
         .stage(&library_id, "open library manager", || {
             runtime.block_on(bae_library::open_library_manager(
                 store.clone(),
+                records.clone(),
                 database.clone(),
                 #[cfg(desktop)]
                 catalogs.clone(),
@@ -519,6 +521,7 @@ where
                 runtime.block_on(start_library_services(
                     library_manager,
                     store,
+                    records,
                     database,
                     #[cfg(desktop)]
                     catalogs,

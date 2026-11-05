@@ -160,7 +160,7 @@ pub async fn attach_release_files(
     let files = store
         .read({
             let release_id = release_id.clone();
-            move |sql| bae_db::client::read::get_files_for_release_on(&sql, &release_id)
+            move |sql| bae_records::records::read::get_files_for_release_on(&sql, &release_id)
         })
         .await?;
     if files.is_empty() {

@@ -13,7 +13,7 @@ pub enum PlaybackErrorReason {
     SyncDisconnected,
     /// A local release whose audio is on another device only, the one
     /// named, which hasn't uploaded it. Actionable, keyed.
-    OnOtherDevice(bae_db::OtherDevice),
+    OnOtherDevice(bae_records::OtherDevice),
     /// A local release's original files are gone or changed on this device.
     /// Actionable, keyed.
     OriginalMissing,

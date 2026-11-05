@@ -584,8 +584,8 @@ impl PlaybackService {
         }
     }
     /// Playback reads the library's tracks and preferences and streams their
-    /// files from `store`, and its tracks' audio from `database`, and writes
-    /// its resume row and listening history there, each play under an id `ids` mints.
+    /// files from `store`, and its tracks' audio from `records`, and writes
+    /// its resume row there and its listening history through `database`, each play under an id `ids` mints.
     /// `restore_playback` controls whether startup resumes the saved track and
     /// position over the queue the tables hold; opening the library settled
     /// the tables for it first (`settle_playback_queue`). The crash-safe row
@@ -599,6 +599,7 @@ impl PlaybackService {
     /// track it holds once the library no longer holds it.
     pub fn start(
         store: bae_store::Store,
+        records: bae_records::Records,
         database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
@@ -613,6 +614,7 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             store,
+            records,
             database,
             ids,
             queue_tables,
@@ -634,6 +636,7 @@ impl PlaybackService {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn start_with_audio_device(
         store: bae_store::Store,
+        records: bae_records::Records,
         database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
@@ -648,6 +651,7 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         Self::start_inner(
             store,
+            records,
             database,
             ids,
             queue_tables,
@@ -666,6 +670,7 @@ impl PlaybackService {
 
     pub(super) fn start_inner(
         store: bae_store::Store,
+        records: bae_records::Records,
         database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
@@ -739,6 +744,7 @@ impl PlaybackService {
                         );
                         let mut service = PlaybackService {
                             store,
+                            records,
                             database,
                             ids,
                             diagnostics,

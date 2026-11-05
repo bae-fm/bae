@@ -138,14 +138,14 @@ impl FileBuffers {
 /// caller. Kept in this module so the only reach into the cache stays here.
 pub(super) async fn prepare_track_for_playback(
     store: &bae_store::Store,
-    database: &bae_db::Database,
+    records: &bae_records::Records,
     diagnostics: &Diagnostics,
     track_id: &str,
     start: TrackStart,
     file_buffers: &mut FileBuffers,
     command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
 ) -> Result<(PlaybackPreparedTrack, StreamDecodeParams), PlaybackError> {
-    let resolved = ResolvedTrackAudio::resolve(database, track_id).await?;
+    let resolved = ResolvedTrackAudio::resolve(records, track_id).await?;
     // Read the replay-gain mode once, here, and pass it down — rather than a
     // preferences read buried inside `finalize_playback_track`. Read before
     // any buffer is made, so nothing fails between caching a buffer and
@@ -185,7 +185,7 @@ pub(super) async fn prepare_track_for_playback(
     let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
     for (file_id, buffer) in fresh {
         let reader = Box::new(bae_track_audio::data_source::CovenFileReader::for_playback(
-            database.clone(),
+            records.clone(),
             file_id,
             file_buffers.arbiter.clone(),
             decode.first_read_byte(buffer.id()),

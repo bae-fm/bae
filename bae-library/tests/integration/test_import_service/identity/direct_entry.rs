@@ -46,9 +46,9 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
     let (release_id, album_id) =
         bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    assert!(f.library.database().get_release_records(&release_id).await.unwrap().is_empty());
+    assert!(f.library.records().get_release_records(&release_id).await.unwrap().is_empty());
     assert_eq!(
-        f.library.database().find_album_by_id(&album_id).await.unwrap().unwrap().title,
+        f.library.records().find_album_by_id(&album_id).await.unwrap().unwrap().title,
         "Album Title"
     );
 }

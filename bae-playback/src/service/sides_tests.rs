@@ -75,22 +75,22 @@ fn side_pause_prompt_carries_its_countdown() {
 /// as (medium, side).
 fn info_on(
     track_id: &str,
-    mediums: &bae_db::DbReleaseMediums,
+    mediums: &bae_records::DbReleaseMediums,
     (medium, side): (u16, u8),
 ) -> PlaybackTrackInfo {
-    let mut track = bae_db::DbTrack::new_test("release-id", track_id, "Track Title", 1);
+    let mut track = bae_records::DbTrack::new_test("release-id", track_id, "Track Title", 1);
     track.medium_id.clone_from(&mediums.0[usize::from(medium) - 1].id);
     track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
     PlaybackTrackInfo::of(&track, mediums)
 }
 
-fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_db::DbReleaseMediums {
-    bae_db::DbReleaseMediums(
+fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_records::DbReleaseMediums {
+    bae_records::DbReleaseMediums(
         mediums
             .iter()
             .enumerate()
             .map(|(index, medium)| {
-                bae_db::DbReleaseMedium::new(
+                bae_records::DbReleaseMedium::new(
                     "release-id",
                     bae_types::mediums::medium_position(index),
                     *medium,

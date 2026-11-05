@@ -244,10 +244,10 @@ fn report_fill_failure(on_error: FillErrorHandler, error: Arc<TrackReadError>) {
 }
 
 /// Preserve the actionable storage failure when opening or reading release
-/// file `file_id` from `db`: a file on another device only names that
+/// file `file_id` from `records`: a file on another device only names that
 /// device, as coven records it.
 async fn read_error_for_file_read(
-    db: &bae_db::Database,
+    records: &bae_records::Records,
     file_id: &str,
     error: bae_store::DbError,
 ) -> TrackReadError {
@@ -258,7 +258,7 @@ async fn read_error_for_file_read(
         // Audio another device holds: a release nobody uploaded is on the
         // device that imported it, or made it local again.
         bae_store::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
-            match db.release_file_other_device(file_id).await {
+            match records.release_file_other_device(file_id).await {
                 Ok(device) => TrackReadError::OnOtherDevice(device),
                 Err(error) => TrackReadError::internal(format!(
                     "release file {file_id} is on another device only, which couldn't be read: {error}"
@@ -278,7 +278,7 @@ async fn read_error_for_file_read(
 /// identity when the stream opens, so no reader branches on locality and every
 /// window after that costs only its own bytes.
 pub struct CovenFileReader {
-    db: bae_db::Database,
+    records: bae_records::Records,
     file_id: String,
     /// How playback reads the file, for a reader playback started; `None`
     /// for one that reads it start to finish with nobody waiting to hear it.
@@ -308,15 +308,15 @@ struct PlaybackRead {
 impl CovenFileReader {
     /// A reader of `file_id` start to finish, for work nobody listens to
     /// while it reads — a save, a transcode, a decode for import.
-    pub fn new(db: bae_db::Database, file_id: String, diagnostics: Diagnostics) -> Self {
-        Self { db, file_id, playback: None, diagnostics }
+    pub fn new(records: bae_records::Records, file_id: String, diagnostics: Diagnostics) -> Self {
+        Self { records, file_id, playback: None, diagnostics }
     }
 
     /// A reader of `file_id` for playback: its fetches gated by `arbiter`,
     /// with the window at `prefetch_byte` and, when `prefetch_file_end`, the
     /// file's last window fetched up front.
     pub fn for_playback(
-        db: bae_db::Database,
+        records: bae_records::Records,
         file_id: String,
         arbiter: Arc<FetchArbiter>,
         prefetch_byte: Option<u64>,
@@ -324,7 +324,7 @@ impl CovenFileReader {
         diagnostics: Diagnostics,
     ) -> Self {
         let playback = PlaybackRead { arbiter, prefetch_byte, prefetch_file_end };
-        Self { db, file_id, playback: Some(playback), diagnostics }
+        Self { records, file_id, playback: Some(playback), diagnostics }
     }
 }
 
@@ -357,18 +357,18 @@ impl AudioDataReader for CovenFileReader {
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let CovenFileReader { db, file_id, playback, diagnostics } = *self;
+        let CovenFileReader { records, file_id, playback, diagnostics } = *self;
         let buffer_id = buffer.id();
         let fill_buffer = buffer.clone();
         let prefetch_diagnostics = diagnostics.clone();
 
         spawn_fill(diagnostics, &buffer, on_error, async move {
             let buffer = fill_buffer;
-            let stream = match db.open_release_file(&file_id).await {
+            let stream = match records.open_release_file(&file_id).await {
                 Ok(stream) => Arc::new(stream),
                 Err(error) => {
                     return Err(FillFailure::Open(
-                        read_error_for_file_read(&db, &file_id, error).await,
+                        read_error_for_file_read(&records, &file_id, error).await,
                     ))
                 }
             };
@@ -426,7 +426,7 @@ impl AudioDataReader for CovenFileReader {
                     let stream = &stream;
                     let playback = playback.as_ref();
                     let fetched = &fetched;
-                    let db = &db;
+                    let records = &records;
                     let file_id = &file_id;
                     async move {
                         debug!(
@@ -443,7 +443,7 @@ impl AudioDataReader for CovenFileReader {
                                     "fetch failed buffer={buffer_id} {kind} off={src_off} len={len} waited={}ms error={e}",
                                     fetch_started.elapsed().as_millis(),
                                 );
-                                return Err(read_error_for_file_read(db, file_id, e.into()).await);
+                                return Err(read_error_for_file_read(records, file_id, e.into()).await);
                             }
                         };
                         let total = fetched.fetch_add(data.len() as u64, Ordering::Relaxed)

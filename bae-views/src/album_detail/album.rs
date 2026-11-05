@@ -6,7 +6,7 @@
 
 use super::*;
 use crate::DbAlbumAppearance;
-use bae_db::{DbAlbum, DbAlbumSummary};
+use bae_records::{DbAlbum, DbAlbumSummary};
 
 /// An album with its releases, each carrying tracks, files, and gallery.
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub struct AlbumDetail {
     pub album: DbAlbum,
     /// The album's credits in list order, each the artist it shows after
     /// merges.
-    pub artists: Vec<bae_db::credits::LibraryCredit>,
+    pub artists: Vec<bae_records::credits::LibraryCredit>,
     /// The album's credit line: each credit's printed name, then the join its
     /// source prints after it (", " where it states none).
     pub artist_names: String,

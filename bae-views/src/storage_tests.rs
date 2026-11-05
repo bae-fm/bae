@@ -4,13 +4,13 @@
 
 use crate::tests::{assert_seeks_search, both_ways, key_at, library};
 use crate::*;
-use bae_db::test_fixtures::aggregate_ordering::aggregate_db;
-use bae_db::test_fixtures::album_listing::listed_db;
-use bae_db::test_fixtures::storage_listing::*;
+use bae_records::test_fixtures::aggregate_ordering::aggregate_db;
+use bae_records::test_fixtures::album_listing::listed_db;
+use bae_records::test_fixtures::storage_listing::*;
 use bae_store::test_fixtures::exec_batch;
 // The listing's albums, not the root fixtures' of the same names.
-use bae_db::test_fixtures::storage_listing::{ALBUM_A, ALBUM_B};
-use bae_db::test_fixtures::*;
+use bae_records::test_fixtures::storage_listing::{ALBUM_A, ALBUM_B};
+use bae_records::test_fixtures::*;
 use bae_store::{LibraryPageWindow, LibraryPageWindows};
 
 /// The Storage Manager list's release ids in `field` order, ascending.

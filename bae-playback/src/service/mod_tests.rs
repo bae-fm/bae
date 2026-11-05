@@ -104,8 +104,8 @@ pub(super) async fn seed_test_releases(
     releases: &[(&str, &[&str])],
     track_length_ms: u64,
 ) {
-    let database = bae_db::test_fixtures::test_database(db);
-    use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
+    let records = bae_records::test_fixtures::test_records(db);
+    use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
     if releases.is_empty() {
         return;
     }
@@ -117,18 +117,18 @@ pub(super) async fn seed_test_releases(
         musicbrainz_artist_id: None,
         created_at: chrono::Utc::now(),
     };
-    database.insert_artist(&artist).await.unwrap();
+    records.insert_artist(&artist).await.unwrap();
     for (release_id, track_ids) in releases {
         let album = DbAlbum::new_test("Album Title");
         let release = DbRelease::new_test(&album.id, release_id);
-        database.insert_album(&album).await.unwrap();
-        database
-            .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, &artist.id))
+        records.insert_album(&album).await.unwrap();
+        records
+            .insert_album_artist(&bae_records::DbAlbumArtist::new_test(&album.id, &artist.id))
             .await
             .unwrap();
-        database.insert_release(&release).await.unwrap();
-        database
-            .insert_release_medium(&bae_db::DbReleaseMedium::new_test(release_id))
+        records.insert_release(&release).await.unwrap();
+        records
+            .insert_release_medium(&bae_records::DbReleaseMedium::new_test(release_id))
             .await
             .unwrap();
         for (index, track_id) in track_ids.iter().enumerate() {
@@ -139,7 +139,7 @@ pub(super) async fn seed_test_releases(
                 u32::try_from(index + 1).expect("a test track number fits u32"),
             );
             track.duration_ms = track_length_ms;
-            database.insert_track(&track).await.unwrap();
+            records.insert_track(&track).await.unwrap();
         }
     }
 }
@@ -256,6 +256,7 @@ pub(super) fn playback_service_over(
     let held_tracks = advance::track_infos_follow(db, "the tracks playback holds", &diagnostics);
     let service = PlaybackService {
         store: db.clone(),
+        records: bae_records::test_fixtures::test_records(db),
         database: bae_db::test_fixtures::test_database(db),
         ids: Arc::new(coven::UuidIds),
         diagnostics,
@@ -349,8 +350,8 @@ pub(super) fn test_prepared_track_with_file(
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),
             buffer,
-            span: bae_db::SegmentSpan::whole_file(),
-            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
+            span: bae_records::SegmentSpan::whole_file(),
+            scrub_points: bae_records::ScrubPoints::new(Vec::new()),
         }],
         sample_rate: 44_100,
         channels: 2,
@@ -518,14 +519,19 @@ pub(super) async fn seed_track_window(
     end_sample: Option<u64>,
     generated_pregap_samples: Option<u64>,
 ) {
-    use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
+    use bae_records::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
     use bae_util::content_type::ContentType;
     let now = chrono::Utc::now();
     let file_id = bae_util::test_ids::test_uuid(&format!("{track_id}-file"));
     let file =
         NewReleaseFile::new(release_id, "track.flac", ContentType::Flac, file_id.clone(), now);
-    bae_db::test_fixtures::aggregate_ordering::insert_file(store, store.home.path(), file, 4_096)
-        .await;
+    bae_records::test_fixtures::aggregate_ordering::insert_file(
+        store,
+        store.home.path(),
+        file,
+        4_096,
+    )
+    .await;
     let audio_format_id = bae_util::test_ids::test_uuid(&format!("{track_id}-af"));
     let audio_format = DbAudioFormat::new(
         track_id,
@@ -549,7 +555,7 @@ pub(super) async fn seed_track_window(
         end_byte: None,
         created_at: now,
     };
-    bae_db::test_fixtures::test_database(&store.db)
+    bae_records::test_fixtures::test_records(&store.db)
         .insert_audio_format_with_segments_for_test(&audio_format, &[segment])
         .await
         .unwrap();
@@ -882,25 +888,25 @@ fn prepared_track_with_pregap_segments(
             role: DbAudioSegmentRole::AudioPregap,
             file_id: "pregap-file".to_string(),
             buffer: pregap_buffer.clone(),
-            span: bae_db::SegmentSpan {
+            span: bae_records::SegmentSpan {
                 start_sample: 1_000,
                 end_sample: None,
                 start_byte: Some(100),
                 end_byte: None,
             },
-            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
+            scrub_points: bae_records::ScrubPoints::new(Vec::new()),
         },
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: "main-file".to_string(),
             buffer: main_buffer.clone(),
-            span: bae_db::SegmentSpan {
+            span: bae_records::SegmentSpan {
                 start_sample: 44_100,
                 end_sample: Some(88_200),
                 start_byte: Some(2_000),
                 end_byte: Some(4_000),
             },
-            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
+            scrub_points: bae_records::ScrubPoints::new(Vec::new()),
         },
     ];
     (prepared, pregap_buffer, main_buffer)

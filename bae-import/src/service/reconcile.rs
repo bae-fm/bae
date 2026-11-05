@@ -8,12 +8,12 @@
 use super::{ImportService, PreparedMetadata};
 
 fn retain_referenced_artists(
-    artists: &mut Vec<bae_db::DbArtist>,
-    new_album: Option<(&bae_db::DbAlbum, &[bae_db::DbAlbumArtist])>,
-    track_artists: &[bae_db::DbTrackArtist],
-    release_artist_roles: &[bae_db::DbReleaseArtistRole],
-    track_artist_roles: &[bae_db::DbTrackArtistRole],
-    work_artists: &[bae_db::DbWorkArtist],
+    artists: &mut Vec<bae_records::DbArtist>,
+    new_album: Option<(&bae_records::DbAlbum, &[bae_records::DbAlbumArtist])>,
+    track_artists: &[bae_records::DbTrackArtist],
+    release_artist_roles: &[bae_records::DbReleaseArtistRole],
+    track_artist_roles: &[bae_records::DbTrackArtistRole],
+    work_artists: &[bae_records::DbWorkArtist],
 ) {
     let album_artists = new_album
         .into_iter()
@@ -42,12 +42,12 @@ impl ImportService {
     /// the library as it stands when the release is written.
     pub(super) async fn reconcile_prepared_release(
         &self,
-        parsed: bae_db::ReleaseRows,
+        parsed: bae_records::ReleaseRows,
         records: Vec<bae_catalogs::records::ReleaseRecord>,
         picked_album: Option<String>,
         picked_artists: std::collections::HashSet<String>,
     ) -> Result<PreparedMetadata, crate::ImportError> {
-        let bae_db::ReleaseRows {
+        let bae_records::ReleaseRows {
             album: mut db_album,
             release: mut db_release,
             mediums,
@@ -67,7 +67,7 @@ impl ImportService {
         // foreign key.
         let existing_album_id = match picked_album {
             Some(album_id) => Some(album_id),
-            None => self.database.album_records_name(&records, &[]).await?,
+            None => self.records.album_records_name(&records, &[]).await?,
         };
         match &existing_album_id {
             Some(album_id) => {
@@ -80,7 +80,8 @@ impl ImportService {
             // device, so two devices importing into one group while apart
             // write one album.
             None => {
-                if let Some(group_album_id) = bae_db::identity::album_id_for_records(&records) {
+                if let Some(group_album_id) = bae_records::identity::album_id_for_records(&records)
+                {
                     db_album.id = group_album_id;
                     db_release.album_id = db_album.id.clone();
                     for album_artist in &mut album_artists {

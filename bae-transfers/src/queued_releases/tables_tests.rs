@@ -4,7 +4,7 @@
 use crate::output_snapshot::{OutputKind, OutputRequest};
 use crate::queued_releases::tables::{self, QueuedPayload};
 use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
-use bae_db::test_fixtures::*;
+use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::*;
 use bae_store::*;
 

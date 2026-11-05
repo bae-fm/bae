@@ -14,9 +14,9 @@ use super::{FileEvidence, ImportFailure, ImportedRelease};
 use crate::CandidateSession;
 use crate::TriageTab;
 use bae_catalogs::remote_image::RemoteCover;
-use bae_db::LibraryStatus;
 use bae_identify::signals::Signals;
 use bae_identify::{IdentifyState, VerdictSummary};
+use bae_records::LibraryStatus;
 
 /// One candidate as the pane reads it, before its commands are decided.
 ///
@@ -79,7 +79,7 @@ pub struct DraftProjection {
     pub metadata_draft: RawReleaseEdit,
     /// What the library holds, as this read found it, for every artist credit
     /// the draft carries.
-    pub artist_resolutions: Vec<bae_db::ResolvedCredit>,
+    pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
@@ -374,7 +374,7 @@ pub struct CandidateDraftPane {
     pub metadata_draft: RawReleaseEdit,
     /// What the library holds for every artist credit of the draft and the
     /// mapping rows, as the pane's live read found it.
-    pub artist_resolutions: Vec<bae_db::ResolvedCredit>,
+    pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// What the candidate is linked to in the catalogs, which Unlink clears.

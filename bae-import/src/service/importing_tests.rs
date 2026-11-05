@@ -108,7 +108,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .unwrap()
         .expect("the retried import records the release of its files");
     assert_eq!(
-        bae_db::test_fixtures::test_database(&test.db)
+        bae_records::test_fixtures::test_records(&test.db)
             .get_tracks_for_release(&release)
             .await
             .unwrap()

@@ -262,7 +262,7 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
             params![catalog, key],
             |row| {
                 Ok((
-                    bae_db::client::pressing_columns::keyed(row, "medium", Medium::from_key)?,
+                    bae_records::records::pressing_columns::keyed(row, "medium", Medium::from_key)?,
                     row.get::<_, String>("disc_ids")?,
                 ))
             },

@@ -175,15 +175,15 @@ jobs:
         env:
           TMP: ${{ runner.temp }}
           TEMP: ${{ runner.temp }}
-        run: cargo nextest run --no-fail-fast -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-store -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast --lib --target ${{ matrix.target }}
+        run: cargo nextest run --no-fail-fast -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-store -p bae-records -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast --lib --target ${{ matrix.target }}
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.
         if: ${{ !cancelled() && steps.bridge.conclusion == 'success' }}
-        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-store -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-bridge --target ${{ matrix.target }} -- -D warnings
+        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-store -p bae-records -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-bridge --target ${{ matrix.target }} -- -D warnings
 
       - name: Clippy (full edition, OAuth + desktop)
         # Dead-code warnings are feature-specific, so lint the OAuth/desktop code
         # on the Windows target too. No cloudkit on Windows.
         if: ${{ !cancelled() && steps.bridge.conclusion == 'success' }}
-        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-store -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,cast -- -D warnings
+        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-store -p bae-records -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,cast -- -D warnings

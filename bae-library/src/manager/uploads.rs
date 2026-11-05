@@ -103,7 +103,7 @@ impl LibraryManager {
     /// record offers: coven retires the move, and the release stays on this
     /// device only, playing from its originals.
     pub async fn cancel_failed_release_move(&self, id: coven::MoveId) -> Result<(), LibraryError> {
-        Ok(self.database.cancel_failed_release_move(id).await?)
+        Ok(self.records.cancel_failed_release_move(id).await?)
     }
 
     /// Whether any of the release's files still waits to upload from this
@@ -112,7 +112,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<bool, LibraryError> {
-        Ok(self.database.has_pending_uploads_for_release(release_id).await?)
+        Ok(self.records.has_pending_uploads_for_release(release_id).await?)
     }
 
     /// Test-only observability: how many upload entries a release's files still have
@@ -123,7 +123,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<i64, LibraryError> {
-        Ok(self.database.count_pending_uploads_for_release(release_id).await?)
+        Ok(self.records.count_pending_uploads_for_release(release_id).await?)
     }
 
     /// Retry failed uploads now: clear coven's durable retry delay and run its
@@ -161,14 +161,14 @@ impl LibraryManager {
     }
 
     pub async fn cancel_all_release_uploads(&self) -> Result<(), LibraryError> {
-        let releases = self.database.uploading_releases().await?;
+        let releases = self.records.uploading_releases().await?;
         self.cancel_release_uploads(releases).await
     }
 
     async fn cancel_release_uploads(&self, releases: Vec<String>) -> Result<(), LibraryError> {
         let manager = self.clone();
         self.run_file_operation("cancel release uploads", move |_closing| async move {
-            let detached = manager.database.cancel_release_uploads(releases).await?;
+            let detached = manager.records.cancel_release_uploads(releases).await?;
             for release in detached {
                 manager.cancel_download(&release).await?;
             }

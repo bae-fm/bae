@@ -5,7 +5,7 @@
 use super::search::LibrarySearchQuery;
 use super::*;
 use crate::album_detail::ArtistSearchResult;
-use bae_db::client::artist_credit_names::{credit_names_column, credit_names_json_sql};
+use bae_records::records::artist_credit_names::{credit_names_column, credit_names_json_sql};
 use bae_store::live_query::LiveQueryError;
 use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 
@@ -88,7 +88,7 @@ pub struct ArtistSearchProjection {
 pub struct DbArtistSearchRow {
     pub artist: DbArtist,
     pub image_version: Option<String>,
-    pub credit_names: Vec<bae_db::credits::ArtistCreditName>,
+    pub credit_names: Vec<bae_records::credits::ArtistCreditName>,
 }
 
 impl LibraryViews {
@@ -166,7 +166,7 @@ pub fn resolve_artist_search(
                     .rows
                     .into_iter()
                     .map(|row| crate::album_detail::ArtistSearchResult {
-                        image: bae_db::artist_image_ref(&row.artist.id, row.image_version),
+                        image: bae_records::artist_image_ref(&row.artist.id, row.image_version),
                         credit_names: row.credit_names,
                         artist: row.artist,
                     })

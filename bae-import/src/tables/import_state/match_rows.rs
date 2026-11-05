@@ -183,7 +183,7 @@ pub(super) fn store_match(
             (MEDIA_FORMATS, formats.iter().map(|format| (format.medium, format.quantity)).collect())
         }
     };
-    let facts = bae_db::client::pressing_columns::FactColumns::of(&result.facts());
+    let facts = bae_records::records::pressing_columns::FactColumns::of(&result.facts());
     let document_failure =
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
     let (content_hash, run, search, column) =
@@ -646,7 +646,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         }
     };
     let source: String = row.get("source")?;
-    let facts = bae_db::client::pressing_columns::read_facts_without_media(row, "")?;
+    let facts = bae_records::records::pressing_columns::read_facts_without_media(row, "")?;
     Ok(MatchColumns {
         content_hash: row.get("content_hash")?,
         position: row.get("position")?,
