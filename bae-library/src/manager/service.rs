@@ -243,12 +243,12 @@ impl LibraryManager {
     /// A file operation owns its rollback even when its caller disappears. A
     /// panic in it is reported as a bug and fails it as something that went
     /// wrong; an operation whose rollback must run on a panic catches it
-    /// before the rollback, as a pin does. `begin` starts the operation,
+    /// before the rollback, as a pin does. `operation` starts the work,
     /// handed a token of its own that closing the library cancels.
     pub(super) async fn run_file_operation<T, Fut>(
         &self,
         name: &'static str,
-        begin: impl FnOnce(crate::CancellationToken) -> Fut,
+        operation: impl FnOnce(crate::CancellationToken) -> Fut,
     ) -> Result<T, LibraryError>
     where
         T: Send + 'static,
@@ -260,7 +260,7 @@ impl LibraryManager {
                 return Err(LibraryError::Closed(name));
             }
             let stop = crate::CancellationToken::new();
-            let work = begin(stop.clone());
+            let work = operation(stop.clone());
             let manager = self.clone();
             self.tasks.tracker.spawn_on(
                 async move {
