@@ -49,8 +49,8 @@ pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus};
 pub use live_read::{live_read_channel, SubscriptionReader};
 pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::{
-    finish_removals, remove_local_library, remove_unopenable_library, unsent_before_removal,
-    LibraryRemovalError, UnfinishedRemoval,
+    finish_removals, remove_unopenable_library, unsent_before_removal, LibraryRemovalError,
+    UnfinishedRemoval,
 };
 pub use make_local_transfers::MakeLocalTransferProgress;
 pub use manager::*;

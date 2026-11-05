@@ -153,27 +153,6 @@ pub async fn finish_removals(
     Ok(())
 }
 
-/// Leave the store before removing this installation, discarding what this
-/// device hasn't uploaded. Offline failures leave the store and bae's files
-/// intact; the caller retries the same request. The caller must stop its
-/// playback and import services first.
-pub async fn remove_local_library(
-    app_dir: &AppDir,
-    coven: &coven::Coven,
-    diagnostics: &Diagnostics,
-    handle: &coven::CovenHandle,
-) -> Result<(), LibraryRemovalError> {
-    remove_recorded(
-        app_dir,
-        coven,
-        diagnostics,
-        handle.store_id(),
-        handle.delete_store(coven::IfUnsent::Discard),
-        &|_| (),
-    )
-    .await
-}
-
 /// Remove a library that can't open, its settings unreadable or a reset or
 /// restore of its copy unfinished, without opening it: coven deletes this
 /// device's keychain entries for it and its directory, and bae's files and
