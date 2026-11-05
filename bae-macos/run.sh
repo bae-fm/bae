@@ -52,12 +52,12 @@ export FFMPEG_DIR
 
 case "$EDITION" in
     bae)
-        BAE_BRIDGE_FEATURES_VALUE="oauth-providers,cloudkit,desktop"
+        BAE_BRIDGE_FEATURES_VALUE="oauth-providers,cloudkit,cast"
         BUNDLE_ID="fm.bae.desktop"
         PRODUCT_NAME="bae"
         ;;
     baeium)
-        BAE_BRIDGE_FEATURES_VALUE="desktop"
+        BAE_BRIDGE_FEATURES_VALUE="cast"
         BUNDLE_ID="fm.bae.desktop.baeium"
         PRODUCT_NAME="baeium"
         ;;

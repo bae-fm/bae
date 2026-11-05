@@ -45,8 +45,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$EDITION" in
-    bae) FEATURES=oauth-providers,desktop; BINDINGS_EDITION=full; BUNDLE_ID=fm.bae.desktop ;;
-    baeium) FEATURES=desktop; BINDINGS_EDITION=baeium; BUNDLE_ID=fm.bae.desktop.baeium ;;
+    bae) FEATURES=oauth-providers,cast; BINDINGS_EDITION=full; BUNDLE_ID=fm.bae.desktop ;;
+    baeium) FEATURES=cast; BINDINGS_EDITION=baeium; BUNDLE_ID=fm.bae.desktop.baeium ;;
     *) echo "Unknown edition: $EDITION" >&2; exit 1 ;;
 esac
 if [[ "$(uname -s)" != Darwin ]]; then

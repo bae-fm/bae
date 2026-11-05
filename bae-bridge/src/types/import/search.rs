@@ -36,7 +36,7 @@ pub enum BridgeSearchQuery {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeSearchQuery = bae_catalogs::SearchQuery,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -59,7 +59,7 @@ pub enum BridgeUnusableBarcode {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeUnusableBarcode = bae_types::barcode::Unusable,
     from_core: pub(crate) fn,
     variants: { NotACode, TooShort, Placeholder, StoreInternal },
@@ -195,7 +195,7 @@ pub enum BridgeSourceSearch {
     },
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeSourceSearch {
     fn from_core(search: bae_import::SourceSearch) -> Self {
         use bae_import::SourceSearch;
@@ -231,7 +231,7 @@ pub enum BridgeSearchStatus {
     Failed,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeSearchStatus {
     fn from_core(status: bae_import::SearchStatus) -> Self {
         use bae_import::SearchStatus;
@@ -270,7 +270,7 @@ pub struct BridgeCandidateSearch {
     pub status: BridgeSearchStatus,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeCandidateSearch {
     pub(crate) fn from_core(search: bae_import::CandidateSearch) -> Self {
         let status = BridgeSearchStatus::from_core(search.status());

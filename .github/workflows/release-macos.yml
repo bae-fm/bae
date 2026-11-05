@@ -68,7 +68,7 @@ jobs:
         # + Sparkle feed so the two update streams never cross.
         if [ "${{ matrix.edition }}" = "baeium" ]; then
           {
-            echo "BAE_BRIDGE_FEATURES=desktop"
+            echo "BAE_BRIDGE_FEATURES=cast"
             echo "BUNDLE_ID=fm.bae.desktop.baeium"
             echo "PRODUCT_NAME=baeium"
             echo "ENTITLEMENTS=bae-macos/bae/bae/bae-baeium.entitlements"
@@ -80,7 +80,7 @@ jobs:
           } >> "$GITHUB_ENV"
         else
           {
-            echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop"
+            echo "BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast"
             echo "BUNDLE_ID=fm.bae.desktop"
             echo "PRODUCT_NAME=bae"
             echo "ENTITLEMENTS=bae-macos/bae/bae/bae.entitlements"

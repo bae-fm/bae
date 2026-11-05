@@ -6,7 +6,7 @@ pub struct BridgeReleasePart {
     pub name: String,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeReleasePart {
     pub(crate) fn from_core(part: &bae_import::ReleasePart) -> Self {
         Self { folder_path: coven::path_bytes(&part.folder), name: part.name() }

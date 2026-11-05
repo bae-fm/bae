@@ -1,5 +1,5 @@
 rem Build the Rust bridge and generate the full-edition C# bindings
-rem (features "oauth-providers,desktop") the Avalonia skeleton compiles against.
+rem (features "oauth-providers,cast") the Avalonia skeleton compiles against.
 rem Leaves the MSVC/vcvars environment set in the calling cmd process, so a
 rem wrapper that `call`s this can run further cargo/dotnet steps in it.
 set FFMPEG_DIR=C:\bae\bae-ffmpeg\dist
@@ -7,7 +7,7 @@ set BINDGEN_EXTRA_CLANG_ARGS=-IC:\bae\bae-ffmpeg\dist\include
 set LIBCLANG_PATH=C:\Program Files\LLVM\bin
 set PATH=C:\bae\bae-ffmpeg\dist\bin;C:\Program Files\LLVM\bin;%USERPROFILE%\.cargo\bin;%PATH%
 set BAE_BRIDGE_TARGET=aarch64-pc-windows-msvc
-set BAE_BRIDGE_FEATURES=oauth-providers,desktop
+set BAE_BRIDGE_FEATURES=oauth-providers,cast
 set BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full
 rem Pin the MSVC linker explicitly: the build runs under Git bash, whose
 rem /usr/bin precedes the inherited PATH, so a bare "link.exe" can resolve to

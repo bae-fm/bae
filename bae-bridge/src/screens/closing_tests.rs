@@ -26,7 +26,7 @@ fn a_close_writes_each_step_it_runs() {
     app.close_library(Some(closing.clone())).unwrap();
 
     let mut expected = Vec::new();
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     expected.push(Some(BridgeClosingStep::StoppingServers));
     expected.push(Some(BridgeClosingStep::StoppingPlayback));
     #[cfg(desktop)]
@@ -67,7 +67,7 @@ fn a_removal_writes_each_step_it_runs() {
 
     assert!(matches!(removal, crate::BridgeLibraryRemoval::Removed));
     let mut expected = Vec::new();
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     expected.push(Some(BridgeClosingStep::StoppingServers));
     expected.push(Some(BridgeClosingStep::StoppingPlayback));
     #[cfg(desktop)]

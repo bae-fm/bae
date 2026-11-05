@@ -124,7 +124,7 @@ jobs:
       - name: Build the Windows bridge (release, full edition)
         # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
         shell: bash
-        run: BAE_BRIDGE_TARGET=${{ matrix.arch.target }} BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh --release
+        run: BAE_BRIDGE_TARGET=${{ matrix.arch.target }} BAE_BRIDGE_FEATURES=oauth-providers,cast BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh --release
 
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5

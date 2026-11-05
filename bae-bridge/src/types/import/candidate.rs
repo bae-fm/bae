@@ -12,7 +12,7 @@ pub struct BridgeWatchedFolder {
     pub name: String,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeWatchedFolder {
     pub fn from_core(folder: bae_import::WatchedFolder) -> Self {
         let bae_import::WatchedFolder { path, name } = folder;
@@ -23,7 +23,7 @@ impl BridgeWatchedFolder {
 /// The text that shows a candidate key, as a log line names it: a folder's
 /// escaped path (`coven::path_text`), or a grouping's or re-identify
 /// session's key. It names nothing back to core.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_candidate_key_text(candidate_key: Vec<u8>) -> String {
     bae_import::CandidateKey::from(candidate_key).to_string()
@@ -141,7 +141,7 @@ pub enum BridgeFileRole {
 /// "Discogs", "Rate Your Music".
 ///
 /// A brand name, so it is not translated and needs no catalog key.
-#[cfg_attr(feature = "desktop", uniffi::export)]
+#[cfg_attr(desktop, uniffi::export)]
 pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
     catalog.name().to_string()
 }
@@ -150,7 +150,7 @@ pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
 /// "Discogs".
 ///
 /// A brand name, so it is not translated and needs no catalog key.
-#[cfg_attr(feature = "desktop", uniffi::export)]
+#[cfg_attr(desktop, uniffi::export)]
 pub fn bridge_lookup_catalog_name(catalog: crate::types::BridgeLookupCatalog) -> String {
     catalog.into_core().display_name().to_string()
 }
@@ -159,7 +159,7 @@ pub fn bridge_lookup_catalog_name(catalog: crate::types::BridgeLookupCatalog) ->
 ///
 /// A surface that names the catalogs describing something reads them in this
 /// order, so the order is core's and no surface states it again.
-#[cfg_attr(feature = "desktop", uniffi::export)]
+#[cfg_attr(desktop, uniffi::export)]
 pub fn bridge_catalogs() -> Vec<crate::types::BridgeCatalog> {
     bae_catalogs::catalog::Catalog::ALL.map(crate::types::BridgeCatalog::from_core).to_vec()
 }
@@ -230,21 +230,21 @@ pub enum BridgeImportStep {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgePrepareStep = bae_import::PrepareStep,
     from_core: fn,
     variants: { Queued, ValidatingSourceFiles, FetchingArtistPictures },
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeImportPhase = bae_import::ImportPhase,
     from_core: fn,
     variants: { ReadingFiles, MeasuringLoudness, Finalizing },
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeImportStep = bae_import::ImportStep,
     from_core: pub(crate) fn,
     variants: {
@@ -275,7 +275,7 @@ pub struct BridgeAlbumChoice {
     pub year: Option<i32>,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeAlbumChoice {
     pub(crate) fn from_core(album: bae_views::DbAlbumSearchResult) -> Self {
         Self {
@@ -306,7 +306,7 @@ pub struct BridgeLibraryAlbumMatch {
     pub holds_release: bool,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeLibraryStatus {
     pub(crate) fn from_core(status: bae_db::LibraryStatus) -> Self {
         Self {
@@ -319,7 +319,7 @@ impl BridgeLibraryStatus {
 }
 
 mirror_struct! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeLibraryAlbumMatch = bae_db::LibraryAlbumMatch,
     from_core: pub(crate) fn,
     fields: { album_id, album_title, holds_release },

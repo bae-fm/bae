@@ -167,10 +167,11 @@ jobs:
         cargo nextest run --no-fail-fast -p bae-app --features bae-app/test-utils || status=1
         cargo nextest run --no-fail-fast -p bae-loc || status=1
         cargo nextest run --no-fail-fast -p bae-theme || status=1
-        # Both editions: default features are baeium's, `desktop` the full build's,
-        # with the debug Mac app's dev reset, so its tests run too.
+        # Both feature sets: the defaults, and `cast` (which every shipping build
+        # turns on) with the debug Mac app's dev reset, so its tests run too. The
+        # desktop half of the bridge compiles on every host through `cfg(desktop)`.
         cargo nextest run --no-fail-fast -p bae-bridge --lib || status=1
-        cargo nextest run --no-fail-fast -p bae-bridge --lib --features desktop,dev-reset || status=1
+        cargo nextest run --no-fail-fast -p bae-bridge --lib --features cast,dev-reset || status=1
         cargo nextest run --no-fail-fast -p bae-automation || status=1
         cargo nextest run --no-fail-fast -p bae-subsonic || status=1
         cargo nextest run --no-fail-fast -p bae-cast || status=1
@@ -194,7 +195,7 @@ jobs:
         status=0
         RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps || status=1
         cargo test --doc --no-fail-fast --workspace --features bae-library/test-utils || status=1
-        cargo test --doc --no-fail-fast -p bae-bridge --features desktop || status=1
+        cargo test --doc --no-fail-fast -p bae-bridge --features cast || status=1
         exit $status
 
     - name: Run bae-library tests
@@ -230,7 +231,7 @@ jobs:
       uses: ./.github/actions/install-uniffi-bindgen-cs
 
     - name: Build the Linux bridge (full edition, OAuth + desktop)
-      run: BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-linux.sh
+      run: BAE_BRIDGE_FEATURES=oauth-providers,cast BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-linux.sh
 
     - name: Install .NET 8 SDK
       uses: actions/setup-dotnet@v5

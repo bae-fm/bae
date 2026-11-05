@@ -31,7 +31,7 @@ impl BridgeReleaseArea {
 
     /// The core area this names. A code that names no country of the
     /// standard is not one a surface can have been offered.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     pub(crate) fn into_core(self) -> bae_types::pressing::ReleaseArea {
         match self {
             Self::Country { code } => bae_types::pressing::ReleaseArea::Country(
@@ -55,7 +55,7 @@ pub struct BridgeMediaCount {
 mirror_struct! {
     BridgeMediaCount = bae_types::pressing::MediaCount,
     from_core: pub(crate) fn,
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     into_core: pub(crate) fn,
     fields: { medium: (BridgeMedium), count },
 }
@@ -83,7 +83,7 @@ pub struct BridgeReleaseLabel {
 }
 
 impl BridgeReleaseLabel {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     pub(crate) fn from_core(label: bae_types::pressing::ReleaseLabel) -> Self {
         Self {
             name: label.name().map(str::to_string),
@@ -105,7 +105,7 @@ pub struct BridgePressingFacts {
 mirror_struct! {
     BridgePressingFacts = bae_types::pressing::PressingFacts,
     from_core: pub(crate) fn,
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     into_core: pub(crate) fn,
     fields: {
         area: (opt BridgeReleaseArea),

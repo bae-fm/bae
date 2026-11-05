@@ -1,13 +1,13 @@
 mod admin_change;
 mod configuration;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod conversion;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod cover;
 mod device_stop;
 mod editing;
 mod events_and_transfers;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod import;
 mod library_playback;
 mod live_results;
@@ -26,12 +26,12 @@ mod sync_activity;
 
 pub use admin_change::*;
 pub use configuration::*;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pub use cover::*;
 pub use device_stop::*;
 pub use editing::*;
 pub use events_and_transfers::*;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pub use import::*;
 pub use library_playback::*;
 pub use live_results::*;
@@ -48,7 +48,7 @@ pub use storage_failure::*;
 pub use storage_inspector::*;
 pub use sync_activity::*;
 
-#[cfg(all(test, feature = "desktop"))]
+#[cfg(all(test, desktop))]
 #[path = "types/loc_key_coverage_tests.rs"]
 mod loc_key_coverage_tests;
 #[cfg(test)]

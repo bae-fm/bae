@@ -193,7 +193,7 @@ pub(crate) fn download_transfers(
     })
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 /// The stream [`AppHandle::feed_make_local_transfers`](crate::AppHandle::feed_make_local_transfers) hands out.
 pub(crate) fn make_local_transfers(
     runtime: OperationRuntime,
@@ -264,7 +264,7 @@ pub(crate) fn track_storage_waits(
     })
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 /// The stream [`AppHandle::feed_preview_position`](crate::AppHandle::feed_preview_position) hands out.
 pub(crate) fn preview_position(
     runtime: OperationRuntime,
@@ -289,7 +289,7 @@ pub(crate) fn preview_position(
     })
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 /// The stream [`AppHandle::feed_import_percents`](crate::AppHandle::feed_import_percents) hands out.
 pub(crate) fn import_percents(
     runtime: OperationRuntime,

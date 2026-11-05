@@ -403,7 +403,7 @@ fn parsed_queue_entry_id(entry_id: &str) -> Result<QueueEntryId, BridgeError> {
     })
 }
 
-#[cfg(all(test, not(feature = "desktop")))]
+#[cfg(test)]
 #[path = "base_tests.rs"]
 mod tests;
 

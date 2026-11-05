@@ -21,7 +21,7 @@ mod oauth;
 mod operation_runtime;
 mod screens;
 mod setup;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod signals;
 mod types;
 

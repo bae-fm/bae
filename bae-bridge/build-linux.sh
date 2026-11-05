@@ -19,7 +19,7 @@ usage() {
     echo "  BAE_BRIDGE_TARGET selects the Rust target triple (default:"
     echo "  'x86_64-unknown-linux-gnu'; use 'aarch64-unknown-linux-gnu' for ARM64)."
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
-    echo "  'oauth-providers,desktop'). BAE_BRIDGE_CSHARP_BINDINGS_DIR is the"
+    echo "  'oauth-providers,cast'). BAE_BRIDGE_CSHARP_BINDINGS_DIR is the"
     echo "  generated C# output directory. A debug build adds 'test-keyring', the"
     echo "  in-memory keychain the Avalonia smoke test starts its host with."
     echo ""
@@ -61,7 +61,7 @@ fi
 # The cargo feature set the bridge compiles with. The generated C# only exports
 # the bridge functions whose features are on, so each edition gets bindings from
 # the matching feature set.
-BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,desktop}"
+BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,cast}"
 # The smoke test starts its host with an in-memory keychain, so it never
 # touches the person's keychain; a release build has none.
 if [[ "$CARGO_PROFILE" == "debug" ]]; then

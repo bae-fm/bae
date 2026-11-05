@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 
 # The scheme's pre-action rebuilds the bridge with these features; unset, it
 # would build its full-feature default anyway, so name it to match run.sh.
-export BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
+export BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,cast}"
 
 ONLY_TESTING=()
 for name in "$@"; do

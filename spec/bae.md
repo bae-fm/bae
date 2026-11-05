@@ -4064,7 +4064,10 @@ Build features choose what a build exports:
 | `oauth-providers` | Dropbox and OneDrive sign-in |
 | `cloudkit` | iCloud |
 | `cast` | the receiver picker and casting |
-| `desktop` | casting, plus import, identification, metadata editing, export and save, and the MCP and Subsonic servers |
+
+Desktop builds (macOS, Windows, Linux) also export import, identification,
+metadata editing, export and save, and the MCP and Subsonic servers; phone
+builds leave them out by the one desktop condition of §11.2.
 
 The baeium edition builds without the first two, and a check confirms its
 bindings export none of their symbols.

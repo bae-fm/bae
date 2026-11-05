@@ -410,7 +410,7 @@ pub enum BridgePaneOutcome {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgePaneCommand = bae_import::PaneCommand,
     from_core: pub(crate) fn,
     variants: {
@@ -426,14 +426,14 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgePaneOutcome = bae_import::PaneOutcome,
     from_core: pub(crate) fn,
     variants: { Done, Failed },
 }
 
 mirror_struct! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgePaneFailure = bae_import::PaneFailure,
     from_core: pub(crate) fn,
     fields: {
@@ -443,14 +443,14 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeMetadataPresentation = bae_import::MetadataPresentation,
     from_core: pub(crate) fn,
     variants: { Draft, FindOnline },
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeFindOnlineSection = bae_import::FindOnlineSection,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -458,7 +458,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgePaneMove = bae_import::PaneMove,
     into_core: pub(crate) fn,
     variants: {
@@ -470,7 +470,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeSearchTab = bae_import::SearchTab,
     from_core: fn,
     into_core: fn,
@@ -478,7 +478,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeSearchForm = bae_import::SearchForm,
     from_core: fn,
     into_core: pub(crate) fn,
@@ -486,7 +486,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeCandidateSession = bae_import::CandidateSession,
     from_core: pub(crate) fn,
     fields: {

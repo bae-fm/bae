@@ -114,7 +114,7 @@ forward! {
 // Desktop-only: Import, Cover fetching
 // =========================================================================
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 impl AppHandle {
     /// Register the platform artwork analyzer. Called once at app boot
@@ -133,7 +133,7 @@ impl AppHandle {
 }
 
 forward! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     async this => {
         /// The stored Discogs key, read from the keychain off the caller's
         /// thread.
@@ -170,7 +170,7 @@ forward! {
 }
 
 forward! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     sync this => {
         /// Identify a folder candidate again, over what the candidate says its
         /// lookup asks about and the sources the library asks now. A run reads
@@ -197,7 +197,7 @@ forward! {
 }
 
 forward! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     async this => {
         /// Change the cover art for an album's release: a library image, or a
         /// remote cover fetched and stored.
@@ -228,7 +228,7 @@ forward! {
 }
 
 forward! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     async this => {
         /// Submit a candidate's typed search: every configured provider is
         /// asked at once, and each answer lands on the candidate's runtime as

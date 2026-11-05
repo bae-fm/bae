@@ -2,7 +2,6 @@
 
 /// A search starts with no query and answers each `set_query` on the same
 /// subscription, carrying the query and revision it answered.
-#[cfg(not(feature = "desktop"))]
 #[test]
 fn library_search_answers_each_query_on_one_subscription() {
     let (handle, _root) = super::super::tests::fresh_bridge_handle("library-search-queries");

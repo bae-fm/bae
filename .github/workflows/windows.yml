@@ -103,7 +103,7 @@ jobs:
         id: bridge
         # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
         shell: bash
-        run: BAE_BRIDGE_TARGET=${{ matrix.target }} BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
+        run: BAE_BRIDGE_TARGET=${{ matrix.target }} BAE_BRIDGE_FEATURES=oauth-providers,cast BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
 
       - name: Confirm the bridge DLL was produced
         shell: pwsh
@@ -186,4 +186,4 @@ jobs:
         # Dead-code warnings are feature-specific, so lint the OAuth/desktop code
         # on the Windows target too. No cloudkit on Windows.
         if: ${{ !cancelled() && steps.bridge.conclusion == 'success' }}
-        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings
+        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,cast -- -D warnings

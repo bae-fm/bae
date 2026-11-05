@@ -12,7 +12,7 @@ pub enum BridgeDiscogsTokenStatus {
 /// failure mode as a typed value, not a formatted string, so it can decide
 /// whether to keep the draft (`Rejected`) or clear it. Desktop-only: the import
 /// service that writes the key doesn't run on mobile.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDiscogsSaveOutcome {
     Valid,
@@ -24,7 +24,7 @@ pub enum BridgeDiscogsSaveOutcome {
     Rejected,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeDiscogsSaveOutcome {
     pub(crate) fn from_core(check: bae_catalogs::providers::DiscogsCheck) -> Self {
         use bae_catalogs::providers::DiscogsCheck;
@@ -116,7 +116,7 @@ pub struct BridgeLookupRef {
     pub key: String,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeLookupRef {
     pub(crate) fn from_core(release: bae_catalogs::records::LookupRef) -> Self {
         Self { catalog: BridgeLookupCatalog::from_core(release.catalog), key: release.key }
@@ -142,7 +142,7 @@ impl BridgeReleaseRecord {
     }
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeMetadataRef {
     pub(crate) fn from_core(release_ref: bae_catalogs::records::MetadataRef) -> Self {
         Self { catalog: BridgeCatalog::from_core(release_ref.catalog), key: release_ref.key }
@@ -443,7 +443,7 @@ pub enum BridgeTrackSide {
 mirror_enum! {
     BridgeTrackSide = bae_types::mediums::TrackSide,
     from_core: pub(crate) fn,
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     into_core: pub(crate) fn,
     variants: { Sided { side_letter }, Disc { disc }, Flat },
 }
@@ -778,7 +778,7 @@ pub struct BridgeAudioFormat {
 mirror_struct! {
     BridgeAudioFormat = bae_types::audio_format::AudioFormat,
     from_core: pub(crate) fn,
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     into_core: pub(crate) fn,
     fields: { codec, sample_rate_hz, bits_per_sample, bitrate_kbps, channels },
 }

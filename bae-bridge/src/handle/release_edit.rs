@@ -14,7 +14,7 @@ pub struct ReleaseEditSession {
 }
 
 forward! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     async this => {
         /// Open an edit session of its own on a library release: its form,
         /// seeded from the release's values as the library holds them, with

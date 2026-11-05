@@ -617,7 +617,7 @@ fn start_handle(
 mod bootstrap;
 pub use bootstrap::*;
 mod closing_libraries;
-#[cfg(all(feature = "dev-reset", feature = "desktop", unix))]
+#[cfg(all(feature = "dev-reset", desktop, unix))]
 mod dev_reset;
 mod steps;
 

@@ -90,7 +90,7 @@ impl AppHandle {
         self.runtime
             .clone()
             .run_to_completion(self.clone(), "remove library", move || async move {
-                #[cfg(feature = "desktop")]
+                #[cfg(desktop)]
                 steps.stop_servers(&self.desktop).await;
                 let removal = self.host.remove_open_library(&self.services, &steps).await;
                 if matches!(removal, Ok(()) | Err(bae_library::LibraryRemovalError::Unfinished(_)))

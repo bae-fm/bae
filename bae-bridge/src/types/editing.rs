@@ -1,4 +1,4 @@
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 use super::*;
 use super::{
     BridgeDiscogsDetail, BridgeDurationClock, BridgeImageRef, BridgeMediaCount, BridgePackaging,
@@ -12,7 +12,7 @@ use super::{
 /// This is independent of which pressing is selected. The chip goes on the
 /// file: the gallery tile for an image barcodes were read from, or the table
 /// row for the log or cue a disc ID was computed from.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFileEvidence {
     pub signal: BridgeEvidenceSignal,
@@ -25,7 +25,7 @@ pub struct BridgeFileEvidence {
 
 /// A signal that can name the file it was read off. Mirrors
 /// `bae_import::EvidenceSignal`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeEvidenceSignal {
     /// A barcode read off one of the folder's images.
@@ -36,7 +36,7 @@ pub enum BridgeEvidenceSignal {
 
 /// The catalog key wording one piece of evidence, for the hover the file's
 /// tile or row carries. Each message takes the value as its one argument.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
     match evidence.signal {
@@ -146,7 +146,7 @@ pub struct BridgeExistingArtist {
 mirror_struct! {
     BridgeCreditName = bae_db::credits::CreditName,
     from_core: pub(crate) fn,
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     into_core: pub(crate) fn,
     fields: { key, name },
 }
@@ -160,7 +160,7 @@ mirror_struct! {
 mirror_struct! {
     BridgeExistingArtist = bae_db::ExistingArtist,
     from_core: pub(crate) fn,
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     into_core: pub(crate) fn,
     fields: {
         artist_id,
@@ -206,7 +206,7 @@ pub struct BridgeResolvedCredit {
 
 /// How one assigned artist stands to the library — what its badge says.
 /// Mirror of `bae_import::ArtistStanding`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistStanding {
     Library,
@@ -220,7 +220,7 @@ pub enum BridgeArtistStanding {
 
 /// How a whole artist field stands to the library. Mirror of
 /// `bae_import::ArtistsStanding`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistsStanding {
     Library,
@@ -233,7 +233,7 @@ pub enum BridgeArtistsStanding {
 /// How `assignment` stands to the library, read from `resolutions` — the
 /// credits' answers the draft's read, or `resolve_artist_credits`, returned.
 /// `None` for a credit `resolutions` has no answer for yet.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_artist_standing(
     assignment: BridgeArtistAssignment,
@@ -247,7 +247,7 @@ pub fn bridge_artist_standing(
 /// How the artist field holding `assignments` stands to the library, read
 /// from `resolutions`. `None` for an empty field, or one with a credit
 /// `resolutions` has no answer for yet.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_artists_standing(
     assignments: Vec<BridgeArtistAssignment>,
@@ -262,7 +262,7 @@ pub fn bridge_artists_standing(
 
 /// The line a credit list prints: each credit's printed name, then its join
 /// (", " where it states none), the last credit's join never printed.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_credit_line(credits: Vec<BridgeCredited>) -> String {
     let credits: Vec<_> = credits.into_iter().map(BridgeCredited::into_core).collect();
@@ -293,7 +293,7 @@ pub enum BridgeAudioFile {
 /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so this is a
 /// decision, set through `AppHandle::set_sheet_disc`, and never something a UI
 /// reads off a name.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSheetDisc {
     /// The sheet's entries are the release's disc `number`, counting from one.
@@ -308,7 +308,7 @@ pub enum BridgeSheetDisc {
 ///
 /// Narrower than the role the scan proposes: a track sheet is not a row here —
 /// it heads a group of rows — and images live in the table's gallery instead.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeMappingRole {
     Audio,
@@ -326,7 +326,7 @@ pub enum BridgeMappingRole {
 
 /// A file of the folder, as the mapping table's left half shows it. Mirror of
 /// bae-library's `MappingFile`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingFile {
     /// The file's identity within the release (its relative path) — the id
@@ -346,7 +346,7 @@ pub struct BridgeMappingFile {
 
 /// One entry of a track sheet, as the mapping table's left half shows it.
 /// Mirror of bae-library's `MappingEntry`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingEntry {
     pub sheet_id: String,
@@ -369,7 +369,7 @@ pub struct BridgeMappingEntry {
 
 /// The left half of a mapping row: what the folder offers for it. Mirror of
 /// bae-library's `MappingSource`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingSource {
     /// A file the folder holds, whole.
@@ -379,7 +379,7 @@ pub enum BridgeMappingSource {
 }
 
 /// One source-to-track mapping row. Mirror of bae-library's `TrackMapping`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackMapping {
     pub source: BridgeMappingSource,
@@ -399,7 +399,7 @@ pub struct BridgeTrackMapping {
 }
 
 /// The audio a track sheet describes. Mirror of bae-library's `MappingContainer`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingContainer {
     pub file_id: String,
@@ -410,7 +410,7 @@ pub struct BridgeMappingContainer {
 
 /// A track sheet, as the header of the group of rows it carves. Mirror of
 /// bae-library's `SheetGroup`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSheetGroup {
     /// The sheet's `file_id` — the id `AppHandle::set_sheet_binding` and
@@ -430,7 +430,7 @@ pub struct BridgeSheetGroup {
 /// Mirror of bae-library's `SheetBound`.
 ///
 /// Core's sheet binding enriched with the container facts its header renders.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSheetBound {
     /// The sheet describes this audio.
@@ -461,7 +461,7 @@ pub enum BridgeSheetBound {
 
 /// One of the folder's images, as the gallery shows it. Mirror of bae-library's
 /// `MappingImage`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingImage {
     /// The file's identity within the release (its relative path).
@@ -474,7 +474,7 @@ pub struct BridgeMappingImage {
 
 /// Consecutive rows of one side that the table draws together. Mirror of
 /// bae-library's `MappingTrackRun`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingTrackRun {
     /// Rows supplied independently rather than carved by a track sheet.
@@ -485,7 +485,7 @@ pub enum BridgeMappingTrackRun {
 
 /// One side or disc of the track table and the runs of rows on it, headed
 /// once. Mirror of bae-library's `MappingTrackSide`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTrackSide {
     pub side: BridgeTrackSide,
@@ -496,7 +496,7 @@ pub struct BridgeMappingTrackSide {
 }
 
 /// One row in the files section. Mirror of bae-library's `MappingFileRow`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingFileRow {
     File {
@@ -510,7 +510,7 @@ pub enum BridgeMappingFileRow {
 
 /// The mapping table: every source unit the folder offers, alongside the track
 /// committing makes of it. Mirror of bae-library's `MappingTable`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
@@ -525,7 +525,7 @@ pub struct BridgeMappingTable {
 
 /// The folder's images and the files carried with the release that no track
 /// row stands for, in the scan's order. Mirror of bae-library's `FolderFiles`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderFiles {
     pub images: Vec<BridgeMappingImage>,
@@ -544,7 +544,7 @@ pub enum BridgeCandidateEditField {
     PressingYear,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mirror_enum! {
     BridgeCandidateEditField = bae_import::CandidateEditField,
     from_core: pub(crate) fn,
@@ -567,7 +567,7 @@ pub enum BridgePressingFactEdit {
     DiscogsDetails { discogs_details: Vec<BridgeDiscogsDetail> },
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgePressingFactEdit {
     pub(crate) fn into_core(self) -> bae_import::PressingFactEdit {
         use bae_import::PressingFactEdit;
@@ -601,7 +601,7 @@ impl BridgePressingFactEdit {
 /// count of zero is left out, a detail is kept once. A form bound to a value
 /// rather than to a draft in core, as a preview's is, applies each choice
 /// through this.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_apply_pressing_fact(
     facts: BridgePressingFacts,
@@ -636,7 +636,7 @@ pub enum BridgeDraftAlbum {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeDraftAlbum = bae_import::DraftAlbum,
     from_core: pub(crate) fn,
     variants: {
@@ -763,7 +763,7 @@ impl BridgeValidationReason {
     /// table — the single source of the variant→key mapping for every platform.
     /// Only the desktop edit flow produces a validation reason, so the mapping
     /// is compiled there (and under test for the cross-check).
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     pub(crate) fn loc_key(self) -> &'static str {
         match self {
             Self::EmptyAlbumTitle => "core.import.validation.empty_album_title",

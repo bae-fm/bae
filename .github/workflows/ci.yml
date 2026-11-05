@@ -163,7 +163,7 @@ jobs:
       # would rebuild with its full-feature default and rewrite
       # Features.xcconfig mid-build.
       env:
-        BAE_BRIDGE_FEATURES: desktop
+        BAE_BRIDGE_FEATURES: cast
       run: |
         brew install xcodegen
         ./bae-bridge/build-macos.sh

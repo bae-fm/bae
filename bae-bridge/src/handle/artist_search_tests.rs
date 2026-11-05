@@ -3,7 +3,6 @@
 /// A search starts with no text, answers each `set_view` on the same
 /// subscription with every window it named and the revision it answered, and
 /// refuses a view once cancelled.
-#[cfg(not(feature = "desktop"))]
 #[test]
 fn artist_search_answers_each_view_on_one_subscription() {
     let (handle, _root) = super::super::tests::fresh_bridge_handle("artist-search-views");

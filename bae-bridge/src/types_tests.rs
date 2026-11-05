@@ -11,7 +11,7 @@ fn pregap_clock_crosses_the_bridge_in_both_time_modes() {
     assert_eq!(elapsed_mode.leading.seconds, 2);
 }
 
-#[cfg(all(test, feature = "desktop"))]
+#[cfg(all(test, desktop))]
 mod triage_tests {
     use super::*;
 
@@ -57,7 +57,7 @@ mod conversion_roundtrip {
 
     /// The UI tells a person's answer from a proposed one by this value, so
     /// each variant must cross as itself.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     #[test]
     fn the_draft_s_author_crosses_the_bridge_as_itself() {
         use bae_import::MetadataAuthor;
@@ -219,7 +219,7 @@ mod conversion_roundtrip {
     /// A grouping block crosses as its own translated line from either path,
     /// with its names only in the untranslated detail; `Unbuildable`, which no
     /// one can act on, crosses as the generic import failure.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     #[test]
     fn grouping_blocks_carry_their_own_lines() {
         use bae_import::{GroupingBlock, ImportError};
@@ -324,7 +324,7 @@ mod conversion_roundtrip {
         assert_eq!(core, bridge.into_core());
     }
 
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     #[test]
     fn raw_release_edit_round_trips() {
         let core = bae_import::RawReleaseEdit {
@@ -363,7 +363,7 @@ mod conversion_roundtrip {
         assert_eq!(core, BridgeRawReleaseEdit::from_core(core.clone()).into_core());
     }
 
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     #[test]
     fn release_edit_draft_carries_the_persisted_editor_projection() {
         let edit = bae_import::RawReleaseEdit {
@@ -441,7 +441,7 @@ mod conversion_roundtrip {
 
 /// Facts stating one of every kind: a region, two media, a status, a
 /// packaging and details of both wordings.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 fn every_kind_of_fact() -> bae_types::pressing::PressingFacts {
     use bae_types::pressing::*;
     PressingFacts {
@@ -493,7 +493,7 @@ fn a_non_database_coven_error_keeps_its_own_text() {
 
 /// A release read from several folders crosses as its folders, in play order,
 /// each with the name the source list shows.
-#[cfg(all(test, feature = "desktop"))]
+#[cfg(all(test, desktop))]
 #[test]
 fn a_release_read_from_several_folders_crosses_as_its_folders() {
     let parts = [
@@ -686,7 +686,7 @@ fn a_preview_target_whose_name_is_not_utf8_comes_back_as_its_path() {
 /// A watched folder and a candidate key whose names aren't UTF-8 show as
 /// their escapes, while the bytes that name them back to core stay the
 /// folder's own.
-#[cfg(all(unix, feature = "desktop"))]
+#[cfg(all(unix, desktop))]
 #[test]
 fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
     use std::os::unix::ffi::OsStrExt;

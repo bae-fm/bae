@@ -1,7 +1,7 @@
 /// Normalize and validate a raw form into a wire edit: `Valid` carries the
 /// savable payload, `Invalid` the reason it can't be saved. Stateless
 /// type-translation wrapper around [`bae_import::RawReleaseEdit::shape`].
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn shape_release_edit(
     raw: crate::types::BridgeRawReleaseEdit,
@@ -20,7 +20,7 @@ pub fn shape_release_edit(
 mirror_enum! {
     /// Kept here, not as a `From` in bae-library, so bae-library stays unaware of
     /// bridge types.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     crate::types::BridgeValidationReason = bae_import::EditValidationError,
     from_core: pub(crate) fn,
     variants: { EmptyAlbumTitle, NoAlbumArtist, EmptyArtistName, InvalidYear },
@@ -29,7 +29,7 @@ mirror_enum! {
 /// The localization key for a validation reason, resolved by the UI against the
 /// generated `Core` string table. One exported mapping keeps every platform's
 /// keys identical.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_validation_reason_key(reason: crate::types::BridgeValidationReason) -> String {
     reason.loc_key().to_string()

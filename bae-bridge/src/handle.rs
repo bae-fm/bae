@@ -3,7 +3,7 @@ use bae_playback::QueueEntryId;
 use std::sync::PoisonError;
 use tracing::info;
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 use crate::types::BridgeServerStatus;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
@@ -16,7 +16,7 @@ use crate::types::{
     BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
     BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 use crate::types::{BridgeCoverSelection, BridgeDiscogsSaveOutcome};
 
 #[derive(uniffi::Object)]
@@ -24,7 +24,7 @@ pub struct AppHandle {
     services: AppServices,
     /// Shared with the work that closes the library, which can outlive the
     /// handle when the handle is released on its own runtime.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     desktop: std::sync::Arc<bae_desktop::DesktopServices>,
     #[cfg(feature = "cast")]
     cast: std::sync::Arc<bae_cast::CastController>,
@@ -99,20 +99,20 @@ mod cloud_operations;
 mod configuration;
 #[cfg(any(feature = "cast", desktop))]
 mod desktop;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod desktop_services;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod editing_projection;
 mod fast_values;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod import_list;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod release_edit;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod release_grouping;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pub use release_edit::ReleaseEditSession;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod import_projection;
 mod library_projection;
 mod live;
@@ -255,7 +255,7 @@ fn end(
     Some(closed)
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
 
 impl AppHandle {
@@ -268,7 +268,7 @@ impl AppHandle {
         diagnostics: bae_diagnostics::Diagnostics,
         host: std::sync::Arc<crate::BridgeHost>,
     ) -> Result<Self, bae_app::BootstrapError> {
-        #[cfg(feature = "desktop")]
+        #[cfg(desktop)]
         let desktop = {
             let runtime_handle = runtime.handle().clone();
             let starting = services.clone();
@@ -306,7 +306,7 @@ impl AppHandle {
 
         Ok(Self {
             services,
-            #[cfg(feature = "desktop")]
+            #[cfg(desktop)]
             desktop,
             #[cfg(feature = "cast")]
             cast,
@@ -344,11 +344,11 @@ impl AppHandle {
         steps: crate::screens::ClosingSteps,
     ) -> impl std::future::Future<Output = Closing> + Send + 'static {
         let services = self.services.clone();
-        #[cfg(feature = "desktop")]
+        #[cfg(desktop)]
         let desktop = self.desktop.clone();
         let host = self.host.clone();
         async move {
-            #[cfg(feature = "desktop")]
+            #[cfg(desktop)]
             steps.stop_servers(&desktop).await;
             let closed = services.close_reporting(&|step| steps.core(step)).await;
             drop(host);

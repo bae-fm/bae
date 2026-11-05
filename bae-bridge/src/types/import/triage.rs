@@ -57,7 +57,7 @@ impl BridgeInvalidReason {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeInvalidReason = bae_import::InvalidReason,
     from_core: pub(crate) fn,
     variants: {
@@ -94,7 +94,7 @@ impl BridgeAudioDamage {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeAudioDamage = bae_import::folder_scanner::AudioDamage,
     from_core: pub(crate) fn,
     variants: { Empty, Unreadable },
@@ -115,7 +115,7 @@ pub struct BridgeSkippedTags {
 }
 
 mirror_struct! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeSkippedTags = bae_import::folder_scanner::SkippedTags,
     from_core: pub(crate) fn,
     fields: { album_title, artist },
@@ -147,7 +147,7 @@ pub struct BridgeInvalidCandidate {
 
 /// A folder that failed validation, as the pane looking into it reads it.
 /// Mirrors `bae_import::InvalidCandidateDetail`.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeInvalidCandidateDetail {
     pub candidate: BridgeInvalidCandidate,
@@ -229,13 +229,13 @@ pub struct BridgeWatchedFolderScanStatus {
 
 /// The catalog key for a network folder's hover text; its argument is
 /// [`bridge_network_folder_check_minutes`].
-#[cfg_attr(feature = "desktop", uniffi::export)]
+#[cfg_attr(desktop, uniffi::export)]
 pub fn bridge_network_folder_watch_key() -> String {
     "core.import.folder.network_watch".to_string()
 }
 
 /// How often a watched folder on a network volume is checked, in minutes.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_network_folder_check_minutes() -> u32 {
     bae_import::check_period_minutes()
@@ -411,7 +411,7 @@ pub enum BridgeSingleSelection {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeSingleSelection = bae_import::selection::SingleSelection,
     from_core: pub(crate) fn,
     variants: { Candidate { key: (into) }, InvalidCandidate { key: (into) } },
@@ -571,7 +571,7 @@ pub enum BridgeReleaseLink {
     Album { albums: Vec<crate::types::BridgeMetadataRef> },
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeReleaseLink {
     pub(crate) fn from_core(link: bae_import::ReleaseLink) -> Self {
         match link {
@@ -600,7 +600,7 @@ pub struct BridgePressingLink {
     pub partners: Vec<crate::types::BridgeLookupRef>,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgePressingLink {
     pub(crate) fn from_core(link: bae_identify::PressingLink) -> Self {
         Self {
@@ -635,14 +635,14 @@ pub enum BridgeMetadataAuthor {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeMetadataAuthor = bae_import::MetadataAuthor,
     from_core: pub(crate) fn,
     variants: { Nobody, Prefill, Identification, Person },
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeMetadataProvenance = bae_import::MetadataProvenance,
     from_core: pub(crate) fn,
     variants: {
@@ -669,7 +669,7 @@ pub enum BridgeTriageReading {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeTriageReading = bae_import::triage::TriageReading,
     from_core: pub(crate) fn,
     variants: {

@@ -11,7 +11,7 @@ set BINDGEN_EXTRA_CLANG_ARGS=-IC:\bae\bae-ffmpeg\dist\include
 set LIBCLANG_PATH=C:\Program Files\LLVM\bin
 set PATH=C:\bae\bae-ffmpeg\dist\bin;C:\Program Files\LLVM\bin;%USERPROFILE%\.cargo\bin;C:\Program Files\Git\bin;%USERPROFILE%\.dotnet\tools;%PATH%
 set BAE_BRIDGE_TARGET=aarch64-pc-windows-msvc
-set BAE_BRIDGE_FEATURES=oauth-providers,desktop
+set BAE_BRIDGE_FEATURES=oauth-providers,cast
 set BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full
 rem Pin the MSVC linker: under Git bash a bare "link.exe" can resolve to GNU
 rem coreutils' link (see bridge-build.cmd).

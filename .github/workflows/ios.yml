@@ -38,7 +38,7 @@ jobs:
       # build-ios.sh and the clippy step below read BAE_BRIDGE_FEATURES to pick the
       # edition. build-ios.sh's default-when-UNSET is the full set; casting ships
       # in every edition, so `cast` is in both and is what makes the baeium
-      # (S3-only) set non-empty (iOS has no `desktop` feature to anchor it).
+      # (S3-only) set non-empty.
       run: |
         if [ "${{ inputs.edition }}" = "baeium" ]; then
           echo "BAE_BRIDGE_FEATURES=cast" >> "$GITHUB_ENV"

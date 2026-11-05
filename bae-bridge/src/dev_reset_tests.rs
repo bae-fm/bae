@@ -61,7 +61,7 @@ fn a_refused_profile_key_prefix_names_the_folder_and_the_field() {
 /// profile's library and sets it up, writing each step as it starts; the
 /// first failure, here storage that refuses the connection, stops it and is
 /// returned, with the new library closed.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[test]
 fn a_dev_reset_reports_each_step_until_one_fails() {
     use crate::types::{BridgeFastValue, BridgeSetupProgress, BridgeSetupStep as Step};

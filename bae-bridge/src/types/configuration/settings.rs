@@ -103,7 +103,7 @@ mirror_enum! {
     },
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl From<&bae_import::GroupingBlock> for BridgeError {
     fn from(block: &bae_import::GroupingBlock) -> Self {
         BridgeError::from_core(block.ui_error())
@@ -604,7 +604,7 @@ impl From<bae_app::MetadataSourceSwitchError> for BridgeError {
 }
 
 /// An import failure crosses in the class core gave it.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl From<bae_import::ImportError> for BridgeError {
     fn from(error: bae_import::ImportError) -> Self {
         BridgeError::from_core(error.ui_error())
@@ -661,7 +661,7 @@ mirror_enum! {
     variants: { DeviceUnavailable, UnsupportedFormat, AirPlayRefused },
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeCoverSelection {
     pub(crate) fn into_core(self) -> bae_import::CoverSelection {
         match self {
@@ -784,6 +784,6 @@ mirror_struct! {
     },
 }
 
-#[cfg(all(test, feature = "desktop"))]
+#[cfg(all(test, desktop))]
 #[path = "settings_tests.rs"]
 mod tests;

@@ -100,7 +100,7 @@ impl ArtistSearchSubscription {
 /// One release an import pane offers, as the library-membership check reads
 /// it: the catalog's own release id and, when the catalog surfaces one, its
 /// group id.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibraryCheck {
     pub source: crate::types::BridgeLookupCatalog,
@@ -110,7 +110,7 @@ pub struct BridgeLibraryCheck {
 
 /// The library membership of every checked release, by release id, as of
 /// one revision of the checks.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibraryStatusSnapshot {
     pub statuses: std::collections::HashMap<String, crate::types::BridgeLibraryStatus>,
@@ -118,7 +118,7 @@ pub struct BridgeLibraryStatusSnapshot {
     pub request_revision: u64,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl BridgeLibraryStatusSnapshot {
     fn from_core(snapshot: bae_library::LibraryStatusSnapshot) -> Self {
         Self {
@@ -137,7 +137,7 @@ impl BridgeLibraryStatusSnapshot {
     }
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pulled_read! {
     /// Whether the releases an import pane offers are already in the
     /// library: one live query for as long as the pane is open, whose checks
@@ -147,7 +147,7 @@ pulled_read! {
     built by library_statuses
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 impl LibraryStatusSubscription {
     /// Check `checks` from now on. Returns the revision the answer will

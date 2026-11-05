@@ -185,7 +185,6 @@ pub(super) fn start_test_handle(
     )
 }
 
-#[cfg(not(feature = "desktop"))]
 #[test]
 fn album_browse_subscription_pulls_count_before_any_windows() {
     let (handle, _root) = fresh_bridge_handle("album-browse-empty-windows");
@@ -214,7 +213,6 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
     assert!(requested.windows[0].rows.is_empty());
 }
 
-#[cfg(not(feature = "desktop"))]
 #[test]
 fn cancelling_album_browse_finishes_pending_next() {
     let (handle, _root) = fresh_bridge_handle("album-browse-cancel");
@@ -237,7 +235,6 @@ fn cancelling_album_browse_finishes_pending_next() {
     ));
 }
 
-#[cfg(not(feature = "desktop"))]
 #[test]
 fn save_sync_config_survives_the_uniffi_worker_stack() {
     const CHILD: &str = "BAE_BRIDGE_SAVE_SYNC_CONFIG_STACK_CHILD";
@@ -295,7 +292,6 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
     );
 }
 
-#[cfg(not(feature = "desktop"))]
 #[test]
 fn enqueue_export_missing_release_does_not_panic() {
     let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
@@ -316,7 +312,7 @@ fn enqueue_export_missing_release_does_not_panic() {
 
 /// The text pools the run in flight last read cross with its runtime, for
 /// the search form's autocomplete; a queued key carries none.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[test]
 fn a_run_s_signals_cross_with_its_runtime() {
     let signals = bae_identify::signals::Signals {
@@ -607,7 +603,7 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
 /// One candidate's runtime pulled end to end: a claim crosses as its import
 /// in flight, a subscriber opening mid-import reads it, and the import
 /// failing leaves nothing in flight.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod candidate_runtime {
     use super::*;
     use bae_util::test_channels::HANG_GUARD;
@@ -785,7 +781,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
 
 /// A library refusal crosses in the class core gave it: a blank credit name
 /// is refused as the edit it is, not shown as a database failure.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[test]
 fn a_library_refusal_crosses_in_the_class_core_gave_it() {
     let (handle, _root) = fresh_bridge_handle("library-refusal-class");

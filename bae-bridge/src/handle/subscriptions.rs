@@ -154,7 +154,7 @@ impl AppHandle {
     }
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 impl AppHandle {
     /// An import candidate's detail, showing nothing until `set_id`.

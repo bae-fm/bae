@@ -23,7 +23,7 @@ if [ "${BAE_MACOS_PREPARE_CLEAN_ENV:-0}" != 1 ]; then
     TMPDIR="${TMPDIR:-/tmp}" \
     DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
     CONFIGURATION="${CONFIGURATION:-Debug}" \
-    BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}" \
+    BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,cast}" \
     BAE_MACOS_PREPARE_CLEAN_ENV=1
   for var in MACOSX_DEPLOYMENT_TARGET FFMPEG_DIR PKG_CONFIG_PATH LIBRARY_PATH \
     DYLD_LIBRARY_PATH BINDGEN_EXTRA_CLANG_ARGS C_INCLUDE_PATH; do

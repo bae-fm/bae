@@ -86,12 +86,12 @@ impl DetailValue for crate::types::BridgeWorkDetail {
     type Core = bae_views::album_detail::WorkDetail;
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl DetailValue for crate::types::BridgeImportCandidateDetail {
     type Core = bae_import::ImportCandidateDetail;
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 impl DetailValue for crate::types::BridgeInvalidCandidateDetail {
     type Core = bae_import::InvalidCandidateDetail;
 }
@@ -110,7 +110,7 @@ detail_subscription! {
     value: crate::types::BridgeStorageInspector,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 detail_subscription! {
     object: InvalidCandidateSubscription,
     built by invalid_candidate,
@@ -119,7 +119,7 @@ detail_subscription! {
     id: Vec<u8> = bae_import::CandidateKey,
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 detail_subscription! {
     object: ImportCandidateSubscription,
     built by import_candidate,

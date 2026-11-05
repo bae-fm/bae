@@ -76,7 +76,7 @@ impl AppHandle {
     }
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 impl AppHandle {
     /// Write where the preview is in its clip into a stream's one key, `""`,

@@ -16,10 +16,10 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "  Builds bae-bridge for macOS (arm64). Debug by default."
     echo ""
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
-    echo "  'oauth-providers,cloudkit,desktop'). The Swift compilation"
+    echo "  'oauth-providers,cloudkit,cast'). The Swift compilation"
     echo "  conditions are derived from the same set so the generated bindings"
     echo "  and the app's #if guards never disagree. For a baeium (S3-only)"
-    echo "  build: BAE_BRIDGE_FEATURES=desktop $0"
+    echo "  build: BAE_BRIDGE_FEATURES=cast $0"
     echo ""
     echo "  A debug build adds 'test-keyring', the in-memory keychain UI tests"
     echo "  start the app with, and 'dev-reset', the --dev-reset launch argument."
@@ -43,7 +43,7 @@ fi
 ./scripts/check-ffmpeg-dist.sh scripts/setup-ffmpeg.sh "${FFMPEG_DIR:-bae-ffmpeg/dist}"
 
 # The bridge's cargo features, from which the Swift #if conditions are derived.
-BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
+BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,cast}"
 # UI tests launch the debug app with an in-memory keychain, so they never touch
 # the login keychain, and a developer resets the debug app's library with
 # --dev-reset; a release build has neither.

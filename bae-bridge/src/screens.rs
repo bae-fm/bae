@@ -57,7 +57,7 @@ live_query_read!(
 live_query_read!(bae_views::LiveLibrarySearch => bae_views::LibrarySearchSnapshot);
 live_query_read!(bae_views::LiveArtistSearch => bae_views::ArtistSearchSnapshot);
 live_query_read!(bae_library::LiveAlbumSelection => bae_library::AlbumSelectionSnapshot);
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 live_query_read!(bae_library::LiveLibraryStatus => bae_library::LibraryStatusSnapshot);
 
 /// A read core's task produces, whose request moves in place.
@@ -193,14 +193,14 @@ fn core_windows(windows: Vec<crate::types::BridgeLibraryPageWindow>) -> bae_db::
 }
 
 // The submodules come after the macros above, which they use.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod applying;
 mod browse;
 mod closing;
 mod detail;
 #[cfg(desktop)]
 mod files;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 mod import_list;
 mod queue;
 mod search;
@@ -208,14 +208,14 @@ mod setup;
 mod storage;
 mod streams;
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pub use applying::*;
 pub use browse::*;
 pub use closing::*;
 pub use detail::*;
 #[cfg(desktop)]
 pub use files::*;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pub use import_list::*;
 pub use queue::*;
 pub use search::*;
@@ -258,7 +258,7 @@ pulled_read! {
     built by queue_additions
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pulled_read! {
     /// How far the identifications and imports in flight have got.
     ImportCountsSubscription:
@@ -267,7 +267,7 @@ pulled_read! {
     built by import_counts
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pulled_read! {
     /// What one candidate has in flight; `None` while nothing is.
     CandidateRuntimeSubscription:
@@ -409,7 +409,7 @@ pulled_read! {
     built by library_name
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 pulled_read! {
     /// Where each watched folder's scan stands.
     FolderScansSubscription:

@@ -1,5 +1,5 @@
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     crate::types::BridgeServerStatus = bae_desktop::ServerStatus,
     from_core: pub(super) fn,
     variants: {
@@ -10,7 +10,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     crate::types::BridgeServerError = bae_desktop::ServerError,
     from_core: pub(super) fn,
     variants: {

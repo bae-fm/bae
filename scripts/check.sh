@@ -136,10 +136,9 @@ check "clippy (bae-app --features oauth-providers)" \
   scripts/cargo.sh clippy -p bae-app --features oauth-providers -- -D warnings
 check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
   scripts/cargo.sh clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
-# The feature set build-macos.sh ships, which lints the desktop half of the
-# bridge.
-check "clippy (bae-bridge --features oauth-providers,cloudkit,desktop)" \
-  scripts/cargo.sh clippy -p bae-bridge --features oauth-providers,cloudkit,desktop -- -D warnings
+# The feature set build-macos.sh ships.
+check "clippy (bae-bridge --features oauth-providers,cloudkit,cast)" \
+  scripts/cargo.sh clippy -p bae-bridge --features oauth-providers,cloudkit,cast -- -D warnings
 
 # Each crate's production code alone, so an item only its tests use fails as
 # dead code. The flag goes to the one crate: RUSTFLAGS would recompile every
@@ -216,10 +215,10 @@ check "cargo test (bae-import)"    scripts/cargo.sh test -p bae-import
 check "cargo test (bae-app)"     scripts/cargo.sh test -p bae-app --features bae-app/test-utils
 check "cargo test (bae-loc)"         scripts/cargo.sh test -p bae-loc
 check "cargo test (bae-theme)"         scripts/cargo.sh test -p bae-theme
-# Both editions: default features are baeium's, `desktop` the full build's.
+# Both feature sets: the defaults, and `cast`, which every shipping build turns on.
 check "cargo test (bae-bridge --lib)"  scripts/cargo.sh test -p bae-bridge --lib
-check "cargo test (bae-bridge --lib, desktop)" \
-  scripts/cargo.sh test -p bae-bridge --lib --features desktop
+check "cargo test (bae-bridge --lib, cast)" \
+  scripts/cargo.sh test -p bae-bridge --lib --features cast
 check "cargo test (bae-automation)"    scripts/cargo.sh test -p bae-automation
 check "cargo test (bae-mcp)"           scripts/cargo.sh test -p bae-mcp
 check "cargo test (bae-subsonic)"      scripts/cargo.sh test -p bae-subsonic
@@ -245,14 +244,14 @@ section "macOS"
 # The baeium edition first, so the section ends on the full edition a dev's
 # next build expects.
 check "bridge build (macOS baeium)" \
-  env BAE_BRIDGE_FEATURES=desktop ./bae-bridge/build-macos.sh
+  env BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-macos.sh
 check "install macOS bridge binding (baeium)" \
   ./bae-bridge/install-swift-bindings.sh macos
 check "guard: baeium bridge exports no OAuth/CloudKit binding" \
   ./scripts/check-baeium-exports.sh
 check "xcodegen (macOS baeium)" bash -c 'cd bae-macos/bae && xcodegen'
 check "xcodebuild (macOS baeium)" \
-  env BAE_BRIDGE_FEATURES=desktop \
+  env BAE_BRIDGE_FEATURES=cast \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
@@ -265,7 +264,7 @@ check "install macOS bridge binding" \
   ./bae-bridge/install-swift-bindings.sh macos
 check "xcodegen" bash -c 'cd bae-macos/bae && xcodegen'
 check "xcodebuild" \
-  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop \
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \
@@ -274,13 +273,13 @@ check "xcodebuild" \
     -disableAutomaticPackageResolution build
 
 check "xcodebuild test (baeTests)" \
-  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop bae-macos/test.sh
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast bae-macos/test.sh
 check "test-filter checker" python3 scripts/tests/xcresult-tests-ran-test.py
 
 # The Screenshots workflow compiles the scene registry in baeShots, which no
 # other macOS gate builds.
 check "xcodebuild build-for-testing (baeShots)" \
-  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop \
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast \
   xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme baeShots -configuration Debug \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
     -derivedDataPath bae-macos/bae/.build/derivedData \

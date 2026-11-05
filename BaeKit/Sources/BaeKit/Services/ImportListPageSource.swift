@@ -1,7 +1,7 @@
 import Foundation
 
 // The import list is a desktop surface: its bridge types are built behind the
-// bridge's `desktop` feature, which the iOS bindings leave out.
+// bridge's desktop condition, which the iOS bindings leave out.
 #if os(macOS)
 
     /// One item of the import list, addressed by the key core computed for it.

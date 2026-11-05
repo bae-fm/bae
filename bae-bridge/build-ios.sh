@@ -13,7 +13,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "  Builds bae-bridge for iOS (device + simulator). Debug by default."
     echo ""
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
-    echo "  'oauth-providers,cloudkit,cast'; iOS has no 'desktop'). The Swift"
+    echo "  'oauth-providers,cloudkit,cast'; iOS builds no desktop code). The Swift"
     echo "  compilation conditions are derived from the same set so the generated"
     echo "  bindings and the app's #if guards never disagree. For a baeium"
     echo "  (S3-only) build: BAE_BRIDGE_FEATURES=cast $0"

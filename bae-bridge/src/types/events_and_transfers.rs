@@ -160,11 +160,11 @@ pub enum BridgeFastValue {
     ClosingStep { step: super::BridgeClosingStep },
     /// How far a bulk action over an import list's selection has got; a
     /// stream's one key, `""`, while the action runs.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     SelectionActionProgress { progress: super::BridgeSelectionActionProgress },
     /// The network read an apply of a catalog release waits on; a stream's
     /// one key, `""`, while it waits on one.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     CatalogApplyStep { step: super::BridgeCatalogApplyStep },
 }
 

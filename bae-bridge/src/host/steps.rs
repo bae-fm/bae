@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use super::BridgeHost;
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 use crate::BridgeCatalogApply;
 use crate::{BridgeLibraryClosing, BridgeLibraryOpening, BridgeLibrarySetup};
 
@@ -37,7 +37,7 @@ impl BridgeLibraryClosing {
     }
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 impl BridgeCatalogApply {
     /// An apply whose stream the app pulls on `host`'s runtime.

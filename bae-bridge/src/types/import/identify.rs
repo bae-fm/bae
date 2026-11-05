@@ -22,7 +22,7 @@ pub enum BridgeLookupChoiceEdit {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeLookupChoiceEdit = bae_identify::LookupChoiceEdit,
     into_core: pub fn,
     variants: {
@@ -48,7 +48,7 @@ pub enum BridgeLookupFailure {
 }
 
 mirror_enum! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeLookupFailure = bae_catalogs::LookupFailure,
     from_core: pub(crate) fn,
     variants: {
@@ -66,7 +66,7 @@ pub struct BridgeInternalFailure {
 }
 
 mirror_struct! {
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     BridgeInternalFailure = bae_catalogs::InternalFailure,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -386,7 +386,7 @@ pub enum BridgeIdentifyFailure {
 
 /// The key a library release's re-identify session runs under: what its
 /// identify events and its pane name it by.
-#[cfg(feature = "desktop")]
+#[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_reidentify_key(release_id: String) -> Vec<u8> {
     Vec::<u8>::from(bae_import::CandidateKey::reidentify(&release_id))

@@ -85,7 +85,7 @@ impl ClosingSteps {
     }
 
     /// Stop the desktop services, the step every close starts with.
-    #[cfg(feature = "desktop")]
+    #[cfg(desktop)]
     pub(crate) async fn stop_servers(&self, desktop: &bae_desktop::DesktopServices) {
         self.step(BridgeClosingStep::StoppingServers);
         desktop.shutdown().await;

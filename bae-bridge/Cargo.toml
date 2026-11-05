@@ -19,16 +19,10 @@ crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
 async-trait = { workspace = true }
-bae-desktop = { workspace = true, optional = true }
 bae-cast = { workspace = true, optional = true }
-# The identify views and verdicts the desktop import screens mirror.
-bae-identify = { workspace = true, optional = true }
 # The app's services over an open library, which this crate calls.
 bae-app = { workspace = true }
 bae-library = { workspace = true }
-# The import screens' candidates, drafts and queue, and the release-edit
-# model the desktop editors mirror.
-bae-import = { workspace = true, optional = true }
 bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.
 bae-db = { workspace = true }
@@ -58,6 +52,14 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
 libsqlite3-sys = { workspace = true, features = ["session", "bundled"] }
+
+# What only the desktop apps use: the servers, the identify views and verdicts
+# the import screens mirror, and the import screens' candidates, drafts and
+# queue and the release-edit model the editors mirror.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+bae-desktop = { workspace = true }
+bae-identify = { workspace = true }
+bae-import = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tracing-oslog = { workspace = true }
@@ -105,9 +107,8 @@ oauth-providers = ["bae-app/oauth-providers", "bae-library/oauth-providers"]
 cloudkit = []
 # Casting to network receivers: the device picker, the session, and the
 # host-reported discovery seam. Off by default; every shipping platform turns it
-# on, and desktop implies it.
+# on.
 cast = ["dep:bae-cast"]
-desktop = ["cast", "dep:bae-desktop", "dep:bae-identify", "dep:bae-import"]
 # An in-memory keychain a debug app can start its host with, so UI tests never
 # touch the login keychain. Debug macOS builds turn it on.
 test-keyring = ["bae-library/test-utils", "bae-app-dir/test-utils"]
