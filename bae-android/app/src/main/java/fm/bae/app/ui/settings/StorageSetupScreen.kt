@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeApp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -157,7 +156,7 @@ private class StorageSetupFlow(
         step = SetupStep.SigningIn(provider)
         scope.launch {
             var signedIn = false
-            performBridgeAction(logger, "sign in to $provider", LocaleErrorDisplays(context), { error = it }) {
+            performBridgeAction(logger, "sign in to $provider", session.errors, { error = it }) {
                 providers.signIn(session.appHandle, provider)
                 signedIn = true
             }
@@ -302,7 +301,7 @@ internal class StorageSetupRunner(
         StorageSetupProgress((context.applicationContext as BaeApp).host, scope, session.bugs).use { progress ->
             steps = progress.steps
             try {
-                performBridgeAction(logger, operation, LocaleErrorDisplays(context), onError) {
+                performBridgeAction(logger, operation, session.errors, onError) {
                     result = setUp(deviceName(context), progress.setup)
                 }
             } finally {

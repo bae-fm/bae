@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -60,12 +59,11 @@ internal fun InviteShownDialog(
     invite: BridgeInvite,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
     val scope = rememberScreenScope()
     var error by remember { mutableStateOf<DisplayError?>(null) }
     var busy by remember { mutableStateOf(false) }
     var confirmingCancel by remember { mutableStateOf(false) }
-    val errors = LocaleErrorDisplays(context)
+    val errors = session.errors
     if (confirmingCancel) {
         CancelInviteConfirmDialog(
             invite = invite,

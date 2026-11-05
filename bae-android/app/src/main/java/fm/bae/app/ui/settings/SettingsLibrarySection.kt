@@ -28,7 +28,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -203,7 +202,6 @@ private fun RenameLibraryDialog(
     current: String,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
     val scope = rememberScreenScope()
     var draft by remember { mutableStateOf(current) }
     var error by remember { mutableStateOf<DisplayError?>(null) }
@@ -221,7 +219,7 @@ private fun RenameLibraryDialog(
                 performBridgeAction(
                     logger = logger,
                     operation = "rename the library",
-                    errors = LocaleErrorDisplays(context),
+                    errors = session.errors,
                     showError = { error = it },
                 ) {
                     session.appHandle.renameLibrary(draft.trim())

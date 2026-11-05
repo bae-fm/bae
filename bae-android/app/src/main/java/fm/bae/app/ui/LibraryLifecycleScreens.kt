@@ -23,7 +23,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ScreenFailure
@@ -130,7 +129,6 @@ internal fun ProfileRequiredScreen(
     failure: DisplayError?,
     onCreated: () -> Unit,
 ) {
-    val context = LocalContext.current
     val scope = rememberScreenScope()
     var name by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<DisplayError?>(failure) }
@@ -146,7 +144,7 @@ internal fun ProfileRequiredScreen(
                     performBridgeAction(
                         logger = logger,
                         operation = "create the person's profile",
-                        errors = LocaleErrorDisplays(context),
+                        errors = session.errors,
                         showError = { error = it },
                     ) {
                         session.appHandle.createProfile(name.trim())

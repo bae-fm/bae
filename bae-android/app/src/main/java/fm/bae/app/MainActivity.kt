@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
             performBridgeAction(
                 logger = logger,
                 operation = "save playback state",
-                errors = LocaleErrorDisplays(this@MainActivity),
+                errors = session.errors,
                 showError = session.messages::show,
             ) {
                 session.appHandle.savePlaybackState()

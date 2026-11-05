@@ -20,13 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
@@ -88,7 +86,7 @@ internal fun rememberAlbumDeletion(
     scope: CoroutineScope,
     onDeleted: () -> Unit,
 ): AlbumDeletion {
-    val errors = LocaleErrorDisplays(LocalContext.current.applicationContext)
+    val errors = session.errors
     val leave by rememberUpdatedState(onDeleted)
     return remember(albumId, session, scope) {
         AlbumDeletion(albumId, session.appHandle, errors, scope) { leave() }

@@ -40,13 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.performBridgeAction
@@ -252,7 +250,6 @@ private fun ExpandedSeekSection(
     session: OpenLibrary,
     player: fm.bae.app.playback.BaeCorePlayer,
 ) {
-    val context = LocalContext.current
     val scope = rememberScreenScope()
     var failure by remember { mutableStateOf<DisplayError?>(null) }
     PlaybackProgressAndroidView(
@@ -262,7 +259,7 @@ private fun ExpandedSeekSection(
         perform = { operation, action ->
             failure = null
             scope.launch {
-                performBridgeAction(logger, operation, LocaleErrorDisplays(context), { failure = it }, action)
+                performBridgeAction(logger, operation, session.errors, { failure = it }, action)
             }
         },
     )

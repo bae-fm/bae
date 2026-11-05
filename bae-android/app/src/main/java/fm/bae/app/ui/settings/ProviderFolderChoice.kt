@@ -23,11 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -57,14 +55,13 @@ internal fun DropboxFolderChoice(
     onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
-    val context = LocalContext.current
     val scope = rememberScreenScope()
     var folders by remember { mutableStateOf<List<BridgeStorageFolder>?>(null) }
     var busy by remember { mutableStateOf(false) }
     val setup = rememberStorageSetupRunner(session, onError, onSetUp)
     val load: suspend () -> Unit = {
         folders = null
-        performBridgeAction(logger, "list Dropbox shared folders", LocaleErrorDisplays(context), onError) {
+        performBridgeAction(logger, "list Dropbox shared folders", session.errors, onError) {
             folders = providers.dropboxSharedFolders(session.appHandle)
         }
     }
@@ -112,9 +109,8 @@ internal fun OneDriveFolderChoice(
     onError: (DisplayError?) -> Unit,
     onSetUp: (BridgeStorageSetup) -> Unit,
 ) {
-    val context = LocalContext.current
     val scope = rememberScreenScope()
-    val browser = remember(session) { OneDriveBrowser(session.appHandle, providers, LocaleErrorDisplays(context)) }
+    val browser = remember(session) { OneDriveBrowser(session.appHandle, providers, session.errors) }
     var naming by remember { mutableStateOf(false) }
     val setup = rememberStorageSetupRunner(session, onError, onSetUp)
     LaunchedEffect(browser) { browser.openRoot() }

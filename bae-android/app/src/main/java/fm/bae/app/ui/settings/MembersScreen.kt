@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -218,9 +217,8 @@ fun MembersScreen(
     session: OpenLibrary,
     onBack: () -> Unit,
 ) {
-    val appContext = LocalContext.current.applicationContext
     val scope = rememberScreenScope()
-    val model = remember(session) { MembersModel(session.appHandle, LocaleErrorDisplays(appContext), scope) }
+    val model = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
     DisposableEffect(model) { onDispose(model.subscribe()) }
     LaunchedEffect(model) { model.loadStorage() }
     val dialogs = remember { MembersDialogs() }

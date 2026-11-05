@@ -37,7 +37,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -86,7 +85,7 @@ private class PendingActionRunner(
     ) {
         error = null
         scope.launch {
-            performBridgeAction(logger, operation, LocaleErrorDisplays(context), { error = it }, action)
+            performBridgeAction(logger, operation, session.errors, { error = it }, action)
         }
     }
 

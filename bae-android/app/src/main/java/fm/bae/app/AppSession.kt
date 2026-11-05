@@ -101,6 +101,9 @@ class OpenLibrary internal constructor(
 
     /** Where this library's code reports a broken guarantee without crashing. */
     val bugs: BugReports get() = runtime.bugs
+
+    /** How this library's screens word a failure they show: the one instance the session itself words its own with. */
+    val errors: ErrorDisplays get() = runtime.errors
     private var widgetJob: Job? = null
     private var memoryRelease: MemoryRelease? = null
 

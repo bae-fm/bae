@@ -35,7 +35,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
-import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -84,11 +83,10 @@ internal fun SettingsScreen(
     onPush: (LibraryDestination) -> Unit,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    val appContext = LocalContext.current.applicationContext
     val scope = rememberScreenScope()
     val config by session.configStore.config.collectAsState()
     val listing by libraries.collectAsState()
-    val model = remember(session) { SettingsLibraryModel(session.appHandle, LocaleErrorDisplays(appContext), scope) }
+    val model = remember(session) { SettingsLibraryModel(session.appHandle, session.errors, scope) }
 
     LaunchedEffect(session) {
         session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS))
