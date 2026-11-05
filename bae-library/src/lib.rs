@@ -61,7 +61,7 @@ pub use outbox_watch::{
 pub use queue_upcoming::{subscribe_queue_upcoming, LiveQueueUpcoming, QueueUpcomingSnapshot};
 pub use saved_restore_codes::{saved_restore_codes, SavedRestoreCodesError};
 pub use schema::SCHEMA;
-pub use upload_progress::{UploadBar, UploadState};
+pub use upload_progress::UploadBar;
 
 pub use tokio_util::sync::CancellationToken;
 

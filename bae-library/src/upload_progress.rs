@@ -1,5 +1,4 @@
-//! What the upload queue's rows say of the files being sent.
-pub use coven::UploadPhase as UploadState;
+//! How far the files being sent have got, as a bar draws it.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UploadBar {
