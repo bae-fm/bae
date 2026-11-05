@@ -10,6 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
@@ -65,7 +66,10 @@ class OnboardingRestoreTextTest {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             OnboardingProgress(
-                OnboardingStep.Running(restore(CodeEntry.NewDevice), BridgeBootstrapStatus.Connecting),
+                OnboardingStep.Running(
+                    restore(CodeEntry.NewDevice),
+                    BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true),
+                ),
                 onCancel = {},
                 onCheckNow = {},
             )
@@ -79,7 +83,7 @@ class OnboardingRestoreTextTest {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             OnboardingProgress(
-                OnboardingStep.Running(restore(restoreOver), BridgeBootstrapStatus.Connecting),
+                OnboardingStep.Running(restore(restoreOver), BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true)),
                 onCancel = {},
                 onCheckNow = {},
             )

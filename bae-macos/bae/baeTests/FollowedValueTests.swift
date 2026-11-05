@@ -10,13 +10,20 @@ struct FollowedValueTests {
     /// the key holds one, and goes as the key does.
     @Test("follows the key's value as it changes and goes")
     func followsTheValue() async throws {
-        let writer = LatestStream<BridgeBootstrapStatus>.written()
-        writer.set(.connecting)
+        let writer = LatestStream<BridgeBootstrapState>.written()
+        let connecting = BridgeBootstrapState(
+            status: .connecting,
+            cancellable: true
+        )
+        writer.set(connecting)
         let followed = FollowedValue(writer.stream.only)
-        #expect(followed.value == .connecting)
+        #expect(followed.value == connecting)
 
-        let loading = BridgeBootstrapStatus.loading(
-            progress: BridgeLoadProgress(step: .reading, done: 2, total: 8)
+        let loading = BridgeBootstrapState(
+            status: .loading(
+                progress: BridgeLoadProgress(step: .reading, done: 2, total: 8)
+            ),
+            cancellable: false
         )
         writer.set(loading)
         try await Task.sleep(for: .milliseconds(300))

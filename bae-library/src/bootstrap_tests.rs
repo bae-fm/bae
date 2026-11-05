@@ -26,6 +26,28 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     reopened.close().await.unwrap();
 }
 
+/// A join's cancel takes the join back only until its request may have been
+/// sent: while it opens its database and while it connects and sends.
+#[test]
+fn a_join_can_be_cancelled_until_its_request_may_have_been_sent() {
+    let open = coven::Progress { step: coven::OpenStep::Migrating, done: 1, total: 4 };
+    let load = coven::Progress { step: coven::LoadStep::FindingKeys, done: 0, total: 1 };
+    assert!(join_cancellable(&coven::BootstrapStatus::Opening(open)));
+    assert!(join_cancellable(&coven::BootstrapStatus::Connecting));
+    for status in [
+        coven::BootstrapStatus::WaitingForApproval {
+            confirmation: None,
+            next_check: coven::NextCheck::Checking,
+        },
+        coven::BootstrapStatus::Loading(load),
+        coven::BootstrapStatus::Registering,
+        coven::BootstrapStatus::Committing,
+        coven::BootstrapStatus::Pending(Vec::new()),
+    ] {
+        assert!(!join_cancellable(&status), "{status:?}");
+    }
+}
+
 #[tokio::test]
 async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     let temp = tempfile::TempDir::new().unwrap();

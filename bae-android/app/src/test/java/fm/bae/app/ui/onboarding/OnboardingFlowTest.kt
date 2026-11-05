@@ -19,6 +19,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
+import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
@@ -78,7 +79,7 @@ class OnboardingFlowTest {
         )
 
     /** Where the running restore stands, which a test writes in place of core. */
-    private val statuses = LatestStream.written<BridgeBootstrapStatus>()
+    private val states = LatestStream.written<BridgeBootstrapState>()
 
     private fun newFlow(): OnboardingFlow {
         val flow =
@@ -86,7 +87,7 @@ class OnboardingFlowTest {
                 scope,
                 RuntimeEnvironment.getApplication(),
                 OnboardingCore(host, ::FakeBootstrapCancellation, ::unfakedOpenProgress) {
-                    LibrarySetupStatus.written(FakeLibrarySetup(), statuses)
+                    LibrarySetupStatus.written(FakeLibrarySetup(), states)
                 },
                 null,
                 null,
@@ -106,7 +107,7 @@ class OnboardingFlowTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(
-            OnboardingStep.Running(OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice), status = null),
+            OnboardingStep.Running(OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice), state = null),
             flow.step,
         )
         assertEquals(listOf(CODE), host.restoredCodes)
@@ -120,14 +121,18 @@ class OnboardingFlowTest {
         flow.advance(enterCode, CODE, info, CodeSource.SCANNED)
         shadowOf(Looper.getMainLooper()).idle()
 
-        val loading = BridgeBootstrapStatus.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL))
-        statuses.write("", loading)
+        val loading =
+            BridgeBootstrapState(
+                BridgeBootstrapStatus.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL)),
+                cancellable = true,
+            )
+        states.write("", loading)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(
             OnboardingStep.Running(
                 OnboardingStep.Restore(CODE, info.metadata, CodeEntry.NewDevice),
-                status = loading,
+                state = loading,
             ),
             flow.step,
         )

@@ -10,9 +10,12 @@ public final class LibraryBootstrap {
     /// until the stream says otherwise; nil while no attempt runs.
     public var status: BridgeBootstrapStatus? {
         guard let followed else { return nil }
-        return followed.value ?? .connecting
+        return followed.value?.status ?? .connecting
     }
-    private var followed: FollowedValue<BridgeBootstrapStatus>?
+    /// Whether Cancel can still stop the running attempt, as core says: false
+    /// while no attempt runs and until its stream has said so.
+    public var cancellable: Bool { followed?.value?.cancellable ?? false }
+    private var followed: FollowedValue<BridgeBootstrapState>?
     /// The steps of the open a restore over this device's copy runs when
     /// this device already holds the code's keys; nil for any other attempt.
     public private(set) var openSteps: LatestSource<BridgeOpenProgress>?
@@ -154,7 +157,7 @@ public final class LibraryBootstrap {
         running = true
         cancelAttempt = cancel
         let setup = BridgeLibrarySetup(host: host)
-        let stream = LatestStream<BridgeBootstrapStatus>.bootstrapStatus()
+        let stream = LatestStream<BridgeBootstrapState>.bootstrapState()
         let feed = stream.feed(from: setup)
         followed = FollowedValue(stream.only)
         defer {

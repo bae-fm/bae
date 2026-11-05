@@ -117,7 +117,7 @@ impl BridgeHost {
                     &code,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
-                    |status| steps.bootstrap(status),
+                    |status| steps.bootstrap(status, true),
                     &cancel,
                 )
                 .await
@@ -164,7 +164,7 @@ impl BridgeHost {
                         &code,
                         credentials.map(BridgeS3Credentials::into_core),
                         &device_name,
-                        |status| steps.bootstrap(status),
+                        |status| steps.bootstrap(status, true),
                         report,
                         &cancel,
                     )
@@ -196,7 +196,7 @@ impl BridgeHost {
                     &saved.saved,
                     credentials.map(BridgeS3Credentials::into_core),
                     &device_name,
-                    |status| steps.bootstrap(status),
+                    |status| steps.bootstrap(status, true),
                     &cancel,
                 )
                 .await
@@ -228,7 +228,10 @@ impl BridgeHost {
                     &code,
                     &device_name,
                     Arc::new(coven::SystemClock),
-                    |status| steps.bootstrap(status),
+                    |status| {
+                        let cancellable = bae_library::join_cancellable(&status);
+                        steps.bootstrap(status, cancellable)
+                    },
                     &control.control,
                 )
                 .await;
@@ -274,7 +277,10 @@ impl BridgeHost {
                     || self.builder(),
                     &join.join,
                     Arc::new(coven::SystemClock),
-                    |status| steps.bootstrap(status),
+                    |status| {
+                        let cancellable = bae_library::join_cancellable(&status);
+                        steps.bootstrap(status, cancellable)
+                    },
                     &control.control,
                 )
                 .await;
@@ -328,7 +334,7 @@ impl BridgeDeviceReset {
                     self.host.builder(),
                     self.store,
                     &self.device_name,
-                    |status| steps.bootstrap(status),
+                    |status| steps.bootstrap(status, false),
                 )
                 .await
                 {

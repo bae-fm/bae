@@ -37,17 +37,17 @@ extension BridgeHost {
 @Observable
 public final class DeviceResetSteps {
     /// Where the reset stands; nil until it reports a step.
-    public var status: BridgeBootstrapStatus? { followed.value }
+    public var status: BridgeBootstrapStatus? { followed.value?.status }
     @ObservationIgnored
     public let setup: BridgeLibrarySetup
     @ObservationIgnored
-    private let followed: FollowedValue<BridgeBootstrapStatus>
+    private let followed: FollowedValue<BridgeBootstrapState>
     @ObservationIgnored
     private let feed: LatestFeed
 
     public init(host: BridgeHost) {
         setup = BridgeLibrarySetup(host: host)
-        let stream = LatestStream<BridgeBootstrapStatus>.bootstrapStatus()
+        let stream = LatestStream<BridgeBootstrapState>.bootstrapState()
         feed = stream.feed(from: setup)
         followed = FollowedValue(stream.only)
     }

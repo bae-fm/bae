@@ -63,6 +63,15 @@ pub enum BridgeBootstrapStatus {
         records: Vec<BridgePendingRecord>,
     },
 }
+/// Where a restore or a join stands, and whether Cancel can still stop it.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeBootstrapState {
+    pub status: BridgeBootstrapStatus,
+    /// Whether the call can still be cancelled: a restore until it ends, a
+    /// join while it opens or connects, a device reset never.
+    pub cancellable: bool,
+}
+
 /// When a waiting join checks for approval next.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeNextCheck {

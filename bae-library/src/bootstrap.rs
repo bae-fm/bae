@@ -154,6 +154,14 @@ impl JoinControl {
     }
 }
 
+/// Whether a join's cancel can still take the join back at `status`: until
+/// its request may have been sent, which is while it opens its database and
+/// while it connects. After that coven keeps the join and the cancel ends in
+/// `BootstrapError::JoinRequestSent`.
+pub fn join_cancellable(status: &coven::BootstrapStatus) -> bool {
+    matches!(status, coven::BootstrapStatus::Opening(_) | coven::BootstrapStatus::Connecting)
+}
+
 impl Default for JoinControl {
     fn default() -> Self {
         Self::new()

@@ -35,9 +35,9 @@ mod upload_throughput;
 pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection};
 pub use assembly::open_library_manager;
 pub use bootstrap::{
-    create_library, join_with_invite, reset_device, restore_from_code, restore_from_saved_code,
-    restore_replacing_device, resume_join, unfinished_joins, CreateLibraryError, JoinControl,
-    JoinedLibrary, RestoreFromCodeError,
+    create_library, join_cancellable, join_with_invite, reset_device, restore_from_code,
+    restore_from_saved_code, restore_replacing_device, resume_join, unfinished_joins,
+    CreateLibraryError, JoinControl, JoinedLibrary, RestoreFromCodeError,
 };
 pub use closing_step::ClosingStep;
 pub use track_decode::TrackDecode;

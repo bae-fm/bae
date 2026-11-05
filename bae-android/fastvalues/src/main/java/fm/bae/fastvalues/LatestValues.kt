@@ -7,7 +7,7 @@ import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeClosingStep
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeException
@@ -133,10 +133,13 @@ class LatestStream<V : Any> private constructor(
                 if (it is BridgeFastValue.TrackWaitsOnStorage) true else null
             }
 
-        /** Where a restore or join stands, while it runs; a preview's holds [value], fed by nothing. */
-        fun bootstrapStatus(value: BridgeBootstrapStatus? = null): LatestStream<BridgeBootstrapStatus> =
+        /**
+         * Where a restore, join or reset stands and whether it can still be cancelled, while it runs; a preview's
+         * holds [value], fed by nothing.
+         */
+        fun bootstrapState(value: BridgeBootstrapState? = null): LatestStream<BridgeBootstrapState> =
             LatestStream(value?.let { mapOf(ONLY_KEY to it) }) {
-                (it as? BridgeFastValue.BootstrapStatus)?.status
+                (it as? BridgeFastValue.BootstrapState)?.state
             }
 
         /** How far a library's open has come, while it runs a step; a preview's holds [value], fed by nothing. */
@@ -222,9 +225,9 @@ fun LatestStream<BridgeStorageSetupProgress>.feed(
     reportBug: (BridgeException) -> Unit,
 ): LatestFeed = fed(scope, reportBug, setup::feedSetupSteps)
 
-/** Fill with where the restore or join [setup] is handed to stands. */
-@JvmName("feedBootstrapStatus")
-fun LatestStream<BridgeBootstrapStatus>.feed(
+/** Fill with where the restore, join or reset [setup] is handed to stands. */
+@JvmName("feedBootstrapState")
+fun LatestStream<BridgeBootstrapState>.feed(
     setup: BridgeLibrarySetup,
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,

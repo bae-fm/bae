@@ -146,17 +146,11 @@ public final class BootstrapCodeForm {
         }
     }
 
-    /// Whether Cancel can stop the running attempt: a restore until it
-    /// ends, a join only until its request may have been sent, which coven
-    /// reports as waiting for approval.
+    /// Whether Cancel can stop the running attempt: core decides, and says so
+    /// with each value of the attempt's stream.
     public var cancellable: Bool {
-        guard isRunning else { return false }
-        if attempt?.invite == nil { return true }
-        switch status {
-        case nil, .opening, .connecting: return true
-        case .waitingForApproval, .loading, .registering, .committing, .pending:
-            return false
-        }
+        guard isRunning, let bootstrap else { return false }
+        return bootstrap.cancellable
     }
 
     /// Why the entered code doesn't decode, or nil.

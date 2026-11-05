@@ -493,15 +493,16 @@ extension LatestStream where Value == BridgeSetupProgress {
     }
 }
 
-extension LatestStream where Value == BridgeBootstrapStatus {
-    /// Where a restore or join stands, while it runs; a preview's holds
-    /// `value` and nothing feeds it.
-    public static func bootstrapStatus(holding value: Value? = nil)
+extension LatestStream where Value == BridgeBootstrapState {
+    /// Where a restore, join or reset stands and whether it can still be
+    /// cancelled, while it runs; a preview's holds `value` and nothing feeds
+    /// it.
+    public static func bootstrapState(holding value: Value? = nil)
         -> LatestStream
     {
         LatestStream(holding: value.map { [onlyKey: $0] } ?? [:]) {
-            if case .bootstrapStatus(let status) = $0 {
-                status
+            if case .bootstrapState(let state) = $0 {
+                state
             }
             else {
                 nil

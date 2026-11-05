@@ -62,7 +62,7 @@ class OnboardingSavedRestoreTest {
         flow.openSaved(code)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(OnboardingStep.Running(OnboardingStep.RestoreSaved(code), status = null), flow.step)
+        assertEquals(OnboardingStep.Running(OnboardingStep.RestoreSaved(code), state = null), flow.step)
         assertEquals(listOf("saved-dropbox" to null), host.restored)
     }
 

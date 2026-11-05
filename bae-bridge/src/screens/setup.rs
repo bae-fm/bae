@@ -11,8 +11,8 @@ use std::sync::Mutex;
 use crate::keyed_values::{KeyedValueStream, ProgressStream, ProgressWriter};
 use crate::operation_runtime::OperationRuntime;
 use crate::types::{
-    BridgeBootstrapStatus, BridgeFastValue, BridgeOpenProgress, BridgeSetupProgress,
-    BridgeSetupStep,
+    BridgeBootstrapState, BridgeBootstrapStatus, BridgeFastValue, BridgeOpenProgress,
+    BridgeSetupProgress, BridgeSetupStep,
 };
 
 /// The app makes one for each call that opens a library, starts reading its
@@ -144,10 +144,14 @@ impl SetupSteps {
         });
     }
 
-    /// Where a restore or join stands now.
-    pub(crate) fn bootstrap(&self, status: coven::BootstrapStatus) {
-        self.set(BridgeFastValue::BootstrapStatus {
-            status: BridgeBootstrapStatus::from_core(status),
+    /// Where a restore, join or reset stands now, and whether its Cancel can
+    /// still stop it.
+    pub(crate) fn bootstrap(&self, status: coven::BootstrapStatus, cancellable: bool) {
+        self.set(BridgeFastValue::BootstrapState {
+            state: BridgeBootstrapState {
+                status: BridgeBootstrapStatus::from_core(status),
+                cancellable,
+            },
         });
     }
 

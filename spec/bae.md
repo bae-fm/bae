@@ -3637,7 +3637,10 @@ runs only when it has work. The apps show each step's name over its bar on
 the restore and join screens, and on the screen a reset loads on.
 Registering and finishing have no count, since how much the registration
 reads isn't known until it has read it: the apps name each as they name
-connecting, and a join in either can no longer be cancelled.
+connecting, and a join in either can no longer be cancelled. Each value of the
+stream says whether the call can still be cancelled: a restore until it ends, a
+join while it opens or connects, a reset never; the apps show Cancel only while
+it says so.
 
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker

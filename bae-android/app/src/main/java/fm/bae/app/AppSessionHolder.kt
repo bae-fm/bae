@@ -560,8 +560,8 @@ object AppSessionHolder {
                     coroutineScope {
                         val following =
                             launch {
-                                setup.statuses.changes().collect { status ->
-                                    if (status != null) onScreen(AppScreen.Resetting(status))
+                                setup.states.changes().collect { state ->
+                                    if (state != null) onScreen(AppScreen.Resetting(state.status))
                                 }
                             }
                         try {

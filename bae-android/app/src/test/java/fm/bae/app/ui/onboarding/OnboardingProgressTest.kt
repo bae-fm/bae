@@ -11,6 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
@@ -19,8 +20,6 @@ import uniffi.bae_bridge.BridgeInviteInfo
 import uniffi.bae_bridge.BridgeLoadProgress
 import uniffi.bae_bridge.BridgeLoadStep
 import uniffi.bae_bridge.BridgeNextCheck
-import uniffi.bae_bridge.BridgeOpenProgress
-import uniffi.bae_bridge.BridgeOpenStep
 import uniffi.bae_bridge.BridgeStorageLocation
 import java.time.Instant
 
@@ -63,12 +62,14 @@ class OnboardingProgressTest {
         val waiting =
             OnboardingStep.Running(
                 invite,
-                BridgeBootstrapStatus.WaitingForApproval(
-                    confirmation = "041 778",
-                    nextCheck = BridgeNextCheck.At(Instant.now().plusSeconds(300)),
+                BridgeBootstrapState(
+                    BridgeBootstrapStatus.WaitingForApproval(
+                        confirmation = "041 778",
+                        nextCheck = BridgeNextCheck.At(Instant.now().plusSeconds(300)),
+                    ),
+                    cancellable = false,
                 ),
             )
-        assertFalse(waiting.cancellable())
         compose.mainClock.autoAdvance = false
         compose.setContent {
             OnboardingProgress(waiting, onCancel = null, onCheckNow = {})
@@ -82,34 +83,19 @@ class OnboardingProgressTest {
         compose.onNodeWithText("Cancel").assertDoesNotExist()
     }
 
-    @Test
-    fun aJoinStillConnectingCanBeCancelled() {
-        assertTrue(OnboardingStep.Running(invite, BridgeBootstrapStatus.Connecting).cancellable())
-    }
-
-    /** A join still opening its new database, before it connects, can be cancelled too. */
-    @Test
-    fun aJoinStillOpeningCanBeCancelled() {
-        val opening =
-            BridgeBootstrapStatus.Opening(BridgeOpenProgress(BridgeOpenStep.MIGRATING, done = 1uL, total = 3uL))
-        assertTrue(OnboardingStep.Running(invite, opening).cancellable())
-    }
-
-    /** Registering this device after loading names the step, uncounted, and the join can't be cancelled. */
+    /** Registering this device after loading names the step, uncounted. */
     @Test
     fun registeringNamesItsStep() {
         val status = BridgeBootstrapStatus.Registering
-        assertFalse(OnboardingStep.Running(invite, status).cancellable())
         assertFalse(status.hasStepBar())
         compose.setContent { StatusLines(status) }
         compose.onNodeWithText("Registering this device…").assertIsDisplayed()
     }
 
-    /** The last work before the library opens names the step, uncounted, and the join can't be cancelled. */
+    /** The last work before the library opens names the step, uncounted. */
     @Test
     fun committingNamesItsStep() {
         val status = BridgeBootstrapStatus.Committing
-        assertFalse(OnboardingStep.Running(invite, status).cancellable())
         assertFalse(status.hasStepBar())
         compose.setContent { StatusLines(status) }
         compose.onNodeWithText("Finishing…").assertIsDisplayed()
@@ -122,7 +108,6 @@ class OnboardingProgressTest {
     @Test
     fun loadingTheLibraryNamesItsStep() {
         val status = BridgeBootstrapStatus.Loading(BridgeLoadProgress(BridgeLoadStep.READING, done = 2uL, total = 8uL))
-        assertFalse(OnboardingStep.Running(invite, status).cancellable())
         assertTrue(status.hasStepBar())
         compose.setContent {
             StatusLines(status, loadStepKey = { "core.library.load_step.reading" })

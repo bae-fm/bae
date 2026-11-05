@@ -47,6 +47,7 @@ import fm.bae.app.ui.settings.inviteExpiry
 import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
+import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
@@ -161,7 +162,7 @@ internal fun OnboardingSteps(flow: OnboardingFlow) {
         is OnboardingStep.Running -> {
             // Once a join's request may have been sent there is no cancel:
             // Back leaves the screen, and the join goes on at the next launch.
-            val cancellable = step.cancellable()
+            val cancellable = step.state?.cancellable == true
             BackHandler(enabled = cancellable) { flow.cancel() }
             OnboardingProgress(
                 step = step,
@@ -220,21 +221,6 @@ internal fun OnboardingStartColumn(
 }
 
 /**
- * A restore can be cancelled until it ends; a join only until its request
- * may have been sent, which coven reports as waiting for approval.
- */
-internal fun OnboardingStep.Running.cancellable(): Boolean =
-    when (from) {
-        is OnboardingStep.Restore, is OnboardingStep.RestoreSaved -> {
-            true
-        }
-
-        is OnboardingStep.Invite -> {
-            status == null || status is BridgeBootstrapStatus.Opening || status is BridgeBootstrapStatus.Connecting
-        }
-    }
-
-/**
  * A restore or join running: what it waits on now, and Cancel while it can
  * be. A join waiting for approval shows a sent invite's confirmation number,
  * when it checks next, and Check now.
@@ -252,7 +238,7 @@ internal fun OnboardingProgress(
             is OnboardingStep.RestoreSaved -> stringResource(RestoreText.RESTORE.running)
         }
     OnboardingContainer {
-        val status = step.status
+        val status = step.state?.status
         // While the restore's open runs a step, its line stands in for the
         // spinner and the status, which it has moved past.
         var stepping by remember(step.openSteps) { mutableStateOf(false) }
@@ -396,10 +382,14 @@ private fun OnboardingProgressWaitingPreview() {
                                 ),
                             entry = CodeEntry.NewDevice,
                         ),
-                    status =
-                        BridgeBootstrapStatus.WaitingForApproval(
-                            confirmation = "041 778",
-                            nextCheck = BridgeNextCheck.At(Instant.now().plusSeconds(PREVIEW_WAIT_SECONDS)),
+                    state =
+                        BridgeBootstrapState(
+                            status =
+                                BridgeBootstrapStatus.WaitingForApproval(
+                                    confirmation = "041 778",
+                                    nextCheck = BridgeNextCheck.At(Instant.now().plusSeconds(PREVIEW_WAIT_SECONDS)),
+                                ),
+                            cancellable = false,
                         ),
                 ),
             onCancel = null,

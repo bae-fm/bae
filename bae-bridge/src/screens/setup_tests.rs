@@ -1,7 +1,9 @@
 //! A setup call's steps, as the app reads them off the call's stream.
 
 use super::*;
-use crate::types::{BridgeBootstrapStatus, BridgeSetupProgress, BridgeSetupStep};
+use crate::types::{
+    BridgeBootstrapState, BridgeBootstrapStatus, BridgeSetupProgress, BridgeSetupStep,
+};
 
 /// The stream's one key holds where the call is while it runs, and nothing
 /// once the call's writing ends.
@@ -27,10 +29,15 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
         })
     );
     assert_eq!(runtime.block_on(stream.clone().next()), Ok(vec![Vec::new()]), "the key started");
-    steps.bootstrap(coven::BootstrapStatus::Connecting);
+    steps.bootstrap(coven::BootstrapStatus::Connecting, false);
     assert_eq!(
         stream.latest(Vec::new()),
-        Some(BridgeFastValue::BootstrapStatus { status: BridgeBootstrapStatus::Connecting })
+        Some(BridgeFastValue::BootstrapState {
+            state: BridgeBootstrapState {
+                status: BridgeBootstrapStatus::Connecting,
+                cancellable: false,
+            },
+        })
     );
 
     drop(steps);

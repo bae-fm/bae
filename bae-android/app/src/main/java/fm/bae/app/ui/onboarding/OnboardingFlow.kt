@@ -19,7 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
-import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
@@ -116,14 +116,15 @@ internal sealed interface OnboardingStep {
 
     /**
      * A restore with [from], or a join when [from] is an invite, running;
-     * [status] is coven's latest report, null until the first arrives. A
+     * [state] is core's latest report of where it stands and whether it can
+     * still be cancelled, null until the first arrives. A
      * restore over this device's copy just opens it when this device holds
      * the code's keys, and [openSteps] are that open's steps; null for any
      * other attempt.
      */
     data class Running(
         val from: CodeRead,
-        val status: BridgeBootstrapStatus?,
+        val state: BridgeBootstrapState?,
         val openSteps: LatestSource<BridgeOpenProgress>? = null,
     ) : OnboardingStep
 }
@@ -399,15 +400,15 @@ internal class OnboardingFlow(
         start: suspend (BridgeLibrarySetup) -> BridgeBootstrapResult,
     ) {
         error = null
-        step = OnboardingStep.Running(from, status = null, openSteps = opening?.steps)
+        step = OnboardingStep.Running(from, state = null, openSteps = opening?.steps)
         cancellation = cancel
         scope.launch {
             val setup = core.newSetupStatus()
             val following =
                 launch {
-                    setup.statuses.changes().collect { status ->
+                    setup.states.changes().collect { state ->
                         val current = step
-                        if (status != null && current is OnboardingStep.Running) step = current.copy(status = status)
+                        if (state != null && current is OnboardingStep.Running) step = current.copy(state = state)
                     }
                 }
             try {
