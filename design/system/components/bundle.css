@@ -37,6 +37,7 @@
 .bae-m-lights span + span + span { background: #28C840; }
 .bae-m-pane { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-primary); font: 400 13px var(--font-sans); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
 .bae-m-pane-on { background: var(--accent-tint-strong); font-weight: 600; }
+.bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
 .bae-m-main { flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
 .bae-m-heading { display: flex; align-items: center; gap: var(--space-related); margin: 0 0 12px; }
 .bae-m-heading h1 { margin: 0; font: 600 15px var(--font-sans); }
@@ -46,8 +47,9 @@
 .bae-m-heading + .bae-m-section { margin-top: 4px; }
 .bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-primary); }
 
-.bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--hairline); overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
-.bae-m-box-elevated { background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 var(--space-compact) var(--space-group) var(--shadow); }
+.bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-box-elevated { background: var(--elevated); box-shadow: 0 var(--space-compact) var(--space-group) var(--shadow); }
+.bae-m-box > .bae-divider { margin: 0 var(--space-group); opacity: 0.6; }
 .bae-m-box-empty { min-height: 108px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
 
 .bae-m-row { display: flex; align-items: center; gap: var(--space-group); min-height: var(--size-row); padding: 10px var(--space-group); box-sizing: border-box; color: var(--text-primary); font: 400 13px var(--font-sans); }

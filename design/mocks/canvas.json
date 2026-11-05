@@ -1449,7 +1449,7 @@
     "code-appearance": {
       "page": "settings",
       "size": 24,
-      "text": "What the code needs for these boards:\n- Order Mode, Background, Accent. Today both apps show Mode, Accent, Background (AppearanceSection.kt:82-91, AppearanceControls.swift:15-59). bae change.\n- “Accent” and “Background” in every locale. Today “Accent color” and “Background tone” (strings.xml:235-236, AppearanceControls.swift:21, :59). bae change.",
+      "text": "What the code needs for these boards:\n- Order Theme (macOS: Auto, Light, Dark; Android: System default, Light, Dark), then Tone, then Accent. Today both apps show Mode (System, Light, Dark), Accent color, Background tone (AppearanceSection.kt:82-91, AppearanceControls.swift:15-59). bae change.\n- “Tone” and “Accent” in every locale. Today “Accent color” and “Background tone” (strings.xml:235-236, AppearanceControls.swift:21, :59). bae change.",
       "w": 420,
       "x": 1422,
       "y": 1556

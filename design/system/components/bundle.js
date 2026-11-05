@@ -82,7 +82,10 @@
       h('nav', { className: 'bae-m-sidebar', 'aria-label': 'Settings panes' },
         h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
         PANES.map(function (p) {
-          return h('button', { key: p, type: 'button', className: cx('bae-m-pane', p === props.pane && 'bae-m-pane-on') }, p);
+          var flagged = props.status && p === props.statusPane;
+          return h('button', { key: p, type: 'button', className: cx('bae-m-pane', p === props.pane && 'bae-m-pane-on') },
+            h('span', null, p),
+            flagged ? h(StatusChip, { tone: props.statusTone || 'warning' }, props.status) : null);
         })),
       h('main', { className: 'bae-m-main' },
         props.title ? h('div', { className: 'bae-m-heading' },
