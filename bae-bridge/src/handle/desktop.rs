@@ -199,6 +199,37 @@ forward! {
 forward! {
     #[cfg(feature = "desktop")]
     async this => {
+        /// Change the cover art for an album's release: a library image, or a
+        /// remote cover fetched and stored.
+        fn change_cover(release_id: String, selection: BridgeCoverSelection) -> () {
+            use bae_library::CoverSelection;
+
+            let core_selection = match selection {
+                BridgeCoverSelection::ReleaseImage { file_id } => {
+                    CoverSelection::ReleaseImage { file_id }
+                }
+                // The library stores the original; its copies are for drawing.
+                BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
+                    url: selection.image.url,
+                },
+                BridgeCoverSelection::EmbeddedCover { source_file_id } => {
+                    return Err(BridgeError::internal(format!(
+                        "embedded candidate cover {source_file_id} is not a library cover choice"
+                    )))
+                }
+            };
+
+            this.services
+                .change_cover(&release_id, core_selection)
+                .await
+                .map_err(BridgeError::from)
+        }
+    }
+}
+
+forward! {
+    #[cfg(feature = "desktop")]
+    async this => {
         /// Submit a candidate's typed search: every configured provider is
         /// asked at once, and each answer lands on the candidate's runtime as
         /// it arrives. A search already running for this candidate is

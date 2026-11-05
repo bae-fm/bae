@@ -544,6 +544,7 @@ pub enum BridgeCandidateEditField {
     PressingYear,
 }
 
+#[cfg(feature = "desktop")]
 mirror_enum! {
     BridgeCandidateEditField = bae_import::CandidateEditField,
     from_core: pub(crate) fn,

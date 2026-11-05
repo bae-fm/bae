@@ -52,6 +52,7 @@ impl LibraryManager {
     /// reads an image file already in the library by file id; a `RemoteCover` one
     /// downloads it from a URL. Either way the bytes are resized and stored as the
     /// release's cover file.
+    #[cfg(desktop)]
     pub async fn change_cover(
         &self,
         release_id: &str,

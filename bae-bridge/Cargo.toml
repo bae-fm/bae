@@ -27,8 +27,8 @@ bae-identify = { workspace = true, optional = true }
 bae-app = { workspace = true }
 bae-library = { workspace = true }
 # The import screens' candidates, drafts and queue, and the release-edit
-# model every platform's editor mirrors.
-bae-import = { workspace = true }
+# model the desktop editors mirror.
+bae-import = { workspace = true, optional = true }
 bae-app-dir = { workspace = true }
 # The library's records and the store the bridge mirrors.
 bae-db = { workspace = true }
@@ -107,7 +107,7 @@ cloudkit = []
 # host-reported discovery seam. Off by default; every shipping platform turns it
 # on, and desktop implies it.
 cast = ["dep:bae-cast"]
-desktop = ["cast", "dep:bae-desktop", "dep:bae-identify"]
+desktop = ["cast", "dep:bae-desktop", "dep:bae-identify", "dep:bae-import"]
 # An in-memory keychain a debug app can start its host with, so UI tests never
 # touch the login keychain. Debug macOS builds turn it on.
 test-keyring = ["bae-library/test-utils", "bae-app-dir/test-utils"]

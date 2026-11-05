@@ -3,19 +3,19 @@ use bae_playback::QueueEntryId;
 use std::sync::PoisonError;
 use tracing::info;
 
-#[cfg(feature = "desktop")]
-use crate::types::BridgeDiscogsSaveOutcome;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
     BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog, BridgeComposerDetail,
-    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeCoverSelection, BridgeError,
-    BridgeFile, BridgeGalleryItem, BridgeGallerySource, BridgePreviewTarget, BridgeRelease,
-    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
-    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow,
-    BridgeStorageRowStatus, BridgeStorageSort, BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup,
-    BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
+    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeError, BridgeFile, BridgeGalleryItem,
+    BridgeGallerySource, BridgePreviewTarget, BridgeRelease, BridgeReleaseRoleSummary,
+    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
+    BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus,
+    BridgeStorageSort, BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
+    BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
     BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
+#[cfg(feature = "desktop")]
+use crate::types::{BridgeCoverSelection, BridgeDiscogsSaveOutcome};
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
 

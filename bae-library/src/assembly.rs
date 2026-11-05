@@ -20,7 +20,7 @@ pub async fn open_library_manager(
     ids: IdSourceRef,
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
-    remote_images: bae_catalogs::remote_image::RemoteImageCache,
+    #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
 ) -> Result<LibraryManager, DbError> {
     let downloads = bae_transfers::Downloads::new(database.clone());
     #[cfg(desktop)]
@@ -32,6 +32,7 @@ pub async fn open_library_manager(
         ids,
         diagnostics,
         runtime_handle,
+        #[cfg(desktop)]
         remote_images,
         #[cfg(desktop)]
         catalogs,

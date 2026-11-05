@@ -119,30 +119,6 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    fn change_cover(release_id: String, selection: BridgeCoverSelection) -> () {
-        use bae_library::CoverSelection;
-
-        let core_selection = match selection {
-            BridgeCoverSelection::ReleaseImage { file_id } => {
-                CoverSelection::ReleaseImage { file_id }
-            }
-            // The library stores the original; its copies are for drawing.
-            BridgeCoverSelection::RemoteCover { selection } => CoverSelection::RemoteCover {
-                url: selection.image.url,
-            },
-            BridgeCoverSelection::EmbeddedCover { source_file_id } => {
-                return Err(BridgeError::internal(format!(
-                    "embedded candidate cover {source_file_id} is not a library cover choice"
-                )))
-            }
-        };
-
-        this.services
-            .change_cover(&release_id, core_selection)
-            .await
-            .map_err(BridgeError::from)
-    }
-
     fn set_primary_release(album_id: String, release_id: String) -> () {
         this.services
             .set_album_primary_release(&album_id, &release_id)

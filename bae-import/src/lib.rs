@@ -2,10 +2,11 @@
 //! the drafts a person shapes, identification against the catalogs, and the
 //! import that writes a candidate's release into the library's store.
 
-// Every module but `error`, `session` and `types` is the import pipeline
-// (scanning, transcoding, identification) and its tables, which only the
-// desktop builds carry: mobile is a sync and playback client, and a phone's
-// library holds no import tables. Of `types`, only the shared domain types.
+// Import is desktop-only: a phone browses, plays and casts, and neither imports
+// nor edits a release's metadata, so no crate a phone builds depends on this
+// one. The pipeline (scanning, transcoding, identification), the import tables
+// a phone's library does not hold, and the release-edit model are each gated on
+// `desktop` all the same; only `error`, `session` and `types` carry no gate.
 #[cfg(desktop)]
 pub mod apply_steps;
 #[cfg(desktop)]

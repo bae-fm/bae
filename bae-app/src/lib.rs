@@ -418,7 +418,8 @@ where
 
     // The one transport every outbound request goes out on, and the providers
     // that ask over it: each keeps its own rate limit and answers for as long
-    // as this library is open.
+    // as this library is open. Only the desktop's import asks the catalogs.
+    #[cfg(desktop)]
     let http = bae_util::http::Http::new()
         .map_err(|e| BootstrapError::Internal(format!("Failed to build the HTTP client: {e}")))?;
     #[cfg(desktop)]
@@ -431,6 +432,7 @@ where
             runtime.block_on(open_store(builder, Arc::clone(&clock), ids.clone()))
         })
         .map_err(classify_open_error)?;
+    #[cfg(desktop)]
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
         &app_dir.registered_library(&library_id),
         http,
@@ -457,6 +459,7 @@ where
                 ids.clone(),
                 diagnostics.clone(),
                 runtime.handle().clone(),
+                #[cfg(desktop)]
                 remote_images.clone(),
             ))
         })

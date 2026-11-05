@@ -45,7 +45,7 @@ impl LibraryManager {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        remote_images: bae_catalogs::remote_image::RemoteImageCache,
+        #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] catalogs: bae_import::CatalogSessions,
         downloads: bae_transfers::Downloads,
         #[cfg(desktop)] outputs: bae_transfers::Outputs,
@@ -67,6 +67,7 @@ impl LibraryManager {
             catalogs,
             database,
             app_dir,
+            #[cfg(desktop)]
             remote_images,
             clock,
             ids,
@@ -78,6 +79,7 @@ impl LibraryManager {
             downloads,
             #[cfg(desktop)]
             outputs,
+            #[cfg(desktop)]
             release_writes: Arc::default(),
             #[cfg(test)]
             pin_reads_hold: Arc::default(),

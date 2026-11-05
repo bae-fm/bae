@@ -455,6 +455,7 @@ impl AppServices {
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, bae_library::LibraryError>);
     delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<bae_playback::PlaybackTrackInfo, bae_library::LibraryError>);
     delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<bae_playback::TrackDisplay, bae_library::LibraryError>);
+    #[cfg(desktop)]
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: bae_library::CoverSelection) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), bae_library::LibraryError>);
@@ -530,6 +531,7 @@ impl AppServices {
     delegate_async!(manager, save_track => save_track(track_id: &str, output_path: &std::path::Path, preset_id: &str) -> Result<(), bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, bae_library::LibraryError>);
+    #[cfg(desktop)]
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::LibraryError>);
     delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);
     #[cfg(desktop)]

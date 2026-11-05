@@ -21,10 +21,9 @@ use tracing::{debug, warn};
 use crate::save::SaveService;
 use crate::sync::S3ConfigData;
 use bae_db::GallerySource;
-use bae_db::{
-    Database, DbAlbum, DbArtist, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef,
-    LibraryImageType,
-};
+use bae_db::{Database, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryImageType};
+#[cfg(desktop)]
+use bae_db::{DbAlbum, DbArtist};
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{blocking, caught, joined, Bug, TaskFailed};
@@ -68,6 +67,7 @@ mod records;
 mod release;
 #[cfg(desktop)]
 mod release_edit;
+#[cfg(desktop)]
 mod release_metadata;
 #[cfg(desktop)]
 pub use release_edit::ReleaseEdit;
@@ -124,6 +124,7 @@ pub enum LibraryError {
     /// (another number of tracks, discs that fit alike) rather than a
     /// generic line.
     #[error(transparent)]
+    #[cfg(desktop)]
     Import(Box<bae_import::ImportError>),
     /// An operation on a release, an album, an artist or an import
     /// candidate could not go ahead as asked — what it names is not in the
@@ -146,8 +147,10 @@ pub enum LibraryError {
     /// title, no album artist). The editor's typed error, so every surface reports
     /// the same rule rather than its own hand-written sentence.
     #[error(transparent)]
+    #[cfg(desktop)]
     Edit(#[from] bae_import::EditValidationError),
     #[error("Release editor cannot load: {0}")]
+    #[cfg(desktop)]
     ReleaseEditLoad(#[from] bae_import::ReleaseEditLoadError),
     /// A release edit session's save found the release changed since the
     /// session opened on it, and wrote nothing.
@@ -302,8 +305,11 @@ impl LibraryError {
             LibraryError::Sync(e) => sync_category(e),
             LibraryError::InviteJoining(_) => C::InviteJoining,
             LibraryError::RetryBlockedOperation(_) => C::Membership,
+            #[cfg(desktop)]
             LibraryError::Import(error) => error.category(),
-            LibraryError::Refused(_) | LibraryError::Edit(_) => C::Import,
+            LibraryError::Refused(_) => C::Import,
+            #[cfg(desktop)]
+            LibraryError::Edit(_) => C::Import,
             LibraryError::ReleaseMissing { work, .. } => match work {
                 ReleaseWork::Edit => C::Import,
                 ReleaseWork::Export => C::Export,
@@ -318,9 +324,10 @@ impl LibraryError {
             LibraryError::FileRead { error, .. } => file_read_category(error),
             LibraryError::MakeLocal(error) => device_only_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
+            #[cfg(desktop)]
+            LibraryError::ReleaseEditLoad(_) => C::Internal,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
-            | LibraryError::ReleaseEditLoad(_)
             | LibraryError::Encryption(_)
             | LibraryError::Storage(_)
             | LibraryError::TransferCode(_)
@@ -367,10 +374,10 @@ impl From<Bug> for LibraryError {
 /// Library operations that run import steps (a release editor's catalog
 /// apply, a cover download) report the import error itself; a store failure
 /// import met is the library's store failure.
+#[cfg(desktop)]
 impl From<bae_import::ImportError> for LibraryError {
     fn from(error: bae_import::ImportError) -> Self {
         match error {
-            #[cfg(desktop)]
             bae_import::ImportError::Database(error) => LibraryError::Database(error),
             other => LibraryError::Import(Box::new(other)),
         }
@@ -463,6 +470,7 @@ pub struct LibraryManager {
     outputs: bae_transfers::Outputs,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
+    #[cfg(desktop)]
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
     /// The catalogs as this library may ask them, which import's services
     /// hold too.
@@ -471,6 +479,7 @@ pub struct LibraryManager {
     /// Held by every edit session's save and every field edit of a release,
     /// so a save compares the release with what its session opened on and
     /// writes with no other of them on this device between the two.
+    #[cfg(desktop)]
     release_writes: Arc<tokio::sync::Mutex<()>>,
     /// Where a test holds each run of a pin's query of its release's pins.
     #[cfg(test)]

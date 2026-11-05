@@ -25,7 +25,6 @@ import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeCoverSelection
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
@@ -309,13 +308,6 @@ internal open class FakeAppHandle(
 
     override fun cancelSidePauseCountdown() {
         unfaked("cancelSidePauseCountdown")
-    }
-
-    override suspend fun changeCover(
-        releaseId: String,
-        selection: BridgeCoverSelection,
-    ) {
-        unfaked("changeCover")
     }
 
     override suspend fun clearPlayingFrom() {

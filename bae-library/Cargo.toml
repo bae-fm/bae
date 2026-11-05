@@ -22,10 +22,6 @@ bae-diagnostics = { workspace = true }
 # The identify reducer, its view and its verdicts, which only the desktop
 # import pipeline drives; the crate is empty on mobile.
 bae-identify = { workspace = true }
-# Import: watched folders, candidates, identification and the import that
-# writes a release into the store. On mobile only its error, session and
-# release-edit types compile.
-bae-import = { workspace = true }
 bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
@@ -59,9 +55,12 @@ tempfile = { workspace = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }
 
-# Saving and exporting a release write its tags, which only the desktop builds
-# do.
+# Saving and exporting a release write its tags, and import and the release
+# editor are the desktop's: a phone browses, plays and casts.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+# Import: watched folders, candidates, identification and the import that
+# writes a release into the store, and the release-edit model.
+bae-import = { workspace = true }
 lofty = { workspace = true }
 
 [dev-dependencies]

@@ -28,8 +28,6 @@ bae-db = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The identify choices a release being identified again asks about.
 bae-identify = { workspace = true }
-# The import service the library's services start, and its handles.
-bae-import = { workspace = true }
 # The playback service the library's services start, and the cast picker.
 bae-playback = { workspace = true }
 # The preferences the services read and write.
@@ -53,6 +51,11 @@ tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 # The temp directory a test library's services run over.
 tempfile = { workspace = true, optional = true }
+
+# The import service the library's services start, and its handles, which only
+# the desktop builds carry.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+bae-import = { workspace = true }
 
 [dev-dependencies]
 bae-app-dir = { workspace = true, features = ["test-utils"] }
