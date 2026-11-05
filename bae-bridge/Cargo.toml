@@ -70,8 +70,8 @@ tracing-android = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # ETW (TraceLogging) output for tracing — Windows' unified-logging equivalent.
-# Provider "bae-core", GUID derived from the name, so a capture session names
-# it as `logman ... -p "*bae-core"`.
+# Provider "bae-bridge", GUID derived from the name, so a capture session names
+# it as `logman ... -p "*bae-bridge"`.
 tracing-etw = { workspace = true }
 
 # The remaining desktop target (Linux) logs to the systemd journal, read with

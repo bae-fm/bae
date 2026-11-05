@@ -496,9 +496,9 @@ fn configure_logging() {
 #[cfg(target_os = "windows")]
 fn configure_logging() {
     // ETW is Windows' unified logging: a TraceLogging provider named
-    // "bae-core" (GUID derived from the name), captured with
-    // `logman start ... -p "*bae-core"` — the `log stream` equivalent.
-    match tracing_etw::LayerBuilder::new("bae-core").build() {
+    // "bae-bridge" (GUID derived from the name), captured with
+    // `logman start ... -p "*bae-bridge"` — the `log stream` equivalent.
+    match tracing_etw::LayerBuilder::new("bae-bridge").build() {
         Ok(etw_layer) => bae_util::logging::install(
             terminal_log_sink()
                 .into_iter()

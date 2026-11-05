@@ -73,7 +73,7 @@ OS caches, keeping every build cache, and ReTrims so the host qcow2 shrinks.
 - **SSH sessions can't show windows**; anything windowed goes through the
   scheduled-task harness. SSH-launched app processes may also die silently —
   treat SSH as build/file transport only.
-- **App logs are ETW**: the Rust core logs to the `bae-library` TraceLogging
+- **App logs are ETW**: the Rust core logs to the `bae-bridge` TraceLogging
   provider, the C# app to `bae-app` — Windows' unified-logging equivalent.
   `vmlog-start.cmd` / `vmlog-stop.cmd` capture both to
   `C:\Users\tom\bae-trace.csv` (the `log stream` of this setup). Console runs

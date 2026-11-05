@@ -6,9 +6,9 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The app's event provider, sibling of the Rust core's "bae-core" provider.
+/// The app's event provider, sibling of the Rust core's "bae-bridge" provider.
 /// The runtime maps it to the platform's tracing sink: ETW on Windows, where
-/// `logman start baeTrace -p "*bae-app" -p "*bae-core" -o trace.etl -ets`
+/// `logman start baeTrace -p "*bae-app" -p "*bae-bridge" -o trace.etl -ets`
 /// captures both (see scripts/vm/guest/vmlog-start.cmd), and EventPipe on Linux,
 /// where `dotnet-trace` does. The GUID derives from the name.
 /// </summary>
