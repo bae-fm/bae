@@ -84,7 +84,6 @@ pub enum BridgeImportListItem {
         invalid_candidate: BridgeInvalidCandidate,
         /// Whether the person has selected the row.
         selected: bool,
-        is_group_member: bool,
     },
 }
 

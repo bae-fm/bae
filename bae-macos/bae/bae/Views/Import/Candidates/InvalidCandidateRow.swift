@@ -8,7 +8,6 @@ import SwiftUI
 /// to do.
 struct InvalidCandidateRow: View {
     let invalid: BridgeInvalidCandidate
-    let isGroupMember: Bool
     /// Read the folders a grouping took in as the releases they are again.
     let onSeparate: () -> Void
 
@@ -33,7 +32,6 @@ struct InvalidCandidateRow: View {
                     .truncationMode(.middle)
             }
         }
-        .groupMemberRail(isGroupMember)
         .contentShape(Rectangle())
         .help(invalid.reason.localizedText)
         .contextMenu {
@@ -57,7 +55,6 @@ struct InvalidCandidateRow: View {
                 invalid in
                 InvalidCandidateRow(
                     invalid: invalid,
-                    isGroupMember: false,
                     onSeparate: {}
                 )
             }

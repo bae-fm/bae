@@ -45,8 +45,7 @@
                         )
                     )
                     continue
-                case .candidate(_, _, .some) where folding,
-                    .invalid(_, _, _, true) where folding:
+                case .candidate(_, _, .some) where folding:
                     continue
                 default:
                     folding = false
@@ -88,8 +87,7 @@
             .invalid(
                 stableKey: "invalid:\(hex(candidate.folderPath))",
                 invalidCandidate: candidate,
-                selected: false,
-                isGroupMember: false
+                selected: false
             )
         }
 

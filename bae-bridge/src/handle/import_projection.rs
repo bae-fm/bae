@@ -474,14 +474,11 @@ impl crate::types::BridgeImportListItem {
                     header_position,
                 }
             }
-            bae_import::ImportListItem::Invalid { candidate, selected, is_group_member } => {
-                Self::Invalid {
-                    stable_key,
-                    invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
-                    selected,
-                    is_group_member,
-                }
-            }
+            bae_import::ImportListItem::Invalid { candidate, selected } => Self::Invalid {
+                stable_key,
+                invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
+                selected,
+            },
         }
     }
 }

@@ -100,10 +100,9 @@ struct ImportListEntryView: View {
                     { actions.onShowInLibrary(release) }
                 }
             )
-        case .invalid(_, let invalid, _, let isGroupMember):
+        case .invalid(_, let invalid, _):
             InvalidCandidateRow(
                 invalid: invalid,
-                isGroupMember: isGroupMember,
                 onSeparate: { actions.onSeparate(invalid.candidateKey) }
             )
         }
@@ -161,7 +160,7 @@ extension BridgeImportListItem {
             nil
         case .candidate(_, let row, _):
             row.candidateKey
-        case .invalid(_, let invalid, _, _):
+        case .invalid(_, let invalid, _):
             invalid.candidateKey
         }
     }
@@ -180,7 +179,7 @@ extension BridgeImportListItem {
             case .prefilled, .identified, .identifiedAlbum:
                 ImportReleaseSummary(row: row)?.title
             }
-        case .invalid(_, let invalid, _, _):
+        case .invalid(_, let invalid, _):
             invalid.tags?.albumTitle ?? invalid.sourceFolderName
         }
     }

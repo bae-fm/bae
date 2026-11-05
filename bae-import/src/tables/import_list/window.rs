@@ -331,11 +331,7 @@ fn invalid_item(sql: &SqlReadContext<'_>, release: ReleaseRows) -> Result<Window
             )))
         }
     };
-    Ok(WindowItemRows::Ready(ImportListItem::Invalid {
-        candidate,
-        selected: release.selected,
-        is_group_member: false,
-    }))
+    Ok(WindowItemRows::Ready(ImportListItem::Invalid { candidate, selected: release.selected }))
 }
 
 /// A release's row: its placement and the keyed rows beside it, listed under

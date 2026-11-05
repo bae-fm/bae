@@ -109,7 +109,6 @@ pub enum ImportListItem {
         candidate: InvalidCandidate,
         /// Whether the person has selected the row.
         selected: bool,
-        is_group_member: bool,
     },
 }
 
