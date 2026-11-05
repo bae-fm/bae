@@ -1,0 +1,55 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bae</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--background); color: var(--text-primary); font-family: var(--font-sans); overflow: hidden; }
+  .cover { position: relative; height: 288px; overflow: hidden; }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .accent { fill: var(--accent); }
+  .fill { fill: var(--accent-fill); }
+  .ph { fill: var(--placeholder); }
+  .ok { fill: var(--success); }
+  .card { rx: var(--radius-card); }
+  .cov { rx: var(--radius-artwork); }
+  .chip { rx: var(--radius-chip); }
+  .words { position: absolute; left: var(--space-section); bottom: var(--space-section); max-width: 440px; }
+  .name { margin: 0; font-size: 120px; line-height: .9; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+  .tag { margin: var(--space-related) 0 0 4px; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      accent 132×240 bled off the top (the colour bae is known by) · accent-fill 132×136 · a grid of placeholder tiles · success 44×16 once (it only ever means Synced)
+  arrangement one tall accent slab, the fill block beside it, a library grid of covers to the right, bottoms on one line space-page above the edge
+  pattern     tiles, from "a music library": cover tiles at size-row-artwork, pitch size-row-artwork + space-related, one merged two-wide like an album shown large, one cut in accent
+  scales      gutters space-edge; tiles 44 at a 52 pitch; corners radius-card on blocks, radius-artwork on tiles, radius-chip on the chip
+-->
+<rect class="accent card" x="16" y="-16" width="132" height="240" rx="10"/>
+<rect class="fill card" x="164" y="88" width="132" height="136" rx="10"/>
+<rect class="ok chip" x="164" y="64" width="44" height="16" rx="5"/>
+<rect class="ph cov" x="312" y="24" width="44" height="44" rx="6"/>
+<rect class="ph cov" x="364" y="24" width="96" height="96" rx="6"/>
+<rect class="ph cov" x="312" y="76" width="44" height="44" rx="6"/>
+<rect class="accent cov" x="312" y="128" width="44" height="44" rx="6"/>
+<rect class="ph cov" x="364" y="128" width="44" height="44" rx="6"/>
+<rect class="ph cov" x="416" y="128" width="44" height="44" rx="6"/>
+<rect class="ph cov" x="312" y="180" width="44" height="44" rx="6"/>
+<rect class="ph cov" x="364" y="180" width="44" height="44" rx="6"/>
+<rect class="ph cov" x="416" y="180" width="44" height="44" rx="6"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">bae</h1>
+<p class="tag">Your music library, on every device.</p>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<!-- @dsCard group="Lists" height=170 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Box</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.Box, null, h(B.Row, { label: 'Provider', value: 'iCloud' }), h(B.Row, { label: 'Status', value: 'Syncing…' }), h(B.Row, { label: 'People', chevron: true })), h(B.Box, { empty: 'No shared folders yet' })));
+</script>
+</body>
+</html>
