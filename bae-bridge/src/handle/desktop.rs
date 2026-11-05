@@ -292,17 +292,6 @@ forward! {
                 .await?)
         }
 
-        /// A library release's cover as it stands now: what its editor shows
-        /// once the cover picker writes one, leaving the session as it is.
-        fn release_cover(release_id: String) -> Option<crate::types::BridgeImageRef> {
-            Ok(this
-                .services
-                .cover_ref(&release_id)
-                .await
-                .map_err(BridgeError::from)?
-                .map(crate::types::BridgeImageRef::from_core))
-        }
-
         /// Take in a folder someone chose to import: watch it, or read again
         /// the watched folder that already covers it. The folder's releases
         /// appear in the import list as its read finds them.
@@ -653,22 +642,6 @@ forward! {
                 .remove_artist_credit_name(&artist_id, &key)
                 .await
                 .map_err(BridgeError::from)
-        }
-
-        /// What the library holds, as it stands now, for every artist credit
-        /// the release editor's form carries.
-        fn resolve_release_edit_credits(
-            edit: crate::types::BridgeRawReleaseEdit,
-        ) -> Vec<crate::types::BridgeResolvedCredit> {
-            let resolved = this
-                .services
-                .resolve_release_edit_credits(&edit.into_core())
-                .await
-                .map_err(BridgeError::from)?;
-            Ok(resolved
-                .into_iter()
-                .map(crate::types::BridgeResolvedCredit::from_core)
-                .collect())
         }
 
         fn fetch_remote_covers(

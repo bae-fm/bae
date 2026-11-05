@@ -206,12 +206,15 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeReleaseEditSeed = bae_import::ReleaseEditSeed,
+    BridgeReleaseEditDraft = bae_import::ReleaseEditDraft,
     from_core: pub(crate) fn,
     fields: {
         edit: (BridgeRawReleaseEdit),
         cover: (opt BridgeImageRef),
         display: (BridgeReleaseEditDisplayContext),
         album: (BridgeDraftAlbum),
+        artist_resolutions: (each BridgeResolvedCredit),
+        changed,
+        invalid: (opt BridgeValidationReason),
     },
 }

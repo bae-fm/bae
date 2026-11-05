@@ -89,8 +89,8 @@ struct ReleaseEditorView: View {
                 searchSection = nil
                 session.cancelChanges()
             }
-            .opacity(session.hasChanges ? 1 : 0)
-            .allowsHitTesting(session.hasChanges)
+            .opacity(session.draft.changed ? 1 : 0)
+            .allowsHitTesting(session.draft.changed)
             .disabled(session.isBusy)
             Button("Save") {
                 session.save(onSuccess: onSaved)

@@ -109,15 +109,32 @@ pub enum DraftAlbum {
     Picked { album_id: String, title: String },
 }
 
-/// A library release's edit session as the editor opens it: the raw form,
-/// the cover, what the editor shows beside the form, and the album a save
-/// files the release under.
+/// A library release as an edit session opens on it: the raw form, the
+/// cover, what the editor shows beside the form, and the album the release
+/// is in.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
     pub cover: Option<bae_db::ImageRef>,
     pub display: crate::ReleaseEditDisplayContext,
     pub album: DraftAlbum,
+}
+
+/// A library release's edit session as its editor shows it now: the form
+/// with each change the person made in it, the release's cover as it is now,
+/// the tracks beside the form, the album a save files the release under,
+/// what the library holds for each artist credit the form carries, whether a
+/// save would write anything the session did not open on, and why the form
+/// can't be saved, when it can't.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditDraft {
+    pub edit: RawReleaseEdit,
+    pub cover: Option<bae_db::ImageRef>,
+    pub display: crate::ReleaseEditDisplayContext,
+    pub album: DraftAlbum,
+    pub artist_resolutions: Vec<bae_db::ResolvedCredit>,
+    pub changed: bool,
+    pub invalid: Option<EditValidationError>,
 }
 
 impl ReleaseEditSeed {

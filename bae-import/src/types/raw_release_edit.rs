@@ -54,6 +54,49 @@ impl RawReleaseEdit {
             .chain(self.tracks.iter().flat_map(|track| track.artist_assignments.explicit()))
             .filter_map(|credited| credited.artist.credit())
     }
+
+    /// Put one album-level field edit in the form: text typed into a field,
+    /// the label or barcode rows as the person left them, or a choice of
+    /// what the pressing is. A label row keeps the ids of the form's row with
+    /// its name ([`RawLabelEdit::kept_ids`]), as a draft's does.
+    pub fn set_field(&mut self, edit: DraftFieldEdit) {
+        match edit {
+            DraftFieldEdit::Text { field, value } => {
+                let slot = match field {
+                    CandidateEditField::AlbumTitle => &mut self.album_title,
+                    CandidateEditField::AlbumYear => &mut self.album_year,
+                    CandidateEditField::PressingYear => &mut self.pressing.year,
+                };
+                *slot = value;
+            }
+            DraftFieldEdit::Labels(labels) => {
+                self.pressing.labels = RawLabelEdit::kept_ids(labels, &self.pressing.labels);
+            }
+            DraftFieldEdit::Barcodes(barcodes) => self.pressing.barcodes = barcodes,
+            DraftFieldEdit::PressingFact(choice) => choice.apply(&mut self.pressing.facts),
+        }
+    }
+
+    /// Replace the album's ordered credits, each normalized as a stored list
+    /// is: names trimmed, each join kept only where it states something, the
+    /// last credit's dropped.
+    pub fn set_album_artists(&mut self, assignments: Vec<Credited>) {
+        self.album_artist_assignments = Credited::normalized_list(assignments);
+    }
+
+    /// Put the title and artists of `edited` in the form's row with its id,
+    /// its credits normalized; the row keeps its audio. `false` when the form
+    /// has no row with that id.
+    pub fn set_track(&mut self, edited: RawTrackEdit) -> bool {
+        let Some(track) = self.tracks.iter_mut().find(|track| track.id == edited.id) else {
+            return false;
+        };
+        let RawTrackEdit { title, mut artist_assignments, .. } = edited;
+        artist_assignments.normalize();
+        track.title = title;
+        track.artist_assignments = artist_assignments;
+        true
+    }
 }
 
 /// Raw pressing fields as the editor holds them: each text field is the text

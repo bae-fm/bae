@@ -4,7 +4,8 @@ import Foundation
 /// Release-level mutations and the remote-cover fetch the editor needs.
 /// Covers cover changes, pinning, deleting a release or a whole album,
 /// primary-release selection, opening a release edit session (whose own
-/// commands apply a catalog, pick its album and save), and the remote-cover
+/// commands write each change, apply a catalog, pick its album and save),
+/// and the remote-cover
 /// gallery fetch.
 @MainActor
 final class ReleaseEditor: Observable {
@@ -22,13 +23,10 @@ final class ReleaseEditor: Observable {
     let deleteAlbum: @Sendable (_ albumId: String) async throws -> Void
     let setPrimaryRelease:
         @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
-    /// Open an edit session of the caller's own on a release: its form as
-    /// the library holds it, and the session's commands.
+    /// Open an edit session of the caller's own on a release: its draft as
+    /// the library holds the release, and the session's commands.
     let openReleaseEdit:
         @Sendable (_ releaseId: String) async throws -> OpenedReleaseEdit
-    /// The release's cover as it stands now, leaving any session as it is.
-    let releaseCover:
-        @Sendable (_ releaseId: String) async throws -> BridgeImageRef?
     let fetchRemoteCovers:
         @Sendable (_ target: BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery
@@ -63,10 +61,6 @@ final class ReleaseEditor: Observable {
         openReleaseEdit:
             @escaping @Sendable (String) async throws -> OpenedReleaseEdit =
             { _ in throw StubError.notImplemented },
-        releaseCover:
-            @escaping @Sendable (String) async throws -> BridgeImageRef? = {
-                _ in nil
-            },
         fetchRemoteCovers:
             @escaping @Sendable (BridgeCoverTarget) async throws ->
             BridgeRemoteCoverGallery = {
@@ -81,7 +75,6 @@ final class ReleaseEditor: Observable {
         self.deleteAlbum = deleteAlbum
         self.setPrimaryRelease = setPrimaryRelease
         self.openReleaseEdit = openReleaseEdit
-        self.releaseCover = releaseCover
         self.fetchRemoteCovers = fetchRemoteCovers
         self.catalogApply = catalogApply
     }
@@ -111,17 +104,31 @@ final class ReleaseEditor: Observable {
             openReleaseEdit: {
                 let session = try await handle.openReleaseEdit(releaseId: $0)
                 return OpenedReleaseEdit(
-                    seed: session.opened(),
+                    draft: try await session.draft(),
                     session: ReleaseEditSessionCommands(
+                        draft: { try await session.draft() },
+                        setField: {
+                            try await session.setField(field: $0, value: $1)
+                        },
+                        setLabels: { try await session.setLabels(labels: $0) },
+                        setBarcodes: {
+                            try await session.setBarcodes(barcodes: $0)
+                        },
+                        setPressingFact: {
+                            try await session.setPressingFact(fact: $0)
+                        },
+                        setAlbumArtists: {
+                            try await session.setAlbumArtists(assignments: $0)
+                        },
+                        setTrack: { try await session.setTrack(track: $0) },
                         apply: {
                             try await session.applyCatalog(link: $0, apply: $1)
                         },
                         setAlbum: { try await session.setAlbum(albumId: $0) },
-                        save: { try await session.save(edit: $0) }
+                        save: { try await session.save() }
                     )
                 )
             },
-            releaseCover: { try await handle.releaseCover(releaseId: $0) },
             fetchRemoteCovers: {
                 try await handle.fetchRemoteCovers(target: $0)
             },
@@ -139,7 +146,6 @@ final class ReleaseEditor: Observable {
         ReleaseEditCommands(
             open: openReleaseEdit,
             searchAlbums: searchAlbums,
-            cover: releaseCover,
             catalogApply: catalogApply
         )
     }

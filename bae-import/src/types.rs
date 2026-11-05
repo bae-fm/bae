@@ -33,7 +33,9 @@ mod release_link;
 #[cfg(desktop)]
 pub use release_link::ReleaseLink;
 mod release_edit;
-pub use release_edit::{DraftAlbum, ReleaseEditSeed, ReleaseUserEdit, TrackUserEdit};
+pub use release_edit::{
+    DraftAlbum, ReleaseEditDraft, ReleaseEditSeed, ReleaseUserEdit, TrackUserEdit,
+};
 mod candidate_draft;
 #[cfg(desktop)]
 pub use candidate_draft::CandidateMetadataDraft;

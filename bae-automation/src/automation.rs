@@ -446,14 +446,13 @@ impl Automation {
         // A session of its own: an editor open on the release in the app keeps
         // its apply and pick, and this save makes that editor's save refuse.
         let session = self.services.open_release_edit(&release_id).await?;
-        let seed = self
-            .services
+        self.services
             .apply_release_edit_catalog(&session, &link, &bae_import::CatalogApplySteps::unread())
             .await?;
         if album_id.is_some() {
             self.services.set_release_edit_album(&session, album_id).await?;
         }
-        self.services.save_release_edit(&session, &seed.edit).await?;
+        self.services.save_release_edit(&session).await?;
         Ok(())
     }
 
@@ -467,7 +466,7 @@ impl Automation {
     ) -> Result<(), AutomationError> {
         let session = self.services.open_release_edit(&release_id).await?;
         self.services.set_release_edit_album(&session, Some(album_id)).await?;
-        self.services.save_release_edit(&session, &session.opened().edit).await?;
+        self.services.save_release_edit(&session).await?;
         Ok(())
     }
 

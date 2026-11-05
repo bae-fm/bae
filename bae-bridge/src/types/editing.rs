@@ -597,8 +597,9 @@ impl BridgePressingFactEdit {
 }
 
 /// `facts` with `edit` applied, the way the draft applies it: a medium with a
-/// count of zero is left out, a detail is kept once. The library release
-/// editor holds its form itself and applies each choice through this.
+/// count of zero is left out, a detail is kept once. A form bound to a value
+/// rather than to a draft in core, as a preview's is, applies each choice
+/// through this.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_apply_pressing_fact(
@@ -608,10 +609,8 @@ pub fn bridge_apply_pressing_fact(
     edit.applied_to(facts)
 }
 
-/// Raw edit-metadata form values, exactly as the editor holds them — text
+/// Raw edit-metadata form values, exactly as the editor shows them — text
 /// as typed, not yet normalized. Mirrors `bae_import::RawReleaseEdit`.
-/// The editor binds directly to this shape and calls `shape_release_edit` to
-/// normalize + validate it into a wire `BridgeReleaseUserEdit`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawReleaseEdit {
     pub album_title: String,
@@ -646,15 +645,21 @@ mirror_enum! {
     },
 }
 
-/// A library release's edit session as the editor opens it: the raw form, the
-/// cover, what the editor shows beside the form, and the album a save files
-/// the release under. Mirrors `bae_import::ReleaseEditSeed`.
+/// A library release's edit session as its editor shows it now: the form
+/// with each change made in it, the release's cover as it is now, what the
+/// editor shows beside the form, the album a save files the release under,
+/// what the library holds for each artist credit the form carries, whether a
+/// save would write anything the session did not open on, and why the form
+/// can't be saved, when it can't. Mirrors `bae_import::ReleaseEditDraft`.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditSeed {
+pub struct BridgeReleaseEditDraft {
     pub edit: BridgeRawReleaseEdit,
     pub cover: Option<BridgeImageRef>,
     pub display: BridgeReleaseEditDisplayContext,
     pub album: BridgeDraftAlbum,
+    pub artist_resolutions: Vec<BridgeResolvedCredit>,
+    pub changed: bool,
+    pub invalid: Option<BridgeValidationReason>,
 }
 
 /// The persisted file a track's body plays from in the release editor.

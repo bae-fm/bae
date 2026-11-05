@@ -1613,7 +1613,13 @@ as an import's pick does (§3.5); saving, cancelling and picking an album are
 local and show no spinner, their controls disabled until they end.
 
 A library release is edited in a *session* the editor opens on it: its form
-holds the release's values as the library holds them. Applying a catalog
+holds the release's values as the library holds them. Each change the
+person makes — a field, a label or barcode row, a choice of what the
+pressing is, the album's artists, a track's title or artists — is written
+to the session as it is made, in the order made, as the import pane writes
+each to its draft (§3.6), and the editor shows the session as it returns:
+the form, how each credit in it stands to the library, whether anything
+changed, and why the form can't be saved, when it can't. Applying a catalog
 release in the session reads it once, against the release's stored track
 lengths and its files, and replaces every value the release holds — the
 album fields, the pressing, each track's title, artists, medium, side and

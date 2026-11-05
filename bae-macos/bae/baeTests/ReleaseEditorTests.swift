@@ -28,11 +28,11 @@ struct ReleaseEditorTests {
     @MainActor
     @Test("Done and Library save through one persisted release session")
     func persistedReleaseSessionSavesAndAdvancesItsCancelPoint() async throws {
-        let seed = PreviewData.releaseEditSeed(trackCount: 2)
-        let library = PreviewReleaseLibrary(seed: seed)
+        let draft = PreviewData.releaseEditDraft(trackCount: 2)
+        let library = PreviewReleaseLibrary(draft: draft)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed,
+            draft: draft,
             library: library
         )
         await session.fieldWriter.setField(.albumTitle, "Saved title")
@@ -42,31 +42,31 @@ struct ReleaseEditorTests {
         }
 
         #expect(await library.open().edit.albumTitle == "Saved title")
-        #expect(!session.hasChanges)
+        #expect(!session.draft.changed)
 
         await session.fieldWriter.setField(.albumTitle, "Unsaved title")
         session.cancelChanges()
         try await Wait.until { !session.isBusy }
         #expect(!session.isBusy)
-        #expect(session.form.albumTitle == "Saved title")
-        #expect(!session.hasChanges)
+        #expect(session.draft.edit.albumTitle == "Saved title")
+        #expect(!session.draft.changed)
     }
 
     @MainActor
     @Test("Save commits the field that still has focus")
     func saveCommitsFocusedField() async throws {
-        var seed = PreviewData.releaseEditSeed(trackCount: 2)
-        seed.edit.albumTitle = "Original title"
-        let library = PreviewReleaseLibrary(seed: seed)
+        var draft = PreviewData.releaseEditDraft(trackCount: 2)
+        draft.edit.albumTitle = "Original title"
+        let library = PreviewReleaseLibrary(draft: draft)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed,
+            draft: draft,
             library: library
         )
         let size = NSSize(width: 900, height: 500)
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
-                values: session.form,
+                values: session.draft.edit,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: { .fixed([]) },
@@ -151,8 +151,8 @@ struct ReleaseEditorTests {
         layout: BridgeSourceAudioLayout,
         shared: Bool
     ) async throws -> [CGRect] {
-        var seed = PreviewData.releaseEditSeed(trackCount: 2)
-        let contexts = seed.edit.tracks.enumerated()
+        var draft = PreviewData.releaseEditDraft(trackCount: 2)
+        let contexts = draft.edit.tracks.enumerated()
             .map { index, track in
                 PreviewData.releaseEditTrackContext(
                     trackId: track.id,
@@ -168,7 +168,7 @@ struct ReleaseEditorTests {
             }
         // Core lays two tracks a sheet carves from one file out as one run,
         // and every other track as a run of its own.
-        seed.display.sides = [
+        draft.display.sides = [
             BridgeReleaseEditTrackSide(
                 side: .flat,
                 headerKey: nil,
@@ -179,7 +179,7 @@ struct ReleaseEditorTests {
         ]
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed
+            draft: draft
         )
         let size = NSSize(width: width, height: 700)
         return try await SnapshotTestSupport.withHostedWindow(
@@ -201,7 +201,7 @@ struct ReleaseEditorTests {
             try await SnapshotTestSupport.settle(host)
             let fields = SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSTextField }
-            return try seed.edit.tracks.map { track in
+            return try draft.edit.tracks.map { track in
                 let field = try #require(
                     fields.first { $0.stringValue == track.title }
                 )
@@ -215,22 +215,93 @@ extension ReleaseEditorTests {
     @MainActor
     @Test("cancel restores the saved form")
     func cancelRestoresSavedForm() async throws {
-        let seed = PreviewData.releaseEditSeed(trackCount: 2)
+        let draft = PreviewData.releaseEditDraft(trackCount: 2)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed
+            draft: draft
         )
         await session.fieldWriter.setField(.albumTitle, "Edited title")
         await session.fieldWriter.setPressingFact(
             .area(area: .country(code: "JP"))
         )
-        #expect(session.hasChanges)
+        #expect(session.draft.changed)
 
         session.cancelChanges()
         try await Wait.until { !session.isBusy }
         #expect(!session.isBusy)
-        #expect(session.form.albumTitle == seed.edit.albumTitle)
-        #expect(session.form.pressing.facts == seed.edit.pressing.facts)
-        #expect(!session.hasChanges)
+        #expect(session.draft.edit.albumTitle == draft.edit.albumTitle)
+        #expect(session.draft.edit.pressing.facts == draft.edit.pressing.facts)
+        #expect(!session.draft.changed)
+    }
+}
+
+extension ReleaseEditorTests {
+    /// The values core's session returns for each change, in the order
+    /// they reached it.
+    private actor CoreSession {
+        private(set) var titles: [String] = []
+        private var draft: BridgeReleaseEditDraft
+
+        init(draft: BridgeReleaseEditDraft) {
+            self.draft = draft
+        }
+
+        /// Take a title as core does: blank is not savable.
+        func setTitle(_ title: String) async -> BridgeReleaseEditDraft {
+            // The first change takes longer, so a later one sent at once
+            // would land first if the editor didn't wait for it.
+            if titles.isEmpty { await Task.yield() }
+            titles.append(title)
+            draft.edit.albumTitle = title
+            draft.changed = true
+            draft.invalid = title.isEmpty ? .emptyAlbumTitle : nil
+            return draft
+        }
+    }
+
+    @MainActor
+    @Test(
+        "each change reaches core in the order made, and the editor shows the draft core returns"
+    )
+    func changesReachCoreInOrder() async throws {
+        let draft = PreviewData.releaseEditDraft(trackCount: 1)
+        let core = CoreSession(draft: draft)
+        let library = PreviewReleaseLibrary(draft: draft)
+        let preview = library.opened().session
+        let session = ReleaseMetadataEditSession(
+            releaseId: "release-test",
+            opened: OpenedReleaseEdit(
+                draft: draft,
+                session: ReleaseEditSessionCommands(
+                    draft: preview.draft,
+                    setField: { _, value in await core.setTitle(value) },
+                    setLabels: preview.setLabels,
+                    setBarcodes: preview.setBarcodes,
+                    setPressingFact: preview.setPressingFact,
+                    setAlbumArtists: preview.setAlbumArtists,
+                    setTrack: preview.setTrack,
+                    apply: preview.apply,
+                    setAlbum: preview.setAlbum,
+                    save: preview.save
+                )
+            ),
+            commands: library.commands()
+        )
+
+        let writer = session.fieldWriter
+        let first = Task { @MainActor in await writer.setField(.albumTitle, "")
+        }
+        let second = Task { @MainActor in
+            await writer.setField(.albumTitle, "Album Title")
+        }
+        await first.value
+        await second.value
+        #expect(await core.titles == ["", "Album Title"])
+        #expect(session.draft.edit.albumTitle == "Album Title")
+        #expect(session.validationMessage == nil)
+
+        await session.fieldWriter.setField(.albumTitle, "")
+        #expect(session.draft.changed)
+        #expect(session.validationMessage != nil)
     }
 }

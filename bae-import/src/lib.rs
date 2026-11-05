@@ -313,9 +313,9 @@ pub use types::{
     CandidateDraft, CandidateEditField, CandidateTrack, Credited, DraftAlbum, DraftFieldEdit,
     DraftTrack, EditValidationError, LibraryDraft, LibraryTrack, MetadataProvenance,
     PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft,
-    ReleaseEditDisplayContext, ReleaseEditLoadError, ReleaseEditSeed, ReleaseEditTrackContext,
-    ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource, ReleaseUserEdit,
-    TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    ReleaseEditDisplayContext, ReleaseEditDraft, ReleaseEditLoadError, ReleaseEditSeed,
+    ReleaseEditTrackContext, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
+    ReleaseUserEdit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

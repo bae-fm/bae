@@ -280,3 +280,47 @@ fn from_user_edit_round_trips_through_shape() {
 
     assert_eq!(raw.shape().expect("re-shapes"), original);
 }
+
+/// The session's form takes each edit as the import pane's draft does: a
+/// field's text as typed, label rows keeping the ids of the row with their
+/// name, and a track row's title and artists by its id, its audio kept.
+#[test]
+fn a_form_takes_each_edit_by_its_field_or_row() {
+    let mut form = valid_form();
+    form.pressing.labels[0].musicbrainz_label_id = Some("mb-label".to_string());
+    form.tracks[0].file = Some(AudioFile::Standalone { file_id: "01.flac".to_string() });
+
+    form.set_field(DraftFieldEdit::Text {
+        field: CandidateEditField::PressingYear,
+        value: " 2001 ".to_string(),
+    });
+    form.set_field(DraftFieldEdit::Labels(vec![
+        RawLabelEdit { name: "Label Name".to_string(), ..Default::default() },
+        RawLabelEdit { name: "Other Label".to_string(), ..Default::default() },
+    ]));
+    let renamed = RawTrackEdit {
+        id: "track-0".to_string(),
+        title: "Renamed".to_string(),
+        artist_assignments: TrackArtistAssignments::AlbumArtists,
+        file: None,
+    };
+    assert!(form.set_track(renamed.clone()));
+
+    assert_eq!(form.pressing.year, " 2001 ");
+    assert_eq!(
+        form.pressing
+            .labels
+            .iter()
+            .map(|label| label.musicbrainz_label_id.as_deref())
+            .collect::<Vec<_>>(),
+        [Some("mb-label"), None]
+    );
+    assert_eq!(form.tracks[0].title, "Renamed");
+    assert_eq!(form.tracks[0].artist_assignments, TrackArtistAssignments::AlbumArtists);
+    assert_eq!(
+        form.tracks[0].file,
+        Some(AudioFile::Standalone { file_id: "01.flac".to_string() }),
+        "a row keeps its audio"
+    );
+    assert!(!form.set_track(RawTrackEdit { id: "no-such-row".to_string(), ..renamed }));
+}

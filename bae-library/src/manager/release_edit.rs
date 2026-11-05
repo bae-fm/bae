@@ -2,13 +2,15 @@
 //!
 //! Each open editor owns a session of its own ([`ReleaseEdit`]): the
 //! release's values as the library held them when it opened, and what the
-//! person did in it beyond the form the editor keeps — a catalog applied,
-//! which replaces every value the release holds (titles, credits, mediums and
-//! places, roles and works, its records and the album they name), and the
-//! library album picked to file it under. Sessions on one release share
-//! nothing, so one editor's apply or pick is never another's. Saving writes
-//! the session whole; dropping it discards it. Nothing re-reads a catalog or
-//! the files' tags: the session holds what the apply read.
+//! person did in it: the form with each change written to it as it is made,
+//! a catalog applied, which replaces every value the release holds (titles,
+//! credits, mediums and places, roles and works, its records and the album
+//! they name), and the library album picked to file it under. Every change
+//! returns the session's draft, what its editor shows. Sessions on one
+//! release share nothing, so one editor's edit, apply or pick is never
+//! another's. Saving writes the session whole; dropping it discards it.
+//! Nothing re-reads a catalog or the files' tags: the session holds what the
+//! apply read.
 //!
 //! A save checks the release against what its session opened on: one the
 //! library no longer holds as it did — another session saved it, MCP wrote
@@ -19,7 +21,6 @@
 
 use super::*;
 
-/// One open editor's session on a library release.
 /// A release as the editor reads it: its detail, its album's artists, and
 /// its tracks' audio in release order.
 pub(crate) struct ReleaseEditContext {
@@ -28,22 +29,38 @@ pub(crate) struct ReleaseEditContext {
     pub(crate) tracks: Vec<bae_db::DbReleaseEditTrack>,
 }
 
+/// One open editor's session on a library release.
 #[derive(Debug)]
 pub struct ReleaseEdit {
     release_id: String,
     /// The release as the library held it when the session opened: what the
     /// editor first showed, and what a save requires the library still holds.
     opened: bae_import::ReleaseEditSeed,
-    work: std::sync::Mutex<SessionWork>,
+    /// Held across a change's reads, so each change starts from the one
+    /// before it.
+    work: tokio::sync::Mutex<SessionWork>,
 }
 
-/// What the person did in a session beyond the form: what its save writes
-/// beyond the edited fields.
-#[derive(Debug, Default, Clone)]
+/// What the person did in a session: the form as they left it, the tracks
+/// and album it shows, and what its save writes beyond the form.
+#[derive(Debug, Clone)]
 struct SessionWork {
+    form: bae_import::RawReleaseEdit,
+    /// The tracks beside the form: the release's, or laid out again at the
+    /// places an applied catalog gives them.
+    display: bae_import::ReleaseEditDisplayContext,
+    /// The album a save files the release under.
+    album: bae_import::DraftAlbum,
     applied: Option<AppliedCatalog>,
     /// The library album the person picked, over the one the records name.
     picked_album: Option<String>,
+}
+
+impl SessionWork {
+    /// Whether a save would write anything the session did not open on.
+    fn changed(&self, opened: &bae_import::ReleaseEditSeed) -> bool {
+        self.form != opened.edit || self.applied.is_some() || self.picked_album.is_some()
+    }
 }
 
 /// What applying a catalog release in a session read: every value, laid onto
@@ -61,31 +78,29 @@ impl ReleaseEdit {
         &self.release_id
     }
 
-    /// The release as the library held it when the session opened: the form,
-    /// cover, tracks and album the editor starts from.
+    /// The release as the library held it when the session opened.
     pub fn opened(&self) -> &bae_import::ReleaseEditSeed {
         &self.opened
-    }
-
-    fn work(&self) -> std::sync::MutexGuard<'_, SessionWork> {
-        self.work.lock().expect("a release edit session's lock is never held across a panic")
-    }
-
-    /// What the person has done in the session so far.
-    fn snapshot(&self) -> SessionWork {
-        self.work().clone()
     }
 }
 
 impl LibraryManager {
     /// Open an edit session on a library release: its values as the library
-    /// holds them, with no catalog applied and no album picked. Every editor
-    /// opens its own; a session on the same release elsewhere is untouched.
+    /// holds them, with nothing edited, applied or picked. Every editor opens
+    /// its own; a session on the same release elsewhere is untouched.
     pub async fn open_release_edit(&self, release_id: &str) -> Result<ReleaseEdit, LibraryError> {
+        let opened = self.read_release_edit(release_id).await?;
+        let work = SessionWork {
+            form: opened.edit.clone(),
+            display: opened.display.clone(),
+            album: opened.album.clone(),
+            applied: None,
+            picked_album: None,
+        };
         Ok(ReleaseEdit {
             release_id: release_id.to_string(),
-            opened: self.read_release_edit(release_id).await?,
-            work: std::sync::Mutex::default(),
+            opened,
+            work: tokio::sync::Mutex::new(work),
         })
     }
 
@@ -186,20 +201,102 @@ impl LibraryManager {
         })
     }
 
+    /// The session's draft as its editor shows it now.
+    pub async fn release_edit_draft(
+        &self,
+        session: &ReleaseEdit,
+    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+        let work = session.work.lock().await.clone();
+        self.draft_of(session, work).await
+    }
+
+    /// Write one album-level field of the form as the person left it.
+    /// Returns the session's draft.
+    pub async fn edit_release_edit_field(
+        &self,
+        session: &ReleaseEdit,
+        edit: bae_import::DraftFieldEdit,
+    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+        let work = {
+            let mut work = session.work.lock().await;
+            work.form.set_field(edit);
+            work.clone()
+        };
+        self.draft_of(session, work).await
+    }
+
+    /// Replace the form's ordered album credits. Returns the session's draft.
+    pub async fn set_release_edit_album_artists(
+        &self,
+        session: &ReleaseEdit,
+        assignments: Vec<bae_import::Credited>,
+    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+        let work = {
+            let mut work = session.work.lock().await;
+            work.form.set_album_artists(assignments);
+            work.clone()
+        };
+        self.draft_of(session, work).await
+    }
+
+    /// Write one track row's title and artists as the person left them, by
+    /// the row's id. Returns the session's draft. A row the form does not
+    /// hold is refused.
+    pub async fn set_release_edit_track(
+        &self,
+        session: &ReleaseEdit,
+        track: bae_import::RawTrackEdit,
+    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+        let id = track.id.clone();
+        let work = {
+            let mut work = session.work.lock().await;
+            if !work.form.set_track(track) {
+                return Err(LibraryError::Refused(format!("release edit has no track row '{id}'")));
+            }
+            work.clone()
+        };
+        self.draft_of(session, work).await
+    }
+
+    /// The draft of a session that has done `work`: what the library holds
+    /// for each credit its form carries, and the release's cover as it is now,
+    /// which no session holds.
+    async fn draft_of(
+        &self,
+        session: &ReleaseEdit,
+        work: SessionWork,
+    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+        let changed = work.changed(&session.opened);
+        let SessionWork { form, display, album, .. } = work;
+        let credits: Vec<_> = form.credits().cloned().collect();
+        let artist_resolutions = self.database.resolve_artist_credits(&credits).await?;
+        let cover = self.cover_ref(session.release_id()).await?;
+        let invalid = form.shape().err();
+        Ok(bae_import::ReleaseEditDraft {
+            edit: form,
+            cover,
+            display,
+            album,
+            artist_resolutions,
+            changed,
+            invalid,
+        })
+    }
+
     /// Apply the catalog release `link` picks to `session`: read it against
     /// the release's tracks' stored lengths and its files, as identification
     /// reads them, and hold every value it gives and the records it names
-    /// until the save. The form comes back
-    /// filled with the reading's values; the cover is the release's own, which
-    /// an apply never changes. A release whose tracks the reading cannot lay
-    /// out is refused with both counts. Each fetch it waits on is told to
-    /// `steps`.
+    /// until the save. The form becomes the reading's values and the tracks
+    /// are laid out at the places it gives them; the cover is the release's
+    /// own, which an apply never changes. Returns the session's draft. A
+    /// release whose tracks the reading cannot lay out is refused with both
+    /// counts. Each fetch it waits on is told to `steps`.
     pub async fn apply_release_edit_catalog(
         &self,
         session: &ReleaseEdit,
         link: &bae_identify::PressingLink,
         steps: &bae_import::CatalogApplySteps,
-    ) -> Result<bae_import::ReleaseEditSeed, LibraryError> {
+    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
         let release_id = session.release_id();
         // Nothing names these releases, so they are read and never stored.
         let reads = bae_import::ReleaseReads::new(self.database.clone(), self.catalogs.clone());
@@ -225,38 +322,41 @@ impl LibraryManager {
                 release_tracks: 0,
             }));
         }
-        let mut seed = self.read_release_edit(release_id).await?;
+        let opened = &session.opened;
         let track_ids: Vec<String> =
-            seed.display.tracks().map(|track| track.track_id.clone()).collect();
+            opened.display.tracks().map(|track| track.track_id.clone()).collect();
         let draft = bae_import::reading_draft::library_draft(values, track_ids);
-        seed.edit = draft.release_edit();
-        seed.display = seed.display.placed(
-            draft
-                .tracks
-                .iter()
-                .map(|track| bae_types::mediums::track_position(&track.place, &draft.mediums)),
-        );
         let work = {
-            let mut work = session.work();
-            work.applied = Some(AppliedCatalog {
+            let mut work = session.work.lock().await;
+            let mut applied = work.clone();
+            applied.form = draft.release_edit();
+            applied.display = opened.display.clone().placed(
+                draft
+                    .tracks
+                    .iter()
+                    .map(|track| bae_types::mediums::track_position(&track.place, &draft.mediums)),
+            );
+            applied.applied = Some(AppliedCatalog {
                 draft,
                 records: bae_import::service::records_for_commit(&release, &partners),
             });
+            applied.album = self.session_album(release_id, &applied, opened.album.clone()).await?;
+            *work = applied;
             work.clone()
         };
-        seed.album = self.session_album(release_id, &work, seed.album).await?;
-        Ok(seed)
+        self.draft_of(session, work).await
     }
 
     /// Pick the library album `album_id` for `session` to file its release
     /// under, over the one its records name, or (`None`) leave it to its
-    /// records. Returns the album the session now files it under. An album
-    /// the library does not hold cannot be picked.
+    /// records. Returns the session's draft, naming the album it now files
+    /// the release under. An album the library does not hold cannot be
+    /// picked.
     pub async fn set_release_edit_album(
         &self,
         session: &ReleaseEdit,
         album_id: Option<String>,
-    ) -> Result<bae_import::DraftAlbum, LibraryError> {
+    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
         let release_id = session.release_id();
         if let Some(album_id) = &album_id {
             self.database
@@ -265,12 +365,15 @@ impl LibraryManager {
                 .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
         }
         let work = {
-            let mut work = session.work();
-            work.picked_album = album_id;
+            let mut work = session.work.lock().await;
+            let mut picked = work.clone();
+            picked.picked_album = album_id;
+            picked.album =
+                self.session_album(release_id, &picked, session.opened.album.clone()).await?;
+            *work = picked;
             work.clone()
         };
-        let current = self.read_release_edit(release_id).await?.album;
-        self.session_album(release_id, &work, current).await
+        self.draft_of(session, work).await
     }
 
     /// The album a session that has done `work` files the release under: the
@@ -307,8 +410,8 @@ impl LibraryManager {
         })
     }
 
-    /// Save `session` with the form `edit` the person left: in one write, the
-    /// edited fields, every value a catalog applied in the session (its
+    /// Save `session`: in one write, the form as the person left it, every
+    /// value a catalog applied in the session (its
     /// mediums and places, roles and works), its records, and the album the
     /// release lands in — the one the person picked, else the one the applied
     /// records name. A session with nothing applied writes the fields, and
@@ -319,13 +422,10 @@ impl LibraryManager {
     /// No other session's save, and no field edit
     /// ([`Self::apply_release_metadata_user_edit`]), runs on this device
     /// between that check and the write.
-    pub async fn save_release_edit(
-        &self,
-        session: &ReleaseEdit,
-        edit: &bae_import::RawReleaseEdit,
-    ) -> Result<(), LibraryError> {
+    pub async fn save_release_edit(&self, session: &ReleaseEdit) -> Result<(), LibraryError> {
         let release_id = session.release_id();
-        let SessionWork { applied, picked_album: album } = session.snapshot();
+        let SessionWork { form: edit, applied, picked_album: album, .. } =
+            session.work.lock().await.clone();
         let shaped = edit.shape()?;
         shaped.validate()?;
         let _writing = self.release_writes.lock().await;

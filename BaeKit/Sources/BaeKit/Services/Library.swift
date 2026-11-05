@@ -51,11 +51,6 @@ public final class Library: Sendable, Observable {
     /// Open an artist picker's live search, pointed at each new text and
     /// window in place.
     public let artistSearch: @Sendable () -> ArtistSearchQuery
-    /// What the library holds, as it stands now, for every artist credit in a
-    /// release editor's form — what the editor badges each credit with.
-    public let resolveReleaseEditCredits:
-        @Sendable (_ edit: BridgeRawReleaseEdit) async throws
-            -> [BridgeResolvedCredit]
     /// The Storage Manager list under a first sort and filter, read through
     /// one query whose view moves in place.
     public let storageBrowse:
@@ -133,9 +128,6 @@ public final class Library: Sendable, Observable {
         artistSearch: @escaping @Sendable () -> ArtistSearchQuery = {
             fatalError("Library artist search is not installed")
         },
-        resolveReleaseEditCredits:
-            @escaping @Sendable (BridgeRawReleaseEdit) async throws
-            -> [BridgeResolvedCredit] = { _ in [] },
         storageBrowse:
             @escaping @Sendable (BridgeStorageSort, BridgeStorageFilter)
             -> StorageBrowseQuery = { _, _ in
@@ -170,7 +162,6 @@ public final class Library: Sendable, Observable {
         self.workDetail = workDetail
         self.albumSelection = albumSelection
         self.artistSearch = artistSearch
-        self.resolveReleaseEditCredits = resolveReleaseEditCredits
         self.storageBrowse = storageBrowse
         self.storageInspector = storageInspector
         self.releaseFiles = releaseFiles
@@ -225,9 +216,6 @@ extension Library {
                 },
                 artistSearch: {
                     ArtistSearchQuery(handle.subscribeArtistSearch())
-                },
-                resolveReleaseEditCredits: {
-                    try await handle.resolveReleaseEditCredits(edit: $0)
                 },
                 storageBrowse: {
                     StorageBrowseQuery(

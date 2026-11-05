@@ -4,14 +4,14 @@ import BaeKit
 
 extension PreviewData {
     /// An editor's session on `releaseId`, opened on a library holding it as
-    /// `seed` (or on `library`).
+    /// `draft` (or on `library`).
     @MainActor
     static func releaseEditSession(
         releaseId: String = "release-preview",
-        seed: BridgeReleaseEditSeed,
+        draft: BridgeReleaseEditDraft,
         library: PreviewReleaseLibrary? = nil
     ) -> ReleaseMetadataEditSession {
-        let library = library ?? PreviewReleaseLibrary(seed: seed)
+        let library = library ?? PreviewReleaseLibrary(draft: draft)
         return ReleaseMetadataEditSession(
             releaseId: releaseId,
             opened: library.opened(),

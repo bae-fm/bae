@@ -63,7 +63,7 @@ struct InlineFieldHeightTests {
     func everyFieldIsAsTallAsItsOwnFont() async throws {
         // Title, album year, year and barcode, and a name and a catalog
         // number per label row.
-        let labelRows = PreviewData.releaseEditSeed(trackCount: 2).edit
+        let labelRows = PreviewData.releaseEditDraft(trackCount: 2).edit
             .pressing.labels.count
         for _ in 0..<40 {
             try await withHostedHeader { _, host in
@@ -96,19 +96,19 @@ struct InlineFieldHeightTests {
         }
     }
 
-    /// The release header over a two-track seed titled `title`, hosted.
+    /// The release header over a two-track draft titled `title`, hosted.
     private func withHostedHeader<Value>(
         _ body: (NSWindow, NSView) async throws -> Value
     ) async throws -> Value {
-        var seed = PreviewData.releaseEditSeed(trackCount: 2)
-        seed.edit.albumTitle = Self.title
+        var draft = PreviewData.releaseEditDraft(trackCount: 2)
+        draft.edit.albumTitle = Self.title
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
-            seed: seed
+            draft: draft
         )
         return try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
-                values: session.form,
+                values: session.draft.edit,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: { .fixed([]) },

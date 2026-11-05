@@ -65,17 +65,6 @@ impl LibraryManager {
         Ok(self.database.remove_artist_credit_name(artist_id, key).await?)
     }
 
-    /// What the library holds, as it stands now, for every artist credit
-    /// `edit` carries — how the release editor, which holds its form itself,
-    /// shows the credits in it.
-    pub async fn resolve_release_edit_credits(
-        &self,
-        edit: &bae_import::RawReleaseEdit,
-    ) -> Result<Vec<bae_db::ResolvedCredit>, LibraryError> {
-        let credits: Vec<_> = edit.credits().cloned().collect();
-        Ok(self.database.resolve_artist_credits(&credits).await?)
-    }
-
     /// Resolve `artists` as credits and write the new and filled-in rows, in
     /// one transaction, returning the artist each resolved to. The artist rule
     /// every import and edit commits by, for tests that need library artists

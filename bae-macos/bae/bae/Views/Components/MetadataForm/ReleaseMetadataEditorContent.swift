@@ -1,11 +1,8 @@
 import BaeKit
-import OSLog
 import SwiftUI
 
 /// The release editor's draft: its fields, album row and track table.
 struct ReleaseMetadataEditorContent: View {
-    private static let logger = Logger.bae("ReleaseMetadataEditor")
-
     let session: ReleaseMetadataEditSession
     var onEditCover: (() -> Void)?
     /// Show a library album the album row names.
@@ -14,10 +11,6 @@ struct ReleaseMetadataEditorContent: View {
 
     @State
     private var availableWidth = ReleaseMetadataTrackColumns.minimumTableWidth
-    /// What the library holds for the form's credits, read again whenever the
-    /// form changes.
-    @State
-    private var artistResolutions: [BridgeResolvedCredit] = []
     @Environment(Library.self)
     private var library
 
@@ -32,7 +25,7 @@ struct ReleaseMetadataEditorContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.section) {
             ReleaseMetadataHeader(
-                values: session.form,
+                values: session.draft.edit,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: library.artistSearch,
@@ -40,30 +33,14 @@ struct ReleaseMetadataEditorContent: View {
                 audioFacts: { sourceAudio }
             )
             DraftAlbumRow(
-                album: session.album,
+                album: session.draft.album,
                 canEdit: true,
                 actions: session.albumActions(viewInLibrary: onViewAlbum)
             )
             trackTable
         }
         .disabled(session.isBusy)
-        .environment(\.artistResolutions, artistResolutions)
-        .task(id: session.form) {
-            do {
-                artistResolutions = try await library.resolveReleaseEditCredits(
-                    session.form
-                )
-            }
-            catch is CancellationError {}
-            catch {
-                // No badge beats a stale one; the save resolves every credit
-                // itself.
-                artistResolutions = []
-                Self.logger.error(
-                    "Could not read the form's artist credits: \(error)"
-                )
-            }
-        }
+        .environment(\.artistResolutions, session.draft.artistResolutions)
     }
 
     private var cover: some View {
@@ -71,7 +48,7 @@ struct ReleaseMetadataEditorContent: View {
             onEditCover?()
         } label: {
             ImageView(
-                imageRef: session.cover,
+                imageRef: session.draft.cover,
                 pointSize: ReleaseMetadataLayout.coverSize
             )
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
@@ -95,7 +72,7 @@ struct ReleaseMetadataEditorContent: View {
 
     @ViewBuilder
     private var sourceAudio: some View {
-        if let summary = session.display.sourceAudio {
+        if let summary = session.draft.display.sourceAudio {
             ReleaseSourceAudioSummaryView(sourceAudio: summary)
         }
     }
@@ -212,7 +189,7 @@ struct ReleaseMetadataEditorContent: View {
                 editingCommands: session.editingCommands,
                 position: item.context.positionText,
                 artistSearch: library.artistSearch,
-                onChange: { session.updateTrack($0) }
+                onChange: { await session.updateTrack($0) }
             )
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)

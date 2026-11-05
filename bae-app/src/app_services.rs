@@ -510,11 +510,19 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<bae_library::ReleaseEdit, bae_library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &bae_library::ReleaseEdit, link: &bae_identify::PressingLink, steps: &bae_import::CatalogApplySteps) -> Result<bae_import::ReleaseEditSeed, bae_library::LibraryError>);
+    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &bae_library::ReleaseEdit, link: &bae_identify::PressingLink, steps: &bae_import::CatalogApplySteps) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, save_release_edit => save_release_edit(session: &bae_library::ReleaseEdit, edit: &bae_import::RawReleaseEdit) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, save_release_edit => save_release_edit(session: &bae_library::ReleaseEdit) -> Result<(), bae_library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &bae_library::ReleaseEdit, album_id: Option<String>) -> Result<bae_import::DraftAlbum, bae_library::LibraryError>);
+    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &bae_library::ReleaseEdit, album_id: Option<String>) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(manager, release_edit_draft => release_edit_draft(session: &bae_library::ReleaseEdit) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(manager, edit_release_edit_field => edit_release_edit_field(session: &bae_library::ReleaseEdit, edit: bae_import::DraftFieldEdit) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(manager, set_release_edit_album_artists => set_release_edit_album_artists(session: &bae_library::ReleaseEdit, assignments: Vec<bae_import::Credited>) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    delegate_async!(manager, set_release_edit_track => set_release_edit_track(session: &bae_library::ReleaseEdit, track: bae_import::RawTrackEdit) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), bae_library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -523,7 +531,6 @@ impl AppServices {
     delegate_async!(manager, save_track => save_track(track_id: &str, output_path: &std::path::Path, preset_id: &str) -> Result<(), bae_library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, bae_library::LibraryError>);
-    delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &bae_import::RawReleaseEdit) -> Result<Vec<bae_db::ResolvedCredit>, bae_library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::LibraryError>);
     delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

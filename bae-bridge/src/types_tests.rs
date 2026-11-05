@@ -365,7 +365,7 @@ mod conversion_roundtrip {
 
     #[cfg(feature = "desktop")]
     #[test]
-    fn release_edit_seed_carries_the_persisted_editor_projection() {
+    fn release_edit_draft_carries_the_persisted_editor_projection() {
         let edit = bae_import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: bae_import::Credited::plain_list([
@@ -387,7 +387,7 @@ mod conversion_roundtrip {
         };
 
         {
-            let bridge = BridgeReleaseEditSeed::from_core(bae_import::ReleaseEditSeed {
+            let bridge = BridgeReleaseEditDraft::from_core(bae_import::ReleaseEditDraft {
                 edit: edit.clone(),
                 cover: None,
                 display: bae_import::ReleaseEditDisplayContext {
@@ -412,8 +412,13 @@ mod conversion_roundtrip {
                     album_id: "album-id".to_string(),
                     title: "Album Title".to_string(),
                 },
+                artist_resolutions: Vec::new(),
+                changed: true,
+                invalid: Some(bae_import::EditValidationError::NoAlbumArtist),
             });
             assert_eq!(bridge.edit.album_title, edit.album_title);
+            assert!(bridge.changed);
+            assert!(matches!(bridge.invalid, Some(BridgeValidationReason::NoAlbumArtist)));
             assert_eq!(
                 bridge.album,
                 BridgeDraftAlbum::Named {

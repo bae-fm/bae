@@ -98,7 +98,7 @@ struct ReleaseEditorSheet: View {
 #if DEBUG
     #Preview("Edit release") {
         let library = PreviewReleaseLibrary(
-            seed: PreviewData.releaseEditSeed(trackCount: 6)
+            draft: PreviewData.releaseEditDraft(trackCount: 6)
         )
         ReleaseEditorSheet(
             releaseId: "release-preview",
