@@ -246,18 +246,19 @@ pub(super) fn row_to_library_image(
 }
 
 /// Each release with files in coven's upload queue, and where its first
-/// queued file stands in it, as the listing keeps them. Covers and other
-/// images in the queue are no release uploading.
+/// queued file stands in it, as each release's storage row keeps them.
+/// Covers and other images in the queue are no release uploading.
 pub const UPLOADING_RELEASES: &str =
     "SELECT uploading.release_id, uploading.first_queued_position AS position \
-     FROM release_listing uploading \
+     FROM release_storage uploading \
      WHERE uploading.first_queued_position IS NOT NULL";
 
-/// Whether this device keeps every file of the release `listing` lists
-/// pinned and whole here: its pinned count, which local triggers keep from
-/// the pins coven's `coven_pins` lists as kept, has reached its file count.
-pub const RELEASE_LISTING_PINNED: &str =
-    "(listing.file_count > 0 AND listing.pinned_count = listing.file_count)";
+/// Whether this device keeps every file of the release whose storage row is
+/// `release_storage storage` pinned and whole here: its pinned count, which
+/// local triggers keep from the pins coven's `coven_pins` lists as kept, has
+/// reached its file count.
+pub const RELEASE_STORAGE_PINNED: &str =
+    "(storage.file_count > 0 AND storage.pinned_count = storage.file_count)";
 
 /// The credits of `owner_expr` in `table` (`album_artists` or
 /// `track_artists`), in list order, as a JSON array (see

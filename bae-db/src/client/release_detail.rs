@@ -22,10 +22,10 @@ pub fn release_detail_rows_on(
     let mediums = release_mediums_on(sql, &release.id)?;
     let (pinned, remote) = sql.query_row(
         &format!(
-            "SELECT EXISTS (SELECT 1 FROM release_listing listing \
-                            WHERE listing.release_id = ?1 AND {RELEASE_LISTING_PINNED}), \
-                    EXISTS (SELECT 1 FROM release_listing listing \
-                            WHERE listing.release_id = ?1 AND listing.stored = 1)"
+            "SELECT EXISTS (SELECT 1 FROM release_storage storage \
+                            WHERE storage.release_id = ?1 AND {RELEASE_STORAGE_PINNED}), \
+                    EXISTS (SELECT 1 FROM release_storage storage \
+                            WHERE storage.release_id = ?1 AND storage.stored = 1)"
         ),
         params![release.id],
         |row| Ok((row.get(0)?, row.get(1)?)),

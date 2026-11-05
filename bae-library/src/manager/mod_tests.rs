@@ -600,9 +600,10 @@ pub(super) async fn rows_until(
     .expect("the inspector's read gives the expected rows")
 }
 
-// The harness the listing's upkeep tests write through: the pinned count
-// (pin_tests) and the queued count (storage_tests) `release_listing` keeps
-// per release, each against what coven lists, probed file by file.
+// The harness the storage rows' upkeep tests write through: the pinned
+// count (pin_tests) and the queued count (storage_tests) `release_storage`
+// keeps per release, and `release_listing` copies, each against what coven
+// lists, probed file by file.
 
 /// One release the harness wrote, and where its files stand.
 pub(super) struct HarnessRelease {

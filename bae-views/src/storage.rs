@@ -348,10 +348,10 @@ fn storage_row_select(
             r.id AS release_id, \
             r.album_id, \
             {release_media} AS release_media, \
-            listing.stored AS remote, \
-            listing.file_count, \
-            listing.total_size, \
-            {RELEASE_LISTING_PINNED} AS pinned, \
+            storage.stored AS remote, \
+            storage.file_count, \
+            storage.total_size, \
+            {RELEASE_STORAGE_PINNED} AS pinned, \
             listing.storage_order, \
             listing.created_at AS date_added, \
             {release_cover} AS release_cover_version, \
@@ -359,6 +359,7 @@ fn storage_row_select(
             {transfer_action} AS transfer_action, \
             {album_columns}{extra} \
         FROM {listing} \
+        CROSS JOIN release_storage storage ON storage.release_id = listing.release_id \
         JOIN releases r ON r.id = listing.release_id \
         JOIN albums a ON a.id = listing.album_id \
         LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = listing.release_id \

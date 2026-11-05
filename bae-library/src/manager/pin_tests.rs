@@ -1,6 +1,6 @@
 //! Pinning a release: what a pin counts and keeps, how its progress and
 //! failures read, a release kept here once its copies land, and the pinned
-//! count the listing keeps.
+//! count each release's storage row keeps.
 
 use super::*;
 use crate::manager::tests::*;
@@ -94,25 +94,30 @@ fn a_download_the_pins_end_before_the_watch_keeps_its_bytes() {
     assert_eq!(count.bytes(&sizes), Some(400));
 }
 
-/// Each release whose listed pinned or file count differs from the one probed
-/// from its files, or that has no listing row: none when the triggers kept
-/// up.
-async fn listing_disagreements(manager: &LibraryManager) -> Vec<String> {
+/// Each release whose storage row's pinned or file count differs from the
+/// one probed from its files, or that has no storage row, and each whose
+/// listing row is missing or holds a pinned or file count other than its
+/// storage row's: none when the triggers kept up.
+async fn storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .database
         .query_texts_for_test(
-            "SELECT r.id || ': listed ' \
-                 || COALESCE(l.pinned_count || ' of ' || l.file_count, 'nothing') \
+            "SELECT r.id || ': stored ' \
+                 || COALESCE(s.pinned_count || ' of ' || s.file_count, 'nothing') \
+                 || ', listed ' || COALESCE(l.pinned_count || ' of ' || l.file_count, 'nothing') \
                  || ', probed ' || probe.pinned || ' of ' || probe.files \
              FROM releases r \
+             LEFT JOIN release_storage s ON s.release_id = r.id \
              LEFT JOIN release_listing l ON l.release_id = r.id \
              JOIN (SELECT r2.id AS release_id, \
                      (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id) AS files, \
                      (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r2.id \
                         AND EXISTS (SELECT 1 FROM coven_pins p WHERE p.file = f.file)) AS pinned \
                    FROM releases r2) probe ON probe.release_id = r.id \
-             WHERE l.release_id IS NULL OR l.pinned_count <> probe.pinned \
-                OR l.file_count <> probe.files",
+             WHERE s.release_id IS NULL OR s.pinned_count <> probe.pinned \
+                OR s.file_count <> probe.files \
+                OR l.release_id IS NULL OR l.pinned_count <> s.pinned_count \
+                OR l.file_count <> s.file_count",
         )
         .await
         .unwrap()
@@ -162,9 +167,9 @@ async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::B
         .collect()
 }
 
-/// Random writes against the probe: after each, every release's listed pinned
-/// and file counts are the probed ones, and so are the list's pinned markers
-/// read from them.
+/// Random writes against the probe: after each, every release's pinned and
+/// file counts, in its storage row and as its listing row copies them, are
+/// the probed ones, and so are the list's pinned markers read from them.
 #[tokio::test]
 async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
     use rand::{Rng, SeedableRng};
@@ -312,7 +317,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
         *ran.entry(op).or_default() += 1;
 
         assert_eq!(
-            listing_disagreements(&manager).await,
+            storage_disagreements(&manager).await,
             Vec::<String>::new(),
             "after step {step}, {op}"
         );

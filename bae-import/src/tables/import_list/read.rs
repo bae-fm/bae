@@ -27,11 +27,10 @@ type Standing = (ImportListId, u64, Vec<i64>);
 
 /// The tables whose rows place a list's items, as `import_list_versions`
 /// names them: the placement, and for Done the releases still uploading,
-/// found by the hash of the folder each came from.
-const LIST_SOURCES: &[&str] = &["import_list_placement", "local_release_origin", "scan_candidate"];
-
-/// Done's releases still uploading, as `library_list_versions` names them.
-const UPLOAD_SOURCES: &[&str] = &["release_listing"];
+/// found by the hash of the folder each came from, and their place in the
+/// upload queue.
+const LIST_SOURCES: &[&str] =
+    &["import_list_placement", "local_release_origin", "release_storage", "scan_candidate"];
 
 /// Where a read found a list's rows: each window's first and last items in
 /// each part, and the headers of the groups its windows list.
@@ -50,11 +49,7 @@ fn load_import_list_on(
     places: &KnownPlaces<Standing, ListPlaces>,
 ) -> Result<ImportListRows, DbError> {
     let list = list_row(sql, request.list)?;
-    let versions = [
-        list_versions_on(sql, "import_list_versions", LIST_SOURCES)?,
-        list_versions_on(sql, "library_list_versions", UPLOAD_SOURCES)?,
-    ]
-    .concat();
+    let versions = list_versions_on(sql, "import_list_versions", LIST_SOURCES)?;
     let standing = (list.id, list.view_revision, versions);
     let mut known = places.under(&standing);
     let mut found = ListPlaces::default();

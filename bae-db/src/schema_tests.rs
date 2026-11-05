@@ -63,11 +63,11 @@ async fn renaming_an_album_renames_its_releases_listing_rows() {
     assert_eq!(titles, vec!["Album Title Renamed".to_string(); 2]);
 }
 
-/// The releases uploading are read in queue order from an index of the
-/// listing that holds every column read, not from coven's queue grouped by
-/// release.
+/// The releases uploading are read in queue order from an index of their
+/// storage rows that holds every column read, not from coven's queue grouped
+/// by release.
 #[tokio::test]
-async fn the_uploading_releases_read_the_listing_in_queue_order() {
+async fn the_uploading_releases_read_their_storage_in_queue_order() {
     let (db, _tmp) = crate::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     assert_eq!(
         plan(
@@ -78,14 +78,123 @@ async fn the_uploading_releases_read_the_listing_in_queue_order() {
             )
         )
         .await,
-        vec!["SEARCH uploading USING COVERING INDEX idx_release_listing_uploading (first_queued_position>?)".to_string()]
+        vec!["SEARCH uploading USING COVERING INDEX idx_release_storage_uploading (first_queued_position>?)".to_string()]
     );
 }
 
-/// A bare library connection that records every release whose listing row
-/// a write asks to refresh, in `refreshed`.
-fn counting_refreshes() -> rusqlite::Connection {
+/// `release`'s storage row: its file count, total size, `stored`, pinned
+/// and queued counts, and first queued place.
+fn storage_row(
+    conn: &rusqlite::Connection,
+    release: &str,
+) -> (i64, i64, i64, i64, i64, Option<i64>) {
+    conn.query_row(
+        "SELECT file_count, total_size, stored, pinned_count, queued_count, first_queued_position \
+         FROM release_storage WHERE release_id = ?1",
+        [release],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?)),
+    )
+    .unwrap()
+}
+
+/// A release's file, its coven record and its pin arriving before the
+/// release, as a write applied from another device can hold them, are
+/// counted in the release's storage row as it arrives; the file joining the
+/// upload queue after moves the row's queued count and first place.
+#[test]
+fn a_release_s_storage_counts_files_that_arrived_before_it() {
     let conn = crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
+    conn.execute_batch(
+        "PRAGMA foreign_keys = OFF;
+         INSERT INTO coven_files (id, audience, size, hash, coordinates, namespace) VALUES
+             ('cover-file', '', 7, X'00', '', 'release_files');
+         INSERT INTO release_files (id, release_id, original_filename, content_type, created_at, file) VALUES
+             ('cover', 'af4421de-5174-45a9-81fc-74110bc5f85d', 'cover.jpg', 'image/jpeg', '2026-01-01T00:00:00Z', 'cover-file');
+         INSERT INTO coven_pins (file) VALUES ('cover-file');
+         INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+             ('dab6efe2-9b5c-4034-b95e-73cf49f54b9a', 'Album Title B', 0, '2026-01-01T00:00:00Z');
+         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+             ('af4421de-5174-45a9-81fc-74110bc5f85d', 'dab6efe2-9b5c-4034-b95e-73cf49f54b9a', '2026-01-01T00:00:00Z', 0);",
+    )
+    .unwrap();
+    assert_eq!(storage_row(&conn, RELEASE_LATE), (1, 7, 1, 1, 0, None));
+
+    conn.execute_batch("INSERT INTO coven_upload_queue (file, position) VALUES ('cover-file', 3);")
+        .unwrap();
+    assert_eq!(storage_row(&conn, RELEASE_LATE), (1, 7, 1, 1, 1, Some(3)));
+}
+
+/// The trigger that runs first of the two on a release arriving, which
+/// SQLite runs in no order it names: the listing's tests hold under each.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FirstOnArrival {
+    /// `release_added`, which lists the release's album, then the release.
+    Listing,
+    /// `release_storage_release_added`, which writes the release's storage
+    /// row.
+    Storage,
+}
+
+impl FirstOnArrival {
+    const BOTH: [Self; 2] = [Self::Listing, Self::Storage];
+
+    fn trigger(self) -> &'static str {
+        match self {
+            Self::Listing => "release_added",
+            Self::Storage => "release_storage_release_added",
+        }
+    }
+}
+
+/// Which trigger runs first as a release arrives on `conn`: whether its
+/// album's listing row or its storage row is written first, in a write
+/// rolled back after.
+fn first_on_arrival(conn: &mut rusqlite::Connection) -> FirstOnArrival {
+    let probe = conn.transaction().unwrap();
+    probe
+        .execute_batch(
+            "CREATE TEMP TABLE arrival (step TEXT NOT NULL);
+             CREATE TEMP TRIGGER arrival_listed AFTER INSERT ON main.album_listing
+             BEGIN
+                 INSERT INTO arrival (step) VALUES ('listing');
+             END;
+             CREATE TEMP TRIGGER arrival_stored AFTER INSERT ON main.release_storage
+             BEGIN
+                 INSERT INTO arrival (step) VALUES ('storage');
+             END;
+             INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0);",
+        )
+        .unwrap();
+    let step: String = probe
+        .query_row("SELECT step FROM arrival ORDER BY rowid LIMIT 1", [], |row| row.get(0))
+        .unwrap();
+    probe.rollback().unwrap();
+    match step.as_str() {
+        "listing" => FirstOnArrival::Listing,
+        "storage" => FirstOnArrival::Storage,
+        other => panic!("no trigger writes {other}"),
+    }
+}
+
+/// A bare library connection on which `first`'s trigger runs first as a
+/// release arrives, and that records every release whose listing row a
+/// write asks to refresh, in `refreshed`.
+fn counting_refreshes(first: FirstOnArrival) -> rusqlite::Connection {
+    let mut conn = crate::schema::bare_library_connection(crate::test_fixtures::TEST_SCHEMA);
+    // SQLite runs the newest of the triggers on one event first, so creating
+    // `first`'s again puts it first; the probe says whether it did.
+    let created: String = conn
+        .query_row(
+            "SELECT sql FROM sqlite_schema WHERE type = 'trigger' AND name = ?1",
+            [first.trigger()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    conn.execute_batch(&format!("DROP TRIGGER {}; {created};", first.trigger())).unwrap();
+    assert_eq!(first_on_arrival(&mut conn), first);
     conn.execute_batch(
         "CREATE TEMP TABLE refreshed (release_id TEXT NOT NULL);
          CREATE TEMP TRIGGER count_refresh INSTEAD OF INSERT ON main.release_listing_refresh
@@ -128,26 +237,28 @@ fn write(conn: &mut rusqlite::Connection, sql: &str) {
 /// album too, and as it joins an album already listed.
 #[test]
 fn a_release_arriving_refreshes_its_listing_once() {
-    let mut conn = counting_refreshes();
+    for first in FirstOnArrival::BOTH {
+        let mut conn = counting_refreshes(first);
 
-    write(
-        &mut conn,
-        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-             ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
-         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-             ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0);",
-    );
-    assert_eq!(listed_album(&conn, RELEASE_EARLY).as_deref(), Some(ALBUM_A));
-    assert_eq!(refreshes(&conn, RELEASE_EARLY), 1);
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0);",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_EARLY).as_deref(), Some(ALBUM_A), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_EARLY), 1, "{first:?} first");
 
-    write(
-        &mut conn,
-        "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-             ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);",
-    );
-    assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A));
-    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
-    assert_eq!(refreshes(&conn, RELEASE_EARLY), 1);
+        write(
+            &mut conn,
+            "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_EARLY), 1, "{first:?} first");
+    }
 }
 
 /// A release changing writes its listing row with one refresh: moving to an
@@ -155,44 +266,46 @@ fn a_release_arriving_refreshes_its_listing_once() {
 /// moving to an album already listed; and changing what it states itself.
 #[test]
 fn a_release_changing_refreshes_its_listing_once() {
-    let mut conn = counting_refreshes();
-    write(
-        &mut conn,
-        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-             ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
-         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-             ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0),
-             ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);
-         DELETE FROM refreshed;",
-    );
+    for first in FirstOnArrival::BOTH {
+        let mut conn = counting_refreshes(first);
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0),
+                 ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 1);
+             DELETE FROM refreshed;",
+        );
 
-    write(
-        &mut conn,
-        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-             ('dab6efe2-9b5c-4034-b95e-73cf49f54b9a', 'Album Title B', 0, '2026-01-03T00:00:00Z');
-         UPDATE releases SET album_id = 'dab6efe2-9b5c-4034-b95e-73cf49f54b9a'
-         WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
-    );
-    assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_B));
-    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('dab6efe2-9b5c-4034-b95e-73cf49f54b9a', 'Album Title B', 0, '2026-01-03T00:00:00Z');
+             UPDATE releases SET album_id = 'dab6efe2-9b5c-4034-b95e-73cf49f54b9a'
+             WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_B), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
 
-    write(
-        &mut conn,
-        "DELETE FROM refreshed;
-         UPDATE releases SET album_id = '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d'
-         WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
-    );
-    assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A));
-    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
+        write(
+            &mut conn,
+            "DELETE FROM refreshed;
+             UPDATE releases SET album_id = '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d'
+             WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+        );
+        assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A), "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
 
-    write(
-        &mut conn,
-        "DELETE FROM refreshed;
-         UPDATE releases SET created_at = '2026-01-04T00:00:00Z'
-         WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
-    );
-    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
-    assert_eq!(refreshes(&conn, RELEASE_EARLY), 0);
+        write(
+            &mut conn,
+            "DELETE FROM refreshed;
+             UPDATE releases SET created_at = '2026-01-04T00:00:00Z'
+             WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
+        );
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+        assert_eq!(refreshes(&conn, RELEASE_EARLY), 0, "{first:?} first");
+    }
 }
 
 /// `release`'s listing row's media columns.
@@ -209,34 +322,36 @@ fn listed_media(conn: &rusqlite::Connection, release: &str) -> (bool, Option<Str
 /// row's media, in order, without refreshing the rest of the row.
 #[test]
 fn a_release_s_media_rows_set_its_listing_s_media() {
-    let mut conn = counting_refreshes();
-    write(
-        &mut conn,
-        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-             ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
-         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-             ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 0);
-         INSERT INTO release_media (id, release_id, position, medium, count) VALUES
-             ('media-1', 'af4421de-5174-45a9-81fc-74110bc5f85d', 1, 'cd', 1),
-             ('media-0', 'af4421de-5174-45a9-81fc-74110bc5f85d', 0, 'vinyl', 2);",
-    );
-    assert_eq!(refreshes(&conn, RELEASE_LATE), 1);
-    assert_eq!(
-        listed_media(&conn, RELEASE_LATE),
-        (false, Some("vinyl:00002,cd:00001".to_string()))
-    );
+    for first in FirstOnArrival::BOTH {
+        let mut conn = counting_refreshes(first);
+        write(
+            &mut conn,
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+                 ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
+                 ('af4421de-5174-45a9-81fc-74110bc5f85d', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-02T00:00:00Z', 0);
+             INSERT INTO release_media (id, release_id, position, medium, count) VALUES
+                 ('media-1', 'af4421de-5174-45a9-81fc-74110bc5f85d', 1, 'cd', 1),
+                 ('media-0', 'af4421de-5174-45a9-81fc-74110bc5f85d', 0, 'vinyl', 2);",
+        );
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
+        assert_eq!(
+            listed_media(&conn, RELEASE_LATE),
+            (false, Some("vinyl:00002,cd:00001".to_string()))
+        );
 
-    write(
-        &mut conn,
-        "DELETE FROM refreshed;
-         UPDATE release_media SET count = 3 WHERE id = 'media-0';",
-    );
-    assert_eq!(
-        listed_media(&conn, RELEASE_LATE),
-        (false, Some("vinyl:00003,cd:00001".to_string()))
-    );
+        write(
+            &mut conn,
+            "DELETE FROM refreshed;
+             UPDATE release_media SET count = 3 WHERE id = 'media-0';",
+        );
+        assert_eq!(
+            listed_media(&conn, RELEASE_LATE),
+            (false, Some("vinyl:00003,cd:00001".to_string()))
+        );
 
-    write(&mut conn, "DELETE FROM release_media;");
-    assert_eq!(listed_media(&conn, RELEASE_LATE), (true, None));
-    assert_eq!(refreshes(&conn, RELEASE_LATE), 0);
+        write(&mut conn, "DELETE FROM release_media;");
+        assert_eq!(listed_media(&conn, RELEASE_LATE), (true, None));
+        assert_eq!(refreshes(&conn, RELEASE_LATE), 0, "{first:?} first");
+    }
 }

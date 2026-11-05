@@ -167,6 +167,9 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // The artist each artist shows as, kept from the artists and their
     // merges by local triggers.
     "artist_shown_as",
+    // Where each release's files are on this device, kept from them and
+    // coven's records by local triggers.
+    "release_storage",
     // What library lists sort, filter and count by, kept from the synced
     // rows by local triggers.
     "composer_work",

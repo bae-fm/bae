@@ -16,10 +16,10 @@ pub struct DbReleaseDetail {
     /// row names no stored file.
     pub unstored_audio: Vec<DbUnstoredAudio>,
     /// Whether this device keeps every file of the release pinned, as the
-    /// release's listing counts its pinned files.
+    /// release's storage row counts its pinned files.
     pub pinned: bool,
     /// Whether every file of the release names its stored file, as the
-    /// release's listing says.
+    /// release's storage row says.
     pub remote: bool,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,

@@ -196,7 +196,7 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
 
 /// The aliases a searching Storage Manager statement reads what the search
 /// finds through, beside the list's: never scanned whole.
-const SEARCH_ALIASES: &[&str] = &["credit", "shown", "listing", "r", "a"];
+const SEARCH_ALIASES: &[&str] = &["credit", "shown", "listing", "storage", "r", "a"];
 
 /// Whether a plan scans one of `aliases` whole.
 fn scans(steps: &[String], aliases: &[&str]) -> bool {

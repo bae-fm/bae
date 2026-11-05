@@ -461,6 +461,161 @@ CREATE INDEX IF NOT EXISTS idx_release_files_file ON release_files (file);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
     ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
 
+-- Where each release's files are on this device: their count and total
+-- size; `stored`, 1 when it has files and every one names a coven file
+-- `coven_files` records as stored; `pinned_count`, how many of them coven's
+-- `coven_pins` lists as kept whole on this device; and `queued_count` and
+-- `first_queued_position`, how many of them coven's `coven_upload_queue`
+-- lists and the place of the first (NULL with none). One row per release,
+-- written by the triggers below in the write that changes its files, their
+-- coven records, pins or queue: this device's own, another device's applied,
+-- or coven's. A file whose release has not arrived moves nothing; the
+-- release's own trigger counts it when it does.
+CREATE TABLE IF NOT EXISTS release_storage (
+    release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
+    file_count INTEGER NOT NULL,
+    total_size INTEGER NOT NULL,
+    stored INTEGER NOT NULL,
+    pinned_count INTEGER NOT NULL,
+    queued_count INTEGER NOT NULL,
+    first_queued_position INTEGER,
+    CHECK ((queued_count = 0) = (first_queued_position IS NULL))
+) STRICT;
+
+-- The releases with files waiting in this device's upload queue, in the order
+-- their first files wait: what the import list's Done tab runs first (§3.2).
+CREATE INDEX IF NOT EXISTS idx_release_storage_uploading ON release_storage (first_queued_position, release_id)
+    WHERE first_queued_position IS NOT NULL;
+
+-- Inserting a release id into `release_storage_refresh` rewrites that
+-- release's row from its files and coven's records of them. The view holds no
+-- rows; it names the statement its INSTEAD OF trigger runs.
+CREATE VIEW IF NOT EXISTS release_storage_refresh AS SELECT NULL AS release_id WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_refresh INSTEAD OF INSERT ON release_storage_refresh
+BEGIN
+    INSERT INTO release_storage (
+        release_id, file_count, total_size, stored, pinned_count, queued_count,
+        first_queued_position)
+    SELECT r.id,
+           (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
+           (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
+            JOIN coven_files coven ON coven.id = f.file
+            WHERE f.release_id = r.id),
+           EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id)
+             AND NOT EXISTS (SELECT 1 FROM release_files f
+                             LEFT JOIN coven_files coven ON coven.id = f.file
+                             WHERE f.release_id = r.id AND coven.hash IS NULL),
+           (SELECT COUNT(*) FROM release_files f
+            JOIN coven_pins pin ON pin.file = f.file
+            WHERE f.release_id = r.id),
+           (SELECT COUNT(*) FROM release_files f
+            JOIN coven_upload_queue queued ON queued.file = f.file
+            WHERE f.release_id = r.id),
+           (SELECT MIN(queued.position) FROM release_files f
+            JOIN coven_upload_queue queued ON queued.file = f.file
+            WHERE f.release_id = r.id)
+    FROM releases r
+    WHERE r.id = NEW.release_id
+    ON CONFLICT (release_id) DO UPDATE SET
+        file_count = excluded.file_count,
+        total_size = excluded.total_size,
+        stored = excluded.stored,
+        pinned_count = excluded.pinned_count,
+        queued_count = excluded.queued_count,
+        first_queued_position = excluded.first_queued_position;
+END;
+
+-- A release arriving counts the files, coven records, pins and queued files
+-- already there for it, which a write applied from another device can hold
+-- before the release.
+CREATE TRIGGER IF NOT EXISTS release_storage_release_added AFTER INSERT ON releases
+BEGIN
+    INSERT INTO release_storage_refresh (release_id) VALUES (NEW.id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_file_added AFTER INSERT ON release_files
+BEGIN
+    INSERT INTO release_storage_refresh (release_id) VALUES (NEW.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_file_changed AFTER UPDATE OF release_id, file ON release_files
+BEGIN
+    INSERT INTO release_storage_refresh (release_id) VALUES (OLD.release_id);
+    INSERT INTO release_storage_refresh (release_id) VALUES (NEW.release_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_file_removed AFTER DELETE ON release_files
+BEGIN
+    INSERT INTO release_storage_refresh (release_id) VALUES (OLD.release_id);
+END;
+
+-- A release file's coven file being recorded, switched to its stored bytes
+-- or deleted refreshes its release: whether the release is stored follows
+-- its files' records, which coven changes with no change to a row of bae's,
+-- in this device's write completing an upload and as another device's write
+-- applies. A record no release file names moves nothing.
+CREATE TRIGGER IF NOT EXISTS release_storage_coven_file_added AFTER INSERT ON coven_files
+BEGIN
+    INSERT INTO release_storage_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_coven_file_switched AFTER UPDATE OF coordinates ON coven_files
+BEGIN
+    INSERT INTO release_storage_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_coven_file_removed AFTER DELETE ON coven_files
+BEGIN
+    INSERT INTO release_storage_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = OLD.id;
+END;
+
+-- A release file's pin moves its release's pinned count, in the transaction
+-- that changes the pin: this device's own write, another device's applied,
+-- or coven's own as a file is pinned, kept here or unpinned. A pin is listed
+-- only once the whole file is on this device. A file no release file names,
+-- or whose release has not arrived, moves nothing: the refresh above counts
+-- its release's pins from `coven_pins` as it writes the release's row.
+CREATE TRIGGER IF NOT EXISTS release_storage_file_pinned AFTER INSERT ON coven_pins
+BEGIN
+    UPDATE release_storage SET pinned_count = pinned_count + 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = NEW.file);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_file_unpinned AFTER DELETE ON coven_pins
+BEGIN
+    UPDATE release_storage SET pinned_count = pinned_count - 1
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
+END;
+
+-- A release file joining or leaving this device's upload queue moves its
+-- release's queued count and first place, in the transaction that changes
+-- the queue: staging the file for the cloud, its move switching it to the
+-- cloud, its upload retiring, or the row no longer naming it. A file no
+-- release file names, or whose release has not arrived, moves nothing: the
+-- refresh above counts its release's queued files from `coven_upload_queue`
+-- as it writes the release's row.
+CREATE TRIGGER IF NOT EXISTS release_storage_file_queued AFTER INSERT ON coven_upload_queue
+BEGIN
+    UPDATE release_storage SET queued_count = queued_count + 1,
+        first_queued_position = MIN(COALESCE(first_queued_position, NEW.position), NEW.position)
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = NEW.file);
+END;
+
+CREATE TRIGGER IF NOT EXISTS release_storage_file_unqueued AFTER DELETE ON coven_upload_queue
+BEGIN
+    UPDATE release_storage SET queued_count = queued_count - 1,
+        first_queued_position = CASE WHEN first_queued_position = OLD.position
+            THEN (SELECT MIN(queued.position) FROM release_files f
+                  JOIN coven_upload_queue queued ON queued.file = f.file
+                  WHERE f.release_id = release_storage.release_id)
+            ELSE first_queued_position END
+    WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
+END;
+
 -- Who is credited on a release, and in what role, as the catalog stated it.
 CREATE TABLE IF NOT EXISTS release_artist_roles (
     id TEXT PRIMARY KEY,
@@ -1662,17 +1817,12 @@ END;
 -- `album_title` and the credit keys copied from its album's `album_listing`
 -- row; `media_empty` and `media_key` as `release_media_sort` works them out
 -- from its `release_media`; `created_at`, when the release was added; its
--- files' count and total size; `stored`, 1 when it
--- has files and every one names a coven file `coven_files` records as
--- stored; `pinned_count`, how many of its files
--- coven's `coven_pins` lists as kept whole on this device; `queued_count` and
--- `first_queued_position`, how many of its files coven's
--- `coven_upload_queue` lists and the place of the first of them (NULL with
--- none); `download_queued`, 1 while this device's download queue holds it
--- waiting or downloading; and `storage_order`, where it sorts by storage,
--- worked out from those in the same write: uploading (0), pinning (1) while
--- the download queue brings its files to this device, local (2), pinned (3),
--- in the cloud only (4).
+-- files' count and total size, `stored`, `pinned_count` and `queued_count`,
+-- copied from its `release_storage` row; `download_queued`, 1 while this
+-- device's download queue holds it waiting or downloading; and
+-- `storage_order`, where it sorts by storage, worked out from those in the
+-- same write: uploading (0), pinning (1) while the download queue brings its
+-- files to this device, local (2), pinned (3), in the cloud only (4).
 CREATE TABLE IF NOT EXISTS release_listing (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     album_id TEXT NOT NULL,
@@ -1687,15 +1837,13 @@ CREATE TABLE IF NOT EXISTS release_listing (
     stored INTEGER NOT NULL,
     pinned_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
-    first_queued_position INTEGER,
     download_queued INTEGER NOT NULL CHECK (download_queued IN (0, 1)),
     storage_order INTEGER GENERATED ALWAYS AS (CASE
         WHEN queued_count > 0 THEN 0
         WHEN download_queued = 1 THEN 1
         WHEN stored = 0 THEN 2
         WHEN file_count > 0 AND pinned_count = file_count THEN 3
-        ELSE 4 END) VIRTUAL,
-    CHECK ((queued_count = 0) = (first_queued_position IS NULL))
+        ELSE 4 END) VIRTUAL
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_release_listing_album ON release_listing (album_id);
@@ -1730,11 +1878,6 @@ CREATE INDEX IF NOT EXISTS idx_release_listing_stored_storage_desc ON release_li
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added ON release_listing (stored, created_at, album_title COLLATE NOCASE, release_id);
 CREATE INDEX IF NOT EXISTS idx_release_listing_stored_added_desc ON release_listing (stored, created_at DESC, album_title COLLATE NOCASE, release_id);
 
--- The releases with files waiting in this device's upload queue, in the order
--- their first files wait: what the import list's Done tab runs first (§3.2).
-CREATE INDEX IF NOT EXISTS idx_release_listing_uploading ON release_listing (first_queued_position, release_id)
-    WHERE first_queued_position IS NOT NULL;
-
 CREATE TRIGGER IF NOT EXISTS release_listing_order_added AFTER INSERT ON release_listing
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'release_listing';
@@ -1745,7 +1888,7 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, pinned_count, first_queued_position ON release_listing
+CREATE TRIGGER IF NOT EXISTS release_listing_order_moved AFTER UPDATE OF album_title, credit_sort_names, credit_artist_ids, media_empty, media_key, created_at, file_count, total_size, stored, queued_count, download_queued, pinned_count ON release_listing
 WHEN OLD.album_title IS NOT NEW.album_title
   OR OLD.credit_sort_names IS NOT NEW.credit_sort_names
   OR OLD.credit_artist_ids IS NOT NEW.credit_artist_ids
@@ -1756,7 +1899,6 @@ WHEN OLD.album_title IS NOT NEW.album_title
   OR OLD.total_size IS NOT NEW.total_size
   OR OLD.stored IS NOT NEW.stored
   OR OLD.storage_order IS NOT NEW.storage_order
-  OR OLD.first_queued_position IS NOT NEW.first_queued_position
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
@@ -1807,9 +1949,10 @@ SELECT r.id AS release_id,
 FROM releases r;
 
 -- Inserting a release id into `release_listing_refresh` rewrites that
--- release's row of `release_listing` from the release, its files and its
--- album's `album_listing` row; a release whose album is not listed yet gets
--- its row when the album's is written.
+-- release's row of `release_listing` from the release, its storage row and
+-- its album's `album_listing` row; a release whose album is not listed yet
+-- gets its row when the album's is written, one whose storage row is not
+-- written yet when that is.
 CREATE VIEW IF NOT EXISTS release_listing_refresh AS SELECT NULL AS release_id WHERE 0;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_refresh INSTEAD OF INSERT ON release_listing_refresh
@@ -1817,31 +1960,20 @@ BEGIN
     INSERT INTO release_listing (
         release_id, album_id, album_title, credit_sort_names, credit_artist_ids,
         media_empty, media_key, created_at, file_count, total_size, stored, pinned_count,
-        queued_count, first_queued_position, download_queued)
+        queued_count, download_queued)
     SELECT r.id, r.album_id, album.title, album.credit_sort_names, album.credit_artist_ids,
            media.media_empty,
            media.media_key,
            r.created_at,
-           (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
-           (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
-            JOIN coven_files coven ON coven.id = f.file
-            WHERE f.release_id = r.id),
-           EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id)
-             AND NOT EXISTS (SELECT 1 FROM release_files f
-                             LEFT JOIN coven_files coven ON coven.id = f.file
-                             WHERE f.release_id = r.id AND coven.hash IS NULL),
-           (SELECT COUNT(*) FROM release_files f
-            JOIN coven_pins pin ON pin.file = f.file
-            WHERE f.release_id = r.id),
-           (SELECT COUNT(*) FROM release_files f
-            JOIN coven_upload_queue queued ON queued.file = f.file
-            WHERE f.release_id = r.id),
-           (SELECT MIN(queued.position) FROM release_files f
-            JOIN coven_upload_queue queued ON queued.file = f.file
-            WHERE f.release_id = r.id),
+           storage.file_count,
+           storage.total_size,
+           storage.stored,
+           storage.pinned_count,
+           storage.queued_count,
            EXISTS (SELECT 1 FROM download_queue download
                    WHERE download.release_id = r.id AND download.state IN ('queued', 'active'))
     FROM releases r
+    JOIN release_storage storage ON storage.release_id = r.id
     JOIN album_listing album ON album.album_id = r.album_id
     JOIN release_media_sort media ON media.release_id = r.id
     WHERE r.id = NEW.release_id
@@ -1858,21 +1990,25 @@ BEGIN
         stored = excluded.stored,
         pinned_count = excluded.pinned_count,
         queued_count = excluded.queued_count,
-        first_queued_position = excluded.first_queued_position,
         download_queued = excluded.download_queued;
 END;
 
 -- A release arriving lists its album first. An album listed just now lists
 -- every release it holds, this one with them (`release_listing_album_listed`);
--- a release joining an album already listed is refreshed by itself. So its row
--- is refreshed once either way. The two steps share one trigger because their
+-- a release joining an album already listed is refreshed by itself. Either
+-- refresh waits for the release's storage row, which
+-- `release_storage_release_added` writes as the release arrives, before or
+-- after this trigger runs; when it runs after, the row's arrival refreshes
+-- the release (`release_listing_storage_added`). So its row is refreshed once
+-- whichever runs first. The two steps here share one trigger because their
 -- order decides that, and SQLite names no order for several triggers on one
 -- event.
 CREATE TRIGGER IF NOT EXISTS release_added AFTER INSERT ON releases
 BEGIN
     INSERT INTO album_listing_refresh (album_id) VALUES (NEW.album_id);
     INSERT INTO release_listing_refresh (release_id)
-    SELECT NEW.id WHERE NOT EXISTS (SELECT 1 FROM release_listing WHERE release_id = NEW.id);
+    SELECT NEW.id WHERE NOT EXISTS (SELECT 1 FROM release_listing WHERE release_id = NEW.id)
+        AND EXISTS (SELECT 1 FROM release_storage WHERE release_id = NEW.id);
 END;
 
 -- A release moving to another album lists the album it left and the one it
@@ -1921,26 +2057,12 @@ BEGIN
     WHERE release_id = OLD.release_id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_file_added AFTER INSERT ON release_files
-BEGIN
-    INSERT INTO release_listing_refresh (release_id) VALUES (NEW.release_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS release_listing_file_changed AFTER UPDATE OF release_id, file ON release_files
-BEGIN
-    INSERT INTO release_listing_refresh (release_id) VALUES (OLD.release_id);
-    INSERT INTO release_listing_refresh (release_id) VALUES (NEW.release_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS release_listing_file_removed AFTER DELETE ON release_files
-BEGIN
-    INSERT INTO release_listing_refresh (release_id) VALUES (OLD.release_id);
-END;
-
 CREATE TRIGGER IF NOT EXISTS release_listing_album_listed AFTER INSERT ON album_listing
 BEGIN
     INSERT INTO release_listing_refresh (release_id)
-    SELECT id FROM releases WHERE album_id = NEW.album_id;
+    SELECT r.id FROM releases r
+    WHERE r.album_id = NEW.album_id
+      AND EXISTS (SELECT 1 FROM release_storage storage WHERE storage.release_id = r.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_listing_album_changed AFTER UPDATE OF title, credit_sort_names, credit_artist_ids ON album_listing
@@ -1952,70 +2074,26 @@ BEGIN
     SELECT id FROM releases WHERE album_id = NEW.album_id;
 END;
 
--- A release file's coven file being recorded, switched to its stored bytes
--- or deleted refreshes its release: whether the release is stored follows
--- its files' records, which coven changes with no change to a row of bae's,
--- in this device's write completing an upload and as another device's write
--- applies. A record no release file names moves nothing.
-CREATE TRIGGER IF NOT EXISTS release_listing_coven_file_added AFTER INSERT ON coven_files
+-- A release's storage row arriving lists the release once its album is
+-- listed, and its counts changing copy into the release's listing row,
+-- which sorts and filters by them. With `release_added` and
+-- `release_listing_album_listed`, each refreshing a release only once the
+-- other of its storage row and its album's listing row is there, a release
+-- arriving is refreshed once, whichever of the triggers on `releases` runs
+-- first.
+CREATE TRIGGER IF NOT EXISTS release_listing_storage_added AFTER INSERT ON release_storage
 BEGIN
     INSERT INTO release_listing_refresh (release_id)
-    SELECT release_id FROM release_files WHERE file = NEW.id;
+    SELECT NEW.release_id WHERE EXISTS (
+        SELECT 1 FROM releases r JOIN album_listing album ON album.album_id = r.album_id
+        WHERE r.id = NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_coven_file_switched AFTER UPDATE OF coordinates ON coven_files
+CREATE TRIGGER IF NOT EXISTS release_listing_storage_changed AFTER UPDATE OF file_count, total_size, stored, pinned_count, queued_count ON release_storage
 BEGIN
-    INSERT INTO release_listing_refresh (release_id)
-    SELECT release_id FROM release_files WHERE file = NEW.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS release_listing_coven_file_removed AFTER DELETE ON coven_files
-BEGIN
-    INSERT INTO release_listing_refresh (release_id)
-    SELECT release_id FROM release_files WHERE file = OLD.id;
-END;
-
--- A release file's pin moves its release's pinned count, in the transaction
--- that changes the pin: this device's own write, another device's applied,
--- or coven's own as a file is pinned, kept here or unpinned. A pin is listed
--- only once the whole file is on this device. A file no release file names,
--- or whose release is not listed yet, moves nothing: the refresh above counts
--- its release's pins from `coven_pins` as it writes the release's row.
-CREATE TRIGGER IF NOT EXISTS release_listing_file_pinned AFTER INSERT ON coven_pins
-BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count + 1
-    WHERE release_id = (SELECT release_id FROM release_files WHERE file = NEW.file);
-END;
-
-CREATE TRIGGER IF NOT EXISTS release_listing_file_unpinned AFTER DELETE ON coven_pins
-BEGIN
-    UPDATE release_listing SET pinned_count = pinned_count - 1
-    WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
-END;
-
--- A release file joining or leaving this device's upload queue moves its
--- release's queued count and first place, in the transaction that changes
--- the queue: staging the file for the cloud, its move switching it to the
--- cloud, its upload retiring, or the row no longer naming it. A file no
--- release file names, or whose release is not listed yet, moves nothing: the
--- refresh above counts its release's queued files from `coven_upload_queue`
--- as it writes the release's row.
-CREATE TRIGGER IF NOT EXISTS release_listing_file_queued AFTER INSERT ON coven_upload_queue
-BEGIN
-    UPDATE release_listing SET queued_count = queued_count + 1,
-        first_queued_position = MIN(COALESCE(first_queued_position, NEW.position), NEW.position)
-    WHERE release_id = (SELECT release_id FROM release_files WHERE file = NEW.file);
-END;
-
-CREATE TRIGGER IF NOT EXISTS release_listing_file_unqueued AFTER DELETE ON coven_upload_queue
-BEGIN
-    UPDATE release_listing SET queued_count = queued_count - 1,
-        first_queued_position = CASE WHEN first_queued_position = OLD.position
-            THEN (SELECT MIN(queued.position) FROM release_files f
-                  JOIN coven_upload_queue queued ON queued.file = f.file
-                  WHERE f.release_id = release_listing.release_id)
-            ELSE first_queued_position END
-    WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
+    UPDATE release_listing SET file_count = NEW.file_count, total_size = NEW.total_size,
+        stored = NEW.stored, pinned_count = NEW.pinned_count, queued_count = NEW.queued_count
+    WHERE release_id = NEW.release_id;
 END;
 
 -- Library search (§2.3) matches a query anywhere inside a title or a name,

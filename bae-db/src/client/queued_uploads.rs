@@ -26,15 +26,15 @@ pub const RELEASES_SENDING: &str = "SELECT f.release_id, COUNT(*) AS files \
      JOIN release_files AS f ON f.file = sending.file \
      GROUP BY f.release_id";
 
-/// The columns a release's upload reads beside `release_listing listing`
+/// The columns a release's upload reads beside `release_storage storage`
 /// joined to [`RELEASES_SENDING`] as `sending`, which
 /// [`release_upload_in_row`] maps: how many of its files are queued, how
 /// many of those only wait and how many are being sent, and how many are
 /// stored. How far the files being sent have got is the release's transfer.
-pub const RELEASE_UPLOAD_COLUMNS: &str = "listing.queued_count AS queued_count, \
-     listing.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
+pub const RELEASE_UPLOAD_COLUMNS: &str = "storage.queued_count AS queued_count, \
+     storage.queued_count - COALESCE(sending.files, 0) AS waiting_files, \
      COALESCE(sending.files, 0) AS sending_files, \
-     listing.file_count - listing.queued_count AS stored_files";
+     storage.file_count - storage.queued_count AS stored_files";
 
 /// The release's upload as [`RELEASE_UPLOAD_COLUMNS`] read it; `None` when
 /// none of its files waits. A count below zero, or past a `u32`, is a
@@ -59,9 +59,9 @@ pub fn release_upload_on(
     Ok(sql
         .query_row(
             &format!(
-                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM release_listing listing \
-                 LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = listing.release_id \
-                 WHERE listing.release_id = ?1"
+                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM release_storage storage \
+                 LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = storage.release_id \
+                 WHERE storage.release_id = ?1"
             ),
             [release_id],
             release_upload_in_row,
@@ -84,14 +84,14 @@ const FILES_SENDING: &str = "SELECT sending.file AS file, f.release_id AS releas
 /// Each release with files this process is sending now: of its whole size,
 /// the bytes of its files stored, those not queued. Each release is found by
 /// its files from the files in flight.
-const RELEASES_SENDING_BYTES: &str = "SELECT listing.release_id AS release_id, \
-         listing.total_size - (SELECT SUM(coven.size) FROM release_files AS f \
+const RELEASES_SENDING_BYTES: &str = "SELECT storage.release_id AS release_id, \
+         storage.total_size - (SELECT SUM(coven.size) FROM release_files AS f \
              JOIN coven_upload_queue AS queued ON queued.file = f.file \
              JOIN coven_files AS coven ON coven.id = f.file \
-             WHERE f.release_id = listing.release_id) AS bytes_stored, \
-         listing.total_size AS bytes_total \
-     FROM release_listing AS listing \
-     WHERE listing.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
+             WHERE f.release_id = storage.release_id) AS bytes_stored, \
+         storage.total_size AS bytes_total \
+     FROM release_storage AS storage \
+     WHERE storage.release_id IN (SELECT f.release_id FROM coven_sending AS sending \
          JOIN release_files AS f ON f.file = sending.file)";
 
 /// A file [`FILES_SENDING`] read; a size below zero is a column-conversion

@@ -1781,7 +1781,7 @@ device knows what the household owns, and a rating or playlist entry pointing
 at a local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
 Where a file is changes in coven's own record of it, with no change to a row
-of bae's, so the release's listing follows coven's `coven_files`, which also
+of bae's, so the release's storage row (`release_storage`) follows coven's `coven_files`, which also
 gives each file's size (Appendix B).
 
 A release's cover is bound (§4.1), so it reaches other devices with the
@@ -1996,7 +1996,7 @@ cache, still readable, now evictable.
 
 Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, pinned, local, or
-deleted meanwhile is passed over, as the releases' listing says, and one whose
+deleted meanwhile is passed over, as the releases' storage rows say, and one whose
 pin failed is queued again in its place, as retrying queues it. If the write fails, nothing is
 queued; the person sees the error and the failure is reported as a bug.
 
@@ -4289,6 +4289,7 @@ Beside them, device-local tables:
 |---|---|
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, and how many wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
 | `composer_work` | work and artist shown credited on it |
 | `composer_release` | release and artist shown credited on a work one of its tracks performs |
 | `composer_unlinked_credit` | catalog role credit none of its artist's works links (§2.4), keyed by the credit: the artist it shows as and its release |
@@ -4297,21 +4298,22 @@ Beside them, device-local tables:
 | `album_listing` | album the grid shows (§2.1), keyed by the album: its title, year and date added, and its credits' sort names and ids in credit order, with an index for each of the grid's sorts |
 | `album_artist_link` | album the grid shows and artist its credits show |
 | `artist_listing` | artist the artist list shows (§2.1): its name, its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
-| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, its files' count and size, and whether it is uploaded — with an index for each sort, alone and under the uploaded filter; how many of its files this device keeps pinned and whole, with an index of the uploaded releases not wholly pinned; and how many of its files wait in this device's upload queue and the place of the first, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2); whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
+| `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title and credit keys, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading; and where it sorts by storage, worked out from those |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
-Local triggers write every table here after the first two in the same write as the library rows they
-come from, on this device or applied from another, so they always match those
-rows. A release's pinned count follows the pins coven's `coven_pins` lists as
-kept the same way, in the transaction that changes a pin or its kept copy,
+Local triggers write every table here but `local_release_origin` in the same
+write as the library rows they come from, on this device or applied from
+another, so they always match those rows. A release's storage row follows
+coven's records of its files, the pins `coven_pins` lists as kept and coven's
+upload queue the same way, in the transaction that changes one of them,
 whether this device's own write, another device's applied, or coven's as a
-file is pinned, downloads, uploads or is unpinned. A write applied from
-another device can hold a row before a row it references; the triggers count
-a row once what it references is there. An
-album's listing row is written only when one of its values changes, and its
+file is pinned, downloads, uploads or is unpinned, and its listing row copies
+what it sorts by in that write. A write applied from another device can hold
+a row before a row it references; the triggers count a row once what it
+references is there. An album's listing row is written only when one of its values changes, and its
 releases' rows only when its title or credits do, so a release added to an
 album, even a box set of thousands, rewrites no other release's row.
 
@@ -4421,7 +4423,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order, where its view opened (its first selected row when the view was set, or its top), and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 | `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
-| `import_list_versions` | table the import list's order reads (`import_list_placement` and, for its Done tab's uploads, `local_release_origin` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2). Done's uploads also read `release_listing`'s count in `library_list_versions` |
+| `import_list_versions` | table the import list's order reads (`import_list_placement` and, for its Done tab's uploads, `local_release_origin`, `release_storage` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 
 No list outlives the process that opened it: the import service empties
 `import_list` and the tables hanging off it as the library opens, with the

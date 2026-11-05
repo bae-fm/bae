@@ -1,5 +1,5 @@
 //! The storage list: its sorting, filters, pages, counts and sizes, the actions
-//! each row offers, and the queued counts the listing keeps.
+//! each row offers, and the queued counts each release's storage row keeps.
 
 use super::*;
 use crate::manager::tests::*;
@@ -46,22 +46,27 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
     assert_eq!(second_page.rows[0].release.id, TIEBREAK_HI);
 }
 
-// The queued count and first queued place `release_listing` keeps per
-// release, against those probed from coven's `coven_uploads` file by file,
-// through random library writes and uploads: moving releases to the cloud,
-// completing and cancelling uploads, retiring one by deleting its file's row,
-// a file moving between releases, covers queued beside them, and deletes.
+// The queued count and first queued place `release_storage` keeps per
+// release, and the queued count `release_listing` copies, against those
+// probed from coven's `coven_uploads` file by file, through random library
+// writes and uploads: moving releases to the cloud, completing and cancelling
+// uploads, retiring one by deleting its file's row, a file moving between
+// releases, covers queued beside them, and deletes.
 
-/// Each release whose listed queued count or first place differs from the
-/// ones probed from its files in coven's queue: none when the triggers kept up.
-async fn queue_listing_disagreements(manager: &LibraryManager) -> Vec<String> {
+/// Each release whose storage row's queued count or first place differs
+/// from the ones probed from its files in coven's queue, or that has no
+/// storage row, and each whose listing row is missing or holds a queued
+/// count other than its storage row's: none when the triggers kept up.
+async fn queue_storage_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .database
         .query_texts_for_test(
-            "SELECT r.id || ': listed ' || COALESCE(l.queued_count || ' from ' \
-                     || COALESCE(l.first_queued_position, 'nowhere'), 'nothing') \
+            "SELECT r.id || ': stored ' || COALESCE(s.queued_count || ' from ' \
+                     || COALESCE(s.first_queued_position, 'nowhere'), 'nothing') \
+                 || ', listed ' || COALESCE(l.queued_count, 'nothing') \
                  || ', probed ' || probe.queued || ' from ' || COALESCE(probe.first, 'nowhere') \
              FROM releases r \
+             LEFT JOIN release_storage s ON s.release_id = r.id \
              LEFT JOIN release_listing l ON l.release_id = r.id \
              JOIN (SELECT r2.id AS release_id, \
                      (SELECT COUNT(*) FROM release_files f JOIN coven_uploads u \
@@ -71,8 +76,9 @@ async fn queue_listing_disagreements(manager: &LibraryManager) -> Vec<String> {
                         ON u.file = f.file \
                       WHERE f.release_id = r2.id) AS first \
                    FROM releases r2) probe ON probe.release_id = r.id \
-             WHERE l.release_id IS NULL OR l.queued_count <> probe.queued \
-                OR l.first_queued_position IS NOT probe.first",
+             WHERE s.release_id IS NULL OR s.queued_count <> probe.queued \
+                OR s.first_queued_position IS NOT probe.first \
+                OR l.release_id IS NULL OR l.queued_count <> s.queued_count",
         )
         .await
         .unwrap()
@@ -92,9 +98,10 @@ async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
         .unwrap()
 }
 
-/// Random writes against the probe: after each, every release's listed
-/// queued count and first place are the probed ones, and so are the
-/// releases uploading, in the order read from them.
+/// Random writes against the probe: after each, every release's queued
+/// count and first place in its storage row, and the queued count its
+/// listing row copies, are the probed ones, and so are the releases
+/// uploading, in the order read from them.
 #[tokio::test]
 async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
     use rand::{Rng, SeedableRng};
@@ -217,7 +224,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
         *ran.entry(op).or_default() += 1;
 
         assert_eq!(
-            queue_listing_disagreements(&manager).await,
+            queue_storage_disagreements(&manager).await,
             Vec::<String>::new(),
             "after step {step}, {op}"
         );

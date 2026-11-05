@@ -331,7 +331,7 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
 }
 
 /// Queue to pin, in the order given, each of `release_ids` that is
-/// uploaded and not wholly pinned on this device, as its listing says,
+/// uploaded and not wholly pinned on this device, as its storage row says,
 /// passing over one waiting or downloading, one the library no longer
 /// holds, and one local: decided in the write that queues them. One whose
 /// download failed is queued again in its place, as a retry queues it.
@@ -347,12 +347,12 @@ pub(crate) fn enqueue_pinnable_releases_on(
             "INSERT INTO download_queue (release_id, created_at, state) \
              SELECT requested.value, :created_at, 'queued' \
              FROM json_each(:release_ids) AS requested \
-             JOIN release_listing AS listing ON listing.release_id = requested.value \
-             WHERE listing.stored = 1 AND NOT {pinned} \
+             JOIN release_storage AS storage ON storage.release_id = requested.value \
+             WHERE storage.stored = 1 AND NOT {pinned} \
              ORDER BY requested.key \
              ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL \
              WHERE download_queue.state = 'failed'",
-            pinned = bae_db::client::query::RELEASE_LISTING_PINNED,
+            pinned = bae_db::client::query::RELEASE_STORAGE_PINNED,
         ),
         rusqlite::named_params! {
             ":created_at": created_at,
