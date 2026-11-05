@@ -668,7 +668,17 @@ class BaeCorePlayer(
                 val entryId = currentPlaylist().metas.getOrNull(mediaItemIndex)?.entryId
                 if (entryId != null) {
                     positionModel.clearPendingSeek()
-                    appHandle.skipToEntry(entryId)
+                    val skipped = SettableFuture.create<Unit>()
+                    scope.launch(CoroutineName("skipToEntry $entryId")) {
+                        try {
+                            appHandle.skipToEntry(entryId)
+                            skipped.set(Unit)
+                        } catch (e: BridgeException) {
+                            logger.error("skipping to $entryId failed", e)
+                            skipped.setException(e)
+                        }
+                    }
+                    return skipped
                 } else {
                     logger.warning("handleSeek to media item $mediaItemIndex has no queue entry id")
                 }

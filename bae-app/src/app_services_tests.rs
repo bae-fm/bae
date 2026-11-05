@@ -198,7 +198,7 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     let first = upcoming_until(&subscription, |value| value.windows.len() == 1).await;
     let skip_to = first.windows[0].items[0].entry_id.parse().unwrap();
 
-    services.playback_skip_to_entry(skip_to);
+    services.playback_skip_to_entry(skip_to).await.unwrap();
     let moved =
         upcoming_until(&subscription, |value| value.upcoming_total < first.upcoming_total).await;
     assert!(moved.context_version > first.context_version, "the queue changed under the windows");
@@ -209,7 +209,7 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     );
 
     // Dropping the context empties the tail the windows read.
-    services.playback_clear_playing_from();
+    services.playback_clear_playing_from().await.unwrap();
     let cleared = upcoming_until(&subscription, |value| value.upcoming_total == 0).await;
     assert!(cleared.windows.iter().all(|window| window.items.is_empty()));
 }

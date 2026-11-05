@@ -129,7 +129,7 @@ class SeekToMediaItemTest {
     private class SkipRecordingHandle : FakeAppHandle() {
         val skippedEntryIds = mutableListOf<String>()
 
-        override fun skipToEntry(entryId: String) {
+        override suspend fun skipToEntry(entryId: String) {
             skippedEntryIds += entryId
         }
     }

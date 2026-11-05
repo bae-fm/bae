@@ -46,21 +46,23 @@ pub enum PlayError {
 /// Where a play command's answer goes.
 pub(crate) type PlayReply = oneshot::Sender<Result<PlayOutcome, PlayError>>;
 
-/// Why a reorder moved nothing.
+/// Why a queue command that names an entry, or empties a part of the queue,
+/// changed nothing.
 #[derive(Debug, thiserror::Error)]
-pub enum ReorderError {
+pub enum QueueEditError {
     /// The entry, or the one it goes before, is no longer queued, or the two
     /// are in different lanes: the queue changed under the screen that asked.
-    #[error("the queue changed before the move, so nothing moved")]
+    #[error("the queue changed before the command, so nothing changed")]
     QueueChanged,
-    #[error("couldn't reorder the queue: {0}")]
+    #[error("couldn't change the queue: {0}")]
     Queue(#[source] bae_db::DbError),
-    #[error("the playback service stopped before it answered the reorder")]
+    #[error("the playback service stopped before it answered the queue command")]
     Stopped(#[source] oneshot::error::RecvError),
 }
 
-/// Where a reorder's answer goes: the lane's version the move made.
-pub(crate) type ReorderReply = oneshot::Sender<Result<u64, ReorderError>>;
+/// Where a queue command's answer goes: what the command gives back (a
+/// reorder, the lane's version the move made).
+pub(crate) type QueueEditReply<T> = oneshot::Sender<Result<T, QueueEditError>>;
 
 #[derive(Debug)]
 pub(crate) enum PlaybackCommand {
@@ -133,18 +135,21 @@ pub(crate) enum PlaybackCommand {
     AddReleaseNext(String),
     InsertInQueue(Vec<String>, usize),
     /// Remove the queue row with this id.
-    RemoveFromQueue(QueueEntryId),
+    RemoveFromQueue {
+        entry_id: QueueEntryId,
+        reply: QueueEditReply<()>,
+    },
     /// Move `entry_id` to just before `before`, or to the end when it's `None`.
     ReorderQueue {
         entry_id: QueueEntryId,
         before: Option<QueueEntryId>,
-        reply: ReorderReply,
+        reply: QueueEditReply<u64>,
     },
     /// Empty the manual lane, leaving the context lane playing.
-    ClearUpNext,
+    ClearUpNext(QueueEditReply<()>),
     /// Drop the context lane. The playing track keeps playing; when it ends, Up
     /// Next drains and then playback stops.
-    ClearPlayingFrom,
+    ClearPlayingFrom(QueueEditReply<()>),
     SetRepeatMode(RepeatMode),
     /// Shuffle the context lane's upcoming rows with a new seed, or put them back
     /// in the order they had when shuffle turned on. The current track keeps
@@ -155,7 +160,10 @@ pub(crate) enum PlaybackCommand {
     /// its boundary needs a pause.
     ReevaluateSidePauseStaging,
     /// Skip to the queue row with this id (manual, pregap skipped).
-    SkipTo(QueueEntryId),
+    SkipTo {
+        entry_id: QueueEntryId,
+        reply: QueueEditReply<()>,
+    },
     /// Preview a local source window (the same target stops; another switches).
     PreviewPlay(bae_track_audio::PreviewTarget),
     /// Stop any active preview.
@@ -487,8 +495,16 @@ impl PlaybackHandle {
     pub fn insert_in_queue(&self, track_ids: Vec<String>, index: usize) {
         self.dispatch(PlaybackCommand::InsertInQueue(track_ids, index));
     }
-    pub fn remove_entry(&self, entry_id: QueueEntryId) {
-        self.dispatch(PlaybackCommand::RemoveFromQueue(entry_id));
+    /// Remove the queue row with this id. The command is sent at the call, in
+    /// order with the commands sent before and after it; the answer is the
+    /// future's: that the queue changed when the row is no longer queued.
+    pub fn remove_entry(
+        &self,
+        entry_id: QueueEntryId,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.dispatch(PlaybackCommand::RemoveFromQueue { entry_id, reply });
+        async move { answer.await.map_err(QueueEditError::Stopped)? }
     }
     /// Move `entry_id` to just before `before`, or to the end of its lane
     /// when it's `None`, and answer the lane's version the move made: a
@@ -501,16 +517,26 @@ impl PlaybackHandle {
         &self,
         entry_id: QueueEntryId,
         before: Option<QueueEntryId>,
-    ) -> impl std::future::Future<Output = Result<u64, ReorderError>> + Send + 'static {
+    ) -> impl std::future::Future<Output = Result<u64, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
         self.dispatch(PlaybackCommand::ReorderQueue { entry_id, before, reply });
-        async move { answer.await.map_err(ReorderError::Stopped)? }
+        async move { answer.await.map_err(QueueEditError::Stopped)? }
     }
-    pub fn clear_up_next(&self) {
-        self.dispatch(PlaybackCommand::ClearUpNext);
+    /// Empty the manual lane, answering once it is empty or why it isn't.
+    pub fn clear_up_next(
+        &self,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.dispatch(PlaybackCommand::ClearUpNext(reply));
+        async move { answer.await.map_err(QueueEditError::Stopped)? }
     }
-    pub fn clear_playing_from(&self) {
-        self.dispatch(PlaybackCommand::ClearPlayingFrom);
+    /// Drop the context lane, answering once it is dropped or why it isn't.
+    pub fn clear_playing_from(
+        &self,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.dispatch(PlaybackCommand::ClearPlayingFrom(reply));
+        async move { answer.await.map_err(QueueEditError::Stopped)? }
     }
     pub fn set_repeat_mode(&self, mode: RepeatMode) {
         self.dispatch(PlaybackCommand::SetRepeatMode(mode));
@@ -553,8 +579,15 @@ impl PlaybackHandle {
         }
     }
 
-    pub fn skip_to_entry(&self, entry_id: QueueEntryId) {
-        self.dispatch(PlaybackCommand::SkipTo(entry_id));
+    /// Skip to the queue row with this id, answering once its track is
+    /// loading, or that the queue changed when the row is no longer queued.
+    pub fn skip_to_entry(
+        &self,
+        entry_id: QueueEntryId,
+    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+        let (reply, answer) = oneshot::channel();
+        self.dispatch(PlaybackCommand::SkipTo { entry_id, reply });
+        async move { answer.await.map_err(QueueEditError::Stopped)? }
     }
     /// Called when `pause_between_sides` turns on, so a next track already staged
     /// for gapless playback is held if its boundary needs a pause.

@@ -256,6 +256,7 @@ private fun LazyListScope.queueRows(
 ) {
     items(count = lane.size, key = { index -> lane.itemAt(index)?.entryId ?: "placeholder-$index" }) { index ->
         val item = lane.itemAt(index)
+        val scope = rememberCoroutineScope()
         if (item == null) {
             LaunchedEffect(lane.changes, index) {
                 lane.loadRange?.invoke(
@@ -271,14 +272,18 @@ private fun LazyListScope.queueRows(
                         item = item,
                         dragHandleModifier = Modifier.draggableHandle(),
                         onClick = {
-                            failures.run("skipToEntry ${item.entryId}") {
-                                session.appHandle.skipToEntry(item.entryId)
-                                onSkipped?.invoke()
+                            scope.launch {
+                                failures
+                                    .answer("skipToEntry ${item.entryId}") {
+                                        session.appHandle.skipToEntry(item.entryId)
+                                    }?.let { onSkipped?.invoke() }
                             }
                         },
                         onRemove = {
-                            failures.run("removeEntry ${item.entryId}") {
-                                session.appHandle.removeEntry(item.entryId)
+                            scope.launch {
+                                failures.answer("removeEntry ${item.entryId}") {
+                                    session.appHandle.removeEntry(item.entryId)
+                                }
                             }
                         },
                     )
@@ -333,9 +338,10 @@ private fun UpNextSectionLabel(
     session: OpenLibrary,
     failures: QueueFailures,
 ) {
+    val scope = rememberCoroutineScope()
     SectionLabelRow(text = stringResource(R.string.queue_section_up_next)) {
         ClearLaneButton(R.string.queue_clear_up_next) {
-            failures.run("clearUpNext") { session.appHandle.clearUpNext() }
+            scope.launch { failures.answer("clearUpNext") { session.appHandle.clearUpNext() } }
         }
     }
 }
@@ -348,9 +354,10 @@ private fun ContextSectionLabel(
     text: String,
     shuffled: Boolean,
 ) {
+    val scope = rememberCoroutineScope()
     SectionLabelRow(text = text) {
         ClearLaneButton(R.string.queue_clear_playing_from) {
-            failures.run("clearPlayingFrom") { session.appHandle.clearPlayingFrom() }
+            scope.launch { failures.answer("clearPlayingFrom") { session.appHandle.clearPlayingFrom() } }
         }
         IconButton(
             onClick = { failures.run("setShuffle ${!shuffled}") { session.appHandle.setShuffle(!shuffled) } },

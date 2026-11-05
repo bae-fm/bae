@@ -748,7 +748,7 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::Play("track".to_string()),
         PlaybackCommand::PlayLibraryShuffled(oneshot::channel().0),
         PlaybackCommand::AddToQueue(vec!["track".to_string()]),
-        PlaybackCommand::ClearUpNext,
+        PlaybackCommand::ClearUpNext(oneshot::channel().0),
         PlaybackCommand::SetShuffle(true),
         PlaybackCommand::StopRemote,
     ];

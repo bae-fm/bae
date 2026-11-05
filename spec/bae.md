@@ -3155,8 +3155,11 @@ writes that change it: Up next's for every entry put in, taken out or moved;
 what's playing from's for every change to its tracks after the current one,
 or to which one is current. A reorder that moved its entry answers with its
 part's version after the move; one whose entry, or the entry it goes before,
-is no longer in that part moves nothing and answers that the queue changed,
-which the app shows ("The queue changed before the move, so nothing moved.").
+is no longer in that part moves nothing and answers that the queue changed.
+A remove, a skip to an entry and either clear answer too: a remove or skip
+whose entry is no longer in its part changes nothing and answers that the
+queue changed, a failed write answers its error, and the app shows either
+("The queue changed before this reached it, so nothing changed.").
 The queue screens read each part with its version: a row dragged to a new
 place stays there until the part's read reaches the version the move
 answered, so it never jumps back while the move is on its way, and a move
@@ -4674,6 +4677,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge` | on Android, learns the library's recovery code couldn't be saved on the phone: Block Store already keeps as many entries as Android gives an app, or the code doesn't fit in one ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) |
 | `Membership` | retries the membership step, with the advice it carries |
 | `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in (§5.6) |
+| `QueueChanged` | sees the queue as it now is: an entry the command named left the queue first (§7.1) |
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 

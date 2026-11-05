@@ -425,27 +425,19 @@
                         }
                     },
                     removeEntry: { id in
-                        Task { @MainActor in
-                            model.remove(id)
-                        }
+                        await model.remove(id)
                     },
                     clearUpNext: {
-                        Task { @MainActor in
-                            model.clearUpNext()
-                        }
+                        await model.clearUpNext()
                     },
                     clearPlayingFrom: {
-                        Task { @MainActor in
-                            model.clearPlayingFrom()
-                        }
+                        await model.clearPlayingFrom()
                     },
                     reorderEntry: { id, before in
                         await model.reorder(id, before: before)
                     },
                     skipToEntry: { id in
-                        Task { @MainActor in
-                            model.skipTo(id)
-                        }
+                        await model.skipTo(id)
                     },
                     setShuffle: { on in
                         Task { @MainActor in

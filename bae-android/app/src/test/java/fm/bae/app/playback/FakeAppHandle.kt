@@ -312,11 +312,11 @@ internal open class FakeAppHandle(
         unfaked("changeCover")
     }
 
-    override fun clearPlayingFrom() {
+    override suspend fun clearPlayingFrom() {
         unfaked("clearPlayingFrom")
     }
 
-    override fun clearUpNext() {
+    override suspend fun clearUpNext() {
         unfaked("clearUpNext")
     }
 
@@ -397,7 +397,7 @@ internal open class FakeAppHandle(
         unfaked("queuePinReleases")
     }
 
-    override fun removeEntry(entryId: String) {
+    override suspend fun removeEntry(entryId: String) {
         unfaked("removeEntry")
     }
 
@@ -451,7 +451,7 @@ internal open class FakeAppHandle(
         unfaked("setVolume")
     }
 
-    override fun skipToEntry(entryId: String) {
+    override suspend fun skipToEntry(entryId: String) {
         unfaked("skipToEntry")
     }
 

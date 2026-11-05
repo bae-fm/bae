@@ -136,8 +136,8 @@ impl PlaybackService {
                 let added = self.playback_queue.insert_at(index, track_ids).await;
                 self.queue_added(added).await;
             }
-            PlaybackCommand::RemoveFromQueue(entry_id) => {
-                match self.playback_queue.remove(entry_id).await {
+            PlaybackCommand::RemoveFromQueue { entry_id, reply } => {
+                let removed = match self.playback_queue.remove(entry_id).await {
                     Ok(Some(removed)) => {
                         if self.current_track_id().map(|id| id == removed.track_id).unwrap_or(false)
                         {
@@ -145,11 +145,21 @@ impl PlaybackService {
                         } else {
                             self.on_queue_mutated().await;
                         }
+                        Ok(())
                     }
                     // The id named no queued entry — a stale UI action against a
                     // queue that already moved on.
-                    Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                    Err(e) => self.queue_failed("remove a queue entry", &e),
+                    Ok(None) => {
+                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
+                        Err(super::api::QueueEditError::QueueChanged)
+                    }
+                    Err(e) => {
+                        self.queue_failed("remove a queue entry", &e);
+                        Err(super::api::QueueEditError::Queue(e))
+                    }
+                };
+                if reply.send(removed).is_err() {
+                    debug!("a remove answered a caller that stopped waiting");
                 }
             }
             PlaybackCommand::ReorderQueue { entry_id, before, reply } => {
@@ -160,25 +170,45 @@ impl PlaybackService {
                     }
                     Ok(None) => {
                         self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
-                        Err(super::api::ReorderError::QueueChanged)
+                        Err(super::api::QueueEditError::QueueChanged)
                     }
                     Err(e) => {
                         self.queue_failed("reorder the queue", &e);
-                        Err(super::api::ReorderError::Queue(e))
+                        Err(super::api::QueueEditError::Queue(e))
                     }
                 };
                 if reply.send(moved).is_err() {
                     debug!("a reorder answered a caller that stopped waiting");
                 }
             }
-            PlaybackCommand::ClearUpNext => match self.playback_queue.clear_up_next().await {
-                Ok(()) => self.on_queue_mutated().await,
-                Err(e) => self.queue_failed("clear Up Next", &e),
-            },
-            PlaybackCommand::ClearPlayingFrom => {
-                match self.playback_queue.clear_playing_from().await {
-                    Ok(()) => self.on_queue_mutated().await,
-                    Err(e) => self.queue_failed("clear the context lane", &e),
+            PlaybackCommand::ClearUpNext(reply) => {
+                let cleared = match self.playback_queue.clear_up_next().await {
+                    Ok(()) => {
+                        self.on_queue_mutated().await;
+                        Ok(())
+                    }
+                    Err(e) => {
+                        self.queue_failed("clear Up Next", &e);
+                        Err(super::api::QueueEditError::Queue(e))
+                    }
+                };
+                if reply.send(cleared).is_err() {
+                    debug!("a clear of Up Next answered a caller that stopped waiting");
+                }
+            }
+            PlaybackCommand::ClearPlayingFrom(reply) => {
+                let cleared = match self.playback_queue.clear_playing_from().await {
+                    Ok(()) => {
+                        self.on_queue_mutated().await;
+                        Ok(())
+                    }
+                    Err(e) => {
+                        self.queue_failed("clear the context lane", &e);
+                        Err(super::api::QueueEditError::Queue(e))
+                    }
+                };
+                if reply.send(cleared).is_err() {
+                    debug!("a clear of the context lane answered a caller that stopped waiting");
                 }
             }
             PlaybackCommand::SetRepeatMode(mode) => {
@@ -195,8 +225,8 @@ impl PlaybackService {
             PlaybackCommand::ReevaluateSidePauseStaging => {
                 self.reevaluate_side_pause_staging().await;
             }
-            PlaybackCommand::SkipTo(entry_id) => {
-                match self.playback_queue.skip_to(entry_id).await {
+            PlaybackCommand::SkipTo { entry_id, reply } => {
+                let skipped = match self.playback_queue.skip_to(entry_id).await {
                     Ok(Some(entry)) => {
                         info!(
                             "SkipTo: jumping to queue entry {}, track {}",
@@ -209,10 +239,20 @@ impl PlaybackService {
                             TrackTransition::Manual,
                         )
                         .await;
+                        Ok(())
                     }
                     // The id named no queued entry — a stale UI action.
-                    Ok(None) => self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown),
-                    Err(e) => self.queue_failed("skip to a queue entry", &e),
+                    Ok(None) => {
+                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
+                        Err(super::api::QueueEditError::QueueChanged)
+                    }
+                    Err(e) => {
+                        self.queue_failed("skip to a queue entry", &e);
+                        Err(super::api::QueueEditError::Queue(e))
+                    }
+                };
+                if reply.send(skipped).is_err() {
+                    debug!("a skip answered a caller that stopped waiting");
                 }
             }
             PlaybackCommand::PreviewPlay(target) => {

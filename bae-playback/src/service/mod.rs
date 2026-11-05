@@ -93,7 +93,7 @@ use api::PlayReply;
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseReason, PlaybackState,
-    ReorderError,
+    QueueEditError,
 };
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
@@ -621,9 +621,9 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         PlaybackCommand::SetRepeatMode(_) => Some(PlaybackCommandKind::SetRepeat),
         PlaybackCommand::AddReleaseToQueue(_) => Some(PlaybackCommandKind::AddReleaseToQueue),
         PlaybackCommand::AddReleaseNext(_) => Some(PlaybackCommandKind::AddReleaseNext),
-        PlaybackCommand::RemoveFromQueue(_) => Some(PlaybackCommandKind::RemoveFromQueue),
+        PlaybackCommand::RemoveFromQueue { .. } => Some(PlaybackCommandKind::RemoveFromQueue),
         PlaybackCommand::ReorderQueue { .. } => Some(PlaybackCommandKind::ReorderQueue),
-        PlaybackCommand::SkipTo(_) => Some(PlaybackCommandKind::SkipTo),
+        PlaybackCommand::SkipTo { .. } => Some(PlaybackCommandKind::SkipTo),
         PlaybackCommand::AutoAdvance { .. }
         | PlaybackCommand::TrackReady { .. }
         | PlaybackCommand::HaltOnError
@@ -631,8 +631,8 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::AddToQueue(_)
         | PlaybackCommand::AddNext(_)
         | PlaybackCommand::InsertInQueue(_, _)
-        | PlaybackCommand::ClearUpNext
-        | PlaybackCommand::ClearPlayingFrom
+        | PlaybackCommand::ClearUpNext(_)
+        | PlaybackCommand::ClearPlayingFrom(_)
         | PlaybackCommand::ReevaluateSidePauseStaging
         | PlaybackCommand::SetVolume(_)
         | PlaybackCommand::SetMuted(_)
@@ -675,12 +675,12 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::AddReleaseToQueue(_)
         | PlaybackCommand::AddReleaseNext(_)
         | PlaybackCommand::InsertInQueue(_, _)
-        | PlaybackCommand::RemoveFromQueue(_)
+        | PlaybackCommand::RemoveFromQueue { .. }
         | PlaybackCommand::ReorderQueue { .. }
-        | PlaybackCommand::ClearUpNext
-        | PlaybackCommand::ClearPlayingFrom
+        | PlaybackCommand::ClearUpNext(_)
+        | PlaybackCommand::ClearPlayingFrom(_)
         | PlaybackCommand::SetShuffle(_)
-        | PlaybackCommand::SkipTo(_)
+        | PlaybackCommand::SkipTo { .. }
         | PlaybackCommand::PreviewPlay(_)
         | PlaybackCommand::PlayOn(_)
         | PlaybackCommand::PlayOnAirPlay(_)

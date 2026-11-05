@@ -563,8 +563,26 @@ impl AppServices {
     delegate_sync!(playback, playback_add_release_to_queue => add_release_to_queue(release_id: String) -> ());
     delegate_sync!(playback, playback_add_release_next => add_release_next(release_id: String) -> ());
     delegate_sync!(playback, playback_insert_in_queue => insert_in_queue(track_ids: Vec<String>, index: usize) -> ());
-    delegate_sync!(playback, playback_remove_entry => remove_entry(entry_id: bae_playback::QueueEntryId) -> ());
-    delegate_sync!(playback, playback_clear_up_next => clear_up_next() -> ());
+
+    /// Remove a queue entry, sent at this call, in order with the playback
+    /// commands sent before and after it; the future answers that the queue
+    /// changed when the entry is no longer queued.
+    pub fn playback_remove_entry(
+        &self,
+        entry_id: bae_playback::QueueEntryId,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.remove_entry(entry_id)
+    }
+
+    /// Empty Up Next, sent at this call; the future answers once it is empty
+    /// or why it isn't.
+    pub fn playback_clear_up_next(
+        &self,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.clear_up_next()
+    }
 
     /// Move a queue entry, sent at this call, in order with the playback
     /// commands sent before and after it; the future answers the lane's
@@ -573,13 +591,31 @@ impl AppServices {
         &self,
         entry_id: bae_playback::QueueEntryId,
         before: Option<bae_playback::QueueEntryId>,
-    ) -> impl std::future::Future<Output = Result<u64, bae_playback::ReorderError>> + Send + 'static
+    ) -> impl std::future::Future<Output = Result<u64, bae_playback::QueueEditError>> + Send + 'static
     {
         self.inner.playback.reorder_entry(entry_id, before)
     }
 
-    delegate_sync!(playback, playback_clear_playing_from => clear_playing_from() -> ());
-    delegate_sync!(playback, playback_skip_to_entry => skip_to_entry(entry_id: bae_playback::QueueEntryId) -> ());
+    /// Drop the context lane, sent at this call; the future answers once it
+    /// is dropped or why it isn't.
+    pub fn playback_clear_playing_from(
+        &self,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.clear_playing_from()
+    }
+
+    /// Skip to a queue entry, sent at this call; the future answers once its
+    /// track is loading, or that the queue changed when the entry is no longer
+    /// queued.
+    pub fn playback_skip_to_entry(
+        &self,
+        entry_id: bae_playback::QueueEntryId,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    {
+        self.inner.playback.skip_to_entry(entry_id)
+    }
+
     delegate_async!(playback, playback_save_state => save_state() -> ());
 
     /// `file_id`'s bytes, `size` long, read into a buffer from the start;

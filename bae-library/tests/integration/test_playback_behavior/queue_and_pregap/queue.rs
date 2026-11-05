@@ -288,7 +288,12 @@ async fn test_remove_entry_refreshes_preloaded_track() {
             vec![track1, track2.clone()],
             &track0,
             &track2,
-            |h, entries| h.remove_entry(entries[0].id.clone()),
+            |h, entries| {
+                let removed = h.remove_entry(entries[0].id.clone());
+                let _answered = tokio::spawn(async move {
+                    removed.await.expect("the removal takes the entry out");
+                });
+            },
         )
         .await;
     })
@@ -511,11 +516,41 @@ async fn a_reorder_answers_its_lanes_version_or_that_the_queue_changed() {
             .reorder_entry(bae_playback::QueueEntryId::Manual(i64::MAX), Some(id(0)))
             .await
             .expect_err("no such entry is queued");
-        assert!(matches!(refused, bae_playback::ReorderError::QueueChanged), "{refused:?}");
+        assert!(matches!(refused, bae_playback::QueueEditError::QueueChanged), "{refused:?}");
         assert_eq!(
             handle.queue_value().await.expect("queue value").manual_version,
             version,
             "a refused reorder writes nothing"
+        );
+    })
+    .await;
+}
+
+/// A remove or a skip naming an entry the queue no longer holds is told the
+/// queue changed, and writes nothing.
+#[tokio::test]
+async fn skipping_to_or_removing_an_entry_no_longer_queued_answers_that_the_queue_changed() {
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        let handle = &fixture.playback_handle;
+        handle.add_to_queue(fixture.track_ids[..3].to_vec());
+        let entries = handle.queue_value().await.expect("queue value").manual;
+        assert_eq!(entries.len(), 3);
+        let id = |i: usize| entries[i].entry_id.parse::<bae_playback::QueueEntryId>().unwrap();
+
+        handle.remove_entry(id(0)).await.expect("the queued entry is removed");
+        let version = handle.queue_value().await.expect("queue value").manual_version;
+
+        let removed_again = handle.remove_entry(id(0)).await.expect_err("it is no longer queued");
+        assert!(
+            matches!(removed_again, bae_playback::QueueEditError::QueueChanged),
+            "{removed_again:?}"
+        );
+        let skipped = handle.skip_to_entry(id(0)).await.expect_err("it is no longer queued");
+        assert!(matches!(skipped, bae_playback::QueueEditError::QueueChanged), "{skipped:?}");
+        assert_eq!(
+            handle.queue_value().await.expect("queue value").manual_version,
+            version,
+            "a refused command writes nothing"
         );
     })
     .await;
@@ -602,7 +637,11 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
             .iter()
             .find(|e| e.track_id == third)
             .expect("the third track is queued in the context");
-        fixture.playback_handle.skip_to_entry(target.id.clone());
+        fixture
+            .playback_handle
+            .skip_to_entry(target.id.clone())
+            .await
+            .expect("the skip reaches the queued entry");
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
@@ -632,7 +671,7 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
         let before = fixture.playback_handle.queue_value().await.expect("queue value");
         assert!(!before.manual.is_empty(), "the manual lane has the added track");
 
-        fixture.playback_handle.clear_up_next();
+        fixture.playback_handle.clear_up_next().await.expect("Up Next clears");
         let after = fixture.playback_handle.queue_value().await.expect("queue value");
         assert!(after.manual.is_empty(), "ClearUpNext empties the manual lane");
         assert!(after.context.is_some(), "ClearUpNext leaves the playing context intact");
@@ -657,7 +696,7 @@ async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
             .expect("the release starts playing");
         fixture.playback_handle.add_to_queue(vec![queued.clone()]);
 
-        fixture.playback_handle.clear_playing_from();
+        fixture.playback_handle.clear_playing_from().await.expect("the context lane clears");
 
         let after = fixture.playback_handle.queue_value().await.expect("queue value");
         assert!(after.context.is_none(), "the context section leaves the snapshot entirely");
@@ -741,7 +780,11 @@ async fn remove_currently_playing_entry_stops_playback() {
             .find(|e| e.track_id == second)
             .expect("the second track is queued in the context")
             .clone();
-        fixture.playback_handle.skip_to_entry(entry.id.clone());
+        fixture
+            .playback_handle
+            .skip_to_entry(entry.id.clone())
+            .await
+            .expect("the skip reaches the queued entry");
         fixture
             .wait_for_state(
                 |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
@@ -749,7 +792,11 @@ async fn remove_currently_playing_entry_stops_playback() {
             .await
             .expect("SkipTo makes the second track current");
 
-        fixture.playback_handle.remove_entry(entry.id.clone());
+        fixture
+            .playback_handle
+            .remove_entry(entry.id.clone())
+            .await
+            .expect("the playing entry is removed");
         fixture
             .wait_for_state(|s| matches!(s, PlaybackState::Stopped))
             .await

@@ -351,26 +351,6 @@ forward! { sync this => {
             .playback_insert_in_queue(track_ids, index as usize);
     }
 
-    fn remove_entry(entry_id: String) {
-        if let Some(entry_id) = queue_entry_id(&entry_id) {
-            this.services.playback_remove_entry(entry_id);
-        }
-    }
-
-    fn clear_up_next() {
-        this.services.playback_clear_up_next();
-    }
-
-    fn clear_playing_from() {
-        this.services.playback_clear_playing_from();
-    }
-
-    fn skip_to_entry(entry_id: String) {
-        if let Some(entry_id) = queue_entry_id(&entry_id) {
-            this.services.playback_skip_to_entry(entry_id);
-        }
-    }
-
 } }
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
@@ -394,6 +374,46 @@ impl AppHandle {
         self.run_exported("AppHandle.reorder_entry", move |_| async move { Ok(answer.await?) })
             .await
     }
+
+    /// Remove the queue entry `entry_id`. An entry no longer queued fails with
+    /// `QueueChanged`, and the screen shows the queue as it now is.
+    ///
+    /// The command is sent before the call first waits, so commands sent one
+    /// after another reach the queue in that order.
+    pub async fn remove_entry(
+        self: std::sync::Arc<Self>,
+        entry_id: String,
+    ) -> Result<(), BridgeError> {
+        let entry_id = parsed_queue_entry_id(&entry_id)?;
+        let answer = self.services.playback_remove_entry(entry_id);
+        self.run_exported("AppHandle.remove_entry", move |_| async move { Ok(answer.await?) }).await
+    }
+
+    /// Skip to the queue entry `entry_id`, answering once its track is
+    /// loading. An entry no longer queued fails with `QueueChanged`.
+    pub async fn skip_to_entry(
+        self: std::sync::Arc<Self>,
+        entry_id: String,
+    ) -> Result<(), BridgeError> {
+        let entry_id = parsed_queue_entry_id(&entry_id)?;
+        let answer = self.services.playback_skip_to_entry(entry_id);
+        self.run_exported("AppHandle.skip_to_entry", move |_| async move { Ok(answer.await?) })
+            .await
+    }
+
+    /// Empty Up Next, the manual lane, leaving the playing context.
+    pub async fn clear_up_next(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        let answer = self.services.playback_clear_up_next();
+        self.run_exported("AppHandle.clear_up_next", move |_| async move { Ok(answer.await?) })
+            .await
+    }
+
+    /// Drop the context lane; the playing track keeps playing.
+    pub async fn clear_playing_from(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        let answer = self.services.playback_clear_playing_from();
+        self.run_exported("AppHandle.clear_playing_from", move |_| async move { Ok(answer.await?) })
+            .await
+    }
 }
 
 /// `entry_id` as the queue's id, or why it isn't one the queue hands out: a
@@ -405,18 +425,6 @@ fn parsed_queue_entry_id(entry_id: &str) -> Result<QueueEntryId, BridgeError> {
             format!("queue entry id {entry_id:?} is not one the queue hands out: {e}"),
         )
     })
-}
-
-/// The queue entry a UI names by the id its queue rows carry. Every id the
-/// bridge hands out parses; one that doesn't names no entry, and is logged.
-fn queue_entry_id(entry_id: &str) -> Option<QueueEntryId> {
-    match entry_id.parse() {
-        Ok(entry_id) => Some(entry_id),
-        Err(e) => {
-            tracing::warn!("queue entry id {entry_id:?} is not one the queue hands out: {e}");
-            None
-        }
-    }
 }
 
 #[cfg(all(test, not(feature = "desktop")))]

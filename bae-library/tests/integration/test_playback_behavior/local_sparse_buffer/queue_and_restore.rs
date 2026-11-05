@@ -383,7 +383,12 @@ async fn remove_entry_refreshes_preloaded_track_over_sparse_buffer() {
             vec![track1, track2.clone()],
             &track0,
             &track2,
-            |h, entries| h.remove_entry(entries[0].id.clone()),
+            |h, entries| {
+                let removed = h.remove_entry(entries[0].id.clone());
+                let _answered = tokio::spawn(async move {
+                    removed.await.expect("the removal takes the entry out");
+                });
+            },
         )
         .await;
     })
@@ -455,7 +460,11 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
             .iter()
             .find(|e| e.track_id == third)
             .expect("the third track is queued in the context");
-        playback.playback_handle.skip_to_entry(target.id.clone());
+        playback
+            .playback_handle
+            .skip_to_entry(target.id.clone())
+            .await
+            .expect("the skip reaches the queued entry");
         wait_for_state_on(
             &mut playback.progress_rx,
             |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),

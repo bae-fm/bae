@@ -26,18 +26,22 @@ public final class Queue: Sendable, Observable {
     public let addNext: @Sendable (_ trackIds: [String]) -> Void
     public let insertInQueue:
         @Sendable (_ trackIds: [String], _ index: UInt32) -> Void
-    public let removeEntry: @Sendable (_ entryId: String) -> Void
+    /// Remove the row `entryId`. Throws when the queue changed first and the
+    /// row is no longer queued.
+    public let removeEntry: @Sendable (_ entryId: String) async throws -> Void
     /// Empty the manual lane, leaving the context lane playing.
-    public let clearUpNext: @Sendable () -> Void
+    public let clearUpNext: @Sendable () async throws -> Void
     /// Drop the context lane. The playing track keeps playing.
-    public let clearPlayingFrom: @Sendable () -> Void
+    public let clearPlayingFrom: @Sendable () async throws -> Void
     /// Move `entryId` to sit before `beforeEntryId`; `nil` moves it to the end
     /// of its lane. Answers the lane's version the move made, or throws when
     /// core moved nothing.
     public let reorderEntry:
         @Sendable (_ entryId: String, _ beforeEntryId: String?) async throws
             -> UInt64
-    public let skipToEntry: @Sendable (_ entryId: String) -> Void
+    /// Skip to the row `entryId`. Throws when the queue changed first and the
+    /// row is no longer queued.
+    public let skipToEntry: @Sendable (_ entryId: String) async throws -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
     /// Open the live read of the context's upcoming tail. It reads no
@@ -51,15 +55,17 @@ public final class Queue: Sendable, Observable {
             _,
             _ in
         },
-        removeEntry: @escaping @Sendable (String) -> Void = { _ in },
-        clearUpNext: @escaping @Sendable () -> Void = {},
-        clearPlayingFrom: @escaping @Sendable () -> Void = {},
+        removeEntry: @escaping @Sendable (String) async throws -> Void = { _ in
+        },
+        clearUpNext: @escaping @Sendable () async throws -> Void = {},
+        clearPlayingFrom: @escaping @Sendable () async throws -> Void = {},
         reorderEntry:
             @escaping @Sendable (String, String?) async throws -> UInt64 = {
                 _,
                 _ in 0
             },
-        skipToEntry: @escaping @Sendable (String) -> Void = { _ in },
+        skipToEntry: @escaping @Sendable (String) async throws -> Void = { _ in
+        },
         setShuffle: @escaping @Sendable (Bool) -> Void = { _ in },
         subscribeUpcoming: @escaping @Sendable () -> QueueUpcomingQuery = {
             fatalError("Queue upcoming subscription is not installed")
@@ -82,13 +88,13 @@ public final class Queue: Sendable, Observable {
             addToQueue: { handle.addToQueue(trackIds: $0) },
             addNext: { handle.addNext(trackIds: $0) },
             insertInQueue: { handle.insertInQueue(trackIds: $0, index: $1) },
-            removeEntry: { handle.removeEntry(entryId: $0) },
-            clearUpNext: { handle.clearUpNext() },
-            clearPlayingFrom: { handle.clearPlayingFrom() },
+            removeEntry: { try await handle.removeEntry(entryId: $0) },
+            clearUpNext: { try await handle.clearUpNext() },
+            clearPlayingFrom: { try await handle.clearPlayingFrom() },
             reorderEntry: {
                 try await handle.reorderEntry(entryId: $0, beforeEntryId: $1)
             },
-            skipToEntry: { handle.skipToEntry(entryId: $0) },
+            skipToEntry: { try await handle.skipToEntry(entryId: $0) },
             setShuffle: { handle.setShuffle(on: $0) },
             subscribeUpcoming: {
                 let subscription = handle.subscribeQueueUpcoming()

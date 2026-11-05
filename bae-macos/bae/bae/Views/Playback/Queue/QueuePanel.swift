@@ -47,10 +47,30 @@ struct QueuePanel: View {
             onPlayPause: {
                 playback.playPause(for: playbackStore.nowPlaying)
             },
-            onClearUpNext: { queue.clearUpNext() },
-            onClearPlayingFrom: { queue.clearPlayingFrom() },
-            onSkipTo: { queue.skipToEntry($0) },
-            onRemove: { queue.removeEntry($0) },
+            onClearUpNext: {
+                Task {
+                    do { try await queue.clearUpNext() }
+                    catch { uiStore.showError(error) }
+                }
+            },
+            onClearPlayingFrom: {
+                Task {
+                    do { try await queue.clearPlayingFrom() }
+                    catch { uiStore.showError(error) }
+                }
+            },
+            onSkipTo: { entryId in
+                Task {
+                    do { try await queue.skipToEntry(entryId) }
+                    catch { uiStore.showError(error) }
+                }
+            },
+            onRemove: { entryId in
+                Task {
+                    do { try await queue.removeEntry(entryId) }
+                    catch { uiStore.showError(error) }
+                }
+            },
             onReorder: { entryId, beforeEntryId in
                 try await queue.reorderEntry(entryId, beforeEntryId)
             },
