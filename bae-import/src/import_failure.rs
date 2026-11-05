@@ -26,6 +26,13 @@ impl ImportFailureReason {
     }
 }
 
+impl ImportFailure {
+    /// The failure an import's error is recorded as.
+    pub(crate) fn of(error: &crate::ImportError, failed_at: DateTime<Utc>) -> Self {
+        Self { reason: ImportFailureReason { detail: error.to_string() }, failed_at }
+    }
+}
+
 #[cfg(test)]
 impl ImportFailureReason {
     pub(crate) fn error(detail: impl Into<String>) -> Self {

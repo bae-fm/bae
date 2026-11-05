@@ -12,8 +12,6 @@ use crate::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::ImportError;
 use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 
-use super::ImportService;
-
 mod cue_segments;
 
 use cue_segments::{cue_audio_pregap, cue_file_landing_bytes};
@@ -115,112 +113,110 @@ fn standalone_audio_format(
     ))
 }
 
-impl ImportService {
-    fn audio_segment(
-        audio_format_id: &str,
-        segment_index: i64,
-        role: DbAudioSegmentRole,
-        file_id: &str,
-        span: SegmentSpan,
-        ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> DbAudioSegment {
-        DbAudioSegment {
-            id: ids.new_id().to_string(),
-            audio_format_id: audio_format_id.to_string(),
-            segment_index,
-            role,
-            file_id: file_id.to_string(),
-            start_sample: span.start_sample,
-            end_sample: span.end_sample,
-            start_byte: span.start_byte,
-            end_byte: span.end_byte,
-            created_at: now,
-        }
+pub(super) fn audio_segment(
+    audio_format_id: &str,
+    segment_index: i64,
+    role: DbAudioSegmentRole,
+    file_id: &str,
+    span: SegmentSpan,
+    ids: &dyn coven::IdSource,
+    now: chrono::DateTime<chrono::Utc>,
+) -> DbAudioSegment {
+    DbAudioSegment {
+        id: ids.new_id().to_string(),
+        audio_format_id: audio_format_id.to_string(),
+        segment_index,
+        role,
+        file_id: file_id.to_string(),
+        start_sample: span.start_sample,
+        end_sample: span.end_sample,
+        start_byte: span.start_byte,
+        end_byte: span.end_byte,
+        created_at: now,
     }
+}
 
-    /// Build audio format records for all tracks from the scan's stored facts,
-    /// reporting to `bugs` a CUE image whose track starts can't be read.
-    pub fn build_audio_formats(
-        tracks_to_files: &[TrackFile],
-        file_ids: &HashMap<PathBuf, String>,
-        clock: &dyn coven::Clock,
-        ids: &dyn coven::IdSource,
-        bugs: &bae_diagnostics::Diagnostics,
-    ) -> Result<BuiltAudioFormats, ImportError> {
-        let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
-        let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
-        let mut audio_segments = Vec::new();
-        let mut cue_landings_by_file: HashMap<PathBuf, Option<HashMap<u64, u64>>> = HashMap::new();
+/// Build audio format records for all tracks from the scan's stored facts,
+/// reporting to `bugs` a CUE image whose track starts can't be read.
+pub fn build_audio_formats(
+    tracks_to_files: &[TrackFile],
+    file_ids: &HashMap<PathBuf, String>,
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdSource,
+    bugs: &bae_diagnostics::Diagnostics,
+) -> Result<BuiltAudioFormats, ImportError> {
+    let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
+    let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
+    let mut audio_segments = Vec::new();
+    let mut cue_landings_by_file: HashMap<PathBuf, Option<HashMap<u64, u64>>> = HashMap::new();
 
-        for track_file in tracks_to_files {
-            let db_track = &track_file.db_track;
-            let built = match &track_file.audio {
-                TrackAudio::CueBacked { cue_pair, cue_index, .. } => {
-                    let af = cue_backed_audio_format(
-                        &db_track.id,
-                        cue_pair,
-                        *cue_index,
-                        ids.new_id().to_string(),
-                        now,
-                    )?;
-                    for audio_file in &cue_pair.audio_files {
-                        cue_landings_by_file.entry(audio_file.path.clone()).or_insert_with(|| {
-                            match cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet) {
-                                Ok(landings) => Some(landings),
-                                // The image's tracks hold no byte window and
-                                // keep the whole-file read-ahead span.
-                                Err(reason) => {
-                                    bugs.report_bug(
-                                        "read where each track of a CUE image starts",
-                                        &format!("{}: {reason}", audio_file.path.display()),
-                                    );
-                                    None
-                                }
+    for track_file in tracks_to_files {
+        let db_track = &track_file.db_track;
+        let built = match &track_file.audio {
+            TrackAudio::CueBacked { cue_pair, cue_index, .. } => {
+                let af = cue_backed_audio_format(
+                    &db_track.id,
+                    cue_pair,
+                    *cue_index,
+                    ids.new_id().to_string(),
+                    now,
+                )?;
+                for audio_file in &cue_pair.audio_files {
+                    cue_landings_by_file.entry(audio_file.path.clone()).or_insert_with(|| {
+                        match cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet) {
+                            Ok(landings) => Some(landings),
+                            // The image's tracks hold no byte window and
+                            // keep the whole-file read-ahead span.
+                            Err(reason) => {
+                                bugs.report_bug(
+                                    "read where each track of a CUE image starts",
+                                    &format!("{}: {reason}", audio_file.path.display()),
+                                );
+                                None
                             }
-                        });
-                    }
-                    let segments = Self::cue_segments(
-                        &af.id,
-                        cue_pair,
-                        *cue_index,
-                        file_ids,
-                        &cue_landings_by_file,
-                        ids,
-                        now,
-                    )?;
-                    BuiltAudioFormat { format: af, segments }
+                        }
+                    });
                 }
-                TrackAudio::Standalone { file_path, source_audio } => {
-                    let file_id = file_ids.get(file_path).ok_or_else(|| ImportError::Internal {
-                        detail: format!("No DbFile registered for track source {file_path:?}"),
-                    })?;
-                    let af = standalone_audio_format(
-                        &db_track.id,
-                        file_path,
-                        source_audio,
-                        ids.new_id().to_string(),
-                        now,
-                    )?;
-                    let segment = Self::audio_segment(
-                        &af.id,
-                        0,
-                        DbAudioSegmentRole::Main,
-                        file_id,
-                        SegmentSpan::whole_file(),
-                        ids,
-                        now,
-                    );
-                    BuiltAudioFormat { format: af, segments: vec![segment] }
-                }
-            };
+                let segments = cue_segments::cue_segments(
+                    &af.id,
+                    cue_pair,
+                    *cue_index,
+                    file_ids,
+                    &cue_landings_by_file,
+                    ids,
+                    now,
+                )?;
+                BuiltAudioFormat { format: af, segments }
+            }
+            TrackAudio::Standalone { file_path, source_audio } => {
+                let file_id = file_ids.get(file_path).ok_or_else(|| ImportError::Internal {
+                    detail: format!("No DbFile registered for track source {file_path:?}"),
+                })?;
+                let af = standalone_audio_format(
+                    &db_track.id,
+                    file_path,
+                    source_audio,
+                    ids.new_id().to_string(),
+                    now,
+                )?;
+                let segment = audio_segment(
+                    &af.id,
+                    0,
+                    DbAudioSegmentRole::Main,
+                    file_id,
+                    SegmentSpan::whole_file(),
+                    ids,
+                    now,
+                );
+                BuiltAudioFormat { format: af, segments: vec![segment] }
+            }
+        };
 
-            audio_segments.extend(built.segments);
-            audio_formats.push(built.format);
-        }
-
-        Ok(BuiltAudioFormats { audio_formats, audio_segments })
+        audio_segments.extend(built.segments);
+        audio_formats.push(built.format);
     }
+
+    Ok(BuiltAudioFormats { audio_formats, audio_segments })
 }
 
 pub struct BuiltAudioFormats {

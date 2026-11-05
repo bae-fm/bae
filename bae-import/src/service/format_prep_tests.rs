@@ -46,7 +46,7 @@ fn build_audio_formats_uses_stored_standalone_facts() {
     let file_ids = HashMap::from([(path, "file-0".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built = ImportService::build_audio_formats(
+    let built = build_audio_formats(
         &[track],
         &file_ids,
         &test_clock(),

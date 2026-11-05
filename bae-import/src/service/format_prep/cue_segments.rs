@@ -2,8 +2,9 @@
 //! and main segments, by sample, and the bytes a seek to each boundary lands
 //! on.
 
-use super::{cue_audio_file, cue_track_by_playable_index, ensure_probe_audio_format};
-use crate::service::ImportService;
+use super::{
+    audio_segment, cue_audio_file, cue_track_by_playable_index, ensure_probe_audio_format,
+};
 use crate::types::CueFlacAnalysis;
 use crate::ImportError;
 use bae_audio::ProbeResult;
@@ -91,88 +92,83 @@ pub(super) fn cue_file_landing_bytes(
     Ok(start_samples.into_iter().zip(landings).collect())
 }
 
-impl ImportService {
-    fn cue_segment_byte(
-        byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
-        file_path: &Path,
-        sample: u64,
-    ) -> Option<u64> {
-        if sample == 0 {
-            return None;
-        }
-        byte_landings_by_file
-            .get(file_path)
-            .and_then(|map| map.as_ref())
-            .and_then(|map| map.get(&sample))
-            .copied()
+fn cue_segment_byte(
+    byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
+    file_path: &Path,
+    sample: u64,
+) -> Option<u64> {
+    if sample == 0 {
+        return None;
     }
+    byte_landings_by_file
+        .get(file_path)
+        .and_then(|map| map.as_ref())
+        .and_then(|map| map.get(&sample))
+        .copied()
+}
 
-    pub(super) fn cue_segments(
-        audio_format_id: &str,
-        cue_pair: &CueFlacAnalysis,
-        cue_index: usize,
-        file_ids: &HashMap<PathBuf, String>,
-        byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
-        ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> Result<Vec<DbAudioSegment>, ImportError> {
-        let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
-        let main_audio = cue_audio_file(cue_pair, &cue_track.file_reference)?;
-        let main_path = main_audio.path.as_path();
-        let probe = &main_audio.probe;
-        ensure_probe_audio_format(main_path, probe)?;
-        let sample_rate = u64::from(probe.sample_rate.get());
-        let mut segments = Vec::new();
+pub(super) fn cue_segments(
+    audio_format_id: &str,
+    cue_pair: &CueFlacAnalysis,
+    cue_index: usize,
+    file_ids: &HashMap<PathBuf, String>,
+    byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
+    ids: &dyn coven::IdSource,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<Vec<DbAudioSegment>, ImportError> {
+    let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
+    let main_audio = cue_audio_file(cue_pair, &cue_track.file_reference)?;
+    let main_path = main_audio.path.as_path();
+    let probe = &main_audio.probe;
+    ensure_probe_audio_format(main_path, probe)?;
+    let sample_rate = u64::from(probe.sample_rate.get());
+    let mut segments = Vec::new();
 
-        if let Some(pregap) = cue_audio_pregap(cue_pair, cue_index)? {
-            let pregap_path = cue_audio_file(cue_pair, &pregap.file_reference)?.path.as_path();
-            let pregap_file_id =
-                file_ids.get(pregap_path).ok_or_else(|| ImportError::Internal {
-                    detail: format!("No DbFile registered for CUE pregap source {pregap_path:?}"),
-                })?;
-            let start_sample = pregap.start_sample;
-            let end_sample = Some(pregap.end_sample);
-            let start_byte =
-                Self::cue_segment_byte(byte_landings_by_file, pregap_path, start_sample);
-            let end_byte = end_sample.and_then(|sample| {
-                Self::cue_segment_byte(byte_landings_by_file, pregap_path, sample)
-            });
-            segments.push(Self::audio_segment(
-                audio_format_id,
-                segments.len() as i64,
-                DbAudioSegmentRole::AudioPregap,
-                pregap_file_id,
-                SegmentSpan { start_sample, end_sample, start_byte, end_byte },
-                ids,
-                now,
-            ));
-        }
-
-        let main_file_id = file_ids.get(main_path).ok_or_else(|| ImportError::Internal {
-            detail: format!("No DbFile registered for CUE source {main_path:?}"),
+    if let Some(pregap) = cue_audio_pregap(cue_pair, cue_index)? {
+        let pregap_path = cue_audio_file(cue_pair, &pregap.file_reference)?.path.as_path();
+        let pregap_file_id = file_ids.get(pregap_path).ok_or_else(|| ImportError::Internal {
+            detail: format!("No DbFile registered for CUE pregap source {pregap_path:?}"),
         })?;
-        let start_sample =
-            crate::cue_sheet::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
-        // Where the sheet's slice ends — the same boundary its length and its
-        // audition window read.
-        let end_sample = cue_track
-            .end_cue_frames
-            .map(|frames| crate::cue_sheet::cue_frames_to_samples(frames, sample_rate));
-        let start_byte = Self::cue_segment_byte(byte_landings_by_file, main_path, start_sample);
+        let start_sample = pregap.start_sample;
+        let end_sample = Some(pregap.end_sample);
+        let start_byte = cue_segment_byte(byte_landings_by_file, pregap_path, start_sample);
         let end_byte = end_sample
-            .and_then(|sample| Self::cue_segment_byte(byte_landings_by_file, main_path, sample));
-        segments.push(Self::audio_segment(
+            .and_then(|sample| cue_segment_byte(byte_landings_by_file, pregap_path, sample));
+        segments.push(audio_segment(
             audio_format_id,
             segments.len() as i64,
-            DbAudioSegmentRole::Main,
-            main_file_id,
+            DbAudioSegmentRole::AudioPregap,
+            pregap_file_id,
             SegmentSpan { start_sample, end_sample, start_byte, end_byte },
             ids,
             now,
         ));
-
-        Ok(segments)
     }
+
+    let main_file_id = file_ids.get(main_path).ok_or_else(|| ImportError::Internal {
+        detail: format!("No DbFile registered for CUE source {main_path:?}"),
+    })?;
+    let start_sample =
+        crate::cue_sheet::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
+    // Where the sheet's slice ends — the same boundary its length and its
+    // audition window read.
+    let end_sample = cue_track
+        .end_cue_frames
+        .map(|frames| crate::cue_sheet::cue_frames_to_samples(frames, sample_rate));
+    let start_byte = cue_segment_byte(byte_landings_by_file, main_path, start_sample);
+    let end_byte =
+        end_sample.and_then(|sample| cue_segment_byte(byte_landings_by_file, main_path, sample));
+    segments.push(audio_segment(
+        audio_format_id,
+        segments.len() as i64,
+        DbAudioSegmentRole::Main,
+        main_file_id,
+        SegmentSpan { start_sample, end_sample, start_byte, end_byte },
+        ids,
+        now,
+    ));
+
+    Ok(segments)
 }
 
 #[cfg(test)]

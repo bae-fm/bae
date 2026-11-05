@@ -127,8 +127,7 @@ impl ImportServiceHandle {
                 return;
             }
         };
-        let failure =
-            crate::service::ImportService::terminal_failure(error, self.clock.now().into());
+        let failure = crate::ImportFailure::of(error, self.clock.now().into());
         if let Err(write) = self
             .tables
             .save_import_candidate_failure(

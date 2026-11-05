@@ -140,7 +140,7 @@ INDEX 01 01:00:00
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built = ImportService::build_audio_formats(
+    let built = build_audio_formats(
         &tracks_to_files,
         &file_ids,
         &test_clock(),
@@ -297,7 +297,7 @@ INDEX 01 11:01:30
     let ids = coven::SequentialIds::new();
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
 
-    let built = ImportService::build_audio_formats(
+    let built = build_audio_formats(
         &tracks_to_files,
         &file_ids,
         &clock,
@@ -356,7 +356,7 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
         }],
     };
 
-    let segments = ImportService::cue_segments(
+    let segments = cue_segments(
         "format-1",
         &analysis,
         0,
@@ -469,7 +469,7 @@ FILE "second.flac" WAVE
     let file_ids =
         HashMap::from([(first_path, "first".to_string()), (second_path, "second".to_string())]);
 
-    let built = ImportService::build_audio_formats(
+    let built = build_audio_formats(
         &tracks_to_files,
         &file_ids,
         &test_clock(),
@@ -636,7 +636,7 @@ fn an_image_whose_track_starts_cannot_be_read_is_reported_as_a_bug() {
         .collect();
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
 
-    let built = ImportService::build_audio_formats(
+    let built = build_audio_formats(
         &tracks_to_files,
         &HashMap::from([(path.clone(), "image".to_string())]),
         &test_clock(),
@@ -718,7 +718,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     let mut file_ids = HashMap::new();
     file_ids.insert(PathBuf::from(format!("{dir}/Test Album.ape")), "file-1".to_string());
 
-    let built = ImportService::build_audio_formats(
+    let built = build_audio_formats(
         &tracks,
         &file_ids,
         &test_clock(),
@@ -794,7 +794,7 @@ fn cue_image(
             },
         })
         .collect();
-    let built = crate::ImportService::build_audio_formats(
+    let built = build_audio_formats(
         &tracks,
         &HashMap::from([(path, "image".to_string())]),
         &coven::FixedClock::new(std::time::SystemTime::UNIX_EPOCH),

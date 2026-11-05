@@ -27,6 +27,7 @@ mod content_type;
 mod cover_image;
 mod file_identity;
 mod format_prep;
+pub use format_prep::{build_audio_formats, BuiltAudioFormats};
 mod importing;
 mod progress;
 mod reconcile;

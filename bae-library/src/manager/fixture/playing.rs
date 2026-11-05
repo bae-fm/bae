@@ -138,7 +138,7 @@ impl LibraryManager {
             let diagnostics = self.diagnostics.clone();
             let tracks = tracks_to_files.clone();
             bae_util::task_failure::blocking("build a fixture's audio formats", move || {
-                bae_import::ImportService::build_audio_formats(
+                bae_import::service::build_audio_formats(
                     &tracks,
                     &file_ids,
                     clock.as_ref(),

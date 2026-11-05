@@ -58,7 +58,7 @@ impl ImportService {
             // the error's diagnostic text, which the variant Displays build
             // from their `#[from]` source messages.
             let failed_at = self.clock.now().into();
-            let failure = Self::terminal_failure(&e, failed_at);
+            let failure = crate::ImportFailure::of(&e, failed_at);
             let error = e.to_string();
 
             // The row goes first and the event second: the event is what the
@@ -89,16 +89,6 @@ impl ImportService {
                 candidate_key,
                 progress: ImportProgress::Failed { error, import_id },
             });
-        }
-    }
-
-    pub(crate) fn terminal_failure(
-        error: &crate::ImportError,
-        failed_at: chrono::DateTime<chrono::Utc>,
-    ) -> crate::ImportFailure {
-        crate::ImportFailure {
-            reason: crate::ImportFailureReason { detail: error.to_string() },
-            failed_at,
         }
     }
 
@@ -374,7 +364,12 @@ impl ImportService {
         }
         self.event_tx
             .send_once_written(
-                Self::phase_progress(run, &db_release.id, Some(0), ImportPhase::ReadingFiles),
+                super::progress::phase_progress(
+                    run,
+                    &db_release.id,
+                    Some(0),
+                    ImportPhase::ReadingFiles,
+                ),
                 self.runtime.move_import(
                     candidate_key,
                     import_id,
@@ -406,7 +401,7 @@ impl ImportService {
                 let previous = reported_percent_for_progress
                     .swap(percent, std::sync::atomic::Ordering::Relaxed);
                 if previous != percent {
-                    ImportService::emit_phase_progress_on(
+                    super::progress::emit_phase_progress_on(
                         &event_tx,
                         ImportRun {
                             import_id: &import_id_for_progress,
@@ -474,7 +469,7 @@ impl ImportService {
             let ids = self.ids.clone();
             let diagnostics = self.diagnostics.clone();
             blocking("build the import's audio formats", move || {
-                Self::build_audio_formats(
+                super::build_audio_formats(
                     &tracks,
                     &file_ids,
                     clock.as_ref(),
@@ -510,7 +505,12 @@ impl ImportService {
         });
         self.event_tx
             .send_once_written(
-                Self::phase_progress(run, &db_release.id, None, ImportPhase::MeasuringLoudness),
+                super::progress::phase_progress(
+                    run,
+                    &db_release.id,
+                    None,
+                    ImportPhase::MeasuringLoudness,
+                ),
                 self.runtime.move_import(
                     candidate_key,
                     import_id,
@@ -550,7 +550,7 @@ impl ImportService {
         self.import_cancels.begin_writing(candidate_key, import_id)?;
         self.event_tx
             .send_once_written(
-                Self::phase_progress(run, &db_release.id, None, ImportPhase::Finalizing),
+                super::progress::phase_progress(run, &db_release.id, None, ImportPhase::Finalizing),
                 self.runtime.move_import(
                     candidate_key,
                     import_id,
