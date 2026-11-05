@@ -37,7 +37,7 @@ The platform's own face: SF Pro on Apple (`--font-sans`), SF Mono for codes (`--
 
 - One primary button per screen, on the right of the footer. Everything else is secondary.
 - A sheet's Cancel goes back one screen, and closes the sheet on the first one. No Back buttons.
-- Components come per platform: `Mac…` for macOS, `Android…` for Android; `StatusChip` and `Notice` serve both. Windows and Linux follow macOS; iOS will get its own.
+- Components come per platform: `Mac…` for macOS, `Android…` for Android; `StatusChip` and `Notice` serve both. Windows and Linux follow macOS; iOS will get its own. Each component's guidelines end with its counterpart in the code; "none yet" means the code needs one.
 - On macOS, settings are `MacSection` headings over `MacBox`es of `MacRow`s inside a `MacSettingsWindow`. A row that opens something ends in a chevron.
 - On Android, a screen is an `AndroidScreen` of `AndroidSection` labels over `AndroidCard`s of `AndroidRow`s; changing a value opens an `AndroidDialog`.
 - An empty list is one sentence in the box: "No shared folders yet". No glyph above it.

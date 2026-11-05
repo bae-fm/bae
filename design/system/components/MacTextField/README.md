@@ -7,3 +7,5 @@ A text field. Its label sits on the left in a column `labelWidth` wide (90px), o
 - The line under the field starts at the field's left edge: `note` in `text-secondary`, `error` in `danger` with a `danger` ring.
 - Focus draws a 1.5px `accent` ring. Fill `field`; no outline. Text in `small`.
 - `row` draws it as one row of a `MacBox`.
+
+**In the code:** macOS: `TextField` in a grouped `Form`; `CommittedTextField` where an edit is kept on Return.
