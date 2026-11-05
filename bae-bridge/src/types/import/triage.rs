@@ -372,10 +372,9 @@ pub enum BridgeBadgeTone {
     Failure,
 }
 
-/// One selected candidate and the actions its live state offers.
+/// The actions one selected candidate's live state offers.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionMember {
-    pub candidate_key: Vec<u8>,
     pub actions: Vec<BridgeCandidateAction>,
 }
 

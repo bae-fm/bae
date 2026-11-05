@@ -168,7 +168,6 @@
         ) -> ImportSelection {
             let members = keys.map { key in
                 BridgeSelectionMember(
-                    candidateKey: key,
                     actions: store.selectedCandidates[key]?.live?.actions ?? []
                 )
             }

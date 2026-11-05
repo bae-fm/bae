@@ -40,7 +40,7 @@ struct ImportCandidateActionOffer: Identifiable {
     ) -> [ImportCandidateActionOffer] {
         bridgeCandidateSelectionOffers(
             members: [
-                BridgeSelectionMember(candidateKey: key, actions: actions)
+                BridgeSelectionMember(actions: actions)
             ]
         )
         .map { offer in
