@@ -144,11 +144,14 @@ async fn remote_cover_dimensions_are_bounded() {
     );
 }
 
+/// A GIF canvas at the dimension limit, 8192 by 8192, is refused for its
+/// decode allocation: the limit is that pixel count at 8-bit RGBA, and the GIF
+/// decode needs more.
 #[tokio::test]
 async fn remote_cover_decode_allocation_is_bounded() {
     let mut bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
-    bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
-    bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
+    bytes[6..8].copy_from_slice(&8192u16.to_le_bytes());
+    bytes[8..10].copy_from_slice(&8192u16.to_le_bytes());
     let url = start_mock(vec![(200, bytes)]).await;
     let error = RemoteImageCache::for_test(direct_http()).fetch_required(&url).await.unwrap_err();
     assert!(
