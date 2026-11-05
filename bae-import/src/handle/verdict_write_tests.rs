@@ -259,9 +259,9 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
             &key,
             run,
             &row.verdict.clone().resume_state(
-                Default::default(),
-                Default::default(),
-                Default::default(),
+                Some(&row.signals),
+                &bae_identify::LookupChoices::default(),
+                bae_identify::signals::AudioFacts::default(),
             ),
         )
         .await;

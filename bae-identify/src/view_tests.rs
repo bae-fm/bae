@@ -564,8 +564,11 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
         track_count: 9,
         ledger: Some(recorded_ledger()),
     };
-    let run =
-        run_of(verdict.resume_state(Default::default(), Default::default(), Default::default()));
+    let run = run_of(verdict.resume_state(
+        None,
+        &crate::LookupChoices::default(),
+        crate::signals::AudioFacts::default(),
+    ));
     assert_eq!(run, recorded_ledger());
     assert_eq!(run.providers, vec![MB, DG]);
     assert!(matches!(
@@ -585,9 +588,9 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
     };
     assert!(matches!(
         IdentifyStateView::from(verdict.resume_state(
-            Default::default(),
-            Default::default(),
-            Default::default()
+            None,
+            &crate::LookupChoices::default(),
+            crate::signals::AudioFacts::default()
         )),
         IdentifyStateView::Failed { run: None, .. }
     ));
@@ -705,9 +708,9 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
     let judged = |verdict: TerminalVerdict| {
         let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
             IdentifyStateView::from(verdict.resume_state(
-                Default::default(),
-                Default::default(),
-                Default::default(),
+                None,
+                &crate::LookupChoices::default(),
+                crate::signals::AudioFacts::default(),
             ))
         else {
             panic!("a found verdict resumes found");

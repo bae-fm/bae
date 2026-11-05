@@ -173,13 +173,41 @@ fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
         track_count: 11,
         ledger: None,
     };
-    let IdentifyState::Found { findings, .. } =
-        verdict.resume_state(Default::default(), Default::default(), Default::default())
-    else {
+    let IdentifyState::Found { findings, .. } = verdict.resume_state(
+        None,
+        &crate::LookupChoices::default(),
+        crate::signals::AudioFacts::default(),
+    ) else {
         panic!("a found verdict resumes as Found");
     };
     let narrowed_out = findings.narrowed_out;
     assert_eq!(narrowed_out.matches, vec![mk_result("rel-out")]);
+}
+
+/// The origin a resumed state reads its rows against is the one the
+/// candidate's stored signals say, not a default.
+#[test]
+fn a_resumed_verdict_takes_its_origin_from_the_stored_signals() {
+    use crate::signals::{BarcodeSignal, DiscIdSignal, TextSignal};
+    let signals = Signals {
+        origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
+        disc_id: DiscIdSignal::Absent,
+        barcode: BarcodeSignal::Absent,
+        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+        text_pool: Vec::new(),
+        isrcs: Vec::new(),
+        track_titles: Vec::new(),
+    };
+    let verdict =
+        TerminalVerdict::Found { findings: one_disc_id_match(), track_count: 11, ledger: None };
+    let IdentifyState::Found { context, .. } = verdict.resume_state(
+        Some(&signals),
+        &crate::LookupChoices::default(),
+        crate::signals::AudioFacts::default(),
+    ) else {
+        panic!("a found verdict resumes as Found");
+    };
+    assert_eq!(context.origin.not_cd_rate, Some(96_000));
 }
 
 /// The reducer exposes a failed lookup directly, and verdict conversion
@@ -451,9 +479,11 @@ fn a_resumed_failure_stands_its_findings_back_up() {
             .collect::<Vec<_>>(),
         vec!["rel-1"]
     );
-    let IdentifyState::Failed { findings, .. } =
-        verdict.resume_state(Default::default(), Default::default(), Default::default())
-    else {
+    let IdentifyState::Failed { findings, .. } = verdict.resume_state(
+        None,
+        &crate::LookupChoices::default(),
+        crate::signals::AudioFacts::default(),
+    ) else {
         panic!("a failed verdict resumes as Failed");
     };
     assert_eq!(findings, one_disc_id_match());

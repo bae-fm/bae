@@ -893,9 +893,9 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
         candidate,
         IdentifyRunId::for_test(1),
         TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
-            Default::default(),
-            Default::default(),
-            Default::default(),
+            None,
+            &bae_identify::LookupChoices::default(),
+            bae_identify::signals::AudioFacts::default(),
         ),
         CallPriority::Background,
         CancellationToken::new(),

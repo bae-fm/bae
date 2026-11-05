@@ -115,7 +115,8 @@ fn one_provider_failing_the_search_leaves_the_other_s_matches_standing() {
 #[test]
 fn a_failed_search_stores_what_the_other_provider_found() {
     let state = started_searching(vec![MB, DG], "Album Title", "Artist Name");
-    let (state, effects) = update(state, signals(disc("d"), BarcodeSignal::Absent, &[]));
+    let stored = signals(disc("d"), BarcodeSignal::Absent, &[]);
+    let (state, effects) = update(state, stored.clone());
     assert!(matches!(effects.as_slice(), [Effect::LookupDiscid { .. }]));
     let (state, effects) = step(
         state,
@@ -157,10 +158,10 @@ fn a_failed_search_stores_what_the_other_provider_found() {
     );
     assert_eq!(findings.releases().count(), 3, "every release Discogs returned is kept");
 
-    let text = live.candidate_text();
     let verdict = crate::TerminalVerdict::try_from(live.clone()).expect("a failed run is terminal");
     assert_eq!(verdict.findings(), Some(findings), "the stored failure keeps what Discogs found");
-    let resumed = verdict.resume_state(text, Default::default(), Default::default());
+    let resumed =
+        verdict.resume_state(Some(&stored), &crate::LookupChoices::default(), Default::default());
     assert_eq!(
         crate::IdentifyStateView::from(resumed),
         crate::IdentifyStateView::from(live),

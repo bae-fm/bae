@@ -2,19 +2,34 @@
 //! which are only offered, and what striking one out does to the ranking.
 
 use super::*;
-use crate::signals::TextLine;
-use crate::signals::TextOrigin;
+use crate::signals::{
+    AudioFacts, BarcodeSignal, DiscIdSignal, Signals, TextLine, TextOrigin, TextSignal,
+};
 use crate::view::tests::*;
-use crate::{Findings, NarrowedOut, TerminalVerdict};
+use crate::{Findings, LookupChoices, NarrowedOut, TerminalVerdict};
 use bae_catalogs::search::MetadataResult;
 
-fn folder(lines: &[&str], struck_out: &[&str]) -> CandidateText {
+/// A candidate's stored signals holding `lines` as its text, and the choices
+/// that strike `struck_out` out of it.
+fn folder(lines: &[&str], struck_out: &[&str]) -> (Signals, LookupChoices) {
     let pool: Vec<TextLine> = lines
         .iter()
         .map(|text| TextLine { text: (*text).to_string(), origin: TextOrigin::FolderName })
         .collect();
-    let struck_out: Vec<String> = struck_out.iter().map(|value| (*value).to_string()).collect();
-    CandidateText::of(&pool, &struck_out, &[])
+    let signals = Signals {
+        origin: bae_catalogs::AudioOrigin::default(),
+        disc_id: DiscIdSignal::Absent,
+        barcode: BarcodeSignal::Absent,
+        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+        text_pool: pool,
+        isrcs: Vec::new(),
+        track_titles: Vec::new(),
+    };
+    let choices = LookupChoices {
+        discounted_catalogs: struck_out.iter().map(|value| (*value).to_string()).collect(),
+        ..LookupChoices::default()
+    };
+    (signals, choices)
 }
 
 /// One pressing with the fields the folder's text may agree with.
@@ -45,7 +60,7 @@ fn resumed(
     matches: Vec<MetadataResult>,
     narrowed_out: Vec<MetadataResult>,
     ledger: Option<IdentifyRunView>,
-    text: CandidateText,
+    (signals, choices): (Signals, LookupChoices),
 ) -> IdentifyStateView {
     let verdict = TerminalVerdict::Found {
         findings: Findings {
@@ -62,7 +77,7 @@ fn resumed(
         track_count: 9,
         ledger,
     };
-    IdentifyStateView::from(verdict.resume_state(text, Default::default(), Default::default()))
+    IdentifyStateView::from(verdict.resume_state(Some(&signals), &choices, AudioFacts::default()))
 }
 
 fn card_ids(view: &IdentifyStateView) -> Vec<&str> {
@@ -108,9 +123,10 @@ fn the_row_lists_the_numbers_in_effect_then_the_struck_ones() {
     use crate::state::{
         CatalogLookup, CatalogProgress, CatalogSearch, LookupState, ProviderLookup,
     };
+    let (signals, choices) = folder(&["Album LBL-1 AB 12345-2 ZZ-9 QQ-5"], &["ZZ-9"]);
     let mut context = crate::state::SignalsContext {
         providers: vec![MB],
-        text: folder(&["Album LBL-1 AB 12345-2 ZZ-9 QQ-5"], &["ZZ-9"]),
+        text: CandidateText::of_stored(Some(&signals), &choices),
         ..Default::default()
     };
     context.catalog.numbers = ["LBL-1", "AB12345-2", "ZZ-9", "QQ-5"].map(String::from).to_vec();

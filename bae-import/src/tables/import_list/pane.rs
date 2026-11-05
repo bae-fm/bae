@@ -222,10 +222,11 @@ impl CandidateDetailRows {
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed: striking a number out re-orders the
             // rows the next time they are read, with nothing asked again.
-            let text = bae_identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
-            let origin = signals.as_ref().map(|signals| signals.origin.clone()).unwrap_or_default();
-            resumed_identify_state =
-                identify.verdict.clone().resume_state(text, audio.clone(), origin);
+            resumed_identify_state = identify.verdict.clone().resume_state(
+                signals.as_ref(),
+                &lookup_choices,
+                audio.clone(),
+            );
         }
         let stage = match stage {
             StageRows::Imported(release) => ProjectedStage::Imported {
