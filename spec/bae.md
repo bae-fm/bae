@@ -1191,9 +1191,12 @@ Two kinds of pressing never stand:
   in the library plays no part: that is read live when a row shows, and what a
   run keeps must not depend on what the library held when it ran.
 
-The last point of the ranking reads the catalogs' free-text notes. A word that
-sets one pressing's notes apart, which the folder's text also states, ranks
-that pressing first among otherwise equal ones.
+The last point of the ranking reads the catalogs' free-text notes. Discogs
+writes links and formatting into a note as markup; bae reads the note as the
+text it shows (`[l=Label Name]` is Label Name), and a link that names only an
+id stays as written. A word that sets one pressing's notes apart, which the
+folder's text also states, ranks that pressing first among otherwise equal
+ones.
 
 A run's answers are kept with its verdict, so they re-rank without being
 fetched again, and a release whose document it read is stored on the device

@@ -909,3 +909,17 @@ fn discid_metadata_names_its_whole_credit() {
         .expect("the release contains the queried disc");
     assert_eq!(metadata.artist.as_deref(), Some("Artist One feat. Artist Two"));
 }
+
+/// Discogs writes links into a note as markup; a picker row's note reads the
+/// text the markup shows.
+#[test]
+fn a_discogs_note_reads_without_markup() {
+    let release = crate::discogs::documents::parse_discogs_release_json(
+        r#"{"id": 1, "title": "Album", "notes": "Mixed by [a=Artist Name].\nPressed by [l=Label Name]."}"#,
+    )
+    .expect("the release parses");
+    assert_eq!(
+        discogs_release_notes(&release),
+        vec!["Mixed by Artist Name.".to_string(), "Pressed by Label Name.".to_string()]
+    );
+}

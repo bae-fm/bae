@@ -1,6 +1,7 @@
 pub mod client;
 pub mod documents;
 pub mod formats;
+mod markup;
 pub mod models;
 use crate::catalog::{Catalog, LookupCatalog};
 use crate::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};

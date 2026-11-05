@@ -248,7 +248,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         master_id,
         companies,
         identifiers,
-        notes: release.notes,
+        notes: release.notes.map(|notes| super::markup::shown_text(&notes)),
     })
 }
 
