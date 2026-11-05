@@ -36,7 +36,7 @@ impl CandidateRuntime {
         construct: impl FnOnce(CancellationToken, u64) -> T,
     ) -> T {
         let token = CancellationToken::new();
-        let mut state = self.work.lock().unwrap();
+        let mut state = self.work.lock().expect("candidate work lock poisoned");
         let generation = state.next_generation;
         state.next_generation += 1;
         let prior = state.running.insert((work, key), (generation, token.clone()));
@@ -57,7 +57,7 @@ impl CandidateRuntime {
         generation: u64,
         emit: impl FnOnce() -> R,
     ) -> Option<R> {
-        let state = self.work.lock().unwrap();
+        let state = self.work.lock().expect("candidate work lock poisoned");
         match state.running.get(&(work, key.clone())) {
             Some((current, _)) if *current == generation => Some(emit()),
             _ => None,
@@ -66,7 +66,12 @@ impl CandidateRuntime {
 
     /// Cancel `key`'s `work`.
     pub(crate) fn cancel_work(&self, work: CandidateWork, key: &CandidateKey) {
-        let entry = self.work.lock().unwrap().running.remove(&(work, key.clone()));
+        let entry = self
+            .work
+            .lock()
+            .expect("candidate work lock poisoned")
+            .running
+            .remove(&(work, key.clone()));
         if let Some((_, token)) = entry {
             token.cancel();
         }
@@ -74,7 +79,7 @@ impl CandidateRuntime {
 
     /// Remove `key`'s `work` only while it is still `generation`.
     pub(crate) fn release_work(&self, work: CandidateWork, key: &CandidateKey, generation: u64) {
-        let mut state = self.work.lock().unwrap();
+        let mut state = self.work.lock().expect("candidate work lock poisoned");
         let entry = (work, key.clone());
         if state.running.get(&entry).is_some_and(|(current, _)| *current == generation) {
             state.running.remove(&entry);
@@ -82,14 +87,18 @@ impl CandidateRuntime {
     }
 
     pub(crate) fn is_working(&self, work: CandidateWork, key: &CandidateKey) -> bool {
-        self.work.lock().unwrap().running.contains_key(&(work, key.clone()))
+        self.work
+            .lock()
+            .expect("candidate work lock poisoned")
+            .running
+            .contains_key(&(work, key.clone()))
     }
 
     /// Every key with `work` in flight.
     pub(crate) fn working_keys(&self, work: CandidateWork) -> Vec<CandidateKey> {
         self.work
             .lock()
-            .unwrap()
+            .expect("candidate work lock poisoned")
             .running
             .keys()
             .filter(|(kind, _)| *kind == work)
@@ -100,7 +109,7 @@ impl CandidateRuntime {
     /// End every kind of work in flight for `key`.
     pub(super) fn end_work(&self, key: &CandidateKey) {
         let ended: Vec<CancellationToken> = {
-            let mut state = self.work.lock().unwrap();
+            let mut state = self.work.lock().expect("candidate work lock poisoned");
             [CandidateWork::Extraction, CandidateWork::Identify]
                 .into_iter()
                 .filter_map(|work| state.running.remove(&(work, key.clone())))
@@ -121,7 +130,7 @@ impl CandidateRuntime {
     ) -> Option<impl std::future::Future<Output = ()> + Send + 'static> {
         self.work
             .lock()
-            .unwrap()
+            .expect("candidate work lock poisoned")
             .running
             .get(&(work, key.clone()))
             .map(|(_, token)| token.clone().cancelled_owned())

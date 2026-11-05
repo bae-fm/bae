@@ -277,7 +277,7 @@ impl CandidateRuntime {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn every_count(&self) -> IdentificationCounts {
         let (reader, counts) = tokio::sync::mpsc::unbounded_channel();
-        self.every_count.lock().unwrap().push(reader);
+        self.every_count.lock().expect("count readers lock poisoned").push(reader);
         IdentificationCounts(counts)
     }
 
@@ -286,7 +286,7 @@ impl CandidateRuntime {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn every_change(&self) -> CandidateRuntimeChanges {
         let (reader, changes) = tokio::sync::mpsc::unbounded_channel();
-        self.every_change.lock().unwrap().push(reader);
+        self.every_change.lock().expect("change readers lock poisoned").push(reader);
         CandidateRuntimeChanges(changes)
     }
 

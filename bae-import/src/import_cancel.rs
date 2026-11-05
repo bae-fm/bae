@@ -100,7 +100,7 @@ impl ImportCancels {
     /// An import of `candidate_key` was claimed and is on its way to the
     /// worker.
     pub(crate) fn register(&self, candidate_key: &crate::CandidateKey, import_id: &str) {
-        self.entries.lock().unwrap().insert(
+        self.entries.lock().expect("cancel entries lock poisoned").insert(
             candidate_key.clone(),
             RegisteredImport {
                 import_id: import_id.to_string(),
@@ -112,7 +112,7 @@ impl ImportCancels {
 
     /// The import `import_id` of `candidate_key` never reached the worker.
     pub(crate) fn forget(&self, candidate_key: &crate::CandidateKey, import_id: &str) {
-        let mut entries = self.entries.lock().unwrap();
+        let mut entries = self.entries.lock().expect("cancel entries lock poisoned");
         if entries.get(candidate_key).is_some_and(|entry| entry.import_id == import_id) {
             entries.remove(candidate_key);
         }
@@ -128,7 +128,7 @@ impl ImportCancels {
         work: impl std::future::Future<Output = Result<T, ImportStop>>,
     ) -> ImportRunEnd<T> {
         let token = {
-            let mut entries = self.entries.lock().unwrap();
+            let mut entries = self.entries.lock().expect("cancel entries lock poisoned");
             match entries.get_mut(candidate_key) {
                 Some(entry) if entry.import_id == import_id && !entry.token.is_cancelled() => {
                     entry.stage = Stage::Running;
@@ -139,7 +139,7 @@ impl ImportCancels {
         };
         #[cfg(test)]
         let work = {
-            let gate = self.running_gate.lock().unwrap().clone();
+            let gate = self.running_gate.lock().expect("running gate lock poisoned").clone();
             async move {
                 if let Some(gate) = gate {
                     #[expect(
@@ -171,7 +171,7 @@ impl ImportCancels {
         candidate_key: &crate::CandidateKey,
         import_id: &str,
     ) -> Result<(), ImportStop> {
-        let mut entries = self.entries.lock().unwrap();
+        let mut entries = self.entries.lock().expect("cancel entries lock poisoned");
         match entries.get_mut(candidate_key) {
             Some(entry) if entry.import_id == import_id && !entry.token.is_cancelled() => {
                 entry.stage = Stage::Writing;
@@ -182,7 +182,7 @@ impl ImportCancels {
     }
 
     pub(crate) fn cancel(&self, candidate_key: &crate::CandidateKey) -> CancelOutcome {
-        let mut entries = self.entries.lock().unwrap();
+        let mut entries = self.entries.lock().expect("cancel entries lock poisoned");
         let Some(entry) = entries.get(candidate_key) else {
             return CancelOutcome::NotImporting;
         };
@@ -204,7 +204,8 @@ impl ImportCancels {
     /// waiting ones by candidate key and import id — whoever cancelled them
     /// says they ended.
     pub(crate) fn cancel_all(&self) -> Vec<(crate::CandidateKey, String)> {
-        let keys: Vec<crate::CandidateKey> = self.entries.lock().unwrap().keys().cloned().collect();
+        let keys: Vec<crate::CandidateKey> =
+            self.entries.lock().expect("cancel entries lock poisoned").keys().cloned().collect();
         keys.into_iter()
             .filter_map(|key| match self.cancel(&key) {
                 CancelOutcome::CancelledWaiting { import_id } => Some((key, import_id)),
@@ -218,12 +219,13 @@ impl ImportCancels {
     /// Hold every run that starts from now on until [`Self::release_runs`].
     #[cfg(test)]
     pub(crate) fn hold_runs(&self) {
-        *self.running_gate.lock().unwrap() = Some(Arc::new(tokio::sync::Semaphore::new(0)));
+        *self.running_gate.lock().expect("running gate lock poisoned") =
+            Some(Arc::new(tokio::sync::Semaphore::new(0)));
     }
 
     #[cfg(test)]
     pub(crate) fn release_runs(&self) {
-        if let Some(gate) = self.running_gate.lock().unwrap().take() {
+        if let Some(gate) = self.running_gate.lock().expect("running gate lock poisoned").take() {
             gate.close();
         }
     }

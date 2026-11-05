@@ -172,7 +172,7 @@ impl ExtractionService {
 impl ExtractionServiceHandle {
     /// Register the platform's artwork analyzer, once at boot.
     pub fn register_analyzer(&self, analyzer: Arc<dyn ArtworkAnalyzer>) {
-        *self.inner.analyzer.lock().unwrap() = Some(analyzer);
+        *self.inner.analyzer.lock().expect("analyzer lock poisoned") = Some(analyzer);
     }
 
     /// Start extraction for candidate `key` from `source`, feeding `run`, and
@@ -293,7 +293,7 @@ async fn extract(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
-            let analyzer = inner.analyzer.lock().unwrap().clone();
+            let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
             let artwork = match analyzer {
                 Some(analyzer) => Artwork::read(analyzer, fast.artwork),
                 None => Artwork::Absent,
@@ -347,7 +347,7 @@ async fn extract(
             // it. `_cover_staging` holds the staged cover's temp dir until
             // `stream_extraction` returns; a resolve error means the release's
             // files cannot be read at all, so the extraction aborts.
-            let analyzer = inner.analyzer.lock().unwrap().clone();
+            let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
             let (artwork, _cover_staging) = if let Some(analyzer) = analyzer {
                 match resolve_release_artwork_paths(
                     &inner.database,

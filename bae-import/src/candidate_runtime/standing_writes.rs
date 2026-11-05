@@ -44,15 +44,18 @@ impl CandidateRuntime {
             .await
             .expect("a test reads back the count it just moved");
         let moved = {
-            let mut told = self.told_count.lock().unwrap();
+            let mut told = self.told_count.lock().expect("told count lock poisoned");
             let moved = *told != count;
             *told = count;
             moved
         };
         if moved {
-            self.every_count.lock().unwrap().retain(|reader| reader.send(count).is_ok());
+            self.every_count
+                .lock()
+                .expect("count readers lock poisoned")
+                .retain(|reader| reader.send(count).is_ok());
         }
-        if self.every_change.lock().unwrap().is_empty() {
+        if self.every_change.lock().expect("change readers lock poisoned").is_empty() {
             return;
         }
         for key in keys {
@@ -66,7 +69,10 @@ impl CandidateRuntime {
                 }
                 None => super::CandidateRuntimeChange::Removed { key: key.clone() },
             };
-            self.every_change.lock().unwrap().retain(|reader| reader.send(change.clone()).is_ok());
+            self.every_change
+                .lock()
+                .expect("change readers lock poisoned")
+                .retain(|reader| reader.send(change.clone()).is_ok());
         }
     }
 

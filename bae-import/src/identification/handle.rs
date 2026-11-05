@@ -35,7 +35,9 @@ impl IdentificationHandle {
     /// Stop the queue and wait for what it has in flight to end.
     pub fn stop(&self) {
         self.shut_down();
-        let Some(executor_thread) = self.executor_thread.lock().unwrap().take() else {
+        let Some(executor_thread) =
+            self.executor_thread.lock().expect("executor thread lock poisoned").take()
+        else {
             return;
         };
         if executor_thread.join().is_err() {

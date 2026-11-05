@@ -259,7 +259,7 @@ impl EventDelivery {
 
     /// Hand `event` to every reader.
     fn deliver(&self, event: ImportEvent) {
-        let mut every_event = self.every_event.lock().unwrap();
+        let mut every_event = self.every_event.lock().expect("event readers lock poisoned");
         #[cfg(any(test, feature = "test-utils"))]
         every_event.delivered.push(event.clone());
         every_event.readers.retain(|reader| reader.send(event.clone()).is_ok());
@@ -352,14 +352,14 @@ impl ImportEventBus {
     /// hears every event sent before a command before the command itself.
     /// `None` once taken.
     pub(crate) fn take_feed(&self) -> Option<ImportEvents> {
-        self.delivery.feed.lock().unwrap().take()
+        self.delivery.feed.lock().expect("event feed lock poisoned").take()
     }
 
     /// Every event sent from now on, none dropped, for a test to wait on.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn every_event(&self) -> ImportEvents {
         let (reader, events) = mpsc::unbounded_channel();
-        self.delivery.every_event.lock().unwrap().readers.push(reader);
+        self.delivery.every_event.lock().expect("event readers lock poisoned").readers.push(reader);
         ImportEvents(events)
     }
 
@@ -368,7 +368,8 @@ impl ImportEventBus {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn every_event_from_start(&self) -> ImportEvents {
         let (reader, events) = mpsc::unbounded_channel();
-        let mut every_event = self.delivery.every_event.lock().unwrap();
+        let mut every_event =
+            self.delivery.every_event.lock().expect("event readers lock poisoned");
         for event in &every_event.delivered {
             #[expect(
                 clippy::let_underscore_must_use,
@@ -384,7 +385,8 @@ impl ImportEventBus {
     /// event is recorded or delivered, until [`Self::release_send`].
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn hold_send_where(&self, matches: impl Fn(&ImportEvent) -> bool + Send + 'static) {
-        *self.send_hold.state.lock().unwrap() = HoldState::Armed(Box::new(matches));
+        *self.send_hold.state.lock().expect("send hold lock poisoned") =
+            HoldState::Armed(Box::new(matches));
     }
 
     /// [`Self::hold_send_where`] a measured percent of `phase` above zero:
@@ -421,13 +423,13 @@ impl ImportEventBus {
     /// Let the stopped sender go on.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn release_send(&self) {
-        *self.send_hold.state.lock().unwrap() = HoldState::Released;
+        *self.send_hold.state.lock().expect("send hold lock poisoned") = HoldState::Released;
         self.send_hold.changed.notify_all();
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     fn wait_if_held(&self, event: &ImportEvent) {
-        let mut state = self.send_hold.state.lock().unwrap();
+        let mut state = self.send_hold.state.lock().expect("send hold lock poisoned");
         if !matches!(&*state, HoldState::Armed(matches) if matches(event)) {
             return;
         }
