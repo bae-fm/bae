@@ -389,6 +389,7 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiEr
     use bae_catalogs::wikidata::WikidataError;
     use bae_catalogs::CatalogError;
     use bae_diagnostics::UiErrorCategory as C;
+    use bae_util::http::TransportFailure;
     match error {
         #[cfg(desktop)]
         CatalogError::SourceData { .. } => C::ImportData,
@@ -415,7 +416,9 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiEr
         #[cfg(desktop)]
         CatalogError::Discogs(error) => match error {
             DiscogsError::Serialization(_) => C::ImportData,
-            DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
+            DiscogsError::Transport(error)
+                if TransportFailure::of(error) == TransportFailure::Unmakeable =>
+            {
                 C::Internal
             }
             DiscogsError::Transport(_)
@@ -426,7 +429,7 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiEr
         CatalogError::RemoteImage(error) => match error {
             RemoteImageError::Unusable { .. } => C::ImportData,
             RemoteImageError::Transport { error, .. }
-                if error.is_builder() || error.is_redirect() =>
+                if TransportFailure::of(error) == TransportFailure::Unmakeable =>
             {
                 C::Internal
             }
