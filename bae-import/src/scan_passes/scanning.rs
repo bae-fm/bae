@@ -67,7 +67,14 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
             },
             _ => true,
         },
-        E::Creation(_) | E::Unreadable { .. } | E::Message(_) => true,
+        E::Creation(_)
+        | E::Unreadable { .. }
+        | E::UnreadableJson { .. }
+        | E::Encode { .. }
+        | E::OutOfRange { .. }
+        | E::StoredPath(_)
+        | E::Cause(_)
+        | E::Message(_) => true,
     }
 }
 

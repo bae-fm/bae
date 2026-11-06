@@ -18,6 +18,31 @@ pub enum DbError {
     /// nothing here wrote.
     #[error("{what} holds {stored}, which nothing here writes")]
     Unreadable { what: String, stored: String },
+    /// A stored JSON column that does not decode.
+    #[error("{what} holds {json}, which nothing here writes")]
+    UnreadableJson {
+        what: String,
+        json: String,
+        #[source]
+        source: serde_json::Error,
+    },
+    /// A value to write or bind that does not encode as JSON.
+    #[error("{what} does not encode as JSON")]
+    Encode {
+        what: String,
+        #[source]
+        source: serde_json::Error,
+    },
+    /// A value to write that the integer SQLite stores cannot hold.
+    #[error("{what} {value} exceeds SQLite's integer range")]
+    OutOfRange { what: String, value: String },
+    /// A stored path whose bytes this platform never records.
+    #[error("a stored path does not open on this device")]
+    StoredPath(#[source] coven::PathBytesError),
+    /// A failure of a type a crate above this one defines, such as a stored
+    /// name that names no file, kept as its own value.
+    #[error(transparent)]
+    Cause(Box<dyn std::error::Error + Send + Sync>),
     #[error("{0}")]
     Message(String),
 }
@@ -27,6 +52,25 @@ impl DbError {
     /// value no writer here produces.
     pub fn unreadable(what: impl Into<String>, stored: impl std::fmt::Debug) -> Self {
         Self::Unreadable { what: what.into(), stored: format!("{stored:?}") }
+    }
+
+    /// The JSON `json`, read from `what`, does not decode.
+    pub fn unreadable_json(
+        what: impl Into<String>,
+        json: impl Into<String>,
+        source: serde_json::Error,
+    ) -> Self {
+        Self::UnreadableJson { what: what.into(), json: json.into(), source }
+    }
+
+    /// The value written or bound as `what` does not encode as JSON.
+    pub fn encode(what: impl Into<String>, source: serde_json::Error) -> Self {
+        Self::Encode { what: what.into(), source }
+    }
+
+    /// `cause`, a failure of a type above this crate, as a database error.
+    pub fn cause(cause: impl std::error::Error + Send + Sync + 'static) -> Self {
+        Self::Cause(Box::new(cause))
     }
 }
 
@@ -82,7 +126,14 @@ impl bae_util::task_failure::ReportedBug for DbError {
             Self::FileRead(error) => error.reported_bug(),
             Self::Coven(error) => error.reported_bug(),
             Self::Creation(error) => error.reported_bug(),
-            Self::Sqlite(_) | Self::Unreadable { .. } | Self::Message(_) => None,
+            Self::Sqlite(_)
+            | Self::Unreadable { .. }
+            | Self::UnreadableJson { .. }
+            | Self::Encode { .. }
+            | Self::OutOfRange { .. }
+            | Self::StoredPath(_)
+            | Self::Cause(_)
+            | Self::Message(_) => None,
         }
     }
 }

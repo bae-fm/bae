@@ -14,9 +14,7 @@ use std::path::PathBuf;
 /// The path a column's bytes record. Bytes this platform never records are a
 /// store nothing here wrote.
 pub fn decode(bytes: Vec<u8>) -> Result<PathBuf, DbError> {
-    coven::path_from_bytes(bytes).map_err(|error| {
-        DbError::Message(format!("a stored path does not open on this device: {error}"))
-    })
+    coven::path_from_bytes(bytes).map_err(DbError::StoredPath)
 }
 
 /// The path column `index` of `row` records. Bytes this platform never
