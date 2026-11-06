@@ -81,19 +81,19 @@ impl AudioOutputControls {
 
     /// The changes counted so far that could give this player's drain work.
     /// A drain on its own thread reads it before it looks for work.
-    #[cfg(any(target_os = "android", test))]
+    #[cfg(any(target_os = "android", test, feature = "test-utils"))]
     pub(crate) fn drain_changes(&self) -> u64 {
         self.wake.changes()
     }
 
     /// Wait until a change past `seen` could give the drain work.
-    #[cfg(any(target_os = "android", test))]
+    #[cfg(any(target_os = "android", test, feature = "test-utils"))]
     pub(crate) fn wait_for_drain_work(&self, seen: u64) {
         self.wake.wait_past(seen);
     }
 
     /// Wake a waiting drain: its owner stopped it.
-    #[cfg(any(target_os = "android", test))]
+    #[cfg(any(target_os = "android", test, feature = "test-utils"))]
     pub(crate) fn wake_drain(&self) {
         self.wake.notify();
     }
@@ -673,56 +673,24 @@ impl CaptureOutputCore {
     }
 }
 
+/// Where a capture thread sends the samples it pulls: the stream of the
+/// transition `active` points at, and the run on to `after_samples`.
 #[cfg(any(test, feature = "test-utils"))]
-fn spawn_capture_stream<F>(
-    controls: AudioOutputControls,
+fn send_to_active(
     active: Arc<Mutex<CaptureSender>>,
-    source: Arc<Mutex<PlaybackSource>>,
-    audio_events: AudioEventSender,
-    position_update_interval_ms: u32,
-    mut after_samples: F,
-) -> (Arc<std::sync::atomic::AtomicBool>, std::thread::JoinHandle<()>)
-where
-    F: FnMut(usize) + Send + 'static,
-{
-    let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let stop_clone = stop.clone();
-
-    let thread = std::thread::spawn(move || {
-        let mut buf = vec![0.0f32; 4096];
-        let mut drain =
-            AudioDrain::new(controls, source, audio_events, position_update_interval_ms);
-
-        loop {
-            if stop_clone.load(Ordering::Acquire) {
-                break;
-            }
-
-            match drain.drain_iteration(&mut buf, false, false, SourceLock::Wait) {
-                // Idle covers a drained track too: the output stream is
-                // persistent, so this thread keeps running until the source is
-                // replaced with the next track or the stream is dropped.
-                DrainStatus::Idle => {
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                    continue;
-                }
-                DrainStatus::Samples { read } => {
-                    // Re-read the active stream each iteration: a same-format
-                    // source replace rotates it under us, so post-swap samples
-                    // land in the new track's stream.
-                    let sent = active.lock().unwrap().send(buf[..read].to_vec());
-                    if sent.is_err() {
-                        // The test let go of this transition's stream, so no
-                        // one reads these samples; playback drains on.
-                    }
-
-                    after_samples(read);
-                }
-            }
+    mut after_samples: impl FnMut(usize) + Send + 'static,
+) -> impl FnMut(&[f32]) + Send + 'static {
+    move |samples| {
+        // Re-read the active stream each run: a same-format source replace
+        // rotates it under us, so post-swap samples land in the new track's
+        // stream.
+        let sent = active.lock().unwrap().send(samples.to_vec());
+        if sent.is_err() {
+            // The test let go of this transition's stream, so no one reads
+            // these samples; playback drains on.
         }
-    });
-
-    (stop, thread)
+        after_samples(samples.len());
+    }
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -790,16 +758,12 @@ impl AudioOutput for CaptureAudioOutput {
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         self.core.rotate_capture_buffer()?;
-        let (stop, thread) = spawn_capture_stream(
-            controls,
-            self.core.active.clone(),
-            source,
-            audio_events,
-            position_update_interval_ms,
-            |_| {},
-        );
-
-        Ok(Box::new(CaptureStream { stop, thread: Some(thread) }))
+        Ok(Box::new(CaptureStream::spawn(
+            AudioDrain::new(controls, source, audio_events, position_update_interval_ms),
+            4096,
+            false,
+            send_to_active(self.core.active.clone(), |_| {}),
+        )))
     }
 
     fn on_source_replaced(&mut self) {
@@ -857,16 +821,14 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         self.core.rotate_capture_buffer()?;
         let channels = source_channels.max(1);
-        let (stop, thread) = spawn_capture_stream(
-            controls,
-            self.core.active.clone(),
-            source,
-            audio_events,
-            position_update_interval_ms,
-            move |read| sleep_realtime_buffer(read, channels, source_sample_rate),
-        );
-
-        Ok(Box::new(CaptureStream { stop, thread: Some(thread) }))
+        Ok(Box::new(CaptureStream::spawn(
+            AudioDrain::new(controls, source, audio_events, position_update_interval_ms),
+            4096,
+            false,
+            send_to_active(self.core.active.clone(), move |read| {
+                sleep_realtime_buffer(read, channels, source_sample_rate)
+            }),
+        )))
     }
 
     fn on_source_replaced(&mut self) {
@@ -874,10 +836,45 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
     }
 }
 
+/// A test output's stream: a thread draining the source into `on_samples`
+/// until the stream is dropped. Persistent, like a device's: a paused, starved
+/// or drained source idles the thread, which waits on the player's controls
+/// until something could give it work.
 #[cfg(any(test, feature = "test-utils"))]
 struct CaptureStream {
     stop: Arc<std::sync::atomic::AtomicBool>,
+    controls: AudioOutputControls,
     thread: Option<std::thread::JoinHandle<()>>,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl CaptureStream {
+    fn spawn(
+        mut drain: AudioDrain,
+        buf_len: usize,
+        apply_gain: bool,
+        mut on_samples: impl FnMut(&[f32]) + Send + 'static,
+    ) -> Self {
+        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let controls = drain.controls.clone();
+        let running = stop.clone();
+        let thread = std::thread::spawn(move || {
+            let mut buf = vec![0.0f32; buf_len];
+            loop {
+                // Read before the stop flag and the drain, so a stop or new
+                // work that lands after this read ends the wait at once.
+                let seen = drain.controls.drain_changes();
+                if running.load(Ordering::Acquire) {
+                    break;
+                }
+                match drain.drain_iteration(&mut buf, apply_gain, false, SourceLock::Wait) {
+                    DrainStatus::Idle => drain.controls.wait_for_drain_work(seen),
+                    DrainStatus::Samples { read } => on_samples(&buf[..read]),
+                }
+            }
+        });
+        Self { stop, controls, thread: Some(thread) }
+    }
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -891,6 +888,7 @@ impl AudioStream for CaptureStream {
 impl Drop for CaptureStream {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
+        self.controls.wake_drain();
         if let Some(handle) = self.thread.take() {
             if let Err(e) = handle.join() {
                 tracing::warn!("capture audio thread panicked during shutdown: {:?}", e);
@@ -938,35 +936,13 @@ impl AudioOutput for RealtimeProbeOutput {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let stop_clone = stop.clone();
         let channels = source_channels.max(1);
-
-        let thread = std::thread::spawn(move || {
-            // 1024 frames/buffer — the pacing granularity, not the total work.
-            let mut buf = vec![0.0f32; 1024 * channels as usize];
-            let mut drain =
-                AudioDrain::new(controls, source, audio_events, position_update_interval_ms);
-
-            loop {
-                if stop_clone.load(Ordering::Acquire) {
-                    break;
-                }
-
-                match drain.drain_iteration(&mut buf, true, false, SourceLock::Wait) {
-                    // Persistent output: a drained track idles rather than ending
-                    // the probe thread, which exits only on the stop flag.
-                    DrainStatus::Idle => {
-                        std::thread::sleep(std::time::Duration::from_millis(1));
-                        continue;
-                    }
-                    DrainStatus::Samples { read } => {
-                        sleep_realtime_buffer(read, channels, source_sample_rate);
-                    }
-                }
-            }
-        });
-
-        Ok(Box::new(CaptureStream { stop, thread: Some(thread) }))
+        // 1024 frames/buffer — the pacing granularity, not the total work.
+        Ok(Box::new(CaptureStream::spawn(
+            AudioDrain::new(controls, source, audio_events, position_update_interval_ms),
+            1024 * channels as usize,
+            true,
+            move |samples| sleep_realtime_buffer(samples.len(), channels, source_sample_rate),
+        )))
     }
 }
