@@ -153,6 +153,18 @@ impl Schema {
         collations
     }
 
+    /// This schema with `sql` run after every part, for a test that needs
+    /// the schema changed in a way only SQL makes; coven makes no schema
+    /// change outside a migration.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn followed_by(self, sql: String) -> Self {
+        let sql: &'static [&'static str] = Box::leak(Box::new([&*Box::leak(sql.into_boxed_str())]));
+        let part: &'static [SchemaPart] = Box::leak(Box::new([SchemaPart::new(sql)]));
+        let mut parts = self.parts.to_vec();
+        parts.push(part);
+        Self { parts: Box::leak(parts.into_boxed_slice()) }
+    }
+
     /// The synced tables the parts declare, in part order.
     pub fn synced_tables(self) -> Vec<coven::SyncedTable> {
         self.parts().flat_map(|part| (part.synced_tables)()).collect()

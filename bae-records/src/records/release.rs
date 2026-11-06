@@ -129,6 +129,28 @@ impl Records {
             .await
     }
 
+    /// [`Self::insert_release`], answering how many rows the write changed,
+    /// the triggers' writes included.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn rows_changed_inserting_release_for_test(
+        &self,
+        release: &DbRelease,
+    ) -> Result<i64, DbError> {
+        let release = release.clone();
+        let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
+        self.store
+            .call_sql(move |sql| {
+                let changes = |sql: &CovenWrite<'_>| {
+                    sql.query_row("SELECT total_changes()", [], |row| row.get::<_, i64>(0))
+                };
+                let before = changes(&sql)?;
+                insert_release_row(&sql, &release, &label_write(&labels))
+                    .map_err(IdentityWriteError::into_db_error)?;
+                Ok(changes(&sql)? - before)
+            })
+            .await
+    }
+
     /// Test-only: insert an album with its credits, a release, its mediums,
     /// tracks and track-artist links in one transaction. The `artists` rows
     /// the credits name must already exist — insert them first.

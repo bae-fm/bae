@@ -8,14 +8,15 @@ pub const RELEASE_EARLY: &str = "d439555e-9883-4037-a580-48ea33c2c57b";
 pub const RELEASE_LATE: &str = "af4421de-5174-45a9-81fc-74110bc5f85d";
 
 /// Two releases on albums titled to sort apart.
-pub const LIBRARY: &str = "
-    INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-        ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z'),
-        ('dab6efe2-9b5c-4034-b95e-73cf49f54b9a', 'Album Title B', 0, '2026-01-01T00:00:00Z');
-    INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-        ('d439555e-9883-4037-a580-48ea33c2c57b', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0),
-        ('af4421de-5174-45a9-81fc-74110bc5f85d', 'dab6efe2-9b5c-4034-b95e-73cf49f54b9a', '2026-01-01T00:00:00Z', 0);
-";
+pub async fn write_library(records: &crate::Records) {
+    super::library::RecordsFixture::new()
+        .album(ALBUM_A, "Album Title A", None, &[])
+        .album(ALBUM_B, "Album Title B", None, &[])
+        .release(ALBUM_A, RELEASE_EARLY)
+        .release(ALBUM_B, RELEASE_LATE)
+        .write(records)
+        .await;
+}
 
 /// Seed the release file `id` of `release`, named `name`, staged on this
 /// device only from an original of `size` zero bytes written under `dir`.
