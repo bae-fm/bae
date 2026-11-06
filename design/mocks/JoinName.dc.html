@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Join: your name</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.AndroidScreen" title="Join Library Name" back="{{yes}}">
+  <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 24px 16px; font-family: var(--font-android)">
+    <div style="font-size: 16px; line-height: 24px; color: var(--text-primary)">You’re invited to Library Name. What should people in the library call you?</div>
+    <x-import component-from-global-scope="Bae.AndroidTextField" label="Your name" value="New Person" state="focused"></x-import>
+    <div style="flex: 1"></div>
+    <x-import component-from-global-scope="Bae.AndroidButton" large="{{yes}}">Join</x-import>
+  </div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

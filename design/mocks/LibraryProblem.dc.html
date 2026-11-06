@@ -30,7 +30,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Library" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Library Name" icon="edit"></x-import>
-    <div><a href="#" class="row" style="min-height: 0; padding: 14px 16px 4px"><div class="rt">Sync</div><div class="rs" style="display: flex; align-items: center; gap: 6px; color: var(--danger)"><span style="width: 8px; height: 8px; border-radius: 4px; background: var(--danger); flex: none"></span><span>Storage full</span></div><div class="rs">Last synced 2 hours ago</div></a><div style="padding: 2px 16px 10px; font-size: 14px; line-height: 20px; color: var(--text-primary)">This storage has no available space.</div><div style="padding: 0 16px 14px"><x-import component-from-global-scope="Bae.AndroidButton">Open in browser</x-import></div></div>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Storage full" tone="danger"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="People and devices" subtitle="2 people · 3 devices"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Restore code" subtitle="Gets your library back if you lose every device"></x-import>
   </x-import>

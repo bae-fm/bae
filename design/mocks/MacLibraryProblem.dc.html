@@ -35,10 +35,7 @@ body{margin:0}
   </x-import>
   <x-import component-from-global-scope="Bae.MacSection">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Sync" value="Storage full" tone="danger" note="This storage has no available space.">
-        <span style="margin-top: -8px; margin-right: 16px; font-size: 12px; color: var(--text-secondary)">Last synced 2 hours ago</span>
-        <x-import component-from-global-scope="Bae.MacButton">Open in browser</x-import>
-      </x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Sync" value="Storage full" tone="danger" chevron="{{yes}}"></x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="People and devices" value="2 people · 3 devices" chevron="{{yes}}"></x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Restore code" chevron="{{yes}}"></x-import>
     </x-import>

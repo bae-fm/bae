@@ -28,24 +28,22 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Person Name" back="{{yes}}">
-  <x-import component-from-global-scope="Bae.AndroidSection" title="Changes from this phone"></x-import>
+  <x-import component-from-global-scope="Bae.AndroidSection" title="Changes from this device"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <div class="row" style="flex-direction: row; align-items: center; gap: 12px; min-height: 64px"><div style="flex: 1; min-width: 0; font-size: 15px">Make Person Name an admin</div><span style="font-size: 12px; line-height: 16px; padding: 2px 8px; border-radius: 8px; background: #24402F; color: var(--success)">Done</span><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Dismiss</x-import></div>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Make Person Name an admin"><x-import component-from-global-scope="Bae.StatusChip" tone="success">Done</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Dismiss</x-import></x-import>
   </x-import>
   <div style="height: 16px"></div>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Role" subtitle="Admin">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Make member</x-import>
     </x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Remove from library" action="{{yes}}" destructive="{{yes}}"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Devices"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Tablet">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
     </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Remove from library" action="{{yes}}"></x-import>
   </x-import>
 </x-import>
 </x-dc>

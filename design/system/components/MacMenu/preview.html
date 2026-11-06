@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS" height=140 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacMenu</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Open', h(B.MacMenu, null, h(B.MacMenuItem, null, 'Off'), h(B.MacMenuItem, { checked: true, highlighted: true }, 'Only me'), h(B.MacMenuItem, null, 'Everyone')))));
+</script>
+</body>
+</html>

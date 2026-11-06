@@ -27,7 +27,7 @@ body{margin:0}
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Casting" title="Casting">
   <x-import component-from-global-scope="Bae.MacBox">
     <x-import component-from-global-scope="Bae.MacRow" label="Enable casting">
-      <button role="switch" aria-checked="false" aria-label="Enable casting" style="width: 32px; height: 18px; border-radius: 9px; border: 0; background: var(--tile); position: relative; flex: none; cursor: pointer"><span style="position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 7px; background: var(--text-primary)"></span></button>
+      <x-import component-from-global-scope="Bae.MacSwitch" on="{{ false }}" label="Enable casting"></x-import>
     </x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacNote">Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</x-import>

@@ -25,9 +25,7 @@ body{margin:0}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Restore code" back="Library">
-  <p style="margin: 0 0 8px; font-size: 12px; line-height: 16px; color: var(--text-secondary)">Save this code. You can use it to regain access to your library if you lose all your devices.</p>
-  <x-import component-from-global-scope="Bae.MacBox"></x-import>
-  <div style="display: flex; gap: 8px; margin-top: 10px"><x-import component-from-global-scope="Bae.MacButton">Copy</x-import><x-import component-from-global-scope="Bae.MacButton">Hide</x-import></div>
+  <dc-import name="RestoreCode" shown="true" hint-size="460px,150px"></dc-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>

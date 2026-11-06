@@ -198,8 +198,8 @@ private fun CloudHomeRowsPreview() {
             CloudHomeRows(
                 BridgeStorageLocation.S3(
                     bucket = "household-music",
-                    region = "auto",
-                    endpoint = "https://account-id.r2.cloudflarestorage.com",
+                    region = "us-east-1",
+                    endpoint = "https://s3.home.lan",
                     profile = null,
                 ),
             )

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>macOS settings: Invite a Person</title>
+<title>macOS settings: Invite a person, Dropbox</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -34,53 +34,20 @@ body{margin:0}
       <x-import component-from-global-scope="Bae.MacRow" label="Listening history">
         <x-import component-from-global-scope="Bae.MacPopUpButton" value="Only me"></x-import>
       </x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacSection" title="Devices">
-    <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="This Mac" value="This device">
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove…</x-import>
-      </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Phone">
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove…</x-import>
-      </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Add device…" action="{{yes}}"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Devices" value="2 devices" chevron="{{yes}}"></x-import>
     </x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSection" title="People">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Person Name" strong="{{yes}}" tag="Member">
-        <x-import component-from-global-scope="Bae.MacButton">Make admin</x-import>
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove…</x-import>
-      </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Tablet">
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove…</x-import>
-      </x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Person Name" strong="{{yes}}" tag="Member" value="1 device" chevron="{{yes}}"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Invite…" action="{{yes}}"></x-import>
     </x-import>
   </x-import>
-  <div style="display: flex; justify-content: flex-end; margin-top: 10px"><x-import component-from-global-scope="Bae.MacButton">Invite…</x-import></div>
   <x-import component-from-global-scope="Bae.MacSheet" title="Invite a person" overlay="{{yes}}" width="440">
-    <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Name" value="Person Name"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Role">
-        <x-import component-from-global-scope="Bae.MacPopUpButton" value="Member"></x-import>
-      </x-import>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Access key" value="AKIAEXAMPLEKEY"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Secret key" value="••••••••••••"></x-import>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Delivery">
-        <x-import component-from-global-scope="Bae.MacSegmentedControl" options="In person,Send" selected="Send"></x-import>
-      </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Expires after">
-        <x-import component-from-global-scope="Bae.MacPopUpButton" value="1 day"></x-import>
-      </x-import>
-    </x-import>
+    <dc-import name="MacInviteFields" storage="dropbox" key-owner="theirs" hint-size="100%,64px"></dc-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter">
-      <x-import component-from-global-scope="Bae.MacButton">Done</x-import>
-      <x-import component-from-global-scope="Bae.MacButton" kind="primary">Create invitation</x-import>
+      <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
+      <x-import component-from-global-scope="Bae.MacButton" kind="primary">Create invite</x-import>
     </x-import>
   </x-import>
 </x-import>

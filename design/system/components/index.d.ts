@@ -26,15 +26,19 @@ export declare function MacSection(props: MacSectionProps): React.ReactElement;
 export interface MacBoxProps { elevated?: boolean; empty?: string; children?: React.ReactNode }
 export declare function MacBox(props: MacBoxProps): React.ReactElement;
 
-/** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Add device…"). */
-export interface MacRowProps { label?: string; labelWidth?: number; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; waiting?: boolean; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; onClick?: () => void; children?: React.ReactNode }
+/** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Invite…"); destructive colors it danger, for an action that removes something. */
+export interface MacRowProps { label?: string; destructive?: boolean; strong?: boolean; tag?: string; note?: string; noteTone?: 'danger' | 'warning' | 'success'; waiting?: boolean; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 
-/** kind: primary is the one action a screen is for; secondary is everything else; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
-export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'icon'; size?: 'small' | 'regular' | 'large'; label?: string; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+/** A MacBox row holding a field: the label in a column labelWidth px wide (90), the field filling the rest, then any controls. Leave out label for a field with its label inside. alignText moves the field left by its inner padding so its text lines up with the rows around it. */
+export interface MacFieldRowProps { label?: string; labelWidth?: number; alignText?: boolean; children?: React.ReactNode }
+export declare function MacFieldRow(props: MacFieldRowProps): React.ReactElement;
+
+/** kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
+export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large'; label?: string; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
-/** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacRow holds the field and gives the label. Children sit after the field. */
+/** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */
 export interface MacTextFieldProps { label?: string; value?: string; placeholder?: string; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number; children?: React.ReactNode }
 export declare function MacTextField(props: MacTextFieldProps): React.ReactElement;
 
@@ -45,6 +49,22 @@ export declare function MacRadio(props: MacRadioProps): React.ReactElement;
 /** A pop-up menu showing its current choice. */
 export interface MacPopUpButtonProps { value?: string; width?: number; off?: boolean; children?: React.ReactNode }
 export declare function MacPopUpButton(props: MacPopUpButtonProps): React.ReactElement;
+
+/** An on/off switch; label is its accessible name. */
+export interface MacSwitchProps { on?: boolean; label: string }
+export declare function MacSwitch(props: MacSwitchProps): React.ReactElement;
+
+/** The eight accent swatches in the order the appearance settings offer them; selected names the chosen one. */
+export interface MacAccentPickerProps { selected?: 'blue' | 'indigo' | 'purple' | 'pink' | 'red' | 'amber' | 'green' | 'teal'; label?: string }
+export declare function MacAccentPicker(props: MacAccentPickerProps): React.ReactElement;
+
+/** A menu as it shows when open: MacMenuItems in a panel. */
+export interface MacMenuProps { children?: React.ReactNode }
+export declare function MacMenu(props: MacMenuProps): React.ReactElement;
+
+/** One choice in a MacMenu: checked marks the current choice, highlighted the one under the pointer. */
+export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; children?: React.ReactNode }
+export declare function MacMenuItem(props: MacMenuItemProps): React.ReactElement;
 
 /** A ▸ label that shows its children when opened. open sets how it starts. */
 export interface MacDisclosureProps { label?: string; open?: boolean; children?: React.ReactNode }
@@ -61,6 +81,8 @@ export declare function MacSheetFooter(props: MacSheetFooterProps): React.ReactE
 /** A step that waits: its words over a bar. Without value the bar moves; with value (0 to 1) it fills. */
 export interface MacProgressProps { label?: string; value?: number }
 export declare function MacProgress(props: MacProgressProps): React.ReactElement;
+export interface MacSpinnerProps { label?: string; size?: number }
+export declare function MacSpinner(props: MacSpinnerProps): React.ReactElement;
 
 /** A line saying what failed and what to do. */
 export interface MacErrorTextProps { children?: React.ReactNode }
@@ -80,20 +102,16 @@ export declare function AndroidScreen(props: AndroidScreenProps): React.ReactEle
 export interface AndroidSectionProps { title?: string; children?: React.ReactNode }
 export declare function AndroidSection(props: AndroidSectionProps): React.ReactElement;
 
-/** A rounded group of rows; draws a hairline between its children, except under a card heading. */
+/** A rounded group of rows; draws a hairline between its children. */
 export interface AndroidCardProps { children?: React.ReactNode }
 export declare function AndroidCard(props: AndroidCardProps): React.ReactElement;
 
-/** A small heading inside a card, over the rows it names. */
-export interface AndroidCardHeadingProps { title?: string; children?: React.ReactNode }
-export declare function AndroidCardHeading(props: AndroidCardHeadingProps): React.ReactElement;
-
-/** One line of a card: title, a subtitle under it (in tone with a dot), controls as children, and an icon on the right. action draws the title as an accent action. */
-export interface AndroidRowProps { title: string; subtitle?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; icon?: 'chevron' | 'edit' | 'expand' | 'more' | 'refresh'; action?: boolean; selected?: boolean; onClick?: () => void; children?: React.ReactNode }
+/** One line of a card: title (with a tag chip after it), a subtitle under it (in tone with a dot), controls as children, and an icon on the right. action draws the title as an accent action; destructive colors it danger, for an action that removes something. */
+export interface AndroidRowProps { title: string; tag?: string; subtitle?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; icon?: 'chevron' | 'edit' | 'expand' | 'more' | 'refresh'; leadingIcon?: 'add'; action?: boolean; destructive?: boolean; selected?: boolean; nested?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 
 /** kind: filled for the action a screen is for, outlined beside it, text in dialogs and rows. large is the full-width size on the welcome screen. */
-export interface AndroidButtonProps { kind?: 'filled' | 'outlined' | 'text'; label?: string; large?: boolean; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface AndroidButtonProps { kind?: 'filled' | 'outlined' | 'text'; label?: string; large?: boolean; alignTo?: 'text' | 'field'; destructive?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
 /** A 48 dp glyph button. label is its accessible name. */
@@ -103,6 +121,10 @@ export declare function AndroidIconButton(props: AndroidIconButtonProps): React.
 /** An on/off switch; label is its accessible name. */
 export interface AndroidSwitchProps { on?: boolean; label: string }
 export declare function AndroidSwitch(props: AndroidSwitchProps): React.ReactElement;
+
+/** The eight accent swatches in the order the appearance settings offer them; selected names the chosen one. */
+export interface AndroidAccentPickerProps { selected?: 'blue' | 'indigo' | 'purple' | 'pink' | 'red' | 'amber' | 'green' | 'teal'; label?: string }
+export declare function AndroidAccentPicker(props: AndroidAccentPickerProps): React.ReactElement;
 
 /** An outlined text field with its label on the border. helper is a grey line under it; error a red one, shown when state is error. */
 export interface AndroidTextFieldProps { label: string; value?: string; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
@@ -124,12 +146,24 @@ export declare function AndroidDialogActions(props: AndroidDialogActionsProps): 
 export interface AndroidNoteProps { children?: React.ReactNode }
 export declare function AndroidNote(props: AndroidNoteProps): React.ReactElement;
 
+/** What is happening now, over a bar. value from 0 to 1 when the length is known. */
+export interface AndroidProgressProps { label?: string; value?: number }
+export declare function AndroidProgress(props: AndroidProgressProps): React.ReactElement;
+export interface AndroidSpinnerProps { label?: string; size?: number }
+export declare function AndroidSpinner(props: AndroidSpinnerProps): React.ReactElement;
+
 // ---- Both ----
 
 export type StatusTone = 'neutral' | 'accent' | 'info' | 'success' | 'warning' | 'danger' | 'activity';
 /** A short label on its tone's tint: a status, a count, a tag or a role. */
 export interface StatusChipProps { tone?: StatusTone; children?: React.ReactNode }
 export declare function StatusChip(props: StatusChipProps): React.ReactElement;
+
+/** A code to scan, centered: what to do, the QR code, the buttons that hand over the code (children), then when it ends. size is the QR code's width in points. */
+export interface MacScanCodeProps { instruction?: string; note?: string; size?: number; children?: React.ReactNode }
+export declare function MacScanCode(props: MacScanCodeProps): React.ReactElement;
+export interface AndroidScanCodeProps { instruction?: string; note?: string; size?: number; children?: React.ReactNode }
+export declare function AndroidScanCode(props: AndroidScanCodeProps): React.ReactElement;
 
 /** A message on its tone's tint. */
 export interface NoticeProps { tone?: StatusTone; children?: React.ReactNode }

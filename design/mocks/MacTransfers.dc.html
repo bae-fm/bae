@@ -26,21 +26,24 @@ body{margin:0}
 </helmet>
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Transfers" title="Transfers">
   <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Simultaneous uploads">
-      <x-import component-from-global-scope="Bae.MacPopUpButton" value="3"></x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Pause uploads">
+      <x-import component-from-global-scope="Bae.MacSwitch" on="{{ false }}" label="Pause uploads"></x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Simultaneous downloads">
-      <x-import component-from-global-scope="Bae.MacPopUpButton" value="3"></x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Pause downloads">
+      <x-import component-from-global-scope="Bae.MacSwitch" on="{{ false }}" label="Pause downloads"></x-import>
     </x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.MacNote">How many files upload to storage at once after an import, and how many download at once when a release is pinned.</x-import>
+  <x-import component-from-global-scope="Bae.MacNote">Paused files keep their place and continue when you resume. Changes to the library still sync.</x-import>
   <x-import component-from-global-scope="Bae.MacSection">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Pause uploads">
-        <button role="switch" aria-checked="false" aria-label="Pause uploads" style="width: 32px; height: 18px; border-radius: 9px; border: 0; background: var(--tile); position: relative; flex: none; cursor: pointer"><span style="position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 7px; background: var(--text-primary)"></span></button>
+      <x-import component-from-global-scope="Bae.MacRow" label="Simultaneous uploads">
+        <x-import component-from-global-scope="Bae.MacPopUpButton" value="3"></x-import>
+      </x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Simultaneous downloads">
+        <x-import component-from-global-scope="Bae.MacPopUpButton" value="3"></x-import>
       </x-import>
     </x-import>
-    <x-import component-from-global-scope="Bae.MacNote">While paused, changes wait on this Mac and upload when you resume.</x-import>
+    <x-import component-from-global-scope="Bae.MacNote">How many files upload to storage at once after an import, and how many download at once when a release is pinned.</x-import>
   </x-import>
 </x-import>
 </x-dc>

@@ -25,14 +25,12 @@ body{margin:0}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library">
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Status" value="Synced" tone="success"></x-import>
-  </x-import>
+  <dc-import name="MacSyncStatus" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
   <x-import component-from-global-scope="Bae.MacSection" title="Storage">
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacRow" label="Provider" value="S3-compatible"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Endpoint" value="https://account-id.r2.cloudflarestorage.com"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Region" value="auto"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Endpoint" value="https://s3.home.lan"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Region" value="us-east-1"></x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Bucket" value="my-bucket"></x-import>
     </x-import>
   </x-import>

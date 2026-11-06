@@ -28,9 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}">
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Status" subtitle="Synced" tone="success"></x-import>
-  </x-import>
+  <dc-import name="SyncStatus" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,140px"></dc-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Storage"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Provider" subtitle="OneDrive"></x-import>

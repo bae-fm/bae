@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Bae","components":[{"name":"MacButton"},{"name":"MacTextField"},{"name":"MacRadio"},{"name":"MacPopUpButton"},{"name":"MacSegmentedControl"},{"name":"MacDisclosure"},{"name":"MacProgress"},{"name":"MacErrorText"},{"name":"MacNote"},{"name":"MacRow"},{"name":"MacBox"},{"name":"MacSection"},{"name":"MacSheetFooter"},{"name":"MacSheet"},{"name":"MacAlert"},{"name":"MacSettingsWindow"},{"name":"MacWindow"},{"name":"AndroidButton"},{"name":"AndroidIconButton"},{"name":"AndroidSwitch"},{"name":"AndroidTextField"},{"name":"AndroidRadio"},{"name":"AndroidNote"},{"name":"AndroidRow"},{"name":"AndroidCardHeading"},{"name":"AndroidCard"},{"name":"AndroidSection"},{"name":"AndroidDialogActions"},{"name":"AndroidDialog"},{"name":"AndroidScreen"},{"name":"StatusChip"},{"name":"Notice"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Bae","components":[{"name":"MacButton"},{"name":"MacTextField"},{"name":"MacRadio"},{"name":"MacPopUpButton"},{"name":"MacSwitch"},{"name":"MacAccentPicker"},{"name":"MacMenuItem"},{"name":"MacMenu"},{"name":"MacSegmentedControl"},{"name":"MacDisclosure"},{"name":"MacProgress"},{"name":"MacSpinner"},{"name":"MacErrorText"},{"name":"MacNote"},{"name":"MacRow"},{"name":"MacFieldRow"},{"name":"MacBox"},{"name":"MacSection"},{"name":"MacSheetFooter"},{"name":"MacSheet"},{"name":"MacAlert"},{"name":"MacSettingsWindow"},{"name":"MacWindow"},{"name":"AndroidButton"},{"name":"AndroidIconButton"},{"name":"AndroidSwitch"},{"name":"AndroidAccentPicker"},{"name":"AndroidTextField"},{"name":"AndroidRadio"},{"name":"AndroidNote"},{"name":"AndroidProgress"},{"name":"AndroidSpinner"},{"name":"AndroidRow"},{"name":"AndroidCard"},{"name":"AndroidSection"},{"name":"AndroidDialogActions"},{"name":"AndroidDialog"},{"name":"AndroidScreen"},{"name":"StatusChip"},{"name":"Notice"},{"name":"MacScanCode"},{"name":"AndroidScanCode"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -20,17 +20,15 @@
     return out;
   }
 
-  // A hairline between children, except right after a child that heads a group.
-  function divided(list, isHeading) {
+  // A hairline between children.
+  function divided(list) {
     var out = [];
     list.forEach(function (c, i) {
-      if (i > 0 && !isHeading(list[i - 1])) out.push(h('div', { key: 'd' + i, className: 'bae-divider', 'aria-hidden': true }));
+      if (i > 0 && !(c && c.props && c.props.nested)) out.push(h('div', { key: 'd' + i, className: 'bae-divider', 'aria-hidden': true }));
       out.push(c);
     });
     return out;
   }
-
-  function never() { return false; }
 
   // A right-pointing chevron; a class turns it to point down.
   function Chevron(props) {
@@ -44,6 +42,10 @@
       h('rect', { x: 9, y: 9, width: 11, height: 11, rx: 2 }),
       h('path', { d: 'M5 15V5a2 2 0 0 1 2-2h8' }));
   }
+  function CheckGlyph() {
+    return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+      h('path', { d: 'M5 12l5 5L20 7' }));
+  }
   var MATERIAL = {
     back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
     edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
@@ -51,6 +53,7 @@
     expand: 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z',
     more: 'M12 8a2 2 0 100-4 2 2 0 000 4zm0 2a2 2 0 100 4 2 2 0 000-4zm0 6a2 2 0 100 4 2 2 0 000-4z',
     search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+    add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
     refresh: 'M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 108 8h-2a6 6 0 11-1.76-4.24L13 11h7V4l-2.35 2.35z'
   };
   function Material(props) {
@@ -103,23 +106,28 @@
 
   function MacBox(props) {
     var list = kids(props.children);
-    var out = divided(list, never);
+    var out = divided(list);
     if (props.empty && list.length === 0) out.push(h('div', { key: 'e', className: 'bae-m-box-empty' }, props.empty));
     return h('div', { className: cx('bae-m-box', props.elevated && 'bae-m-box-elevated') }, out);
   }
 
-  // A row holding a field is a form row: the label takes a column and the field fills the rest.
   function MacRow(props) {
     var trail = kids(props.children);
-    var form = trail.some(function (c) { return c && c.type === MacTextField; });
-    return h('div', { className: cx('bae-m-row', form && 'bae-m-row-form', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action'), onClick: props.onClick },
-      props.label == null ? null : h('span', { className: 'bae-m-row-label', style: form ? { width: Number(props.labelWidth || 90) } : null },
+    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), onClick: props.onClick },
+      props.label == null ? null : h('span', { className: 'bae-m-row-label' },
         h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null),
         props.note ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) }, props.note) : null,
         props.waiting ? h('div', { className: 'bae-m-row-waiting bae-progress-track' }, h('div', { className: 'bae-progress-fill bae-progress-moving' })) : null),
       props.value != null && props.value !== '' ? h('span', { className: cx('bae-m-row-value', props.tone && 'bae-tone-' + props.tone) }, props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.value) : null,
-      trail.length ? h('span', { className: cx('bae-m-row-trail', form && 'bae-m-row-trail-fill') }, trail) : null,
+      trail.length ? h('span', { className: 'bae-m-row-trail' }, trail) : null,
       props.chevron ? h(Chevron, { className: 'bae-m-row-chevron' }) : null);
+  }
+
+  // A row of a MacBox whose label takes a column labelWidth wide and whose field fills the rest.
+  function MacFieldRow(props) {
+    return h('div', { className: cx('bae-m-row', 'bae-m-fieldrow', props.alignText && 'bae-m-fieldrow-aligned') },
+      props.label == null ? null : h('span', { className: 'bae-m-fieldrow-label', style: { width: Number(props.labelWidth || 90) } }, props.label),
+      h('div', { className: 'bae-m-fieldrow-content' }, kids(props.children)));
   }
 
   function MacButton(props) {
@@ -131,8 +139,9 @@
       className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive')
     };
     if (kind === 'icon') {
-      rest['aria-label'] = props.label || 'Copy';
-      return h('button', rest, props.children || h(CopyGlyph));
+      var icon = props.icon || 'copy';
+      rest['aria-label'] = props.label || icon;
+      return h('button', rest, icon === 'check' ? h(CheckGlyph) : h(CopyGlyph));
     }
     return h('button', rest, props.children != null ? props.children : props.label);
   }
@@ -202,8 +211,12 @@
     return h('div', { className: 'bae-m-scrim' }, panel);
   }
 
+  // split sets the first child apart on the left, in its own box so a wrapper around it can't swallow the spacing.
   function MacSheetFooter(props) {
-    return h('div', { className: cx('bae-m-sheet-footer', props.split && 'bae-m-sheet-footer-split') }, props.children);
+    var list = kids(props.children);
+    if (!props.split || list.length < 2) return h('div', { className: 'bae-m-sheet-footer' }, list);
+    return h('div', { className: 'bae-m-sheet-footer' },
+      h('div', { className: 'bae-m-sheet-footer-lead' }, list[0]), list.slice(1));
   }
 
   function Progress(prefix) {
@@ -215,7 +228,19 @@
           h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (props.value * 100) + '%' } : null })));
     };
   }
+  function Spinner(prefix, size) {
+    return function (props) {
+      var s = Number(props.size || size);
+      var spin = h('svg', { className: 'bae-spinner', width: s, height: s, viewBox: '0 0 24 24', role: 'progressbar', 'aria-label': props.label || 'Loading', fill: 'none' },
+        h('circle', { cx: 12, cy: 12, r: 9, stroke: 'currentColor', strokeOpacity: 0.2, strokeWidth: 2.5 }),
+        h('path', { d: 'M12 3a9 9 0 0 1 9 9', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' }));
+      return props.label ? h('span', { className: prefix + '-spinner' }, spin, h('span', null, props.label)) : h('span', { className: prefix + '-spinner' }, spin);
+    };
+  }
+  var MacSpinner = Spinner('bae-m', 16);
+  var AndroidSpinner = Spinner('bae-a', 24);
   var MacProgress = Progress('bae-m');
+  var AndroidProgress = Progress('bae-a');
 
   function MacErrorText(props) {
     return h('div', { className: 'bae-m-error' }, props.children);
@@ -223,6 +248,39 @@
 
   function MacNote(props) {
     return h('div', { className: 'bae-m-note' }, props.children);
+  }
+
+  function MacSwitch(props) {
+    var s = React.useState(!!props.on);
+    var on = s[0];
+    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': props.label, className: cx('bae-m-switch', on && 'bae-m-switch-on'), onClick: function () { s[1](!on); } },
+      h('span', { className: 'bae-m-switch-knob' }));
+  }
+
+  // The accents in the order the appearance settings offer them.
+  var ACCENTS = ['blue', 'indigo', 'purple', 'pink', 'red', 'amber', 'green', 'teal'];
+
+  function accentPicker(className) {
+    return function (props) {
+      var s = React.useState(props.selected || 'pink');
+      var chosen = s[0];
+      return h('div', { className: className, role: 'radiogroup', 'aria-label': props.label || 'Accent' }, ACCENTS.map(function (a) {
+        return h('button', { key: a, type: 'button', role: 'radio', 'aria-checked': a === chosen, 'aria-label': a.charAt(0).toUpperCase() + a.slice(1),
+          className: cx('bae-swatch', a === chosen && 'bae-swatch-on'), style: { background: 'var(--accent-' + a + '-fill)' }, onClick: function () { s[1](a); } });
+      }));
+    };
+  }
+  var MacAccentPicker = accentPicker('bae-m-accents');
+  var AndroidAccentPicker = accentPicker('bae-a-accents');
+
+  function MacMenu(props) {
+    return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children);
+  }
+
+  function MacMenuItem(props) {
+    return h('div', { className: cx('bae-m-menu-item', props.highlighted && 'bae-m-menu-item-on'), role: 'menuitemradio', 'aria-checked': !!props.checked },
+      h('span', { className: 'bae-m-menu-check', 'aria-hidden': true }, props.checked ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M5 12.5l4.5 4.5L19 7.5' })) : null),
+      props.children);
   }
 
   // ---- Android ----
@@ -239,22 +297,19 @@
     return h('h2', { className: 'bae-a-section' }, props.title || props.children);
   }
 
-  function AndroidCardHeading(props) {
-    return h('div', { className: 'bae-a-card-heading' }, props.title || props.children);
-  }
-
   function AndroidCard(props) {
     var list = kids(props.children);
-    return h('div', { className: 'bae-a-card' }, divided(list, function (c) { return c && c.type === AndroidCardHeading; }));
+    return h('div', { className: 'bae-a-card' }, divided(list));
   }
 
   function AndroidRow(props) {
     var trail = kids(props.children);
     var lines = h('div', { className: 'bae-a-row-lines' },
-      h('div', { className: cx('bae-a-row-title', props.action && 'bae-a-row-action') }, props.title),
+      h('div', { className: cx('bae-a-row-title', props.action && 'bae-a-row-action', props.destructive && 'bae-a-row-destructive') }, props.title, props.tag ? h(StatusChip, null, props.tag) : null),
       props.subtitle ? h('div', { className: cx('bae-a-row-subtitle', props.tone && 'bae-tone-' + props.tone) },
         props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.subtitle) : null);
-    return h('div', { className: cx('bae-a-row', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected'), role: props.onClick ? 'button' : null, onClick: props.onClick },
+    return h('div', { className: cx('bae-a-row', props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected'), role: props.onClick ? 'button' : null, onClick: props.onClick },
+      props.leadingIcon ? h(Material, { name: props.leadingIcon, className: cx('bae-a-row-lead', props.action && 'bae-a-row-lead-action') }) : null,
       lines,
       trail.length ? h('span', { className: 'bae-a-row-trail' }, trail) : null,
       props.icon ? h(Material, { name: props.icon, size: props.icon === 'edit' ? 20 : 24, className: 'bae-a-row-icon' }) : null);
@@ -263,7 +318,7 @@
   function AndroidButton(props) {
     var kind = props.kind || 'filled';
     return h('button', { type: 'button', disabled: !!props.off, onClick: props.onClick,
-      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive') },
+      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
       props.children != null ? props.children : props.label);
   }
 
@@ -313,6 +368,44 @@
 
   // ---- Both ----
 
+  // A stand-in QR code: the three finder squares and a fixed scatter of
+  // modules. The apps draw the real code (QRCode in BaeKit, QRCodeImage on
+  // Android).
+  var QR_N = 25;
+  var QR_FILL = (function () {
+    var seed = 7, out = [];
+    for (var i = 0; i < QR_N * QR_N; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; out.push(seed % 100 < 46); }
+    return out;
+  })();
+  function qrModule(x, y) {
+    function finder(fx, fy) {
+      var dx = x - fx, dy = y - fy;
+      if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null;
+      return dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4);
+    }
+    var f = finder(0, 0); if (f === null) f = finder(QR_N - 7, 0); if (f === null) f = finder(0, QR_N - 7);
+    if (f !== null) return f;
+    if ((x === 7 && (y < 8 || y > QR_N - 9)) || (y === 7 && (x < 8 || x > QR_N - 9)) || (x === QR_N - 8 && y < 8) || (y === QR_N - 8 && x < 8)) return false;
+    return QR_FILL[y * QR_N + x];
+  }
+  function QrPicture(props) {
+    var size = Number(props.size || 200), cells = [];
+    for (var y = 0; y < QR_N; y++) for (var x = 0; x < QR_N; x++) if (qrModule(x, y)) cells.push(h('rect', { key: x + '-' + y, x: x, y: y, width: 1.02, height: 1.02 }));
+    return h('div', { className: 'bae-scan-qr' },
+      h('svg', { width: size, height: size, viewBox: '0 0 ' + QR_N + ' ' + QR_N, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, cells));
+  }
+  function ScanCode(prefix) {
+    return function (props) {
+      return h('div', { className: 'bae-scan ' + prefix + '-scan' },
+        props.instruction ? h('div', { className: 'bae-scan-text' }, props.instruction) : null,
+        h(QrPicture, { size: props.size }),
+        h('div', { className: 'bae-scan-buttons' }, kids(props.children)),
+        props.note ? h('div', { className: 'bae-scan-note' }, props.note) : null);
+    };
+  }
+  var MacScanCode = ScanCode('bae-m');
+  var AndroidScanCode = ScanCode('bae-a');
+
   function StatusChip(props) {
     return h('span', { className: cx('bae-chip', 'bae-tone-' + (props.tone || 'neutral')) }, props.children);
   }
@@ -322,13 +415,14 @@
   }
 
   window.Bae = Object.assign(window.Bae || {}, {
-    MacWindow: MacWindow, MacAlert: MacAlert, MacSettingsWindow: MacSettingsWindow, MacSection: MacSection, MacBox: MacBox, MacRow: MacRow, MacButton: MacButton,
+    MacWindow: MacWindow, MacAlert: MacAlert, MacSettingsWindow: MacSettingsWindow, MacSection: MacSection, MacBox: MacBox, MacRow: MacRow, MacFieldRow: MacFieldRow, MacButton: MacButton,
     MacTextField: MacTextField, MacRadio: MacRadio, MacPopUpButton: MacPopUpButton, MacSegmentedControl: MacSegmentedControl, MacDisclosure: MacDisclosure, MacSheet: MacSheet,
-    MacSheetFooter: MacSheetFooter, MacProgress: MacProgress, MacErrorText: MacErrorText, MacNote: MacNote,
-    AndroidScreen: AndroidScreen, AndroidSection: AndroidSection, AndroidCard: AndroidCard, AndroidCardHeading: AndroidCardHeading,
+    MacSheetFooter: MacSheetFooter, MacProgress: MacProgress, MacSpinner: MacSpinner, MacErrorText: MacErrorText, MacNote: MacNote,
+    MacSwitch: MacSwitch, MacAccentPicker: MacAccentPicker, MacMenu: MacMenu, MacMenuItem: MacMenuItem, AndroidAccentPicker: AndroidAccentPicker,
+    AndroidScreen: AndroidScreen, AndroidSection: AndroidSection, AndroidCard: AndroidCard,
     AndroidRow: AndroidRow, AndroidButton: AndroidButton, AndroidIconButton: AndroidIconButton, AndroidSwitch: AndroidSwitch,
     AndroidTextField: AndroidTextField, AndroidRadio: AndroidRadio, AndroidDialog: AndroidDialog,
-    AndroidDialogActions: AndroidDialogActions, AndroidNote: AndroidNote,
-    StatusChip: StatusChip, Notice: Notice
+    AndroidDialogActions: AndroidDialogActions, AndroidNote: AndroidNote, AndroidProgress: AndroidProgress, AndroidSpinner: AndroidSpinner,
+    StatusChip: StatusChip, Notice: Notice, MacScanCode: MacScanCode, AndroidScanCode: AndroidScanCode
   });
 })();

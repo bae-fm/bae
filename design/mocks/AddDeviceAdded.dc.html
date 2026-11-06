@@ -27,26 +27,16 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 .card{margin:0 16px;border-radius:16px;background:var(--surface);overflow:hidden}:not(h2)+.card{margin-top:8px}.card>*+*{border-top:1px solid var(--hairline)}.person>.row{min-height:52px !important}.sub{padding:14px 16px 2px;font-size:12px;font-weight:600;letter-spacing:0.04em;color:var(--text-secondary)}.card>.sub+*{border-top:0}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen" title="People and devices" back="{{yes}}">
-  <x-import component-from-global-scope="Bae.AndroidSection" title="You"></x-import>
+<x-import component-from-global-scope="Bae.AndroidScreen" title="Your devices" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Your Name" icon="edit"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Role" subtitle="Admin"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Listening history" subtitle="Only me"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidCardHeading" title="Devices"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Add device" action="{{yes}}"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Phone">
-      This device
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
-    </x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Phone" subtitle="This device"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Laptop">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
     </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidSection" title="People"></x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Person Name" subtitle="Member · 1 device" icon="chevron"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Tablet">
+      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
+    </x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Add device" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidDialog" title="Add a device" width="340">
     <div style="font-size: 16px; color: var(--text-primary)">Tablet added</div>

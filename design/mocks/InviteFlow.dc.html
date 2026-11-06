@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invite: how the states connect</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+.n{fill:var(--surface);stroke:var(--hairline);stroke-width:1.2}
+.e{stroke:var(--text-secondary);stroke-width:1.4}
+.h{fill:var(--text-secondary)}
+.t{fill:var(--text-primary);font:600 14px var(--font-sans)}
+.l{fill:var(--text-secondary);font:12px var(--font-sans)}
+.gl{fill:none;stroke:var(--text-secondary);stroke-width:1.6}
+.gs{stroke:var(--text-secondary);stroke-width:2.2;stroke-linecap:round}
+.ga{fill:var(--accent)}
+.ga2{fill:var(--accent)}
+.gt{fill:var(--tile)}
+.gd{fill:var(--danger)}
+.gw{fill:var(--text-primary)}
+.gq{fill:var(--background)}
+.gok{fill:var(--success)}
+.gck{fill:none;stroke:var(--background);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.gx{fill:none;stroke:var(--text-secondary);stroke-width:3;stroke-linecap:round}
+.num{fill:var(--text-primary);font:600 20px var(--font-sans);letter-spacing:1px}
+.foot{padding:0 24px 24px;font:14px/20px var(--font-sans);color:var(--text-secondary)}
+</style>
+</helmet>
+<div style="padding: 16px 0 0"><svg width="1180" height="560" viewBox="0 0 1180 560" role="img" aria-label="How an invite moves between its states"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="h"/></marker></defs><line x1="189" y1="228" x2="291" y2="162" class="e" marker-end="url(#arr)"/><text x="248" y="199" class="l">Create invite, offline</text><line x1="189" y1="323" x2="291" y2="377" class="e" marker-end="url(#arr)"/><text x="248" y="354" class="l">Create invite, online</text><line x1="370" y1="169" x2="370" y2="361" class="e" marker-end="url(#arr)"/><text x="378" y="269" class="l">back online</text><line x1="449" y1="420" x2="551" y2="420" class="e" marker-end="url(#arr)"/><text x="500" y="412" class="l" text-anchor="middle">shared</text><line x1="419" y1="361" x2="581" y2="169" class="e" marker-end="url(#arr)"/><text x="508" y="269" class="l">failed</text><line x1="709" y1="420" x2="811" y2="420" class="e" marker-end="url(#arr)"/><text x="760" y="412" class="l" text-anchor="middle">they enter it</text><line x1="969" y1="367" x2="1021" y2="333" class="e" marker-end="url(#arr)"/><text x="1003" y="354" class="l">Approve</text><line x1="890" y1="361" x2="890" y2="169" class="e" marker-end="url(#arr)"/><text x="898" y="269" class="l">Decline</text><line x1="679" y1="361" x2="841" y2="169" class="e" marker-end="url(#arr)"/><text x="768" y="269" class="l">expires</text><line x1="709" y1="110" x2="811" y2="110" class="e" marker-end="url(#arr)"/><text x="760" y="102" class="l" text-anchor="middle">ends, with a notice</text><rect x="35.0" y="225.0" width="150" height="110" rx="12" class="n"/><rect x="70" y="246" width="80" height="14" rx="3" class="gl"/><rect x="70" y="266" width="80" height="14" rx="3" class="gl"/><rect x="116" y="286" width="34" height="12" rx="6" class="ga"/><text x="110" y="323.0" class="t" text-anchor="middle">The form</text><rect x="295.0" y="55.0" width="150" height="110" rx="12" class="n"/><path d="M344 110h46a13 13 0 0 0-3-25.6A19 19 0 0 0 354 86a13 13 0 0 0-10 24z" class="gl"/><line x1="340" y1="76" x2="400" y2="122" class="gs"/><text x="370" y="153.0" class="t" text-anchor="middle">No code yet</text><rect x="295.0" y="365.0" width="150" height="110" rx="12" class="n"/><rect x="330" y="404" width="80" height="8" rx="4" class="gt"/><rect x="360" y="404" width="34" height="8" rx="4" class="ga2"/><text x="370" y="463.0" class="t" text-anchor="middle">Sharing</text><rect x="555.0" y="55.0" width="150" height="110" rx="12" class="n"/><circle cx="630" cy="98" r="20" class="gd"/><rect x="627.5" y="87" width="5" height="14" rx="2" class="gw"/><circle cx="630" cy="106" r="2.8" class="gw"/><text x="630" y="153.0" class="t" text-anchor="middle">Sharing failed</text><rect x="555.0" y="365.0" width="150" height="110" rx="12" class="n"/><rect x="602" y="380" width="56" height="56" rx="4" class="gw"/><rect x="606" y="384" width="6" height="6" class="gq"/><rect x="606" y="391" width="6" height="6" class="gq"/><rect x="606" y="398" width="6" height="6" class="gq"/><rect x="606" y="412" width="6" height="6" class="gq"/><rect x="606" y="419" width="6" height="6" class="gq"/><rect x="606" y="426" width="6" height="6" class="gq"/><rect x="613" y="384" width="6" height="6" class="gq"/><rect x="613" y="391" width="6" height="6" class="gq"/><rect x="613" y="412" width="6" height="6" class="gq"/><rect x="613" y="419" width="6" height="6" class="gq"/><rect x="613" y="426" width="6" height="6" class="gq"/><rect x="620" y="384" width="6" height="6" class="gq"/><rect x="620" y="398" width="6" height="6" class="gq"/><rect x="620" y="405" width="6" height="6" class="gq"/><rect x="627" y="398" width="6" height="6" class="gq"/><rect x="634" y="391" width="6" height="6" class="gq"/><rect x="634" y="412" width="6" height="6" class="gq"/><rect x="634" y="419" width="6" height="6" class="gq"/><rect x="641" y="384" width="6" height="6" class="gq"/><rect x="641" y="391" width="6" height="6" class="gq"/><rect x="648" y="384" width="6" height="6" class="gq"/><rect x="648" y="391" width="6" height="6" class="gq"/><rect x="648" y="398" width="6" height="6" class="gq"/><rect x="648" y="412" width="6" height="6" class="gq"/><text x="630" y="463.0" class="t" text-anchor="middle">The code</text><rect x="815.0" y="365.0" width="150" height="110" rx="12" class="n"/><text x="890" y="416" class="num" text-anchor="middle">412 778</text><text x="890" y="463.0" class="t" text-anchor="middle">Their request</text><rect x="815.0" y="55.0" width="150" height="110" rx="12" class="n"/><path d="M876 84L904 112M904 84L876 112" class="gx"/><text x="890" y="153.0" class="t" text-anchor="middle">Ended</text><rect x="1025.0" y="225.0" width="150" height="110" rx="12" class="n"/><circle cx="1094" cy="260" r="9" class="gl"/><path d="M1078 286a16 14 0 0 1 32 0z" class="gl"/><circle cx="1116" cy="278" r="10" class="gok"/><path d="M1111 278l4 4 7-8" class="gck"/><text x="1100" y="323.0" class="t" text-anchor="middle">Joining</text></svg></div>
+<div class="foot">Done closes any screen; the invite’s row in People opens it again where it has got to. Cancel invite ends it from any of them. A sharing failure a retry can’t fix ends it by itself.</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1180,"height":630}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

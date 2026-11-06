@@ -27,8 +27,11 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Restore code" back="{{yes}}">
-  <p style="margin: 0; font-size: 14px; line-height: 20px; color: var(--text-secondary)">Save this code. You can use it to regain access to your library if you lose all your devices.</p>
-  <div><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Show code</x-import></div>
+  <div style="display: flex; flex-direction: column; gap: 16px; padding: 8px 16px 24px; font-family: var(--font-android)">
+    <div style="font-size: 14px; line-height: 20px; color: var(--text-secondary)">Print this code or save it in a password manager. It gets you back into your library if you lose all your devices. A phone you set up from this one gets it too.</div>
+    <div style="padding: 16px; border-radius: 16px; background: var(--surface); font: 15px/26px 'Roboto Mono', ui-monospace, Menlo, monospace; word-spacing: 4px; color: var(--text-secondary)">CVR1 UJZD •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• B</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px"><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Show code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Copy</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Print</x-import></div>
+  </div>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

@@ -16,45 +16,51 @@ body{margin:0;background:var(--elevated)}
 </style>
 </helmet>
 <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); font: 13px var(--font-sans)">
+<sc-if value="{{topError}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.Notice" tone="danger">{{topError}}</x-import></sc-if>
 <x-import component-from-global-scope="Bae.MacSection" title="Location">
 <x-import component-from-global-scope="Bae.MacBox">
-<x-import component-from-global-scope="Bae.MacRow" label="Endpoint" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{endpoint}}" note="{{serviceLine}}"></x-import></x-import>
-<x-import component-from-global-scope="Bae.MacRow" label="Region" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{region}}"></x-import></x-import>
-<x-import component-from-global-scope="Bae.MacRow" label="Bucket" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{bucket}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacFieldRow" label="Endpoint" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{endpoint}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacFieldRow" label="Region" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{region}}" state="{{regionState}}" error="{{regionError}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacFieldRow" label="Bucket" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{bucket}}" state="{{bucketState}}" error="{{bucketError}}"></x-import></x-import>
 </x-import>
 </x-import>
 <x-import component-from-global-scope="Bae.MacSection" title="Key">
 <x-import component-from-global-scope="Bae.MacBox">
-<x-import component-from-global-scope="Bae.MacRow" label="Access key ID" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{keyId}}"></x-import></x-import>
-<x-import component-from-global-scope="Bae.MacRow" label="Secret access key" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{secret}}" secret="{{yes}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacFieldRow" label="Access key ID" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{keyId}}"></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacFieldRow" label="Secret access key" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{secret}}" secret="{{yes}}"></x-import></x-import>
 </x-import>
 </x-import>
 <x-import component-from-global-scope="Bae.MacSheetFooter">
 <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>
-<x-import component-from-global-scope="Bae.MacButton" kind="primary" off="{{setUpOff}}">Set up</x-import>
+<x-import component-from-global-scope="Bae.MacButton" kind="primary">Set up</x-import>
 </x-import>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"endpoint":{"editor":"enum","options":["blank","r2","gcs","custom"],"default":"r2"},"$preview":{"width":460,"height":400}}'>
+<script type="text/x-dc" data-dc-script data-props='{"error":{"editor":"enum","options":["none","key","denied","region","bucket","occupied"],"default":"none"},"$preview":{"width":460,"height":520}}'>
 class Component extends DCLogic {
   renderVals() {
-    const kind = this.props.endpoint ?? 'r2';
-    const blank = kind === 'blank';
-    const ends = {
-      blank: ['', '', ''],
-      r2: ['https://account-id.r2.cloudflarestorage.com', 'auto', 'Cloudflare R2'],
-      gcs: ['https://storage.googleapis.com', 'us-central1', 'Google Cloud Storage'],
-      custom: ['https://s3.home.lan', 'us-east-1', 'bae will detect this service’s settings during setup.']
-    }[kind];
+    const error = this.props.error ?? 'none';
+    const top = {
+      key: 'This key wasn\u2019t accepted. Check the access key ID and secret access key.',
+      denied: 'This key can\u2019t use the bucket. Give it read and write access, or use another key.'
+    }[error] || '';
+    const bucketError = {
+      bucket: 'No bucket by this name at this endpoint.',
+      occupied: 'This bucket holds other files. Use an empty bucket for this library.'
+    }[error] || '';
+    const regionError = error === 'region' ? 'The region or endpoint doesn\u2019t match this bucket.' : '';
     return {
       yes: true,
-      endpoint: ends[0],
-      region: ends[1],
-      serviceLine: ends[2],
-      bucket: blank ? '' : 'my-bucket',
-      keyId: blank ? '' : 'a1b2c3d4e5f6',
-      secret: blank ? '' : 'abcdefghijkl',
-      setUpOff: blank
+      topError: top,
+      endpoint: 'https://s3.home.lan',
+      region: 'us-east-1',
+      regionState: regionError ? 'error' : 'normal',
+      regionError,
+      bucket: 'my-bucket',
+      bucketState: bucketError ? 'error' : 'normal',
+      bucketError,
+      keyId: 'a1b2c3d4e5f6',
+      secret: 'abcdefghijkl'
     };
   }
 }

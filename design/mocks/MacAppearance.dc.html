@@ -27,13 +27,13 @@ body{margin:0}
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Appearance" title="Appearance">
   <x-import component-from-global-scope="Bae.MacBox">
     <x-import component-from-global-scope="Bae.MacRow" label="Theme">
-      <x-import component-from-global-scope="Bae.MacPopUpButton" value="Auto"></x-import>
+      <x-import component-from-global-scope="Bae.MacPopUpButton" value="System"></x-import>
     </x-import>
     <x-import component-from-global-scope="Bae.MacRow" label="Tone">
       <x-import component-from-global-scope="Bae.MacPopUpButton" value="Midnight"></x-import>
     </x-import>
     <x-import component-from-global-scope="Bae.MacRow" label="Accent">
-      <div style="display: flex; gap: 8px"><button aria-label="accent 0" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-blue-fill); "></button><button aria-label="accent 1" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-indigo-fill); "></button><button aria-label="accent 2" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-purple-fill); "></button><button aria-label="accent 3" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-pink-fill); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--text-primary);"></button><button aria-label="accent 4" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-red-fill); "></button><button aria-label="accent 5" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-amber-fill); "></button><button aria-label="accent 6" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-green-fill); "></button><button aria-label="accent 7" style="width: 18px; height: 18px; border-radius: 9px; border: 0; padding: 0; background: var(--accent-teal-fill); "></button></div>
+      <x-import component-from-global-scope="Bae.MacAccentPicker" selected="pink"></x-import>
     </x-import>
   </x-import>
 </x-import>

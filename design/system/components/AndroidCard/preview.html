@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Rows', h(B.AndroidCard, null, h(B.AndroidRow, { title: 'Phone' }), h(B.AndroidRow, { title: 'Laptop' }))), W('With a heading', h(B.AndroidCard, null, h(B.AndroidCardHeading, { title: 'Devices' }), h(B.AndroidRow, { title: 'Phone' }), h(B.AndroidRow, { title: 'Laptop' })))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Rows', h(B.AndroidCard, null, h(B.AndroidRow, { title: 'Phone' }), h(B.AndroidRow, { title: 'Laptop' })))));
 </script>
 </body>
 </html>

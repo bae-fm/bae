@@ -25,17 +25,12 @@ body{margin:0}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library">
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Status" value="Access key not accepted" tone="warning" note="Storage refused this device's access key. Enter a new one for this bucket.">
-      <span style="margin-top: -8px; font-size: 12px; color: var(--text-secondary)">Last synced 3 days ago</span>
-      <x-import component-from-global-scope="Bae.MacButton" kind="primary">Enter access key…</x-import>
-    </x-import>
-  </x-import>
+  <dc-import name="MacSyncStatus" status="Access key not accepted" tone="warning" cause="Enter a new key for this bucket." fix="Enter access key…" last-synced="3 days ago" hint-size="100%,110px"></dc-import>
   <x-import component-from-global-scope="Bae.MacSection" title="Storage">
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacRow" label="Provider" value="S3-compatible"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Endpoint" value="https://account-id.r2.cloudflarestorage.com"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Region" value="auto"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Endpoint" value="https://s3.home.lan"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Region" value="us-east-1"></x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Bucket" value="my-bucket"></x-import>
     </x-import>
   </x-import>

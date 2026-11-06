@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>macOS settings: Sync row states</title>
+<title>macOS: Sync status: every state</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -12,149 +12,50 @@
 <x-dc>
 <helmet>
 <style>
-body{margin:0}
-.side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
-.box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
-.box+.box{margin-top:10px}
-.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
-.r+.r{border-top:1px solid var(--hairline)}
-.r.hd{align-items:flex-start;padding-bottom:8px;cursor:pointer}
-.r.fix{border-top:0;padding-top:0;padding-bottom:8px}
-.lb{line-height:36px}
-.st{display:flex;align-items:center;gap:6px;min-height:36px}
-.stack{display:flex;flex-direction:column;align-items:flex-end}
-.ls{margin-top:-8px;margin-right:16px;font-size:12px;color:var(--text-secondary)}
-.cz{font-size:12px;line-height:16px;color:var(--text-secondary)}
-.dot{width:7px;height:7px;border-radius:4px}
-.chev{fill:var(--text-secondary);margin-left:2px}
-.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif;flex:none}
+body{margin:0;background:var(--elevated)}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Library" height="1900">
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="st" style="color: var(--text-secondary)">Not synced<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="st" style="color: var(--text-secondary)">Syncing…<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="st" style="color: var(--text-secondary)">Waiting to sync<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="st" style="color: var(--text-secondary)">Waiting to sync<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Uploads are paused.">
-      <x-import component-from-global-scope="Bae.MacButton">Resume uploads</x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="st" style="color: var(--text-secondary)">Waiting to sync<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="An upload failed and will be tried again shortly.">
-      <x-import component-from-global-scope="Bae.MacButton">Retry now</x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--warning)"><span class="dot" style="background: var(--warning)"></span>Waiting to sync<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Dropbox asked bae to wait. Syncing resumes at 3:40."></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="st" style="color: var(--success)"><span class="dot" style="background: var(--success)"></span>Synced<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--warning)"><span class="dot" style="background: var(--warning)"></span>Offline<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--warning)"><span class="dot" style="background: var(--warning)"></span>Offline · unsent changes<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--warning)"><span class="dot" style="background: var(--warning)"></span>Signed out of Dropbox<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 3 days ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="">
-      <x-import component-from-global-scope="Bae.MacButton" kind="primary">Sign in to Dropbox…</x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--warning)"><span class="dot" style="background: var(--warning)"></span>Update needed<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Update the app to continue syncing.">
-      <x-import component-from-global-scope="Bae.MacButton">Check for updates…</x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>No access to storage<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Storage access was denied. Ask the person who manages this storage to give your account access again."></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>Storage full<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="This storage has no available space.">
-      <x-import component-from-global-scope="Bae.MacButton">Open in browser</x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>Storage folder missing<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="The storage location was not found."></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>Removed from the library<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="An admin removed this device from the library. It no longer syncs, and what is here is an old copy.">
-      <x-import component-from-global-scope="Bae.MacButton">Remove from this Mac…</x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>Device needs reset<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="This device must be reset before syncing."></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>Clock is wrong<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Check the date and time on this device."></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="stack"><span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>Sync failed<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span><span class="ls">Last synced 2 hours ago</span></span>
-    </x-import>
-    <x-import component-from-global-scope="Bae.MacRow" label="Couldn't upload “Cover.jpg”: the file is missing or was changed. Put it back as it was.">
-      <x-import component-from-global-scope="Bae.MacButton">Retry now</x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacBox">
-    <x-import component-from-global-scope="Bae.MacRow" label="Sync">
-      <span class="st" style="color: var(--danger)"><span class="dot" style="background: var(--danger)"></span>Couldn't read sync status<svg class="chev" width="10" height="10" viewbox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg></span>
-    </x-import>
-  </x-import>
-</x-import>
+<div style="width: 1452px; box-sizing: border-box; padding: 8px 0 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; background: var(--elevated); font-family: var(--font-sans)">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="padding: 8px 20px 0; font: 600 13px/20px var(--font-sans); color: var(--text-secondary)">Gray and green</div>
+<dc-import name="MacSyncStatus" status="Not synced" tone="" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Syncing…" tone="" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Waiting to sync" tone="" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Waiting to sync" tone="" cause="Uploads are paused." fix="Resume uploads" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Waiting to sync" tone="" cause="An upload failed. bae will try again shortly." fix="Retry now" last-synced="" hint-size="100%,110px"></dc-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="padding: 8px 20px 0; font: 600 13px/20px var(--font-sans); color: var(--text-secondary)">Amber</div>
+<dc-import name="MacSyncStatus" status="Offline · unsent changes" tone="warning" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Offline" tone="warning" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Waiting to sync" tone="warning" cause="Dropbox asked bae to wait. Syncing resumes at 3:40." fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Update needed" tone="warning" cause="Update bae to keep syncing." fix="Check for updates…" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Signed out of Dropbox" tone="warning" cause="" fix="Sign in to Dropbox…" last-synced="3 days ago" hint-size="100%,110px"></dc-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="padding: 8px 20px 0; font: 600 13px/20px var(--font-sans); color: var(--text-secondary)">Red</div>
+<dc-import name="MacSyncStatus" status="Device needs reset" tone="danger" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="No access to storage" tone="danger" cause="Ask whoever manages this storage to give you access again." fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Storage folder missing" tone="danger" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Clock is wrong" tone="danger" cause="Check the date and time on this device." fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Couldn't read sync status" tone="danger" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Removed from the library" tone="danger" cause="An admin removed this device. What’s here is an old copy." fix="Remove from this Mac…" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Storage full" tone="danger" cause="Free up space in this storage." fix="Open in browser" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<dc-import name="MacSyncStatus" status="Sync failed" tone="danger" cause="“Cover.jpg” is missing or changed. Put it back as it was." fix="Retry now" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<div style="padding: 8px 20px; font: 400 13px/20px var(--font-sans); color: var(--text-primary); display: flex; flex-direction: column"><div style="padding-bottom: 8px; color: var(--text-secondary)">The other causes, each in place of the line under Sync failed:</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Couldn't read “Cover.jpg”: bae isn't allowed to open it.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">There's no space left on this Mac. Free some space and bae will try again.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">The keychain is locked. Unlock it to keep syncing.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">bae couldn't read the library on this Mac.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Dropbox returned an error: Internal server error.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">A change from another device is damaged and can't be applied.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Something went wrong in bae.</div>
+</div>
+</div>
+</div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":1900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1452,"height":1450}}'>
 class Component extends DCLogic {
   renderVals() { return {}; }
 }

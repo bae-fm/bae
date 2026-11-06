@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Settings: Invite a person</title>
+<title>Settings: Invite a person, Dropbox</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -33,28 +33,15 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Your Name" icon="edit"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Role" subtitle="Admin"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Listening history" subtitle="Only me"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidCardHeading" title="Devices"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Add device" action="{{yes}}"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Phone">
-      This device
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
-    </x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Laptop">
-      <x-import component-from-global-scope="Bae.AndroidButton" kind="text" destructive="{{yes}}">Remove</x-import>
-    </x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Devices" subtitle="2 devices" icon="chevron"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="People"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Person Name" subtitle="Member · 1 device" icon="chevron"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidDialog" title="Invite a person" width="340">
-    <x-import component-from-global-scope="Bae.AndroidTextField" label="Name" value="Person Name" state="focused"></x-import>
-    <div style="display: flex"><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Member</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Admin</x-import></div>
-    <x-import component-from-global-scope="Bae.AndroidTextField" label="Access key ID" value="AKIAEXAMPLEKEY"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidTextField" label="Secret access key" value="••••••••••••••••"></x-import>
-    <div style="display: flex"><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">In person</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Send</x-import></div>
-    <div style="display: flex"><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">1 hour</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">1 day</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">1 week</x-import></div>
+    <dc-import name="InviteFields" storage="dropbox" key-owner="theirs" hint-size="100%,84px"></dc-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Cancel</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Create invite</x-import>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sync status</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:var(--background)}
+.ss-more .bae-a-row{min-height:0;padding-bottom:4px}
+.ss-cause{padding:2px 16px 10px;font:400 14px/20px var(--font-android);color:var(--text-primary)}
+.ss-fix{padding:2px 16px 14px}
+.ss-when{padding:0 16px 14px;font:400 14px/20px var(--font-android);color:var(--text-secondary)}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.AndroidCard">
+<div class="{{blockClass}}" style="font-family: var(--font-android)">
+<x-import component-from-global-scope="Bae.AndroidRow" title="Status" subtitle="{{status}}" tone="{{tone}}"></x-import>
+<sc-if value="{{cause}}" hint-placeholder-val="{{ true }}"><div class="ss-cause">{{cause}}</div></sc-if>
+<sc-if value="{{fix}}" hint-placeholder-val="{{ true }}"><div class="ss-fix"><x-import component-from-global-scope="Bae.AndroidButton">{{fix}}</x-import></div></sc-if>
+<sc-if value="{{lastSynced}}" hint-placeholder-val="{{ true }}"><div class="ss-when">Last synced {{lastSynced}}</div></sc-if>
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Storage full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in this storage."},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":412,"height":220}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const cause = p.cause ?? 'Free up space in this storage.';
+    const fix = p.fix ?? 'Open in browser';
+    const lastSynced = p.lastSynced ?? '2 hours ago';
+    return {
+      status: p.status ?? 'Storage full',
+      tone: p.tone ?? 'danger',
+      cause,
+      fix,
+      lastSynced,
+      blockClass: cause || fix || lastSynced ? 'ss-more' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

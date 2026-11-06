@@ -34,25 +34,12 @@ body{margin:0}
       <x-import component-from-global-scope="Bae.MacRow" label="Listening history">
         <x-import component-from-global-scope="Bae.MacPopUpButton" value="Only me"></x-import>
       </x-import>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.MacSection" title="Devices">
-    <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="This Mac" value="This device">
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove…</x-import>
-      </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Phone">
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove…</x-import>
-      </x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Add device…" action="{{yes}}"></x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Devices" value="2 devices" chevron="{{yes}}"></x-import>
     </x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSection" title="People">
     <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Person Name" strong="{{yes}}" tag="Admin"></x-import>
-      <x-import component-from-global-scope="Bae.MacRow" label="Tablet">
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove…</x-import>
-      </x-import>
+      <x-import component-from-global-scope="Bae.MacRow" label="Person Name" strong="{{yes}}" tag="Admin" value="1 device"></x-import>
     </x-import>
   </x-import>
 </x-import>

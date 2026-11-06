@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invite fields</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:var(--elevated)}
+</style>
+</helmet>
+<div style="width: 100%; display: flex; flex-direction: column; gap: 24px; font-family: var(--font-android)">
+<sc-if value="{{email}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidTextField" label="{{email}}" value="person@example.com" state="focused" helper="{{why}}"></x-import></sc-if>
+<sc-if value="{{s3Theirs}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.AndroidTextField" label="Access key ID" value="AKIAEXAMPLEKEY" state="focused"></x-import><x-import component-from-global-scope="Bae.AndroidTextField" label="Secret access key" value="••••••••••••••••" helper="Their own key to the bucket, so they can join."></x-import><div style="margin-top: -8px; display: flex; flex-direction: column"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" align-to="field">Use my key instead</x-import></div></sc-if>
+<sc-if value="{{s3Mine}}" hint-placeholder-val="{{ false }}"><div style="font-size: 14px; line-height: 20px; color: var(--text-secondary)">They’ll use your key. To remove them later, you make a new key for yourself and enter it on each of your devices.</div><div style="margin-top: -8px; display: flex; flex-direction: column"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" align-to="text">Use their own key instead</x-import></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"storage":{"editor":"enum","options":["dropbox", "onedrive", "s3"],"default":"s3"},"keyOwner":{"editor":"enum","options":["theirs","mine"],"default":"theirs"},"$preview":{"width":292,"height":240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const storage = this.props.storage ?? 's3';
+    const email = {"dropbox": "Dropbox email", "onedrive": "Microsoft account email"}[storage] || '';
+    const account = { dropbox: 'Dropbox account', onedrive: 'Microsoft account', icloud: 'Apple Account' }[storage] || '';
+    const why = 'The library is shared with this ' + account + ' so they can join.';
+    const mine = storage === 's3' && (this.props.keyOwner ?? 'theirs') === 'mine';
+    return { yes: true, email, why, s3Mine: mine, s3Theirs: storage === 's3' && !mine };
+  }
+}
+</script>
+</body>
+</html>

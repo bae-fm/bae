@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Sync status</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--elevated)}
+.ms-more .bae-m-row{min-height:0;padding-bottom:8px}
+.ms-more .bae-m-row,.ms-more .bae-m-row-label{align-items:baseline}
+.ms-more .bae-m-row-value{align-self:baseline}
+.ms-cause{padding:0 12px 10px;font:400 11.5px/16px var(--font-sans);color:var(--text-secondary)}
+.ms-fix{padding:0 12px 10px}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacBox">
+<div class="{{blockClass}}">
+<x-import component-from-global-scope="Bae.MacRow" label="Status" value="{{status}}" tone="{{tone}}"></x-import>
+<sc-if value="{{cause}}" hint-placeholder-val="{{ true }}"><div class="ms-cause">{{cause}}</div></sc-if>
+<sc-if value="{{fix}}" hint-placeholder-val="{{ true }}"><div class="ms-fix"><x-import component-from-global-scope="Bae.MacButton" kind="primary">{{fix}}</x-import></div></sc-if>
+</div>
+<sc-if value="{{lastSynced}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Last synced" value="{{lastSynced}}"></x-import></sc-if>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Storage full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in this storage."},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":460,"height":150}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const cause = p.cause ?? 'Free up space in this storage.';
+    const fix = p.fix ?? 'Open in browser';
+    return {
+      status: p.status ?? 'Storage full',
+      tone: p.tone ?? 'danger',
+      cause,
+      fix,
+      lastSynced: p.lastSynced ?? '2 hours ago',
+      blockClass: cause || fix ? 'ms-more' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Join: your name</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacWindow">
+  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 56px 0 24px; font: 13px var(--font-sans); color: var(--text-primary)"><div style="font-size: 20px; font-weight: 600">Join Library Name</div><div style="margin-top: 6px; color: var(--text-secondary)">What should people in the library call you?</div><div style="width: 360px; margin-top: 28px"><x-import component-from-global-scope="Bae.MacFieldRow" label="Your name" label-width="80"><x-import component-from-global-scope="Bae.MacTextField" value="New Person" state="focused"></x-import></x-import></div><div style="flex: 1"></div><div style="display: flex; gap: 8px"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import><x-import component-from-global-scope="Bae.MacButton" kind="primary">Join</x-import></div></div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

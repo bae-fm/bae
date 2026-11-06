@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Settings: Sync row states</title>
+<title>Sync status: every state</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -14,115 +14,47 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
-a{color:var(--accent)}a:hover{color:#F6BFD9}
-.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
-.ib svg{fill:currentColor}
-.row{display:flex;flex-direction:column;justify-content:center;min-height:72px;padding:12px 16px;color:var(--text-primary);text-decoration:none;box-sizing:border-box}
-.rt{font-size:16px;line-height:24px}
-.rs{font-size:14px;line-height:20px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card{margin:0 16px;border-radius:16px;background:var(--surface);overflow:hidden}.card:first-child{margin-top:16px}.card+.card{margin-top:8px}
-.top{min-height:0;padding:14px 16px 4px}
-.only{min-height:0;padding:14px 16px}
-.cause{padding:2px 16px 10px;font-size:14px;line-height:20px;color:var(--text-primary)}
-.cause:last-child{padding-bottom:14px}
-.act{padding:0 16px 14px}
-.pb{height:40px;padding:0 24px;border-radius:20px;border:0;background:var(--accent);color:var(--background);font:500 14px Roboto,system-ui,sans-serif;cursor:pointer}
-.dot{width:8px;height:8px;border-radius:4px;flex:none}
+body{margin:0;background:var(--background)}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen" title="Library" back="{{yes}}" height="2220">
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Syncing…"></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Waiting to sync"></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Waiting to sync" tone="warning">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">Dropbox asked bae to wait. Syncing resumes at 3:40.</div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Synced" tone="success"></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Offline" tone="warning">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Offline · unsent changes" tone="warning">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Signed out of Dropbox" tone="warning">
-      <div class="rs">Last synced 3 days ago</div>
-    </x-import>
-    <div class="act" style="padding-top: 10px"><x-import component-from-global-scope="Bae.AndroidButton">Sign in to Dropbox</x-import></div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Update needed" tone="warning">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">Update the app to continue syncing.</div>
-    <div class="act"><x-import component-from-global-scope="Bae.AndroidButton">Update</x-import></div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="No access to storage" tone="danger">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">Storage access was denied. Ask the person who manages this storage to give your account access again.</div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Storage full" tone="danger">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">This storage has no available space.</div>
-    <div class="act"><x-import component-from-global-scope="Bae.AndroidButton">Open in browser</x-import></div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Storage folder missing" tone="danger">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">The storage location was not found.</div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Removed from the library" tone="danger">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">An admin removed this device from the library. It no longer syncs, and what is here is an old copy.</div>
-    <div class="act"><x-import component-from-global-scope="Bae.AndroidButton">Remove from this device</x-import></div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Device needs reset" tone="danger">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">This device must be reset before syncing.</div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Clock is wrong" tone="danger">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">Check the date and time on this device.</div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Sync failed" tone="danger">
-      <div class="rs">Last synced 2 hours ago</div>
-    </x-import>
-    <div class="cause">There's no space left on this phone. Free some space and bae will try again.</div>
-    <div class="act"><x-import component-from-global-scope="Bae.AndroidButton">Retry now</x-import></div>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Sync" subtitle="Couldn't read sync status" tone="danger"></x-import>
-  </x-import>
-</x-import>
+<div style="width: 1236px; box-sizing: border-box; padding: 8px 0 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 0; align-items: start; background: var(--background); font-family: var(--font-android)">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="padding: 8px 16px 0; font: 600 13px/20px var(--font-android); color: var(--text-secondary)">Gray and green</div>
+<dc-import name="SyncStatus" status="Syncing…" tone="" cause="" fix="" last-synced="" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Waiting to sync" tone="" cause="" fix="" last-synced="" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,140px"></dc-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="padding: 8px 16px 0; font: 600 13px/20px var(--font-android); color: var(--text-secondary)">Amber</div>
+<dc-import name="SyncStatus" status="Offline · unsent changes" tone="warning" cause="" fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Offline" tone="warning" cause="" fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Waiting to sync" tone="warning" cause="Dropbox asked bae to wait. Syncing resumes at 3:40." fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Update needed" tone="warning" cause="Update bae to keep syncing." fix="Update" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Signed out of Dropbox" tone="warning" cause="" fix="Sign in to Dropbox" last-synced="3 days ago" hint-size="100%,140px"></dc-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="padding: 8px 16px 0; font: 600 13px/20px var(--font-android); color: var(--text-secondary)">Red</div>
+<dc-import name="SyncStatus" status="Device needs reset" tone="danger" cause="" fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="No access to storage" tone="danger" cause="Ask whoever manages this storage to give you access again." fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Storage folder missing" tone="danger" cause="" fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Clock is wrong" tone="danger" cause="Check the date and time on this device." fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Couldn't read sync status" tone="danger" cause="" fix="" last-synced="" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Removed from the library" tone="danger" cause="An admin removed this device. What’s here is an old copy." fix="Remove from this device" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Storage full" tone="danger" cause="Free up space in this storage." fix="Open in browser" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<dc-import name="SyncStatus" status="Sync failed" tone="danger" cause="This device is out of space. Free some up and bae will try again." fix="Retry now" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+<div style="padding: 8px 16px; font: 400 14px/20px var(--font-android); color: var(--text-primary); display: flex; flex-direction: column"><div style="padding-bottom: 8px; color: var(--text-secondary)">The other causes, each in place of the line under Sync failed:</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">bae couldn't read its saved keys on this device.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">bae couldn't read the library on this device.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Dropbox returned an error: Internal server error.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">A change from another device is damaged and can't be applied.</div>
+<div style="padding: 10px 0; border-top: 1px solid var(--hairline)">Something went wrong in bae.</div>
+</div>
+</div>
+</div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":2220}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1236,"height":1800}}'>
 class Component extends DCLogic {
-  renderVals() { return { yes: true }; }
+  renderVals() { return {}; }
 }
 </script>
 </body>

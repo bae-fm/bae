@@ -28,14 +28,12 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}">
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <div><a href="#" class="row" style="min-height: 0; padding: 14px 16px 4px"><div class="rt">Status</div><div class="rs" style="display: flex; align-items: center; gap: 6px; color: var(--warning)"><span style="width: 8px; height: 8px; border-radius: 4px; background: var(--warning); flex: none"></span><span>Access key not accepted</span></div><div class="rs">Last synced 3 days ago</div></a><div style="padding: 2px 16px 10px; font-size: 14px; line-height: 20px; color: var(--text-primary)">Storage refused this device's access key. Enter a new one for this bucket.</div><div style="padding: 0 16px 14px"><x-import component-from-global-scope="Bae.AndroidButton">Enter access key</x-import></div></div>
-  </x-import>
+  <dc-import name="SyncStatus" status="Access key not accepted" tone="warning" cause="Enter a new key for this bucket." fix="Enter access key" last-synced="3 days ago" hint-size="100%,140px"></dc-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Storage"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Provider" subtitle="S3-compatible"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Endpoint" subtitle="https://account-id.r2.cloudflarestorage.com"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Region" subtitle="auto"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Endpoint" subtitle="https://s3.home.lan"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Region" subtitle="us-east-1"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Bucket" subtitle="my-bucket"></x-import>
   </x-import>
 </x-import>

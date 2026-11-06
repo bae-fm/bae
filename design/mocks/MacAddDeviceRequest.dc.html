@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS settings: Add a device</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
+.box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
+.r+.r{border-top:1px solid var(--hairline)}
+.sec{margin:14px 4px 6px;font-size:13px;font-weight:600;color:var(--text-primary)}
+.v{color:var(--text-secondary)}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif;display:flex;align-items:center;gap:6px}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif}
+.foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Your devices" back="People and devices">
+  <x-import component-from-global-scope="Bae.MacBox">
+    <x-import component-from-global-scope="Bae.MacRow" label="This Mac" note="This device"></x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Phone">
+      <x-import component-from-global-scope="Bae.MacButton" kind="borderless" destructive="{{yes}}">Remove…</x-import>
+    </x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Add…" action="{{yes}}"></x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.MacSheet" title="Add a device" overlay="{{yes}}" width="440">
+    <div style="font-size: 13px; line-height: 18px; color: var(--text-primary)">Tablet wants to join. Add it if its screen shows this number.</div>
+    <div style="padding: 12px 0; font: 600 34px/40px var(--font-sans); letter-spacing: 3px; text-align: center; color: var(--text-primary)">412 778</div>
+    <x-import component-from-global-scope="Bae.MacSheetFooter">
+      <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Decline</x-import>
+      <x-import component-from-global-scope="Bae.MacButton" kind="primary">Add</x-import>
+    </x-import>
+  </x-import>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

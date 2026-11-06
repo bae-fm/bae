@@ -221,7 +221,7 @@ onFillSecondary = "#B3FFFFFF"
 [semantics.dark]
 textPrimary = "#F2F2F4"
 textSecondary = "#B1B1BB"
-danger = "#F29C9F"
+danger = "#FF7B7B"
 success = "#8BCBA4"
 warning = "#E6BE77"
 info = "#87B5FF"

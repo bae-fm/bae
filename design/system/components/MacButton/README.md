@@ -4,5 +4,6 @@ One primary button per screen: the action the screen is for, on the right of the
 
 - Words are a verb, sentence case. An ellipsis means the button opens more before acting.
 - Don't hide a button that can come back; turn it `off`.
+- A Remove at the end of a row is `borderless` and `destructive`.
 
-**In the code:** macOS: `Button`; primary with BaeKit's `PrimaryButtonStyle`, destructive with `role: .destructive`.
+**In the code:** macOS: `Button`; primary with BaeKit's `PrimaryButtonStyle`, borderless with `.buttonStyle(.borderless)`, destructive with `role: .destructive`.

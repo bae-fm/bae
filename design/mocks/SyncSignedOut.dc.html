@@ -28,12 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}">
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Status" subtitle="Signed out of Dropbox" tone="warning">
-      <div class="rs">Last synced 3 days ago</div>
-    </x-import>
-    <div style="padding: 4px 16px 12px; border-top: 0"><x-import component-from-global-scope="Bae.AndroidButton">Sign in to Dropbox</x-import></div>
-  </x-import>
+  <dc-import name="SyncStatus" status="Signed out of Dropbox" tone="warning" cause="" fix="Sign in to Dropbox" last-synced="3 days ago" hint-size="100%,140px"></dc-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Storage"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Provider" subtitle="Dropbox"></x-import>

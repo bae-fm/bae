@@ -29,11 +29,11 @@ body{margin:0}
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacRow" label="Library Name" strong="{{yes}}" note="Dropbox · name@example.com">
         <x-import component-from-global-scope="Bae.MacButton">Open</x-import>
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove</x-import>
+        <x-import component-from-global-scope="Bae.MacButton" kind="borderless" destructive="{{yes}}">Remove</x-import>
       </x-import>
       <x-import component-from-global-scope="Bae.MacRow" label="Local Library" strong="{{yes}}" note="Not synced">
         <x-import component-from-global-scope="Bae.MacButton">Open</x-import>
-        <x-import component-from-global-scope="Bae.MacButton" destructive="{{yes}}">Remove</x-import>
+        <x-import component-from-global-scope="Bae.MacButton" kind="borderless" destructive="{{yes}}">Remove</x-import>
       </x-import>
     </x-import>
   </x-import></div><div style="flex: 1"></div><div style="display: flex; gap: 8px"><x-import component-from-global-scope="Bae.MacButton">Create new library</x-import><x-import component-from-global-scope="Bae.MacButton">Join library</x-import><x-import component-from-global-scope="Bae.MacButton">Add device</x-import></div></div>

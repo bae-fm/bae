@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS" height=300 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacFieldRow</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Field', h(B.MacBox, null, h(B.MacFieldRow, { label: 'Name' }, h(B.MacTextField, { value: 'Library Name' })))), W('Note', h(B.MacBox, null, h(B.MacFieldRow, { label: 'Name' }, h(B.MacTextField, { value: 'Library Name', note: 'People in this library see this name.' })))), W('Control after', h(B.MacBox, null, h(B.MacFieldRow, { label: 'Name' }, h(B.MacTextField, { value: 'Library Name' }), h(B.MacButton, null, 'Set up')))), W('No label', h(B.MacBox, null, h(B.MacFieldRow, null, h(B.MacTextField, { label: 'Name', labelHidden: true })))), W('Text aligned', h(B.MacBox, null, h(B.MacRow, { label: 'Library Name' }), h(B.MacFieldRow, { alignText: true }, h(B.MacTextField, { label: 'Name', labelHidden: true, value: 'Library Name' }))))));
+</script>
+</body>
+</html>
