@@ -79,7 +79,8 @@ pub(super) fn start_watcher_with_starter(
     removal_backend: Arc<dyn RootRemovalBackend>,
     in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
 ) -> std::thread::JoinHandle<()> {
-    let crate::ImportServices { event_tx, tables, folder_state_commit, diagnostics, .. } = services;
+    let crate::ImportServices { event_tx, tables, folder_state_commit, diagnostics, clock, .. } =
+        services;
     std::thread::spawn(move || {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -100,10 +101,9 @@ pub(super) fn start_watcher_with_starter(
             );
             let mut coordinator =
                 Coordinator::new(active_roots, event_tx, tables, diagnostics, checked_tx);
-            let period = crate::volume::CHECK_PERIOD;
-            let mut periodic =
-                tokio::time::interval_at(tokio::time::Instant::now() + period, period);
-            periodic.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            // The next check of the network folders: one period after the
+            // coordinator starts, then one period after each check is taken.
+            let mut next_check = clock.deadline(crate::volume::CHECK_PERIOD);
             loop {
                 let event = tokio::select! {
                     biased;
@@ -141,7 +141,10 @@ pub(super) fn start_watcher_with_starter(
                     Some((root, found)) = checked_rx.recv() => {
                         CoordinatorEvent::NetworkChecked { root, found }
                     }
-                    _ = periodic.tick() => CoordinatorEvent::Tick,
+                    () = &mut next_check => {
+                        next_check = clock.deadline(crate::volume::CHECK_PERIOD);
+                        CoordinatorEvent::Tick
+                    }
                 };
                 // One event that panics is reported and ends as its own
                 // failure would: a caller waiting on it hears the wait end
@@ -385,26 +388,29 @@ impl Coordinator {
         }
     }
 
-    /// Start the check of every network root not already being checked or
-    /// removed.
+    /// Start the check of every watched root whose last scan found it on a
+    /// network volume, unless it is already being checked or removed.
+    ///
+    /// The volume is the one the scan recorded, which is the one the import
+    /// list shows, and reading it never waits on a mount. A local folder's
+    /// watch reports every change; a network folder has only this check, and
+    /// a folder no scan has opened has nothing recorded to check against.
     async fn check_network_folders(&mut self) {
-        let roots = match watched_roots(&self.tables).await {
-            Ok(roots) => roots,
+        let scans = match self.tables.load_stored_folder_scans().await {
+            Ok(scans) => scans,
             Err(error) => {
                 self.diagnostics.report_failure("list the watched folders to check them", &error);
                 return;
             }
         };
-        for root in roots {
-            if self.active_roots.is_being_removed(&root) {
+        for root in scans {
+            if !root.last_scan.is_some_and(|scan| scan.on_network_volume) {
                 continue;
             }
-            // A local folder's watch reports every change; a network folder
-            // has only this check.
-            if volume_kind(&root, &self.diagnostics).await == VolumeKind::Local {
+            if self.active_roots.is_being_removed(&root.watched_folder_path) {
                 continue;
             }
-            self.start_network_check(root);
+            self.start_network_check(root.watched_folder_path);
         }
     }
 

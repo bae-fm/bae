@@ -289,8 +289,14 @@ impl CoordinatorHarness {
     /// `roots` are `/`-spelled; each is registered in the host's spelling, as
     /// [`root_path`] gives it.
     pub(crate) async fn with_roots(roots: &[&str]) -> Self {
+        Self::with_roots_on(roots, Arc::new(coven::SystemClock)).await
+    }
+
+    /// [`Self::with_roots`], with the coordinator reading `clock`.
+    pub(crate) async fn with_roots_on(roots: &[&str], clock: coven::ClockRef) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
         let mut test = setup_import_service().await;
+        test.read_clock(clock);
         let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
         test.report_bugs_to(bugs.clone());
         let tables = test.tables().clone();

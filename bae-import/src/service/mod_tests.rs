@@ -31,6 +31,12 @@ impl TestService {
         self.service.diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs);
     }
 
+    /// Read the time from `clock`, here and in the dependencies
+    /// [`Self::import_services`] hands out.
+    pub(crate) fn read_clock(&mut self, clock: coven::ClockRef) {
+        self.service.clock = clock;
+    }
+
     /// The bus this service announces on.
     pub(crate) fn event_tx(&self) -> &crate::ImportEventBus {
         &self.service.event_tx

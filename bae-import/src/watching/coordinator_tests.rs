@@ -275,6 +275,48 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     }
 }
 
+/// Every check period on the coordinator's clock, each folder whose last scan
+/// found it on a network volume is checked against what that scan saw, and
+/// what moved is read again; the next check is armed one period on.
+#[tokio::test]
+async fn a_network_folder_is_checked_once_the_check_period_passes() {
+    let start = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_790_000_000);
+    let clock = Arc::new(coven::FixedClock::new(start));
+    let harness = CoordinatorHarness::with_roots_on(&[], clock.clone()).await;
+    let (_, armed) = tokio::time::timeout(HANG_GUARD, clock.sleep_begun_after(0))
+        .await
+        .expect("the coordinator arms its first check");
+    assert_eq!(armed, crate::volume::CHECK_PERIOD);
+
+    let folders = tempfile::TempDir::new().unwrap();
+    let root = folders.path().join("watched");
+    let album = root.join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    let root_modified_at =
+        crate::volume::directory_modified_at(&root).expect("the folder's mtime reads");
+    let tables = crate::tables::ImportTables::new(harness.db.clone());
+    tables.add_watched_import_folder(&root).await.unwrap();
+    tables.begin_folder_scan(&root, crate::VolumeKind::Network).await.unwrap();
+    // The album changed after the scan recorded it.
+    tables
+        .record_folder_scan_directories(&root, &[(root.clone(), root_modified_at), (album, 0)])
+        .await
+        .unwrap();
+
+    clock.set(start + crate::volume::CHECK_PERIOD);
+
+    harness.scans.wait_for_count(1).await;
+    assert_eq!(harness.scans.path(0), root);
+    assert_eq!(harness.scans.folders(0), Some(vec!["Album".into()]));
+    let (_, rearmed) = tokio::time::timeout(HANG_GUARD, clock.sleep_begun_after(1))
+        .await
+        .expect("the coordinator arms the next check");
+    assert_eq!(rearmed, crate::volume::CHECK_PERIOD * 2);
+
+    harness.scans.complete(0);
+    harness.shutdown().await;
+}
+
 /// A failed read of the watched folders is not "nothing is watched": the
 /// report's changes are not read, and the failure is reported as a bug.
 #[tokio::test]

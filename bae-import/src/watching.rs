@@ -6,7 +6,6 @@
 use crate::scan_passes::{
     spawn_root_pass, RootScanCompletion, RootScanStarter, RootScanTask, ScanServices,
 };
-use crate::volume::{volume_kind, VolumeKind};
 use crate::ScanEvent;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};

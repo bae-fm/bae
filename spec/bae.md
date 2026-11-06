@@ -675,8 +675,10 @@ and Linux a network mount reports only the changes this machine makes (Windows
 does report a server's changes on an SMB share, through
 `ReadDirectoryChangesW`). bae also checks such a folder every 15 minutes, on
 every platform, which is what notices a change made on the server or from
-another machine, and the import list says so. A check that panics is reported
-as a bug and reads the whole folder.
+another machine, and the import list says so. Which folders are checked is
+read from the volume each one's last scan found it on, the one the list shows,
+so a check never waits on a mount to say what it is. A check that panics is
+reported as a bug and reads the whole folder.
 
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
