@@ -232,8 +232,12 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
     if [ "$MODE" = quick ]; then
         COMPILE_ARGS=(check --all-targets)
     fi
-    MOBILE_CHECK_ARGS=(check --lib --target aarch64-apple-ios)
+    # The iOS app's feature set (bae-bridge/build-ios.sh), where the mobile
+    # builds' feature-gated code, OAuth sign-in included, is compiled.
+    MOBILE_FEATURES=bae-bridge/oauth-providers,bae-bridge/cloudkit,bae-bridge/cast
+    MOBILE_CHECK_ARGS=(clippy --lib --target aarch64-apple-ios)
     MOBILE_COVERED=0
+    MOBILE_BRIDGE_COVERED=0
     CHECK_PLAN=$(crate_check_plan "${DIRECTLY_CHANGED_CRATES[@]}")
     while read -r kind value; do
         case "$kind" in
@@ -242,6 +246,9 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
             mobile)
                 MOBILE_COVERED=1
                 MOBILE_CHECK_ARGS+=(-p "$value")
+                if [ "$value" = bae-bridge ]; then
+                    MOBILE_BRIDGE_COVERED=1
+                fi
                 ;;
         esac
     done <<< "$CHECK_PLAN"
@@ -274,11 +281,18 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
             exit 1
         }
 
-        # The mobile apps build bae-library and the crates below it without their
-        # desktop-only modules, where anything only those modules use is dead code
-        # and fails the build.
+        # The mobile apps build bae-library, bae-app, bae-bridge and the crates
+        # below them without their desktop-only modules, where anything only
+        # those modules use is dead code, and a desktop-only item used ungated
+        # fails the build. Clippy denies warnings, since a plain check only
+        # warns about dead code. An iOS target stands for both mobile targets
+        # here: it sets the same `desktop`-less cfg and needs no Android NDK.
         if [ "$MOBILE_COVERED" -eq 1 ]; then
-            run_check "bae-library and the crates below it for iOS (desktop-only code)" \
+            if [ "$MOBILE_BRIDGE_COVERED" -eq 1 ]; then
+                MOBILE_CHECK_ARGS+=(--features "$MOBILE_FEATURES")
+            fi
+            MOBILE_CHECK_ARGS+=(-- -D warnings)
+            run_check "bae-library, bae-app, bae-bridge and the crates below them for iOS (desktop-only code)" \
                 scripts/cargo.sh "${MOBILE_CHECK_ARGS[@]}" || {
                 echo "Gate code only desktop modules use with the same cfg and try again"
                 exit 1

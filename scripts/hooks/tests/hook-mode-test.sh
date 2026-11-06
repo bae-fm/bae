@@ -64,7 +64,7 @@ done
 # The hook routes the heavy compile steps by mode: quick runs cargo check and
 # skips clippy, rustdoc and the mobile check; strict runs them.
 hook="$(dirname "$0")/../pre-commit"
-for step in '(check --all-targets)' '(clippy --all-targets)' '(doc --no-deps)' '(check --lib --target aarch64-apple-ios)'; do
+for step in '(check --all-targets)' '(clippy --all-targets)' '(doc --no-deps)' '(clippy --lib --target aarch64-apple-ios)'; do
     if ! grep -qF "$step" "$hook"; then
         echo "the hook no longer builds $step"
         exit 1

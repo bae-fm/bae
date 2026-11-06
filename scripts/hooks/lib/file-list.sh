@@ -64,8 +64,8 @@ for package in metadata["packages"]:
 #   set the macOS Debug app builds it with (bae-bridge/build-macos.sh), so the
 #   hook builds its desktop code. Other crates' app features reach them through
 #   bae-bridge's in the same clippy run (one feature resolution).
-# - "mobile <crate>" for each covered crate the mobile apps build: bae-library
-#   and the workspace crates it depends on.
+# - "mobile <crate>" for each covered crate the mobile apps build: bae-library,
+#   bae-app and bae-bridge, and the workspace crates they depend on for iOS.
 crate_check_plan() {
     python3 - "$@" <<'PLAN'
 import json, subprocess, sys
@@ -74,14 +74,21 @@ metadata = json.loads(subprocess.check_output(
 members = set(metadata["workspace_members"])
 packages = {package["id"]: package for package in metadata["packages"]}
 by_name = {packages[member]["name"]: member for member in members}
-nodes = {node["id"]: node for node in metadata["resolve"]["nodes"]}
-mobile, pending = set(), [by_name["bae-library"]]
+# What the mobile apps build: the three crates they link, and the workspace
+# crates those depend on for an iOS target, which leaves out the dependencies
+# only the desktop builds declare.
+ios = json.loads(subprocess.check_output(
+    ["cargo", "metadata", "--format-version", "1", "--offline",
+     "--filter-platform", "aarch64-apple-ios"]))
+ios_nodes = {node["id"]: node for node in ios["resolve"]["nodes"]}
+mobile = set()
+pending = [by_name[name] for name in ("bae-library", "bae-app", "bae-bridge")]
 while pending:
     member = pending.pop()
     if member in mobile:
         continue
     mobile.add(member)
-    for dependency in nodes[member]["deps"]:
+    for dependency in ios_nodes[member]["deps"]:
         normal = any(kind["kind"] is None for kind in dependency["dep_kinds"])
         if dependency["pkg"] in members and normal:
             pending.append(dependency["pkg"])

@@ -170,6 +170,8 @@ macro_rules! browse_window {
     };
 }
 
+// Named by path only from the import list, which only the desktop builds carry.
+#[cfg(desktop)]
 pub(crate) use browse_window;
 
 /// The windows a screen asks a list for, as core reads them.
