@@ -21,14 +21,13 @@ where
     Request: Clone + PartialEq + Send + Sync + std::fmt::Debug + 'static,
     Value: Clone + PartialEq + Send + 'static,
 {
-    /// Follow `query` on a task of its own. A read that fails is a bug,
-    /// reported through `diagnostics` under `what`: playback learns that a
-    /// track it holds was deleted only from these reads. While the store is
-    /// open the follow keeps running, and the next change reads again. A
-    /// failure because the store closed, reported as no bug, or because its
-    /// handle failed ends the query, and the follow reads nothing more. A
-    /// follow that panics is reported through `diagnostics` and reads nothing
-    /// more either.
+    /// Follow `query` on a task of its own. A read that fails is reported
+    /// through `diagnostics` under `what`, as `failed_read` says: playback
+    /// learns that a track it holds was deleted only from these reads. While
+    /// the store is open the follow keeps running, and the next change reads
+    /// again. A failure because the store closed or because its handle failed
+    /// ends the query, and the follow reads nothing more. A follow that panics
+    /// is reported through `diagnostics` and reads nothing more either.
     pub(super) fn new(
         mut query: coven::ReconfigurableLiveQuery<Request, Value, coven::CovenError>,
         request: Request,
@@ -51,15 +50,7 @@ where
                                 return;
                             }
                         }
-                        // Closing the store ends the follow, and playback with
-                        // it: the last read says so.
-                        Err(coven::CovenError::Database(coven::DbError::StoreClosed)) => {
-                            debug!("the store closed, so {what} is read no more");
-                        }
-                        Err(error) => bugs.report_bug(
-                            &operation,
-                            &format_args!("reading for {request:?} failed: {error}"),
-                        ),
+                        Err(error) => failed_read(&bugs, &operation, what, &request, &error),
                     }
                 }
             },
@@ -92,6 +83,31 @@ where
             if request == self.request {
                 return (request, value);
             }
+        }
+    }
+}
+
+/// Say that the read for `request` of `what` failed with `error`. A failed
+/// read is a bug, reported under `operation`, but for two failures that are
+/// not this read's: the store closing, which ends the follow and playback
+/// with it, and the store failing on an earlier bug, which coven reported as
+/// it happened and now repeats to every call as `StoreFailed`.
+fn failed_read(
+    bugs: &bae_diagnostics::Diagnostics,
+    operation: &str,
+    what: &str,
+    request: &impl std::fmt::Debug,
+    error: &coven::CovenError,
+) {
+    match error {
+        coven::CovenError::Database(coven::DbError::StoreClosed) => {
+            debug!("the store closed, so {what} is read no more");
+        }
+        coven::CovenError::Database(coven::DbError::StoreFailed(bug)) => {
+            warn!("the store failed on a bug, so {what} is read no more: {bug}");
+        }
+        error => {
+            bugs.report_bug(operation, &format_args!("reading for {request:?} failed: {error}"))
         }
     }
 }

@@ -714,8 +714,9 @@ folder on, so a folder whose first scan could not even store its start shows
 too. A folder with no scan stored and no failure held has no status yet and
 is not listed; a scan stores its start, with the folder's volume, as it
 begins. A refusal that is a bug is reported as
-one; a full, failing or damaged disk, a store that failed as a whole, or the
-library closing is not. A scan that ended with nothing stored and nothing
+one; a full, failing or damaged disk, a store that failed as a whole (on an
+earlier bug too, which was reported as it happened), or the library closing
+is not. A scan that ended with nothing stored and nothing
 held, as one that panicked while storing its failure does, shows as failed,
 saying it stopped before its result could be stored. No event carries a
 scan's state: the screen reads it from the stored outcome and the

@@ -108,3 +108,31 @@ async fn a_failed_read_is_reported_as_a_bug() {
     assert!(detail.contains("no_such_table"), "{detail}");
     db.close().await.unwrap();
 }
+
+/// A store that failed on an earlier bug repeats it to every read as
+/// `StoreFailed`; coven reported that bug as it happened, so the follow's
+/// read reports it no more. Another failed read is reported.
+#[test]
+fn a_store_failed_on_an_earlier_bug_is_not_reported_again() {
+    let reporter = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reporter.clone());
+    let bug = coven::task::Bug { operation: "authorize a statement", message: "boom".into() };
+
+    failed_read(
+        &diagnostics,
+        "read the tracks for playback",
+        "the tracks",
+        &Vec::<String>::new(),
+        &coven::CovenError::Database(coven::DbError::StoreFailed(bug)),
+    );
+    assert_eq!(reporter.reports(), Vec::new());
+
+    failed_read(
+        &diagnostics,
+        "read the tracks for playback",
+        "the tracks",
+        &Vec::<String>::new(),
+        &coven::CovenError::Database(coven::DbError::StatementFailed),
+    );
+    assert_eq!(reporter.reports().len(), 1);
+}

@@ -41,7 +41,9 @@ pub(super) fn report_refused_scan_write(
 
 /// Whether a refused write of a scan's state is a bug: anything but the disk
 /// failing under the store, the store failing as a whole (coven then fails
-/// every later call on its handle) or closing with the library.
+/// every later call on its handle, repeating an earlier bug as
+/// `StoreFailed` once that bug has been reported) or closing with the
+/// library.
 fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
     use bae_store::DbError as E;
     match error {
@@ -53,6 +55,7 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
                 coven::DbError::StoreClosed
                 | coven::DbError::Shutdown(_)
                 | coven::DbError::RollbackFailed
+                | coven::DbError::StoreFailed(_)
                 | coven::DbError::StatePersistence(_)
                 | coven::DbError::CheckpointFailed(_)
                 | coven::DbError::WallTimer(_)
