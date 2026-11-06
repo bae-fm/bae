@@ -8,21 +8,6 @@ impl Store {
         Self::new(self.inner.handle.clone(), clock)
     }
 
-    /// Run `statement` with `params` in one write: how a test seeds rows no
-    /// one call writes on its own.
-    pub async fn execute_for_test(
-        &self,
-        statement: &str,
-        params: Vec<String>,
-    ) -> Result<(), DbError> {
-        let statement = statement.to_string();
-        self.call_sql(move |sql| {
-            sql.execute(&statement, rusqlite::params_from_iter(params.iter()))?;
-            Ok(())
-        })
-        .await
-    }
-
     /// Count the work this store's connections run from here on into the
     /// counter returned: what a test of a write's or a read's cost measures.
     pub async fn track_work_for_test(&self) -> Result<coven::WorkCounter, DbError> {
@@ -143,17 +128,6 @@ impl Store {
                 [namespace],
                 |row| row.get(0),
             )?)
-        })
-        .await
-    }
-
-    /// Write rows into this device's local-only tables — state no sync ever
-    /// carries — the way the import pane's own writers would leave them.
-    pub async fn execute_local_sql_for_test(&self, statements: &str) -> Result<(), DbError> {
-        let statements = statements.to_string();
-        self.call_sql(move |sql| {
-            sql.execute_batch(&statements)?;
-            Ok(())
         })
         .await
     }

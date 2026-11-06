@@ -399,23 +399,66 @@ async fn one_id_on_two_artists(devices: &TwoDevices) -> (String, String, Vec<Str
 }
 
 /// A draft on `device` that names `artist_id` as its album artist — local
-/// import-pane state no sync carries.
-async fn draft_crediting(device: &TestDevice, artist_id: &str) {
-    device
-        .store()
-        .execute_local_sql_for_test(&format!(
-            "INSERT INTO import_candidate_state (content_hash, candidate_key) \
-                 VALUES ('draft', CAST('/Album' AS BLOB));
-             INSERT INTO import_candidate_edit \
-                 (content_hash, album_title, album_year, year, \
-                  author, draft_blank, draft_valid) \
-                 VALUES ('draft', 'Album', '', '', 'person', 0, 1);
-             INSERT INTO import_candidate_album_artist_assignment \
-                 (content_hash, position, assignment_kind, artist_id) \
-                 VALUES ('draft', 0, 'picked', '{artist_id}');"
-        ))
+/// import-pane state no sync carries: a folder of one track under a watched
+/// folder, scanned, and its album credited to the artist in the pane. The
+/// folder lives as long as the directory returned.
+async fn draft_crediting(device: &TestDevice, artist_id: &str) -> tempfile::TempDir {
+    let store = device.store();
+    let dir = tempfile::tempdir().unwrap();
+    let watched = std::fs::canonicalize(dir.path()).unwrap();
+    let folder = watched.join("Album");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::copy(
+        bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
+        folder.join("01 Test Track 1.flac"),
+    )
+    .unwrap();
+    let tables = bae_import::tables::ImportTables::new(store.clone());
+    tables.add_watched_import_folder(&watched).await.unwrap();
+    let candidate = bae_import::folder_scanner::FolderCandidate {
+        path: folder.clone(),
+        file_root: folder.clone(),
+        name: "Album".to_string(),
+        files: bae_import::folder_scanner::collect_release_candidate_files_with_scope(
+            &folder,
+            bae_import::ReleaseFileScope::Recursive,
+            &bae_import::folder_scanner::StoredCandidateEdits::none(),
+        )
+        .unwrap(),
+        watched_folder_path: watched.clone(),
+        scope: bae_import::ReleaseFileScope::Recursive,
+        file_edit_revision: 0,
+        relative_folder: bae_import::RelativeFolder::of(std::path::Path::new("Album")).unwrap(),
+        grouping: None,
+    };
+    let generation =
+        tables.begin_folder_scan(&watched, bae_import::VolumeKind::Local).await.unwrap();
+    tables
+        .save_folder_scan_item(
+            &watched,
+            generation,
+            &bae_import::folder_scanner::ScanItem::Valid(candidate.clone()),
+        )
         .await
         .unwrap();
+    tables.finish_folder_scan(&watched, generation, None).await.unwrap();
+    let content_hash = candidate.files.content_hash();
+    let metadata_revision = tables
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .map_or(0, |state| state.metadata_revision);
+    let artist = device.records().find_artist_by_id(artist_id).await.unwrap().unwrap();
+    bae_import::CandidatePreparations::new(store.clone())
+        .set_album_artists_prepared(
+            &watched,
+            &candidate.key(),
+            &bae_import::CandidateAsRead { content_hash, file_edit_revision: 0, metadata_revision },
+            &[bae_import::Credited::plain(ArtistAssignment::picked(ExistingArtist::from(artist)))],
+        )
+        .await
+        .unwrap();
+    dir
 }
 
 /// Device A credits a MusicBrainz id two of its artists hold, merging them,
@@ -427,7 +470,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         let (survivor, absorbed, _) = one_id_on_two_artists(devices).await;
         let (album_id, release_id) = album_credited_to(devices.a(), &absorbed, "Credited").await;
         releases_on_both(devices, &[&release_id]).await;
-        draft_crediting(devices.b(), &absorbed).await;
+        let _draft_folder = draft_crediting(devices.b(), &absorbed).await;
 
         let credited = credited_artist(devices.a(), catalog_artist(Some(MB_ARTIST), None)).await;
         assert_eq!(credited, survivor, "the write keeps the artist with the smaller id");
