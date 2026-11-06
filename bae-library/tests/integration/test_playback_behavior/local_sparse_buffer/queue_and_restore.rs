@@ -205,8 +205,8 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
 }
 
 /// With the "Restore on launch" preference off, a service that starts over a
-/// saved session must come up with nothing in playback: empty queue, no
-/// current track, no restored state emission. Starting forgets the session —
+/// saved session must come up with nothing in playback: empty queue and
+/// no current track. Starting forgets the session —
 /// the queue and the resume row together — so a later launch with the
 /// preference on resumes nothing from before it.
 #[tokio::test(flavor = "multi_thread")]
@@ -230,16 +230,19 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
             start_capture_service_with_restore(&playback.library, false).await;
         let mut progress_rx = handle.subscribe_progress();
 
-        // No restored Paused/Playing state may surface. The bounded window is
-        // generous relative to how fast a restore emits (immediately at startup).
-        let restored = wait_for_state_on(&mut progress_rx, |s| {
-            matches!(s, PlaybackState::Paused { .. } | PlaybackState::Playing { .. })
+        // The service decides about restoring before it serves its first
+        // command, so a volume change coming back means the decision is made.
+        // The feed subscribes after the service starts, so a restore's own
+        // events may precede it and are not checked; the queue and the resume
+        // row below are what show nothing was restored. (The volume differs
+        // from the saved one, so a restore's announcement isn't mistaken for it.)
+        handle.set_volume(0.37);
+        bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| match event {
+            PlaybackProgress::VolumeChanged { volume: 0.37 } => Some(()),
+            _ => None,
         })
-        .await;
-        assert!(
-            restored.is_none(),
-            "restore-off must not surface a restored playback state, got {restored:?}"
-        );
+        .await
+        .expect("the service serves its first command");
 
         let queue = handle.queue_value().await.expect("queue value");
         assert!(
