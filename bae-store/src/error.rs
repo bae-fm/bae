@@ -39,10 +39,6 @@ pub enum DbError {
     /// A stored path whose bytes this platform never records.
     #[error("a stored path does not open on this device")]
     StoredPath(#[source] coven::PathBytesError),
-    /// A failure of a type a crate above this one defines, such as a stored
-    /// name that names no file, kept as its own value.
-    #[error(transparent)]
-    Cause(Box<dyn std::error::Error + Send + Sync>),
     /// A write failed and rolling it back failed too.
     #[error("{operation}; rollback failed: {rollback}")]
     Rollback {
@@ -77,11 +73,6 @@ impl DbError {
     /// The value written or bound as `what` does not encode as JSON.
     pub fn encode(what: impl Into<String>, source: serde_json::Error) -> Self {
         Self::Encode { what: what.into(), source }
-    }
-
-    /// `cause`, a failure of a type above this crate, as a database error.
-    pub fn cause(cause: impl std::error::Error + Send + Sync + 'static) -> Self {
-        Self::Cause(Box::new(cause))
     }
 }
 
@@ -137,7 +128,6 @@ impl bae_util::task_failure::ReportedBug for DbError {
             | Self::Encode { .. }
             | Self::OutOfRange { .. }
             | Self::StoredPath(_)
-            | Self::Cause(_)
             | Self::Message(_) => None,
         }
     }
@@ -162,7 +152,6 @@ impl coven::task::CarriesBug for DbError {
             | Self::Encode { .. }
             | Self::OutOfRange { .. }
             | Self::StoredPath(_)
-            | Self::Cause(_)
             | Self::Message(_) => None,
         }
     }

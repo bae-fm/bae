@@ -48,7 +48,8 @@ impl FoldersAtOrBelow {
 /// `folder`, a stored folder under the watched folder `root`, as the folder
 /// below it.
 pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {
-    Ok(crate::tables::watched_path::candidate_relative_path(root, folder)?)
+    crate::tables::watched_path::candidate_relative_path(root, folder)
+        .map_err(|_refused| DbError::unreadable("a stored folder below its watched folder", folder))
 }
 
 /// The watched folder covering `folder`. A decision about a folder is deleted
@@ -96,7 +97,8 @@ pub(super) fn watched_folders_on(
 /// root that is not canonical, or overlaps another, fails the read.
 fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, DbError> {
     for (index, root) in roots.iter().enumerate() {
-        crate::tables::watched_path::validate_absolute_root(root)?;
+        crate::tables::watched_path::validate_absolute_root(root)
+            .map_err(|_refused| DbError::unreadable("a stored watched folder", root))?;
         if let Some(conflict) = roots[index + 1..]
             .iter()
             .find(|other| crate::watched_folder::paths_overlap(root, other))
@@ -175,12 +177,13 @@ impl ImportTables {
     pub async fn add_watched_import_folder(
         &self,
         path: &Path,
-    ) -> Result<Option<Vec<crate::WatchedFolder>>, DbError> {
+    ) -> Result<Option<Vec<crate::WatchedFolder>>, crate::ImportError> {
         let path = crate::tables::watched_path::canonical_absolute_root(path)?;
         if self.is_watched_import_folder(&path).await? {
             return Ok(None);
         }
-        self.store
+        Ok(self
+            .store
             .call(move |sql| {
                 let roots = watched_roots_on(sql)?;
                 if roots.iter().any(|root| root.as_os_str() == path.as_os_str()) {
@@ -209,7 +212,7 @@ impl ImportTables {
                 )?;
                 Ok(Some(watched_folders_on(sql)?))
             })
-            .await
+            .await?)
     }
 }
 

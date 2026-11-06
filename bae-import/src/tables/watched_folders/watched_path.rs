@@ -17,12 +17,6 @@ use bae_store::SchemaFunction;
 #[error("watched folder: {0}")]
 pub struct WatchedPathError(String);
 
-impl From<WatchedPathError> for bae_store::DbError {
-    fn from(error: WatchedPathError) -> Self {
-        Self::cause(error)
-    }
-}
-
 /// A folder below a watched folder: coven's bytes for each of its names
 /// (`coven::path_bytes`), outermost first, joined by `/`; empty for the
 /// watched folder itself. The bytes key the folder, so a name that isn't

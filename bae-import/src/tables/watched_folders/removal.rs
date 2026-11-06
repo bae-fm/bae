@@ -28,7 +28,7 @@ impl ImportTables {
         &self,
         roots: Vec<PathBuf>,
         parent: Option<PathBuf>,
-    ) -> Result<Option<WatchedFoldersRemoved>, DbError> {
+    ) -> Result<Option<WatchedFoldersRemoved>, crate::ImportError> {
         // Spelled the way the add keyed them.
         let roots = roots
             .iter()
@@ -38,7 +38,9 @@ impl ImportTables {
             .map(|parent| crate::tables::watched_path::canonical_absolute_root(&parent))
             .transpose()?;
         if roots.is_empty() {
-            return Err(DbError::Message("removing watched folders requires at least one".into()));
+            return Err(
+                DbError::Message("removing watched folders requires at least one".into()).into()
+            );
         }
         let watched = self.watched_import_roots().await?;
         if roots.iter().all(|root| !is_among(&watched, root))
@@ -46,7 +48,8 @@ impl ImportTables {
         {
             return Ok(None);
         }
-        self.store
+        Ok(self
+            .store
             .call(move |sql| {
                 let watched = super::watched_roots_on(sql)?;
                 if let Some(root) = roots.iter().find(|root| !is_among(&watched, root)) {
@@ -90,7 +93,7 @@ impl ImportTables {
                 let watched = super::watched_folders_on(sql)?;
                 Ok(Some(WatchedFoldersRemoved { removed_keys: removed, watched }))
             })
-            .await
+            .await?)
     }
 }
 

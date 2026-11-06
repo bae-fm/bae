@@ -75,7 +75,6 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
         | E::Encode { .. }
         | E::OutOfRange { .. }
         | E::StoredPath(_)
-        | E::Cause(_)
         | E::Message(_) => true,
     }
 }

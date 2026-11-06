@@ -55,7 +55,9 @@ impl ImportTables {
             .await?;
         let mut below = HashSet::new();
         for path in &paths {
-            crate::tables::watched_path::validate_stored_folder(path)?;
+            crate::tables::watched_path::validate_stored_folder(path).map_err(|_refused| {
+                DbError::unreadable("skipped_import_candidates.candidate_path", path)
+            })?;
             below.insert(relative_below(watched_folder_path, path)?);
         }
         Ok(below)
@@ -68,7 +70,7 @@ impl ImportTables {
         &self,
         candidate_path: &Path,
         skipped: bool,
-    ) -> Result<bool, DbError> {
+    ) -> Result<bool, crate::ImportError> {
         crate::tables::watched_path::validate_stored_folder(candidate_path)?;
         let candidate_path = candidate_path.to_path_buf();
         // The store refuses a write that changes nothing, so read first.
@@ -90,7 +92,8 @@ impl ImportTables {
         if stored == skipped {
             return Ok(false);
         }
-        self.store
+        Ok(self
+            .store
             .call(move |sql| {
                 let changed = if skipped {
                     require_watched(sql, &candidate_path)?;
@@ -114,7 +117,7 @@ impl ImportTables {
                 };
                 Ok(changed == 1)
             })
-            .await
+            .await?)
     }
 }
 

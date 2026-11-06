@@ -253,7 +253,9 @@ impl ImportTables {
                 )?;
                 let mut readings = HashMap::new();
                 for (folder, combined, author, grouping) in rows {
-                    crate::tables::watched_path::validate_stored_folder(&folder)?;
+                    crate::tables::watched_path::validate_stored_folder(&folder).map_err(
+                        |_refused| DbError::unreadable("release_grouping.anchor_folder", &folder),
+                    )?;
                     let path = relative_below(&watched_folder_path, &folder)?;
                     let author = match author.as_str() {
                         "user" => FolderReleaseDecisionAuthor::User,
