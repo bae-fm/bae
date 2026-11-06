@@ -115,7 +115,7 @@ struct HostedAlbumGrid {
     func settle(after change: (() -> Void)? = nil) async throws {
         let before = change.map { _ in geometry() }
         change?()
-        try await Wait.untilSteady(changedFrom: before) { geometry() }
+        try await Wait.untilUnmoved(changedFrom: before) { geometry() }
     }
 
     /// Return once the grid is scrolled away from its top.

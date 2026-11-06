@@ -52,18 +52,18 @@ struct CoverLightboxTests {
             try open(opening, window: window, host: host)
             // The keys below are for the lightbox, so they wait until it is
             // laid out.
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             // Return cannot save through the lightbox into the underlying picker.
             try HostedInput.keyEquivalent(.return, in: host)
             #expect(selected == nil)
             try HostedInput.keyDown(.rightArrow, in: window)
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             try HostedInput.keyDown(.escape, in: window)
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             #expect(!dismissed)
             #expect(selected == nil)
             try HostedInput.keyEquivalent(.return, in: host)
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             #expect(
                 selected?.id == (opening == .thumbnail ? file.id : booklet.id)
             )
@@ -163,11 +163,8 @@ struct CoverLightboxTests {
                 .environment(images)
                 .frame(width: size.width, height: size.height),
             size: size
-        ) { _, host in
-            for _ in 0..<100 {
-                try await SnapshotTestSupport.settle(host)
-                if await recorder.reads.count >= 3 { break }
-            }
+        ) { _, _ in
+            try await Wait.until { await recorder.reads.count >= 3 }
             let reads = await recorder.reads
             let booklet = "https://images.example/Booklet-original.png"
             let back = "https://images.example/Back-original.png"

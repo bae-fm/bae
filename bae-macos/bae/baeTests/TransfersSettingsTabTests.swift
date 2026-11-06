@@ -41,9 +41,9 @@ struct TransfersSettingsTabTests {
             let controls = pickers(in: host)
             try #require(controls.count == 2)
             select(segment: 4, in: controls[0])
-            try await SnapshotTestSupport.settle(host)
+            try await Wait.until { !recorder.uploadWrites.isEmpty }
             select(segment: 0, in: controls[1])
-            try await SnapshotTestSupport.settle(host)
+            try await Wait.until { !recorder.downloadWrites.isEmpty }
 
             #expect(recorder.uploadWrites == [5])
             #expect(recorder.downloadWrites == [1])
@@ -72,6 +72,7 @@ struct TransfersSettingsTabTests {
 }
 
 @MainActor
+@Observable
 private final class TransferConcurrencyRecorder {
     var uploadWrites: [UInt32] = []
     var downloadWrites: [UInt32] = []

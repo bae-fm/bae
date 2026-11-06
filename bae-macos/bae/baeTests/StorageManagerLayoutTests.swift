@@ -22,7 +22,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
 
             XCTAssertGreaterThanOrEqual(tableScrollView.frame.height, 220)
@@ -39,7 +39,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let row = try XCTUnwrap(
                 PreviewData.storageRows(
                     PreviewData.storageRows,
@@ -73,7 +73,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -84,7 +84,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 IndexSet(integer: 3),
                 byExtendingSelection: false
             )
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
 
             let heightAfterSelection = tableScrollView.frame.height
             XCTAssertGreaterThanOrEqual(
@@ -102,7 +102,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -113,7 +113,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 IndexSet(integer: 0),
                 byExtendingSelection: false
             )
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
 
             XCTAssertEqual(
                 tableScrollView.frame.width,
@@ -131,7 +131,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -155,7 +155,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let descendants = SnapshotTestSupport.descendants(of: host)
             XCTAssertFalse(
                 descendants.compactMap { $0 as? NSSegmentedControl }
@@ -183,7 +183,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let splitView = try XCTUnwrap(
                 SnapshotTestSupport.descendants(of: host)
                     .compactMap { $0 as? NSSplitView }
@@ -210,7 +210,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { window, host in
             window.appearance = NSAppearance(named: .darkAqua)
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
 
             let descendants = SnapshotTestSupport.descendants(of: host)
             let fileList = try XCTUnwrap(
@@ -248,7 +248,7 @@ final class StorageManagerLayoutTests: XCTestCase {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let scrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 scrollView.documentView as? NSTableView
@@ -279,7 +279,7 @@ extension StorageManagerLayoutTests {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
 
             XCTAssertLessThan(tableScrollView.frame.width, size.width - 100)
@@ -297,7 +297,7 @@ extension StorageManagerLayoutTests {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -305,7 +305,7 @@ extension StorageManagerLayoutTests {
             let widthWithSelection = tableScrollView.frame.width
 
             tableView.deselectAll(nil)
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
 
             XCTAssertEqual(
                 tableScrollView.frame.width,
@@ -323,7 +323,7 @@ extension StorageManagerLayoutTests {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -338,7 +338,7 @@ extension StorageManagerLayoutTests {
             XCTAssertTrue(
                 NSApp.sendAction(action, to: tableView.target, from: tableView)
             )
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
 
             XCTAssertLessThan(
                 tableScrollView.frame.width,
@@ -348,7 +348,7 @@ extension StorageManagerLayoutTests {
             XCTAssertTrue(
                 NSApp.sendAction(action, to: tableView.target, from: tableView)
             )
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             XCTAssertEqual(
                 tableScrollView.frame.width,
                 widthBeforeOpening,
@@ -365,7 +365,7 @@ extension StorageManagerLayoutTests {
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settle(host)
+            try await SnapshotTestSupport.settleUnmoved(host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView

@@ -29,9 +29,9 @@ struct LibraryArtworkBrowserTests {
                 Wait.happened()
             },
             body: { window, host in
-                try await SnapshotTestSupport.settle(host)
+                try await SnapshotTestSupport.settleUnmoved(host)
                 try HostedInput.keyEquivalent(.return, in: host)
-                try await SnapshotTestSupport.settle(host)
+                try await SnapshotTestSupport.settleUnmoved(host)
                 #expect(saved == nil)
                 try HostedInput.keyDown(.escape, in: window)
                 try await Wait.until { dismissed }
@@ -67,7 +67,7 @@ struct LibraryArtworkBrowserTests {
                 try await Wait.until { lookups > 0 }
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.space, in: host)
-                try await SnapshotTestSupport.settle(host)
+                try await SnapshotTestSupport.settleUnmoved(host)
                 try HostedInput.keyDown(.escape, in: window)
                 try await SnapshotTestSupport.settle(host)
                 #expect(!dismissed)

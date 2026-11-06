@@ -216,7 +216,7 @@ enum ShotRenderer {
     /// thread here would starve those cooperative tasks — the awaits are what
     /// let them run.
     private static func settle(host: NSView) async throws {
-        try await Wait.untilSteady {
+        try await Wait.untilUnmoved {
             host.layoutSubtreeIfNeeded()
             return frames(below: host)
         }
