@@ -3665,8 +3665,9 @@ library) and its tracks
 in play order — shuffled or not, with the session's removals and reorders —
 which track of it is playing, and repeat.
 Beside it a device saves the entry playing and its position while a track is
-loaded, and keeps what playback is doing in one row (§9.4), whose volume and
-mute a resumed session comes back at.
+loaded, the position never more than a second of playing behind, and keeps
+what playback is doing in one row (§9.4), whose volume and mute a resumed
+session comes back at.
 
 A restart takes the queue up as it stood: the same order, the same history
 before the playing track, and the saved entry loaded paused at its position.

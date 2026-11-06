@@ -495,18 +495,19 @@ impl PlaybackService {
             PlaybackProgress::position_update(fmt.timeline, fmt.track_id.clone(), position),
         );
 
-        // Persist the resume point at most once a second while the track is
-        // actually advancing (Playing) — that is what keeps `playback_state`
-        // crash-safe between the discrete events (load/pause/seek/stop) that
-        // persist on their own. A Loading or Paused tick skips it: position isn't
-        // moving, and pause/seek already wrote the row.
+        // Persist the resume point once the track has played a second past the
+        // one saved, while it is actually advancing (Playing) — that is what
+        // keeps `playback_state` crash-safe between the discrete events
+        // (load/pause/seek/stop) that persist on their own. A Loading or Paused
+        // tick skips it: position isn't moving, and pause/seek already wrote
+        // the row.
         let playing = matches!(
             &self.slot,
             PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing)
         );
         if playing {
-            let due = match self.last_position_persist {
-                Some(last) => last.elapsed() >= std::time::Duration::from_secs(1),
+            let due = match self.persisted_position {
+                Some(saved) => position.abs_diff(saved) >= std::time::Duration::from_secs(1),
                 None => true,
             };
             if due {
@@ -789,7 +790,7 @@ impl PlaybackService {
                             position_update_interval_ms,
                             file_buffers: FileBuffers::new(service_arbiter, playing_bytes),
                             starvation_episode: None,
-                            last_position_persist: None,
+                            persisted_position: None,
                             first_audio_pending: None,
                             renderer: Renderer::Local,
                             clock,

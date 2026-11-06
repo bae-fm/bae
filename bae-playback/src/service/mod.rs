@@ -510,9 +510,10 @@ pub struct PlaybackService {
     /// The starvation watchdog's episode while the current track is starved;
     /// `None` while audio flows.
     starvation_episode: Option<StarvationEpisode>,
-    /// When `persist_playback_state` last ran, so the per-tick save in
-    /// `handle_position_event` waits a second after any save.
-    last_position_persist: Option<std::time::Instant>,
+    /// The position `persist_playback_state` last saved, so the per-tick save
+    /// in `handle_position_event` waits until the track has played a second
+    /// past it; `None` when the row holds no position.
+    persisted_position: Option<StreamPosition>,
     /// The time-to-first-audio measurement for a load headed for Playing,
     /// recorded when it gets there; `None` once recorded or for a paused load.
     first_audio_pending: Option<FirstAudioMeasurement>,

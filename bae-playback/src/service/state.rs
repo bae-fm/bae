@@ -270,11 +270,10 @@ impl PlaybackService {
     /// The log is the never-mask escape hatch — a write failure is recorded, not
     /// conflated with "nothing was playing".
     pub(super) async fn persist_playback_state(&mut self) {
-        // Every call writes (or clears) the row, so it resets the per-tick throttle
-        // in `handle_position_event` — including the persist a track change already
-        // does, which is why a new track's first periodic write waits a full second
-        // rather than firing at once.
-        self.last_position_persist = Some(std::time::Instant::now());
+        // Every call writes (or clears) the row, so it resets what the per-tick
+        // save in `handle_position_event` counts from — including the persist a
+        // track change already does, which is why a new track's first periodic
+        // write waits until it has played a second rather than firing at once.
         // Nothing to resume: the slot is Stopped, or the track drained naturally
         // (Completed). A Loading or playing/paused Active track writes the row.
         let nothing_to_resume = matches!(&self.slot, PlaybackSlot::Stopped)
@@ -283,16 +282,18 @@ impl PlaybackService {
                 PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Completed)
             );
         if nothing_to_resume {
+            self.persisted_position = None;
             if let Err(e) = crate::tables::clear_playback_state(&self.store).await {
                 warn!("couldn't clear playback state: {e}");
                 self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
             }
             return;
         }
-        let position_ms = match &self.slot {
-            PlaybackSlot::Active(cur) => Some(cur.position.as_millis()),
+        self.persisted_position = match &self.slot {
+            PlaybackSlot::Active(cur) => Some(cur.position),
             _ => None,
         };
+        let position_ms = self.persisted_position.map(StreamPosition::as_millis);
         let row =
             PlaybackResumeRow { current: self.playback_queue.current().cloned(), position_ms };
         if let Err(e) = crate::tables::save_playback_state(&self.store, &row).await {

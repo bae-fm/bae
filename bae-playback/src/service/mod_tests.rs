@@ -282,7 +282,7 @@ pub(super) fn playback_service_over(
         position_update_interval_ms: 50,
         file_buffers: FileBuffers::new(FetchArbiter::new(), tokio::sync::watch::channel(None).0),
         starvation_episode: None,
-        last_position_persist: None,
+        persisted_position: None,
         first_audio_pending: None,
         renderer: Renderer::Local,
         clock: Arc::new(crate::ManualPlaybackClock::new(test_clock_start())),
