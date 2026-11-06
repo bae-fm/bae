@@ -180,6 +180,31 @@ pub async fn remove_unopenable_library(
     .await
 }
 
+/// Finish removing a library whose removal stopped partway, which coven
+/// lists as being deleted and refuses to open: coven opens it and goes on as
+/// the removal would, publishing this device's leaving if it hadn't, and
+/// bae's files and the record follow as in any removal. `builder` carries
+/// the sign-in a provider asks for. Leaving and deleting are told to `steps`
+/// as each starts.
+pub async fn finish_deletion(
+    app_dir: &AppDir,
+    coven: &coven::Coven,
+    builder: coven::CovenBuilder,
+    diagnostics: &Diagnostics,
+    store_id: coven::StoreId,
+    steps: &(dyn Fn(super::ClosingStep) + Send + Sync),
+) -> Result<(), LibraryRemovalError> {
+    remove_recorded(
+        app_dir,
+        coven,
+        diagnostics,
+        store_id,
+        bae_store::configure_store(builder, crate::SCHEMA).resume_deletion(store_id),
+        steps,
+    )
+    .await
+}
+
 /// What removing a library that isn't open would lose, read by opening its
 /// store just long enough to count, as
 /// [`crate::LibraryManager::unsent_before_removal`] does for an open

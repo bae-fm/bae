@@ -61,6 +61,7 @@ struct WelcomeListingsTests {
             unsentOfClosed: { _, _ in throw WelcomeTestError.notUsed },
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { _, _ in throw WelcomeTestError.notUsed },
+            finishDeletion: { _, _ in throw WelcomeTestError.notUsed },
             findUnfinished: { nil },
             finishUnfinished: { _ in }
         )

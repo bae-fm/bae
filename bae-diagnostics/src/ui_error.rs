@@ -110,6 +110,12 @@ pub enum UiErrorCategory {
     /// copy stopped partway; only running the call `by` names again finishes
     /// it.
     ReplacementUnfinished(coven::ReplacedBy),
+    /// The library didn't open because this device is removing it: its
+    /// removal stopped partway, and only finishing the removal ends it.
+    DeletionUnfinished,
+    /// Removing the library needs this device to sign in to its storage
+    /// again first, so it can tell the library's other devices it left.
+    DeletionSignInRequired,
 }
 
 /// Why a release read from several folders cannot be worked on as it stands,

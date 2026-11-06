@@ -208,6 +208,7 @@
     <string name="restore_device_title">Deze bibliotheek herstellen</string>
     <string name="finish_restore_title">Herstellen van deze bibliotheek voltooien</string>
     <string name="finish_reset">Herstellen van dit apparaat voltooien</string>
+    <string name="finish_removal">Verwijderen van deze bibliotheek voltooien</string>
     <string name="profile_required_title">Vul je naam in om het deelnemen aan deze bibliotheek af te ronden.</string>
     <string name="save">Opslaan</string>
     <string name="onboarding_scan_code">Code scannen</string>

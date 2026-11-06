@@ -179,6 +179,9 @@ pub enum BridgeLibraryState {
     /// A reset or a restore of this device's copy stopped partway; it opens
     /// once the call `by` names runs again and finishes it.
     ReplacementUnfinished { by: BridgeReplacedBy },
+    /// This device is removing it, and the removal stopped partway; it never
+    /// opens again, and finishing the removal ends it.
+    DeletionUnfinished,
 }
 
 /// The call that began replacing this device's copy of a library, and the

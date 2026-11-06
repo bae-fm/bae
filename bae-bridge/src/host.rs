@@ -211,6 +211,24 @@ impl BridgeHost {
         .await
     }
 
+    /// Finish removing `store`, whose removal stopped partway, on the
+    /// caller's task.
+    async fn finish_deletion_now(
+        &self,
+        store: coven::StoreId,
+        steps: &crate::screens::ClosingSteps,
+    ) -> Result<(), bae_library::LibraryRemovalError> {
+        bae_library::finish_deletion(
+            &self.app_dir,
+            &self.coven,
+            self.builder(),
+            &self.diagnostics,
+            store,
+            &|step| steps.core(step),
+        )
+        .await
+    }
+
     /// Remove the open library `services` runs, which this host opened, on
     /// the caller's task. A store whose close fails after this device left
     /// it is discarded from this host's installation.
@@ -424,6 +442,28 @@ impl BridgeHost {
             .await
     }
 
+    /// Finish removing the library `library_id`, whose removal stopped
+    /// partway and which never opens again: this device tells the library's
+    /// other devices it left, if it hadn't, then its copy is deleted. Each
+    /// step is written to `closing`'s stream, when the app shows the removal.
+    pub async fn finish_deletion(
+        self: Arc<Self>,
+        library_id: String,
+        closing: Option<Arc<crate::BridgeLibraryClosing>>,
+    ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
+        let store = crate::from_app::store(&library_id)?;
+        let steps = crate::screens::ClosingSteps::of(closing);
+        self.operations
+            .clone()
+            .run_to_completion(self.clone(), "finish removing a library", move || async move {
+                self.closed(store).await?;
+                crate::BridgeLibraryRemoval::from_core(
+                    self.finish_deletion_now(store, &steps).await,
+                )
+            })
+            .await
+    }
+
     /// Complete every recorded removal, writing how many are done of how
     /// many there are into `setup`'s stream. Safe to retry after any failure.
     pub async fn finish_removals(
@@ -563,6 +603,7 @@ fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
             AppStartFailureKind::KeychainEntitlementMissing
         }
         BootstrapError::ReplacementUnfinished(_) => AppStartFailureKind::ReplacementUnfinished,
+        BootstrapError::DeletionUnfinished => AppStartFailureKind::DeletionUnfinished,
     }
 }
 

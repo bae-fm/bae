@@ -116,6 +116,17 @@ fn every_other_keyring_failure_still_reads_as_config() {
     assert!(matches!(classify_key_state_error(error), BootstrapError::Config(_)));
 }
 
+/// A store this device is removing doesn't open, and the bootstrap says its
+/// removal didn't finish.
+#[test]
+fn an_unfinished_deletion_says_so() {
+    let error = bae_store::DbError::from(coven::CovenError::Lock(
+        coven::StoreLockError::DeletionUnfinished(coven::StoreId(uuid::Uuid::from_u128(1))),
+    ));
+
+    assert!(matches!(super::classify_open_error(error), BootstrapError::DeletionUnfinished));
+}
+
 /// A store whose copy another call is still replacing doesn't open, and
 /// the bootstrap says which call finishes it.
 #[test]

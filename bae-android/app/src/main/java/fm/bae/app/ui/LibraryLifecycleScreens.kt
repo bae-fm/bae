@@ -122,6 +122,26 @@ internal fun ResetUnfinishedScreen(
     }
 }
 
+/**
+ * Removing a library from this device stopped partway, after this device
+ * began leaving it; finishing removes it. Leaving keeps the library waiting
+ * for it.
+ */
+@Composable
+internal fun DeletionUnfinishedScreen(
+    error: ScreenFailure?,
+    onFinish: () -> Unit,
+    onLeave: () -> Unit,
+) {
+    val context = LocalContext.current
+    BackHandler(onBack = onLeave)
+    LifecycleMessage(context.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeletionUnfinished))) {
+        error?.let { ScreenFailureNotice(it) }
+        PrimaryButton(onClick = onFinish) { Text(stringResource(R.string.finish_removal)) }
+        TextButton(onClick = onLeave) { Text(stringResource(R.string.cancel)) }
+    }
+}
+
 /** Joining made this device a member but its profile wasn't written; the person names themselves again. */
 @Composable
 internal fun ProfileRequiredScreen(

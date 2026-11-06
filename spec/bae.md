@@ -3141,6 +3141,24 @@ fail, saying the laptop left the library and its files are still on it.
   restore that stopped partway, the delete takes both copies, the one the
   call loaded and the one it replaced, so giving up on the call is the other
   way out of it.
+- **A leaving that stops partway.** Once the device's leaving is under way
+  in storage, coven's delete only goes forward: if it fails there, as when
+  storage refuses the answer, the library stays on the list as being
+  removed, with "Removing this library from this device did not finish."
+  under its name, and coven refuses to open it. Its row offers *Finish
+  removing* in place of *Open*: coven opens the library and goes on as the
+  removal would, publishing the leaving if it hadn't, and bae's files and
+  the record follow as in any removal, its steps shown on the row as a
+  removal's are. On Android, opening such a library, or a removal of the
+  open library that stops this way, lands on a screen with that line and
+  *Finish removing*. Opening it from anywhere else fails with that line. A
+  restore or reset of it is refused the same way. *Remove* deletes it
+  without leaving, as for any library that can't open.
+- **Signed out of the library's storage.** A device that holds no
+  credentials for the library's storage can't tell the library's other
+  devices it left, so removing the library is refused before anything
+  changes, saying "Sign in to this library's storage again, then remove
+  it."
 - **A removal that stops partway.** bae and coven can't commit together, so
   bae writes a record of the removal in its own directory before coven
   deletes the store, and deletes the record last. A removal that stopped is
@@ -3666,13 +3684,14 @@ library is registered there by id.
 | `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
-| `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, or a reset or restore of this device's copy that didn't finish, with the call that finishes it |
-| `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it |
+| `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
+| `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it, and one whose removal didn't finish fails saying so |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
 | `unsent_before_removal` | counts what removing a library would discard: the edits and files this device hasn't sent, for the open library or, opening its store briefly, one that isn't open (§6.4) |
 | `AppServices::remove_library` | stops the library's services, records the removal, leaves the store discarding what this device hasn't sent, then deletes the library from this device and the record last (§6.4) |
 | `remove_unopenable_library` | records the removal of a library that can't open, deletes its store from this device without opening it, losing what it hasn't sent, then its files and the record last (§6.4) |
 | `UnfinishedRemoval::find`, `finish_removals` | report recorded removals that stopped partway, and finish them (§6.4) |
+| `finish_deletion` | finishes removing a library whose leaving stopped partway after it was under way: coven opens it and goes on as the removal would, then bae's files and the record follow (§6.4) |
 
 Creating, restoring and joining each return coven's open handle, and bae
 starts the library on that same handle rather than opening it again.
@@ -4846,14 +4865,17 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
+| `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |
+| `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
 
 These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,
 `FilesAlreadyImported`, `MetadataTrackCount`, `TiedMediums`,
-`ReleaseChangedSinceOpened`, `StorageLocationChangeUnsupported`, `S3Prefix`,
+`ReleaseChangedSinceOpened`, `StorageLocationChangeUnsupported`,
 `KeychainEntitlementMissing`, `SavedRestoreCodesFull`,
-`SavedRestoreCodeTooLarge`, `StoreOwnerAccount`, `QueueChanged` and
-`ReplacementUnfinished`. Every other category shows its detail under its line.
+`SavedRestoreCodeTooLarge`, `StoreOwnerAccount`, `QueueChanged`,
+`ReplacementUnfinished`, `DeletionUnfinished` and `DeletionSignInRequired`.
+Every other category shows its detail under its line.
 
 ### G.2 Why a found release isn't picked
 

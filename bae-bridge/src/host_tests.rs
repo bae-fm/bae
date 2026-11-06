@@ -69,6 +69,10 @@ fn bootstrap_error_maps_to_failure_kind() {
         app_start_failure_kind(&BootstrapError::ReplacementUnfinished(coven::ReplacedBy::Restore)),
         AppStartFailureKind::ReplacementUnfinished
     );
+    assert_eq!(
+        app_start_failure_kind(&BootstrapError::DeletionUnfinished),
+        AppStartFailureKind::DeletionUnfinished
+    );
 }
 
 /// A build without its keychain entitlement crosses as its own line, not
@@ -111,4 +115,19 @@ fn an_unfinished_replacement_crosses_as_the_call_that_finishes_it() {
         assert_eq!(*category, crate::BridgeErrorCategory::ReplacementUnfinished { by: bridge });
         assert_eq!(crate::types::bridge_error_line_key(&error).as_deref(), Some(key));
     }
+}
+
+/// An open of a library this device is removing crosses as its own line,
+/// which says the removal didn't finish.
+#[test]
+fn an_unfinished_deletion_crosses_as_its_own_category() {
+    let error = bootstrap_error_to_bridge(BootstrapError::DeletionUnfinished);
+    let BridgeError::Diagnostic { category, .. } = &error else {
+        panic!("an unfinished deletion is a diagnostic: {error:?}");
+    };
+    assert_eq!(*category, crate::BridgeErrorCategory::DeletionUnfinished);
+    assert_eq!(
+        crate::types::bridge_error_line_key(&error).as_deref(),
+        Some("core.error.deletion_unfinished")
+    );
 }

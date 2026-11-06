@@ -40,6 +40,21 @@ final class WelcomeListings {
         await load(from: setup)
     }
 
+    /// Finish removing the library `libraryId`, whose removal stopped
+    /// partway, then list the libraries again.
+    func finishRemoving(
+        _ libraryId: String,
+        with removals: LibraryRemovals,
+        from setup: LibrarySetup
+    ) async {
+        await withCheckedContinuation { finished in
+            removals.finishRemoving(libraryId: libraryId) {
+                finished.resume()
+            }
+        }
+        await load(from: setup)
+    }
+
     private func loadLocalLibraries(from setup: LibrarySetup) async {
         do {
             let discovered = try await setup.listLibraries()

@@ -72,6 +72,10 @@ pub enum BootstrapError {
     /// it; until then the library doesn't open.
     #[error("the library opens once {0} finishes replacing this device's copy")]
     ReplacementUnfinished(coven::ReplacedBy),
+    /// This device is removing the library, and its removal stopped partway.
+    /// The library doesn't open; only finishing the removal ends it.
+    #[error("the library is being removed from this device")]
+    DeletionUnfinished,
     #[error("{0}")]
     Internal(String),
     /// The OS keychain refused the read *right now* — the session is locked, the
@@ -122,6 +126,7 @@ impl BootstrapError {
             // The class names the one call that finishes the replacement, so
             // the host offers that call and never the other.
             Self::ReplacementUnfinished(by) => C::ReplacementUnfinished(*by),
+            Self::DeletionUnfinished => C::DeletionUnfinished,
             Self::Internal(_) => C::Internal,
             // Its own class, not `Keyring`: that one reads as "the keyring
             // broke", and this one is "it is locked this second, try again
@@ -163,6 +168,9 @@ fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
         }
         coven::CovenError::Lock(coven::StoreLockError::ReplacementUnfinished { by, .. }) => {
             BootstrapError::ReplacementUnfinished(by)
+        }
+        coven::CovenError::Lock(coven::StoreLockError::DeletionUnfinished(_)) => {
+            BootstrapError::DeletionUnfinished
         }
         // The platform refused coven's watch of the network, as an Android
         // app packaged without coven's network library is: no retry or

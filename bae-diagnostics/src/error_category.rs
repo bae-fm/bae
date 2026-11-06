@@ -276,7 +276,7 @@ pub fn deletion_category(error: &coven::StoreDeletionError) -> C {
         E::Sync(error) | E::Closing(error) | E::Unfinished(error) => sync_category(error),
         // This device holds no credentials for the library's storage: the
         // person signs in to it again, then deletes.
-        E::SignInRequired(_) => C::Credentials,
+        E::SignInRequired(_) => C::DeletionSignInRequired,
         E::Open(error) => write_category(error),
         E::Key(error) => key_category(error),
         E::Lock(_) | E::Unsent(_) | E::NoUnfinishedDeletion(_) => C::Config,
@@ -319,6 +319,11 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::OAuth(_) => C::Credentials,
         E::Cleanup { operation, .. } => bootstrap_category(operation),
         E::Published { source, .. } => bootstrap_category(source),
+        // A restore or reset of a library this device is removing: only
+        // finishing the removal ends it.
+        E::Directory(coven::BootstrapDirectoryError::Lock(
+            coven::StoreLockError::DeletionUnfinished(_),
+        )) => C::DeletionUnfinished,
         E::Cancelled | E::Directory(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic

@@ -305,7 +305,8 @@ private fun LibrarySwitcherPreview() {
 /**
  * The line under a library's name: its provider and account when it has a
  * cloud home, nothing when it doesn't, or why it doesn't open: its settings
- * can't be read, or a reset or restore of this device's copy stopped partway.
+ * can't be read, a reset or restore of this device's copy stopped partway, or
+ * removing it from this device stopped partway.
  */
 @Composable
 private fun LibraryDetailLine(state: BridgeLibraryState) {
@@ -332,6 +333,14 @@ private fun LibraryDetailLine(state: BridgeLibraryState) {
                     LocalContext.current.coreString(
                         bridgeErrorCategoryKey(BridgeErrorCategory.ReplacementUnfinished(state.by)),
                     ),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        is BridgeLibraryState.DeletionUnfinished -> {
+            Text(
+                text = LocalContext.current.coreString(bridgeErrorCategoryKey(BridgeErrorCategory.DeletionUnfinished)),
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.error,
             )

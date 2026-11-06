@@ -214,6 +214,7 @@
     <string name="restore_device_title">Відновити цю бібліотеку</string>
     <string name="finish_restore_title">Завершити відновлення цієї бібліотеки</string>
     <string name="finish_reset">Завершити скидання цього пристрою</string>
+    <string name="finish_removal">Завершити вилучення цієї бібліотеки</string>
     <string name="profile_required_title">Введіть своє ім’я, щоб завершити приєднання до цієї бібліотеки.</string>
     <string name="save">Зберегти</string>
     <string name="onboarding_scan_code">Сканувати код</string>

@@ -9,7 +9,8 @@ extension BridgeLibrary {
 
     /// The line under the library's name: its provider and account when it
     /// has a cloud home, nothing when it doesn't, why its settings can't be
-    /// read, or which reset or restore of this device's copy didn't finish.
+    /// read, which reset or restore of this device's copy didn't finish, or
+    /// that removing it from this device didn't finish.
     public var detailLine: String {
         switch state {
         case .openable(let storage):
@@ -24,6 +25,8 @@ extension BridgeLibrary {
         case .replacementUnfinished(let by):
             return BridgeErrorCategory.replacementUnfinished(by: by)
                 .localizedLine
+        case .deletionUnfinished:
+            return BridgeErrorCategory.deletionUnfinished.localizedLine
         }
     }
 }

@@ -51,6 +51,10 @@ public final class LibraryRemovals {
         @Sendable (String, BridgeLibraryClosing) async throws ->
             BridgeLibraryRemoval
     @ObservationIgnored
+    private let finishDeletion:
+        @Sendable (String, BridgeLibraryClosing) async throws ->
+            BridgeLibraryRemoval
+    @ObservationIgnored
     private let findUnfinished:
         @Sendable () async throws -> BridgeUnfinishedRemoval?
     @ObservationIgnored
@@ -60,9 +64,10 @@ public final class LibraryRemovals {
     private var task: Task<Void, Never>?
 
     /// `unsentOfClosed` and `removeClosed` open the library, writing the
-    /// open's steps into the opening's stream; `removeClosed` and
-    /// `removeUnopenable` write the removal's steps into the closing's, and
-    /// `finishUnfinished` how many removals it finished into the setup's.
+    /// open's steps into the opening's stream; `removeClosed`,
+    /// `removeUnopenable` and `finishDeletion` write the removal's steps into
+    /// the closing's, and `finishUnfinished` how many removals it finished
+    /// into the setup's.
     public init(
         makeOpenProgress: @escaping @Sendable () -> LibraryOpenProgress,
         makeRemovalSteps: @escaping @Sendable () -> LibraryClosingSteps,
@@ -77,6 +82,9 @@ public final class LibraryRemovals {
         removeUnopenable:
             @escaping @Sendable (String, BridgeLibraryClosing) async throws ->
             BridgeLibraryRemoval,
+        finishDeletion:
+            @escaping @Sendable (String, BridgeLibraryClosing) async throws ->
+            BridgeLibraryRemoval,
         findUnfinished:
             @escaping @Sendable () async throws -> BridgeUnfinishedRemoval?,
         finishUnfinished:
@@ -88,6 +96,7 @@ public final class LibraryRemovals {
         self.unsentOfClosed = unsentOfClosed
         self.removeClosed = removeClosed
         self.removeUnopenable = removeUnopenable
+        self.finishDeletion = finishDeletion
         self.findUnfinished = findUnfinished
         self.finishUnfinished = finishUnfinished
     }
@@ -133,6 +142,46 @@ public final class LibraryRemovals {
         losing loss: RemovalLoss,
         onFinished: @escaping () -> Void
     ) {
+        run(libraryId, onFinished: onFinished) { steps in
+            switch loss {
+            case .unsent:
+                let progress = self.makeOpenProgress()
+                self.opening = ClosedLibraryOpening(
+                    libraryId: libraryId,
+                    progress: progress
+                )
+                defer { self.opening = nil }
+                return try await self.removeClosed(
+                    libraryId,
+                    progress.opening,
+                    steps.closing
+                )
+            case .uncounted:
+                return try await self.removeUnopenable(libraryId, steps.closing)
+            }
+        }
+    }
+
+    /// Finish removing a library whose removal stopped partway, which
+    /// never opens again, then report the list changed.
+    public func finishRemoving(
+        libraryId: String,
+        onFinished: @escaping () -> Void
+    ) {
+        run(libraryId, onFinished: onFinished) { steps in
+            try await self.finishDeletion(libraryId, steps.closing)
+        }
+    }
+
+    /// Run one removal of `libraryId`, its steps on the library's row, and
+    /// note how it ended.
+    private func run(
+        _ libraryId: String,
+        onFinished: @escaping () -> Void,
+        removal:
+            @escaping (LibraryClosingSteps) async throws ->
+            BridgeLibraryRemoval
+    ) {
         precondition(task == nil, "one library removal at a time")
         let steps = makeRemovalSteps()
         removing = RunningRemoval(libraryId: libraryId, steps: steps)
@@ -143,24 +192,7 @@ public final class LibraryRemovals {
                 task = nil
             }
             do {
-                switch loss {
-                case .unsent:
-                    let progress = makeOpenProgress()
-                    opening = ClosedLibraryOpening(
-                        libraryId: libraryId,
-                        progress: progress
-                    )
-                    defer { opening = nil }
-                    record(
-                        try await removeClosed(
-                            libraryId,
-                            progress.opening,
-                            steps.closing
-                        )
-                    )
-                case .uncounted:
-                    record(try await removeUnopenable(libraryId, steps.closing))
-                }
+                record(try await removal(steps))
             }
             catch {
                 logger.error(
@@ -242,6 +274,12 @@ extension LibraryRemovals {
             },
             removeUnopenable: { libraryId, closing in
                 try await host.removeUnopenableLibrary(
+                    libraryId: libraryId,
+                    closing: closing
+                )
+            },
+            finishDeletion: { libraryId, closing in
+                try await host.finishDeletion(
                     libraryId: libraryId,
                     closing: closing
                 )

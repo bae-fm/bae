@@ -146,7 +146,9 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::QueueChanged
             | UiErrorCategory::AirPlayUnsupported
             | UiErrorCategory::AirPlayUnreadableSettings
-            | UiErrorCategory::ReplacementUnfinished(_) => Self::Unavailable(detail),
+            | UiErrorCategory::ReplacementUnfinished(_)
+            | UiErrorCategory::DeletionUnfinished
+            | UiErrorCategory::DeletionSignInRequired => Self::Unavailable(detail),
         }
     }
 }

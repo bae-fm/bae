@@ -257,6 +257,7 @@
     <string name="restore_device_title">Restore this library</string>
     <string name="finish_restore_title">Finish restoring this library</string>
     <string name="finish_reset">Finish resetting this device</string>
+    <string name="finish_removal">Finish removing this library</string>
     <string name="profile_required_title">Enter your name to finish joining this library.</string>
     <string name="save">Save</string>
     <string name="onboarding_scan_code">Scan a code</string>

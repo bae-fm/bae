@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// Libraries on this device, each with Open, or with what finishes the reset
-/// or restore of its copy that stopped partway, and Remove.
+/// or restore of its copy or its removal that stopped partway, and Remove.
 struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
     let disabled: Bool
@@ -14,6 +14,7 @@ struct LocalLibrariesSection: View {
     let opening: ClosedLibraryOpening?
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
+    let onFinishRemoving: (BridgeLibrary) -> Void
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
@@ -31,6 +32,7 @@ struct LocalLibrariesSection: View {
                         ? removing?.steps.steps : nil,
                     onOpen: onOpen,
                     onFinish: onFinish,
+                    onFinishRemoving: onFinishRemoving,
                     onRemove: onRemove,
                 )
             }
@@ -42,7 +44,8 @@ struct LocalLibrariesSection: View {
 /// One library row: its name, its provider and account when it has a cloud
 /// home, Open and Remove. A library whose settings can't be read says why,
 /// and doesn't open. One whose reset or restore stopped partway says which,
-/// and offers to finish it in place of Open. While counting or removing it
+/// and offers to finish it in place of Open; one whose removal stopped
+/// partway says so, and offers to finish removing it. While counting or removing it
 /// opens the library, a step the open runs shows in place of the detail line,
 /// and then a step the removal runs; a library that can't open shows the
 /// removal's steps alone.
@@ -54,6 +57,7 @@ private struct LibraryRow: View {
     let removalSteps: LatestSource<BridgeClosingStep>?
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
+    let onFinishRemoving: (BridgeLibrary) -> Void
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
@@ -97,11 +101,12 @@ private struct LibraryRow: View {
         case .openable, .unreadable: "Open"
         case .replacementUnfinished(.restore): "Finish restoring"
         case .replacementUnfinished(.reset): "Finish resetting"
+        case .deletionUnfinished: "Finish removing"
         }
     }
 
-    /// Open, or finish the reset or restore that stopped; a library whose
-    /// settings can't be read offers neither.
+    /// Open, or finish the reset, restore or removal that stopped; a library
+    /// whose settings can't be read offers none of them.
     private var canAct: Bool {
         if case .unreadable = library.state { return false }
         return true
@@ -111,6 +116,7 @@ private struct LibraryRow: View {
         switch library.state {
         case .openable, .unreadable: onOpen(library)
         case .replacementUnfinished(let by): onFinish(library, by)
+        case .deletionUnfinished: onFinishRemoving(library)
         }
     }
 }
@@ -125,6 +131,7 @@ private struct LibraryRow: View {
             opening: nil,
             onOpen: { _ in },
             onFinish: { _, _ in },
+            onFinishRemoving: { _ in },
             onRemove: { _ in },
         )
         .padding()

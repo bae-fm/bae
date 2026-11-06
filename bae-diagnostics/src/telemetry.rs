@@ -229,6 +229,7 @@ telemetry_value_enum! {
         KeyringUnavailable => "keyring_unavailable",
         KeychainEntitlementMissing => "keychain_entitlement_missing",
         ReplacementUnfinished => "replacement_unfinished",
+        DeletionUnfinished => "deletion_unfinished",
     }
 }
 

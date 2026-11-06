@@ -48,6 +48,9 @@ impl BridgeLibrary {
                         by: crate::types::BridgeReplacedBy::from_core(by),
                     }
                 }
+                bae_app_dir::LibraryState::DeletionUnfinished => {
+                    crate::types::BridgeLibraryState::DeletionUnfinished
+                }
             },
         })
     }

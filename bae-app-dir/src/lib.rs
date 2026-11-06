@@ -189,10 +189,7 @@ impl AppDir {
             let state = match store.unfinished {
                 // Whatever its settings say, only finishing the call opens it.
                 Some(coven::Unfinished::Replacement(by)) => LibraryState::ReplacementUnfinished(by),
-                // Sentinel: the deletion work of this pin bump lists a library
-                // being deleted and offers finishing its deletion. Until then
-                // it is left out, as coven left it out while it deleted it.
-                Some(coven::Unfinished::Deletion) => continue,
+                Some(coven::Unfinished::Deletion) => LibraryState::DeletionUnfinished,
                 None => match coven::Coven::storage_config(&coven.store_dir(&store.id)).await {
                     Ok(storage) => LibraryState::Openable(storage),
                     Err(error) => {
@@ -255,6 +252,9 @@ pub enum LibraryState {
     /// the call named here runs again and finishes it; coven refuses the
     /// other call.
     ReplacementUnfinished(coven::ReplacedBy),
+    /// This device is removing it, and the removal stopped partway: coven
+    /// refuses to open it, and finishing the removal ends it.
+    DeletionUnfinished,
 }
 
 /// The library a registered id names: a UUID, never a path.

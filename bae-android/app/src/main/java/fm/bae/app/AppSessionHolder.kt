@@ -164,7 +164,8 @@ sealed interface AppScreen {
     /**
      * A library that didn't open, or can't sync, and the one call that
      * recovers it: resetting this device, restoring it with the person's
-     * current restore code, or finishing either when it stopped partway.
+     * current restore code, finishing either when it stopped partway, or
+     * finishing its removal.
      */
     sealed interface Recovery : AppScreen {
         val libraryId: String
@@ -210,6 +211,16 @@ sealed interface AppScreen {
     ) : Recovery
 
     /**
+     * Removing the library from this device stopped partway, after this
+     * device began leaving it; it never opens again, and finishing the
+     * removal ends it. [error] is why the last attempt failed.
+     */
+    data class DeletionUnfinished(
+        override val libraryId: String,
+        val error: ScreenFailure?,
+    ) : Recovery
+
+    /**
      * Joining made this device a member, but writing the person's profile
      * failed. The library stays open on this device's membership; the person
      * gives their name again. [error] is why, none when core says the failure
@@ -246,7 +257,7 @@ sealed interface AppScreen {
 
         /**
          * The screen a failed open of [libraryId] lands on: resetting the
-         * device, finishing the reset or restore that stopped partway, else
+         * device, finishing the reset, restore or removal that stopped partway, else
          * [open], the library still open when the open was a switch, whose
          * snackbar shows the failure, else the failure as [shown].
          */
@@ -263,6 +274,10 @@ sealed interface AppScreen {
 
                 is BridgeErrorCategory.ReplacementUnfinished -> {
                     finishing(libraryId, category.by)
+                }
+
+                is BridgeErrorCategory.DeletionUnfinished -> {
+                    DeletionUnfinished(libraryId, error = null)
                 }
 
                 else -> {
@@ -662,6 +677,48 @@ object AppSessionHolder {
 
             is BridgeLibraryRemoval.Unfinished -> {
                 logger.error("library ${session.libraryId} left its store but its files remain", removal.removal.error)
+                onScreen(AppScreen.RemovalIncomplete(context.displayError(removal.removal.error)))
+            }
+        }
+    }
+
+    /**
+     * Finish removing [libraryId], whose removal stopped partway: core tells
+     * the library's other devices this one left, if it hadn't, then deletes
+     * its copy. Then the next library opens, or onboarding when none remain.
+     * A failure stays on the screen that finishes it, with why.
+     */
+    suspend fun finishDeletion(
+        context: Context,
+        libraryId: String,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        val app = context.applicationContext as BaeApp
+        val removal =
+            try {
+                LibraryClosingSteps(app.host, appScope, app.bugs).use { removal ->
+                    onScreen(AppScreen.Closing(removal.steps, AppScreen.LoadingWork.REMOVING))
+                    app.host.finishDeletion(libraryId, removal.closing)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                logger.error("finishing the removal of library $libraryId failed", e)
+                onScreen(
+                    AppScreen.DeletionUnfinished(
+                        libraryId,
+                        ScreenFailure(FailedStep.REMOVAL, context.displayError(e)),
+                    ),
+                )
+                return
+            }
+        when (removal) {
+            BridgeLibraryRemoval.Removed -> {
+                openDiscoveredOrOnboard(context, onScreen)
+            }
+
+            is BridgeLibraryRemoval.Unfinished -> {
+                logger.error("library $libraryId left its store but its files remain", removal.removal.error)
                 onScreen(AppScreen.RemovalIncomplete(context.displayError(removal.removal.error)))
             }
         }

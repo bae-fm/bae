@@ -21,6 +21,11 @@ private actor ClosedLibraryBridge {
         calls.append("remove unopenable \(libraryId)")
         return .removed
     }
+
+    func finishDeletion(_ libraryId: String) -> BridgeLibraryRemoval {
+        calls.append("finish removing \(libraryId)")
+        return .removed
+    }
 }
 
 /// The removals a bridge call reads while it runs, set once they exist.
@@ -49,6 +54,7 @@ private let unopenable: [BridgeLibrary] = [
         )
     ),
     library(.replacementUnfinished(by: .restore)),
+    library(.deletionUnfinished),
 ]
 
 @MainActor
@@ -69,6 +75,9 @@ struct LibraryRemovalsClosedLibraryTests {
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { libraryId, _ in
                 await bridge.removeUnopenable(libraryId)
+            },
+            finishDeletion: { libraryId, _ in
+                await bridge.finishDeletion(libraryId)
             },
             findUnfinished: { nil },
             finishUnfinished: { _ in }
@@ -130,6 +139,20 @@ struct LibraryRemovalsClosedLibraryTests {
         #expect(removals.removing == nil)
     }
 
+    @Test("finishing a stopped removal finishes it without opening, once")
+    func finishingRemovesWithoutOpening() async {
+        let removals = removals
+        await withCheckedContinuation { finished in
+            removals.finishRemoving(libraryId: "library-1") {
+                finished.resume()
+            }
+        }
+
+        #expect(await bridge.calls == ["finish removing library-1"])
+        #expect(removals.error == nil)
+        #expect(removals.removing == nil)
+    }
+
     @Test("a confirmed uncounted loss removes without opening, once")
     func confirmedUncountedRemovesWithoutOpening() async {
         let removals = removals
@@ -156,6 +179,10 @@ struct LibraryRemovalsClosedLibraryTests {
             },
             removeUnopenable: { _, _ in
                 throw BridgeError.Diagnostic(category: .config, detail: "x")
+            },
+            finishDeletion: { _, _ in
+                Issue.record("no removal is finished")
+                return .removed
             },
             findUnfinished: { nil },
             finishUnfinished: { _ in }
@@ -191,6 +218,10 @@ struct LibraryRemovalsClosedLibraryTests {
                 #expect(shown?.steps.closing === closing)
                 return .removed
             },
+            finishDeletion: { _, _ in
+                Issue.record("no removal is finished")
+                return .removed
+            },
             findUnfinished: { nil },
             finishUnfinished: { _ in }
         )
@@ -217,6 +248,10 @@ struct LibraryRemovalsClosedLibraryTests {
             },
             removeUnopenable: { _, _ in
                 Issue.record("nothing is removed")
+                return .removed
+            },
+            finishDeletion: { _, _ in
+                Issue.record("no removal is finished")
                 return .removed
             },
             findUnfinished: { nil },
@@ -329,6 +364,10 @@ struct LibraryRemovalsUnfinishedTests {
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
+            finishDeletion: { _, _ in
+                Issue.record("no removal is finished")
+                return .removed
+            },
             findUnfinished: { await bridge.find() },
             finishUnfinished: { try await bridge.finish($0) }
         )
@@ -365,6 +404,10 @@ struct LibraryRemovalsUnfinishedTests {
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
+            finishDeletion: { _, _ in
+                Issue.record("no removal is finished")
+                return .removed
+            },
             findUnfinished: {
                 BridgeUnfinishedRemoval(
                     error: .Diagnostic(category: .config, detail: "still here"),
@@ -390,6 +433,10 @@ struct LibraryRemovalsUnfinishedTests {
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
+            finishDeletion: { _, _ in
+                Issue.record("no removal is finished")
+                return .removed
+            },
             findUnfinished: { nil },
             finishUnfinished: { _ in
                 Issue.record("nothing to finish")

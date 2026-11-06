@@ -275,6 +275,14 @@ private fun RecoveryScreen(
                 onScreen,
             )
         }
+
+        is AppScreen.DeletionUnfinished -> {
+            DeletionUnfinishedScreen(
+                error = current.error,
+                onFinish = { scope.launch { AppSessionHolder.finishDeletion(context, libraryId, onScreen) } },
+                onLeave = { AppSessionHolder.leaveFinishing(onScreen) },
+            )
+        }
     }
 }
 
@@ -313,6 +321,10 @@ private fun sessionActions(
         when (val state = library.state) {
             is BridgeLibraryState.ReplacementUnfinished -> {
                 onScreen(AppScreen.finishing(library.id, state.by))
+            }
+
+            is BridgeLibraryState.DeletionUnfinished -> {
+                onScreen(AppScreen.DeletionUnfinished(library.id, error = null))
             }
 
             is BridgeLibraryState.Openable, is BridgeLibraryState.Unreadable -> {

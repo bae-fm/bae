@@ -48,6 +48,13 @@
                 state: .replacementUnfinished(by: .restore),
                 isActive: false
             ),
+            BridgeLibrary(
+                id: "lib-05",
+                name: "Old Laptop Library",
+                path: "/Users/preview/Music/bae/Old Laptop Library",
+                state: .deletionUnfinished,
+                isActive: false
+            ),
         ]
 
         /// Restore codes saved for libraries not on this Mac, one of them
@@ -82,6 +89,7 @@
                 unsentOfClosed: { _, _ in throw StubError.notImplemented },
                 removeClosed: { _, _, _ in throw StubError.notImplemented },
                 removeUnopenable: { _, _ in throw StubError.notImplemented },
+                finishDeletion: { _, _ in throw StubError.notImplemented },
                 findUnfinished: { nil },
                 finishUnfinished: { _ in }
             )

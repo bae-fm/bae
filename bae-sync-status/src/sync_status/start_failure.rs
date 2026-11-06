@@ -73,7 +73,9 @@ impl FailureColumns {
             | K::QueueChanged
             | K::AirPlayUnsupported
             | K::AirPlayUnreadableSettings
-            | K::ReplacementUnfinished => {
+            | K::ReplacementUnfinished
+            | K::DeletionUnfinished
+            | K::DeletionSignInRequired => {
                 Err(DbError::Message(format!("a sync start can't fail as {category:?}")))
             }
         }

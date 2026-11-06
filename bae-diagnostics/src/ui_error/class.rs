@@ -44,11 +44,13 @@ pub enum UiErrorClass {
     AirPlayUnsupported,
     AirPlayUnreadableSettings,
     ReplacementUnfinished,
+    DeletionUnfinished,
+    DeletionSignInRequired,
 }
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 37] = [
+    const ALL: [Self; 39] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -86,6 +88,8 @@ impl UiErrorClass {
         Self::AirPlayUnsupported,
         Self::AirPlayUnreadableSettings,
         Self::ReplacementUnfinished,
+        Self::DeletionUnfinished,
+        Self::DeletionSignInRequired,
     ];
 
     /// The name a stored failure of this class goes by.
@@ -128,6 +132,8 @@ impl UiErrorClass {
             Self::AirPlayUnsupported => "airplay_unsupported",
             Self::AirPlayUnreadableSettings => "airplay_unreadable_settings",
             Self::ReplacementUnfinished => "replacement_unfinished",
+            Self::DeletionUnfinished => "deletion_unfinished",
+            Self::DeletionSignInRequired => "deletion_sign_in_required",
         }
     }
 
@@ -197,7 +203,9 @@ impl UiErrorClass {
             | Self::SavedRestoreCodeTooLarge
             | Self::StoreOwnerAccount
             | Self::QueueChanged
-            | Self::ReplacementUnfinished => false,
+            | Self::ReplacementUnfinished
+            | Self::DeletionUnfinished
+            | Self::DeletionSignInRequired => false,
         }
     }
 }
@@ -244,6 +252,8 @@ impl UiErrorCategory {
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished(_) => K::ReplacementUnfinished,
+            Self::DeletionUnfinished => K::DeletionUnfinished,
+            Self::DeletionSignInRequired => K::DeletionSignInRequired,
         }
     }
 
@@ -281,6 +291,8 @@ impl UiErrorCategory {
             K::QueueChanged => Self::QueueChanged,
             K::AirPlayUnsupported => Self::AirPlayUnsupported,
             K::AirPlayUnreadableSettings => Self::AirPlayUnreadableSettings,
+            K::DeletionUnfinished => Self::DeletionUnfinished,
+            K::DeletionSignInRequired => Self::DeletionSignInRequired,
             K::MetadataTrackCount
             | K::TiedMediums
             | K::GroupingBlocked

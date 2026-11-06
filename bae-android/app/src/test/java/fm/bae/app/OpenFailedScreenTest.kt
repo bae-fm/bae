@@ -37,6 +37,16 @@ class OpenFailedScreenTest {
     }
 
     @Test
+    fun anUnfinishedRemovalLandsOnFinishingTheRemoval() {
+        val failure = BridgeException.Diagnostic(BridgeErrorCategory.DeletionUnfinished, "deletion unfinished")
+
+        assertEquals(
+            AppScreen.DeletionUnfinished("library", error = null),
+            AppScreen.openFailed("library", failure, DisplayError("Removing did not finish."), open = null),
+        )
+    }
+
+    @Test
     fun aDamagedCopyOffersAReset() {
         val failure = BridgeException.Diagnostic(BridgeErrorCategory.DeviceResetRequired, "damaged database")
 

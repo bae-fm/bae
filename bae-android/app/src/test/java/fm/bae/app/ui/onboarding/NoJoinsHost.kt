@@ -47,6 +47,11 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         closing: BridgeLibraryClosing?,
     ): BridgeLibraryRemoval = unfaked("removeUnopenableLibrary")
 
+    override suspend fun finishDeletion(
+        libraryId: String,
+        closing: BridgeLibraryClosing?,
+    ): BridgeLibraryRemoval = unfaked("finishDeletion")
+
     override suspend fun unfinishedRemoval(): BridgeUnfinishedRemoval? = unfaked("unfinishedRemoval")
 
     override suspend fun unsentBeforeRemoval(

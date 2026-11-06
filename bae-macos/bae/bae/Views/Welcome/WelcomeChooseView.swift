@@ -152,6 +152,15 @@ struct WelcomeChooseView: View {
                     opening: removals.opening,
                     onOpen: { onOpenLibrary($0.id) },
                     onFinish: { onFinishReplacement($0.id, $1) },
+                    onFinishRemoving: { library in
+                        Task {
+                            await listings.finishRemoving(
+                                library.id,
+                                with: removals,
+                                from: setup
+                            )
+                        }
+                    },
                     onRemove: { askToRemove($0) }
                 )
             }

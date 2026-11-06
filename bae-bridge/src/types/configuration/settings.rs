@@ -212,6 +212,12 @@ pub enum BridgeErrorCategory {
     ReplacementUnfinished {
         by: BridgeReplacedBy,
     },
+    /// The library didn't open because this device is removing it; only
+    /// finishing the removal ends it.
+    DeletionUnfinished,
+    /// Removing the library needs this device to sign in to its storage
+    /// again first.
+    DeletionSignInRequired,
 }
 
 /// What a `NotFound` was looking for, so the UI can localize "… not found".
@@ -374,6 +380,8 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             BridgeReplacedBy::Reset => "core.error.replacement_unfinished.reset",
             BridgeReplacedBy::Restore => "core.error.replacement_unfinished.restore",
         },
+        BridgeErrorCategory::DeletionUnfinished => "core.error.deletion_unfinished",
+        BridgeErrorCategory::DeletionSignInRequired => "core.error.deletion_sign_in_required",
     }
     .to_string()
 }
@@ -492,6 +500,8 @@ impl BridgeErrorCategory {
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished { .. } => K::ReplacementUnfinished,
+            Self::DeletionUnfinished => K::DeletionUnfinished,
+            Self::DeletionSignInRequired => K::DeletionSignInRequired,
         };
         class.detail_adds_to_line()
     }
@@ -596,6 +606,8 @@ mirror_enum! {
         AirPlayUnsupported,
         AirPlayUnreadableSettings,
         ReplacementUnfinished(by: (BridgeReplacedBy)),
+        DeletionUnfinished,
+        DeletionSignInRequired,
     },
 }
 

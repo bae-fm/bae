@@ -29,6 +29,9 @@ enum class FailedStep(
 
     /** Resetting this device's copy of a library. */
     DEVICE_RESET("ui.load_error.device_reset.title", "ui.load_error.device_reset.advice"),
+
+    /** Removing a library from this device. */
+    REMOVAL("ui.load_error.removal.title", null),
 }
 
 /**

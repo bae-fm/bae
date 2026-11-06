@@ -1,4 +1,7 @@
-use super::{finish_removals, remove_unopenable_library, LibraryRemovalError, UnfinishedRemoval};
+use super::{
+    finish_deletion, finish_removals, remove_unopenable_library, LibraryRemovalError,
+    UnfinishedRemoval,
+};
 use bae_app_dir::AppDir;
 use bae_diagnostics::Diagnostics;
 use coven::Storage;
@@ -631,4 +634,104 @@ async fn an_unopenable_removal_coven_refuses_removes_nothing() {
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
+}
+
+/// Storage refuses the answer to this device's leaving after it stored it,
+/// so the removal stops once the leaving is under way: coven lists the
+/// library as being removed and refuses to open it. Finishing the removal
+/// publishes the leaving, deletes the store, then bae's files, pointer and
+/// record, as any removal does.
+#[tokio::test]
+async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    home.connect(&handle).await;
+    let id = handle.store_id();
+    home.point_at(id);
+    handle.stop_sync().await.unwrap();
+    let storage = home.storage(id);
+    storage.set_faults(coven::Faults { refuse_after_storing: 1, ..coven::Faults::none() }).await;
+    let error = home.remove(&handle).await.expect_err("storage refused the leaving's answer");
+    storage.set_faults(coven::Faults::none()).await;
+    assert!(
+        matches!(error, LibraryRemovalError::Store(coven::StoreDeletionError::Unfinished(_))),
+        "{error}"
+    );
+    drop(handle);
+    let listed = home.app_dir.discover_libraries(&home.installation).await.unwrap();
+    assert!(
+        matches!(
+            listed.as_slice(),
+            [library] if library.id == id.to_string()
+                && matches!(library.state, bae_app_dir::LibraryState::DeletionUnfinished)
+        ),
+        "{listed:?}"
+    );
+    let opened = bae_store::configure_store(home.installation.builder(), crate::SCHEMA)
+        .open(id, |_| ())
+        .await;
+    assert!(
+        matches!(
+            opened,
+            Err(coven::CovenError::Lock(coven::StoreLockError::DeletionUnfinished(store)))
+                if store == id
+        ),
+        "{:?}",
+        opened.map(drop)
+    );
+
+    let steps = std::sync::Mutex::new(Vec::new());
+    finish_deletion(
+        &home.app_dir,
+        &home.installation,
+        home.installation.builder().storage_connector(storage),
+        &Diagnostics::noop(),
+        id,
+        &|step| steps.lock().unwrap().push(step),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        *steps.lock().unwrap(),
+        [crate::ClosingStep::LeavingLibrary, crate::ClosingStep::DeletingFiles]
+    );
+    assert_eq!(home.stores().await, 0);
+    assert!(!home.directory(id).exists());
+    assert_eq!(home.pointer(), None);
+    assert!(!home.record(id).exists());
+    assert_eq!(home.unfinished().await, None);
+}
+
+/// This device holds no credentials for the library's storage, so it can't
+/// tell the library's other devices it left: the removal is refused as a
+/// sign-in to do first, and nothing changes.
+#[tokio::test]
+async fn removing_a_signed_out_library_asks_for_the_sign_in() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    home.connect(&handle).await;
+    let id = handle.store_id();
+    home.point_at(id);
+    handle.close().await.unwrap();
+    home.installation.lose_storage_credentials(id).unwrap();
+    let reopened = bae_store::configure_store(home.installation.builder(), crate::SCHEMA)
+        .open(id, |_| ())
+        .await
+        .unwrap();
+    let error = home.remove(&reopened).await.expect_err("no credentials to publish the leaving");
+    assert!(
+        matches!(
+            error,
+            LibraryRemovalError::Store(coven::StoreDeletionError::SignInRequired(
+                coven::CloudProvider::S3
+            ))
+        ),
+        "{error}"
+    );
+    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::DeletionSignInRequired);
+    assert_eq!(reopened.store_name().await.unwrap(), "Library");
+    assert!(home.directory(id).join("cache").exists());
+    assert_eq!(home.pointer(), Some(id.to_string()));
+    assert!(!home.record(id).exists());
+    reopened.close().await.unwrap();
 }
