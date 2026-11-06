@@ -40,7 +40,10 @@ use label_resolution::label_write;
 pub use label_resolution::{LabelParts, LabelWrite};
 // Only the import write resolves credits inside a release's own write.
 #[cfg(desktop)]
-use artist_resolution::{identity_write_failure, relink};
+use artist_resolution::relink;
+// Only the seeded albums carry an identity failure out of their own write.
+#[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
+use artist_resolution::identity_write_failure;
 pub mod files;
 pub(crate) mod identity_merges;
 pub mod queued_uploads;
