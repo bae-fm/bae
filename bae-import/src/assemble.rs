@@ -66,7 +66,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
     ids: &dyn IdSource,
 ) -> Result<AssembledRelease<Binding>, ImportError> {
     let edit = draft.release_edit().shape()?;
-    let now = DateTime::<Utc>::from(clock.now());
+    let now = bae_store::utc_now(clock);
     let mut artists = ArtistRows::new(ids, now);
 
     let album_artist_ids: Vec<String> = edit

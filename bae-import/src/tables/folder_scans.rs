@@ -219,8 +219,7 @@ impl ImportTables {
     ) -> Result<Option<Vec<(crate::folder_scanner::FolderEntry, ScanItemWrite)>>, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
-        let observed_at =
-            chrono::DateTime::<chrono::Utc>::from(self.store.now()).timestamp_millis();
+        let observed_at = self.store.now_utc().timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }

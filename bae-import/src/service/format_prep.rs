@@ -145,7 +145,7 @@ pub fn build_audio_formats(
     ids: &dyn coven::IdSource,
     bugs: &bae_diagnostics::Diagnostics,
 ) -> Result<BuiltAudioFormats, ImportError> {
-    let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
+    let now = bae_store::utc_now(clock);
     let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
     let mut audio_segments = Vec::new();
     let mut cue_landings_by_file: HashMap<PathBuf, Option<HashMap<u64, u64>>> = HashMap::new();

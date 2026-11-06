@@ -131,8 +131,7 @@ impl ImportTables {
         }
         let read_under = generation_column(stamp.read_under)?;
         let generation = generation_column(stamp.generation)?;
-        let observed_at =
-            chrono::DateTime::<chrono::Utc>::from(self.store.now()).timestamp_millis();
+        let observed_at = self.store.now_utc().timestamp_millis();
         self.store
             .call(move |sql| {
                 let root = coven::path_bytes(&watched_folder_path);

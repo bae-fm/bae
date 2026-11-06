@@ -57,7 +57,7 @@ impl ImportService {
             // The failure is recorded as what it is; the progress event carries
             // the error's diagnostic text, which the variant Displays build
             // from their `#[from]` source messages.
-            let failed_at = self.clock.now().into();
+            let failed_at = bae_store::utc_now(self.clock.as_ref());
             let failure = crate::ImportFailure::of(&e, failed_at);
             let error = e.to_string();
 
@@ -326,7 +326,7 @@ impl ImportService {
 
         // Keyed by absolute path, the same key TrackFile uses, so disc-subfolder
         // siblings with identical bare filenames stay distinct.
-        let files_now = self.clock.now().into();
+        let files_now = bae_store::utc_now(self.clock.as_ref());
         let mut prepared_files = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
         let mut source_audio_layouts = HashMap::new();

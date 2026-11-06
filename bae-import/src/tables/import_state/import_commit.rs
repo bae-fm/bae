@@ -331,7 +331,7 @@ impl ImportTables {
             .map(|prepared| (prepared.row, (prepared.original, prepared.place)))
             .unzip();
         let records = rows.records.to_vec();
-        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.store.now());
+        let now_dt = self.store.now_utc();
         let now = now_dt.to_rfc3339();
         let labels = bae_records::LabelParts::new(ids, now_dt, &release.pressing.labels);
         self.store
