@@ -296,11 +296,13 @@ struct ImportListSelectionTests {
 /// drive its table.
 @MainActor
 enum ImportListHosting {
-    /// The list wired the way the import view wires it.
+    /// The list wired the way the import view wires it, its rows' covers
+    /// read from `imageStore`.
     static func list(
         store: ImportStore,
         slot: ImportListSlot,
-        uiStore: UiStore
+        uiStore: UiStore,
+        imageStore: ImageStore = .stub()
     ) -> some View {
         ImportCandidateListContent(
             importStore: store,
@@ -318,7 +320,7 @@ enum ImportListHosting {
         .environment(OutboxStore(uploadsPaused: false))
         .environment(uiStore)
         .environment(ImportSelection())
-        .environment(ImageStore.stub())
+        .environment(imageStore)
     }
 
     /// Host the list, wait for its table to lay out its rows, and hand the
@@ -327,12 +329,18 @@ enum ImportListHosting {
         store: ImportStore,
         slot: ImportListSlot,
         uiStore: UiStore,
+        imageStore: ImageStore = .stub(),
         size: NSSize = NSSize(width: 400, height: 320),
         _ body: (ImportCandidateTableView) async throws -> Void
     ) async throws {
         try await SnapshotTestSupport.withHostedWindow(
-            list(store: store, slot: slot, uiStore: uiStore)
-                .frame(width: size.width, height: size.height),
+            list(
+                store: store,
+                slot: slot,
+                uiStore: uiStore,
+                imageStore: imageStore
+            )
+            .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
