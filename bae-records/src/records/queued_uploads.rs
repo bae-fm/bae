@@ -139,6 +139,19 @@ impl Records {
             .await
     }
 
+    /// [`Self::has_pending_uploads_for_release`], live: it reruns as the
+    /// release's files enter and leave the upload queue.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn subscribe_has_pending_uploads_for_release(
+        &self,
+        release_id: &str,
+    ) -> coven::LiveQuery<bool> {
+        let release_id = release_id.to_string();
+        self.store.subscribe(move |sql| {
+            Ok(sql.query_row(RELEASE_HAS_QUEUED_FILE, [&release_id], |row| row.get(0))?)
+        })
+    }
+
     /// The files this process is sending now and the releases they belong
     /// to with the bytes of each stored, live: it reruns as files start and
     /// stop being sent or the person pauses uploads. How far each file has

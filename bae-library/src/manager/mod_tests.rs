@@ -543,18 +543,13 @@ pub(super) async fn offered(
     (detail.summary.storage_actions, detail.download_status)
 }
 
-/// Wait until coven no longer lists this release's uploads.
+/// Wait until coven no longer lists this release's uploads. The upload
+/// queue empties when the sync loop's passes send its files; one pass is
+/// asked for up front so none waits on the loop's own schedule.
 pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
-    for tick in 0..2_000 {
-        if tick % 50 == 0 {
-            manager.store.sync_now();
-        }
-        if !has_pending_uploads(manager, release_id).await {
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
-    panic!("release {release_id} never finished its upload");
+    let mut pending = manager.records.subscribe_has_pending_uploads_for_release(release_id);
+    manager.store.sync_now();
+    crate::followed::value_matching(&mut pending, |has_pending| !has_pending).await;
 }
 
 // The pending list the sync status shows: coven's pending records named by
