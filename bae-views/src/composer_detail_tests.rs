@@ -277,11 +277,15 @@ fn held_rows(conn: &rusqlite::Connection) -> Vec<(i64, String, Option<i64>, Stri
 
 #[test]
 fn rows_whose_titles_arrive_late_wait_for_them() {
-    // Rows from another device can arrive before the rows they name: here a
-    // part's parent, and a credit's release and album.
-    let conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
-    conn.execute_batch(
-        "PRAGMA foreign_keys = OFF;
+    // Within one apply of another device's rows, coven defers the foreign
+    // keys to the commit and may put a row before the rows it names when a
+    // unique claim orders it so: here a part before its parent, and a credit
+    // before its release and album. The keys hold once the write commits.
+    let mut conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
+    conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+    let apply = conn.transaction().unwrap();
+    apply.execute_batch(
+        "PRAGMA defer_foreign_keys = ON;
          INSERT INTO artists (id, name, name_key, created_at) VALUES
             ('1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 'Composer Name', 'composer name', '2026-01-01T00:00:00Z');
          INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES
@@ -297,11 +301,11 @@ fn rows_whose_titles_arrive_late_wait_for_them() {
     // The part heads its own group while its parent is missing; the credit
     // waits for its release and album.
     assert_eq!(
-        held_rows(&conn),
+        held_rows(&apply),
         vec![(0, MOVEMENT_TWO.to_string(), Some(0), MOVEMENT_TWO.to_string())]
     );
 
-    conn.execute_batch(
+    apply.execute_batch(
         "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
             ('4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d02', '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c02', '2026-01-01T00:00:00Z', 0);
          INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES
@@ -309,20 +313,21 @@ fn rows_whose_titles_arrive_late_wait_for_them() {
     )
     .unwrap();
     assert_eq!(
-        held_rows(&conn),
+        held_rows(&apply),
         vec![
             (0, BETA_PARENT.to_string(), Some(0), BETA_PARENT.to_string()),
             (0, BETA_PARENT.to_string(), Some(1), MOVEMENT_TWO.to_string()),
         ]
     );
 
-    conn.execute_batch(
-        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
+    apply
+        .execute_batch(
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
             ('3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c02', 'album Second', 0, '2026-01-01T00:00:00Z');",
-    )
-    .unwrap();
+        )
+        .unwrap();
     assert_eq!(
-        held_rows(&conn)[2..],
+        held_rows(&apply)[2..],
         [(
             1,
             "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d02".to_string(),
@@ -330,6 +335,7 @@ fn rows_whose_titles_arrive_late_wait_for_them() {
             CREDIT_ON_SECOND.to_string()
         )]
     );
+    apply.commit().unwrap();
 }
 
 #[tokio::test]

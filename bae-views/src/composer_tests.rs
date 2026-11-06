@@ -285,11 +285,15 @@ fn composer_listing_rows(conn: &rusqlite::Connection) -> Vec<(String, i64, i64, 
 
 #[test]
 fn a_composer_merged_before_it_arrived_is_listed_with_what_was_counted_under_it() {
-    // Rows from another device can arrive before the rows they name: here a
-    // merge and a work credit before either artist.
-    let conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
-    conn.execute_batch(
-        "PRAGMA foreign_keys = OFF;
+    // Within one apply of another device's rows, coven defers the foreign
+    // keys to the commit and may put a row before the rows it names when a
+    // unique claim orders it so: here a merge and a work credit before either
+    // artist. The keys hold once the write commits.
+    let mut conn = bae_store::schema::bare_library_connection(crate::TEST_SCHEMA);
+    conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+    let apply = conn.transaction().unwrap();
+    apply.execute_batch(
+        "PRAGMA defer_foreign_keys = ON;
          INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES
             ('cc0b10bd-7e72-4e7a-85f6-6c6d5d5dc691', '87afe278-5071-4811-a8fb-06ad2ed2d01c', '2026-01-01T00:00:00Z');
          INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES
@@ -301,17 +305,18 @@ fn a_composer_merged_before_it_arrived_is_listed_with_what_was_counted_under_it(
     )
     .unwrap();
     assert_eq!(
-        composer_listing_rows(&conn),
+        composer_listing_rows(&apply),
         vec![],
         "the absorbed artist's work counts under its survivor, which has not arrived"
     );
 
-    conn.execute_batch(
+    apply.execute_batch(
         "INSERT INTO artists (id, name, name_key, created_at) VALUES
             ('87afe278-5071-4811-a8fb-06ad2ed2d01c', 'Composer Name Survivor', 'composer name survivor', '2026-01-01T00:00:00Z');",
     )
     .unwrap();
-    assert_eq!(composer_listing_rows(&conn), vec![(LISTED_SURVIVOR.to_string(), 1, 0, 0)]);
+    assert_eq!(composer_listing_rows(&apply), vec![(LISTED_SURVIVOR.to_string(), 1, 0, 0)]);
+    apply.commit().unwrap();
 }
 
 #[tokio::test]
