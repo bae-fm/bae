@@ -515,9 +515,11 @@
             placement: .failed,
             metadataSummary: nil,
             importStatus: .error(
+                // As the import's decode check words a truncated track.
                 error: .Diagnostic(
                     category: .import,
-                    detail: "track 7 is truncated"
+                    detail:
+                        "decode verification failed for 1 track(s): Seventh Track (track 7): decoded 2116800 of 10584000 expected frames (truncated body)"
                 )
             ),
             live: triageLive(
