@@ -118,7 +118,6 @@ fn test_ready_signal_on_finish() {
 #[test]
 fn push_samples_blocking_parks_until_consumer_drains() {
     use std::thread;
-    use std::time::Duration;
 
     // Ring capacity (8) is far below the total pushed (40), so the producer
     // must park on full at least once.
@@ -131,9 +130,10 @@ fn push_samples_blocking_parks_until_consumer_drains() {
         let mut got: Vec<f32> = Vec::new();
         while got.len() < total {
             let mut buf = [0.0f32; 4];
+            let seen = source.pushes();
             let n = source.pull_samples(&mut buf);
             if n == 0 {
-                thread::sleep(Duration::from_millis(1));
+                source.wait_for_push_after(seen);
                 continue;
             }
             got.extend_from_slice(&buf[..n]);
@@ -156,14 +156,13 @@ fn push_samples_blocking_parks_until_consumer_drains() {
 #[test]
 fn push_samples_blocking_returns_on_cancel_mid_push() {
     use std::thread;
-    use std::time::Duration;
 
     let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 8);
     let samples = vec![1.0f32; 100];
 
     // Nobody drains, so the producer fills the ring and parks; cancel wakes it.
     let canceller = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(30));
+        source.wait_until_producer_parked();
         source.cancel();
     });
 

@@ -23,10 +23,13 @@ async fn a_serve_future_that_panics_is_reported_and_leaves_the_server_in_error()
             Ok::<(), std::io::Error>(())
         })
         .await;
-    // The serve task runs once this test yields to it.
+    // The serve task moves the state when its future ends.
     let status = loop {
+        let ended = controller.ended.notified();
+        tokio::pin!(ended);
+        ended.as_mut().enable();
         match controller.status().await {
-            ServerStatus::Running { .. } => tokio::task::yield_now().await,
+            ServerStatus::Running { .. } => ended.await,
             status => break status,
         }
     };

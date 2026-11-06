@@ -61,13 +61,18 @@ fn pacer_leads_by_latency_then_tracks_the_clock() {
     assert_eq!(pacer.frames_sent(), 250 * u64::from(FRAMES_PER_PACKET));
 }
 
-/// A source that yields a fixed number of packets then reports nothing.
+/// A source that yields a fixed number of packets then reports nothing, and
+/// tells a test each time it is asked after that: the sender has sent every
+/// packet the source made by then.
 struct FixedSource {
     packets_left: usize,
+    drained: std::sync::mpsc::Sender<()>,
 }
 impl PcmSource for FixedSource {
     fn next_frames(&mut self, out: &mut [i16]) -> usize {
         if self.packets_left == 0 {
+            // A test that stopped listening needs no more.
+            self.drained.send(()).ok();
             return 0;
         }
         self.packets_left -= 1;
@@ -149,15 +154,18 @@ fn a_sender_that_panics_fails_the_stream_and_is_reported() {
 #[test]
 fn audio_thread_is_persistent_across_a_drained_source() {
     let stop = Arc::new(AtomicBool::new(false));
-    let (handle, control) =
-        audio_thread(&Diagnostics::noop(), Box::new(FixedSource { packets_left: 3 }), stop.clone());
+    let (drained, drained_rx) = std::sync::mpsc::channel();
+    let (handle, control) = audio_thread(
+        &Diagnostics::noop(),
+        Box::new(FixedSource { packets_left: 3, drained }),
+        stop.clone(),
+    );
 
-    // Wait for the three packets to be sent; the thread stays alive after.
-    let deadline = Instant::now() + Duration::from_secs(2);
-    while control.frames_sent() < 3 * u64::from(FRAMES_PER_PACKET) {
-        assert!(Instant::now() < deadline, "packets were not sent in time");
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    // The source is asked again once the three packets are sent; the thread
+    // stays alive after.
+    drained_rx
+        .recv_timeout(bae_util::test_channels::HANG_GUARD)
+        .expect("the sender asks the drained source again");
     assert!(!handle.is_finished(), "the thread persists past a drained source");
 
     stop.store(true, Ordering::Release);

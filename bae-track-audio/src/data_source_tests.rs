@@ -16,6 +16,8 @@ type ReadLog = Arc<Mutex<Vec<(u64, u64)>>>;
 /// only the offsets it wants served.
 struct ReadGate {
     released: Mutex<std::collections::HashSet<u64>>,
+    /// The offsets some read is waiting on.
+    waiting: Mutex<std::collections::HashSet<u64>>,
     notify: tokio::sync::Notify,
 }
 
@@ -23,11 +25,25 @@ impl ReadGate {
     fn new() -> Self {
         Self {
             released: Mutex::new(std::collections::HashSet::new()),
+            waiting: Mutex::new(std::collections::HashSet::new()),
             notify: tokio::sync::Notify::new(),
         }
     }
 
+    /// Wait until a read is waiting on `start`.
+    async fn entered(&self, start: u64) {
+        loop {
+            let notified = self.notify.notified();
+            if self.waiting.lock().unwrap().contains(&start) {
+                return;
+            }
+            notified.await;
+        }
+    }
+
     async fn wait_for(&self, start: u64) {
+        self.waiting.lock().unwrap().insert(start);
+        self.notify.notify_waiters();
         loop {
             // Arm the notification before checking so a release between the
             // check and the await isn't lost.
@@ -291,10 +307,9 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
         .await
         .expect("seek read task");
         assert_eq!(served, Some(1), "the seek target byte must be served");
-        // Let the fill settle so its read-ahead fetches are recorded.
-        for _ in 0..100 {
-            tokio::task::yield_now().await;
-        }
+        // The dropped reader woke the fill; once it settles, its read-ahead
+        // fetches are recorded.
+        buffer.wait_until_fill_settled().await;
         buffer.cancel();
         let log = read_log.lock().unwrap().clone();
         log
@@ -425,16 +440,10 @@ async fn a_ceiling_fetches_the_whole_track_then_stops() {
     assert!(reader.seek(0));
     let _read_log = start_recording_fill(contents, None, &buffer);
 
-    // The reader sits at 0 (held, not draining); the fill should buffer up to
-    // the ceiling. Yield to let the (current-thread) fill run.
-    let mut reached = false;
-    for _ in 0..2000 {
-        if buffer.is_buffered(ceiling - 1) {
-            reached = true;
-            break;
-        }
-        tokio::task::yield_now().await;
-    }
+    // The reader sits at 0 (held, not draining); the fill buffers up to the
+    // ceiling and settles there.
+    buffer.wait_until_fill_settled().await;
+    let reached = buffer.is_buffered(ceiling - 1);
     assert!(
         reached,
         "the fill must buffer up to the track ceiling ({}W), not stop at the \
@@ -525,9 +534,7 @@ async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
 
     // Let the spawned fill run to its park. With no reader it fetches nothing
     // and holds only a weak ref, leaving the test as the buffer's sole owner.
-    for _ in 0..20 {
-        tokio::task::yield_now().await;
-    }
+    buffer.wait_until_fill_settled().await;
     assert_eq!(
         Arc::strong_count(&buffer),
         1,
@@ -662,9 +669,7 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
             Err::<Vec<u8>, _>(TrackReadError::internal("late read failure"))
         }
     }));
-    for _ in 0..20 {
-        tokio::task::yield_now().await;
-    }
+    gate.entered(0).await;
 
     buffer.cancel();
     gate.release(0);

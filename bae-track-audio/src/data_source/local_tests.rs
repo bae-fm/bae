@@ -13,7 +13,6 @@ use bae_audio::{
 use bae_util::test_channels::HANG_GUARD;
 use std::io::Write;
 use std::sync::Arc;
-use std::time::Duration;
 use tempfile::NamedTempFile;
 use tokio::time::timeout;
 
@@ -277,30 +276,15 @@ async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
     let path = dir.path().join("track.flac");
     std::fs::write(&path, vec![7u8; 1024]).unwrap();
     let buffer = create_sparse_buffer(1024);
-    Box::new(LocalReader::new(&path, bae_diagnostics::Diagnostics::noop()))
+    let fill = Box::new(LocalReader::new(&path, bae_diagnostics::Diagnostics::noop()))
         .start_reading(buffer.clone(), Box::new(|_| {}));
-    wait_for_open_files(dir.path(), 1).await;
+    // The fill opens the file before it fills, and parks with nothing demanded.
+    buffer.wait_until_fill_settled().await;
+    assert_eq!(coven::open_files_under(dir.path()).len(), 1, "the parked fill holds its file");
 
     buffer.cancel();
 
-    wait_for_open_files(dir.path(), 0).await;
+    fill.ended().await;
+    coven::assert_no_open_files_under(dir.path());
     drop(buffer);
-}
-
-/// Wait until exactly `count` files under `dir` are open, failing after a
-/// few seconds with the files still open.
-async fn wait_for_open_files(dir: &std::path::Path, count: usize) {
-    let deadline = std::time::Instant::now() + Duration::from_secs(5);
-    loop {
-        let open = coven::open_files_under(dir);
-        if open.len() == count {
-            return;
-        }
-        assert!(
-            std::time::Instant::now() < deadline,
-            "expected {count} open files under {}, found {open:?}",
-            dir.display()
-        );
-        tokio::time::sleep(Duration::from_millis(5)).await;
-    }
 }

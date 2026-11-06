@@ -1,20 +1,12 @@
 use super::*;
 use std::sync::{Arc, Mutex};
-use tokio::task::yield_now;
 
 const INTERVAL: Duration = Duration::from_secs(1);
 
-fn queued(limiter: &RateLimiter, priority: CallPriority) -> usize {
-    limiter.queued_count(priority)
-}
-
 /// Spawned waiters reach the queue only when they run, so a test that cares
-/// about arrival order has to let them get there first. Yielding keeps a
-/// task runnable, so the paused clock does not advance while we wait.
+/// about arrival order waits for them to get there first.
 async fn queued_reaches(limiter: &RateLimiter, priority: CallPriority, count: usize) {
-    while queued(limiter, priority) < count {
-        yield_now().await;
-    }
+    limiter.queued_tickets_reaching(priority, count).await;
 }
 
 fn spawn_wait(limiter: &Arc<RateLimiter>, priority: CallPriority) -> tokio::task::JoinHandle<()> {

@@ -37,6 +37,8 @@ ffmpeg-sys-next = { workspace = true, features = ["avcodec", "avformat", "swresa
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tempfile = { workspace = true }
+# The hang guard the buffer's and the stream's test waits are bounded by.
+bae-util = { workspace = true, features = ["test-utils"] }
 
 [features]
 default = []
@@ -49,7 +51,7 @@ test-utils = []
 # a buffer's readers read and what it holds, and a non-blocking push into a
 # track's stream. It records as it runs, so only bae-library's dev-dependency turns
 # it on, never a build that ships or a debug app.
-test-instrumentation = []
+test-instrumentation = ["bae-util/test-utils"]
 
 [lints]
 workspace = true

@@ -65,7 +65,24 @@ enum WorkError {
 }
 
 /// Each outcome the worker reported: the release, and its failure.
-type Outcomes = Arc<Mutex<Vec<(String, Result<(), String>)>>>;
+#[derive(Default)]
+struct OutcomeLog {
+    outcomes: Mutex<Vec<(String, Result<(), String>)>>,
+    recorded: tokio::sync::Notify,
+}
+
+impl OutcomeLog {
+    fn push(&self, release_id: &str, result: Result<(), String>) {
+        self.outcomes.lock().unwrap().push((release_id.to_string(), result));
+        self.recorded.notify_waiters();
+    }
+
+    fn is_empty(&self) -> bool {
+        self.outcomes.lock().unwrap().is_empty()
+    }
+}
+
+type Outcomes = Arc<OutcomeLog>;
 
 /// Run the worker over `queue` with `start`, recording each outcome it
 /// reports.
@@ -78,7 +95,7 @@ where
     StartFut: Future<Output = Result<(u8, RunningOp<Fut>), WorkError>> + Send,
     Fut: Future<Output = Result<(), WorkError>> + Send,
 {
-    let done = Arc::new(Mutex::new(Vec::new()));
+    let done: Outcomes = Arc::default();
     let worker_queue = queue.clone();
     let recorded = done.clone();
     let task = tokio::spawn(async move {
@@ -87,10 +104,7 @@ where
                 "Test",
                 start,
                 move |release_id, result| {
-                    recorded.lock().unwrap().push((
-                        release_id.to_string(),
-                        result.map_err(|error: &WorkError| error.to_string()),
-                    ))
+                    recorded.push(release_id, result.map_err(|error: &WorkError| error.to_string()))
                 },
                 |label, error| panic!("{label}: the queue's table failed: {error}"),
                 |failed| panic!("an entry's work panicked: {failed}"),
@@ -104,15 +118,20 @@ where
 /// entry's outcome after the entry has left the table, so the table emptying
 /// does not yet say the outcome is in.
 async fn reported(done: &Outcomes, count: usize) -> Vec<(String, Result<(), String>)> {
-    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
+            // Register for the next outcome before reading, so one that lands
+            // between the read and the wait is not missed.
+            let recorded = done.recorded.notified();
+            tokio::pin!(recorded);
+            recorded.as_mut().enable();
             {
-                let done = done.lock().unwrap();
-                if done.len() >= count {
-                    return done.clone();
+                let outcomes = done.outcomes.lock().unwrap();
+                if outcomes.len() >= count {
+                    return outcomes.clone();
                 }
             }
-            tokio::task::yield_now().await;
+            recorded.await;
         }
     })
     .await
@@ -196,10 +215,7 @@ async fn an_entry_that_panics_fails_and_the_next_one_runs() {
                     ))
                 },
                 move |release_id, result| {
-                    recorded.lock().unwrap().push((
-                        release_id.to_string(),
-                        result.map_err(|error: &WorkError| error.to_string()),
-                    ))
+                    recorded.push(release_id, result.map_err(|error: &WorkError| error.to_string()))
                 },
                 |label, error| panic!("{label}: the queue's table failed: {error}"),
                 move |failed| {
@@ -231,7 +247,8 @@ async fn an_entry_that_panics_fails_and_the_next_one_runs() {
 async fn a_cancel_before_the_start_aborts_the_work() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let work = Arc::new(Mutex::new(None));
+    let (work_tx, work_rx) = tokio::sync::oneshot::channel();
+    let work = Arc::new(Mutex::new(Some(work_tx)));
     let canceller = queue.clone();
     let spawned_work = work.clone();
     let (task, done) = worker(&queue, move |entry| {
@@ -241,21 +258,24 @@ async fn a_cancel_before_the_start_aborts_the_work() {
             canceller.cancel(&entry.release_id).await.unwrap();
             let pending = tokio::spawn(std::future::pending::<()>());
             let abort = pending.abort_handle();
-            *spawned_work.lock().unwrap() = Some(abort.clone());
+            if let Some(work) = spawned_work.lock().unwrap().take() {
+                work.send(pending).expect("the test waits for the work");
+            }
             Ok((0, RunningOp::new(abort, async { Ok(()) })))
         }
     });
 
-    loop {
-        let finished = work.lock().unwrap().as_ref().is_some_and(|abort| abort.is_finished());
-        if finished {
-            break;
-        }
-        tokio::task::yield_now().await;
-    }
+    let pending = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, work_rx)
+        .await
+        .expect("the worker starts the work")
+        .expect("the start hands over the work");
+    let ended = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, pending)
+        .await
+        .expect("the cancelled start aborts the work just spawned");
+    assert!(ended.unwrap_err().is_cancelled());
     task.abort();
     assert!(phases(&queue).await.is_empty());
-    assert!(done.lock().unwrap().is_empty(), "a cancel is not an outcome");
+    assert!(done.is_empty(), "a cancel is not an outcome");
 }
 
 /// A cancel while the work runs aborts it; the entry is gone, its progress
@@ -281,7 +301,7 @@ async fn a_cancel_while_running_aborts_the_work_and_is_no_failure() {
     queue.enqueue_all(vec![entry(RELEASE_B)]).await.unwrap();
     transfers.until(|transfers| transfers.contains_key(RELEASE_B)).await.unwrap();
     task.abort();
-    assert!(done.lock().unwrap().is_empty(), "a cancel is not an outcome");
+    assert!(done.is_empty(), "a cancel is not an outcome");
 }
 
 /// Progress for the running entry is published once it has started; for
@@ -313,9 +333,10 @@ async fn a_paused_queue_starts_nothing_until_it_resumes() {
     queue.set_paused(true).await.unwrap();
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
     let (task, done) = worker(&queue, |_entry| async { Ok((0, spawned(tokio::spawn(async {})))) });
-    for _ in 0..10 {
-        tokio::task::yield_now().await;
-    }
+    // The worker read the paused queue as holding nothing to start and parked.
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, queue.parked(1))
+        .await
+        .expect("the worker parks on the paused queue");
     assert_eq!(phases(&queue).await, vec![(RELEASE_A.to_string(), ReleaseQueueState::Queued)]);
 
     queue.set_paused(false).await.unwrap();

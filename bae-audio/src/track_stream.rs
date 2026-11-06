@@ -32,9 +32,29 @@ pub struct StreamingState {
     /// Set by the decoder thread on its first push; the audio callback reads it
     /// to unpark a decoder parked on a full ring.
     decoder_thread: OnceLock<std::thread::Thread>,
+    /// What the producer has done so far, for a test to wait on.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    activity: std::sync::Mutex<ProducerActivity>,
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    activity_changed: std::sync::Condvar,
+}
+
+/// How often the producer pushed samples and how often it found the ring full
+/// and parked.
+#[cfg(any(test, feature = "test-instrumentation"))]
+#[derive(Default)]
+struct ProducerActivity {
+    pushes: u64,
+    parks: u64,
 }
 
 impl StreamingState {
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    fn note(&self, change: impl FnOnce(&mut ProducerActivity)) {
+        change(&mut self.activity.lock().unwrap());
+        self.activity_changed.notify_all();
+    }
+
     fn new(sample_rate: u32, channels: u32) -> Self {
         Self {
             sample_rate,
@@ -45,6 +65,10 @@ impl StreamingState {
             decode_error_count: AtomicU32::new(0),
             samples_decoded: AtomicU64::new(0),
             decoder_thread: OnceLock::new(),
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            activity: std::sync::Mutex::default(),
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            activity_changed: std::sync::Condvar::new(),
         }
     }
 
@@ -149,10 +173,14 @@ impl TrackSink {
                 // Full ring: park until the audio callback drains. The timeout is
                 // the safety net for null audio devices (CI), whose callback may
                 // never fire to unpark us.
+                #[cfg(any(test, feature = "test-instrumentation"))]
+                self.state.note(|activity| activity.parks += 1);
                 std::thread::park_timeout(std::time::Duration::from_millis(100));
                 continue;
             }
 
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            self.state.note(|activity| activity.pushes += 1);
             offset += n;
             self.samples_pushed += n;
             self.state.add_samples_decoded(n as u64);
@@ -267,6 +295,46 @@ impl TrackStream {
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn is_cancelled(&self) -> bool {
         self.state.is_cancelled()
+    }
+
+    /// Test-only: how many pushes the producer has made so far. Read it before
+    /// pulling, and hand it to [`Self::wait_for_push_after`] when the pull
+    /// found nothing.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub fn pushes(&self) -> u64 {
+        self.state.activity.lock().unwrap().pushes
+    }
+
+    /// Test-only: wait until the producer has pushed since the count `seen`.
+    /// Panics if the hang guard passes first.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub fn wait_for_push_after(&self, seen: u64) {
+        let (_activity, result) = self
+            .state
+            .activity_changed
+            .wait_timeout_while(
+                self.state.activity.lock().unwrap(),
+                bae_util::test_channels::HANG_GUARD,
+                |activity| activity.pushes <= seen,
+            )
+            .unwrap();
+        assert!(!result.timed_out(), "the producer never pushed again");
+    }
+
+    /// Test-only: wait until the producer has found the ring full and parked.
+    /// Panics if the hang guard passes first.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub fn wait_until_producer_parked(&self) {
+        let (_activity, result) = self
+            .state
+            .activity_changed
+            .wait_timeout_while(
+                self.state.activity.lock().unwrap(),
+                bae_util::test_channels::HANG_GUARD,
+                |activity| activity.parks == 0,
+            )
+            .unwrap();
+        assert!(!result.timed_out(), "the producer never parked on a full ring");
     }
 
     pub fn decode_error_count(&self) -> u32 {

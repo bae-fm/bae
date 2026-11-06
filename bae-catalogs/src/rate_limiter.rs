@@ -87,6 +87,9 @@ pub struct RateLimiter {
     /// length.
     #[cfg(any(test, feature = "test-instrumentation"))]
     joined: Notify,
+    /// Woken whenever an answer is settled, for a test to wait on a hold.
+    #[cfg(test)]
+    settled: Notify,
 }
 
 /// The bookkeeping the lock protects. Held only for the bookkeeping itself —
@@ -209,6 +212,8 @@ impl RateLimiter {
             advanced: Notify::new(),
             #[cfg(any(test, feature = "test-instrumentation"))]
             joined: Notify::new(),
+            #[cfg(test)]
+            settled: Notify::new(),
         }
     }
 
@@ -326,14 +331,11 @@ impl RateLimiter {
             }
         };
         self.advanced.notify_waiters();
+        #[cfg(test)]
+        self.settled.notify_waiters();
         if let Some(count) = unread {
             panic!("only a limiter counted over a window reads a provider's count, got {count:?}");
         }
-    }
-
-    #[cfg(test)]
-    fn queued_count(&self, priority: CallPriority) -> usize {
-        self.queued_tickets(priority).len()
     }
 
     /// The tickets waiting in `priority`'s queue, oldest first.
@@ -368,6 +370,20 @@ impl RateLimiter {
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub(crate) fn admitted_tickets(&self) -> Vec<(CallPriority, u64)> {
         self.lock().admitted.clone()
+    }
+
+    /// The instant a refusal holds every call until, once one has settled.
+    #[cfg(test)]
+    pub(crate) async fn held_until(&self) -> Instant {
+        loop {
+            let settled = self.settled.notified();
+            tokio::pin!(settled);
+            settled.as_mut().enable();
+            if let Some(until) = self.lock().held_until {
+                return until;
+            }
+            settled.await;
+        }
     }
 
     #[cfg(test)]

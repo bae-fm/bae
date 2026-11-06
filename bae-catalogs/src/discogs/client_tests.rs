@@ -441,16 +441,10 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
         client.search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive).await
     });
 
-    let opens_at = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            if let Some(at) = discogs.limiter.opens_at() {
-                return at;
-            }
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .expect("the refusal reaches the limiter");
+    let opens_at =
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, discogs.limiter.held_until())
+            .await
+            .expect("the refusal reaches the limiter");
     let seen_at = tokio::time::Instant::now();
     asked.abort();
 

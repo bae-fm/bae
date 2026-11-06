@@ -168,6 +168,9 @@ pub struct SparseStreamingBuffer {
     total_size: u64,
     /// Notifies all waiting readers when new data arrives or state changes.
     data_available: Condvar,
+    /// Woken when a `read()` parks.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    read_parked: Condvar,
     /// Wakes the async fill loop when a reader advances, seeks, drops, the
     /// buffer is cancelled, or the buffer itself is dropped. The fill parks here
     /// once every reader's read-ahead window is full and resumes when there's
@@ -189,6 +192,12 @@ pub struct SparseStreamingBuffer {
     /// from the state lock, so a reader of the ranges never waits on a
     /// decoder's read.
     held: tokio::sync::watch::Sender<Vec<Range<u64>>>,
+    /// Wakes sent to the fill, and the count it had been told of when it last
+    /// found nothing to fetch (`None` before it first does).
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    fill_wakes: AtomicU64,
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    fill_settled: tokio::sync::watch::Sender<Option<u64>>,
     /// Total bytes appended into this buffer (every fill window that landed,
     /// including a window re-fetched after a backward seek). Lets the decoder
     /// report how much was fetched from the source to reach the first audio
@@ -219,10 +228,16 @@ impl SparseStreamingBuffer {
             }),
             total_size,
             data_available: Condvar::new(),
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            read_parked: Condvar::new(),
             fill_wake: Arc::new(Notify::new()),
             next_reader_id: AtomicU64::new(0),
             id: NEXT_BUFFER_ID.fetch_add(1, Ordering::Relaxed),
             held: tokio::sync::watch::Sender::new(Vec::new()),
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            fill_wakes: AtomicU64::new(0),
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            fill_settled: tokio::sync::watch::Sender::new(None),
             bytes_fetched: AtomicU64::new(0),
             #[cfg(any(test, feature = "test-instrumentation"))]
             read_log: Mutex::new(Vec::new()),
@@ -289,20 +304,32 @@ impl SparseStreamingBuffer {
     }
 
     /// Test-only: return once `count` `read()` calls are parked waiting for
-    /// bytes. A read parks in the same step that releases the lock it
-    /// published its demand under, so whatever the caller does next reaches a
-    /// blocked reader. Panics after 10s.
+    /// bytes; a read parks in the step that releases the lock it published
+    /// its demand under. Panics if the hang guard passes first.
     #[cfg(any(test, feature = "test-instrumentation"))]
     pub fn wait_until_parked(&self, count: usize) {
-        let deadline = Instant::now() + std::time::Duration::from_secs(10);
-        loop {
-            let parked = self.state().parked_reads;
-            if parked >= count {
-                return;
-            }
-            assert!(Instant::now() < deadline, "{count} reads never parked; {parked} did");
-            std::thread::sleep(std::time::Duration::from_millis(1));
-        }
+        let (inner, result) = self
+            .read_parked
+            .wait_timeout_while(self.state(), bae_util::test_channels::HANG_GUARD, |inner| {
+                inner.parked_reads < count
+            })
+            .unwrap_or_else(|poisoned| {
+                let (inner, result) = poisoned.into_inner();
+                (self.recovered(inner), result)
+            });
+        assert!(!result.timed_out(), "{count} reads never parked; {} did", inner.parked_reads);
+    }
+
+    /// Test-only: wait until the fill has found nothing to fetch, having been
+    /// told of every wake sent before this call.
+    #[cfg(any(test, feature = "test-instrumentation"))]
+    pub async fn wait_until_fill_settled(&self) {
+        let wakes = self.fill_wakes.load(Ordering::SeqCst);
+        self.fill_settled
+            .subscribe()
+            .wait_for(|settled| settled.is_some_and(|settled| settled >= wakes))
+            .await
+            .expect("the buffer holds its own sender");
     }
 
     /// Create a reader with an independent read position over this buffer.
@@ -532,6 +559,8 @@ impl SparseStreamingBuffer {
     /// stores a permit when the fill isn't currently parked, so a wake during the
     /// fill's check isn't lost.
     pub fn wake_fill(&self) {
+        #[cfg(any(test, feature = "test-instrumentation"))]
+        self.fill_wakes.fetch_add(1, Ordering::SeqCst);
         self.fill_wake.notify_one();
     }
 
@@ -589,11 +618,17 @@ impl SparseStreamingBuffer {
                 return Ok(());
             }
 
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            let wakes_seen = buffer.fill_wakes.load(Ordering::SeqCst);
             let windows = buffer.demand_windows();
             if let Some(floor) = windows.first() {
                 buffer.evict(head..floor.pos.saturating_sub(window));
             }
             let gap = pick_window_gap(&buffer, &windows, total, window);
+            #[cfg(any(test, feature = "test-instrumentation"))]
+            if gap.is_none() {
+                buffer.fill_settled.send_replace(Some(wakes_seen));
+            }
             drop(buffer);
 
             let Some((gap_start, gap_end)) = gap else {
@@ -907,6 +942,7 @@ impl BufferReader {
             #[cfg(any(test, feature = "test-instrumentation"))]
             {
                 inner.parked_reads += 1;
+                self.buffer.read_parked.notify_all();
             }
             inner = self
                 .buffer

@@ -54,6 +54,10 @@ struct Shared<Progress> {
     running: Mutex<Option<Running<Progress>>>,
     /// The active entry's progress, by release, once it has started.
     transfers: crate::ReleaseTransfers<Progress>,
+    /// How many times the worker found nothing to start and parked, for a
+    /// test to wait on.
+    #[cfg(test)]
+    parks: tokio::sync::watch::Sender<u64>,
 }
 
 pub struct QueuedReleases<Extra, Progress> {
@@ -65,6 +69,20 @@ pub struct QueuedReleases<Extra, Progress> {
 impl<Extra, Progress> Clone for QueuedReleases<Extra, Progress> {
     fn clone(&self) -> Self {
         Self { store: self.store.clone(), shared: self.shared.clone(), _extra: PhantomData }
+    }
+}
+
+#[cfg(test)]
+impl<Extra, Progress> QueuedReleases<Extra, Progress> {
+    /// Wait until the worker has found nothing to start and parked, `count`
+    /// times in all.
+    pub(crate) async fn parked(&self, count: u64) {
+        self.shared
+            .parks
+            .subscribe()
+            .wait_for(|parks| *parks >= count)
+            .await
+            .expect("the queue's sender lives as long as the queue");
     }
 }
 
@@ -80,6 +98,8 @@ where
                 wake: Notify::new(),
                 running: Mutex::new(None),
                 transfers: crate::ReleaseTransfers::new(),
+                #[cfg(test)]
+                parks: tokio::sync::watch::channel(0).0,
             }),
             _extra: PhantomData,
         }
@@ -330,6 +350,8 @@ where
             {
                 Ok(Some(entry)) => entry,
                 Ok(None) => {
+                    #[cfg(test)]
+                    self.shared.parks.send_modify(|parks| *parks += 1);
                     self.shared.wake.notified().await;
                     continue;
                 }

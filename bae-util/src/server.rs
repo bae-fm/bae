@@ -95,6 +95,9 @@ pub struct ServerController<I> {
     name: &'static str,
     inner: Arc<Mutex<State<I>>>,
     bug: ReportBug,
+    /// Woken when a serve future's ending moves the state, for a test.
+    #[cfg(test)]
+    ended: Arc<tokio::sync::Notify>,
 }
 
 impl<I> ServerController<I>
@@ -102,7 +105,13 @@ where
     I: Clone + PartialEq + Send + 'static,
 {
     pub fn new(name: &'static str, bug: ReportBug) -> Self {
-        Self { name, inner: Arc::new(Mutex::new(State::Disabled)), bug }
+        Self {
+            name,
+            inner: Arc::new(Mutex::new(State::Disabled)),
+            bug,
+            #[cfg(test)]
+            ended: Arc::default(),
+        }
     }
 
     pub async fn status(&self) -> ServerStatus {
@@ -186,6 +195,8 @@ where
         let bug = self.bug.clone();
         let task_state = self.inner.clone();
         let task_identity = identity.clone();
+        #[cfg(test)]
+        let ended = self.ended.clone();
         let task = tokio::spawn(async move {
             let error = match caught(name, serving).await {
                 Ok(Ok(())) => return,
@@ -206,6 +217,8 @@ where
                     *state = State::Error { error };
                 }
             }
+            #[cfg(test)]
+            ended.notify_waiters();
         });
 
         let status = ServerStatus::Running { url: url.clone() };

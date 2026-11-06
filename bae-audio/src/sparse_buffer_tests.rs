@@ -1,7 +1,6 @@
 use super::*;
 use crate::test_source::{io_kind, TestReadError};
 use std::thread;
-use std::time::Duration;
 
 #[test]
 fn test_append_and_read_single_range() {
@@ -234,7 +233,7 @@ fn token_cancel_only_affects_one_reader() {
     cancel1.store(true, std::sync::atomic::Ordering::Release);
     buffer.wake_readers();
 
-    assert_eq!(join_within(handle, Duration::from_millis(500)), Some(true));
+    assert_eq!(join_within(handle), Some(true));
 
     buffer.append_at(0, b"hello");
     let mut buf = [0u8; 5];
@@ -265,7 +264,7 @@ fn a_failed_buffer_hands_readers_the_read_error_and_the_first_stop_wins() {
     )));
     assert!(buffer.fail(full), "the first stop is taken");
 
-    let seen = join_within(handle, Duration::from_secs(5))
+    let seen = join_within(handle)
         .expect("a failure unblocks the reader")
         .expect("the reader saw the failure");
     assert!(seen.contains("/volume/track.flac"), "the reader gets the read's own error: {seen}");
@@ -304,19 +303,11 @@ fn test_seek_returns_false_after_cancel() {
 }
 
 /// Join `handle`, returning its value, or `None` if it hasn't finished within
-/// `timeout` (i.e. it's stuck) — lets a test fail instead of hanging.
-fn join_within<T: Send + 'static>(
-    handle: std::thread::JoinHandle<T>,
-    timeout: Duration,
-) -> Option<T> {
-    let deadline = std::time::Instant::now() + timeout;
-    while std::time::Instant::now() < deadline {
-        if handle.is_finished() {
-            return handle.join().ok();
-        }
-        thread::sleep(Duration::from_millis(10));
-    }
-    None
+/// the hang guard (i.e. it's stuck) — lets a test fail instead of hanging.
+fn join_within<T: Send + 'static>(handle: std::thread::JoinHandle<T>) -> Option<T> {
+    let (done, joined) = std::sync::mpsc::channel();
+    thread::spawn(move || done.send(handle.join().ok()).ok());
+    joined.recv_timeout(bae_util::test_channels::HANG_GUARD).ok().flatten()
 }
 
 #[test]
@@ -469,7 +460,7 @@ fn blocked_reader_publishes_demand_at_its_blocked_position() {
 
     // Satisfy the demand and let the reader finish.
     buffer.append_at(500, b"late");
-    assert_eq!(join_within(handle, Duration::from_secs(5)), Some(Some(4)));
+    assert_eq!(join_within(handle), Some(Some(4)));
 }
 
 #[test]
