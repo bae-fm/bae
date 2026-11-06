@@ -512,6 +512,12 @@ fn composer_browse_subscription_reconfigures_bounded_windows() {
                     && test_records(db).find_artist_by_id(COMPOSER_ID).await.unwrap().is_some()
             })
             .await;
+        // A's image writes below leave their files on A alone, and their
+        // versions name that device (`file@device`) until sync uploads the
+        // file, which moves the version again. Stopping sync keeps each
+        // version the one its write returned, so the events wait on writes
+        // alone.
+        devices.pause().await;
 
         requests.set([second_window].into_iter().collect::<BTreeSet<_>>()).unwrap();
         let hidden_other_composer =
