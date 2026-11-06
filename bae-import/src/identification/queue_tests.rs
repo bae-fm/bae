@@ -251,11 +251,9 @@ async fn an_open_candidate_runs_first_and_its_lookups_go_ahead() {
         .await
         .expect("the queue takes the pane's candidate");
 
-    assert_eq!(
-        fixture.identification_status(opened).await,
-        Some(crate::IdentificationStatus::Running),
-        "the open candidate takes the freed slot"
-    );
+    // The open candidate takes the freed slot: its run marks it running once
+    // it starts, after the queue has started it.
+    fixture.await_identification_status(opened, crate::IdentificationStatus::Running).await;
     assert_eq!(
         fixture.identification_status(first_waiting).await,
         Some(crate::IdentificationStatus::Queued),
