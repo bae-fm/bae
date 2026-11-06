@@ -32,23 +32,23 @@ PLANTED = {
     ),
     # The app's own code may name the person's keychain.
     "planted/src/lib.rs": """
-pub enum Keychain { System, InMemory }
+pub struct Coven; impl Coven { pub fn new() -> Self { Coven } pub fn in_memory() -> Self { Coven } }
 pub struct BridgeHost;
 impl BridgeHost { pub fn new() -> Self { BridgeHost } }
 
-pub fn app_keychain() -> Keychain { Keychain::System }
+pub fn app_coven() -> Coven { Coven::new() }
 
 #[cfg(any(test, debug_assertions))]
 pub fn debug_host() -> BridgeHost { BridgeHost::new() }
 
 #[cfg(not(test))]
-pub fn release_keychain() -> Keychain { Keychain::System }
+pub fn release_coven() -> Coven { Coven::new() }
 
-pub fn keychain(test: bool) -> Keychain {
+pub fn coven(test: bool) -> Coven {
     match test {
         #[cfg(any(test, feature = "test-utils"))]
-        true => Keychain::System,
-        _ => Keychain::InMemory,
+        true => Coven::new(),
+        _ => Coven::in_memory(),
     }
 }
 
@@ -59,10 +59,10 @@ pub fn test_host<A, B>() -> BridgeHost {
 
 #[cfg(test)]
 mod inline_tests {
-    use super::Keychain::{InMemory, System};
+    use dirs::{data_dir, home_dir};
     fn named_in_a_comment() {
-        // Keychain::System
-        let _ = "Keychain::System";
+        // Coven::new
+        let _ = "Coven::new";
     }
 }
 
@@ -73,14 +73,14 @@ mod child;
 mod tests;
 """,
     "planted/src/child.rs": """
-pub fn child_keychain() -> crate::Keychain { crate::Keychain::System }
+pub fn child_coven() -> crate::Coven { crate::Coven::new() }
 
 #[cfg(test)]
 mod grandchild;
 
 mod inline {
     #![cfg(test)]
-    fn reaches() { let _ = crate::Keychain::System; }
+    fn reaches() { let _ = crate::Coven::new(); }
 }
 """,
     "planted/src/child/grandchild.rs": """
@@ -89,19 +89,19 @@ fn reaches() { let _ = crate::BridgeHost::new(); }
     "planted/src/lib_tests.rs": """
 mod nested;
 include!("lib_tests/included.rs");
-fn reaches() { let _ = crate::Keychain::System; }
+fn reaches() { let _ = crate::Coven::new(); }
 """,
     # A file `#[path]` loads declares its modules as siblings, as mod.rs does.
     "planted/src/nested.rs": """
 fn reaches() { let _ = crate::BridgeHost::new(); }
 """,
     "planted/src/lib_tests/included.rs": """
-fn included() { let _ = crate::Keychain::System; }
+fn included() { let _ = crate::Coven::new(); }
 """,
     # A target's root declares its modules as siblings, whatever its name.
     "planted/tests/integration.rs": """
 #[test]
-fn reaches() { let _ = planted::Keychain::System; }
+fn reaches() { let _ = planted::Coven::new(); }
 mod support;
 """,
     "planted/tests/support.rs": """
@@ -109,11 +109,11 @@ pub fn reaches() { let _ = planted::BridgeHost::new(); }
 """,
     "planted/benches/cost.rs": """
 fn main() { let _ = planted::BridgeHost::new(); }
-fn store(layout: Layout) { let _ = coven::Coven::builder(layout); }
+fn store(dir: PathBuf) { let _ = coven::Coven::new(dir, "bae", bugs()); }
 fn home() { let _ = dirs::home_dir(); }
 """,
     "planted/examples/probe.rs": """
-fn main() { let _ = planted::Keychain::System; }
+fn main() { let _ = planted::Coven::new(); }
 """,
     # The one example allowed to read the person's keychain and home, by its
     # path in bae; another example in its crate is not.
@@ -122,7 +122,7 @@ fn main() { let _ = planted::Keychain::System; }
     ),
     "bae-library/src/lib.rs": "",
     "bae-library/examples/restore_code.rs": """
-fn main() { let home = dirs::home_dir(); let _ = coven::Coven::builder(layout(home)); }
+fn main() { let home = dirs::home_dir(); let _ = coven::Coven::new(dir(home), "bae", bugs()); }
 """,
     "bae-library/examples/sync_bench.rs": """
 fn main() { let _ = dirs::home_dir(); }
@@ -188,18 +188,18 @@ class TestKeychainCheckTests(unittest.TestCase):
                 [
                     "bae-library/examples/sync_bench.rs:2: dirs::home_dir",
                     "planted/benches/cost.rs:2: BridgeHost::new",
-                    "planted/benches/cost.rs:3: Coven::builder",
+                    "planted/benches/cost.rs:3: Coven::new",
                     "planted/benches/cost.rs:4: dirs::home_dir",
-                    "planted/examples/probe.rs:2: Keychain::System",
-                    "planted/src/child.rs:9: Keychain::System",
+                    "planted/examples/probe.rs:2: Coven::new",
+                    "planted/src/child.rs:9: Coven::new",
                     "planted/src/child/grandchild.rs:2: BridgeHost::new",
-                    "planted/src/lib.rs:17: Keychain::System",
+                    "planted/src/lib.rs:17: Coven::new",
                     "planted/src/lib.rs:24: BridgeHost::new",
-                    "planted/src/lib.rs:29: Keychain::System",
-                    "planted/src/lib_tests.rs:4: Keychain::System",
-                    "planted/src/lib_tests/included.rs:2: Keychain::System",
+                    "planted/src/lib.rs:29: dirs::home_dir",
+                    "planted/src/lib_tests.rs:4: Coven::new",
+                    "planted/src/lib_tests/included.rs:2: Coven::new",
                     "planted/src/nested.rs:2: BridgeHost::new",
-                    "planted/tests/integration.rs:3: Keychain::System",
+                    "planted/tests/integration.rs:3: Coven::new",
                     "planted/tests/support.rs:2: BridgeHost::new",
                     "android/app/src/test/java/HostTest.kt:1: BridgeHost(...)",
                     "android/app/src/testFull/java/FullTest.kt:1: BridgeHost(...)",

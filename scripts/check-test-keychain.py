@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Refuse test code that reaches the person's own keychain or bae directory.
 
-`Keychain::System` keeps coven's keys, credentials and saved restore codes in
-the OS keychain: the person's login keychain, iCloud Keychain (which reaches
-every device on their Apple account) or their phone's Block Store.
-`BridgeHost::new` is the host the apps start over it, and `Coven::builder`
-opens a store over it without bae's `Keychain`. A test, a bench, an example
-or a test helper keeps its keys in an in-memory keychain instead
-(`Keychain::in_memory()`, `BridgeHost::with_test_keyring`,
-`TestCoven::builder`). `dirs::home_dir` is the person's own home, whose
+`Coven::new` builds coven's installation over the OS keychain, where it keeps
+keys, credentials and saved restore codes: the person's login keychain,
+iCloud Keychain (which reaches every device on their Apple account) or their
+phone's Block Store. `BridgeHost::new` is the host the apps start over it. A
+test, a bench, an example or a test helper keeps its keys in an in-memory
+keychain instead (`Coven::in_memory`, `BridgeHost::with_test_keyring`). `dirs::home_dir` is the person's own home, whose
 `~/.bae` holds their libraries; test code puts its bae directory under a
 temporary one. This check refuses each of those names in test code:
 
@@ -43,9 +41,8 @@ from source_tokens import Token, tokenize
 # The Rust names that reach the person's keychain or home: two tokens around
 # `::`.
 RUST_NAMES = {
-    ("Keychain", "System"),
+    ("Coven", "new"),
     ("BridgeHost", "new"),
-    ("Coven", "builder"),
     ("dirs", "home_dir"),
 }
 # Test code allowed to name them. restore_code is a tool the person runs, when
@@ -74,7 +71,7 @@ def listed_files(root: Path) -> list[str]:
 
 def rust_uses(tokens: list[Token]) -> list[tuple[int, str]]:
     """Each use of a name in `RUST_NAMES`: its first token's index, and the
-    name. A use list (`Keychain::{InMemory, System}`) names one too."""
+    name. A use list (`dirs::{data_dir, home_dir}`) names one too."""
     uses = []
     for index in range(len(tokens) - 2):
         if tokens[index + 1].text != "::":
@@ -224,9 +221,9 @@ def main() -> int:
     if violations:
         print(
             "Test code keeps its keys in an in-memory keychain "
-            "(Keychain::in_memory(), BridgeHost::with_test_keyring, "
-            "TestCoven::builder) and its bae directory under a temporary "
-            "home, never the person's own keychain or home.",
+            "(Coven::in_memory, BridgeHost::with_test_keyring) and its bae "
+            "directory under a temporary home, never the person's own "
+            "keychain or home.",
             file=sys.stderr,
         )
     return 1 if violations else 0
