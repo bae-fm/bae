@@ -14,6 +14,8 @@ internal abstract class EditionFakeAppHandle : OpenLibraryHandle {
         name: String,
     ): BridgeStorageFolder = unfaked("createOnedriveFolder")
 
+    override suspend fun createDropboxSharedFolder(name: String): BridgeStorageFolder = unfaked("createDropboxSharedFolder")
+
     override suspend fun dropboxSharedFolders(): List<BridgeStorageFolder> = unfaked("dropboxSharedFolders")
 
     override suspend fun onedriveFolders(parent: BridgeStorageLocation): List<BridgeStorageFolder> = unfaked("onedriveFolders")

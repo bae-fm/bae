@@ -4,7 +4,7 @@
 
     /// Dropbox or OneDrive setup: sign in through the browser, then choose the
     /// folder the library lives in — a Dropbox shared folder, so the household
-    /// can be invited, or any OneDrive folder, which can be made here.
+    /// can be invited, or any OneDrive folder; either can be made here.
     struct OAuthFolderSetup: View {
         let onConnected: (BridgeStorageSetup) -> Void
 
@@ -94,6 +94,20 @@
                     Button("Look again") { browser.lookAgain() }
                         .disabled(browser.isWorking)
                 }
+                Section {
+                    HStack {
+                        TextField("New folder", text: $browser.newFolderName)
+                        Button("Create") { browser.createDropboxFolder() }
+                            .disabled(!browser.canCreateFolder)
+                    }
+                    if let taken = browser.takenName {
+                        Text(
+                            "A folder named “\(taken)” is already in your Dropbox. Choose another name."
+                        )
+                        .themeText(.body)
+                        .foregroundStyle(.secondary)
+                    }
+                }
             case .oneDrive:
                 Section {
                     LabeledContent(
@@ -158,7 +172,7 @@
                 LocalizedStringResource(
                     "Making the folder…",
                     comment:
-                        "OneDrive setup, while bae makes the new folder the person named."
+                        "Dropbox or OneDrive setup, while bae makes the new folder the person named."
                 )
             }
         }

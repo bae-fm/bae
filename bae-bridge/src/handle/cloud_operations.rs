@@ -52,5 +52,8 @@ forward! {
         fn dropbox_shared_folders() -> Vec<crate::types::BridgeStorageFolder> {
             Ok(this.services.dropbox_shared_folders().await?.into_iter().map(crate::types::BridgeStorageFolder::from_core).collect())
         }
+        fn create_dropbox_shared_folder(name: String) -> crate::types::BridgeStorageFolder {
+            Ok(crate::types::BridgeStorageFolder::from_core(this.services.create_dropbox_shared_folder(&name).await?))
+        }
     }
 }

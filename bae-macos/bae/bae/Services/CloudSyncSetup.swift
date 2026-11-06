@@ -28,6 +28,8 @@
                 BridgeStorageFolder
         let dropboxSharedFolders:
             @Sendable () async throws -> [BridgeStorageFolder]
+        let createDropboxSharedFolder:
+            @Sendable (String) async throws -> BridgeStorageFolder
         #if BAE_CLOUDKIT
             /// Use the signed-in Apple account's iCloud, registering this device
             /// under its name.
@@ -54,6 +56,9 @@
                 try await handle.createOnedriveFolder(parent: $0, name: $1)
             }
             dropboxSharedFolders = { try await handle.dropboxSharedFolders() }
+            createDropboxSharedFolder = {
+                try await handle.createDropboxSharedFolder(name: $0)
+            }
             #if BAE_CLOUDKIT
                 useCloudKit = {
                     try await handle.useCloudkit(
@@ -75,6 +80,7 @@
                 operations: StorageFolderBrowser.Operations(
                     signIn: signIn,
                     dropboxSharedFolders: dropboxSharedFolders,
+                    createDropboxSharedFolder: createDropboxSharedFolder,
                     oneDriveRoot: oneDriveRoot,
                     oneDriveFolders: oneDriveFolders,
                     createOneDriveFolder: createOneDriveFolder
@@ -94,6 +100,9 @@
                     throw StubError.notImplemented
                 }
                 dropboxSharedFolders = { throw StubError.notImplemented }
+                createDropboxSharedFolder = { _ in
+                    throw StubError.notImplemented
+                }
                 #if BAE_CLOUDKIT
                     useCloudKit = { _ in throw StubError.notImplemented }
                 #endif

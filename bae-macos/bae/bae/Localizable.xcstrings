@@ -131323,7 +131323,7 @@
       }
     },
     "Making the folder…" : {
-      "comment" : "OneDrive setup, while bae makes the new folder the person named.",
+      "comment" : "Dropbox or OneDrive setup, while bae makes the new folder the person named.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -138897,6 +138897,174 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此裝置上沒有應用程式開啟資料夾的頁面。"
+          }
+        }
+      }
+    },
+    "A folder named “%@” is already in your Dropbox. Choose another name." : {
+      "comment" : "Dropbox setup, under the new folder name field, when the person named a folder that is already at the top of their Dropbox; %@ is the name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يوجد مجلد باسم «%@» في Dropbox بالفعل. اختر اسمًا آخر."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка с име „%@“ вече има във вашия Dropbox. Изберете друго име."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Složka s názvem „%@“ už ve vašem Dropboxu je. Zvolte jiný název."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der er allerede en mappe med navnet “%@” i din Dropbox. Vælg et andet navn."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In deinem Dropbox gibt es bereits einen Ordner namens „%@“. Wähle einen anderen Namen."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Υπάρχει ήδη φάκελος με το όνομα «%@» στο Dropbox σας. Επιλέξτε άλλο όνομα."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya hay una carpeta llamada «%@» en tu Dropbox. Elige otro nombre."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dropboxissasi on jo kansio nimeltä “%@”. Valitse toinen nimi."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un dossier nommé « %@ » existe déjà dans votre Dropbox. Choisissez un autre nom."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבר יש תיקייה בשם ״%@״ ב‑Dropbox שלך. בחר שם אחר."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mapa naziva „%@“ već postoji u vašem Dropboxu. Odaberite drugi naziv."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Dropboxodban már van „%@” nevű mappa. Válassz másik nevet."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nel tuo Dropbox c’è già una cartella chiamata “%@”. Scegli un altro nome."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」という名前のフォルダはすでに Dropbox にあります。別の名前を選んでください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”라는 폴더가 이미 Dropbox에 있습니다. 다른 이름을 선택하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det finnes allerede en mappe som heter «%@» i Dropbox-en din. Velg et annet navn."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er staat al een map met de naam “%@” in je Dropbox. Kies een andere naam."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder o nazwie „%@” już istnieje w Twoim Dropbox. Wybierz inną nazwę."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Já existe uma pasta chamada “%@” no seu Dropbox. Escolha outro nome."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Já existe uma pasta chamada “%@” no seu Dropbox. Escolha outro nome."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Există deja un dosar numit „%@” în Dropbox-ul tău. Alege alt nume."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priečinok s názvom „%@“ už vo vašom Dropboxe existuje. Zvoľte iný názov."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det finns redan en mapp som heter ”%@” i din Dropbox. Välj ett annat namn."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dropbox’ınızda “%@” adlı bir klasör zaten var. Başka bir ad seçin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У вашому Dropbox уже є папка «%@». Виберіть іншу назву."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的 Dropbox 中已有名为“%@”的文件夹。请换一个名称。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的 Dropbox 中已有名為「%@」的資料夾。請換一個名稱。"
           }
         }
       }

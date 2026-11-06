@@ -2783,8 +2783,11 @@ location whose marker is missing or names another library.
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the folder the library lives in. On Dropbox that is a shared folder, so
 the household can be invited to it; with none yet, bae says to share one in
-Dropbox and look again. On OneDrive it is any folder, browsed from the top,
-and the person can make a new one there. The picker moves into a folder only
+Dropbox and look again. The person can also name a new folder there: bae makes
+it at the top of their Dropbox, shares it and selects it, and a name already
+taken there is refused with a line naming it, leaving the list as it was. On
+OneDrive it is any folder, browsed from the top, and the person can make a new
+one there. The picker moves into a folder only
 once its folders have loaded; a listing that fails leaves it where it was,
 with the failure and Retry, and a top that fails to list shows only those.
 coven holds the sign-in; bae never

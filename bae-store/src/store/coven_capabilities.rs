@@ -247,6 +247,14 @@ impl Store {
         self.reported(self.inner.handle.dropbox_shared_folders().await)
     }
 
+    #[cfg(feature = "oauth-providers")]
+    pub async fn create_dropbox_shared_folder(
+        &self,
+        name: &str,
+    ) -> Result<coven::StorageFolder, coven::StorageSetupError> {
+        self.reported(self.inner.handle.create_dropbox_shared_folder(name).await)
+    }
+
     pub fn store_key_state(&self) -> Result<coven::StoreKeyState, coven::KeyError> {
         self.reported(self.inner.handle.store_key_state())
     }

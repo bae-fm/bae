@@ -6,7 +6,7 @@ private let logger = Logger.bae("StorageFolderBrowser")
 
 /// Dropbox or OneDrive setup's state: sign in, then choose the folder the
 /// library lives in — a Dropbox shared folder, so the household can be
-/// invited, or any OneDrive folder, which can be made here. The provider calls
+/// invited, or any OneDrive folder; either can be made here. The provider calls
 /// are the app's, since only an edition with OAuth providers has them.
 @MainActor
 @Observable
@@ -28,6 +28,8 @@ public final class StorageFolderBrowser {
         let signIn: @Sendable (BridgeCloudProvider) async throws -> Void
         let dropboxSharedFolders:
             @Sendable () async throws -> [BridgeStorageFolder]
+        let createDropboxSharedFolder:
+            @Sendable (String) async throws -> BridgeStorageFolder
         let oneDriveRoot: @Sendable () async throws -> BridgeStorageFolder
         let oneDriveFolders:
             @Sendable (BridgeStorageLocation) async throws ->
@@ -41,6 +43,8 @@ public final class StorageFolderBrowser {
                 @escaping @Sendable (BridgeCloudProvider) async throws -> Void,
             dropboxSharedFolders:
                 @escaping @Sendable () async throws -> [BridgeStorageFolder],
+            createDropboxSharedFolder:
+                @escaping @Sendable (String) async throws -> BridgeStorageFolder,
             oneDriveRoot:
                 @escaping @Sendable () async throws -> BridgeStorageFolder,
             oneDriveFolders:
@@ -52,6 +56,7 @@ public final class StorageFolderBrowser {
         ) {
             self.signIn = signIn
             self.dropboxSharedFolders = dropboxSharedFolders
+            self.createDropboxSharedFolder = createDropboxSharedFolder
             self.oneDriveRoot = oneDriveRoot
             self.oneDriveFolders = oneDriveFolders
             self.createOneDriveFolder = createOneDriveFolder
@@ -73,7 +78,7 @@ public final class StorageFolderBrowser {
         case signingIn
         /// The provider lists the folders to choose from.
         case listing
-        /// OneDrive makes the folder the person named.
+        /// The provider makes the folder the person named.
         case makingFolder
     }
 
@@ -83,6 +88,9 @@ public final class StorageFolderBrowser {
     /// The Dropbox shared folder chosen from the list.
     public var selected: BridgeStorageFolder?
     public var newFolderName = ""
+    /// The name Dropbox refused because a folder of that name is already at
+    /// the top of the person's Dropbox; nil until it refuses one.
+    public private(set) var takenName: String?
     /// The call running; nil while none is.
     public private(set) var working: Work?
     public private(set) var error: DisplayError?
@@ -178,7 +186,39 @@ public final class StorageFolderBrowser {
         }
     }
 
-    /// Make a folder inside the one shown, and show it.
+    /// Make a Dropbox folder named `newFolderName`, shared, and select it. A
+    /// name already taken is not a failure of the call: the listing stays as
+    /// it was and `takenName` names it.
+    public func createDropboxFolder() {
+        guard let listing else {
+            preconditionFailure("folders are made only after sign-in")
+        }
+        let name = newFolderName.trimmingCharacters(in: .whitespaces)
+        let operations = operations
+        takenName = nil
+        run(.makingFolder) {
+            do {
+                let created = try await operations.createDropboxSharedFolder(
+                    name
+                )
+                self.newFolderName = ""
+                self.selected = created
+                return Listing(
+                    path: [],
+                    folders: listing.folders + [created]
+                )
+            }
+            catch BridgeError.Diagnostic(
+                category: .storage(failure: .alreadyExists),
+                detail: _
+            ) {
+                self.takenName = name
+                return listing
+            }
+        }
+    }
+
+    /// Make a folder inside the OneDrive folder shown, and show it.
     public func createFolder() {
         guard let path = listing?.path, let parent = path.last else {
             preconditionFailure("folders are made only inside a folder")

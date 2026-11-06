@@ -18,6 +18,7 @@ gated=(
   onedriveFolders:onedrive_folders
   createOnedriveFolder:create_onedrive_folder
   dropboxSharedFolders:dropbox_shared_folders
+  createDropboxSharedFolder:create_dropbox_shared_folder
   setOauthClients:set_oauth_clients
 )
 

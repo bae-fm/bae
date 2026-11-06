@@ -197,6 +197,14 @@ impl LibraryManager {
         Ok(self.store.dropbox_shared_folders().await?)
     }
 
+    #[cfg(feature = "oauth-providers")]
+    pub async fn create_dropbox_shared_folder(
+        &self,
+        name: &str,
+    ) -> Result<coven::StorageFolder, LibraryError> {
+        Ok(self.store.create_dropbox_shared_folder(name).await?)
+    }
+
     pub async fn use_cloudkit(
         &self,
         device_name: &str,
