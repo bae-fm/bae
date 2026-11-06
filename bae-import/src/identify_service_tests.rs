@@ -36,6 +36,7 @@ pub(super) async fn setup_inner_reporting_to(
     let catalogs = crate::CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         db.clone(),
+        bae_preferences::PreferencesRow::new(db.clone()),
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );

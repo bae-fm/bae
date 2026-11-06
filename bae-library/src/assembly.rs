@@ -14,6 +14,7 @@ use coven::{ClockRef, IdSourceRef};
 /// drives built from that store. `closing` ends its tasks when it closes.
 pub async fn open_library_manager(
     store: Store,
+    preferences: bae_preferences::PreferencesRow,
     records: bae_records::Records,
     people: bae_people::People,
     membership: bae_people::Membership,
@@ -34,6 +35,7 @@ pub async fn open_library_manager(
     let outputs = bae_transfers::Outputs::new(store.clone());
     LibraryManager::open(
         store,
+        preferences,
         records,
         people,
         membership,

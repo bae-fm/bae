@@ -92,6 +92,7 @@ impl TestLibrary {
         diagnostics: Diagnostics,
     ) -> Self {
         let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
+        let preferences = bae_preferences::PreferencesRow::new(store.clone());
         let records = bae_records::Records::new(store.clone(), ids.clone());
         let people = bae_people::People::new(store.clone());
         let membership = bae_people::Membership::new(store.clone());
@@ -99,12 +100,14 @@ impl TestLibrary {
         let catalogs = CatalogSessions::new(
             providers,
             store.clone(),
+            preferences.clone(),
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
         );
         let closing = CancellationToken::new();
         let manager = crate::open_library_manager(
             store.clone(),
+            preferences.clone(),
             records.clone(),
             people.clone(),
             membership.clone(),

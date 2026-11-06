@@ -465,6 +465,7 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
 #[derive(Clone)]
 pub struct LibraryManager {
     store: Store,
+    preferences: bae_preferences::PreferencesRow,
     records: bae_records::Records,
     people: bae_people::People,
     membership: bae_people::Membership,

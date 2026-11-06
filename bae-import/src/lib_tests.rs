@@ -143,6 +143,7 @@ pub(crate) mod import {
             let catalogs = CatalogSessions::new(
                 providers,
                 db.clone(),
+                bae_preferences::PreferencesRow::new(db.clone()),
                 diagnostics.clone(),
                 tokio::runtime::Handle::current(),
             );
@@ -206,12 +207,13 @@ pub(crate) mod import {
             &self,
             edit: impl FnOnce(&mut bae_preferences::Preferences) + Send + 'static,
         ) {
-            bae_preferences::edit_preferences(&self.db, move |prefs| {
-                edit(prefs);
-                Ok(())
-            })
-            .await
-            .expect("the test's preferences are stored");
+            bae_preferences::PreferencesRow::new(self.db.clone())
+                .edit(move |prefs| {
+                    edit(prefs);
+                    Ok(())
+                })
+                .await
+                .expect("the test's preferences are stored");
         }
     }
 }

@@ -770,14 +770,15 @@ async fn change_settings(builder: coven::CovenBuilder, store: coven::StoreId) {
         handle.clone(),
         std::sync::Arc::new(coven::SystemClock),
     );
-    bae_preferences::edit_preferences(&database, |preferences| {
-        preferences.max_concurrent_uploads = std::num::NonZeroU32::new(5).unwrap();
-        preferences.replay_gain_mode = bae_preferences::ReplayGainMode::Album;
-        preferences.save_presets[0].name = "Archive".into();
-        Ok(())
-    })
-    .await
-    .unwrap();
+    bae_preferences::PreferencesRow::new(database.clone())
+        .edit(|preferences| {
+            preferences.max_concurrent_uploads = std::num::NonZeroU32::new(5).unwrap();
+            preferences.replay_gain_mode = bae_preferences::ReplayGainMode::Album;
+            preferences.save_presets[0].name = "Archive".into();
+            Ok(())
+        })
+        .await
+        .unwrap();
     handle.close().await.unwrap();
 }
 

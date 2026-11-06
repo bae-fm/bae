@@ -433,12 +433,13 @@ async fn served_whole_file_then_window(
     const IMAGE_WINDOW: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
     let (library, mut service, _rx) =
         seeded_playback_service(&[(RELEASE, &[WHOLE_FILE, IMAGE_WINDOW])]).await;
-    bae_preferences::edit_preferences(&library, move |prefs| {
-        prefs.cast_transcode_format = transcode;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    bae_preferences::PreferencesRow::new(library.clone())
+        .edit(move |prefs| {
+            prefs.cast_transcode_format = transcode;
+            Ok(())
+        })
+        .await
+        .unwrap();
     seed_playable_track(&library, RELEASE, WHOLE_FILE).await;
     seed_track_window(&library, RELEASE, IMAGE_WINDOW, 441_000, Some(882_000), None).await;
     fill_test_release(&mut service, RELEASE).await;

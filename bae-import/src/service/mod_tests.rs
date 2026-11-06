@@ -126,6 +126,7 @@ pub(crate) async fn setup_import_service() -> TestService {
     let catalogs = crate::CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         db.clone(),
+        bae_preferences::PreferencesRow::new(db.clone()),
         bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );

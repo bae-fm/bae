@@ -36,7 +36,7 @@ impl LibraryManager {
             + Send
             + 'static,
     ) -> Result<(), bae_preferences::PreferencesError> {
-        bae_preferences::edit_preferences(&self.store, edit).await
+        self.preferences.edit(edit).await
     }
 
     /// This device's preferences for the library, as stored now.

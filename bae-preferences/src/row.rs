@@ -32,24 +32,37 @@ pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences, cov
     store.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
 }
 
-/// Edit the preferences in one write. `edit` is handed the stored
-/// preferences and may refuse the change, which then writes nothing; a
-/// change that leaves them as they were writes nothing either.
-pub async fn edit_preferences(
-    store: &Store,
-    edit: impl FnOnce(&mut Preferences) -> Result<(), PreferencesError> + Send + 'static,
-) -> Result<(), PreferencesError> {
-    store
-        .call(move |sql| {
-            let stored = preferences_on(sql)?;
-            let mut edited = stored.clone();
-            if let Err(refused) = edit(&mut edited) {
-                return Ok(Err(refused));
-            }
-            write_preferences_on(sql, &stored, &edited)?;
-            Ok(Ok(()))
-        })
-        .await?
+/// The owner of the `preferences` row: the one place it is written, one
+/// edit at a time.
+#[derive(Clone)]
+pub struct PreferencesRow {
+    store: Store,
+}
+
+impl PreferencesRow {
+    pub fn new(store: Store) -> Self {
+        Self { store }
+    }
+
+    /// Edit the preferences in one write. `edit` is handed the stored
+    /// preferences and may refuse the change, which then writes nothing; a
+    /// change that leaves them as they were writes nothing either.
+    pub async fn edit(
+        &self,
+        edit: impl FnOnce(&mut Preferences) -> Result<(), PreferencesError> + Send + 'static,
+    ) -> Result<(), PreferencesError> {
+        self.store
+            .call(move |sql| {
+                let stored = preferences_on(sql)?;
+                let mut edited = stored.clone();
+                if let Err(refused) = edit(&mut edited) {
+                    return Ok(Err(refused));
+                }
+                write_preferences_on(sql, &stored, &edited)?;
+                Ok(Ok(()))
+            })
+            .await?
+    }
 }
 
 /// Write `carried`, the preferences of the copy a restore replaces, over the

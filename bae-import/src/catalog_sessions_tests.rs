@@ -15,6 +15,7 @@ pub(crate) async fn test_sessions() -> (CatalogSessions, Store, TempDir) {
     let sessions = CatalogSessions::new(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         db.clone(),
+        bae_preferences::PreferencesRow::new(db.clone()),
         Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
@@ -31,12 +32,13 @@ async fn asks_discogs(sessions: &CatalogSessions) -> bool {
 
 /// Record what Discogs said of the stored key, as a check of it does.
 async fn record_validation(db: &Store, validation: DiscogsValidation) {
-    bae_preferences::edit_preferences(db, move |prefs| {
-        prefs.discogs = Some(validation);
-        Ok(())
-    })
-    .await
-    .unwrap();
+    bae_preferences::PreferencesRow::new(db.clone())
+        .edit(move |prefs| {
+            prefs.discogs = Some(validation);
+            Ok(())
+        })
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -62,8 +64,9 @@ async fn discogs_is_not_asked_with_a_rejected_key() {
 async fn a_switched_off_catalog_is_not_asked() {
     let (sessions, db, _temp_dir) = test_sessions().await;
     sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
+    let preferences = bae_preferences::PreferencesRow::new(db.clone());
     let switch = |catalog, enabled| {
-        bae_preferences::edit_preferences(&db, move |prefs| {
+        preferences.edit(move |prefs| {
             prefs.identification.catalogs.set(catalog, enabled);
             Ok(())
         })
@@ -111,20 +114,40 @@ async fn discogs_validation_signals_confirm_and_reject() {
     let (_sessions, db, _temp_dir) = test_sessions().await;
     // A success confirms a stored Unvalidated key.
     record_validation(&db, DiscogsValidation::Unvalidated).await;
-    record_discogs_validation_signal(&db, DiscogsKeySignal::Accepted).await.unwrap();
+    record_discogs_validation_signal(
+        &bae_preferences::PreferencesRow::new(db.clone()),
+        DiscogsKeySignal::Accepted,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
 
     // A 401 rejects, from any prior state.
-    record_discogs_validation_signal(&db, DiscogsKeySignal::Rejected).await.unwrap();
+    record_discogs_validation_signal(
+        &bae_preferences::PreferencesRow::new(db.clone()),
+        DiscogsKeySignal::Rejected,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Rejected));
 
     // A success does NOT flip an already-Rejected key back to Valid.
-    record_discogs_validation_signal(&db, DiscogsKeySignal::Accepted).await.unwrap();
+    record_discogs_validation_signal(
+        &bae_preferences::PreferencesRow::new(db.clone()),
+        DiscogsKeySignal::Accepted,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Rejected));
 
     // A success while already Valid is a no-op (only Unvalidated -> Valid).
     record_validation(&db, DiscogsValidation::Valid).await;
-    record_discogs_validation_signal(&db, DiscogsKeySignal::Accepted).await.unwrap();
+    record_discogs_validation_signal(
+        &bae_preferences::PreferencesRow::new(db.clone()),
+        DiscogsKeySignal::Accepted,
+    )
+    .await
+    .unwrap();
     assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Valid));
 }
 
@@ -152,6 +175,7 @@ async fn sessions_over(
     let sessions = CatalogSessions::new(
         providers,
         db.clone(),
+        bae_preferences::PreferencesRow::new(db.clone()),
         Diagnostics::noop().reporting_bugs_to(bugs),
         tokio::runtime::Handle::current(),
     );

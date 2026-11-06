@@ -474,6 +474,7 @@ where
             runtime.block_on(open_store(builder, Arc::clone(&clock), &diagnostics))
         })
         .map_err(classify_open_error)?;
+    let preferences = bae_preferences::PreferencesRow::new(store.clone());
     let records = bae_records::Records::new(store.clone(), ids.clone());
     let people = bae_people::People::new(store.clone());
     let membership = bae_people::Membership::new(store.clone());
@@ -488,6 +489,7 @@ where
     let catalogs = bae_import::CatalogSessions::new(
         providers,
         store.clone(),
+        preferences.clone(),
         diagnostics.clone(),
         runtime.handle().clone(),
     );
@@ -498,6 +500,7 @@ where
         .stage(&library_id, "open library manager", || {
             runtime.block_on(bae_library::open_library_manager(
                 store.clone(),
+                preferences,
                 records.clone(),
                 people.clone(),
                 membership,

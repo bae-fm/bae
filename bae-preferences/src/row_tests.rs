@@ -9,12 +9,13 @@ use std::num::NonZeroU32;
 
 /// Edit the preferences as a setter does, refusing nothing.
 async fn set(db: &Store, edit: impl FnOnce(&mut Preferences) + Send + 'static) {
-    edit_preferences(db, |prefs| {
-        edit(prefs);
-        Ok(())
-    })
-    .await
-    .unwrap();
+    PreferencesRow::new(db.clone())
+        .edit(|prefs| {
+            edit(prefs);
+            Ok(())
+        })
+        .await
+        .unwrap();
 }
 
 /// The next value `values` delivers, failing the test if none ever comes.
@@ -169,11 +170,12 @@ async fn the_live_query_follows_only_what_changes() {
     let mut values = subscribe_preferences(&db);
     assert_eq!(next(&mut values).await, Preferences::default());
 
-    let refused = edit_preferences(&db, |prefs| {
-        prefs.cast_enabled = true;
-        Err(PreferencesError::Invalid("refused".to_string()))
-    })
-    .await;
+    let refused = PreferencesRow::new(db.clone())
+        .edit(|prefs| {
+            prefs.cast_enabled = true;
+            Err(PreferencesError::Invalid("refused".to_string()))
+        })
+        .await;
     assert!(matches!(refused, Err(PreferencesError::Invalid(_))), "{refused:?}");
     set(&db, |prefs| prefs.show_remaining_time = false).await;
     set(&db, |prefs| prefs.show_remaining_time = true).await;
@@ -236,11 +238,12 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
             }),
         ),
     ] {
-        let refused = edit_preferences(&db, |prefs| {
-            edit(prefs);
-            Ok(())
-        })
-        .await;
+        let refused = PreferencesRow::new(db.clone())
+            .edit(|prefs| {
+                edit(prefs);
+                Ok(())
+            })
+            .await;
         assert!(matches!(refused, Err(PreferencesError::Database(_))), "{what}: {refused:?}");
         assert_eq!(preferences(&db).await.unwrap(), Preferences::default(), "{what} wrote nothing");
     }

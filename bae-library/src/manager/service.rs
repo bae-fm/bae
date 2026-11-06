@@ -34,6 +34,7 @@ impl LibraryManager {
     /// process outlives is cleared. `closing` ends its tasks when it closes.
     pub(crate) async fn open(
         store: Store,
+        preferences: bae_preferences::PreferencesRow,
         records: bae_records::Records,
         people: bae_people::People,
         membership: bae_people::Membership,
@@ -65,6 +66,7 @@ impl LibraryManager {
             #[cfg(desktop)]
             catalogs,
             store,
+            preferences,
             records,
             people,
             membership,
