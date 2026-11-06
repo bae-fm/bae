@@ -67,7 +67,7 @@ private final class AlbumBrowseProbe: @unchecked Sendable {
 /// at and each time it is opened, and answers with whatever a test emits.
 private final class SearchProbe: @unchecked Sendable {
     private let lock = NSLock()
-    private var queries: [String] = []
+    private var recordedQueries: [String] = []
     private var opened = 0
     private var askedCount = 0
     private var pending: [Result<BridgeLibrarySearchSnapshot, BridgeError>] = []
@@ -78,14 +78,15 @@ private final class SearchProbe: @unchecked Sendable {
         lock.recording { opened += 1 }
         return LibrarySearch(
             setQuery: { [self] query in
-                lock.recording { queries.append(query) }
+                lock.recording { recordedQueries.append(query) }
             },
             values: PulledValues(read: { [self] in try await nextValue() })
         )
     }
 
     var openCount: Int { lock.withLock { opened } }
-    var lastQuery: String? { lock.withLock { queries.last } }
+    var lastQuery: String? { lock.withLock { recordedQueries.last } }
+    var queries: [String] { lock.withLock { recordedQueries } }
     /// How many times the search has been asked for a value. The store takes
     /// one value at a time and applies it before asking again, so an ask past
     /// a delivered value means that value has been handled, applied or not.
@@ -151,11 +152,15 @@ struct LibraryProjectionStoreSearchTests {
     @Test("a new query clears the previous query's results on the same search")
     func queryChangeClearsPreviousState() async throws {
         let probe = SearchProbe()
+        let clock = ManualClock()
         let store = LibraryProjectionStore(
-            library: Library(librarySearch: { probe.open() })
+            library: Library(librarySearch: { probe.open() }),
+            clock: clock
         )
 
         store.activateSearch("query-a")
+        await clock.untilSleeps(begun: 1)
+        clock.advance(by: .milliseconds(300))
         try await Wait.until { probe.lastQuery == "query-a" }
         probe.emitValue(query: "query-a")
         try await Wait.until { store.search.value?.query == "query-a" }
@@ -167,6 +172,8 @@ struct LibraryProjectionStoreSearchTests {
         #expect(!store.search.delivered)
         #expect(store.search.error == nil)
 
+        await clock.untilSleeps(begun: 2)
+        clock.advance(by: .milliseconds(300))
         try await Wait.until { probe.lastQuery == "query-b" }
         // The search asked once on opening and once past the first answer;
         // its third ask comes only after it has handled this stale one.
@@ -187,6 +194,31 @@ struct LibraryProjectionStoreSearchTests {
             probe.openCount == 1,
             "typing moves one search, never opens another"
         )
+    }
+}
+
+extension LibraryProjectionStoreSearchTests {
+    @MainActor
+    @Test(
+        "typing again inside the pause moves the search once, to the last query"
+    )
+    func typingAgainMovesTheSearchOnce() async throws {
+        let probe = SearchProbe()
+        let clock = ManualClock()
+        let store = LibraryProjectionStore(
+            library: Library(librarySearch: { probe.open() }),
+            clock: clock
+        )
+
+        store.activateSearch("qu")
+        await clock.untilSleeps(begun: 1)
+        store.activateSearch("query")
+        await clock.untilSleeps(begun: 2)
+        #expect(probe.queries.isEmpty, "nothing is asked while typing")
+        clock.advance(by: .milliseconds(300))
+        try await Wait.until { probe.lastQuery == "query" }
+
+        #expect(probe.queries == ["query"])
     }
 }
 

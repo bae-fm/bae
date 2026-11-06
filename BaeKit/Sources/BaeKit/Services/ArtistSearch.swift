@@ -242,10 +242,17 @@ public final class ArtistSearchResults {
     private var pending: Task<Void, Never>?
     @ObservationIgnored
     private var generation = 0
+    /// The clock the wait out of typing is measured on.
+    @ObservationIgnored
+    private let clock: any Clock<Duration>
 
     /// Open the picker's search through `open`, which opens the live query.
-    public init(open: @Sendable () -> ArtistSearchQuery) {
+    public init(
+        open: @Sendable () -> ArtistSearchQuery,
+        clock: any Clock<Duration> = ContinuousClock()
+    ) {
         source = ArtistSearchPageSource(query: open())
+        self.clock = clock
     }
 
     /// Follow `text`: once typing pauses, the query moves to it and its list
@@ -254,9 +261,10 @@ public final class ArtistSearchResults {
         pending?.cancel()
         generation += 1
         let current = generation
+        let clock = clock
         pending = Task { [weak self] in
             do {
-                try await Task.sleep(for: .milliseconds(200))
+                try await clock.sleep(for: .milliseconds(200))
             }
             catch {
                 return

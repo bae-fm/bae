@@ -19,6 +19,9 @@ struct DraftAlbumRow: View {
     let canEdit: Bool
     let actions: DraftAlbumActions
 
+    @Environment(\.debounceClock)
+    private var clock
+
     @State
     private var isPresented = false
     @State
@@ -114,7 +117,7 @@ struct DraftAlbumRow: View {
             return
         }
         do {
-            try await Task.sleep(for: .milliseconds(200))
+            try await clock.sleep(for: .milliseconds(200))
             results = try await actions.search(trimmed)
         }
         catch is CancellationError {}

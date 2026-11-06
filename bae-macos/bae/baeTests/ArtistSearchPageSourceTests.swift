@@ -148,14 +148,50 @@ struct ArtistSearchResultsTests {
     @Test("a typed text's list replaces the one shown once it answers")
     func typedTextShowsItsList() async throws {
         let found = [artist("artist-1"), artist("artist-2")]
-        let search = ArtistSearchResults(open: { .fixed(found) })
+        let clock = ManualClock()
+        let search = ArtistSearchResults(
+            open: { .fixed(found) },
+            clock: clock
+        )
         #expect(search.list == nil)
 
         search.search("Artist")
+        await clock.untilSleeps(begun: 1)
+        clock.advance(by: .milliseconds(200))
         try await Wait.until { search.list != nil }
 
         #expect(search.list?.totalCount == 2)
         #expect(search.list?.row(at: 1)?.id == "artist-2")
+        search.close()
+    }
+
+    @MainActor
+    @Test("typing again inside the pause reads once, for the last text")
+    func typingAgainReadsOnce() async throws {
+        let feed = ArtistSearchFeed()
+        let clock = ManualClock()
+        let search = ArtistSearchResults(open: feed.query, clock: clock)
+
+        search.search("Art")
+        await clock.untilSleeps(begun: 1)
+        search.search("Artist")
+        await clock.untilSleeps(begun: 2)
+        clock.advance(by: .milliseconds(200))
+        // The text's view, then its first page's.
+        try await Wait.until { feed.requested.count == 2 }
+        feed.deliver(
+            snapshot(revision: feed.revision, rows: [artist("artist-1")])
+        )
+        try await Wait.until { search.list != nil }
+
+        #expect(
+            feed.requested
+                == [
+                    .init(text: "Artist", windows: []),
+                    .init(text: "Artist", windows: [firstPage]),
+                ],
+            "the text typed first is never read"
+        )
         search.close()
     }
 }

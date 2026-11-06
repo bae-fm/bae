@@ -67,8 +67,16 @@ public final class LibraryProjectionStore {
     @ObservationIgnored
     private var searchQuery: String?
 
-    public init(library: Library) {
+    /// The clock the wait out of typing is measured on.
+    @ObservationIgnored
+    private let clock: any Clock<Duration>
+
+    public init(
+        library: Library,
+        clock: any Clock<Duration> = ContinuousClock()
+    ) {
         self.library = library
+        self.clock = clock
     }
 
     public func activateComposer(_ id: String) {
@@ -187,9 +195,10 @@ public final class LibraryProjectionStore {
             return
         }
         let live = openSearch()
+        let clock = clock
         searchDebounce = Task { [weak self] in
             do {
-                try await Task.sleep(for: .milliseconds(300))
+                try await clock.sleep(for: .milliseconds(300))
             }
             catch {
                 return

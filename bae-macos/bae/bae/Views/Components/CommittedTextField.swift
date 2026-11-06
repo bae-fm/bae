@@ -65,6 +65,9 @@ struct CommittedTextField: View {
     /// How long a pause counts as "done typing".
     static let commitDelay: Duration = .milliseconds(400)
 
+    @Environment(\.debounceClock)
+    private var clock
+
     @State
     private var draft: String = ""
     @State
@@ -108,8 +111,9 @@ struct CommittedTextField: View {
             .onChange(of: draft) { _, next in
                 guard focused else { return }
                 pending?.cancel()
+                let clock = clock
                 pending = Task {
-                    try? await Task.sleep(for: Self.commitDelay)
+                    try? await clock.sleep(for: Self.commitDelay)
                     guard !Task.isCancelled else { return }
                     await commit(next)
                 }
