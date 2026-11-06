@@ -685,6 +685,9 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
             C::Internal,
         ),
         (coven::SyncError::Code(coven::CodeError::Invalid).into(), C::Config),
+        // A worker's panic answered again to a later call: the same bug,
+        // shown as one.
+        (coven::SyncError::WorkerFailed(bug()).into(), C::Internal),
         (LibraryError::file_read("read a cover", coven::FileReadError::Bug(bug())), C::Internal),
         (LibraryError::MakeLocal(Box::new(coven::DeviceOnlyError::Bug(bug()))), C::Internal),
     ];

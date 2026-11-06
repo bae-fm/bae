@@ -2744,8 +2744,9 @@ acknowledges it in coven's list of operations; one that finished or was
 cancelled with nobody to hear it is acknowledged as the library opens. One
 that ended undone with nobody to hear it, such as one bae was stopped partway
 through, shows in Settings' sync section, why with *Dismiss*, until the person
-dismisses it. Starting a setup while another finishes is refused, saying to
-try again once it has.
+dismisses it. Starting a setup while another runs, a call still under way or
+one from before that sync finishes, is refused, saying to try again once it
+has. A cancel counts from the moment the setup's call starts.
 
 Every library has its storage location to itself: an S3 bucket, a Dropbox
 shared folder or a OneDrive folder
@@ -4370,7 +4371,9 @@ each device and hands playback the channel or sink.
   with "Something went wrong", never left waiting. coven's own bugs in work
   nobody waits for, such as a store's sync loop and upload worker, reach the
   same crash reporter: bae hands coven its reporter when it builds the
-  device's libraries at launch.
+  device's libraries at launch. A later call coven answers with such a
+  worker's bug, such as a retry of uploads after the upload worker
+  panicked, shows "Something went wrong" and is not reported again.
 - **Logs stay in the platform's log.** Core's and each app's log lines go to
   the platform's own log on the device: the unified log on macOS and iOS,
   logcat on Android, ETW on Windows, the systemd journal on Linux. A
@@ -4938,7 +4941,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |
 | `MemberKeysReplaced` | restores the library with their current recovery code: another of their devices replaced their keys, which the code used, or this device's copy, doesn't hold (§6.4) |
 | `StorageSetupUndone` | sets the library's storage up again: a setup ended undone with nobody there to hear it, such as one bae was stopped partway through (§6.2) |
-| `StorageSetupFinishing` | waits for the storage setup already finishing, then tries again (§6.2) |
+| `StorageSetupFinishing` | waits for the storage setup already running, then tries again (§6.2) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |
 | `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
 

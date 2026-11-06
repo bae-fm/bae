@@ -17,8 +17,11 @@ fn subjects_name_what_they_are_before_a_library_opens() {
         PendingSubjectName::Operation(coven::OperationKind::Invite)
     );
     for file in [
-        S::Upload { device: coven::DeviceId(2), file: coven::FileId(uuid::Uuid::from_u128(9)) },
-        S::Download { device: coven::DeviceId(2), file: coven::FileId(uuid::Uuid::from_u128(9)) },
+        S::Upload { device: coven::DeviceId(2), object: coven::ObjectId(uuid::Uuid::from_u128(9)) },
+        S::Download {
+            device: coven::DeviceId(2),
+            object: coven::ObjectId(uuid::Uuid::from_u128(9)),
+        },
         S::Keep { file: coven::FileId(uuid::Uuid::from_u128(9)) },
         S::Move { id: coven::MoveId(3) },
     ] {
@@ -35,7 +38,7 @@ fn a_files_record_is_named_by_its_row() {
             coven::PendingRecord::new(
                 coven::PendingSubject::Upload {
                     device: coven::DeviceId(2),
-                    file: coven::FileId(uuid::Uuid::from_u128(9)),
+                    object: coven::ObjectId(uuid::Uuid::from_u128(9)),
                 },
                 coven::PendingReason::NoStorage,
             ),

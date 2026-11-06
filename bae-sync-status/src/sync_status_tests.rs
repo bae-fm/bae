@@ -127,7 +127,7 @@ fn a_failed_pins_download_offers_pinning_its_release_again() {
     let record = coven::PendingRecord::new(
         coven::PendingSubject::Download {
             device: coven::DeviceId(2),
-            file: coven::FileId(uuid::Uuid::from_u128(9)),
+            object: coven::ObjectId(uuid::Uuid::from_u128(9)),
         },
         coven::PendingReason::Storage {
             provider: coven::CloudProvider::S3,
@@ -619,7 +619,7 @@ fn file(reason: coven::PendingReason) -> coven::PendingRecord {
     coven::PendingRecord::new(
         coven::PendingSubject::Upload {
             device: coven::DeviceId(2),
-            file: coven::FileId(uuid::Uuid::from_u128(9)),
+            object: coven::ObjectId(uuid::Uuid::from_u128(9)),
         },
         reason,
     )

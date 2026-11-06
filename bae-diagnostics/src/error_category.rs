@@ -73,8 +73,9 @@ pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
         E::StoreOwner => C::StoreOwnerAccount,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Internal(_) => C::Internal,
-        // A setup from before is past its point of no return: only sync's
-        // connection finishes it, and another starts once it has.
+        // Another setup runs on this store: a call still under way, or one
+        // from before past its point of no return, which only sync's
+        // connection finishes. Another starts once it has.
         E::SetupRunning => C::StorageSetupFinishing,
         // The cancel the person asked for reaches them as a cancel, never
         // as an error with a line.
@@ -199,8 +200,10 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         | E::Damaged(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic
-        // in coven's work is a bug the person can only report.
-        E::Shutdown(_) | E::Bug(_) => C::Internal,
+        // in coven's work is a bug the person can only report; a worker's
+        // panic answered again is that same bug, which coven's bug sink
+        // already reported.
+        E::Shutdown(_) | E::Bug(_) | E::WorkerFailed(_) => C::Internal,
     }
 }
 
