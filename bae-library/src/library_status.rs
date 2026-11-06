@@ -1,9 +1,8 @@
 //! Whether the releases an import pane offers are already in the library,
 //! read through one live query whose checks change as the offers do.
 
-use bae_records::{LibraryCheck, LibraryStatus};
-use bae_store::live_query::{CancellableLiveQuery, LiveQueryError};
-use std::collections::BTreeSet;
+use bae_records::{LibraryChecks, LibraryStatus};
+use bae_store::live_query::LiveRead;
 
 /// One value the subscription delivered: a status for each release it was
 /// asked about, and the revision of the request that asked.
@@ -16,31 +15,4 @@ pub struct LibraryStatusSnapshot {
 /// The library membership of a set of offered releases. A new set of offers
 /// is a new request on the same query, and one read per database change
 /// answers every release in it.
-pub struct LiveLibraryStatus {
-    query: CancellableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>,
-}
-
-impl LiveLibraryStatus {
-    pub fn new(query: CancellableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>) -> Self {
-        Self { query }
-    }
-
-    /// Check `checks` from now on. Returns the revision the answer will
-    /// carry; the same checks in any order are the standing request.
-    pub fn set_checks(
-        &self,
-        checks: impl IntoIterator<Item = LibraryCheck>,
-    ) -> Result<u64, LiveQueryError> {
-        self.query.set(checks.into_iter().collect()).map_err(LiveQueryError::from)
-    }
-
-    pub async fn next(&self) -> Result<LibraryStatusSnapshot, LiveQueryError> {
-        let event = self.query.next().await.map_err(LiveQueryError::from)?;
-        let request_revision = event.revision.0;
-        Ok(LibraryStatusSnapshot { statuses: event.result?, request_revision })
-    }
-
-    pub async fn cancel(&self) {
-        self.query.close().await;
-    }
-}
+pub type LiveLibraryStatus = LiveRead<LibraryChecks, LibraryStatusSnapshot>;

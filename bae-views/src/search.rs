@@ -46,53 +46,9 @@ pub struct LibrarySearchSnapshot {
 
 /// A live library search whose query changes in place: one reconfigurable
 /// query for as long as the search field is open, instead of a new live query
-/// per keystroke.
-pub struct LiveLibrarySearch {
-    query: bae_store::live_query::CancellableLiveQuery<
-        Option<LibrarySearchQuery>,
-        crate::LibrarySearchProjection,
-    >,
-    resolve: std::sync::Arc<
-        dyn Fn(crate::LibrarySearchProjection) -> crate::album_detail::SearchResults + Send + Sync,
-    >,
-}
-
-impl LiveLibrarySearch {
-    pub fn new(
-        query: bae_store::live_query::CancellableLiveQuery<
-            Option<LibrarySearchQuery>,
-            crate::LibrarySearchProjection,
-        >,
-        resolve: impl Fn(crate::LibrarySearchProjection) -> crate::album_detail::SearchResults
-            + Send
-            + Sync
-            + 'static,
-    ) -> Self {
-        Self { query, resolve: std::sync::Arc::new(resolve) }
-    }
-
-    /// Search for `raw`, parsed as every surface parses a query: a blank one is
-    /// no search. Returns the revision the answer will carry.
-    pub fn set_query(&self, raw: &str) -> Result<u64, bae_store::live_query::LiveQueryError> {
-        self.query
-            .set(LibrarySearchQuery::parse(raw))
-            .map_err(bae_store::live_query::LiveQueryError::from)
-    }
-
-    pub async fn next(
-        &self,
-    ) -> Result<LibrarySearchSnapshot, bae_store::live_query::LiveQueryError> {
-        let event = self.query.next().await.map_err(bae_store::live_query::LiveQueryError::from)?;
-        let request_revision = event.revision.0;
-        let query = event.request.clone();
-        let projection = event.result?;
-        Ok(LibrarySearchSnapshot { query, results: (self.resolve)(projection), request_revision })
-    }
-
-    pub async fn cancel(&self) {
-        self.query.close().await;
-    }
-}
+/// per keystroke. A blank text is no search ([`LibrarySearchQuery::parse`]).
+pub type LiveLibrarySearch =
+    bae_store::live_query::LiveRead<Option<LibrarySearchQuery>, LibrarySearchSnapshot>;
 
 /// How many results a library search returns. The one place this is decided —
 /// surfaces no longer each pass their own limit into `search_library`.

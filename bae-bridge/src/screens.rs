@@ -54,11 +54,6 @@ live_query_read!(
     bae_store::live_query::LiveRead<Request, Value> => Value,
     over [Request: Send + Sync + 'static, Value: Send + 'static]
 );
-live_query_read!(bae_views::LiveLibrarySearch => bae_views::LibrarySearchSnapshot);
-live_query_read!(bae_views::LiveArtistSearch => bae_views::ArtistSearchSnapshot);
-live_query_read!(bae_library::LiveAlbumSelection => bae_library::AlbumSelectionSnapshot);
-#[cfg(desktop)]
-live_query_read!(bae_library::LiveLibraryStatus => bae_library::LibraryStatusSnapshot);
 
 #[cfg(desktop)]
 live_query_read!(

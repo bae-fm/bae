@@ -7,7 +7,7 @@ use rusqlite::{params, OptionalExtension, Row};
 use bae_store::DbError;
 use bae_store::Store;
 use coven::{CovenError, CovenWrite, SqlReadContext};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 /// The columns of a release file row `f` that `row_to_file` reads: its own,
 /// and from coven's record of the file it references, `file_size`, the

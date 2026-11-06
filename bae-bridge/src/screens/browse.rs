@@ -30,7 +30,10 @@ macro_rules! browse_subscription {
                 &self,
                 windows: Vec<crate::types::BridgeLibraryPageWindow>,
             ) -> Result<(), BridgeError> {
-                self.inner.set(super::core_windows(windows)).map_err(BridgeError::from)
+                self.inner
+                    .set(super::core_windows(windows))
+                    .map(|_revision| ())
+                    .map_err(BridgeError::from)
             }
         }
     };
@@ -240,6 +243,9 @@ pulled_read! {
 impl AlbumSelectionSubscription {
     /// Read `album_ids` from now on.
     pub fn set_albums(&self, album_ids: Vec<String>) -> Result<(), BridgeError> {
-        self.inner.set_albums(album_ids).map_err(BridgeError::from)
+        self.inner
+            .set(album_ids.into_iter().collect())
+            .map(|_revision| ())
+            .map_err(BridgeError::from)
     }
 }

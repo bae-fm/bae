@@ -39,7 +39,7 @@ impl LibrarySearchSubscription {
     /// Search for `query`; a blank one is no search. Returns the revision the
     /// answer will carry.
     pub fn set_query(&self, query: String) -> Result<u64, BridgeError> {
-        self.inner.set_query(&query).map_err(BridgeError::from)
+        self.inner.set(bae_views::LibrarySearchQuery::parse(&query)).map_err(BridgeError::from)
     }
 }
 
@@ -93,7 +93,9 @@ impl ArtistSearchSubscription {
         query: String,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<u64, BridgeError> {
-        self.inner.set_view(&query, super::core_windows(windows)).map_err(BridgeError::from)
+        self.inner
+            .set(bae_views::ArtistSearchView::of(&query, super::core_windows(windows)))
+            .map_err(BridgeError::from)
     }
 }
 
@@ -154,11 +156,16 @@ impl LibraryStatusSubscription {
     /// carry.
     pub fn set_checks(&self, checks: Vec<BridgeLibraryCheck>) -> Result<u64, BridgeError> {
         self.inner
-            .set_checks(checks.into_iter().map(|check| bae_records::LibraryCheck {
-                release_id: check.release_id,
-                source: check.source.into_core().catalog(),
-                source_group_id: check.source_group_id,
-            }))
+            .set(
+                checks
+                    .into_iter()
+                    .map(|check| bae_records::LibraryCheck {
+                        release_id: check.release_id,
+                        source: check.source.into_core().catalog(),
+                        source_group_id: check.source_group_id,
+                    })
+                    .collect(),
+            )
             .map_err(BridgeError::from)
     }
 }

@@ -5,6 +5,7 @@
 
 use super::{CancellableLiveQuery, LiveQueryError};
 use crate::LibraryPageWindows;
+use std::collections::BTreeSet;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -21,6 +22,14 @@ pub trait LiveRequest: Clone + PartialEq + Send + Sync + 'static {
 /// A read for another id, or none, shows something the reader no longer
 /// asks for.
 impl<Id: Clone + PartialEq + Send + Sync + 'static> LiveRequest for Option<Id> {
+    fn still_answers(&self, current: &Self) -> bool {
+        self == current
+    }
+}
+
+/// A read for another set of ids answers about ids the reader no longer
+/// asks about.
+impl LiveRequest for BTreeSet<String> {
     fn still_answers(&self, current: &Self) -> bool {
         self == current
     }
@@ -68,9 +77,10 @@ impl<Request: LiveRequest, Value: Send + 'static> LiveRead<Request, Value> {
 }
 
 impl<Request, Value> LiveRead<Request, Value> {
-    /// Read `request` from now on. Repeating the standing request reads
+    /// Read `request` from now on, and return the revision each read for it
+    /// carries. Repeating the standing request keeps its revision and reads
     /// nothing again.
-    pub fn set(&self, request: Request) -> Result<(), LiveQueryError> {
+    pub fn set(&self, request: Request) -> Result<u64, LiveQueryError> {
         self.read.set(request)
     }
 
@@ -92,7 +102,7 @@ type Pending<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// A live read with the type its query reads hidden, so a read is named by
 /// its request and what it delivers alone.
 trait Resolved<Request, Value>: Send + Sync {
-    fn set(&self, request: Request) -> Result<(), LiveQueryError>;
+    fn set(&self, request: Request) -> Result<u64, LiveQueryError>;
 
     fn next(&self) -> Pending<'_, Result<Value, LiveQueryError>>;
 
@@ -118,11 +128,11 @@ where
     Projection: Clone + PartialEq + Send + 'static,
     Value: Send + 'static,
 {
-    fn set(&self, request: Request) -> Result<(), LiveQueryError> {
+    fn set(&self, request: Request) -> Result<u64, LiveQueryError> {
         let mut current = self.current.lock().expect("live read request mutex poisoned");
-        self.query.set(request.clone())?;
+        let revision = self.query.set(request.clone())?;
         *current = Some(request);
-        Ok(())
+        Ok(revision)
     }
 
     fn next(&self) -> Pending<'_, Result<Value, LiveQueryError>> {

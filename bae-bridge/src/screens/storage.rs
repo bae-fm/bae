@@ -126,6 +126,7 @@ impl StorageBrowseSubscription {
                 windows: super::core_windows(windows),
                 selected: selected.into_iter().collect(),
             })
+            .map(|_revision| ())
             .map_err(BridgeError::from)
     }
 }

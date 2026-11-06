@@ -71,7 +71,10 @@ macro_rules! detail_subscription {
             /// Show `id` from now on. A view that stops showing anything
             /// cancels the read rather than pointing it at nothing.
             pub fn set_id(&self, id: $id) -> Result<(), BridgeError> {
-                self.inner.set(Some(<$core_id>::from(id))).map_err(BridgeError::from)
+                self.inner
+                    .set(Some(<$core_id>::from(id)))
+                    .map(|_revision| ())
+                    .map_err(BridgeError::from)
             }
         }
     };

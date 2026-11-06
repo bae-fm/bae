@@ -11,7 +11,6 @@ use bae_store::test_fixtures::temp_db;
 use bae_store::test_fixtures::{exec, exec_batch};
 use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
-use std::collections::BTreeSet;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -583,7 +582,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         source: Catalog::MusicBrainz,
         source_group_id: None,
     };
-    let mut live = records.subscribe_library_statuses(BTreeSet::new());
+    let mut live = records.subscribe_library_statuses(LibraryChecks::default());
     let requests = live.requests();
     assert!(
         live.next().await.expect("the query stays open").result.unwrap().is_empty(),

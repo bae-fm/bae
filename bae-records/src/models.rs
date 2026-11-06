@@ -229,6 +229,31 @@ pub struct LibraryCheck {
     pub source_group_id: Option<String>,
 }
 
+/// The releases one surface asks the library about, each once: the request
+/// of a live check of their library status.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LibraryChecks(std::collections::BTreeSet<LibraryCheck>);
+
+impl LibraryChecks {
+    pub fn iter(&self) -> impl Iterator<Item = &LibraryCheck> {
+        self.0.iter()
+    }
+}
+
+impl FromIterator<LibraryCheck> for LibraryChecks {
+    fn from_iter<I: IntoIterator<Item = LibraryCheck>>(checks: I) -> Self {
+        Self(checks.into_iter().collect())
+    }
+}
+
+/// A read for other releases answers about releases the surface no longer
+/// offers.
+impl bae_store::live_query::LiveRequest for LibraryChecks {
+    fn still_answers(&self, current: &Self) -> bool {
+        self == current
+    }
+}
+
 impl DbArtist {
     /// A fresh artist row carrying what `credit` says, which the write that
     /// links it resolves to a library artist when it commits.

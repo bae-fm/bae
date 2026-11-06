@@ -148,9 +148,9 @@ impl LibraryManager {
 
     pub fn subscribe_library_statuses(
         &self,
-        initial: std::collections::BTreeSet<bae_records::LibraryCheck>,
+        initial: bae_records::LibraryChecks,
     ) -> coven::ReconfigurableLiveQuery<
-        std::collections::BTreeSet<bae_records::LibraryCheck>,
+        bae_records::LibraryChecks,
         Vec<bae_records::LibraryStatus>,
         coven::CovenError,
     > {

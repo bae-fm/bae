@@ -62,6 +62,7 @@ impl ReleaseFilesSubscription {
     ) -> Result<(), BridgeError> {
         self.inner
             .set(request.map(crate::types::BridgeReleaseFilesRequest::into_core))
+            .map(|_revision| ())
             .map_err(BridgeError::from)
     }
 }

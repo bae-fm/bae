@@ -6,7 +6,6 @@ use super::search::LibrarySearchQuery;
 use super::*;
 use crate::album_detail::ArtistSearchResult;
 use bae_records::records::artist_credit_names::{credit_names_column, credit_names_json_sql};
-use bae_store::live_query::LiveQueryError;
 use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 
 /// What an artist picker reads: the artists its text finds, parsed as every
@@ -16,6 +15,22 @@ use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
 pub struct ArtistSearchView {
     pub query: Option<LibrarySearchQuery>,
     pub windows: LibraryPageWindows,
+}
+
+impl ArtistSearchView {
+    /// `windows` of what `raw` finds; a blank text is no search.
+    pub fn of(raw: &str, windows: LibraryPageWindows) -> Self {
+        Self { query: LibrarySearchQuery::parse(raw), windows }
+    }
+}
+
+/// Each window a read names holds that window's artists for the text it was
+/// read for, so a read for other windows still answers; one for another text
+/// finds other artists.
+impl bae_store::live_query::LiveRequest for ArtistSearchView {
+    fn still_answers(&self, current: &Self) -> bool {
+        self.query == current.query
+    }
 }
 
 /// One value an artist search delivered: each window it was asked for, with
@@ -29,50 +44,7 @@ pub struct ArtistSearchSnapshot {
 }
 
 /// A live artist search whose text and windows change in place.
-pub struct LiveArtistSearch {
-    query: bae_store::live_query::CancellableLiveQuery<
-        ArtistSearchView,
-        crate::ArtistSearchProjection,
-    >,
-    /// The snapshot a projection read for a request revision resolves to.
-    resolve: std::sync::Arc<
-        dyn Fn(crate::ArtistSearchProjection, u64) -> ArtistSearchSnapshot + Send + Sync,
-    >,
-}
-
-impl LiveArtistSearch {
-    pub fn new(
-        query: bae_store::live_query::CancellableLiveQuery<
-            ArtistSearchView,
-            crate::ArtistSearchProjection,
-        >,
-        resolve: impl Fn(crate::ArtistSearchProjection, u64) -> ArtistSearchSnapshot
-            + Send
-            + Sync
-            + 'static,
-    ) -> Self {
-        Self { query, resolve: std::sync::Arc::new(resolve) }
-    }
-
-    /// Read `windows` of what `raw` finds from now on; a blank text is no
-    /// search. Returns the revision the answer will carry, which repeating the
-    /// standing request keeps.
-    pub fn set_view(&self, raw: &str, windows: LibraryPageWindows) -> Result<u64, LiveQueryError> {
-        self.query
-            .set(ArtistSearchView { query: LibrarySearchQuery::parse(raw), windows })
-            .map_err(LiveQueryError::from)
-    }
-
-    pub async fn next(&self) -> Result<ArtistSearchSnapshot, LiveQueryError> {
-        let event = self.query.next().await.map_err(LiveQueryError::from)?;
-        let request_revision = event.revision.0;
-        Ok((self.resolve)(event.result?, request_revision))
-    }
-
-    pub async fn cancel(&self) {
-        self.query.close().await;
-    }
-}
+pub type LiveArtistSearch = bae_store::live_query::LiveRead<ArtistSearchView, ArtistSearchSnapshot>;
 
 /// Every requested window of an artist search, and how many artists it
 /// found.

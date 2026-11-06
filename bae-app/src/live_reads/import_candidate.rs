@@ -24,8 +24,8 @@ impl LiveImportCandidate {
     }
 
     /// Read `key` from now on, telling the queue before any value for it is
-    /// delivered.
-    pub fn set(&self, key: Option<CandidateKey>) -> Result<(), LiveQueryError> {
+    /// delivered, and return the revision each read for it carries.
+    pub fn set(&self, key: Option<CandidateKey>) -> Result<u64, LiveQueryError> {
         if let Some(shown) =
             self.shown.lock().expect("import candidate shown mutex poisoned").as_mut()
         {

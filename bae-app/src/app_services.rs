@@ -253,20 +253,28 @@ impl AppServices {
     /// starts with none.
     pub fn subscribe_album_selection(&self) -> bae_library::LiveAlbumSelection {
         let manager = &self.inner.manager;
-        bae_library::LiveAlbumSelection::new(manager.until_closed(
-            self.inner.views.subscribe_album_selection(std::collections::BTreeSet::new()),
-        ))
+        bae_library::LiveAlbumSelection::new(
+            manager.until_closed(
+                self.inner.views.subscribe_album_selection(std::collections::BTreeSet::new()),
+            ),
+            |read, gone| {
+                Some(bae_library::AlbumSelectionSnapshot { requested: read.request.clone(), gone })
+            },
+        )
     }
 
     /// One live library search, pointed at a new query in place as the
     /// person types; it starts with no query.
     pub fn subscribe_library_search(&self) -> bae_views::LiveLibrarySearch {
-        let manager = self.inner.manager.clone();
-        let query = manager.until_closed(
+        let query = self.inner.manager.until_closed(
             self.inner.views.subscribe_library_search(None, bae_views::SEARCH_RESULT_LIMIT),
         );
-        bae_views::LiveLibrarySearch::new(query, move |projection| {
-            bae_views::album::resolve_library_search_projection(projection)
+        bae_views::LiveLibrarySearch::new(query, |read, projection| {
+            Some(bae_views::LibrarySearchSnapshot {
+                query: read.request.clone(),
+                results: bae_views::album::resolve_library_search_projection(projection),
+                request_revision: read.revision,
+            })
         })
     }
 
@@ -282,7 +290,9 @@ impl AppServices {
                     windows: bae_store::LibraryPageWindows::new(),
                 },
             )),
-            bae_views::artist_search::resolve_artist_search,
+            |read, projection| {
+                Some(bae_views::artist_search::resolve_artist_search(projection, read.revision))
+            },
         )
     }
 
@@ -292,9 +302,13 @@ impl AppServices {
     pub fn subscribe_library_statuses(&self) -> bae_library::LiveLibraryStatus {
         let manager = &self.inner.manager;
         bae_library::LiveLibraryStatus::new(
-            manager.until_closed(
-                manager.subscribe_library_statuses(std::collections::BTreeSet::new()),
-            ),
+            manager.until_closed(manager.subscribe_library_statuses(Default::default())),
+            |read, statuses| {
+                Some(bae_library::LibraryStatusSnapshot {
+                    statuses,
+                    request_revision: read.revision,
+                })
+            },
         )
     }
 
