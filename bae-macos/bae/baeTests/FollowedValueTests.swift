@@ -26,12 +26,10 @@ struct FollowedValueTests {
             cancellable: false
         )
         writer.set(loading)
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(followed.value == loading)
+        try await Wait.until { followed.value == loading }
 
         writer.remove()
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(followed.value == nil)
+        try await Wait.until { followed.value == nil }
         followed.stop()
     }
 }

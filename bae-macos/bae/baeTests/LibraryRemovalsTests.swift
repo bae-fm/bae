@@ -319,14 +319,8 @@ private actor UnfinishedRemovalBridge {
 struct LibraryRemovalsUnfinishedTests {
     private let host = TestHost.make()
 
-    private func settled(_ removals: LibraryRemovals) async {
-        for _ in 0..<1_000 where removals.isRetrying {
-            await Task.yield()
-        }
-    }
-
     @Test("a removal left unfinished shows at launch until a retry finishes it")
-    func retryFinishesAnEarlierRemoval() async {
+    func retryFinishesAnEarlierRemoval() async throws {
         let bridge = UnfinishedRemovalBridge(failures: 1)
         let removals = LibraryRemovals(
             makeOpenProgress: { LibraryOpenProgress(host: host) },
@@ -344,14 +338,14 @@ struct LibraryRemovalsUnfinishedTests {
         #expect(removals.error != nil)
 
         removals.retryUnfinished()
-        await settled(removals)
+        try await Wait.until { !removals.isRetrying }
         #expect(removals.unfinished != nil)
         #expect(removals.error != nil)
 
         removals.retryUnfinished()
         let shown = removals.finishing
         #expect(shown != nil, "a retry shows its steps while it runs")
-        await settled(removals)
+        try await Wait.until { !removals.isRetrying }
         #expect(removals.unfinished == nil)
         #expect(removals.error == nil)
         #expect(removals.finishing == nil)

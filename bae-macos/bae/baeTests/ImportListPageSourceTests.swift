@@ -323,13 +323,17 @@ extension ImportListPageSourceTests {
         }
         try await Wait.until({ subscription.requestedViews == [view] })
 
-        // The source's second ask comes after it handled revision 0, and the yield
-        // runs this test after any waiter revision 0 wrongly released.
+        // The source's next ask comes after it handled a value. A waiter that
+        // revision 0 wrongly released was resumed while the first value was
+        // handled, ahead of the ask that follows the second, so this test,
+        // woken by that ask, runs after it.
         subscription.deliver(
             snapshot([], totalCount: 70, viewRevision: 0)
         )
-        try await Wait.until { subscription.asks >= 2 }
-        await Task.yield()
+        subscription.deliver(
+            snapshot([], totalCount: 70, viewRevision: 0)
+        )
+        try await Wait.until { subscription.asks >= 3 }
         #expect(outcome.state == .waiting)
 
         subscription.deliver(
