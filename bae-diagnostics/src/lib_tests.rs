@@ -15,13 +15,19 @@ fn config() -> DatadogDiagnosticsConfig {
     }
 }
 
+fn start() -> std::time::SystemTime {
+    DateTime::parse_from_rfc3339("2026-06-20T00:00:00Z")
+        .expect("test timestamp parses")
+        .with_timezone(&Utc)
+        .into()
+}
+
+fn fixed_clock() -> Arc<coven::FixedClock> {
+    Arc::new(coven::FixedClock::new(start()))
+}
+
 fn clock() -> ClockRef {
-    Arc::new(coven::FixedClock::new(
-        (DateTime::parse_from_rfc3339("2026-06-20T00:00:00Z")
-            .expect("test timestamp parses")
-            .with_timezone(&Utc))
-        .into(),
-    ))
+    fixed_clock()
 }
 
 fn ids() -> IdSourceRef {
@@ -261,6 +267,31 @@ async fn distinct_constructions_get_distinct_session_ids() {
         panic!("configured diagnostics runs a worker");
     };
     assert_ne!(first_session, second_session);
+}
+
+/// The worker flushes what it buffered once the flush interval passes on
+/// its injected clock: the first periodic flush is armed for one interval
+/// after it starts, and moving the clock there sends the queued event.
+#[tokio::test]
+async fn a_buffered_event_is_sent_once_the_flush_interval_passes() {
+    use bae_util::test_channels::HANG_GUARD;
+    let clock = fixed_clock();
+    let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
+    let diagnostics =
+        Diagnostics::with_transport(config(), clock.clone(), ids(), transport.clone(), None)
+            .expect("diagnostics starts");
+    let (_, armed) = tokio::time::timeout(HANG_GUARD, clock.sleep_begun_after(0))
+        .await
+        .expect("the worker arms its periodic flush");
+    assert_eq!(armed, FLUSH_INTERVAL);
+
+    diagnostics.event(TelemetryEvent::AppStarted {});
+    clock.set(start() + FLUSH_INTERVAL);
+    tokio::time::timeout(HANG_GUARD, transport.sent_at_least(1))
+        .await
+        .expect("the periodic flush sends the event");
+
+    assert_eq!(transport.event_names(), ["app_started"]);
 }
 
 #[tokio::test]

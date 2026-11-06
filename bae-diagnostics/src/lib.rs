@@ -256,7 +256,7 @@ impl Diagnostics {
         // One session id per construction (per launch), minted from the same
         // injected id source the worker uses for request ids.
         let session_id = ids.new_id().to_string();
-        let worker = DiagnosticsWorker::new(config, ids, transport, rx);
+        let worker = DiagnosticsWorker::new(config, clock.clone(), ids, transport, rx);
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -355,6 +355,9 @@ enum WorkerMessage {
 
 struct DiagnosticsWorker {
     config: DatadogDiagnosticsConfig,
+    /// What the periodic flush waits on: the injected clock, which a test
+    /// moves by hand.
+    clock: ClockRef,
     ids: IdSourceRef,
     transport: Arc<dyn DiagnosticsTransport>,
     rx: mpsc::UnboundedReceiver<WorkerMessage>,
@@ -367,23 +370,25 @@ struct DiagnosticsWorker {
 impl DiagnosticsWorker {
     fn new(
         config: DatadogDiagnosticsConfig,
+        clock: ClockRef,
         ids: IdSourceRef,
         transport: Arc<dyn DiagnosticsTransport>,
         rx: mpsc::UnboundedReceiver<WorkerMessage>,
     ) -> Self {
-        Self { config, ids, transport, rx, buffered: VecDeque::new(), device_id: None }
+        Self { config, clock, ids, transport, rx, buffered: VecDeque::new(), device_id: None }
     }
 
     async fn run(mut self) {
-        // `interval`'s first tick completes immediately; start one period out so
-        // the worker flushes only every FLUSH_INTERVAL. An immediate tick can land
-        // between an enqueued event and an explicit flush(), consuming the
-        // transport response that flush was owed and swallowing the error its
-        // caller expected to see.
-        let mut flush_interval =
-            tokio::time::interval_at(tokio::time::Instant::now() + FLUSH_INTERVAL, FLUSH_INTERVAL);
+        // The first periodic flush is one interval after the worker starts,
+        // and each next one an interval after the last, on the injected
+        // clock. Queued messages are taken first: an event or an explicit
+        // flush already queued when a periodic flush comes due is handled
+        // before it, so the flush sends that event and never takes the
+        // transport answer an explicit flush() was owed.
+        let mut next_flush = self.clock.deadline(FLUSH_INTERVAL);
         loop {
             tokio::select! {
+                biased;
                 Some(message) = self.rx.recv() => {
                     match message {
                         WorkerMessage::Event(mut event) => {
@@ -410,8 +415,9 @@ impl DiagnosticsWorker {
                         }
                     }
                 }
-                _ = flush_interval.tick() => {
+                () = &mut next_flush => {
                     self.record_flush_result().await;
+                    next_flush = self.clock.deadline(FLUSH_INTERVAL);
                 }
                 else => break,
             }
@@ -652,6 +658,8 @@ impl BugReporter for RecordingBugReporter {
 pub struct RecordingTransport {
     requests: std::sync::Mutex<Vec<DatadogRequest>>,
     outcomes: std::sync::Mutex<VecDeque<Result<(), DiagnosticsError>>>,
+    /// How many requests it has recorded, for a test waiting on a send.
+    sent: tokio::sync::watch::Sender<usize>,
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -660,6 +668,15 @@ impl RecordingTransport {
         Self {
             requests: std::sync::Mutex::new(Vec::new()),
             outcomes: std::sync::Mutex::new(outcomes.into()),
+            sent: tokio::sync::watch::Sender::new(0),
+        }
+    }
+
+    /// Wait until at least `count` requests have been recorded.
+    pub fn sent_at_least(&self, count: usize) -> impl std::future::Future<Output = ()> + use<> {
+        let mut sent = self.sent.subscribe();
+        async move {
+            sent.wait_for(|sent| *sent >= count).await.expect("the transport is kept");
         }
     }
 
@@ -685,6 +702,7 @@ impl RecordingTransport {
 impl DiagnosticsTransport for RecordingTransport {
     async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {
         self.requests.lock().expect("requests mutex is available").push(request);
+        self.sent.send_modify(|sent| *sent += 1);
         self.outcomes.lock().expect("outcomes mutex is available").pop_front().unwrap_or(Ok(()))
     }
 }
