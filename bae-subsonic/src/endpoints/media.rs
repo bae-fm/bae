@@ -93,8 +93,8 @@ async fn stream_inner(
     }
 }
 
-/// Serve the stored file that is the track's stream, honoring an HTTP `Range`
-/// request.
+/// Serve the stored file that is the track's stream, typed by its container,
+/// honoring an HTTP `Range` request.
 async fn stream_file(
     state: &AppState,
     segment: &ResolvedTrackAudioSegment,
@@ -110,7 +110,7 @@ async fn stream_file(
     let total = u64::try_from(file.file_size).map_err(|error| {
         SubError::generic(format!("file {} has a negative size: {error}", file.id))
     })?;
-    let content_type = file.content_type.as_str().to_string();
+    let content_type = segment.container.http_mime();
 
     let buffer = services.open_release_file_stream(&segment.file_id, total);
 
@@ -272,8 +272,9 @@ async fn stream_encoded(
         }
     });
 
-    let mut builder =
-        Response::builder().status(StatusCode::OK).header(CONTENT_TYPE, format.content_type());
+    let mut builder = Response::builder()
+        .status(StatusCode::OK)
+        .header(CONTENT_TYPE, format.container().http_mime());
     if let Some(bytes) = content_length {
         builder = builder.header(CONTENT_LENGTH, bytes);
     }

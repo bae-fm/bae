@@ -432,6 +432,7 @@ pub fn scanned_audio(probe: &bae_audio::ProbeResult) -> Option<ScannedAudio> {
     };
     Some(ScannedAudio {
         content_type: probe.content_type.clone(),
+        container: probe.container.clone(),
         duration_ms: probe.duration.as_millis() as u64,
         format: bae_types::audio_format::AudioFormat {
             codec: probe.content_type.display_name().to_string(),

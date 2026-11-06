@@ -270,8 +270,9 @@ absent (lossy audio) or 1 to 32; the database refuses any other value. Import
 refuses audio that states a deeper one, naming the file. A stored value that
 breaks these rules fails reading the track with an error naming it.
 
-Each file records what the scan read of it: its content type, duration, sample
-rate, bit depth or bitrate, channels, and whether it held one track or a
+Each file records what the scan read of it: its content type, the container
+its bytes are in (read from the bytes, never the file's name), duration,
+sample rate, bit depth or bitrate, channels, and whether it held one track or a
 CUE-described disc. Lossless codecs state a bit depth; lossy ones a bitrate.
 
 The files of a release include everything in its folder, not only the audio:
@@ -3536,7 +3537,8 @@ hold the same level.
 **Fetching receivers.** A Chromecast or UPnP renderer fetches each track from
 a small HTTP server bae runs for the session, on the local network, with a
 random credential. A track stored as one whole file in a codec the receiver
-plays is served as its own bytes. Anything else — a slice of a disc image, a
+plays is served as its own bytes, declared as the type of their container:
+`audio/ogg` for an Opus file, `audio/wav` for PCM in a WAV file. Anything else — a slice of a disc image, a
 track whose pregap is in another file or generated, a codec it doesn't play —
 is converted on the way: to MP3 at 320 kbps, or to WAV at its stored depth, as
 the person chose. A UPnP renderer is never counted on to play WAV or Opus, so
@@ -3701,7 +3703,9 @@ connects to his laptop, lists the artists, opens an album and plays it.
   and each of its songs, shows the release's year: its pressing's, else its
   album's.
 - **Streaming.** A track that is one whole file is served as that file, with
-  byte ranges. Any other track is decoded from its segments and served as WAV.
+  byte ranges, under the type of its container (a WAV file is `audio/wav`,
+  whatever codec it holds); its song's `contentType` says the same. Any other
+  track is decoded from its segments and served as WAV.
   A client that asks for a transcode gets one, MP3 at 128 kbps unless it says
   otherwise. A stream that fails partway — a file that can't be read, a decode
   or encode that fails, a bug — ends with an error, never as if the track

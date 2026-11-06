@@ -13,6 +13,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
     let source_audio = crate::source_audio::SourceAudioFile {
         layout: Some(crate::source_audio::SourceAudioLayout::Cue),
         content_type: bae_util::content_type::ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::Flac,
         duration_ms: 187_654,
         format: bae_types::audio_format::AudioFormat {
             codec: "FLAC".to_string(),

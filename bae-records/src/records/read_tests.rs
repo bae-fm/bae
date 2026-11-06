@@ -52,12 +52,13 @@ fn insert_file(
     audio: Option<(&str, i64)>,
 ) -> rusqlite::Result<usize> {
     let now = "2026-01-01T00:00:00Z";
-    let (content_type, duration_ms, sample_rate_hz, bits_per_sample, channels) = match audio {
-        Some((content_type, bits)) => {
-            (Some(content_type), Some(1_000), Some(44_100), Some(bits), Some(2))
-        }
-        None => (None, None, None, None, None),
-    };
+    let (content_type, container, duration_ms, sample_rate_hz, bits_per_sample, channels) =
+        match audio {
+            Some((content_type, bits)) => {
+                (Some(content_type), Some("flac"), Some(1_000), Some(44_100), Some(bits), Some(2))
+            }
+            None => (None, None, None, None, None, None),
+        };
     // The stand-in record of the coven file the row references.
     let file = bae_util::test_ids::test_uuid(id);
     conn.execute(
@@ -66,8 +67,8 @@ fn insert_file(
         [&file],
     )?;
     conn.execute(
-        "INSERT INTO release_files (id, release_id, original_filename, content_type, file, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 'audio/flac', ?9, ?2, \
-         ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO release_files (id, release_id, original_filename, content_type, file, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels, source_audio_container) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 'audio/flac', ?9, ?2, \
+         ?3, ?4, ?5, ?6, ?7, ?8, ?10)",
         params![
             id,
             now,
@@ -77,7 +78,8 @@ fn insert_file(
             sample_rate_hz,
             bits_per_sample,
             channels,
-            file
+            file,
+            container
         ],
     )
 }

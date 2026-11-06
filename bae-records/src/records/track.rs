@@ -10,9 +10,11 @@ pub(super) const TRACK_NEIGHBORS: &str = "SELECT \
          ORDER BY later.position LIMIT 1) \
      FROM tracks AS track WHERE track.id = ?1";
 
-/// Each segment of the audio format `?1`, in segment order, with the size of
-/// the release file it names and its scrub points' blob, each joined by key.
-const TRACK_AUDIO_SEGMENTS: &str = "SELECT s.*, coven.size AS file_size, p.points AS scrub_points \
+/// Each segment of the audio format `?1`, in segment order, with the size and
+/// container of the release file it names and its scrub points' blob, each
+/// joined by key.
+const TRACK_AUDIO_SEGMENTS: &str = "SELECT s.*, coven.size AS file_size, \
+     f.source_audio_container AS file_container, p.points AS scrub_points \
      FROM audio_format_segments AS s \
      LEFT JOIN release_files AS f ON f.id = s.file_id \
      LEFT JOIN coven_files AS coven ON coven.id = f.file \
@@ -27,9 +29,21 @@ pub struct DbTrackAudioSegment {
     /// The size of the release file the segment names; `None` when no release
     /// file has that id.
     pub file_size: Option<u64>,
+    /// The container of the release file the segment names; `None` when no
+    /// release file has that id or the file states no audio facts.
+    pub file_container: Option<bae_util::audio_container::AudioContainer>,
     /// The frames a scrub inside the segment can start at, in sample order;
     /// none when it stores none.
     pub scrub_points: Vec<crate::ScrubPoint>,
+}
+
+/// One row of [`TRACK_AUDIO_SEGMENTS`], its scrub points still the stored
+/// blob.
+struct SegmentRow {
+    segment: DbAudioSegment,
+    file_size: Option<u64>,
+    file_container: Option<bae_util::audio_container::AudioContainer>,
+    scrub_points: Option<Vec<u8>>,
 }
 
 /// Where a track sits in its release's order.
@@ -205,20 +219,25 @@ impl Records {
         let audio_format_id = audio_format_id.to_string();
         self.store
             .read(move |sql| {
-                let rows: Vec<(DbAudioSegment, Option<u64>, Option<Vec<u8>>)> =
+                let rows: Vec<SegmentRow> =
                     sql.query(TRACK_AUDIO_SEGMENTS, params![audio_format_id], |row| {
-                        Ok((
-                            row_to_audio_segment(row)?,
-                            row.get("file_size")?,
-                            row.get("scrub_points")?,
-                        ))
+                        Ok(SegmentRow {
+                            segment: row_to_audio_segment(row)?,
+                            file_size: row.get("file_size")?,
+                            file_container: row
+                                .get::<_, Option<String>>("file_container")?
+                                .as_deref()
+                                .map(bae_util::audio_container::AudioContainer::from_name),
+                            scrub_points: row.get("scrub_points")?,
+                        })
                     })?;
                 rows.into_iter()
-                    .map(|(segment, file_size, points)| {
+                    .map(|row| {
                         Ok(DbTrackAudioSegment {
-                            segment,
-                            file_size,
-                            scrub_points: match points {
+                            segment: row.segment,
+                            file_size: row.file_size,
+                            file_container: row.file_container,
+                            scrub_points: match row.scrub_points {
                                 Some(blob) => super::scrub_points_column::decode(&blob)?,
                                 None => Vec::new(),
                             },

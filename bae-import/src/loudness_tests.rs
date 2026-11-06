@@ -200,6 +200,7 @@ fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
             file_path: path.to_path_buf(),
             source_audio: crate::folder_scanner::ScannedAudio {
                 content_type: bae_util::content_type::ContentType::Flac,
+                container: bae_util::audio_container::AudioContainer::Flac,
                 duration_ms: 1_000,
                 format: bae_types::audio_format::AudioFormat {
                     codec: "FLAC".to_string(),
@@ -662,6 +663,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
             file_path: temp.path().to_path_buf(),
             source_audio: crate::folder_scanner::ScannedAudio {
                 content_type: probe.content_type.clone(),
+                container: probe.container.clone(),
                 duration_ms: probe.duration.as_millis() as u64,
                 format: bae_types::audio_format::AudioFormat {
                     codec: "MP3".to_string(),

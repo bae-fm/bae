@@ -455,10 +455,11 @@ async fn find_release_detail_returns_some_for_known_id() {
 async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
-    let source = |content_type, layout, codec: &str, bitrate_kbps: Option<i64>| {
+    let source = |content_type, container, layout, codec: &str, bitrate_kbps: Option<i64>| {
         bae_records::source_audio::SourceAudioFile {
             layout: Some(layout),
             content_type,
+            container,
             duration_ms: 90_000,
             format: bae_types::audio_format::AudioFormat {
                 codec: codec.to_string(),
@@ -469,10 +470,16 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             },
         }
     };
-    let flac =
-        source(ContentType::Flac, bae_records::source_audio::SourceAudioLayout::Cue, "FLAC", None);
+    let flac = source(
+        ContentType::Flac,
+        bae_util::audio_container::AudioContainer::Flac,
+        bae_records::source_audio::SourceAudioLayout::Cue,
+        "FLAC",
+        None,
+    );
     let mp3 = source(
         ContentType::Mp3,
+        bae_util::audio_container::AudioContainer::Mp3,
         bae_records::source_audio::SourceAudioLayout::File,
         "MP3",
         Some(320),

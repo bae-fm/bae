@@ -362,11 +362,11 @@ fn insert_file(
     sql.execute(
         "INSERT INTO scan_candidate_file \
              (watched_folder_path, candidate_path, relative_path, position, absolute_path, \
-              size, modified_at_ns, audio_content_type, audio_duration_ms, \
+              size, modified_at_ns, audio_content_type, audio_container, audio_duration_ms, \
               audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
               file_name, dir_prefix, role, sheet_binding, \
               sheet_binding_codec, sheet_disc, sheet_disc_number) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             coven::path_bytes(watched_folder_path),
             candidate_path,
@@ -376,6 +376,7 @@ fn insert_file(
             to_i64(file.file.version.size, "a file's size")?,
             file.file.version.modified_at_ns,
             file.file.source_audio.as_ref().map(|audio| audio.content_type.as_str()),
+            file.file.source_audio.as_ref().map(|audio| audio.container.as_str()),
             file.file
                 .source_audio
                 .as_ref()

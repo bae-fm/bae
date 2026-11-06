@@ -760,6 +760,7 @@ pub(super) async fn add_track_audio_sources(
                 channels: 2,
             },
             content_type: ContentType::Flac,
+            container: bae_util::audio_container::AudioContainer::Flac,
             duration_ms: 1_000,
         });
         manager.add_file(&file, 1_000).await.unwrap();

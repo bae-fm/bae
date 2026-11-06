@@ -59,6 +59,7 @@ impl ScannedFile {
     pub(crate) fn with_test_flac_audio(mut self) -> Self {
         self.source_audio = Some(ScannedAudio {
             content_type: bae_util::content_type::ContentType::Flac,
+            container: bae_util::audio_container::AudioContainer::Flac,
             duration_ms: 5_000,
             format: bae_types::audio_format::AudioFormat {
                 codec: "FLAC".to_string(),
@@ -87,6 +88,8 @@ pub struct FileVersion {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ScannedAudio {
     pub content_type: bae_util::content_type::ContentType,
+    /// The container the file's bytes are in, as the probe read it.
+    pub container: bae_util::audio_container::AudioContainer,
     pub duration_ms: u64,
     pub format: bae_types::audio_format::AudioFormat,
 }
@@ -98,6 +101,7 @@ impl ScannedAudio {
     pub(crate) fn probe(&self, source: &Path) -> Result<bae_audio::ProbeResult, ImportError> {
         Ok(bae_audio::ProbeResult {
             content_type: self.content_type.clone(),
+            container: self.container.clone(),
             duration: std::time::Duration::from_millis(self.duration_ms),
             sample_rate: track_audio_count(source, "sample rate", self.format.sample_rate_hz)?,
             bits_per_sample: track_bit_depth(source, self.format.bits_per_sample)?

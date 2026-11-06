@@ -6,6 +6,7 @@ use crate::avio::{
     close_input_and_free_custom_avio, file_avio_read_callback, file_avio_seek_callback,
     free_custom_avio_context, FileAvioContext,
 };
+use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
 use std::os::raw::{c_int, c_void};
 use std::path::Path;
@@ -18,6 +19,9 @@ use tracing::{debug, warn};
 #[derive(Debug, Clone)]
 pub struct ProbeResult {
     pub content_type: ContentType,
+    /// The container the stream is in, from the demuxer FFmpeg read the
+    /// bytes with.
+    pub container: AudioContainer,
     pub duration: std::time::Duration,
     /// The stream's sample rate in Hz.
     pub sample_rate: std::num::NonZeroU32,
@@ -72,6 +76,27 @@ pub(super) fn content_type_from_codec_id(id: ffmpeg_sys_next::AVCodecID) -> Cont
         | AVCodecID::AV_CODEC_ID_PCM_S64LE
         | AVCodecID::AV_CODEC_ID_PCM_S64BE => ContentType::Pcm,
         other => ContentType::Other(format!("codec:{:?}", other)),
+    }
+}
+
+/// Map the demuxer FFmpeg opened a file with to the container it reads. A
+/// demuxer bae names no container for lands in `Other("demuxer:{name}")`, so
+/// it survives storage and is visibly not one of ours.
+pub(super) fn container_from_demuxer(name: &str) -> AudioContainer {
+    match name {
+        "flac" => AudioContainer::Flac,
+        "mp3" => AudioContainer::Mp3,
+        "wav" => AudioContainer::Wav,
+        "aiff" => AudioContainer::Aiff,
+        "ogg" => AudioContainer::Ogg,
+        "mov,mp4,m4a,3gp,3g2,mj2" => AudioContainer::Mp4,
+        "aac" => AudioContainer::Adts,
+        "ape" => AudioContainer::Ape,
+        "wv" => AudioContainer::WavPack,
+        "dsf" => AudioContainer::Dsf,
+        // FFmpeg reads DSDIFF with its IFF demuxer.
+        "iff" => AudioContainer::Dsdiff,
+        other => AudioContainer::Other(format!("demuxer:{other}")),
     }
 }
 
@@ -299,6 +324,9 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
         let codecpar = (*stream).codecpar;
         let codec_id = (*codecpar).codec_id;
         let content_type = content_type_from_codec_id(codec_id);
+        let container = container_from_demuxer(
+            &std::ffi::CStr::from_ptr((*(*fmt_ctx).iformat).name).to_string_lossy(),
+        );
         let Some(sample_rate) = stated_count((*codecpar).sample_rate) else {
             warn!(
                 "probe_audio_from_path: the audio stream states sample rate {} in {}",
@@ -338,6 +366,7 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
         if let Some(duration) = duration {
             Some(ProbeResult {
                 content_type,
+                container,
                 duration,
                 sample_rate,
                 bits_per_sample,

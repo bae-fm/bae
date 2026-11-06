@@ -31,6 +31,7 @@ INDEX 01 00:00:00
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
     let make_probe = |seconds| ProbeResult {
         content_type: ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::Flac,
         duration: std::time::Duration::from_secs(seconds),
         sample_rate: std::num::NonZeroU32::new(44_100).expect("a test rate"),
         bits_per_sample: Some(16),
@@ -347,6 +348,7 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
             path: path.clone(),
             probe: ProbeResult {
                 content_type: ContentType::Flac,
+                container: bae_util::audio_container::AudioContainer::Flac,
                 duration: std::time::Duration::from_secs(20),
                 sample_rate: std::num::NonZeroU32::new(44_100).expect("a test rate"),
                 bits_per_sample: Some(16),

@@ -663,14 +663,14 @@ impl CastController {
 /// decided by the playback service (it knows the track's codec) and passed in;
 /// this only renders the URL.
 fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> MediaUrlProvider {
-    Arc::new(move |track_id: &str, format: RendererStreamFormat| {
+    Arc::new(move |track_id: &str, format: &RendererStreamFormat| {
         let mut url = format!(
             "{base_url}/rest/stream?id={song}&{auth}&v=1.16.1&c=bae-cast",
             song = bae_subsonic::song_id(track_id),
             auth = auth_params(&credential),
         );
         match format {
-            RendererStreamFormat::Raw => url.push_str("&format=raw"),
+            RendererStreamFormat::Raw(_) => url.push_str("&format=raw"),
             RendererStreamFormat::TranscodeMp3 => {
                 url.push_str(&format!("&format=mp3&maxBitRate={TRANSCODE_BITRATE_KBPS}"));
             }

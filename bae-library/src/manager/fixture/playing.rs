@@ -123,6 +123,7 @@ impl LibraryManager {
                 layout: Some(bae_records::source_audio::SourceAudioLayout::Cue),
                 format: scanned.format,
                 content_type: scanned.content_type,
+                container: scanned.container,
                 duration_ms: scanned.duration_ms,
             });
             let attachment = coven::prepare_user_file(&audio.path, |_| {})

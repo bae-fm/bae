@@ -40,6 +40,8 @@ pub struct SourceAudioFile {
     pub layout: Option<SourceAudioLayout>,
     pub format: AudioFormat,
     pub content_type: bae_util::content_type::ContentType,
+    /// The container the file's bytes are in, as the probe read it.
+    pub container: bae_util::audio_container::AudioContainer,
     pub duration_ms: u64,
 }
 

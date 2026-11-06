@@ -6,6 +6,7 @@ use bae_util::content_type::ContentType;
 pub(super) fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
     crate::folder_scanner::ScannedAudio {
         content_type: ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::Flac,
         duration_ms: 1_000,
         format: bae_types::audio_format::AudioFormat {
             codec: "FLAC".to_string(),
@@ -74,6 +75,7 @@ pub(super) fn probe_result(sample_rate: u32, channels: u32) -> ProbeResult {
     let count = |count| std::num::NonZeroU32::new(count).expect("a test count");
     ProbeResult {
         content_type: ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::Flac,
         duration: std::time::Duration::from_secs(1),
         sample_rate: count(sample_rate),
         bits_per_sample: Some(16),

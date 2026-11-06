@@ -41,8 +41,9 @@ impl ContentType {
     ///
     /// For ALAC this returns the private MIME `"audio/alac"`; IANA's
     /// `"audio/mp4"` is ambiguous (it covers AAC-in-MP4 too) and can't
-    /// round-trip both variants through [`Self::from_mime`]. If a future HTTP
-    /// surface needs IANA-correct MIMEs, add a separate `http_mime()`.
+    /// round-trip both variants through [`Self::from_mime`]. An audio value
+    /// names the codec, never served bytes: an HTTP `Content-Type` names their
+    /// container ([`crate::audio_container::AudioContainer::http_mime`]).
     pub fn as_str(&self) -> &str {
         match self {
             Self::Flac => "audio/flac",

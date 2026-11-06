@@ -2,6 +2,7 @@
 //! their own, which every other bae crate builds on and which depend on
 //! nothing else in bae.
 
+pub mod audio_container;
 pub mod content_type;
 pub mod content_type_hint;
 pub mod duration;

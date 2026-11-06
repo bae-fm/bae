@@ -505,6 +505,18 @@ pub(super) async fn seed_playable_track(store: &SeededStore, release_id: &str, t
     seed_track_window(store, release_id, track_id, 0, None, None).await;
 }
 
+/// [`seed_playable_track`] with its file stored as `content_type` in
+/// `container`.
+pub(super) async fn seed_playable_track_stored_as(
+    store: &SeededStore,
+    release_id: &str,
+    track_id: &str,
+    content_type: bae_util::content_type::ContentType,
+    container: bae_util::audio_container::AudioContainer,
+) {
+    seed_track(store, release_id, track_id, (content_type, container), (0, None, None)).await;
+}
+
 /// [`seed_playable_track`] with its one main segment spanning
 /// `start_sample..end_sample` of its file, as a CUE image's track does, after
 /// `generated_pregap_samples` of silence a CUE `PREGAP` generates.
@@ -516,12 +528,56 @@ pub(super) async fn seed_track_window(
     end_sample: Option<u64>,
     generated_pregap_samples: Option<u64>,
 ) {
-    use bae_records::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
+    use bae_util::audio_container::AudioContainer;
     use bae_util::content_type::ContentType;
+    seed_track(
+        store,
+        release_id,
+        track_id,
+        (ContentType::Flac, AudioContainer::Flac),
+        (start_sample, end_sample, generated_pregap_samples),
+    )
+    .await;
+}
+
+/// Seed `track_id`'s file, stored as `(codec, container)`, and its one main
+/// segment spanning `(start_sample, end_sample)` after
+/// `generated_pregap_samples` of generated silence.
+async fn seed_track(
+    store: &SeededStore,
+    release_id: &str,
+    track_id: &str,
+    (content_type, container): (
+        bae_util::content_type::ContentType,
+        bae_util::audio_container::AudioContainer,
+    ),
+    (start_sample, end_sample, generated_pregap_samples): (u64, Option<u64>, Option<u64>),
+) {
+    use bae_records::source_audio::{SourceAudioFile, SourceAudioLayout};
+    use bae_records::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
     let now = chrono::Utc::now();
+    let lossless = content_type.is_lossless_audio();
     let file_id = bae_util::test_ids::test_uuid(&format!("{track_id}-file"));
-    let file =
-        NewReleaseFile::new(release_id, "track.flac", ContentType::Flac, file_id.clone(), now);
+    let mut file = NewReleaseFile::new(
+        release_id,
+        &format!("track.{}", content_type.file_extension()),
+        content_type.clone(),
+        file_id.clone(),
+        now,
+    );
+    file.source_audio = Some(SourceAudioFile {
+        layout: Some(SourceAudioLayout::File),
+        format: bae_types::audio_format::AudioFormat {
+            codec: content_type.display_name().to_string(),
+            sample_rate_hz: 44_100,
+            bits_per_sample: lossless.then_some(16),
+            bitrate_kbps: (!lossless).then_some(128),
+            channels: 2,
+        },
+        content_type: content_type.clone(),
+        container,
+        duration_ms: 180_000,
+    });
     bae_records::test_fixtures::aggregate_ordering::insert_file(
         store,
         store.home.path(),
@@ -532,9 +588,9 @@ pub(super) async fn seed_track_window(
     let audio_format_id = bae_util::test_ids::test_uuid(&format!("{track_id}-af"));
     let audio_format = DbAudioFormat::new(
         track_id,
-        ContentType::Flac,
+        content_type,
         std::num::NonZeroU32::new(44_100).unwrap(),
-        Some(std::num::NonZeroU32::new(16).unwrap()),
+        lossless.then(|| std::num::NonZeroU32::new(16).unwrap()),
         std::num::NonZeroU32::new(2).unwrap(),
         audio_format_id.clone(),
         now,

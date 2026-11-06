@@ -17,6 +17,9 @@ pub enum TrackAudioError {
     /// A segment names a release file the library doesn't hold.
     #[error("Audio file not found: {0}")]
     FileNotFound(String),
+    /// A segment names a release file that states no audio facts.
+    #[error("Audio segment names a file that is not audio: {0}")]
+    NotAudio(String),
     #[error("No audio segments for track: {0}")]
     NoSegments(String),
     #[error(transparent)]
@@ -42,12 +45,13 @@ pub struct TrackAudioMeta {
     pub audio_files: Vec<DbFile>,
 }
 
-/// One segment of a track's audio, with the size of the file it names and
-/// the frames a scrub inside it can start at.
+/// One segment of a track's audio, with the size and container of the file it
+/// names and the frames a scrub inside it can start at.
 #[derive(Clone)]
 pub struct TrackAudioSegment {
     pub segment: DbAudioSegment,
     pub file_size: u64,
+    pub container: bae_util::audio_container::AudioContainer,
     pub scrub_points: Vec<crate::ScrubPoint>,
 }
 
@@ -73,8 +77,12 @@ impl TrackAudioMeta {
                 let file_size = row
                     .file_size
                     .ok_or_else(|| TrackAudioError::FileNotFound(row.segment.file_id.clone()))?;
+                let container = row
+                    .file_container
+                    .ok_or_else(|| TrackAudioError::NotAudio(row.segment.file_id.clone()))?;
                 Ok(TrackAudioSegment {
                     file_size,
+                    container,
                     segment: row.segment,
                     scrub_points: row.scrub_points,
                 })
@@ -101,6 +109,9 @@ pub struct ResolvedTrackAudioSegment {
     pub role: DbAudioSegmentRole,
     pub file_id: String,
     pub file_size: u64,
+    /// The container its backing file's bytes are in: what a serve of the
+    /// whole file names as its type.
+    pub container: bae_util::audio_container::AudioContainer,
     /// Where this segment sits inside its backing file, in samples and bytes.
     pub span: crate::SegmentSpan,
     /// The frames a scrub inside this segment jumps to by byte.
@@ -155,6 +166,7 @@ impl ResolvedTrackAudio {
                 role: entry.segment.role.clone(),
                 file_id: entry.segment.file_id.clone(),
                 file_size: entry.file_size,
+                container: entry.container.clone(),
                 span: entry.segment.span(),
                 scrub_points: crate::ScrubPoints::new(entry.scrub_points.clone()),
             })

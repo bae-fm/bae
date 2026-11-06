@@ -354,6 +354,7 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
                     channels: 2,
                 },
                 content_type: bae_util::content_type::ContentType::Flac,
+                container: bae_util::audio_container::AudioContainer::Flac,
                 duration_ms: 1_000,
             }),
             created_at: chrono::Utc::now(),

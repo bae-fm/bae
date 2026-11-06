@@ -187,20 +187,39 @@ fn probe_audio_from_path_maps_audio_format_fixtures() {
     init();
     let fixture =
         |name: &str| format!("{}/test-fixtures/audio-format/{name}", env!("CARGO_MANIFEST_DIR"));
-    for (name, expected) in [
-        ("placeholder-pcm.wav", ContentType::Pcm),
-        ("placeholder-pcm.aiff", ContentType::Pcm),
-        ("placeholder-opus.opus", ContentType::Opus),
-        ("placeholder-vorbis.ogg", ContentType::Vorbis),
-        ("placeholder-wavpack.wv", ContentType::WavPack),
-        ("placeholder-dsd.dsf", ContentType::Dsd),
-        ("placeholder-dsd.dff", ContentType::Dsd),
+    for (name, expected, container) in [
+        ("placeholder-pcm.wav", ContentType::Pcm, AudioContainer::Wav),
+        ("placeholder-pcm.aiff", ContentType::Pcm, AudioContainer::Aiff),
+        ("placeholder-mp3.mp3", ContentType::Mp3, AudioContainer::Mp3),
+        ("placeholder-aac.m4a", ContentType::Aac, AudioContainer::Mp4),
+        ("placeholder-opus.opus", ContentType::Opus, AudioContainer::Ogg),
+        ("placeholder-vorbis.ogg", ContentType::Vorbis, AudioContainer::Ogg),
+        ("placeholder-wavpack.wv", ContentType::WavPack, AudioContainer::WavPack),
+        ("placeholder-dsd.dsf", ContentType::Dsd, AudioContainer::Dsf),
+        ("placeholder-dsd.dff", ContentType::Dsd, AudioContainer::Dsdiff),
     ] {
         let path = fixture(name);
         let probe = probe_audio_from_path(std::path::Path::new(&path))
             .unwrap_or_else(|| panic!("probe {name}"));
         assert_eq!(probe.content_type, expected, "{name}");
+        assert_eq!(probe.container, container, "{name}");
     }
+}
+
+/// The container is read from the bytes, never the name: FLAC bytes named
+/// `.wav` are in FLAC's own container.
+#[test]
+fn probe_reads_the_container_from_the_bytes() {
+    init();
+    let (flac, _) = stereo_flac_file(4_410);
+    let dir = tempfile::tempdir().unwrap();
+    let misnamed = dir.path().join("track.wav");
+    std::fs::copy(flac.path(), &misnamed).unwrap();
+
+    let probe = probe_audio_from_path(&misnamed).expect("probe");
+
+    assert_eq!(probe.content_type, ContentType::Flac);
+    assert_eq!(probe.container, AudioContainer::Flac);
 }
 
 /// Collects a decode's interleaved samples.

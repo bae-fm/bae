@@ -20,6 +20,7 @@ use crate::tables::FinishRead;
 use crate::CandidateKey;
 use crate::RelativeFolder;
 use bae_types::audio_format::AudioFormat;
+use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
 use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
 
@@ -318,6 +319,7 @@ fn files_json_sql() -> String {
              'relative_path', file.relative_path, 'absolute_path', hex(file.absolute_path), \
              'size', file.size, 'modified_at_ns', file.modified_at_ns, \
              'audio_content_type', file.audio_content_type, \
+             'audio_container', file.audio_container, \
              'audio_duration_ms', file.audio_duration_ms, \
              'audio_sample_rate_hz', file.audio_sample_rate_hz, \
              'audio_bits_per_sample', file.audio_bits_per_sample, \
@@ -491,6 +493,7 @@ struct FileRow {
     size: i64,
     modified_at_ns: i64,
     audio_content_type: Option<String>,
+    audio_container: Option<String>,
     audio_duration_ms: Option<i64>,
     audio_sample_rate_hz: Option<i64>,
     audio_bits_per_sample: Option<i64>,
@@ -593,15 +596,17 @@ fn check_sheet_bindings_name_audio(
 fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
     match (
         row.audio_content_type.as_deref(),
+        row.audio_container.as_deref(),
         row.audio_duration_ms,
         row.audio_sample_rate_hz,
         row.audio_bits_per_sample,
         row.audio_bitrate_kbps,
         row.audio_channels,
     ) {
-        (None, None, None, None, None, None) if row.role != "audio" => Ok(None),
+        (None, None, None, None, None, None, None) if row.role != "audio" => Ok(None),
         (
             Some(content_type),
+            Some(container),
             Some(duration_ms),
             Some(sample_rate_hz),
             bits_per_sample,
@@ -629,6 +634,7 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
                     channels,
                 },
                 content_type,
+                container: AudioContainer::from_name(container),
                 duration_ms: to_u64(duration_ms, "an audio file's duration")?,
             }))
         }

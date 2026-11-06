@@ -455,6 +455,7 @@ impl ImportService {
                     layout: source_audio_layouts.get(file.version.path.as_path()).copied(),
                     format: audio.format.clone(),
                     content_type: audio.content_type.clone(),
+                    container: audio.container.clone(),
                     duration_ms: audio.duration_ms,
                 }
             });

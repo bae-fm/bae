@@ -2,9 +2,13 @@ use super::*;
 use bae_records::ResolvedTrackAudioSegment;
 use bae_records::{DbAudioSegmentRole, SegmentSpan};
 
-/// A track stored as `content_type`, as one whole file when `whole_file`,
-/// else as a window of a CUE image.
-fn track(content_type: ContentType, whole_file: bool) -> ResolvedTrackAudio {
+/// A track stored as `content_type` in a file in `container`, as that whole
+/// file when `whole_file`, else as a window of a CUE image.
+fn track(
+    content_type: ContentType,
+    container: AudioContainer,
+    whole_file: bool,
+) -> ResolvedTrackAudio {
     let span = if whole_file {
         SegmentSpan::whole_file()
     } else {
@@ -22,6 +26,7 @@ fn track(content_type: ContentType, whole_file: bool) -> ResolvedTrackAudio {
             role: DbAudioSegmentRole::Main,
             file_id: "file".to_string(),
             file_size: 1_000_000,
+            container,
             span,
             scrub_points: bae_records::ScrubPoints::new(Vec::new()),
         }],
@@ -58,10 +63,16 @@ use RendererStreamFormat::{Raw, TranscodeMp3, TranscodeWav};
 /// the setting: the setting is only what a conversion produces.
 #[test]
 fn a_whole_file_both_flavors_decode_is_served_as_stored() {
-    for content_type in [ContentType::Flac, ContentType::Mp3, ContentType::Aac, ContentType::Pcm] {
+    for (content_type, container) in [
+        (ContentType::Flac, AudioContainer::Flac),
+        (ContentType::Mp3, AudioContainer::Mp3),
+        (ContentType::Aac, AudioContainer::Mp4),
+        (ContentType::Pcm, AudioContainer::Wav),
+    ] {
+        let raw = Raw(container.clone());
         assert_eq!(
-            served(&track(content_type.clone(), true)),
-            [Raw, Raw, Raw, Raw],
+            served(&track(content_type.clone(), container, true)),
+            [raw.clone(), raw.clone(), raw.clone(), raw],
             "{content_type:?}"
         );
     }
@@ -73,7 +84,7 @@ fn a_whole_file_both_flavors_decode_is_served_as_stored() {
 #[test]
 fn a_window_converts_to_the_setting_where_the_flavor_takes_it() {
     assert_eq!(
-        served(&track(ContentType::Flac, false)),
+        served(&track(ContentType::Flac, AudioContainer::Flac, false)),
         [TranscodeMp3, TranscodeWav, TranscodeMp3, TranscodeMp3]
     );
 }
@@ -82,11 +93,14 @@ fn a_window_converts_to_the_setting_where_the_flavor_takes_it() {
 /// window is.
 #[test]
 fn a_codec_no_flavor_decodes_converts_to_the_setting() {
-    for content_type in
-        [ContentType::Ape, ContentType::Alac, ContentType::WavPack, ContentType::Dsd]
-    {
+    for (content_type, container) in [
+        (ContentType::Ape, AudioContainer::Ape),
+        (ContentType::Alac, AudioContainer::Mp4),
+        (ContentType::WavPack, AudioContainer::WavPack),
+        (ContentType::Dsd, AudioContainer::Dsf),
+    ] {
         assert_eq!(
-            served(&track(content_type.clone(), true)),
+            served(&track(content_type.clone(), container, true)),
             [TranscodeMp3, TranscodeWav, TranscodeMp3, TranscodeMp3],
             "{content_type:?}"
         );
@@ -97,12 +111,20 @@ fn a_codec_no_flavor_decodes_converts_to_the_setting() {
 /// stored, a UPnP renderer gets a conversion.
 #[test]
 fn opus_plays_raw_on_cast_and_converts_for_upnp() {
-    assert_eq!(served(&track(ContentType::Opus, true)), [Raw, Raw, TranscodeMp3, TranscodeMp3]);
+    let raw = Raw(AudioContainer::Ogg);
+    assert_eq!(
+        served(&track(ContentType::Opus, AudioContainer::Ogg, true)),
+        [raw.clone(), raw, TranscodeMp3, TranscodeMp3]
+    );
 }
 
+/// A raw serve names the container its bytes are in, not the codec they
+/// hold: Opus in Ogg is `audio/ogg`, PCM in WAV `audio/wav`.
 #[test]
-fn served_content_type_follows_the_format() {
-    assert_eq!(Raw.content_type_str(&ContentType::Flac), "audio/flac");
-    assert_eq!(TranscodeMp3.content_type_str(&ContentType::Ape), "audio/mpeg");
-    assert_eq!(TranscodeWav.content_type_str(&ContentType::Ape), "audio/wav");
+fn served_content_type_names_the_container() {
+    assert_eq!(Raw(AudioContainer::Flac).content_type(), "audio/flac");
+    assert_eq!(Raw(AudioContainer::Ogg).content_type(), "audio/ogg");
+    assert_eq!(Raw(AudioContainer::Wav).content_type(), "audio/wav");
+    assert_eq!(TranscodeMp3.content_type(), "audio/mpeg");
+    assert_eq!(TranscodeWav.content_type(), "audio/wav");
 }

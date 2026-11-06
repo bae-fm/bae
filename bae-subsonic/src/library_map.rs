@@ -160,14 +160,14 @@ async fn resolve_audio_fields(
         Some(segment) => {
             let file = files.iter().find(|f| f.id == segment.file_id);
             (
-                audio.content_type.as_str().to_string(),
+                segment.container.http_mime().to_string(),
                 file.and_then(|f| bae_records::stored_name::file_extension(&f.original_filename)),
                 file.map(|f| f.file_size),
             )
         }
         None => {
             let format = wav_stream_format(&audio);
-            (format.content_type().to_string(), Some(format.extension().to_string()), None)
+            (format.container().http_mime().to_string(), Some(format.extension().to_string()), None)
         }
     };
 

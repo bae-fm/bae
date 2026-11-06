@@ -490,7 +490,7 @@ async fn a_cue_image_track_is_served_as_its_own_window() {
         .await,
         [
             (
-                "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw"
+                "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw(Flac)"
                     .to_string(),
                 "audio/flac".to_string()
             ),
@@ -518,7 +518,8 @@ async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
         )
     };
     let whole_file = (
-        "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw".to_string(),
+        "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw(Flac)"
+            .to_string(),
         "audio/flac".to_string(),
     );
     assert_eq!(
@@ -537,6 +538,33 @@ async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
         .await,
         [whole_file, window("TranscodeMp3", "audio/mpeg")]
     );
+}
+
+/// A Cast LOAD of a file served as stored declares the container its bytes
+/// are in, not the codec they hold: an Opus file is Ogg.
+#[tokio::test]
+async fn a_raw_opus_file_is_loaded_as_ogg() {
+    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+    const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    let (store, mut service, _rx) = seeded_playback_service(&[(RELEASE, &[TRACK])]).await;
+    seed_playable_track_stored_as(
+        &store,
+        RELEASE,
+        TRACK,
+        bae_util::content_type::ContentType::Opus,
+        bae_util::audio_container::AudioContainer::Ogg,
+    )
+    .await;
+    fill_test_release(&mut service, RELEASE).await;
+    service.slot =
+        active_slot(test_prepared_track(TRACK, create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let channel = FakeChannel::new();
+    let state = channel.state.clone();
+
+    service.handle_play_on(remote_connect(channel)).await;
+
+    assert!(wait_until(&state, |s| !s.loads.is_empty()));
+    assert_eq!(state.lock().unwrap().loads[0].content_type, "audio/ogg");
 }
 
 /// Cast `RELEASE`'s one track, stored with `track_length_ms` and a 2 s

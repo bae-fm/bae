@@ -366,15 +366,17 @@ pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
         .transpose()?;
     let source_audio = match (
         row.get::<_, Option<String>>("source_audio_content_type")?,
+        row.get::<_, Option<String>>("source_audio_container")?,
         row.get::<_, Option<u64>>("source_audio_duration_ms")?,
         row.get::<_, Option<i64>>("source_audio_sample_rate_hz")?,
         row.get::<_, Option<i64>>("source_audio_bits_per_sample")?,
         row.get::<_, Option<i64>>("source_audio_bitrate_kbps")?,
         row.get::<_, Option<i64>>("source_audio_channels")?,
     ) {
-        (None, None, None, None, None, None) if layout.is_none() => None,
+        (None, None, None, None, None, None, None) if layout.is_none() => None,
         (
             Some(content_type),
+            Some(container),
             Some(duration_ms),
             Some(sample_rate_hz),
             bits_per_sample,
@@ -383,6 +385,7 @@ pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
         ) => Some(crate::source_audio::SourceAudioFile {
             layout,
             content_type: ContentType::from_mime(&content_type),
+            container: bae_util::audio_container::AudioContainer::from_name(&container),
             duration_ms,
             format: bae_types::audio_format::AudioFormat {
                 codec: ContentType::from_mime(&content_type).display_name().to_string(),

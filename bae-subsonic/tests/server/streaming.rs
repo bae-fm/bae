@@ -621,3 +621,68 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         ]
     );
 }
+
+/// A track stored as a WAV file is served as stored under the type of its
+/// container, `audio/wav`, and its song says so: the codec it holds (PCM)
+/// names no type a client plays.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stored_wav_is_served_as_audio_wav() {
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let (library, _db_temp) = bae_library::test_libraries::setup_test_library_with(
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let source = TempDir::new().unwrap();
+    let dir = source.path().join("wav album");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::copy(
+        bae_audio::test_fixtures::audio_format_dir().join("placeholder-pcm.wav"),
+        dir.join("01.wav"),
+    )
+    .unwrap();
+    let discogs_key =
+        fakes.seed_discogs_test_release(bae_catalogs::test_releases::discogs_test_release(
+            "test-wav",
+            "WAV Album",
+            &[("Only Track", "0:00")],
+        ));
+    let import = library.start_discogs_import().await;
+    import
+        .send_command(ImportCommand {
+            import_id: "wav".to_string(),
+            candidate_key: bae_import::CandidateKey::from(b"wav".to_vec()),
+            source: CandidateSource {
+                path: dir,
+                scope: ReleaseFileScope::Recursive,
+                parts: Vec::new(),
+            },
+            selected_cover: None,
+            destination: ImportDestination::Local,
+            pick: Some(bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
+                    discogs_key,
+                ),
+                partners: vec![],
+            }),
+            read_file_tags: false,
+            user_edit: None,
+        })
+        .await
+        .unwrap();
+    let mut rx = import.subscribe_import("wav".to_string());
+    let (release, _album) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
+    let services = bae_app::test_services::start_services(&library)
+        .await
+        .expect("the test library's services start");
+    let router = bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
+    let song_id = first_song_id(&router, &release).await;
+
+    let song = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
+    assert_eq!(song.sub()["song"]["contentType"], "audio/wav", "{}", song.sub());
+    let served = call(&router, "stream", &authed(&format!("id={song_id}&format=raw"))).await;
+    assert_eq!(served.status, StatusCode::OK);
+    assert_eq!(served.content_type, "audio/wav");
+    assert_eq!(&served.body[0..4], b"RIFF", "the stored WAV's own bytes");
+}

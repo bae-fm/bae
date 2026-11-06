@@ -36,6 +36,7 @@ fn folder(root: &Path, name: &str, size: u64) -> ScanItem {
     let mut file = ScannedFile::new(path.join("01.flac"), "01.flac".to_string(), size, 1);
     file.source_audio = Some(ScannedAudio {
         content_type: bae_util::content_type::ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::Flac,
         duration_ms: 5_000,
         format: bae_types::audio_format::AudioFormat {
             codec: "FLAC".to_string(),

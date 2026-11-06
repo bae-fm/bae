@@ -12,9 +12,9 @@
 //! and the LOAD metadata (which reports the served MIME type) consult, so the
 //! URL and the declared content type never disagree.
 
-use bae_audio::StreamEncodeFormat;
 use bae_preferences::CastTranscodeFormat;
 use bae_records::ResolvedTrackAudio;
+use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
 
 /// The bitrate an MP3 conversion is encoded at, in kbps. Shared across
@@ -22,10 +22,11 @@ use bae_util::content_type::ContentType;
 pub const TRANSCODE_BITRATE_KBPS: u32 = 320;
 
 /// How a track is served to the renderer: its original bytes, or converted.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RendererStreamFormat {
-    /// Serve the stored file's original bytes (the renderer decodes them).
-    Raw,
+    /// Serve the stored file's original bytes, in the container they are in
+    /// (the renderer decodes them).
+    Raw(AudioContainer),
     /// Convert to MP3 at [`TRANSCODE_BITRATE_KBPS`].
     TranscodeMp3,
     /// Convert to uncompressed WAV at the track's stored depth.
@@ -33,13 +34,13 @@ pub enum RendererStreamFormat {
 }
 
 impl RendererStreamFormat {
-    /// The MIME type of the served bytes: the source type for a raw serve, or
-    /// the conversion's.
-    pub fn content_type_str(self, source: &ContentType) -> String {
+    /// The MIME type of the served bytes: the stored file's container's for a
+    /// raw serve, or the conversion's.
+    pub fn content_type(&self) -> &'static str {
         match self {
-            RendererStreamFormat::Raw => source.as_str().to_string(),
-            RendererStreamFormat::TranscodeMp3 => StreamEncodeFormat::MP3_CONTENT_TYPE.to_string(),
-            RendererStreamFormat::TranscodeWav => StreamEncodeFormat::WAV_CONTENT_TYPE.to_string(),
+            RendererStreamFormat::Raw(container) => container.http_mime(),
+            RendererStreamFormat::TranscodeMp3 => AudioContainer::Mp3.http_mime(),
+            RendererStreamFormat::TranscodeWav => AudioContainer::Wav.http_mime(),
         }
     }
 }
@@ -97,8 +98,8 @@ impl RendererFlavor {
         audio: &ResolvedTrackAudio,
         transcode: CastTranscodeFormat,
     ) -> RendererStreamFormat {
-        if audio.whole_file().is_some() && self.decodes(&audio.content_type) {
-            return RendererStreamFormat::Raw;
+        if let Some(file) = audio.whole_file().filter(|_| self.decodes(&audio.content_type)) {
+            return RendererStreamFormat::Raw(file.container.clone());
         }
         match transcode {
             CastTranscodeFormat::Wav if self.takes_wav() => RendererStreamFormat::TranscodeWav,

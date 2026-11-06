@@ -227,6 +227,7 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
                     layout: Some(bae_records::source_audio::SourceAudioLayout::Cue),
                     format: audio.format.clone(),
                     content_type: audio.content_type.clone(),
+                    container: audio.container.clone(),
                     duration_ms: audio.duration_ms,
                 }
             }),

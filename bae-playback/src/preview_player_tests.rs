@@ -408,6 +408,7 @@ fn probe(sample_rate: u32, channels: u32) -> bae_audio::ProbeResult {
     let count = |count| std::num::NonZeroU32::new(count).expect("a test count");
     bae_audio::ProbeResult {
         content_type: bae_util::content_type::ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::Flac,
         duration: Duration::from_secs(1),
         sample_rate: count(sample_rate),
         bits_per_sample: Some(16),

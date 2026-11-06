@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     size                  INTEGER NOT NULL CHECK (size >= 0),
     modified_at_ns        INTEGER NOT NULL CHECK (modified_at_ns >= 0),
     audio_content_type    TEXT,
+    audio_container       TEXT,
     audio_duration_ms     INTEGER CHECK (audio_duration_ms IS NULL OR audio_duration_ms >= 0),
     audio_sample_rate_hz  INTEGER CHECK (audio_sample_rate_hz IS NULL OR audio_sample_rate_hz > 0),
     audio_bits_per_sample INTEGER CHECK (audio_bits_per_sample IS NULL OR audio_bits_per_sample > 0),
@@ -182,11 +183,13 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     CHECK ((sheet_binding = 'refused_codec') = (sheet_binding_codec IS NOT NULL)),
     CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
     CHECK (
-        (role <> 'audio' AND audio_content_type IS NULL AND audio_duration_ms IS NULL
+        (role <> 'audio' AND audio_content_type IS NULL AND audio_container IS NULL
+            AND audio_duration_ms IS NULL
             AND audio_sample_rate_hz IS NULL AND audio_bits_per_sample IS NULL
             AND audio_bitrate_kbps IS NULL AND audio_channels IS NULL)
         OR
-        (role = 'audio' AND audio_content_type IS NOT NULL AND audio_duration_ms IS NOT NULL
+        (role = 'audio' AND audio_content_type IS NOT NULL AND audio_container IS NOT NULL
+            AND audio_duration_ms IS NOT NULL
             AND audio_sample_rate_hz IS NOT NULL AND audio_channels IS NOT NULL
             AND (
                 (audio_content_type IN (

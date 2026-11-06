@@ -24,7 +24,7 @@ use bae_records::ResolvedTrackAudio;
 /// has already resolved the track's content type and this closure runs
 /// synchronously on the service thread, where an async lookup can't.
 pub type MediaUrlProvider =
-    Arc<dyn Fn(&str, RendererStreamFormat) -> Result<String, String> + Send + Sync>;
+    Arc<dyn Fn(&str, &RendererStreamFormat) -> Result<String, String> + Send + Sync>;
 
 /// Mints the HTTP URL for a cover. The URL names the cover's version, so a
 /// device that cached the art a replaced cover had fetches the new art.
@@ -65,8 +65,8 @@ impl RendererMediaSource {
     ) -> Result<ServedTrack, String> {
         let format = self.flavor.stream_format(audio, transcode);
         Ok(ServedTrack {
-            url: (self.stream_url)(&audio.track_id, format)?,
-            content_type: format.content_type_str(&audio.content_type),
+            url: (self.stream_url)(&audio.track_id, &format)?,
+            content_type: format.content_type().to_string(),
             cover_url: cover.map(|cover| (self.cover_url)(cover)),
         })
     }

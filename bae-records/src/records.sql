@@ -396,6 +396,7 @@ CREATE TABLE IF NOT EXISTS release_files (
     -- one slice of a CUE-described disc ('cue').
     source_audio_layout TEXT,
     source_audio_content_type TEXT,
+    source_audio_container TEXT,
     source_audio_duration_ms INTEGER CHECK (source_audio_duration_ms IS NULL OR source_audio_duration_ms >= 0),
     source_audio_sample_rate_hz INTEGER CHECK (source_audio_sample_rate_hz IS NULL OR source_audio_sample_rate_hz > 0),
     source_audio_bits_per_sample INTEGER CHECK (source_audio_bits_per_sample IS NULL OR source_audio_bits_per_sample > 0),
@@ -409,6 +410,7 @@ CREATE TABLE IF NOT EXISTS release_files (
     CHECK (
         (source_audio_layout IS NULL
             AND source_audio_content_type IS NULL
+            AND source_audio_container IS NULL
             AND source_audio_duration_ms IS NULL
             AND source_audio_sample_rate_hz IS NULL
             AND source_audio_bits_per_sample IS NULL
@@ -419,6 +421,7 @@ CREATE TABLE IF NOT EXISTS release_files (
             AND source_audio_channels IS NOT NULL
             AND source_audio_channels > 0
             AND source_audio_content_type IS NOT NULL
+            AND source_audio_container IS NOT NULL
             AND source_audio_duration_ms IS NOT NULL
             AND source_audio_sample_rate_hz IS NOT NULL
             AND (

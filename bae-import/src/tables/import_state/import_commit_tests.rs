@@ -15,6 +15,7 @@ use bae_util::test_channels::HANG_GUARD;
 fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
     crate::folder_scanner::ScannedAudio {
         content_type: ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::Flac,
         duration_ms: 1_000,
         format: bae_types::audio_format::AudioFormat {
             codec: "FLAC".to_string(),

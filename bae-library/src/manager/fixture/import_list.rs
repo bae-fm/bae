@@ -280,6 +280,7 @@ fn fixture_candidate(
                 ScannedFile::new(path.join(track), track.clone(), 1_000 + *file_count, 1);
             file.source_audio = Some(ScannedAudio {
                 content_type: bae_util::content_type::ContentType::Flac,
+                container: bae_util::audio_container::AudioContainer::Flac,
                 duration_ms: 180_000,
                 format: bae_types::audio_format::AudioFormat {
                     codec: bae_util::content_type::ContentType::Flac.display_name().to_string(),

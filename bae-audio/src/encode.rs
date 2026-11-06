@@ -2,6 +2,7 @@ use super::avio::{
     avio_write_callback, avio_write_seek_callback, free_custom_avio_context, WriteAvioContext,
 };
 use super::{av_err_str, DecodedSink, AVIO_BUFFER_SIZE};
+use bae_util::audio_container::AudioContainer;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
 use std::sync::Arc;
@@ -346,17 +347,12 @@ pub enum StreamEncodeFormat {
 }
 
 impl StreamEncodeFormat {
-    /// The MIME type of an encoded [`Self::Mp3`] stream.
-    pub const MP3_CONTENT_TYPE: &'static str = "audio/mpeg";
-    /// The MIME type of an encoded [`Self::PcmWav`] stream.
-    pub const WAV_CONTENT_TYPE: &'static str = "audio/wav";
-
-    /// The MIME type of the encoded stream.
-    pub fn content_type(self) -> &'static str {
+    /// The container the encoded stream is written in.
+    pub fn container(self) -> AudioContainer {
         match self {
-            Self::Mp3 { .. } => Self::MP3_CONTENT_TYPE,
-            Self::OpusOgg { .. } => "audio/ogg",
-            Self::PcmWav { .. } => Self::WAV_CONTENT_TYPE,
+            Self::Mp3 { .. } => AudioContainer::Mp3,
+            Self::OpusOgg { .. } => AudioContainer::Ogg,
+            Self::PcmWav { .. } => AudioContainer::Wav,
         }
     }
 

@@ -120,6 +120,7 @@ fn local_file(
     );
     scanned.source_audio = file.source_audio.map(|audio| crate::folder_scanner::ScannedAudio {
         content_type: audio.content_type,
+        container: audio.container,
         duration_ms: audio.duration_ms,
         format: audio.format,
     });

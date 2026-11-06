@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::audio_container::AudioContainer;
 use bae_util::test_channels::HANG_GUARD;
 
 fn credential() -> SubsonicCredential {
@@ -277,17 +278,17 @@ fn an_airplay2_receiver_without_transient_pairing_is_refused() {
 fn stream_url_encodes_format_and_track() {
     let provider = stream_url_provider("http://10.0.0.5:9000".to_string(), credential());
 
-    let raw = provider("track-1", RendererStreamFormat::Raw).unwrap();
+    let raw = provider("track-1", &RendererStreamFormat::Raw(AudioContainer::Flac)).unwrap();
     assert!(raw.starts_with("http://10.0.0.5:9000/rest/stream?id=tr-track-1&"));
     assert!(raw.contains("&format=raw"), "{raw}");
     assert!(raw.contains("u=castuser"));
     assert!(raw.contains("&t="));
     assert!(raw.contains("&s="));
 
-    let transcoded = provider("track-2", RendererStreamFormat::TranscodeMp3).unwrap();
+    let transcoded = provider("track-2", &RendererStreamFormat::TranscodeMp3).unwrap();
     assert!(transcoded.contains("&format=mp3&maxBitRate=320"), "{transcoded}");
 
-    let wav = provider("track-3", RendererStreamFormat::TranscodeWav).unwrap();
+    let wav = provider("track-3", &RendererStreamFormat::TranscodeWav).unwrap();
     assert!(wav.contains("id=tr-track-3&"), "{wav}");
     assert!(wav.ends_with("&format=wav"), "{wav}");
 }
@@ -314,7 +315,7 @@ fn minted_token_matches_the_credential() {
     let credential = credential();
     let url = stream_url_provider("http://host:1".to_string(), credential.clone())(
         "t",
-        RendererStreamFormat::Raw,
+        &RendererStreamFormat::Raw(AudioContainer::Flac),
     )
     .unwrap();
 
@@ -329,8 +330,8 @@ fn minted_token_matches_the_credential() {
 #[test]
 fn each_url_uses_a_fresh_salt() {
     let provider = stream_url_provider("http://host:1".to_string(), credential());
-    let a = provider("t", RendererStreamFormat::Raw).unwrap();
-    let b = provider("t", RendererStreamFormat::Raw).unwrap();
+    let a = provider("t", &RendererStreamFormat::Raw(AudioContainer::Flac)).unwrap();
+    let b = provider("t", &RendererStreamFormat::Raw(AudioContainer::Flac)).unwrap();
     assert_ne!(a, b, "a fresh salt per call yields distinct URLs");
 }
 
@@ -357,7 +358,7 @@ fn ephemeral_server_authenticates_minted_urls_and_stops() {
         let base = server.base_url.clone();
         let valid = stream_url_provider(base.clone(), server.credential.clone())(
             "missing-track",
-            RendererStreamFormat::Raw,
+            &RendererStreamFormat::Raw(AudioContainer::Flac),
         )
         .unwrap();
 
