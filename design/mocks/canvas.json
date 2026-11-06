@@ -2185,7 +2185,8 @@
   "row-play-mac",
   "row-composers-android",
   "row-composers-mac",
-  "composers-today"
+  "composers-today",
+  "code-ratings-playlists"
  ],
  "notes": {
   "canvas-key-library": {
@@ -2929,6 +2930,14 @@
    "y": 12576,
    "fill": "blue",
    "text": "What today's composer pages do that looks unintended:\n- macOS draws the open work after the composer's whole page, so with many works it lands far below the row clicked, and that row isn't highlighted.\n- macOS puts 24pt above every credit but the first under a heading.\n- macOS release credits open nothing; Android's open the album but drop the credit (Arranger).\n- Android's work and release rows pad their text twice: 16dp further in and taller than search's rows.\n- Android's back always says Library, also on a work reached from a composer.\n- macOS shows a work's title only; Android adds its cover and composers."
+  },
+  "code-ratings-playlists": {
+   "page": "home",
+   "size": 24,
+   "w": 460,
+   "x": 4380,
+   "y": 1636,
+   "text": "What the code needs for ratings and playlists (no screen yet):\n- The bridge reads ratings, playlists and a playlist's entries once (`ratings()`, `playlists()`, `playlist_entries()` in bae-bridge/src/handle/personal.rs), so a screen would miss a change from another device. They become subscriptions, as `subscribe_profiles` is, with the screens that show them.\n- spec/bae.md §10.2 (line 3846) already lists them as subscriptions; until then that line is wrong."
   }
  },
  "order": [
