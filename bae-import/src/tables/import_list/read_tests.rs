@@ -276,7 +276,11 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     let found = |scans: Vec<crate::StoredRootScan>| match &scans[..] {
         [crate::StoredRootScan {
-            outcome: crate::StoredScanOutcome::Unfinished { found_count },
+            last_scan:
+                Some(crate::StoredScan {
+                    outcome: crate::StoredScanOutcome::Unfinished { found_count },
+                    ..
+                }),
             ..
         }] => *found_count,
         scans => panic!("the rescan is in flight: {scans:?}"),

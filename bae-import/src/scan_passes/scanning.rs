@@ -1,4 +1,5 @@
 use super::*;
+use crate::folder_scan_status::UnstoredScanFailure;
 use bae_util::task_failure::TaskFailed;
 
 /// The blocking walk of a watched root, as its failure names it.
@@ -106,16 +107,16 @@ pub(crate) enum ScanEnded {
     Finished,
     /// It failed, and the root's stored status says so.
     Failed,
-    /// It failed with `error`, and the store would not take the failure:
-    /// the coordinator holds it as the root's status instead.
-    FailedUnstored { error: String },
+    /// It failed, and the store would not take the failure: the
+    /// coordinator holds it as the root's status instead.
+    FailedUnstored(UnstoredScanFailure),
 }
 
 impl ScanEnded {
     /// The failure the store would not take, which the coordinator holds.
-    pub(crate) fn unstored_failure(self) -> Option<String> {
+    pub(crate) fn unstored_failure(self) -> Option<UnstoredScanFailure> {
         match self {
-            Self::FailedUnstored { error } => Some(error),
+            Self::FailedUnstored(failure) => Some(failure),
             Self::Finished | Self::Failed => None,
         }
     }
@@ -145,7 +146,8 @@ pub(super) async fn rescan_and_reconcile(
     cancellation: &crate::folder_scanner::ScanCancellation,
 ) -> ScanEnded {
     let services = &scan.services;
-    let generation = match begin_scan(root, services).await {
+    let volume = volume_kind(root, &services.diagnostics).await;
+    let generation = match begin_scan(root, volume, services).await {
         Ok(generation) => generation,
         Err(error) => {
             report_refused_scan_write(
@@ -154,7 +156,10 @@ pub(super) async fn rescan_and_reconcile(
                 &error,
                 &services.diagnostics,
             );
-            return ScanEnded::FailedUnstored { error: error.to_string() };
+            return ScanEnded::FailedUnstored(UnstoredScanFailure {
+                error: error.to_string(),
+                volume,
+            });
         }
     };
     // A walk that panics fails the scan as an error does, so the root's
@@ -188,18 +193,18 @@ pub(super) async fn rescan_and_reconcile(
                 &status_error,
                 &services.diagnostics,
             );
-            ScanEnded::FailedUnstored { error }
+            ScanEnded::FailedUnstored(UnstoredScanFailure { error, volume })
         }
     }
 }
 
-/// Open a durable scan generation for `root`, recording the volume the root
-/// was found on.
+/// Open a durable scan generation for `root`, recording `volume`, the volume
+/// the root was found on.
 async fn begin_scan(
     root: &Path,
+    volume: crate::VolumeKind,
     services: &crate::ImportServices,
 ) -> Result<u64, bae_store::DbError> {
-    let volume = volume_kind(root, &services.diagnostics).await;
     let _commit = services.folder_state_commit.lock("begin a scan").await;
     services.tables.begin_folder_scan(root, volume).await
 }

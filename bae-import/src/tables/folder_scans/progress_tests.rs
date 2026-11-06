@@ -7,7 +7,7 @@ use bae_util::test_channels::HANG_GUARD;
 /// The only root's stored outcome.
 fn only_outcome(scans: Vec<crate::StoredRootScan>) -> crate::StoredScanOutcome {
     let [scan] = <[_; 1]>::try_from(scans).expect("one root is watched");
-    scan.outcome
+    scan.last_scan.expect("a scan opened the root's generation").outcome
 }
 
 /// An open generation counts the folders its walk has stored, and stores
@@ -57,7 +57,7 @@ async fn stored_scans_read_the_volume_their_scan_recorded() {
 
     let scans = tables.load_stored_folder_scans().await.unwrap();
 
-    assert!(scans[0].on_network_volume);
+    assert!(scans[0].last_scan.as_ref().expect("the scan began").on_network_volume);
 }
 
 /// A rescan retains the previous generation until the new walk succeeds, but
@@ -127,5 +127,33 @@ async fn stored_scans_list_the_folders_in_their_order() {
     assert!(
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),
         "the read sorts after reading: {plan:?}"
+    );
+}
+
+/// A watched folder no scan has opened a generation for is listed with no
+/// scan, in its place among the others.
+#[tokio::test]
+async fn stored_scans_list_a_folder_no_scan_has_begun() {
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let scanned = crate::tables::watched_path::host_root("/scanned");
+    let never = crate::tables::watched_path::host_root("/never");
+    tables.add_watched_import_folder(&never).await.unwrap();
+    tables.add_watched_import_folder(&scanned).await.unwrap();
+    let generation = tables.begin_folder_scan(&scanned, crate::VolumeKind::Local).await.unwrap();
+    tables.finish_folder_scan(&scanned, generation, None).await.unwrap();
+
+    assert_eq!(
+        tables.load_stored_folder_scans().await.unwrap(),
+        [
+            crate::StoredRootScan { watched_folder_path: never, last_scan: None },
+            crate::StoredRootScan {
+                watched_folder_path: scanned,
+                last_scan: Some(crate::StoredScan {
+                    outcome: crate::StoredScanOutcome::Complete,
+                    on_network_volume: false,
+                }),
+            },
+        ]
     );
 }

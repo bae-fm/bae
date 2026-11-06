@@ -104,13 +104,24 @@ impl FakeScanStarter {
         self.end(index, None);
     }
 
-    /// End the scan at `index` as one that failed with `error` and could not
-    /// store the failure. The same ordering as [`Self::complete`] holds.
+    /// End the scan at `index` as one that failed with `error`, on a local
+    /// volume, and could not store the failure. The same ordering as
+    /// [`Self::complete`] holds.
     pub(crate) fn fail_unstored(&self, index: usize, error: &str) {
-        self.end(index, Some(error.to_string()));
+        self.end(
+            index,
+            Some(crate::folder_scan_status::UnstoredScanFailure {
+                error: error.to_string(),
+                volume: crate::VolumeKind::Local,
+            }),
+        );
     }
 
-    fn end(&self, index: usize, unstored_failure: Option<String>) {
+    fn end(
+        &self,
+        index: usize,
+        unstored_failure: Option<crate::folder_scan_status::UnstoredScanFailure>,
+    ) {
         let (finish, completions, mut completion) = self.scans.lock().unwrap()[index]
             .completion
             .take()

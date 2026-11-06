@@ -6,9 +6,12 @@ use super::*;
 fn stored(outcome: StoredScanOutcome) -> Vec<StoredRootScan> {
     vec![StoredRootScan {
         watched_folder_path: PathBuf::from("/music"),
-        outcome,
-        on_network_volume: false,
+        last_scan: Some(StoredScan { outcome, on_network_volume: false }),
     }]
+}
+
+fn unstored(error: &str, volume: crate::VolumeKind) -> RootScanInMemory {
+    RootScanInMemory::UnstoredFailure(UnstoredScanFailure { error: error.to_string(), volume })
 }
 
 fn holding(in_memory: RootScanInMemory) -> FolderScansInMemory {
@@ -52,7 +55,7 @@ fn an_unfinished_scan_nothing_reads_failed() {
 fn a_failure_the_store_refused_is_the_status() {
     let progress = FolderScanProgress::of(
         stored(StoredScanOutcome::Complete),
-        &holding(RootScanInMemory::UnstoredFailure { error: "the disk is full".to_string() }),
+        &holding(unstored("the disk is full", crate::VolumeKind::Local)),
     );
     assert_eq!(
         status(&progress),
@@ -73,4 +76,30 @@ fn a_stored_outcome_stands_while_the_root_is_being_read() {
         status(&progress),
         &FolderScanStatus::Failed { error: "share disconnected".to_string() }
     );
+}
+
+/// A folder no scan has opened a generation for is listed once a failure is
+/// held for it, on the volume the failing pass found it on, and not before.
+#[test]
+fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
+    let never_scanned =
+        || vec![StoredRootScan { watched_folder_path: PathBuf::from("/music"), last_scan: None }];
+
+    let progress = FolderScanProgress::of(
+        never_scanned(),
+        &holding(unstored("the disk is full", crate::VolumeKind::Network)),
+    );
+    assert_eq!(
+        progress.statuses,
+        [WatchedFolderScanStatus {
+            watched_folder_path: PathBuf::from("/music"),
+            watched_folder_name: "music".to_string(),
+            status: FolderScanStatus::Failed { error: "the disk is full".to_string() },
+            on_network_volume: true,
+        }]
+    );
+
+    for in_memory in [FolderScansInMemory::new(), holding(RootScanInMemory::Running)] {
+        assert_eq!(FolderScanProgress::of(never_scanned(), &in_memory).statuses, []);
+    }
 }

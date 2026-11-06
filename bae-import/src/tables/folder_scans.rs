@@ -770,6 +770,23 @@ impl ImportTables {
         .unwrap();
     }
 
+    /// Plant damage for a test: every scan that would open a watched folder's
+    /// first generation, in the library under `directory`, fails as a
+    /// statement nothing should refuse.
+    pub(crate) async fn fail_first_scan_begins_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "folder_scan_roots",
+                "CREATE TRIGGER fail_first_scan_begins BEFORE INSERT ON folder_scan_roots \
+                 BEGIN SELECT RAISE(ABORT, 'the scan could not begin'); END;",
+            )
+        })
+        .await
+        .unwrap();
+    }
+
     /// Plant damage for a test: every write that stores a scan as failed, in
     /// the library under `directory`, fails as a statement nothing should
     /// refuse.

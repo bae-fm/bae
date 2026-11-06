@@ -71,7 +71,8 @@ pub(super) async fn change_folder_reading(
 
 /// Read again each folder directly under `root` whose contents changed
 /// on disk, storing each in a write of its own, and answer with the last
-/// failure the store would not take, for the coordinator to hold.
+/// failure the store would not take, on the volume the root is on, for the
+/// coordinator to hold.
 ///
 /// A folder that cannot be read or stored is stored as the root's status,
 /// and the others are read regardless: each one's write stands on its own.
@@ -80,11 +81,11 @@ pub(super) async fn read_changed_folders(
     folders: &std::collections::BTreeSet<OsString>,
     scan: &ScanServices,
     cancellation: &crate::folder_scanner::ScanCancellation,
-) -> Option<String> {
-    let mut unstored = None;
+) -> Option<crate::folder_scan_status::UnstoredScanFailure> {
+    let mut unstored: Option<String> = None;
     for folder in folders {
         if cancellation.is_cancelled() {
-            return unstored;
+            break;
         }
         // A reading that panics fails that folder as an error does.
         let read = bae_util::task_failure::caught(
@@ -99,7 +100,7 @@ pub(super) async fn read_changed_folders(
             continue;
         };
         if cancellation.is_cancelled() {
-            return unstored;
+            break;
         }
         let message =
             format!("{} could not be read again: {error}", coven::path_text(Path::new(folder)));
@@ -108,7 +109,9 @@ pub(super) async fn read_changed_folders(
             unstored = Some(message);
         }
     }
-    unstored
+    let error = unstored?;
+    let volume = volume_kind(root, &scan.services.diagnostics).await;
+    Some(crate::folder_scan_status::UnstoredScanFailure { error, volume })
 }
 
 /// Store `message` as the failure of `root`'s current generation, answering

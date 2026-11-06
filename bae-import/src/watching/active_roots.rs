@@ -35,7 +35,7 @@ pub(super) struct ActiveRoots {
     diagnostics: bae_diagnostics::Diagnostics,
     /// Each root's last pass failure that the store would not take, until
     /// the root's next pass starts.
-    unstored_failures: HashMap<PathBuf, String>,
+    unstored_failures: HashMap<PathBuf, crate::folder_scan_status::UnstoredScanFailure>,
     /// What this holds of each root's scan that no table does, published
     /// after every change for the scan progress to read.
     in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
@@ -236,9 +236,9 @@ impl ActiveRoots {
                 now.insert(path.clone(), RootScanInMemory::Running);
             }
         }
-        for (path, error) in &self.unstored_failures {
+        for (path, failure) in &self.unstored_failures {
             now.entry(path.clone())
-                .or_insert_with(|| RootScanInMemory::UnstoredFailure { error: error.clone() });
+                .or_insert_with(|| RootScanInMemory::UnstoredFailure(failure.clone()));
         }
         self.in_memory.send_if_modified(|held| {
             if *held == now {
@@ -355,8 +355,8 @@ impl ActiveRoots {
         };
         // A pass that panicked was reported where it ran.
         schedule.scan.ended().await;
-        if let Some(error) = completion.unstored_failure {
-            self.unstored_failures.insert(completion.path.clone(), error);
+        if let Some(failure) = completion.unstored_failure {
+            self.unstored_failures.insert(completion.path.clone(), failure);
         }
         let current_waiters = std::mem::take(&mut schedule.current_waiters);
         let mut queued = Queued {

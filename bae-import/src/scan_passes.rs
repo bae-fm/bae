@@ -73,7 +73,7 @@ impl RootScanTask {
 pub(crate) struct RootScanCompletion {
     pub(crate) id: u64,
     pub(crate) path: PathBuf,
-    pub(crate) unstored_failure: Option<String>,
+    pub(crate) unstored_failure: Option<crate::folder_scan_status::UnstoredScanFailure>,
 }
 
 /// Run one pass over the root at `path` as `name`, sending its completion on
@@ -87,7 +87,9 @@ fn spawn_pass(
     path: PathBuf,
     diagnostics: &bae_diagnostics::Diagnostics,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
-    pass: impl std::future::Future<Output = Option<String>> + Send + 'static,
+    pass: impl std::future::Future<Output = Option<crate::folder_scan_status::UnstoredScanFailure>>
+        + Send
+        + 'static,
 ) -> bae_diagnostics::ReportedTask {
     let panicked_tx = completion_tx.clone();
     let panicked_path = path.clone();

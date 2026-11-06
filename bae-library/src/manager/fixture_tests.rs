@@ -258,9 +258,12 @@ async fn fixture_candidates_land_on_found_in_their_states() {
     assert_eq!(
         scans
             .iter()
-            .map(|scan| (scan.watched_folder_path.clone(), scan.outcome.clone()))
+            .map(|scan| {
+                let outcome = scan.last_scan.as_ref().map(|scan| scan.outcome.clone());
+                (scan.watched_folder_path.clone(), outcome)
+            })
             .collect::<Vec<_>>(),
-        [(root, bae_import::StoredScanOutcome::Complete)],
+        [(root, Some(bae_import::StoredScanOutcome::Complete))],
         "the fixture's folder stores a finished read"
     );
 }

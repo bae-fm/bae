@@ -148,7 +148,11 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         while let Some(read) = progress.next().await {
             let scans = read.expect("the stored scans read");
             let [bae_import::StoredRootScan {
-                outcome: bae_import::StoredScanOutcome::Unfinished { found_count },
+                last_scan:
+                    Some(bae_import::StoredScan {
+                        outcome: bae_import::StoredScanOutcome::Unfinished { found_count },
+                        ..
+                    }),
                 ..
             }] = scans.as_slice()
             else {

@@ -422,8 +422,11 @@ async fn a_track_that_cannot_be_read_fails_the_pass_and_is_read_again() {
 
     assert_eq!(scan.rescan(&root).await, Err(ScanEnded::Failed), "the pass fails");
     let stored = test.tables().load_stored_folder_scans().await.unwrap();
-    let [crate::StoredRootScan { outcome: crate::StoredScanOutcome::Failed { error }, .. }] =
-        stored.as_slice()
+    let [crate::StoredRootScan {
+        last_scan:
+            Some(crate::StoredScan { outcome: crate::StoredScanOutcome::Failed { error }, .. }),
+        ..
+    }] = stored.as_slice()
     else {
         panic!("the failed pass is stored: {stored:?}");
     };

@@ -504,7 +504,10 @@ async fn a_pass_failure_the_store_refused_is_held_until_the_next_pass() {
     assert_eq!(refreshed.await.unwrap(), Ok(()));
     assert_eq!(
         harness.scans_in_memory.borrow().get(&root),
-        Some(&RootScanInMemory::UnstoredFailure { error: "the disk is full".to_string() })
+        Some(&RootScanInMemory::UnstoredFailure(crate::folder_scan_status::UnstoredScanFailure {
+            error: "the disk is full".to_string(),
+            volume: crate::VolumeKind::Local,
+        }))
     );
 
     assert_next_pass_reads_only_a_later_change(&harness, 1).await;

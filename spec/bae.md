@@ -709,7 +709,11 @@ scanning, with how many folders the scan has found, while a scan of all of it
 runs or is owed, or a removal holds it. A pass whose failure the store won't
 take, a whole scan's or a changed folder's reading's, still shows as failed
 with its error: the coordinator holds that failure as the folder's status
-until the folder's next pass starts. A refusal that is a bug is reported as
+until the folder's next pass starts, with the volume the pass found the
+folder on, so a folder whose first scan could not even store its start shows
+too. A folder with no scan stored and no failure held has no status yet and
+is not listed; a scan stores its start, with the folder's volume, as it
+begins. A refusal that is a bug is reported as
 one; a full, failing or damaged disk, a store that failed as a whole, or the
 library closing is not. A scan that ended with nothing stored and nothing
 held, as one that panicked while storing its failure does, shows as failed,
@@ -4441,7 +4445,7 @@ reads it again once.
 | `release_grouping`, `release_grouping_member` | folders read as one release, or kept apart, and by whom (§3.1) |
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
-| `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a scan is reading the folder is never stored (§3.1); the scans' progress reads the roots in their watched folders' order, by the index of their positions |
+| `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a scan is reading the folder is never stored (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one |
 | `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, with an index on the folder each candidate reads its files from; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |

@@ -55,37 +55,53 @@ pub struct FolderScanProgress {
 }
 
 impl FolderScanProgress {
-    /// Each stored root as the coordinator's memory says it stands. A
-    /// failure the store would not take is the root's status; then the
-    /// outcome its generation stored; a generation with none is scanning
-    /// while the root is being read, and otherwise ended without storing it.
+    /// Each watched folder as the coordinator's memory says it stands. A
+    /// failure the store would not take is the folder's status, on the
+    /// volume the failing pass found it on; then the outcome its generation
+    /// stored; a generation with none is scanning while the folder is being
+    /// read, and otherwise ended without storing it. A folder with no scan
+    /// stored and no failure held has no status yet, and is not listed: a
+    /// pass reading it stores its generation, with its volume, as it starts.
     pub(crate) fn of(stored: Vec<StoredRootScan>, in_memory: &FolderScansInMemory) -> Self {
         let statuses: Vec<WatchedFolderScanStatus> = stored
             .into_iter()
-            .map(|root| {
-                let status = match (in_memory.get(&root.watched_folder_path), root.outcome) {
-                    (Some(RootScanInMemory::UnstoredFailure { error }), _) => {
-                        FolderScanStatus::Failed { error: error.clone() }
-                    }
-                    (_, StoredScanOutcome::Complete) => FolderScanStatus::Complete,
-                    (_, StoredScanOutcome::Failed { error }) => FolderScanStatus::Failed { error },
-                    (
-                        Some(RootScanInMemory::Running),
-                        StoredScanOutcome::Unfinished { found_count },
-                    ) => FolderScanStatus::Scanning { found_count },
-                    (None, StoredScanOutcome::Unfinished { .. }) => {
-                        FolderScanStatus::Failed { error: SCAN_STOPPED_UNSTORED.to_string() }
+            .filter_map(|root| {
+                let held = in_memory.get(&root.watched_folder_path);
+                let (status, on_network_volume) = match (held, root.last_scan) {
+                    (Some(RootScanInMemory::UnstoredFailure(failure)), _) => (
+                        FolderScanStatus::Failed { error: failure.error.clone() },
+                        failure.volume == crate::VolumeKind::Network,
+                    ),
+                    (_, None) => return None,
+                    (held, Some(StoredScan { outcome, on_network_volume })) => {
+                        let status = match (held, outcome) {
+                            (_, StoredScanOutcome::Complete) => FolderScanStatus::Complete,
+                            (_, StoredScanOutcome::Failed { error }) => {
+                                FolderScanStatus::Failed { error }
+                            }
+                            (
+                                Some(RootScanInMemory::Running),
+                                StoredScanOutcome::Unfinished { found_count },
+                            ) => FolderScanStatus::Scanning { found_count },
+                            (
+                                None | Some(RootScanInMemory::UnstoredFailure(_)),
+                                StoredScanOutcome::Unfinished { .. },
+                            ) => FolderScanStatus::Failed {
+                                error: SCAN_STOPPED_UNSTORED.to_string(),
+                            },
+                        };
+                        (status, on_network_volume)
                     }
                 };
-                WatchedFolderScanStatus {
+                Some(WatchedFolderScanStatus {
                     watched_folder_name: crate::WatchedFolder::from_path(
                         root.watched_folder_path.clone(),
                     )
                     .name,
                     watched_folder_path: root.watched_folder_path,
                     status,
-                    on_network_volume: root.on_network_volume,
-                }
+                    on_network_volume,
+                })
             })
             .collect();
         let folders: Vec<ActiveFolderScan> = statuses
@@ -127,6 +143,14 @@ pub struct ActiveFolderScan {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StoredRootScan {
     pub watched_folder_path: PathBuf,
+    /// The folder's current scan generation, `None` while no scan has opened
+    /// one.
+    pub last_scan: Option<StoredScan>,
+}
+
+/// A watched folder's current scan generation as its row stores it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredScan {
     pub outcome: StoredScanOutcome,
     /// Whether the volume the scan began on is served over the network.
     pub on_network_volume: bool,
@@ -153,9 +177,18 @@ pub(crate) enum RootScanInMemory {
     /// A whole-root pass is reading the root or is owed once the pass
     /// running ends, or a removal holds the root: its scan is not over.
     Running,
-    /// The root's last pass failed with `error`, and the store would not
-    /// take the failure. Cleared when the root's next pass starts.
-    UnstoredFailure { error: String },
+    /// The root's last pass failed, and the store would not take the
+    /// failure. Cleared when the root's next pass starts.
+    UnstoredFailure(UnstoredScanFailure),
+}
+
+/// A pass's failure the store would not take, with the volume the pass found
+/// the folder on: a folder whose first scan could not open its generation
+/// has no stored volume to show beside it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UnstoredScanFailure {
+    pub(crate) error: String,
+    pub(crate) volume: crate::VolumeKind,
 }
 
 /// Every root the coordinator knows something of, by path.

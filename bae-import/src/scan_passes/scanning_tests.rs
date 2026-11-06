@@ -80,7 +80,7 @@ async fn stored_outcome(db: &Store) -> crate::StoredScanOutcome {
     let tables = crate::tables::ImportTables::new(db.clone());
     let mut scans = tables.load_stored_folder_scans().await.unwrap();
     assert_eq!(scans.len(), 1, "one root is watched");
-    scans.remove(0).outcome
+    scans.remove(0).last_scan.expect("a scan opened the root's generation").outcome
 }
 
 /// The folder scan coordinator over `scan`'s services, taking `command_rx`,
@@ -407,7 +407,11 @@ async fn a_failure_the_store_refuses_is_reported_as_a_bug() {
     crate::tables::ImportTables::fail_failed_scan_writes_for_test(test.temp.path()).await;
 
     let (scan, _events) = test.scan();
-    let Err(ScanEnded::FailedUnstored { error }) = scan.rescan(&root).await else {
+    let Err(ScanEnded::FailedUnstored(crate::folder_scan_status::UnstoredScanFailure {
+        error,
+        ..
+    })) = scan.rescan(&root).await
+    else {
         panic!("a missing root fails its scan, and the failure is not stored");
     };
     assert!(error.contains(&root.to_string_lossy().into_owned()), "{error}");
@@ -452,6 +456,42 @@ async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
     std::fs::create_dir(&root).unwrap();
     assert_eq!(refresh(&commands, &root).await, Ok(()));
     assert_eq!(progress().await, crate::FolderScanStatus::Complete);
+
+    stop_coordinator(&commands, coordinator).await;
+}
+
+/// A folder whose first scan cannot even open its generation has no stored
+/// scan, and still shows as failed, with the error and the volume the pass
+/// found it on.
+#[tokio::test]
+async fn a_first_scan_that_cannot_begin_shows_as_failed() {
+    let mut test = setup_import_service().await;
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    test.report_bugs_to(bugs.clone());
+    let root = test.temp.path().join("watched");
+    std::fs::create_dir(&root).unwrap();
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    crate::tables::ImportTables::fail_first_scan_begins_for_test(test.temp.path()).await;
+    let (scan, _events) = test.scan();
+    let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (coordinator, in_memory) = start_coordinator(&scan, command_rx);
+
+    assert_eq!(refresh(&commands, &root).await, Ok(()));
+    let held = in_memory.borrow().clone();
+    let stored = test.tables().load_stored_folder_scans().await.unwrap();
+    let progress = crate::FolderScanProgress::of(stored, &held);
+    let [status] = <[_; 1]>::try_from(progress.statuses).expect("the watched folder is listed");
+    assert_eq!(status.watched_folder_path, root);
+    let crate::FolderScanStatus::Failed { error } = status.status else {
+        panic!("the folder's first scan failed");
+    };
+    assert!(error.contains("the scan could not begin"), "{error}");
+    assert_eq!(
+        status.on_network_volume,
+        crate::volume::volume_kind(&root, &bae_diagnostics::Diagnostics::noop()).await
+            == crate::VolumeKind::Network
+    );
+    assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
 
     stop_coordinator(&commands, coordinator).await;
 }

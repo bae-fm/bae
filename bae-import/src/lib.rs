@@ -242,7 +242,7 @@ pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(desktop)]
 pub use folder_scan_status::{
     ActiveFolderScan, FolderScanActivity, FolderScanProgress, FolderScanStatus, StoredRootScan,
-    StoredScanOutcome, WatchedFolderScanStatus,
+    StoredScan, StoredScanOutcome, WatchedFolderScanStatus,
 };
 #[cfg(desktop)]
 pub use folder_scanner::{
