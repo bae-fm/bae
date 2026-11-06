@@ -10,6 +10,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeSavedRestoreCode
 import uniffi.bae_bridge.BridgeSavedRestoreEntry
@@ -100,6 +101,13 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         opening: BridgeLibraryOpening,
         cancellation: BootstrapCancellation,
     ): BridgeBootstrapResult = unfaked("restoreReplacingDevice")
+
+    override suspend fun resumeReplacement(
+        libraryId: String,
+        by: BridgeReplacedBy,
+        setup: BridgeLibrarySetup,
+        cancellation: BootstrapCancellation,
+    ): BridgeBootstrapResult = unfaked("resumeReplacement")
 
     override suspend fun resumeJoin(
         join: BridgeUnfinishedJoin,

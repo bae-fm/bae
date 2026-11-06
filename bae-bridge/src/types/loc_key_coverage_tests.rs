@@ -280,6 +280,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::AirPlayUnreadableSettings,
         BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Reset },
         BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Restore },
+        BridgeErrorCategory::RestoreRegistered,
         BridgeErrorCategory::DeletionUnfinished,
         BridgeErrorCategory::DeletionSignInRequired,
     ] {

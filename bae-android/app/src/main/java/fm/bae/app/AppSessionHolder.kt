@@ -35,6 +35,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
@@ -47,6 +48,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryRemoval
+import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeScreen
@@ -192,9 +194,9 @@ sealed interface AppScreen {
     ) : Recovery
 
     /**
-     * A reset of this device's copy of the library stopped partway; only
-     * resetting again finishes it, and the library opens once it does.
-     * [error] is why the last attempt failed.
+     * A reset of this device's copy of the library stopped partway, and
+     * finishing it failed; finishing tries again, and the library opens once
+     * it finishes. [error] is why the last attempt failed.
      */
     data class ResetUnfinished(
         override val libraryId: String,
@@ -202,9 +204,9 @@ sealed interface AppScreen {
     ) : Recovery
 
     /**
-     * A restore of this device's copy of the library stopped partway; only
-     * restoring again with the person's current restore code finishes it,
-     * and the library opens once it does.
+     * A restore of this device's copy of the library stopped partway.
+     * Finishing it from what core kept begins at once; the person's current
+     * restore code finishes it too, and the library opens once it finishes.
      */
     data class RestoreUnfinished(
         override val libraryId: String,
@@ -245,21 +247,12 @@ sealed interface AppScreen {
     ) : AppScreen
 
     companion object {
-        /** The screen that finishes a reset or restore of [libraryId] that stopped partway: the one call [by] names. */
-        fun finishing(
-            libraryId: String,
-            by: BridgeReplacedBy,
-        ): AppScreen =
-            when (by) {
-                BridgeReplacedBy.RESET -> ResetUnfinished(libraryId, error = null)
-                BridgeReplacedBy.RESTORE -> RestoreUnfinished(libraryId)
-            }
-
         /**
          * The screen a failed open of [libraryId] lands on: resetting the
-         * device, finishing the reset, restore or removal that stopped partway, else
-         * [open], the library still open when the open was a switch, whose
-         * snackbar shows the failure, else the failure as [shown].
+         * device, finishing the removal that stopped partway, else [open],
+         * the library still open when the open was a switch, whose snackbar
+         * shows the failure, else the failure as [shown]. A reset or restore
+         * that stopped partway lands on none: finishing it begins at once.
          */
         fun openFailed(
             libraryId: String,
@@ -270,10 +263,6 @@ sealed interface AppScreen {
             when (val category = (error as? BridgeException.Diagnostic)?.category) {
                 is BridgeErrorCategory.DeviceResetRequired -> {
                     ResetOffered(libraryId, ScreenFailure(FailedStep.RESET_OFFERED, shown))
-                }
-
-                is BridgeErrorCategory.ReplacementUnfinished -> {
-                    finishing(libraryId, category.by)
                 }
 
                 is BridgeErrorCategory.DeletionUnfinished -> {
@@ -453,6 +442,11 @@ object AppSessionHolder {
             throw e
         } catch (e: BridgeException) {
             logger.error("opening library $libraryId failed", e)
+            val unfinished = (e as? BridgeException.Diagnostic)?.category as? BridgeErrorCategory.ReplacementUnfinished
+            if (unfinished != null) {
+                finish(context, libraryId, unfinished.by, onScreen)
+                return
+            }
             val shown = context.displayError(e)
             onScreen(
                 if (shown == null) {
@@ -463,6 +457,25 @@ object AppSessionHolder {
                     }
                 },
             )
+        }
+    }
+
+    /**
+     * Finish the reset or restore of [libraryId] that stopped partway, which
+     * [by] names, from what core kept: it needs nothing from the person, and
+     * only it opens the library. A reset runs at once; a restore runs on the
+     * screen that finishes it, which begins at once and takes the person's
+     * current restore code too.
+     */
+    suspend fun finish(
+        context: Context,
+        libraryId: String,
+        by: BridgeReplacedBy,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        when (by) {
+            BridgeReplacedBy.RESET -> finishReset(context, libraryId, onScreen)
+            BridgeReplacedBy.RESTORE -> onScreen(AppScreen.RestoreUnfinished(libraryId))
         }
     }
 
@@ -563,11 +576,11 @@ object AppSessionHolder {
     }
 
     /**
-     * Reset this device after the person accepted [reset]'s warning, or
-     * finish a reset that stopped partway: the open session of that library
-     * closes first, then coven loads the library from storage again under a
-     * new device id. A failed reset shows [failed] with why, the screen it
-     * was started from; a cancelled one shows that screen with nothing.
+     * Reset this device after the person accepted [reset]'s warning: the
+     * open session of that library closes first, then coven loads the
+     * library from storage again under a new device id. A failed reset shows
+     * [failed] with why, the screen it was started from; a cancelled one
+     * shows that screen with nothing.
      */
     suspend fun resetDevice(
         context: Context,
@@ -576,11 +589,45 @@ object AppSessionHolder {
         onScreen: (AppScreen) -> Unit,
         failed: (ScreenFailure?) -> AppScreen,
     ) {
-        val app = context.applicationContext as BaeApp
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
             current = null
             closeShowing(open, context, onScreen)
         }
+        resetShowing(context, libraryId, onScreen, failed) { setup -> reset.confirm(setup) }
+    }
+
+    /**
+     * Finish a reset of [libraryId] that stopped partway, from what core
+     * kept, with no warning: the person accepted it when the reset began.
+     * The library can't be open. A failed finish shows the screen that
+     * finishes it, with why.
+     */
+    suspend fun finishReset(
+        context: Context,
+        libraryId: String,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        val host = (context.applicationContext as BaeApp).host
+        resetShowing(context, libraryId, onScreen, { AppScreen.ResetUnfinished(libraryId, it) }) { setup ->
+            // A reset under way goes on whatever is cancelled, so nothing
+            // cancels this.
+            host.resumeReplacement(libraryId, BridgeReplacedBy.RESET, setup, BootstrapCancellation())
+        }
+    }
+
+    /**
+     * Run [reset] on [libraryId], showing where it stands as
+     * [AppScreen.Resetting], then open what it produced. A failed reset
+     * shows [failed] with why; a cancelled one shows it with nothing.
+     */
+    private suspend fun resetShowing(
+        context: Context,
+        libraryId: String,
+        onScreen: (AppScreen) -> Unit,
+        failed: (ScreenFailure?) -> AppScreen,
+        reset: suspend (BridgeLibrarySetup) -> BridgeBootstrapResult,
+    ) {
+        val app = context.applicationContext as BaeApp
         onScreen(AppScreen.Resetting(status = null, steps = null))
         val result =
             try {
@@ -594,7 +641,7 @@ object AppSessionHolder {
                                 }
                             }
                         try {
-                            reset.confirm(setup.setup)
+                            reset(setup.setup)
                         } finally {
                             following.cancel()
                         }

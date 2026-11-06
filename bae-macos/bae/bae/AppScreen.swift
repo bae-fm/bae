@@ -16,16 +16,17 @@ enum AppScreen {
     /// Another of the person's devices replaced their keys; the library is
     /// closed and the person restores it with their current restore code.
     case restoreRequired(libraryId: String)
-    /// A reset of this device's copy stopped partway; resetting again
-    /// finishes it.
+    /// A reset of this device's copy stopped partway, and finishing it
+    /// failed; finishing tries again.
     case resetUnfinished(libraryId: String)
-    /// A restore of this device's copy stopped partway; restoring again with
-    /// the person's current restore code finishes it.
+    /// A restore of this device's copy stopped partway. Finishing it from
+    /// what core kept begins at once; the person's current restore code
+    /// finishes it too.
     case restoreUnfinished(libraryId: String)
     case keychainLocked(libraryId: String)
 
     /// The screen that finishes a reset or restore of `libraryId` that
-    /// stopped partway: the one call `by` names.
+    /// stopped partway, by what `by` names.
     static func finishing(libraryId: String, by: BridgeReplacedBy) -> Self {
         switch by {
         case .reset: .resetUnfinished(libraryId: libraryId)

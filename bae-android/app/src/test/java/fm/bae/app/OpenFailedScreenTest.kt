@@ -4,38 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeReplacedBy
 
 /** Where a failed open of a library lands. */
 class OpenFailedScreenTest {
-    @Test
-    fun anUnfinishedRestoreLandsOnFinishingTheRestore() {
-        val failure =
-            BridgeException.Diagnostic(
-                BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESTORE),
-                "restore_device",
-            )
-
-        assertEquals(
-            AppScreen.RestoreUnfinished("library"),
-            AppScreen.openFailed("library", failure, DisplayError("Restoring did not finish."), open = null),
-        )
-    }
-
-    @Test
-    fun anUnfinishedResetLandsOnFinishingTheReset() {
-        val failure =
-            BridgeException.Diagnostic(
-                BridgeErrorCategory.ReplacementUnfinished(BridgeReplacedBy.RESET),
-                "reset_device",
-            )
-
-        assertEquals(
-            AppScreen.ResetUnfinished("library", error = null),
-            AppScreen.openFailed("library", failure, DisplayError("Resetting did not finish."), open = null),
-        )
-    }
-
     @Test
     fun anUnfinishedRemovalLandsOnFinishingTheRemoval() {
         val failure = BridgeException.Diagnostic(BridgeErrorCategory.DeletionUnfinished, "deletion unfinished")

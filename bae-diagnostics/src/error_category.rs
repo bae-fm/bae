@@ -292,14 +292,15 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
     use coven::BootstrapError as E;
     match error {
         // A stale resume, or a cancel that came after the request may have
-        // been sent or the restoring device registered: the person's state,
-        // not a bug.
+        // been sent: the person's state, not a bug.
         E::Code(_)
         | E::NoUnfinishedJoin(_)
         | E::NoUnfinishedRestore(_)
         | E::NoUnfinishedReplacement(_)
-        | E::JoinRequestSent
-        | E::RestoreRegistered => C::Config,
+        | E::JoinRequestSent => C::Config,
+        // A cancel that came after the restoring device registered: coven
+        // keeps the restore, which only finishing goes on with.
+        E::RestoreRegistered => C::RestoreRegistered,
         E::Store(coven::CovenError::Key(error)) | E::SecureStorage(error) => key_category(error),
         // The platform refused coven's watch of the network: the app's
         // packaging or the platform, which the person can't fix; or coven's

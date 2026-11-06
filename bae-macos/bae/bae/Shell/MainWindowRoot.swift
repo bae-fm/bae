@@ -100,11 +100,17 @@ struct MainWindowRoot: View {
         case .home:
             MainAppView()
         case .resetRequired(let libraryId):
-            deviceResetView(libraryId: libraryId, prompt: .offered)
+            deviceResetView(
+                prompt: .offered,
+                onReset: { appDelegate.resetDevice(libraryId: libraryId) }
+            )
         case .restoreRequired(let libraryId):
             deviceRestoreView(libraryId: libraryId)
         case .resetUnfinished(let libraryId):
-            deviceResetView(libraryId: libraryId, prompt: .unfinished)
+            deviceResetView(
+                prompt: .unfinished,
+                onReset: { appDelegate.finishReset(libraryId: libraryId) }
+            )
         case .restoreUnfinished(let libraryId):
             finishRestoreView(libraryId: libraryId)
         case .keychainLocked:
@@ -113,13 +119,13 @@ struct MainWindowRoot: View {
     }
 
     private func deviceResetView(
-        libraryId: String,
-        prompt: DeviceResetView.Prompt
+        prompt: DeviceResetView.Prompt,
+        onReset: @escaping () -> Void
     ) -> some View {
         DeviceResetView(
             prompt: prompt,
             error: appDelegate.loadError,
-            onReset: { appDelegate.resetDevice(libraryId: libraryId) },
+            onReset: onReset,
             onCancel: appDelegate.leaveRecovery
         )
     }
@@ -137,9 +143,10 @@ struct MainWindowRoot: View {
         .id(libraryId)
     }
 
-    /// The person's current restore code, to finish a restore of this
-    /// device's copy that stopped partway; the library can't open until it
-    /// finishes, so going back leaves it as it is.
+    /// Finishing a restore of this device's copy that stopped partway: it
+    /// begins at once from what core kept, and the person's current restore
+    /// code finishes it too. The library can't open until it finishes, so
+    /// going back leaves it as it is.
     private func finishRestoreView(libraryId: String) -> some View {
         BootstrapCodeView(
             form: applicationServices.librarySetup.bootstrapForm(
@@ -212,11 +219,17 @@ struct MainWindowRoot: View {
                 launchProblems: appDelegate.launchProblems
             )
         case .resetRequired(let libraryId):
-            deviceResetView(libraryId: libraryId, prompt: .offered)
+            deviceResetView(
+                prompt: .offered,
+                onReset: { appDelegate.resetDevice(libraryId: libraryId) }
+            )
         case .restoreRequired(let libraryId):
             deviceRestoreView(libraryId: libraryId)
         case .resetUnfinished(let libraryId):
-            deviceResetView(libraryId: libraryId, prompt: .unfinished)
+            deviceResetView(
+                prompt: .unfinished,
+                onReset: { appDelegate.finishReset(libraryId: libraryId) }
+            )
         case .restoreUnfinished(let libraryId):
             finishRestoreView(libraryId: libraryId)
         case .keychainLocked:

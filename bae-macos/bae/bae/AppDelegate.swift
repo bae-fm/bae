@@ -359,15 +359,21 @@ extension AppDelegate {
                 libraryId: libraryId,
                 from: error
             )
-            screen = next
             switch next {
             case .resetRequired:
+                screen = next
                 loadError = LoadError(.resetOffered, error)
             case .home:
+                screen = next
                 loadError = LoadError(.libraryOpen, error)
+            case .resetUnfinished(let unfinished):
+                // Finishing needs nothing from the person, and only it opens
+                // the library.
+                finishReset(libraryId: unfinished)
             default:
-                // A screen that finishes a reset or restore says so itself.
-                break
+                // A screen that finishes a restore begins it, and says so
+                // itself.
+                screen = next
             }
         }
     }
@@ -409,12 +415,18 @@ extension AppDelegate {
         }
     }
 
-    /// Show the one call that finishes a reset or restore of a library's
-    /// copy on this Mac that stopped partway, from the welcome's list.
+    /// Finish a reset or restore of a library's copy on this Mac that
+    /// stopped partway, from the welcome's list: a reset at once, and a
+    /// restore on the screen that finishes it, which begins at once.
     func presentFinishing(libraryId: String, by: BridgeReplacedBy) {
         loadError = nil
         showAddLibrarySheet = false
-        screen = .finishing(libraryId: libraryId, by: by)
+        switch by {
+        case .reset:
+            finishReset(libraryId: libraryId)
+        case .restore:
+            screen = .restoreUnfinished(libraryId: libraryId)
+        }
     }
 
     /// Leave a reset or a finishing screen without running it.
@@ -423,11 +435,10 @@ extension AppDelegate {
         screen = .home
     }
 
-    /// Reset this device for a library, or finish a reset that stopped
-    /// partway: close it if it is open, then load it from storage again under
-    /// a fresh device id. The person saw the warning before choosing, so
-    /// nothing is shown after. A failed reset returns to the screen it was
-    /// started from, with why.
+    /// Reset this device for a library: close it if it is open, then load it
+    /// from storage again under a fresh device id. The person saw the warning
+    /// before choosing, so nothing is shown after. A failed reset returns to
+    /// the screen it was started from, with why.
     func resetDevice(libraryId: String) {
         let host = requiredApplicationServices.host
         let deviceName = requiredApplicationServices.deviceName
@@ -463,6 +474,40 @@ extension AppDelegate {
                 )
                 self.loadError = LoadError(.deviceReset, error)
                 self.screen = startedFrom
+            }
+        }
+    }
+
+    /// Finish a reset of this Mac's copy of a library that stopped partway,
+    /// from what core kept, with no warning: the person accepted it when the
+    /// reset began. The library can't be open. Once the reset finishes the
+    /// library opens; a failed finish lands on the screen that finishes it,
+    /// saying why.
+    func finishReset(libraryId: String) {
+        let host = requiredApplicationServices.host
+        loadError = nil
+        showAddLibrarySheet = false
+        screen = .loading(.resetting)
+        resetSlot.replace {
+            let steps = DeviceResetSteps(host: host)
+            self.resetSteps = steps
+            defer {
+                steps.stop()
+                self.resetSteps = nil
+            }
+            do {
+                let reset = try await host.finishReset(
+                    libraryId: libraryId,
+                    setup: steps.setup
+                )
+                self.openOpenedLibrary(reset.library, warning: reset.warning)
+            }
+            catch {
+                baeAppLogger.error(
+                    "Finishing the device reset failed: \(String(reflecting: error))"
+                )
+                self.loadError = LoadError(.deviceReset, error)
+                self.screen = .resetUnfinished(libraryId: libraryId)
             }
         }
     }

@@ -89,6 +89,23 @@ public final class LibraryBootstrap {
         }
     }
 
+    /// Finish a restore of this device's copy of a library that stopped
+    /// partway, from what core kept on the device: no code, and no sign-in.
+    /// Cancelling stops it as it stops any restore; once this device
+    /// registered, the restore stays unfinished and the call says so.
+    public func finishRestore(libraryId: String) async throws
+        -> BridgeBootstrapResult
+    {
+        try await runRestore { setup, cancellation in
+            try await self.host.resumeReplacement(
+                libraryId: libraryId,
+                by: .restore,
+                setup: setup,
+                cancellation: cancellation
+            )
+        }
+    }
+
     /// Join from an invite's code. Cancelling the task drops the call and
     /// keeps the join, which `resume` continues; only `cancel()` cancels it,
     /// and only before its request may have been sent.

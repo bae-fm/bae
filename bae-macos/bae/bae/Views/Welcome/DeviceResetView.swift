@@ -3,16 +3,16 @@ import SwiftUI
 
 /// Offered when opening a library found a damaged database or another copy of
 /// this device: the warning first, then the reset, which loads the library
-/// from storage again under a fresh device id. Also finishes a reset that
-/// stopped partway, which only resetting again finishes.
+/// from storage again under a fresh device id. Also offers finishing a reset
+/// that stopped partway, once finishing it failed.
 struct DeviceResetView: View {
     /// Why the screen asks for a reset.
     enum Prompt {
         /// This device's copy can't be used; resetting discards its unsynced
         /// edits, which the warning says before the person chooses.
         case offered
-        /// A reset already under way stopped partway; resetting again
-        /// finishes it.
+        /// A reset already under way stopped partway, and finishing it
+        /// failed; finishing tries again.
         case unfinished
     }
 

@@ -62,9 +62,10 @@ public final class BootstrapCodeForm {
         /// current restore code, after another of their devices replaced
         /// their keys. Core refuses any other code.
         case restoreOver(libraryId: String)
-        /// The same restore again, to finish one that stopped after the
-        /// restored copy took the place of this device's copy. Core refuses
-        /// any other code.
+        /// Finishing a restore of this device's copy that stopped partway,
+        /// which begins at once from what core kept, with no code. The
+        /// person's current restore code finishes it too, signing in again
+        /// when the kept sign-in is refused. Core refuses any other code.
         case finishRestore(libraryId: String)
     }
 
@@ -192,10 +193,21 @@ public final class BootstrapCodeForm {
         if attempt?.invite != nil, !isRunning { start() }
     }
 
-    /// Start a join this screen opened to resume; the screen calls it as it
-    /// appears.
+    /// Start what this screen opened to do at once: a join this device has
+    /// under way, or finishing a restore from what core kept. The screen
+    /// calls it as it appears.
     public func begin() {
-        if case .resume = entry, !isRunning { start() }
+        guard !isRunning else { return }
+        switch entry {
+        case .resume:
+            start()
+        case .finishRestore(let libraryId):
+            launch { bootstrap in
+                try await bootstrap.finishRestore(libraryId: libraryId)
+            }
+        case .restore, .join, .restoreOver:
+            break
+        }
     }
 
     public func start() {
@@ -208,6 +220,18 @@ public final class BootstrapCodeForm {
                 accessKeyId: accessKey,
                 secretAccessKey: secretKey
             ) : nil
+        launch { bootstrap in
+            try await self.run(attempt, on: bootstrap, credentials: credentials)
+        }
+    }
+
+    /// Run `work` on a new attempt, delivering what it produced or showing
+    /// why it failed.
+    private func launch(
+        _ work:
+            @escaping @MainActor (LibraryBootstrap) async throws ->
+            BridgeBootstrapResult
+    ) {
         let bootstrap = makeBootstrap()
         self.bootstrap = bootstrap
         error = nil
@@ -218,11 +242,7 @@ public final class BootstrapCodeForm {
                 isRunning = false
             }
             do {
-                let result = try await run(
-                    attempt,
-                    on: bootstrap,
-                    credentials: credentials
-                )
+                let result = try await work(bootstrap)
                 // A result that holds an open store is delivered even after a
                 // cancel raced it, so the store is opened rather than leaked.
                 deliver(result)

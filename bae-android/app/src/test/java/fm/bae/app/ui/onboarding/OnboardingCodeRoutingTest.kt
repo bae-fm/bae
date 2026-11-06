@@ -27,7 +27,13 @@ class OnboardingCodeRoutingTest {
         )
 
     private val restoreOver =
-        RestoreOver(libraryId = "library-1", title = "Restore this library", message = "Warning", onBack = {})
+        RestoreOver(
+            libraryId = "library-1",
+            title = "Restore this library",
+            message = "Warning",
+            onBack = {},
+            start = RestoreOver.Start.CODE,
+        )
 
     @Test
     fun aRestoreCodeOpensTheRestoreForm() {

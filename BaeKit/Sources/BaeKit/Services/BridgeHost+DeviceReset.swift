@@ -15,7 +15,32 @@ extension BridgeHost {
             libraryId: libraryId,
             deviceName: deviceName
         )
-        switch try await reset.confirm(setup: setup) {
+        return Self.reset(try await reset.confirm(setup: setup))
+    }
+
+    /// Finish a reset of a library's copy on this device that stopped
+    /// partway, from what core kept: the device name it began with, and no
+    /// warning, which the person accepted when it began. A cancel can't stop
+    /// a reset under way, so none is offered. Returns as `resetDevice` does.
+    public func finishReset(
+        libraryId: String,
+        setup: BridgeLibrarySetup
+    ) async throws -> (library: OpenedLibrary, warning: BridgeError?) {
+        Self.reset(
+            try await resumeReplacement(
+                libraryId: libraryId,
+                by: .reset,
+                setup: setup,
+                cancellation: BootstrapCancellation()
+            )
+        )
+    }
+
+    /// A reset's open store, and the error a partly finished reset reported.
+    private static func reset(_ result: BridgeBootstrapResult) -> (
+        library: OpenedLibrary, warning: BridgeError?
+    ) {
+        switch result {
         case .opened(let library):
             return (library, nil)
         case .published(let library, let warning),

@@ -101,9 +101,10 @@ internal fun ResetOfferedScreen(
 }
 
 /**
- * A reset of this device's copy stopped partway; finishing resets again,
- * without the warning the person already accepted. Leaving keeps the library
- * waiting for it.
+ * A reset of this device's copy stopped partway, and finishing it failed, as
+ * [error] says; finishing tries again from what core kept, without the
+ * warning the person already accepted. Leaving keeps the library waiting for
+ * it.
  */
 @Composable
 internal fun ResetUnfinishedScreen(

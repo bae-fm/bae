@@ -177,6 +177,48 @@ impl BridgeHost {
             )
             .await
     }
+    /// Finish this device's reset or restore of a library that stopped
+    /// partway, from what core kept on the device: no restore code, and no
+    /// sign-in. A Dropbox or OneDrive sign-in the provider refuses fails as a
+    /// credentials error, and the call that began it, with its sign-in,
+    /// finishes it then. `by` is the call the library's listing names, which
+    /// says whether `cancellation` stops it: a restore's finishing stops, a
+    /// reset's goes on. A restore cancelled once this device registered
+    /// fails as `RestoreRegistered`, still unfinished.
+    pub async fn resume_replacement(
+        self: Arc<Self>,
+        library_id: String,
+        by: BridgeReplacedBy,
+        setup: Arc<crate::BridgeLibrarySetup>,
+        cancellation: Arc<BootstrapCancellation>,
+    ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let store = crate::from_app::store(&library_id)?;
+        let cancellable = bae_library::replacement_cancellable(by.into_core());
+        let cancel = cancellation.cancel.subscribe();
+        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
+        let steps = setup.writer();
+        self.operations
+            .clone()
+            .run_to_completion(
+                self.clone(),
+                "finish replacing this device's copy",
+                move || async move {
+                    self.closed(store).await?;
+                    match bae_library::resume_replacement(
+                        self.builder(),
+                        store,
+                        |status| steps.bootstrap(status, cancellable),
+                        &cancel,
+                    )
+                    .await
+                    {
+                        Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self)),
+                        Err(error) => BridgeBootstrapResult::failure(error, self),
+                    }
+                },
+            )
+            .await
+    }
     pub async fn restore_from_saved_code(
         self: Arc<Self>,
         saved: Arc<BridgeSavedRestoreCode>,

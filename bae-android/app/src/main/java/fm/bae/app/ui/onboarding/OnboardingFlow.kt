@@ -31,6 +31,7 @@ import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOAuthAccess
 import uniffi.bae_bridge.BridgeOpenProgress
+import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.BridgeUnfinishedJoin
 import uniffi.bae_bridge.decodeCodeInfo
@@ -61,10 +62,11 @@ internal sealed interface OnboardingStep {
     ) : OnboardingStep
 
     /**
-     * A code read for [entry]: one the person scanned or typed, or one saved
-     * on this phone.
+     * What a restore or join for [entry] runs from: a code the person scanned
+     * or typed, one saved on this phone, or what core kept for a restore over
+     * this device's copy that stopped partway.
      */
-    sealed interface CodeRead {
+    sealed interface Attempt {
         val entry: CodeEntry
     }
 
@@ -73,7 +75,7 @@ internal sealed interface OnboardingStep {
      * waits on the person when the code was typed or lacks its S3 key, or an
      * invite, which joins at once.
      */
-    sealed interface EnteredCode : CodeRead
+    sealed interface EnteredCode : Attempt
 
     /**
      * The person's own restore code, read; S3 asks for its access key before
@@ -98,12 +100,20 @@ internal sealed interface OnboardingStep {
      */
     data class RestoreSaved(
         val saved: SavedRestoreCode,
-    ) : CodeRead,
+    ) : Attempt,
         OnboardingStep {
         /** Saved codes are listed on a new device's welcome only. */
         override val entry: CodeEntry
             get() = CodeEntry.NewDevice
     }
+
+    /**
+     * A restore over this device's copy that stopped partway, finished from
+     * what core kept: no code, no sign-in.
+     */
+    data class FinishRestore(
+        override val entry: RestoreOver,
+    ) : Attempt
 
     /**
      * An invite, read or saved from a join under way: joining starts at once,
@@ -125,7 +135,7 @@ internal sealed interface OnboardingStep {
      * any other attempt.
      */
     data class Running(
-        val from: CodeRead,
+        val from: Attempt,
         val state: BridgeBootstrapState?,
         val steps: LatestSource<BridgeBootstrapStep>,
         val openSteps: LatestSource<BridgeOpenProgress>? = null,
@@ -226,9 +236,29 @@ internal class OnboardingFlow(
     private var joining: BridgeJoinControl? = null
 
     init {
-        // A join this device had under way when bae stopped opens on its
-        // waiting screen and goes on checking.
-        if (restoreOver == null) resumeUnfinished()
+        when (restoreOver?.start) {
+            // A join this device had under way when bae stopped opens on its
+            // waiting screen and goes on checking.
+            null -> {
+                resumeUnfinished()
+            }
+
+            // Finishing needs nothing from the person, and only it opens the
+            // library.
+            RestoreOver.Start.FINISH -> {
+                finishRestore(restoreOver)
+            }
+
+            RestoreOver.Start.CODE -> {}
+        }
+    }
+
+    /** Finish the restore over this device's copy that stopped partway, from what core kept. */
+    private fun finishRestore(entry: RestoreOver) {
+        val running = core.newCancellation()
+        run(OnboardingStep.FinishRestore(entry), running::cancel) { setup ->
+            core.host.resumeReplacement(entry.libraryId, BridgeReplacedBy.RESTORE, setup, running)
+        }
     }
 
     /** Resume the join this device has under way, if any. */
@@ -321,7 +351,7 @@ internal class OnboardingFlow(
     }
 
     /** Back to the code screen from a code waiting on the person. */
-    fun back(from: OnboardingStep.CodeRead) {
+    fun back(from: OnboardingStep.Attempt) {
         error = null
         step = OnboardingStep.EnterCode(from.entry)
     }
@@ -397,7 +427,7 @@ internal class OnboardingFlow(
 
     /** Run [start], with [opening] following the open it runs, if it opens this device's own copy. */
     private fun run(
-        from: OnboardingStep.CodeRead,
+        from: OnboardingStep.Attempt,
         cancel: () -> Unit,
         opening: LibraryOpenProgress? = null,
         start: suspend (BridgeLibrarySetup) -> BridgeBootstrapResult,
@@ -463,10 +493,14 @@ internal class OnboardingFlow(
     }
 }
 
-/** Where an ended restore or join returns: a restore's form, or the code screen for an invite, which has none. */
-private fun OnboardingStep.CodeRead.formStep(): OnboardingStep =
+/**
+ * Where an ended restore or join returns: a restore's form, or the code
+ * screen for an invite or a finished restore's finishing, which have none.
+ */
+private fun OnboardingStep.Attempt.formStep(): OnboardingStep =
     when (this) {
         is OnboardingStep.Restore -> this
         is OnboardingStep.RestoreSaved -> this
         is OnboardingStep.Invite -> OnboardingStep.EnterCode(entry)
+        is OnboardingStep.FinishRestore -> OnboardingStep.EnterCode(entry)
     }

@@ -59,6 +59,9 @@ fn every_failure_class_reads_back_as_itself() {
         C::AirPlayUnreadableSettings,
         C::ReplacementUnfinished(coven::ReplacedBy::Reset),
         C::ReplacementUnfinished(coven::ReplacedBy::Restore),
+        C::RestoreRegistered,
+        C::DeletionUnfinished,
+        C::DeletionSignInRequired,
     ];
     for class in classes {
         assert_eq!(category_of(&category_column(class.clone())).unwrap(), class);

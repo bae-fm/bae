@@ -332,9 +332,9 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
 }
 
 /// Poll `replacing` one step at a time and drop it at the first step after
-/// which coven lists its replacement as unfinished: the swap, as when the app
-/// quits there.
-async fn stop_at_swap<T>(
+/// which coven lists its replacement as unfinished: its record, as when the
+/// app quits there.
+async fn stop_once_recorded<T>(
     installation: &coven::Coven,
     replacing: impl std::future::Future<Output = T>,
 ) {
@@ -344,7 +344,7 @@ async fn stop_at_swap<T>(
             std::task::Poll::Ready(std::future::Future::poll(replacing.as_mut(), cx))
         })
         .await;
-        assert!(step.is_pending(), "the replacement finished before its swap was seen");
+        assert!(step.is_pending(), "the replacement finished before its record was seen");
         let listed = installation.stores().await.unwrap();
         if listed.iter().any(|listed| {
             matches!(
@@ -361,13 +361,12 @@ async fn stop_at_swap<T>(
     }
 }
 
-/// A restore that stops right after the restored copy took the place of this
-/// device's copy, as when the app quits there, leaves the library listed as
-/// waiting for that restore, and opening it says that only restoring again
-/// finishes it. Restoring again with the code finishes it, and the library
+/// A restore that stops right after it recorded itself, as when the app
+/// quits there, leaves the library listed as waiting for that restore, and
+/// opening it says that only restoring again finishes it. Restoring again with the code finishes it, and the library
 /// opens as the restored device.
 #[tokio::test]
-async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_again() {
+async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_again() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -395,7 +394,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
         }
     };
 
-    stop_at_swap(&installation, restore()).await;
+    stop_once_recorded(&installation, restore()).await;
 
     let libraries = app_dir.discover_libraries(&installation).await.unwrap();
     assert_eq!(libraries.len(), 1);
@@ -438,13 +437,105 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     opens_as(builder(), store, device).await;
 }
 
-/// A library whose restore stopped after its swap can't open, so removing it
+/// A restore that stopped after its record finishes from what coven kept on
+/// the device, without the person's restore code, and the library opens as
+/// the restored device.
+#[tokio::test]
+async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let replaced = keys_replaced_elsewhere(&installation, &storage).await;
+    let builder =
+        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    let (_sender, cancel) = watch::channel(false);
+    let store = replaced.store;
+    stop_once_recorded(
+        &installation,
+        restore_replacing_device(
+            builder,
+            store,
+            &replaced.current_code,
+            Some(owner_key()),
+            "Laptop",
+            |_| {},
+            |_| {},
+            &cancel,
+        ),
+    )
+    .await;
+
+    let finished = super::resume_replacement(builder(), store, |_| {}, &cancel).await.unwrap();
+    let device = finished.device_id();
+    assert_ne!(device, replaced.device);
+    finished.close().await.unwrap();
+    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    assert!(
+        matches!(
+            libraries[..],
+            [bae_app_dir::LibraryInfo { state: bae_app_dir::LibraryState::Openable(Some(_)), .. }]
+        ),
+        "{libraries:?}"
+    );
+    opens_as(builder(), store, device).await;
+}
+
+/// A reset that stopped after its record finishes from what coven kept on the
+/// device, and the library opens as the reset device.
+#[tokio::test]
+async fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path()).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let (store, device, _) = connected_library(&installation, &storage, "Household").await;
+    let builder =
+        || installation.builder().storage_connector(std::sync::Arc::new(storage.for_device()));
+    stop_once_recorded(&installation, reset_device(builder(), store, "Replacement", |_| {})).await;
+    let libraries = app_dir.discover_libraries(&installation).await.unwrap();
+    assert!(
+        matches!(
+            libraries[..],
+            [bae_app_dir::LibraryInfo {
+                state: bae_app_dir::LibraryState::ReplacementUnfinished(coven::ReplacedBy::Reset),
+                ..
+            }]
+        ),
+        "{libraries:?}"
+    );
+
+    let (_sender, cancel) = watch::channel(false);
+    let finished = super::resume_replacement(builder(), store, |_| {}, &cancel).await.unwrap();
+    let reset = finished.device_id();
+    assert_ne!(reset, device);
+    finished.close().await.unwrap();
+    opens_as(builder(), store, reset).await;
+}
+
+/// A cancel stops finishing a restore, which coven honors, and not a
+/// reset, which coven goes on with once it is under way.
+#[test]
+fn only_finishing_a_restore_can_be_cancelled() {
+    assert!(replacement_cancellable(coven::ReplacedBy::Restore));
+    assert!(!replacement_cancellable(coven::ReplacedBy::Reset));
+}
+
+/// A restore cancelled after this device registered stays unfinished, and
+/// says so: not a settings fault, which the person can't fix.
+#[test]
+fn a_restore_cancelled_after_registering_says_it_stays_unfinished() {
+    let error = restore_error(coven::BootstrapError::RestoreRegistered);
+    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::RestoreRegistered);
+}
+
+/// A library whose restore stopped after its record can't open, so removing it
 /// can't count what it hasn't sent and goes to coven's delete of a closed
 /// store. That delete takes both copies, the one the restore loaded and the
 /// one it replaced: nothing of the library is left listed, its files and the
 /// pointer naming it are gone, and no removal record is left.
 #[tokio::test]
-async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_copies() {
+async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_copies() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -455,7 +546,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     let store = replaced.store;
     app_dir.save_active_library(store).unwrap();
     let (_sender, cancel) = watch::channel(false);
-    stop_at_swap(
+    stop_once_recorded(
         &installation,
         restore_replacing_device(
             builder,

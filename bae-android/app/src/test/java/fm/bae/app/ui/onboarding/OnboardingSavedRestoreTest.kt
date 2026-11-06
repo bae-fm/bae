@@ -136,7 +136,13 @@ class OnboardingSavedRestoreTest {
                 RuntimeEnvironment.getApplication(),
                 OnboardingCore(SavedCodesHost(listOf(dropboxCode)), ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
                 null,
-                RestoreOver(libraryId = "library-1", title = "Restore this library", message = "Warning", onBack = {}),
+                RestoreOver(
+                    libraryId = "library-1",
+                    title = "Restore this library",
+                    message = "Warning",
+                    onBack = {},
+                    start = RestoreOver.Start.CODE,
+                ),
             ) {}
 
         assertEquals(null, flow.savedCodes)

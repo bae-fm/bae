@@ -73,6 +73,7 @@ class OnboardingStepsTest {
                 title = "Restore this library",
                 message = "Another of your devices replaced your keys.",
                 onBack = { left = true },
+                start = RestoreOver.Start.CODE,
             ),
         )
 

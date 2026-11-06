@@ -1,19 +1,26 @@
 import BaeKit
 import Testing
 
-/// A host whose restore from a code reports the code it was given, then ends
-/// as cancelled; no other call is made by these tests. Each test's is the one
-/// core host of the test process, which the attempt's setup is made on: an
-/// attempt's reads end after the test does, as a screen's end after it goes,
-/// so the host they end on lives for the process, as the app's does.
+/// A host whose restore from a code reports the code it was given, and whose
+/// finishing of a replacement reports the library and call it was given,
+/// each then ending as cancelled; no other call is made by these tests. Each
+/// test's is the one core host of the test process, which the attempt's setup
+/// is made on: an attempt's reads end after the test does, as a screen's end
+/// after it goes, so the host they end on lives for the process, as the app's
+/// does.
 private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     private static let core = TestHost.make()
 
     let restoredCodes: AsyncStream<String>
     private let record: AsyncStream<String>.Continuation
+    let finished: AsyncStream<FinishedReplacement>
+    private let recordFinish: AsyncStream<FinishedReplacement>.Continuation
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
+        (finished, recordFinish) = AsyncStream.makeStream(
+            of: FinishedReplacement.self
+        )
         super.init(unsafeFromHandle: Self.core.uniffiCloneHandle())
     }
 
@@ -31,6 +38,22 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         record.yield(code)
         throw CancellationError()
     }
+
+    override func resumeReplacement(
+        libraryId: String,
+        by: BridgeReplacedBy,
+        setup _: BridgeLibrarySetup,
+        cancellation _: BootstrapCancellation
+    ) async throws -> BridgeBootstrapResult {
+        recordFinish.yield(FinishedReplacement(libraryId: libraryId, by: by))
+        throw CancellationError()
+    }
+}
+
+/// The library and call a finishing of a replacement was given.
+private struct FinishedReplacement: Equatable, Sendable {
+    let libraryId: String
+    let by: BridgeReplacedBy
 }
 
 @MainActor
@@ -60,10 +83,13 @@ struct BootstrapCodeFormTests {
         )
     }
 
-    private func form(reading info: BridgeCodeInfo) -> BootstrapCodeForm {
+    private func form(
+        reading info: BridgeCodeInfo,
+        entry: BootstrapCodeForm.Entry = .restore(nil)
+    ) -> BootstrapCodeForm {
         let host = host
         return BootstrapCodeForm(
-            entry: .restore(nil),
+            entry: entry,
             decodeCode: { _ in info },
             makeBootstrap: {
                 LibraryBootstrap(host: host, deviceName: "Test Mac")
@@ -106,5 +132,24 @@ struct BootstrapCodeFormTests {
 
         #expect(!form.isRunning)
         #expect(form.ready)
+    }
+
+    /// A restore of this device's copy that stopped partway finishes from
+    /// what core kept as soon as its screen appears, with no code.
+    @Test("finishing a restore begins at once without a code")
+    func finishingARestoreBeginsAtOnce() async {
+        let form = form(
+            reading: Self.restoreCode(carriesS3Key: true),
+            entry: .finishRestore(libraryId: "library-1")
+        )
+
+        form.begin()
+
+        #expect(form.isRunning)
+        var finished = host.finished.makeAsyncIterator()
+        #expect(
+            await finished.next()
+                == FinishedReplacement(libraryId: "library-1", by: .restore)
+        )
     }
 }

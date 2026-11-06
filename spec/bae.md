@@ -3060,27 +3060,41 @@ that haven't synced will be discarded. The person was told before choosing, so
 nothing is shown after; bae doesn't present coven's reset notice.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
-person's current code, loads the new copy beside this device's copy, then
-swaps it into place. If the app stops after the swap, such as when it quits,
-the library waits for that same call to finish it
+person's current code, loads the new copy beside this device's copy, records
+itself, registers the new copy's device, then swaps it into place. If it
+stops once it recorded itself, by a failure or when the app quits, the
+library waits for it to finish
 ([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)).
 bae still lists the library, under the name the new copy loaded, with the
-call that finishes it, and opening it fails with that call's own line:
+call that began it, and opening it fails with that call's own line:
 "Restoring this library on this device did not finish." or "Resetting this
-device for this library did not finish." Only that call finishes it. A reset
-would load a restore's library under the keys the restore replaced, and a
-restore would delete the copy a reset keeps, so coven refuses the other call
-before anything changes.
+device for this library did not finish." Coven keeps what finishing needs on
+the device: a reset's device name, and a restore's code, its S3 key inside
+the code, and its provider sign-in. So `resume_replacement` finishes either
+without the code or a sign-in, and so does running the call that began it
+again. The other call is refused before anything changes: a reset would load
+a restore's library under the keys the restore replaced, and a restore would
+delete the copy a reset keeps.
 
 The apps show such a library with that line, in red, where they list
 libraries that can't open: the Mac's library list, and the library switcher
-on phones. They offer only its call. *Finish restoring* asks for the person's
-current recovery code, and the S3 key for a library on S3, then restores
-again. *Finish resetting* resets again, without the warning the person
-already accepted. Opening the library, such as at launch, lands on the same
-screen. Going back leaves the library waiting and returns to the open
-library, to the Mac's library list, or on a phone with no library open, to
-onboarding.
+on phones. Its row offers *Finish restoring* or *Finish resetting*, and that,
+or opening the library, such as at launch, finishes it at once: finishing
+needs nothing from the person, and the library can't open until it is done,
+as a join under way goes on at launch (§5.6). A reset finishes on the screen
+a reset shows, with no warning, which the person accepted when it began; if
+it fails, the screen says why and *Finish resetting* tries again. A restore
+finishes on the screen that asks for the person's current recovery code,
+which shows how far it has come and offers *Cancel*. If it fails, the screen
+says why and the code finishes it too, signing in to the provider again, as a
+refused Dropbox or OneDrive sign-in needs. A reset under way can't be
+cancelled, so finishing one offers no *Cancel*. Cancelling a restore before
+its new device registered gives it up, and this device's copy is the library
+again; after, coven keeps it, and the cancel shows "The restore can’t be
+cancelled: this device was already added to the library. Finish restoring to
+use the library." Going back leaves the library waiting and returns to the
+open library, to the Mac's library list, or on a phone with no library open,
+to onboarding.
 
 **Lost values.** When two devices edit one cell and one edit is replaced
 unseen, coven records a lost value
@@ -3680,10 +3694,11 @@ library is registered there by id.
 | `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a recovery code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
 | `saved_restore_codes` | lists the recovery codes coven saved in iCloud Keychain, or in this phone's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
 | `forget_saved_restore_code` | deletes a saved recovery code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this phone's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |
-| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, keeping this device's settings, which a failed restore leaves as it was; called again, finishes a restore that stopped after the restored copy took this one's place (§6.4) |
+| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, keeping this device's settings, which a restore failing before its record leaves as it was; called again, finishes a restore that stopped after its record (§6.4) |
+| `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile with the name the invite carries (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
-| `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
+| `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
 | `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it, and one whose removal didn't finish fails saying so |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
@@ -4865,6 +4880,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
+| `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |
 | `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
 
@@ -4874,8 +4890,9 @@ These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `ReleaseChangedSinceOpened`, `StorageLocationChangeUnsupported`,
 `KeychainEntitlementMissing`, `SavedRestoreCodesFull`,
 `SavedRestoreCodeTooLarge`, `StoreOwnerAccount`, `QueueChanged`,
-`ReplacementUnfinished`, `DeletionUnfinished` and `DeletionSignInRequired`.
-Every other category shows its detail under its line.
+`ReplacementUnfinished`, `RestoreRegistered`, `DeletionUnfinished` and
+`DeletionSignInRequired`. Every other category shows its detail under its
+line.
 
 ### G.2 Why a found release isn't picked
 

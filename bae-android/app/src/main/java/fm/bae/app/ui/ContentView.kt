@@ -240,6 +240,7 @@ private fun RecoveryScreen(
                     message = context.coreString("core.sync.restore_device.warning"),
                     // Going back opens the library again as it was.
                     onBack = { scope.launch { AppSessionHolder.openLibrary(context, libraryId, onScreen) } },
+                    start = RestoreOver.Start.CODE,
                 ),
                 oauthProvidersError,
                 onScreen,
@@ -249,11 +250,7 @@ private fun RecoveryScreen(
         is AppScreen.ResetUnfinished -> {
             ResetUnfinishedScreen(
                 error = current.error,
-                onFinish = {
-                    reset(AppSessionHolder.prepareDeviceReset(context, libraryId)) {
-                        AppScreen.ResetUnfinished(libraryId, it)
-                    }
-                },
+                onFinish = { scope.launch { AppSessionHolder.finishReset(context, libraryId, onScreen) } },
                 onLeave = { AppSessionHolder.leaveFinishing(onScreen) },
             )
         }
@@ -270,6 +267,7 @@ private fun RecoveryScreen(
                     // The library opens only once the restore finishes, so
                     // going back leaves it waiting.
                     onBack = { AppSessionHolder.leaveFinishing(onScreen) },
+                    start = RestoreOver.Start.FINISH,
                 ),
                 oauthProvidersError,
                 onScreen,
@@ -320,7 +318,7 @@ private fun sessionActions(
     switchLibrary = { library ->
         when (val state = library.state) {
             is BridgeLibraryState.ReplacementUnfinished -> {
-                onScreen(AppScreen.finishing(library.id, state.by))
+                scope.launch { AppSessionHolder.finish(context, library.id, state.by, onScreen) }
             }
 
             is BridgeLibraryState.DeletionUnfinished -> {

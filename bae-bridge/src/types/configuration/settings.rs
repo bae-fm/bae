@@ -212,6 +212,10 @@ pub enum BridgeErrorCategory {
     ReplacementUnfinished {
         by: BridgeReplacedBy,
     },
+    /// A restore was cancelled after this device registered with the
+    /// library, so it can't be taken back: the restore stays unfinished on
+    /// this device, and only finishing it goes on.
+    RestoreRegistered,
     /// The library didn't open because this device is removing it; only
     /// finishing the removal ends it.
     DeletionUnfinished,
@@ -380,6 +384,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             BridgeReplacedBy::Reset => "core.error.replacement_unfinished.reset",
             BridgeReplacedBy::Restore => "core.error.replacement_unfinished.restore",
         },
+        BridgeErrorCategory::RestoreRegistered => "core.error.restore_registered",
         BridgeErrorCategory::DeletionUnfinished => "core.error.deletion_unfinished",
         BridgeErrorCategory::DeletionSignInRequired => "core.error.deletion_sign_in_required",
     }
@@ -500,6 +505,7 @@ impl BridgeErrorCategory {
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished { .. } => K::ReplacementUnfinished,
+            Self::RestoreRegistered => K::RestoreRegistered,
             Self::DeletionUnfinished => K::DeletionUnfinished,
             Self::DeletionSignInRequired => K::DeletionSignInRequired,
         };
@@ -606,6 +612,7 @@ mirror_enum! {
         AirPlayUnsupported,
         AirPlayUnreadableSettings,
         ReplacementUnfinished(by: (BridgeReplacedBy)),
+        RestoreRegistered,
         DeletionUnfinished,
         DeletionSignInRequired,
     },

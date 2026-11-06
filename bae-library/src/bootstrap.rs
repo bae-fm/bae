@@ -288,9 +288,9 @@ async fn with_profile(
 
 /// Replace this device after the caller has warned that unsent edits are discarded.
 /// Coven checks storage and custody before replacing the installation. Calling
-/// it again finishes a reset that stopped after the new copy took the old
-/// one's place; for a restore that stopped there, coven refuses it and changes
-/// nothing. The reset loads the whole store from storage, as a restore does,
+/// it again finishes a reset that stopped after it recorded itself, as
+/// `resume_replacement` does; for a restore that stopped there, coven refuses
+/// it and changes nothing. The reset loads the whole store from storage, as a restore does,
 /// and reports how far it has come to `on_status`. The returned handle is
 /// ready to open in bae; there is no post-reset notification.
 pub async fn reset_device(
@@ -310,9 +310,12 @@ pub async fn reset_device(
 /// person's current restore code for this library. Coven loads the library
 /// from storage under a new device id beside this device's copy, which stays
 /// and opens as before until the load is complete, then takes its place. A
-/// restore that fails leaves this device's copy, and calling again with the
-/// same code retries it, or finishes one that stopped after the swap; for a
-/// reset that stopped there, coven refuses it and changes nothing. The caller
+/// restore that fails before it recorded itself leaves this device's copy,
+/// and calling again with the same code retries it; one that stopped after
+/// its record is finished by calling again, or by `resume_replacement`
+/// without the code. For a reset that stopped there, coven refuses it and
+/// changes nothing. A cancel after this device registered fails as
+/// `RestoreRegistered`, the restore still unfinished. The caller
 /// closed the library and warned that edits on this device that haven't
 /// synced are discarded. The copy put in place keeps this device's settings
 /// (the `preferences` row and its save presets), read from this device's
@@ -368,10 +371,44 @@ pub async fn restore_replacing_device(
         .map_err(restore_error)
 }
 
+/// Finish this device's reset or restore of `store` that stopped after it
+/// recorded itself, from what coven kept on the device: with neither the
+/// person's restore code nor a new sign-in. The settings a restore carries
+/// were written before its record, so finishing writes nothing more. A
+/// Dropbox or OneDrive sign-in the provider refuses even after its refresh
+/// fails as `OAuthError::Reauthorize`, the replacement still unfinished, and
+/// the call that began it, with its sign-in, finishes it then. How far the
+/// load has come goes to `on_status`. A failure leaves the replacement
+/// unfinished for the next call. A cancel stops only a restore, as
+/// `replacement_cancellable` says: before this device registered, coven
+/// gives the restore up and this device's copy is the library again; after,
+/// it fails as `RestoreRegistered`, the restore still unfinished.
+pub async fn resume_replacement(
+    builder: coven::CovenBuilder,
+    store: coven::StoreId,
+    on_status: impl Fn(coven::BootstrapStatus),
+    cancel: &watch::Receiver<bool>,
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    loading_builder(builder)
+        .resume_replacement(store, on_status, cancel)
+        .await
+        .map_err(restore_error)
+}
+
+/// Whether a cancel can stop the call finishing a replacement that `by`
+/// names: coven honors one finishing a restore, and checks for none once a
+/// reset is under way.
+pub fn replacement_cancellable(by: coven::ReplacedBy) -> bool {
+    match by {
+        coven::ReplacedBy::Restore => true,
+        coven::ReplacedBy::Reset => false,
+    }
+}
+
 /// This device's settings in its copy of `store`, which a restore over the
-/// copy carries into the one it puts in place. None when a restore already
-/// put its copy in place and stopped there: that copy got them in the call
-/// that made it, and finishing writes nothing more.
+/// copy carries into the one it puts in place. None when a restore of this
+/// copy already recorded itself and stopped: its loaded copy got them before
+/// the record, and finishing writes nothing more.
 async fn settings_of_this_copy(
     builder: coven::CovenBuilder,
     store: coven::StoreId,

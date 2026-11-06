@@ -110,6 +110,10 @@ pub enum UiErrorCategory {
     /// copy stopped partway; only running the call `by` names again finishes
     /// it.
     ReplacementUnfinished(coven::ReplacedBy),
+    /// A restore was cancelled after this device registered with the
+    /// library, so it can't be taken back: the restore stays unfinished on
+    /// this device, and only finishing it goes on.
+    RestoreRegistered,
     /// The library didn't open because this device is removing it: its
     /// removal stopped partway, and only finishing the removal ends it.
     DeletionUnfinished,

@@ -185,9 +185,10 @@ pub enum BridgeLibraryState {
 }
 
 /// The call that began replacing this device's copy of a library, and the
-/// only one that finishes it: `Reset` is `reset_device`, `Restore` is
-/// `restore_replacing_device` with the person's current restore code.
-/// Mirrors coven's `ReplacedBy`.
+/// only one of the two that finishes it: `Reset` is `reset_device`,
+/// `Restore` is `restore_replacing_device` with the person's current restore
+/// code. `resume_replacement` finishes either without the code. Mirrors
+/// coven's `ReplacedBy`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReplacedBy {
     Reset,
@@ -197,6 +198,7 @@ pub enum BridgeReplacedBy {
 mirror_enum! {
     BridgeReplacedBy = coven::ReplacedBy,
     from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     variants: { Reset, Restore },
 }
 

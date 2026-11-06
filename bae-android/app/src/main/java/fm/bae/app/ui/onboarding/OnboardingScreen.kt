@@ -71,14 +71,23 @@ private const val PREVIEW_INVITE_SECONDS = 86_400L
 
 /**
  * Restoring a library over this device's copy: what its code screen says
- * about it, and where going back leaves the person.
+ * about it, where going back leaves the person, and what the screen does as
+ * it opens.
  */
 internal data class RestoreOver(
     val libraryId: String,
     val title: String,
     val message: String,
     val onBack: () -> Unit,
-) : CodeEntry
+    val start: Start,
+) : CodeEntry {
+    /**
+     * What the screen does as it opens: wait for the person's current
+     * restore code, or finish a restore over this copy that stopped partway,
+     * from what core kept and with no code, which the code then also does.
+     */
+    enum class Start { CODE, FINISH }
+}
 
 /**
  * First run on a device: the person scans or types a code; a restore code from
@@ -238,6 +247,7 @@ internal fun OnboardingProgress(
             is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.invite.libraryName)
             is OnboardingStep.Restore -> stringResource(RestoreText.of(from.entry).running)
             is OnboardingStep.RestoreSaved -> stringResource(RestoreText.RESTORE.running)
+            is OnboardingStep.FinishRestore -> stringResource(RestoreText.RESTORE.running)
         }
     OnboardingContainer {
         val status = step.state?.status
