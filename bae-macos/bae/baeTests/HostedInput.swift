@@ -11,46 +11,30 @@ import Testing
 /// handled here, each is let go as soon as it has been delivered.
 @MainActor
 enum HostedInput {
-    /// When the latest press sent to each hosted window happened.
-    private static var lastPress: [ObjectIdentifier: ContinuousClock.Instant] =
-        [:]
+    /// The hosted windows a press was sent to.
+    private static var pressedWindows: Set<ObjectIdentifier> = []
 
-    /// When every gesture a press into `window` started has settled: a
-    /// double-click interval after the latest press, or `nil` when none was
-    /// sent. Forgets the window.
-    static func gesturesSettle(in window: NSWindow) -> ContinuousClock.Instant?
-    {
-        lastPress.removeValue(forKey: ObjectIdentifier(window))?
-            .advanced(
-                by: .seconds(NSEvent.doubleClickInterval) + .milliseconds(100)
-            )
+    /// Whether a press was sent into `window`, which may have started a
+    /// gesture whose timer is still to fire. Forgets the window.
+    static func wasPressed(_ window: NSWindow) -> Bool {
+        pressedWindows.remove(ObjectIdentifier(window)) != nil
     }
 
-    /// Windows closed once the timer of a gesture that was sent to them can
-    /// no longer fire, with when that is.
-    private static var retired:
-        [(until: ContinuousClock.Instant, close: @MainActor () -> Void)] = []
+    /// Windows left open for the rest of the run with the tree they host.
+    private static var kept: [NSWindow] = []
 
-    /// Close a window, with the tree it hosts let go, once `until` has
-    /// passed: the next hosted window looks.
-    static func retire(
-        until: ContinuousClock.Instant,
-        closing close: @escaping @MainActor () -> Void
-    ) {
-        retired.append((until, close))
-    }
-
-    /// Close the retired windows whose time has passed.
-    @MainActor
-    static func closeSettledWindows() {
-        let now = ContinuousClock.now
-        let due = retired.filter { $0.until <= now }
-        retired.removeAll { $0.until <= now }
-        for window in due { window.close() }
+    /// Hold `window` and its tree for the rest of the run.
+    ///
+    /// A gesture's timer reaches its view without owning it, and AppKit gives
+    /// no notice when it has fired, so a tree let go before it fires takes
+    /// the process down. The tree is kept instead, and the window is out of
+    /// sight.
+    static func keep(_ window: NSWindow) {
+        kept.append(window)
     }
 
     private static func pressed(_ window: NSWindow) {
-        lastPress[ObjectIdentifier(window)] = .now
+        pressedWindows.insert(ObjectIdentifier(window))
     }
 
     /// A press and release of the left button at `point` in `window`'s

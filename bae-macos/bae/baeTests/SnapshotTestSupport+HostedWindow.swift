@@ -7,7 +7,8 @@ extension SnapshotTestSupport {
     /// every display for the length of `body`, which uses the host to read
     /// its view tree or send events through the window. When `body`
     /// returns or throws, the window is closed and it and the view tree it
-    /// held are let go.
+    /// held are let go; a window a press was sent into is hidden and kept
+    /// with its tree for the rest of the run.
     ///
     /// The window never becomes key. Whether a window is key follows whether
     /// the test host is the active app, which is whatever the person at the
@@ -23,7 +24,6 @@ extension SnapshotTestSupport {
         _ body: (NSWindow, NSHostingView<V>) async throws -> Value
     ) async throws -> Value {
         weak var released: NSWindow?
-        HostedInput.closeSettledWindows()
         var retired = false
         let result: Value
         do {
@@ -36,14 +36,12 @@ extension SnapshotTestSupport {
             // A click on a view with a double-tap gesture leaves a timer
             // that settles the gesture once a second click can no longer
             // come, and it reaches the view without owning it: a window and
-            // tree let go before it fires take the process down with it. Such
-            // a window stays open until that time has passed, which a later
-            // hosted window checks, so no test waits for it.
-            if let settled = HostedInput.gesturesSettle(in: window) {
+            // tree let go before it fires take the process down with it.
+            // Such a window is hidden and kept, tree included.
+            if HostedInput.wasPressed(window) {
                 retired = true
-                HostedInput.retire(until: settled) {
-                    autoreleasepool { close(window) }
-                }
+                autoreleasepool { hide(window) }
+                HostedInput.keep(window)
             }
             else {
                 autoreleasepool { close(window) }
@@ -116,15 +114,22 @@ extension SnapshotTestSupport {
         }
     }
 
-    /// End a hosted window: any sheet the test left on it, the window, and
-    /// the view tree it held.
+    /// Take any sheet the test left on `window`, and then the window, off the
+    /// screen.
     @MainActor
-    private static func close(_ window: NSWindow) {
+    private static func hide(_ window: NSWindow) {
         while let sheet = window.attachedSheet {
             window.endSheet(sheet)
             sheet.orderOut(nil)
         }
         window.orderOut(nil)
+    }
+
+    /// End a hosted window: any sheet the test left on it, the window, and
+    /// the view tree it held.
+    @MainActor
+    private static func close(_ window: NSWindow) {
+        hide(window)
         window.contentView = nil
         window.close()
     }
