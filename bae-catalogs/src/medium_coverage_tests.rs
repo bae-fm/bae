@@ -96,3 +96,12 @@ fn lengths_count_disagreements_then_unstated_then_distance() {
             < fit(&shape, &[1], &origin, &[Some(201_000), Some(200_000)])
     );
 }
+
+#[test]
+fn lengths_disagree_only_past_the_threshold_in_either_direction() {
+    assert!(!lengths_disagree(180_000, 180_000));
+    assert!(!lengths_disagree(180_000, 180_000 + LENGTH_DISAGREEMENT_MS));
+    assert!(!lengths_disagree(180_000 + LENGTH_DISAGREEMENT_MS, 180_000));
+    assert!(lengths_disagree(180_000, 180_001 + LENGTH_DISAGREEMENT_MS));
+    assert!(lengths_disagree(180_001 + LENGTH_DISAGREEMENT_MS, 180_000));
+}

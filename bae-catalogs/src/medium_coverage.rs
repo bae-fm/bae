@@ -27,6 +27,12 @@ use std::collections::BTreeSet;
 /// commit.
 pub const LENGTH_DISAGREEMENT_MS: u64 = 3_000;
 
+/// Whether two lengths, in milliseconds, are further apart than
+/// [`LENGTH_DISAGREEMENT_MS`].
+pub fn lengths_disagree(a_ms: u64, b_ms: u64) -> bool {
+    a_ms.abs_diff(b_ms) > LENGTH_DISAGREEMENT_MS
+}
+
 /// The mediums a reading covers, as ascending positions into the release's
 /// medium list.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -217,7 +223,7 @@ impl Fit {
             match stated {
                 Some(stated) => {
                     let distance = stated.abs_diff(measured);
-                    if distance > LENGTH_DISAGREEMENT_MS {
+                    if lengths_disagree(*stated, measured) {
                         fit.disagreeing += 1;
                     }
                     fit.distance_ms += distance;

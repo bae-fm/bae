@@ -13,7 +13,7 @@ use crate::folder_scanner::{
 use crate::probe::SourceDurations;
 use crate::types::{AudioFile, CandidateDraft, CandidateTrack, RawTrackEdit};
 use crate::ImportError;
-use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
+use bae_catalogs::medium_coverage;
 use std::collections::{BTreeSet, HashMap};
 
 /// The mapping table: every source unit the folder offers, alongside the track
@@ -712,7 +712,7 @@ fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
     let (Some(file), Some(release)) = (file_ms, release_ms) else {
         return false;
     };
-    file.abs_diff(release) > LENGTH_DISAGREEMENT_MS
+    medium_coverage::lengths_disagree(file, release)
 }
 
 #[cfg(test)]
