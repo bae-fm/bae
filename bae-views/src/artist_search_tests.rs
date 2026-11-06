@@ -3,8 +3,10 @@
 
 use crate::*;
 use crate::{ArtistSearchView, LibrarySearchQuery};
+use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::live_query::write_artist_image;
-use bae_store::test_fixtures::{exec, exec_batch, temp_db};
+use bae_records::test_fixtures::{credit, test_records};
+use bae_store::test_fixtures::temp_db;
 use bae_store::LibraryPageWindow;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -15,17 +17,13 @@ const OTHER: &str = "4daf4c86-9a3b-4c76-8d85-3f6c6d2c3d04";
 
 async fn seeded() -> (Store, tempfile::TempDir) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(
-        &db,
-        &format!(
-            "INSERT INTO artists (id, name, name_key, created_at) VALUES
-             ('{FIRST}', 'Artist Name A', 'artist name a', '2026-01-01T00:00:00Z'),
-             ('{SECOND}', 'Artist Name B', 'artist name b', '2026-01-01T00:00:00Z'),
-             ('{THIRD}', 'Artist Name C', 'artist name c', '2026-01-01T00:00:00Z'),
-             ('{OTHER}', 'Composer Name', 'composer name', '2026-01-01T00:00:00Z');"
-        ),
-    )
-    .await;
+    RecordsFixture::new()
+        .artist(FIRST, "Artist Name A")
+        .artist(SECOND, "Artist Name B")
+        .artist(THIRD, "Artist Name C")
+        .artist(OTHER, "Composer Name")
+        .write(&test_records(&db))
+        .await;
     (db, tmp)
 }
 
@@ -77,7 +75,7 @@ async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
 #[tokio::test]
 async fn artist_search_follows_writes_to_what_it_finds() {
     let (db, _tmp) = seeded().await;
-    let records = bae_records::test_fixtures::test_records(&db);
+    let records = test_records(&db);
     let mut live = LibraryViews::new(db.clone())
         .subscribe_artist_search(view("artist name", &[window(0, 10)]));
     let first = live.next().await.expect("the query stays open").result.unwrap();
@@ -88,13 +86,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .flat_map(|window| &window.rows)
         .all(|row| row.credit_names.is_empty()));
 
-    exec(
-        &db,
-        "INSERT INTO artists (id, name, name_key, created_at) \
-         VALUES (?1, 'Artist Name D', 'artist name d', '2026-01-01T00:00:00Z')",
-        &["5eb05d97-ab4c-4d87-9e96-4a7d7e3d4e05"],
-    )
-    .await;
+    records.find_or_create_artists(&[credit("Artist Name D")]).await.unwrap();
     let added = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a new match wakes the search")
@@ -129,7 +121,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
 #[tokio::test]
 async fn a_found_artist_reads_its_image_and_names_in_its_row() {
     let (db, _tmp) = seeded().await;
-    let records = bae_records::test_fixtures::test_records(&db);
+    let records = test_records(&db);
     records
         .add_artist_credit_name(FIRST, &bae_store::EnteredName::parse("Zed Alias").unwrap())
         .await
@@ -165,14 +157,11 @@ async fn a_found_artist_reads_its_image_and_names_in_its_row() {
 #[tokio::test]
 async fn the_picker_folds_case_past_ascii() {
     let (db, _tmp) = seeded().await;
-    exec_batch(
-        &db,
-        "INSERT INTO artists (id, name, name_key, created_at) VALUES
-         ('6fc16ea8-bc5d-4e98-8fa7-5b8e8f4e5f06', 'Émile Artist Name', 'emile artist name',
-          '2026-01-01T00:00:00Z'),
-         ('7ad27fb9-cd6e-4fa9-9ab8-6c9f9a5f6a07', 'ÉMILE', 'emile', '2026-01-01T00:00:00Z');",
-    )
-    .await;
+    RecordsFixture::new()
+        .artist("6fc16ea8-bc5d-4e98-8fa7-5b8e8f4e5f06", "Émile Artist Name")
+        .artist("7ad27fb9-cd6e-4fa9-9ab8-6c9f9a5f6a07", "ÉMILE")
+        .write(&test_records(&db))
+        .await;
 
     let found = LibraryViews::new(db.clone())
         .subscribe_artist_search(view("émile", &[window(0, 10)]))
