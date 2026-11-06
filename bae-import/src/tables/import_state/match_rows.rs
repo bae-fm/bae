@@ -17,11 +17,13 @@ use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use std::str::FromStr;
 
 fn source_of(stored: &str) -> Result<LookupCatalog, DbError> {
-    LookupCatalog::from_str(stored).map_err(DbError::Message)
+    LookupCatalog::from_str(stored)
+        .map_err(|_unknown| DbError::unreadable("a match's stored lookup catalog", stored))
 }
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
-    Catalog::from_str(stored).map_err(DbError::Message)
+    Catalog::from_str(stored)
+        .map_err(|_unknown| DbError::unreadable("a match's stored catalog", stored))
 }
 
 fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
@@ -781,7 +783,7 @@ impl StoredMatchEntries {
     pub(super) fn entries(self) -> Result<MatchEntries, DbError> {
         fn list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
             serde_json::from_str(json).map_err(|error| {
-                DbError::Message(format!("a match's stored {what} {json:?}: {error}"))
+                DbError::unreadable_json(format!("a match's stored {what}"), json, error)
             })
         }
         Ok(MatchEntries {

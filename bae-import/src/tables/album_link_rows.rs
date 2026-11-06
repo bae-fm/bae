@@ -18,7 +18,8 @@ use bae_catalogs::album_links::GroupAlbum;
 use bae_catalogs::records::MetadataRef;
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
-    Catalog::from_str(stored).map_err(DbError::Message)
+    Catalog::from_str(stored)
+        .map_err(|_unknown| DbError::unreadable("a stored album link's catalog", stored))
 }
 
 /// One stored album link row's columns, as read.

@@ -170,8 +170,7 @@ impl<'a> StatedTagColumns<'a> {
 
 /// A multi-valued tag's values as their JSON array column holds them.
 fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError> {
-    serde_json::to_string(values)
-        .map_err(|error| DbError::Message(format!("a file tag's values do not encode: {error}")))
+    serde_json::to_string(values).map_err(|error| DbError::encode("a file tag's values", error))
 }
 
 impl ImportTables {
@@ -578,7 +577,7 @@ impl StoredFileTags {
 /// A multi-valued tag's values, read back from their JSON array column.
 fn tag_values<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
     serde_json::from_str(json).map_err(|error| {
-        DbError::Message(format!("a file tag's stored {what} do not read: {error}"))
+        DbError::unreadable_json(format!("a file tag's stored {what}"), json, error)
     })
 }
 

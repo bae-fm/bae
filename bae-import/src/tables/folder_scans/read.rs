@@ -478,7 +478,7 @@ fn listed<T: serde::de::DeserializeOwned>(
     what: &str,
 ) -> Result<Vec<T>, DbError> {
     serde_json::from_str(json).map_err(|error| {
-        DbError::Message(format!("the {what} stored under {candidate_path} do not read: {error}"))
+        DbError::unreadable_json(format!("the {what} stored under {candidate_path}"), json, error)
     })
 }
 

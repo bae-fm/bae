@@ -19,7 +19,7 @@ pub struct WatchedPathError(String);
 
 impl From<WatchedPathError> for bae_store::DbError {
     fn from(error: WatchedPathError) -> Self {
-        Self::Message(error.to_string())
+        Self::cause(error)
     }
 }
 

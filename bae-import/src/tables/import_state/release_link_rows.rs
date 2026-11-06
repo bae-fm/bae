@@ -124,7 +124,7 @@ impl StoredReleaseLink {
         let Self { content_hash, kind, source, release_id, partners, albums } = self;
         let pairs = |json: &str, what: &str| {
             serde_json::from_str::<Vec<(String, String)>>(json).map_err(|error| {
-                DbError::Message(format!("{content_hash}'s stored {what} {json:?}: {error}"))
+                DbError::unreadable_json(format!("{content_hash}'s stored {what}"), json, error)
             })
         };
         match (kind.as_str(), source, release_id) {
@@ -156,5 +156,9 @@ impl StoredReleaseLink {
 }
 
 fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
-    Ok(MetadataRef::new(Catalog::from_str(&catalog).map_err(DbError::Message)?, key))
+    Ok(MetadataRef::new(
+        Catalog::from_str(&catalog)
+            .map_err(|_unknown| DbError::unreadable("a stored link's catalog", &catalog))?,
+        key,
+    ))
 }

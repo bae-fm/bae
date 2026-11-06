@@ -153,20 +153,22 @@ impl StoredCover {
             "embedded" => Ok(CoverSelection::Embedded(self.file_id.ok_or_else(|| {
                 DbError::Message("an embedded cover names no source file".into())
             })?)),
-            "remote" => {
-                Ok(CoverSelection::Remote(
-                    RemoteImageSet::with_copies(
-                        self.url.ok_or_else(|| {
-                            DbError::Message("a remote cover names no address".into())
-                        })?,
-                        copies_of(&self.copies)?,
-                    ),
-                    Catalog::from_str(&self.source.ok_or_else(|| {
-                        DbError::Message("a remote cover names no source".into())
-                    })?)
-                    .map_err(DbError::Message)?,
-                ))
-            }
+            "remote" => Ok(CoverSelection::Remote(
+                RemoteImageSet::with_copies(
+                    self.url.ok_or_else(|| {
+                        DbError::Message("a remote cover names no address".into())
+                    })?,
+                    copies_of(&self.copies)?,
+                ),
+                {
+                    let source = self
+                        .source
+                        .ok_or_else(|| DbError::Message("a remote cover names no source".into()))?;
+                    Catalog::from_str(&source).map_err(|_unknown| {
+                        DbError::unreadable("import_candidate_cover.source", &source)
+                    })?
+                },
+            )),
             other => Err(DbError::unreadable("import_candidate_cover.kind", other)),
         }
     }

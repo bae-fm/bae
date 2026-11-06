@@ -173,9 +173,12 @@ impl StoredCandidate {
             .transpose()?
             .unwrap_or(crate::MetadataAuthor::Nobody);
         let provenance = provenance.map(StoredProvenance::provenance).transpose()?;
-        author
-            .check_provenance(provenance.as_ref())
-            .map_err(|error| DbError::Message(format!("candidate {content_hash}: {error}")))?;
+        author.check_provenance(provenance.as_ref()).map_err(|_refused| {
+            DbError::unreadable(
+                format!("candidate {content_hash}'s draft provenance"),
+                (&author, &provenance),
+            )
+        })?;
         let identify = match verdict {
             Some(verdict) => Some(identification_of(verdict, matches)?),
             // The match rows hang off the verdict row, so a candidate

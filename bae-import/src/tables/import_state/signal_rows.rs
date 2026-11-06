@@ -297,7 +297,7 @@ struct StoredTextLine {
 
 fn list_of<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
     serde_json::from_str(json)
-        .map_err(|error| DbError::Message(format!("stored signal {what} {json:?}: {error}")))
+        .map_err(|error| DbError::unreadable_json(format!("stored signal {what}"), json, error))
 }
 
 impl StoredSignals {
@@ -405,7 +405,9 @@ impl StoredSignals {
             .into_iter()
             .map(|line| {
                 Ok(TextLine {
-                    origin: line.origin.parse().map_err(DbError::Message)?,
+                    origin: line.origin.parse().map_err(|_unknown| {
+                        DbError::unreadable("a stored text line's origin", &line.origin)
+                    })?,
                     text: line.text,
                 })
             })

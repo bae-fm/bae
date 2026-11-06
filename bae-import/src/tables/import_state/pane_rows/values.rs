@@ -221,7 +221,9 @@ pub(super) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbEr
                     discogs_artist_id: stored.discogs_artist_id,
                     credited_as: None,
                 },
-                source: Catalog::from_str(&stored.source).map_err(DbError::Message)?,
+                source: Catalog::from_str(&stored.source).map_err(|_unknown| {
+                    DbError::unreadable("a draft role's stored source", &stored.source)
+                })?,
                 role: stored.role,
             })
         })

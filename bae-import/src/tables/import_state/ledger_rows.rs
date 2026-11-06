@@ -446,16 +446,22 @@ impl StoredLedger {
         } = self;
         let list = |json: &str, what: &str| {
             serde_json::from_str::<Vec<String>>(json).map_err(|error| {
-                DbError::Message(format!(
-                    "the stored ledger {what} of {content_hash} {json:?}: {error}"
-                ))
+                DbError::unreadable_json(
+                    format!("the stored ledger {what} of {content_hash}"),
+                    json,
+                    error,
+                )
             })
         };
         let providers = list(&providers, "providers")?;
         let isrcs = list(&isrcs, "ISRCs")?;
         let offered = list(&offered_catalogs, "offered catalog numbers")?;
         let rows: Vec<StoredRow> = serde_json::from_str(&rows).map_err(|error| {
-            DbError::Message(format!("the stored ledger rows of {content_hash} {rows:?}: {error}"))
+            DbError::unreadable_json(
+                format!("the stored ledger rows of {content_hash}"),
+                &rows,
+                error,
+            )
         })?;
         let (Some(disc_id), Some(barcode), Some(catalog), Some(isrc), Some(search)) =
             (disc_id, barcode, catalog, isrc, search)
@@ -500,7 +506,9 @@ impl StoredLedger {
                             ))
                         })
                         .and_then(|catalog| {
-                            LookupCatalog::from_str(catalog).map_err(DbError::Message)
+                            LookupCatalog::from_str(catalog).map_err(|_unknown| {
+                                DbError::unreadable("import_candidate_lookup.catalog", catalog)
+                            })
                         })?;
                     Ok(ProviderCell { source, lookup: lookup(cell)? })
                 })
@@ -655,7 +663,11 @@ impl StoredLedger {
         let ledger = IdentifyRunView {
             providers: providers
                 .iter()
-                .map(|catalog| LookupCatalog::from_str(catalog).map_err(DbError::Message))
+                .map(|catalog| {
+                    LookupCatalog::from_str(catalog).map_err(|_unknown| {
+                        DbError::unreadable("a stored ledger's providers", catalog)
+                    })
+                })
                 .collect::<Result<_, _>>()?,
             disc_id,
             barcode,

@@ -140,7 +140,11 @@ impl ImportTables {
 /// A stored release a pick names; a catalog bae does not fetch from names
 /// none.
 fn lookup_reference(catalog: String, key: String) -> Result<LookupRef, DbError> {
-    Ok(LookupRef::new(LookupCatalog::from_str(&catalog).map_err(DbError::Message)?, key))
+    Ok(LookupRef::new(
+        LookupCatalog::from_str(&catalog)
+            .map_err(|_unknown| DbError::unreadable("a stored pick's catalog", &catalog))?,
+        key,
+    ))
 }
 
 #[cfg(test)]

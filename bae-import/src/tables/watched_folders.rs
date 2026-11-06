@@ -48,8 +48,7 @@ impl FoldersAtOrBelow {
 /// `folder`, a stored folder under the watched folder `root`, as the folder
 /// below it.
 pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {
-    crate::tables::watched_path::candidate_relative_path(root, folder)
-        .map_err(|error| DbError::Message(error.to_string()))
+    Ok(crate::tables::watched_path::candidate_relative_path(root, folder)?)
 }
 
 /// The watched folder covering `folder`. A decision about a folder is deleted

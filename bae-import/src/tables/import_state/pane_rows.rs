@@ -433,7 +433,7 @@ pub(crate) fn load_drafts_on(
 /// A stored JSON column of `what`, decoded.
 fn decoded<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<T, DbError> {
     serde_json::from_str(json)
-        .map_err(|error| DbError::Message(format!("a draft's stored {what} {json:?}: {error}")))
+        .map_err(|error| DbError::unreadable_json(format!("a draft's stored {what}"), json, error))
 }
 
 /// One `import_candidate_edit` row as SQLite hands it over, its lists still

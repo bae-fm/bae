@@ -17,5 +17,5 @@ pub(crate) fn copies_json_sql(table: &str, belongs: &str) -> String {
 /// The copies a [`copies_json_sql`] column holds.
 pub(crate) fn copies_of(json: &str) -> Result<Vec<DownscaledCopy>, DbError> {
     serde_json::from_str(json)
-        .map_err(|error| DbError::Message(format!("stored image copies {json:?}: {error}")))
+        .map_err(|error| DbError::unreadable_json("stored image copies", json, error))
 }

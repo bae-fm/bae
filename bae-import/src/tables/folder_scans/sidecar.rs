@@ -58,10 +58,11 @@ impl StoredSidecar {
     fn sidecar(self) -> Result<FolderSidecar, DbError> {
         let folder = self.folder;
         let rows: Vec<SidecarFileRow> = serde_json::from_str(&self.files).map_err(|error| {
-            DbError::Message(format!(
-                "the sidecar files stored for {} do not read: {error}",
-                coven::path_text(&folder)
-            ))
+            DbError::unreadable_json(
+                format!("the sidecar files stored for {}", coven::path_text(&folder)),
+                &self.files,
+                error,
+            )
         })?;
         let files = match self.state.as_str() {
             "downloading" => {

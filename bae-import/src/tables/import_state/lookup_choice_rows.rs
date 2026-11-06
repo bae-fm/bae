@@ -67,7 +67,7 @@ impl StoredLookupChoices {
     pub(super) fn choices(self) -> Result<LookupChoices, DbError> {
         let list = |json: &str, what: &str| {
             serde_json::from_str::<Vec<String>>(json)
-                .map_err(|error| DbError::Message(format!("stored {what} {json:?}: {error}")))
+                .map_err(|error| DbError::unreadable_json(format!("stored {what}"), json, error))
         };
         Ok(LookupChoices {
             disc_id_excluded: self.disc_id_excluded,

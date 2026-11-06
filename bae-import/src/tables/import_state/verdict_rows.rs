@@ -169,21 +169,20 @@ pub(super) fn store_outcome(
                 MediumConflict::NotCdAudio => "not_cd_audio",
             }
         });
-    let failures_json = match outcome {
-        Outcome::Settled(TerminalVerdict::Failed { failures, .. }) => {
-            if failures.is_empty() {
-                return Err(DbError::Message(format!(
-                    "failed verdict for {owner} contains no failed lookup"
-                )));
+    let failures_json =
+        match outcome {
+            Outcome::Settled(TerminalVerdict::Failed { failures, .. }) => {
+                if failures.is_empty() {
+                    return Err(DbError::Message(format!(
+                        "failed verdict for {owner} contains no failed lookup"
+                    )));
+                }
+                Some(serde_json::to_string(failures).map_err(|error| {
+                    DbError::encode(format!("identify failure for {owner}"), error)
+                })?)
             }
-            Some(serde_json::to_string(failures).map_err(|error| {
-                DbError::Message(format!(
-                    "failed to serialize identify failure for {owner}: {error}"
-                ))
-            })?)
-        }
-        Outcome::Running { .. } | Outcome::Settled(_) => None,
-    };
+            Outcome::Running { .. } | Outcome::Settled(_) => None,
+        };
     let error_detail = match outcome {
         Outcome::Settled(TerminalVerdict::Error { failure }) => Some(failure.detail.as_str()),
         Outcome::Running { .. } | Outcome::Settled(_) => None,
@@ -509,9 +508,11 @@ pub(super) fn outcome_of(
                 DbError::Message(format!("failed verdict for {content_hash} lists no failure"))
             })?;
             let failures: Vec<IdentifyFailure> = serde_json::from_str(&json).map_err(|error| {
-                DbError::Message(format!(
-                    "identify failure for {content_hash} is unreadable: {error}"
-                ))
+                DbError::unreadable_json(
+                    format!("identify failure for {content_hash}"),
+                    &json,
+                    error,
+                )
             })?;
             if failures.is_empty() {
                 return Err(DbError::Message(format!(

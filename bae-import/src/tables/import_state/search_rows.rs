@@ -222,7 +222,9 @@ fn load_on(
             .unwrap_or_default()
             .into_iter()
             .map(|part| {
-                let catalog = LookupCatalog::from_str(&part.catalog).map_err(DbError::Message)?;
+                let catalog = LookupCatalog::from_str(&part.catalog).map_err(|_unknown| {
+                    DbError::unreadable("import_candidate_search_source.catalog", &part.catalog)
+                })?;
                 let results = by_catalog.remove(&catalog).unwrap_or_default();
                 Ok((catalog, part.part(results)?))
             })
@@ -368,8 +370,7 @@ fn land_on(
         [run.number()],
         |row| row.get(0),
     )?;
-    let next = usize::try_from(next)
-        .map_err(|error| DbError::Message(format!("a search's next position {next}: {error}")))?;
+    let next = to_usize(next, "a search's next position")?;
     for (offset, result) in results.iter().enumerate() {
         if result.source != catalog {
             return Err(DbError::Message(format!(
@@ -454,7 +455,11 @@ impl ImportTables {
                 retried.sort();
                 let catalogs = retried
                     .into_iter()
-                    .map(|(_, catalog)| LookupCatalog::from_str(&catalog).map_err(DbError::Message))
+                    .map(|(_, catalog)| {
+                        LookupCatalog::from_str(&catalog).map_err(|_unknown| {
+                            DbError::unreadable("import_candidate_search_source.catalog", &catalog)
+                        })
+                    })
                     .collect::<Result<_, _>>()?;
                 Ok(Some((SearchRun::of(run), query?, catalogs)))
             })

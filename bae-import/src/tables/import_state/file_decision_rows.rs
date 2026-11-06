@@ -109,7 +109,7 @@ impl StoredFileEdits {
     pub(super) fn edits(self) -> Result<CandidateFileEdits, DbError> {
         let content_hash = &self.content_hash;
         let unreadable_json = |what: &str, json: &str, error: serde_json::Error| {
-            DbError::Message(format!("{content_hash}'s stored {what} {json:?}: {error}"))
+            DbError::unreadable_json(format!("{content_hash}'s stored {what}"), json, error)
         };
         let mut edits = CandidateFileEdits {
             revision: to_u64(self.revision, &format!("{content_hash}'s file edit revision"))?,
