@@ -645,7 +645,7 @@ pub(crate) fn storage_selected_on(
         return Ok(Vec::new());
     }
     let selected = serde_json::to_string(release_ids)
-        .map_err(|error| DbError::Message(format!("selected release ids: {error}")))?;
+        .map_err(|error| DbError::encode("selected release ids", error))?;
     let query = storage_selected_query(filter, search.is_some());
     let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":selected", &selected)];
     if let Some(search) = search {

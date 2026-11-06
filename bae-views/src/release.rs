@@ -129,8 +129,8 @@ pub(crate) fn find_release_detail_context_on(
     };
     let release_index: i64 =
         sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release.id], |row| row.get(0))?;
-    let release_index = usize::try_from(release_index)
-        .map_err(|error| DbError::Message(format!("release index {release_index}: {error}")))?;
+    let release_index =
+        bae_store::query::to_usize(release_index, "a release's index in its album")?;
     let is_compilation =
         find_album_by_id_on(sql, &release.album_id)?.is_some_and(|album| album.is_compilation);
     Ok(Some(ReleaseContextRows {
