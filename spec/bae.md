@@ -4803,14 +4803,17 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Database`, `Config`, `Internal` | reports it |
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
+| `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
 | `Import`, `ImportData` | reads the detail; the source couldn't be read |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
+| `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |
 | `TiedMediums` | picks another release or uses the file metadata: several of its discs fit the folder alike, and the line names them |
 | `ReleaseChangedSinceOpened` | cancels to see the release as it is now: it changed after the editor opened it (§3.8) |
 | `GroupingBlocked` | combines again, separates, or waits for a download |
 | `Export`, `Save` | reads the detail |
-| `CloudSetup`, `StorageCheck` | changes what the setup, or the check of the storage it failed, names |
+| `Storage` | does what coven's provider reason, which the line names, asks: frees space, fixes this device's clock, signs in again, retries the network |
+| `StorageCheck` | changes what the check of the storage it failed names |
 | `S3VersioningUnknown`, `S3VersioningUnsupported` | uses a bucket whose versioning coven can read and work with |
 | `StorageLocationChangeUnsupported` | keeps the library's storage location; it can't move |
 | `StoreOwnerAccount` | signs in with the account that holds the library's storage: setting up its storage again or restoring it as the person whose account holds it, under another account, is refused, since their access can't move to another account ([coven §20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)) |
@@ -4821,9 +4824,10 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `KeychainEntitlementMissing` | installs a build of bae signed with its keychain entitlement; retrying or unlocking doesn't help |
 | `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge` | on Android, learns the library's recovery code couldn't be saved on the phone: Block Store already keeps as many entries as Android gives an app, or the code doesn't fit in one ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) |
 | `Membership` | retries the membership step, with the advice it carries |
-| `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in (§5.6) |
+| `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in, or after the invite ended (§5.6) |
 | `QueueChanged` | sees the queue as it now is: an entry the command named left the queue first (§7.1) |
 | `AirPlayUnsupported`, `AirPlayUnreadableSettings` | uses another receiver |
+| `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 
 These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
