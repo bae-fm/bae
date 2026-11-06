@@ -202,7 +202,15 @@ async fn build_and_play_stream(
         (guard.sample_rate(), guard.channels())
     };
 
-    let (audio_event_tx, audio_events) = audio_event_channel();
+    let (audio_event_tx, audio_events) = match audio_event_channel() {
+        Ok(channel) => channel,
+        Err(error) => {
+            source.lock().unwrap().cancel();
+            return Err(PlaybackError::task(format!(
+                "starting the output's event relay failed: {error}"
+            )));
+        }
+    };
 
     let stream = match audio_output.create_stream(
         source.clone(),

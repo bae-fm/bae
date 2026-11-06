@@ -51,7 +51,7 @@ async fn retiring_preloaded_next_removes_staged_source() {
         PreloadedNextSource::Staged,
     ));
 
-    let (_audio_tx, audio_events) = audio_event_channel();
+    let (_audio_tx, audio_events) = audio_event_channel().unwrap();
     service.output = Some(test_output(gapless.clone(), audio_events));
     assert!(service.retire_preloaded_track());
 
@@ -465,7 +465,7 @@ async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
     service.slot = active_slot(prepared, TrackPhase::Playing);
     let _airplay = install_airplay(&mut service, Duration::from_secs(2));
     assert!(service.begin_listening().await);
-    let (mut tx, _) = audio_event_channel();
+    let (mut tx, _) = audio_event_channel().unwrap();
     source.pull_samples(&mut vec![0.0; 4000], &mut tx);
     service
         .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
@@ -491,4 +491,44 @@ async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
     let ((), completed) = tokio::join!(service.run(), hear_the_tail);
 
     assert!(completed.is_ok(), "the track completes once its last audio is heard");
+}
+
+/// An event the output pushes reaches the loop with nothing polling the ring:
+/// the push wakes it. Sabotage: push without the relay's wake, and the loop
+/// never sees the completion.
+#[tokio::test]
+async fn the_loop_drains_an_event_the_moment_the_output_pushes_it() {
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, mut progress) =
+        seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    let (mut sink, stream, _) = create_track_stream_pair(44_100, 2);
+    sink.mark_finished();
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
+        stream,
+        prepared.track_fmt(StreamPosition::START),
+    )));
+    service.slot = active_slot(prepared, TrackPhase::Playing);
+    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
+    service.output = Some(test_output(source.clone(), audio_rx));
+
+    let commands = service.command_tx.clone();
+    let push_the_completion = async move {
+        let completion = source.lock().unwrap().take_completion_event().unwrap();
+        audio_tx.push_required(AudioEvent::Completion(completion));
+        let completed = tokio::time::timeout(HANG_GUARD, async {
+            while let Some(progress) = progress.recv().await {
+                if matches!(progress, PlaybackProgress::TrackCompleted { .. }) {
+                    return;
+                }
+            }
+        })
+        .await;
+        let (shutdown_tx, _shutdown_rx) = oneshot::channel();
+        dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
+        completed
+    };
+    let ((), completed) = tokio::join!(service.run(), push_the_completion);
+
+    assert!(completed.is_ok(), "the pushed completion is handled");
 }

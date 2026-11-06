@@ -21,7 +21,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
         bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 4000);
     sink.push_samples(&vec![0.25; 4000]);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
-    let (mut audio_tx, audio_rx) = audio_event_channel();
+    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
     service.output = Some(test_output(source.clone(), audio_rx));
     let generation = service.next_load_generation();
     service.slot =
@@ -83,7 +83,7 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
         bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 4000);
     sink.push_samples(&vec![0.25; 4000]);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
-    let (mut audio_tx, audio_rx) = audio_event_channel();
+    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
     service.output = Some(test_output(source.clone(), audio_rx));
     let generation = service.next_load_generation();
     service.slot =
@@ -145,7 +145,7 @@ async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one()
         first.track_fmt(StreamPosition::START),
     )));
     source.lock().unwrap().stage_next(source_b, second.track_fmt(StreamPosition::START));
-    let (mut audio_tx, audio_rx) = audio_event_channel();
+    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
     service.output = Some(test_output(source.clone(), audio_rx));
     service.slot = active_slot(first, TrackPhase::Playing);
     service.preloaded_next = Some(test_preloaded_next(second, PreloadedNextSource::Staged));
@@ -188,7 +188,7 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         service.slot = active_slot(prepared, TrackPhase::Playing);
         let _airplay = install_airplay(&mut service, Duration::from_secs(2));
         assert!(service.begin_listening().await);
-        let (mut tx, _) = audio_event_channel();
+        let (mut tx, _) = audio_event_channel().unwrap();
         source.pull_samples(&mut vec![0.0; 4000], &mut tx);
         service
             .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
@@ -243,7 +243,7 @@ async fn a_play_that_counts_partway_through_the_airplay_tail_is_saved_then() {
     service.slot = active_slot(prepared, TrackPhase::Playing);
     let _airplay = install_airplay(&mut service, Duration::from_secs(3));
     assert!(service.begin_listening().await);
-    let (mut tx, _) = audio_event_channel();
+    let (mut tx, _) = audio_event_channel().unwrap();
     source.pull_samples(&mut vec![0.0; 400], &mut tx);
     service
         .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
@@ -322,7 +322,7 @@ async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
     let mut source = source::PlaybackSource::new(stream, prepared.track_fmt(StreamPosition::START));
     service.slot = active_slot(prepared, TrackPhase::Playing);
     assert!(service.begin_listening().await);
-    let (mut tx, _) = audio_event_channel();
+    let (mut tx, _) = audio_event_channel().unwrap();
     source.pull_samples(&mut vec![0.0; 2000], &mut tx);
 
     service

@@ -142,7 +142,15 @@ impl PlaybackService {
         // back in, so there is nothing to cancel then.)
         self.discard_output();
 
-        let (mut audio_event_tx, audio_events) = audio_event_channel();
+        let (mut audio_event_tx, audio_events) = match audio_event_channel() {
+            Ok(channel) => channel,
+            Err(error) => {
+                source.lock().unwrap().cancel();
+                return Err(PlaybackError::task(format!(
+                    "starting the output's event relay failed: {error}"
+                )));
+            }
+        };
         for event in carry_events {
             audio_event_tx.push(event);
         }

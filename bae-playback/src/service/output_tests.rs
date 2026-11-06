@@ -156,7 +156,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, TrackFmt::for_test("t"))));
-    let (_tx, rx) = audio_event_channel();
+    let (_tx, rx) = audio_event_channel().unwrap();
     let mut out = test_output(source, rx);
     out.stream = Box::new(InvalidatedTestStream::new("device disconnected"));
     service.output = Some(out);
@@ -226,7 +226,7 @@ async fn stop_cancels_the_output_source_so_a_ring_parked_decoder_exits() {
     let handle = spawn_ring_filling_decoder(sink);
     let source =
         Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, TrackFmt::for_test("t"))));
-    let (_tx, audio_rx) = audio_event_channel();
+    let (_tx, audio_rx) = audio_event_channel().unwrap();
     service.output = Some(test_output(source, audio_rx));
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
@@ -252,7 +252,7 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
     let handle = spawn_ring_filling_decoder(sink);
     let source =
         Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, TrackFmt::for_test("t"))));
-    let (_tx, audio_rx) = audio_event_channel();
+    let (_tx, audio_rx) = audio_event_channel().unwrap();
     service.output = Some(test_output(source, audio_rx));
 
     // Attach a track in a DIFFERENT format, forcing a rebuild that drops the old
@@ -295,7 +295,7 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
     let source =
         Arc::new(Mutex::new(source::PlaybackSource::new(stream_a, TrackFmt::for_test("A"))));
     // A Completion for A is already in the receiver, not yet drained.
-    let (mut tx, rx) = audio_event_channel();
+    let (mut tx, rx) = audio_event_channel().unwrap();
     tx.push_required(queued_completion("A"));
     service.output = Some(test_output(source, rx));
     let buffer = create_sparse_buffer(1_024);
@@ -329,7 +329,7 @@ async fn an_invalidated_stream_rebuild_carries_a_queued_completion_forward() {
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, TrackFmt::for_test("t"))));
-    let (mut tx, rx) = audio_event_channel();
+    let (mut tx, rx) = audio_event_channel().unwrap();
     tx.push_required(queued_completion("t"));
     let out = test_output(source, rx);
     let buffer = create_sparse_buffer(1_024);

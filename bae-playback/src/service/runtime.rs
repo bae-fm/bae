@@ -816,8 +816,6 @@ impl PlaybackService {
 
     pub(super) async fn run(&mut self) {
         info!("PlaybackService started");
-        let mut audio_event_tick = tokio::time::interval(std::time::Duration::from_millis(10));
-        audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut countdown = deadline_wait::DeadlineWait::new();
         let mut audible = deadline_wait::DeadlineWait::new();
         loop {
@@ -834,7 +832,7 @@ impl PlaybackService {
             }
             let wake = tokio::select! {
                 (_, sides) = self.staged_sides.next() => Wake::StagedSides(sides),
-                _ = audio_event_tick.tick(), if self.output.is_some() => Wake::AudioTick,
+                () = audio_events_ready(&self.output) => Wake::AudioEvents,
                 deadline = countdown.elapsed(), if countdown.is_armed() => Wake::CountdownElapsed(deadline),
                 _ = audible.elapsed(), if audible.is_armed() => Wake::AudibleDeadline,
                 Some(command) = self.command_rx.recv() => Wake::Command(command),
@@ -856,7 +854,7 @@ impl PlaybackService {
     async fn serve(&mut self, wake: Wake) -> ControlFlow<()> {
         match wake {
             Wake::StagedSides(sides) => self.handle_staged_crossing_sides(sides).await,
-            Wake::AudioTick => {
+            Wake::AudioEvents => {
                 self.drain_current_audio_events().await;
                 self.checkpoint_listening().await;
             }
@@ -910,10 +908,19 @@ fn follow_progress(
     }
 }
 
+/// Complete once the output, while there is one, pushed audio events.
+async fn audio_events_ready(output: &Option<OutputStream>) {
+    match output {
+        Some(output) => output.audio_events.ready().await,
+        None => std::future::pending().await,
+    }
+}
+
 /// What woke the service loop.
 enum Wake {
     StagedSides(Vec<PlaybackTrackInfo>),
-    AudioTick,
+    /// The output pushed audio events: drain them.
+    AudioEvents,
     CountdownElapsed(chrono::DateTime<chrono::Utc>),
     /// Audio still in the AirPlay receiver has been heard, or a play in it
     /// came to count as played (`audible_deadline`).

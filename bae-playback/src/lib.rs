@@ -19,6 +19,7 @@ mod device_formats;
 mod device_writer;
 mod error;
 mod error_reason;
+mod event_relay;
 mod now_playing;
 #[cfg(any(target_os = "macos", test))]
 mod output_rate;

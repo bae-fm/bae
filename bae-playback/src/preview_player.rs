@@ -570,10 +570,8 @@ async fn listen_to_preview(
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     mut audio_events: AudioEventReceiver,
 ) {
-    let mut event_tick = tokio::time::interval(Duration::from_millis(10));
-    event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     loop {
-        event_tick.tick().await;
+        audio_events.ready().await;
         let mut completed = false;
         while let Some(event) = audio_events.pop() {
             match event {

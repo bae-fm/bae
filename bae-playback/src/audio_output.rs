@@ -6,6 +6,7 @@
 //! shape are defined here so the concrete sinks in `cpal_output`/`aaudio_output`
 //! depend only on this module, not on each other or on cpal.
 
+use crate::event_relay::{event_relay, EventRelay, RelayWake};
 use crate::source::{PlaybackSource, TrackCrossing, TrackFmt};
 use bae_audio::stream_wake::StreamWake;
 use rtrb::{Consumer, Producer, RingBuffer};
@@ -409,10 +410,13 @@ pub(crate) enum AudioEvent {
     },
 }
 
+/// The pushing side of an output's event ring. Each push wakes the drain
+/// through the relay, the one wake the real-time callback makes for it.
 pub struct AudioEventSender {
     producer: Producer<AudioEvent>,
     dropped_events: Arc<AtomicU64>,
     dropped_required_events: Arc<AtomicU64>,
+    relay: RelayWake,
 }
 
 impl AudioEventSender {
@@ -420,12 +424,14 @@ impl AudioEventSender {
         if self.producer.push(event).is_err() {
             self.dropped_events.fetch_add(1, Ordering::Relaxed);
         }
+        self.relay.wake();
     }
 
     pub(crate) fn push_required(&mut self, event: AudioEvent) {
         if self.producer.push(event).is_err() {
             self.dropped_required_events.fetch_add(1, Ordering::Relaxed);
         }
+        self.relay.wake();
     }
 }
 
@@ -433,11 +439,18 @@ pub(crate) struct AudioEventReceiver {
     consumer: Consumer<AudioEvent>,
     dropped_events: Arc<AtomicU64>,
     dropped_required_events: Arc<AtomicU64>,
+    relay: EventRelay,
 }
 
 impl AudioEventReceiver {
     pub(crate) fn pop(&mut self) -> Option<AudioEvent> {
         self.consumer.pop().ok()
+    }
+
+    /// Complete once events were pushed since the last wait completed: the
+    /// drain's cue to pop them.
+    pub(crate) fn ready(&self) -> impl std::future::Future<Output = ()> + Send + '_ {
+        self.relay.ready()
     }
 
     pub(crate) fn take_dropped_count(&self) -> u64 {
@@ -449,18 +462,22 @@ impl AudioEventReceiver {
     }
 }
 
-pub(crate) fn audio_event_channel() -> (AudioEventSender, AudioEventReceiver) {
+/// An output's event ring, with the relay thread that wakes its drain; the
+/// error when that thread can't start.
+pub(crate) fn audio_event_channel() -> std::io::Result<(AudioEventSender, AudioEventReceiver)> {
     let (producer, consumer) = RingBuffer::new(AUDIO_EVENT_CAPACITY);
     let dropped_events = Arc::new(AtomicU64::new(0));
     let dropped_required_events = Arc::new(AtomicU64::new(0));
-    (
+    let (wake, relay) = event_relay()?;
+    Ok((
         AudioEventSender {
             producer,
             dropped_events: dropped_events.clone(),
             dropped_required_events: dropped_required_events.clone(),
+            relay: wake,
         },
-        AudioEventReceiver { consumer, dropped_events, dropped_required_events },
-    )
+        AudioEventReceiver { consumer, dropped_events, dropped_required_events, relay },
+    ))
 }
 
 pub(crate) fn duration_millis(duration: std::time::Duration) -> u64 {

@@ -326,7 +326,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
     let player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
 
-    let (mut audio_tx, audio_rx) = audio_event_channel();
+    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
     let handle = spawn_preview_listener(
         &player.diagnostics,
         player.progress_tx.clone(),

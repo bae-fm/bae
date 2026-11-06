@@ -11,7 +11,7 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
 
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
-    let (mut audio_tx, audio_rx) = audio_event_channel();
+    let (mut audio_tx, audio_rx) = audio_event_channel().unwrap();
     audio_tx.push_required(AudioEvent::TrackCrossing(TrackCrossing {
         finished_fmt: Arc::new(TrackFmt::for_test(FINISHED_TRACK)),
         decode_error_count: 0,

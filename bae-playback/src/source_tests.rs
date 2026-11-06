@@ -23,7 +23,7 @@ fn advances_into_staged_next_track() {
     assert_eq!(sink2.push_samples(&[10.0, 11.0]), 2);
     sink2.mark_finished();
 
-    let (mut audio_tx, mut audio_rx) = audio_event_channel();
+    let (mut audio_tx, mut audio_rx) = audio_event_channel().unwrap();
     let mut source =
         PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
     source.stage_next(src2, TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
@@ -65,7 +65,7 @@ fn finishes_without_a_staged_next() {
     assert_eq!(sink.push_samples(&[1.0, 2.0]), 2);
     sink.mark_finished();
 
-    let (mut audio_tx, mut audio_rx) = audio_event_channel();
+    let (mut audio_tx, mut audio_rx) = audio_event_channel().unwrap();
     let mut source =
         PlaybackSource::new(src, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
 
@@ -88,7 +88,7 @@ fn cancel_staged_next_unstages_the_successor() {
     assert_eq!(sink2.push_samples(&[10.0]), 1);
     sink2.mark_finished();
 
-    let (mut audio_tx, mut audio_rx) = audio_event_channel();
+    let (mut audio_tx, mut audio_rx) = audio_event_channel().unwrap();
     let mut source =
         PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
     source.stage_next(src2, TrackFmt::for_test("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
@@ -109,7 +109,7 @@ fn promote_staged_next_swaps_without_returning_the_stream() {
     assert_eq!(next_sink.push_samples(&[4.0, 5.0]), 2);
     next_sink.mark_finished();
 
-    let (mut audio_tx, _audio_rx) = audio_event_channel();
+    let (mut audio_tx, _audio_rx) = audio_event_channel().unwrap();
     let mut source = PlaybackSource::new(current, TrackFmt::for_test("current"));
     source.stage_next(next, TrackFmt::for_test("next"));
 
@@ -138,7 +138,7 @@ fn replay_gain_flips_at_the_gapless_boundary() {
     assert_eq!(sink2.push_samples(&[3.0]), 1);
     sink2.mark_finished();
 
-    let (mut audio_tx, _audio_rx) = audio_event_channel();
+    let (mut audio_tx, _audio_rx) = audio_event_channel().unwrap();
     let mut source =
         PlaybackSource::new(src1, fmt_gain("08c7ff07-b56a-4e16-8df6-ae2967fa0806", 0.5));
     source.stage_next(src2, fmt_gain("08c7fe07-b56a-4c63-8df6-ad2967fa0653", 2.0));
@@ -190,7 +190,7 @@ fn replace_swaps_current_and_cancels_outgoing_and_staged() {
     assert_eq!(sink2.push_samples(&[9.0, 8.0]), 2);
     sink2.mark_finished();
 
-    let (mut audio_tx, _audio_rx) = audio_event_channel();
+    let (mut audio_tx, _audio_rx) = audio_event_channel().unwrap();
     let mut source =
         PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
     source.stage_next(staged_src, TrackFmt::for_test("staged"));
@@ -221,7 +221,7 @@ fn take_completion_event_fires_once_per_track_across_replace() {
     assert_eq!(sink1.push_samples(&[1.0]), 1);
     sink1.mark_finished();
 
-    let (mut audio_tx, _audio_rx) = audio_event_channel();
+    let (mut audio_tx, _audio_rx) = audio_event_channel().unwrap();
     let mut source =
         PlaybackSource::new(src1, TrackFmt::for_test("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
 
