@@ -123,17 +123,13 @@ struct HostedAlbumGrid {
 
     /// Return once every page the grid asked for has come back and its views
     /// and scroll position have stopped moving, asking again if coming to
-    /// rest asked for more pages. With a `change` to make, it is made first
-    /// and the grid must have moved from where it stood before it counts as
-    /// at rest, since a grid that has not started to move reads as steady.
-    func settle(after change: (() -> Void)? = nil) async throws {
-        var before = change.map { _ in geometry() }
-        change?()
+    /// rest asked for more pages. An animation still running is not waited
+    /// for: its caller waits for its end first.
+    func settle() async throws {
         while true {
             try await Wait.until { answers.unanswered == 0 }
-            try await Wait.untilSteady(changedFrom: before) { geometry() }
+            try await Wait.untilSteady { geometry() }
             if answers.unanswered == 0 { return }
-            before = nil
         }
     }
 

@@ -380,15 +380,13 @@ extension Wait {
     /// that left, unless what is left is a chain of main-actor steps that
     /// moves no frame, since an idle can come with main-actor work still
     /// queued. Such a chain, and work off the main thread such as a page a
-    /// query answers, is waited for by its own event first.
-    ///
-    /// A tree that has not started moving yet also reads the same, so when
-    /// the step before the wait must change the value — a scroll — the
-    /// caller passes what it read before that step as `changedFrom`, and the
-    /// wait holds out for a reading that differs from it first.
+    /// query answers, is waited for by its own event first. So is an
+    /// animation: the run loop idles between its frames with the tree where
+    /// the last frame left it, so a tree mid-animation reads the same at two
+    /// idles in a row. A wait for it reads the value it carries landing on
+    /// its end.
     @MainActor
     static func untilSteady<Value: Equatable>(
-        changedFrom before: Value? = nil,
         timeout: Duration = deadline,
         file: StaticString = #filePath,
         line: UInt = #line,
@@ -396,8 +394,6 @@ extension Wait {
     ) async throws {
         let end = ContinuousClock.now.advanced(by: timeout)
         var last = try await value()
-        var changed = true
-        if let before { changed = before != last }
         while true {
             try await nextIdle(
                 before: end,
@@ -406,9 +402,8 @@ extension Wait {
                 line: line
             )
             let now = try await value()
-            if now == last, changed { return }
+            if now == last { return }
             last = now
-            if let before, !changed { changed = before != now }
         }
     }
 }

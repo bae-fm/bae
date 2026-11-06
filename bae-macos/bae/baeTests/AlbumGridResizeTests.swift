@@ -14,15 +14,39 @@ struct AlbumGridResizeTests {
     @Observable
     @MainActor
     final class Stage {
-        var showPanel = false
+        private(set) var showPanel = false
+        /// How far the spring has carried the panel in, as SwiftUI draws
+        /// each of its frames: 0 out, 1 in.
+        var panelIn = 0.0
         /// Where the open album's detail sits in the visible area.
         @ObservationIgnored
         var detailTop: CGFloat?
 
-        /// Show or hide the panel, and return once the grid has moved for it
-        /// and come to rest.
+        /// Show or hide the panel, and return once its spring is over and
+        /// the grid has come to rest.
+        ///
+        /// Between the spring's frames the run loop idles with every view
+        /// where the last frame left it, so mid-spring the grid reads as at
+        /// rest. The spring is over when the value it carries lands on its
+        /// end; until then each frame has it short of the end or past it.
         func movePanel(show: Bool, in hosted: HostedAlbumGrid) async throws {
-            try await hosted.settle { self.showPanel = show }
+            showPanel = show
+            let end = show ? 1.0 : 0.0
+            try await Wait.until { self.panelIn == end }
+            try await hosted.settle()
+        }
+    }
+
+    /// Hands `report` each value the spring carrying the panel takes, so a
+    /// test knows when the spring is over.
+    private struct PanelSpring: ViewModifier, Animatable {
+        var animatableData: Double
+        let report: (Double) -> Void
+
+        func body(content: Content) -> some View {
+            content.onChange(of: animatableData) { _, value in
+                report(value)
+            }
         }
     }
 
@@ -56,6 +80,11 @@ struct AlbumGridResizeTests {
                         .transition(.move(edge: .trailing))
                 }
             }
+            .modifier(
+                PanelSpring(animatableData: stage.showPanel ? 1 : 0) {
+                    stage.panelIn = $0
+                }
+            )
             .animation(
                 .spring(duration: 0.24, bounce: 0.12),
                 value: stage.showPanel
