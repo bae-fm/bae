@@ -54,44 +54,50 @@ async fn opening_a_library_empties_its_transfer_queues() {
 // The import list a surface opens through the manager: its Done tab read
 // beside coven's upload queue, and the list's own life.
 
-/// Four imported releases on Done — A, then C and B with uploads queued in
-/// that order, then D, written in that order — under a watched folder, each
+/// Four releases imported from folders, so on Done — A, then C and B, each
+/// queued for upload once imported, then D, imported in that order — each
 /// listed for the folder it was imported from.
 async fn done_with_two_uploading(
     manager: &TestManager,
     dir: &std::path::Path,
 ) -> Vec<(String, bae_import::CandidateKey)> {
     connect_test_cloud(manager).await;
-    let files: &[(&str, &[u8])] = &[("track.flac", b"track-bytes")];
-    let a = insert_local_release_with_files(manager, &dir.join("a"), "A", files).await;
-    let c = insert_release_with_queued_uploads(manager, &dir.join("c"), "C", files).await;
-    let b = insert_release_with_queued_uploads(manager, &dir.join("b"), "B", files).await;
-    let d = insert_local_release_with_files(manager, &dir.join("d"), "D", files).await;
-    let root = bae_import::tables::watched_path::host_root("/music");
-    let root_sql = format!("X'{}'", hex::encode(coven::path_bytes(&root)));
-    let mut sql = format!(
-        "INSERT INTO watched_import_folders (path, position) VALUES ({root_sql}, 0);
-         INSERT INTO folder_scan_roots (watched_folder_path, generation, status, volume)
-         VALUES ({root_sql}, 1, 'complete', 'local');"
-    );
+    let import = manager.start_discogs_import().await;
     let mut keys = Vec::new();
-    for (name, release) in [("A", &a), ("B", &b), ("C", &c), ("D", &d)] {
-        let key = bae_import::CandidateKey::folder(&root.join(name));
-        let path = format!("X'{}'", hex::encode(key.as_bytes()));
-        let relative = format!("X'{}'", hex::encode(name.as_bytes()));
-        sql.push_str(&format!(
-            "INSERT INTO scan_candidate
-                 (watched_folder_path, path, generation, kind, name, relative_folder, folder,
-                  file_root, scope, content_hash)
-             VALUES ({root_sql}, {path}, 1, 'valid', '{name}', {relative}, {path}, {path},
-                     'direct', 'hash-{name}');
-             INSERT INTO local_release_origin (release_id, content_hash)
-             VALUES ('{id}', 'hash-{name}');",
-            id = release.id,
-        ));
-        keys.push((name.to_string(), key));
+    for name in ["A", "C", "B", "D"] {
+        let folder = std::fs::canonicalize(dir).unwrap().join(name);
+        std::fs::create_dir_all(&folder).unwrap();
+        // Named for its folder, so that no two folders' files hash alike.
+        std::fs::copy(
+            bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
+            folder.join(format!("{name}.flac")),
+        )
+        .unwrap();
+        let release = manager.fakes.seed_discogs_test_release(
+            bae_catalogs::test_releases::discogs_test_release(
+                &format!("done-{name}"),
+                name,
+                &[("Track Title", "3:00")],
+            ),
+        );
+        let import_id = format!("import-{name}");
+        import
+            .send_command(bae_import::test_imports::folder_import(
+                &import_id,
+                folder.clone(),
+                bae_import::test_imports::discogs_release(release),
+            ))
+            .await
+            .unwrap();
+        let (release_id, _) = bae_import::test_imports::wait_for_import_complete(
+            &mut import.subscribe_import(import_id),
+        )
+        .await;
+        if name == "C" || name == "B" {
+            manager.upload_release(&release_id, false).await.unwrap();
+        }
+        keys.push((name.to_string(), bae_import::CandidateKey::folder(&folder)));
     }
-    manager.store.execute_local_sql_for_test(&sql).await.unwrap();
     keys
 }
 
