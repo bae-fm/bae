@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use tracing::warn;
 
 use super::RepeatMode;
-use crate::tables::{ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ShuffleChange};
+use crate::tables::{
+    ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, PlaybackResumeRow, ShuffleChange,
+};
 use bae_store::DbError;
 use bae_types::track_time::TrackTime;
 
@@ -79,6 +81,19 @@ impl PlaybackQueue {
         self.repeat = self.tables.repeat().await?;
         self.current = current;
         Ok(())
+    }
+
+    /// Record that this queue is playing its current entry, `position_ms`
+    /// into it, in the device-local resume row.
+    pub async fn save_playback_state(&self, position_ms: Option<u64>) -> Result<(), DbError> {
+        self.tables
+            .save_playback_state(&PlaybackResumeRow { current: self.current.clone(), position_ms })
+            .await
+    }
+
+    /// Forget what the resume row recorded: nothing is playing.
+    pub async fn clear_playback_state(&self) -> Result<(), DbError> {
+        self.tables.clear_playback_state().await
     }
 
     /// How many tracks the context lane holds, played or not.

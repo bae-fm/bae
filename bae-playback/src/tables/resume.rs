@@ -14,32 +14,6 @@ pub struct PlaybackResumeRow {
     pub position_ms: Option<u64>,
 }
 
-/// Write the single device-local `playback_state` row (id = 'current'),
-/// replacing any existing one. Never synced.
-pub async fn save_playback_state(store: &Store, state: &PlaybackResumeRow) -> Result<(), DbError> {
-    let state = state.clone();
-    store
-        .call(move |conn| {
-            let (current_entry, current_track_id) = match &state.current {
-                Some(current) => (Some(current.id.to_string()), Some(current.track_id.clone())),
-                None => (None, None),
-            };
-            conn.execute(
-                "INSERT OR REPLACE INTO playback_state \
-                 (id, current_entry, current_track_id, position_ms) \
-                 VALUES ('current', ?, ?, ?)",
-                params![
-                    current_entry,
-                    current_track_id,
-                    state.position_ms.map(|position| position as i64),
-                ],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-}
-
 /// Read the device-local `playback_state` row, `None` when none is stored.
 pub async fn load_playback_state(store: &Store) -> Result<Option<PlaybackResumeRow>, DbError> {
     store.read(|sql| playback_state_on(&sql)).await
@@ -82,26 +56,4 @@ fn playback_state_on(sql: &SqlReadContext<'_>) -> Result<Option<PlaybackResumeRo
             },
         )
         .optional()?)
-}
-
-/// Delete the device-local `playback_state` row (playback stopped).
-///
-/// Stopping is persisted on every queue change and every stop, so most
-/// calls arrive with the row already gone. That case is read, not written:
-/// a delete over an empty table is a transaction that changes nothing, and
-/// those belong off the sync journal.
-pub async fn clear_playback_state(store: &Store) -> Result<(), DbError> {
-    let stored = store
-        .read(move |sql| {
-            Ok(sql.query_row("SELECT 1 FROM playback_state", [], |_| Ok(())).optional()?.is_some())
-        })
-        .await?;
-    if !stored {
-        return Ok(());
-    }
-    store
-        .call(move |conn| {
-            conn.execute("DELETE FROM playback_state", []).map(|_| ()).map_err(DbError::from)
-        })
-        .await
 }

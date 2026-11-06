@@ -306,12 +306,13 @@ async fn album_browse_ignores_an_unread_table() {
         crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
     let initial = live.next().await.expect("the query stays open").result.unwrap();
 
-    bae_playback::tables::save_playback_state(
-        &db,
-        &bae_playback::tables::PlaybackResumeRow { current: None, position_ms: Some(0) },
-    )
-    .await
-    .unwrap();
+    bae_playback::tables::PlaybackQueueTables::new(db.clone())
+        .save_playback_state(&bae_playback::tables::PlaybackResumeRow {
+            current: None,
+            position_ms: Some(0),
+        })
+        .await
+        .unwrap();
 
     let window = LibraryPageWindow { offset: 0, limit: 49 };
     let moved = next_run_is_only_the_request(&mut live, [window].into_iter().collect())

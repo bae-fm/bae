@@ -283,7 +283,7 @@ impl PlaybackService {
             );
         if nothing_to_resume {
             self.persisted_position = None;
-            if let Err(e) = crate::tables::clear_playback_state(&self.store).await {
+            if let Err(e) = self.playback_queue.clear_playback_state().await {
                 warn!("couldn't clear playback state: {e}");
                 self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
             }
@@ -294,10 +294,11 @@ impl PlaybackService {
             _ => None,
         };
         let position_ms = self.persisted_position.map(StreamPosition::as_millis);
-        let row =
-            PlaybackResumeRow { current: self.playback_queue.current().cloned(), position_ms };
-        if let Err(e) = crate::tables::save_playback_state(&self.store, &row).await {
-            warn!("couldn't persist playback state (current entry {:?}): {e}", row.current);
+        if let Err(e) = self.playback_queue.save_playback_state(position_ms).await {
+            warn!(
+                "couldn't persist playback state (current entry {:?}): {e}",
+                self.playback_queue.current()
+            );
             self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
         }
     }

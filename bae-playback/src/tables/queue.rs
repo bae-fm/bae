@@ -795,6 +795,60 @@ pub fn fill_context_lane_on(
     Ok(())
 }
 
+impl PlaybackQueueTables {
+    /// Write the single device-local `playback_state` row (id = 'current'),
+    /// replacing any existing one. Never synced.
+    pub async fn save_playback_state(&self, state: &PlaybackResumeRow) -> Result<(), DbError> {
+        let state = state.clone();
+        self.store
+            .call(move |conn| {
+                let (current_entry, current_track_id) = match &state.current {
+                    Some(current) => (Some(current.id.to_string()), Some(current.track_id.clone())),
+                    None => (None, None),
+                };
+                conn.execute(
+                    "INSERT OR REPLACE INTO playback_state \
+                     (id, current_entry, current_track_id, position_ms) \
+                     VALUES ('current', ?, ?, ?)",
+                    params![
+                        current_entry,
+                        current_track_id,
+                        state.position_ms.map(|position| position as i64),
+                    ],
+                )
+                .map(|_| ())
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
+    /// Delete the device-local `playback_state` row (playback stopped).
+    ///
+    /// Stopping is persisted on every queue change and every stop, so most
+    /// calls arrive with the row already gone. That case is read, not written:
+    /// a delete over an empty table is a transaction that changes nothing, and
+    /// those belong off the sync journal.
+    pub async fn clear_playback_state(&self) -> Result<(), DbError> {
+        let stored = self
+            .store
+            .read(move |sql| {
+                Ok(sql
+                    .query_row("SELECT 1 FROM playback_state", [], |_| Ok(()))
+                    .optional()?
+                    .is_some())
+            })
+            .await?;
+        if !stored {
+            return Ok(());
+        }
+        self.store
+            .call(move |conn| {
+                conn.execute("DELETE FROM playback_state", []).map(|_| ()).map_err(DbError::from)
+            })
+            .await
+    }
+}
+
 #[cfg(test)]
 #[path = "queue_tests.rs"]
 mod tests;

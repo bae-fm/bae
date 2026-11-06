@@ -269,7 +269,7 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
     let (db, _tmp, tracks) = single_track_releases_db(2).await;
     let current = play_tracks(&db, &tracks, 0).await;
     let state = PlaybackResumeRow { current: Some(current.clone()), position_ms: Some(42_000) };
-    save_playback_state(&db, &state).await.unwrap();
+    PlaybackQueueTables::new(db.clone()).save_playback_state(&state).await.unwrap();
 
     let loaded = load_playback_state(&db).await.unwrap().expect("a stored row");
     assert_eq!(loaded.current, Some(current));
@@ -279,7 +279,7 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
     let forgotten = load_playback_state(&db).await.unwrap().expect("the row stays");
     assert_eq!(forgotten.current, None);
 
-    clear_playback_state(&db).await.unwrap();
+    PlaybackQueueTables::new(db.clone()).clear_playback_state().await.unwrap();
     assert!(load_playback_state(&db).await.unwrap().is_none());
 }
 
@@ -293,7 +293,7 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
     let current = play(&db, ReleaseStart::First).await;
     PlaybackQueueTables::new(db.clone()).set_repeat(crate::RepeatMode::Context).await.unwrap();
     let state = PlaybackResumeRow { current: Some(current.clone()), position_ms: None };
-    save_playback_state(&db, &state).await.unwrap();
+    PlaybackQueueTables::new(db.clone()).save_playback_state(&state).await.unwrap();
     let now = PlaybackNowRow::new(db.clone());
     for change in [
         crate::PlaybackChange::State(crate::PlaybackState::Playing {
