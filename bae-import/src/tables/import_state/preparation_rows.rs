@@ -437,11 +437,7 @@ impl ImportTables {
                 CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
                 // A run's verdict brings a catalog's cover or keeps the one
                 // stored, which its own save checked.
-                CandidateSaved::CoverRefused(refusal) => Err(DbError::Message(format!(
-                    "a run's verdict for {} keeps a cover its scan does not hold: {refusal}",
-                    candidate_key
-                ))
-                .into()),
+                CandidateSaved::CoverRefused(refusal) => Err(refusal.into()),
             })
             .await
     }

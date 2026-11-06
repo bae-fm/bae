@@ -218,3 +218,38 @@ async fn a_preparation_whose_author_contradicts_its_provenance_is_refused() {
         before
     );
 }
+
+/// A run's verdict that keeps a cover its scan does not hold is refused as
+/// that cover's refusal, and nothing of it lands.
+#[tokio::test]
+async fn a_run_verdict_keeping_a_cover_the_scan_does_not_hold_is_refused_as_the_cover() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, _generation) = scanned_tagged_candidate(&db, &root).await;
+    let hash = candidate.files.content_hash();
+    let before = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+    let expected = save_expectation(&candidate, &before);
+    let mut prep = before.clone();
+    prep.metadata_revision += 1;
+    prep.metadata.cover = Some(crate::cover_art::PreparedCover::Local("gone.jpg".to_string()));
+
+    let error = tables
+        .save_run_verdict(
+            prep,
+            expected,
+            crate::tables::CandidateSaveExtras::default(),
+            crate::CandidateKey::folder(&candidate.path),
+            crate::IdentifyRunId::for_test(1),
+        )
+        .await
+        .expect_err("the scan stored no gone.jpg");
+
+    assert!(
+        matches!(&error, crate::ImportError::Cover(crate::CoverRefusal::NotInFolder { file_id }) if file_id == "gone.jpg"),
+        "{error:?}"
+    );
+    assert_eq!(
+        tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
+        before
+    );
+}
