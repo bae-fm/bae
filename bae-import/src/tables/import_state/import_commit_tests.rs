@@ -241,7 +241,15 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         .await
         .expect_err("the final transaction must re-check the queued metadata revision");
 
-    assert!(error.to_string().contains("prepared metadata changed"));
+    assert!(
+        matches!(
+            error,
+            crate::tables::ImportCommitError::CandidateMoved(
+                crate::service::CandidateMoved::MetadataChanged(_)
+            )
+        ),
+        "{error:?}"
+    );
     assert!(records.find_release_by_id("release-never-written").await.unwrap().is_none());
 }
 

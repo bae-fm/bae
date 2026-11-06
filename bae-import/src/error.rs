@@ -154,6 +154,13 @@ pub enum ImportError {
     #[error("the library's artists changed while this import was being written; import it again")]
     LibraryChanged,
 
+    /// The candidate changed, or left, between preparing the import and
+    /// committing it. Nothing was written; importing again prepares from the
+    /// candidate as it now stands.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    CandidateMoved(crate::service::CandidateMoved),
+
     /// A sheet-binding change could not be applied: the candidate, the sheet,
     /// or the audio named is not what it was when the picker offered it. Every
     /// offerable set that crosses to a UI is already filtered to what the sheet
@@ -327,6 +334,7 @@ impl From<crate::tables::ImportCommitError> for ImportError {
             E::Write(error) => error.into(),
             E::LibraryChanged => Self::LibraryChanged,
             E::FilesAlreadyImported { release_id } => Self::FilesAlreadyImported { release_id },
+            E::CandidateMoved(moved) => Self::CandidateMoved(moved),
             E::Rollback { operation, rollback } => {
                 Self::Rollback { operation: Box::new((*operation).into()), rollback }
             }
@@ -378,7 +386,10 @@ impl ImportError {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
             #[cfg(desktop)]
-            Self::Refused(_) | Self::Unresolvable { .. } | Self::LibraryChanged => C::Import,
+            Self::Refused(_)
+            | Self::Unresolvable { .. }
+            | Self::LibraryChanged
+            | Self::CandidateMoved(_) => C::Import,
             #[cfg(desktop)]
             Self::Database(error) => bae_diagnostics::database_category(error),
             #[cfg(desktop)]

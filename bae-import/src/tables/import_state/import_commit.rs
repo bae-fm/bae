@@ -36,6 +36,9 @@ pub enum ImportCommitError {
     /// here.
     #[error("this device already imported these files, as release {release_id}")]
     FilesAlreadyImported { release_id: String },
+    /// The candidate is not the one the import was prepared from.
+    #[error(transparent)]
+    CandidateMoved(#[from] crate::service::CandidateMoved),
     /// The commit was refused, and rolling it back failed too.
     #[error("{operation}; rollback failed: {rollback}")]
     Rollback {
@@ -75,7 +78,9 @@ impl coven::task::CarriesBug for ImportCommitError {
             Self::FileCleanup { write, failures } => {
                 write.bug().or_else(|| failures.iter().find_map(coven::task::CarriesBug::bug))
             }
-            Self::LibraryChanged | Self::FilesAlreadyImported { .. } => None,
+            Self::LibraryChanged | Self::FilesAlreadyImported { .. } | Self::CandidateMoved(_) => {
+                None
+            }
         }
     }
 }
@@ -106,11 +111,11 @@ impl coven::WriteFailure for ImportCommitError {
 fn require_import_commit_guard(
     sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
-) -> Result<(), DbError> {
+) -> Result<(), ImportCommitError> {
     match guard {
         ImportCommitGuard::Candidate { candidate_key, source, expectation, import_id: _ } => {
             let current = load_committing_candidate(sql, candidate_key, expectation)?;
-            expectation.verify(candidate_key, source, current.as_ref()).map_err(DbError::Message)
+            Ok(expectation.verify(candidate_key, source, current.as_ref())?)
         }
     }
 }

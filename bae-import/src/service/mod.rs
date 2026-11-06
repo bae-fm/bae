@@ -127,23 +127,21 @@ impl ImportExpectation {
         candidate_key: &crate::CandidateKey,
         source: &crate::release_candidate::CandidateSource,
         current: Option<&crate::tables::CommittingCandidate>,
-    ) -> Result<(), String> {
+    ) -> Result<(), CandidateMoved> {
         let Some(current) = current else {
-            return Err(format!("{candidate_key} is no longer a valid import candidate"));
+            return Err(CandidateMoved::Gone(candidate_key.clone()));
         };
         if !current.actionable
             || current.source != *source
             || current.content_hash != self.candidate.content_hash
             || current.file_edit_revision != self.candidate.file_edit_revision
         {
-            return Err(format!("{candidate_key} changed before its import committed"));
+            return Err(CandidateMoved::Changed(candidate_key.clone()));
         }
         if current.prepared_revisions
             != Some((self.candidate.file_edit_revision, self.candidate.metadata_revision))
         {
-            return Err(format!(
-                "{candidate_key}'s prepared metadata changed before its import committed"
-            ));
+            return Err(CandidateMoved::MetadataChanged(candidate_key.clone()));
         }
         if let Some(snapshot) = &self.file_tag_snapshot {
             if !current
@@ -151,13 +149,30 @@ impl ImportExpectation {
                 .as_ref()
                 .is_some_and(|current| current.same_reading(snapshot))
             {
-                return Err(format!(
-                    "{candidate_key}'s file-tag reading changed before its import committed"
-                ));
+                return Err(CandidateMoved::FileTagsChanged(candidate_key.clone()));
             }
         }
         Ok(())
     }
+}
+
+/// How the candidate an import was prepared from is no longer the one its
+/// commit finds. Nothing was written; importing again prepares from the
+/// candidate as it now stands.
+#[derive(Debug, thiserror::Error)]
+pub enum CandidateMoved {
+    /// No candidate the import can take stands at the key any more.
+    #[error("{0} is no longer a valid import candidate")]
+    Gone(crate::CandidateKey),
+    /// The candidate at the key is another one, or its files changed.
+    #[error("{0} changed before its import committed")]
+    Changed(crate::CandidateKey),
+    /// Its draft changed after the import was prepared from it.
+    #[error("{0}'s prepared metadata changed before its import committed")]
+    MetadataChanged(crate::CandidateKey),
+    /// Its files' tags read otherwise than when the import was prepared.
+    #[error("{0}'s file-tag reading changed before its import committed")]
+    FileTagsChanged(crate::CandidateKey),
 }
 
 pub struct ImportService {
