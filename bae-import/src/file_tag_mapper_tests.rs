@@ -899,7 +899,7 @@ fn dsd_file_tag_seeding_fails_through_tag_reader() {
     let err = map_tags_with_folder(&[path], Some("Album Title"))
         .expect_err("lofty does not read DSF tags");
     assert!(
-        matches!(&err, ImportError::FileTags { detail } if detail.contains("failed to read tags")),
+        matches!(&err, ImportError::FileTags { detail } if detail.contains("placeholder-dsd.dsf")),
         "{err}"
     );
 }

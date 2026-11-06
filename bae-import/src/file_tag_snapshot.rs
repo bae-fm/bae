@@ -155,7 +155,9 @@ pub(crate) fn read_observed(
     reader: &dyn FileTagReader,
 ) -> Result<(FileObservation, FileTagRead), ImportError> {
     let before = observe_file(file)?;
-    let read = reader.read(&file.version.path)?;
+    let read = reader
+        .read(&file.version.path)
+        .map_err(|failure| failure.into_error(&file.version.path))?;
     let after = observe_file(file)?;
     if before != after {
         return Err(changed_file_error(file));

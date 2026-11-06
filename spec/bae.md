@@ -705,7 +705,10 @@ draft, picture included: the scan seeds the draft and the cover in the write
 that first stores the release's state, and never for files this device
 imported, whose release is the library's. A folder read again within the same scan, such as disc
 folders read as one release after each was read on its own, reads none of its
-files again.
+files again. A track that can't be read at all — the file won't open, or a
+read of it fails partway, as when a network share goes away — fails the pass
+with the file's name and the system's error; that says nothing about the
+file, so the pass keeps nothing about it and the next one reads it again.
 
 A rescan, such as the one every desktop launch makes of each watched folder,
 takes what the last scan of the folder stored for each file whose path, size

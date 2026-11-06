@@ -6,7 +6,7 @@ use std::path::Path;
 struct CountingReader(std::sync::atomic::AtomicUsize);
 
 impl FileTagReader for CountingReader {
-    fn read(&self, _path: &Path) -> Result<FileTagRead, ImportError> {
+    fn read(&self, _path: &Path) -> Result<FileTagRead, crate::file_tag_reader::TagReadFailure> {
         self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(FileTagRead {
             tags: FileTags {

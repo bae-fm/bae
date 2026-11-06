@@ -80,7 +80,10 @@ impl PictureReader {
 }
 
 impl crate::file_tag_reader::FileTagReader for PictureReader {
-    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
         let mut read = crate::file_tag_reader::LoftyFileTagReader.read(path)?;
         read.embedded_cover = Some((vec![0; self.size], bae_util::content_type::ContentType::Jpeg));

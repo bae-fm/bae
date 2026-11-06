@@ -272,6 +272,70 @@ async fn a_rescan_reads_again_only_the_file_that_changed() {
     }
 }
 
+/// Reads tags as [`CountingTagReader`] does, except that reading the file at
+/// `faulting` fails at the file itself while `fault` is set.
+struct FaultingTagReader {
+    counted: CountingTagReader,
+    faulting: PathBuf,
+    fault: std::sync::atomic::AtomicBool,
+}
+
+impl crate::file_tag_reader::FileTagReader for FaultingTagReader {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
+        let read = self.counted.read(path)?;
+        if path == self.faulting && self.fault.load(Ordering::SeqCst) {
+            return Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
+                "failed to read tags from {}: the share went away",
+                path.display()
+            )));
+        }
+        Ok(read)
+    }
+}
+
+/// A file that could not be read at all fails the pass that read it, and
+/// nothing about it is kept: the next pass reads it again.
+#[tokio::test]
+async fn a_track_that_cannot_be_read_fails_the_pass_and_is_read_again() {
+    let test = setup_import_service().await;
+    let watched = test.temp.path().join("watched");
+    let album = watched.join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    for name in ["01.flac", "02.flac"] {
+        std::fs::write(album.join(name), flac()).unwrap();
+    }
+    let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    let faulting = root.join("Album/02.flac");
+    let tags = Arc::new(FaultingTagReader {
+        counted: CountingTagReader::default(),
+        faulting: faulting.clone(),
+        fault: std::sync::atomic::AtomicBool::new(true),
+    });
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
+
+    let failed = scan.rescan(&root).await.expect_err("the pass fails");
+    assert!(failed.to_string().contains("the share went away"), "{failed}");
+    tags.fault.store(false, Ordering::SeqCst);
+    let before = tags.counted.reads_of(&faulting);
+    scan.rescan(&root).await.unwrap();
+
+    assert_eq!(tags.counted.reads_of(&faulting), before + 1, "the next pass reads it again");
+    let reading = test
+        .tables()
+        .load_candidate_file_tag_snapshot(&root, &crate::CandidateKey::folder(&root.join("Album")))
+        .await
+        .unwrap()
+        .unwrap()
+        .snapshot
+        .expect("the draft was seeded from both tracks' tags");
+    assert_eq!(reading.files.len(), 2);
+}
+
 /// A release whose tracks are the ones its stored tags were read from takes
 /// those tags for its draft, though another file beside them is new.
 #[tokio::test]
@@ -370,7 +434,10 @@ struct EmbeddingTagReader {
 }
 
 impl crate::file_tag_reader::FileTagReader for EmbeddingTagReader {
-    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         let mut read = self.counted.read(path)?;
         read.embedded_cover =
             Some((self.picture.clone(), bae_util::content_type::ContentType::Jpeg));
@@ -495,7 +562,10 @@ impl CountingTagReader {
 }
 
 impl crate::file_tag_reader::FileTagReader for CountingTagReader {
-    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
         crate::file_tag_reader::LoftyFileTagReader.read(path)
     }

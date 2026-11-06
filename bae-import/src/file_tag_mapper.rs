@@ -72,8 +72,9 @@ pub(crate) fn read_file_tags(
     let scanned = audio_files
         .iter()
         .map(|path| -> Result<ScannedFile, ImportError> {
-            let metadata = std::fs::metadata(path)
-                .map_err(|error| ImportError::file_tags("stat", path, error))?;
+            let metadata = std::fs::metadata(path).map_err(|error| ImportError::FileTags {
+                detail: format!("failed to stat {}: {error}", path.display()),
+            })?;
             let relative_path = path
                 .file_name()
                 .map(|name| coven::path_text(Path::new(name)))

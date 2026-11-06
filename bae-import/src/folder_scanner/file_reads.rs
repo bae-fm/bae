@@ -11,7 +11,7 @@
 //! draft is seeded, one the walk read to place the release's tracks.
 
 use super::*;
-use crate::file_tag_reader::{FileTagRead, FileTagReader};
+use crate::file_tag_reader::{FileTagRead, FileTagReader, TagReadFailure};
 use crate::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,
 };
@@ -55,8 +55,8 @@ struct TrackRead {
 enum TagRead {
     /// What they state, and what is known of the picture they embed.
     Read { tags: FileTags, cover: EmbeddedCover },
-    /// They could not be read, for this reason.
-    Unreadable(String),
+    /// They do not parse, for this reason.
+    Unparseable(String),
 }
 
 /// What a pass knows of the picture a track's tags embed.
@@ -235,6 +235,7 @@ impl FileReads {
         let version = file.version.clone();
         let reader = (!self.tags_known(&version)).then_some(self.tags.as_ref());
         let (stream, read) = probe(file, reader)?;
+        let read = read.map(parsed).transpose()?;
         self.with_known(|known| {
             known.track_mut(&version).stream = Some(stream.clone());
             if let Some(read) = read {
@@ -245,7 +246,8 @@ impl FileReads {
     }
 
     /// What the track `file`'s tags state — what is known, or a read of them
-    /// now — or why they could not be read.
+    /// now — or why they do not parse. A read that fails at the file itself
+    /// fails the pass.
     pub(super) fn tags(
         &self,
         file: &ScannedFile,
@@ -255,26 +257,27 @@ impl FileReads {
             unchanged(file, "changed before its tags could be read")?;
             let read = self.tags.read(&file.version.path);
             unchanged(file, "changed while its tags were being read")?;
+            let read = parsed(read)?;
             self.with_known(|known| known.remember_tags(&version, read));
         }
         Ok(self.with_known(|known| {
             match &known.track(&version).expect("its tags were just read").tags {
                 Some(TagRead::Read { tags, .. }) => Ok(tags.clone()),
-                Some(TagRead::Unreadable(error)) => Err(error.clone()),
+                Some(TagRead::Unparseable(error)) => Err(error.clone()),
                 None => unreachable!("its tags were just read"),
             }
         }))
     }
 
     /// The disc and track numbers the track `file`'s tags state. Playable
-    /// audio whose tags cannot be read is still the folder's audio; its tags
+    /// audio whose tags do not parse is still the folder's audio; its tags
     /// just place it nowhere, and its name decides.
     pub(super) fn numbers(&self, file: &ScannedFile) -> Result<TrackNumbers, FolderScanError> {
         Ok(match self.tags(file)? {
             Ok(tags) => tags.numbers,
             Err(error) => {
                 tracing::warn!(
-                    "{}: its tags could not be read, so its name places it: {error}",
+                    "{}: its tags do not parse, so its name places it: {error}",
                     file.relative_path
                 );
                 TrackNumbers::unstated()
@@ -350,8 +353,9 @@ impl FileReads {
                             EmbeddedCover::Unknown | EmbeddedCover::Released => CoverRead::Unknown,
                         },
                     )),
-                    Some(TagRead::Unreadable(error)) => {
-                        Err(ImportError::FileTags { detail: error.clone() })
+                    Some(TagRead::Unparseable(reason)) => {
+                        Err(TagReadFailure::Unparseable(reason.clone())
+                            .into_error(&file.version.path))
                     }
                     None => Ok((None, CoverRead::Unknown)),
                 }
@@ -525,9 +529,9 @@ impl Known {
     }
 
     /// Keep what one read of the track at `version`'s tags gave, holding the
-    /// picture they embed. What the file's label or store wrote is not kept:
-    /// identification reads it from the file.
-    fn remember_tags(&mut self, version: &FileVersion, read: Result<FileTagRead, ImportError>) {
+    /// picture they embed, or why they do not parse. What the file's label or
+    /// store wrote is not kept: identification reads it from the file.
+    fn remember_tags(&mut self, version: &FileVersion, read: Result<FileTagRead, String>) {
         let read = match read {
             Ok(FileTagRead { tags, delivery: _, embedded_cover }) => TagRead::Read {
                 tags,
@@ -540,7 +544,7 @@ impl Known {
                     None => EmbeddedCover::Absent,
                 },
             },
-            Err(error) => TagRead::Unreadable(error.to_string()),
+            Err(reason) => TagRead::Unparseable(reason),
         };
         self.track_mut(version).tags = Some(read);
         while self.held_bytes > HELD_COVER_BYTES {
@@ -684,6 +688,19 @@ fn merged(known: &FileRead, other: &FileRead) -> Option<FileRead> {
     }
 }
 
+/// What one read of a track's tags gave: its tags, or why they do not parse.
+/// A read that failed at the file itself says nothing of the file, so it fails
+/// the pass rather than be kept.
+fn parsed(
+    read: Result<FileTagRead, TagReadFailure>,
+) -> Result<Result<FileTagRead, String>, FolderScanError> {
+    match read {
+        Ok(read) => Ok(Ok(read)),
+        Err(TagReadFailure::Unparseable(reason)) => Ok(Err(reason)),
+        Err(TagReadFailure::Fault(detail)) => Err(FolderScanError::Other(detail)),
+    }
+}
+
 /// Fail unless `file` is still the version the listing found.
 fn unchanged(file: &ScannedFile, what: &str) -> Result<(), FolderScanError> {
     let metadata = std::fs::metadata(&file.version.path)
@@ -701,7 +718,7 @@ fn unchanged(file: &ScannedFile, what: &str) -> Result<(), FolderScanError> {
 fn probe(
     file: &ScannedFile,
     reader: Option<&dyn FileTagReader>,
-) -> Result<(Playability, Option<Result<FileTagRead, ImportError>>), FolderScanError> {
+) -> Result<(Playability, Option<Result<FileTagRead, TagReadFailure>>), FolderScanError> {
     unchanged(file, "changed before its audio facts could be read")?;
     let stream = match bae_audio::probe_audio_from_path(&file.version.path) {
         None => Playability::Unplayable,

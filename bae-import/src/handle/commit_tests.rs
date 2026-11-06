@@ -90,7 +90,10 @@ impl HeldTagReader {
 }
 
 impl crate::file_tag_reader::FileTagReader for HeldTagReader {
-    fn read(&self, path: &Path) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
+    fn read(
+        &self,
+        path: &Path,
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         let held = self.held.lock().unwrap().as_ref().is_some_and(|held| path.starts_with(held));
         if held {
             // The receiver is gone once the test has stopped watching, which

@@ -259,20 +259,6 @@ impl From<bae_util::task_failure::TaskFailed> for ImportError {
 
 #[cfg(desktop)]
 impl ImportError {
-    /// A file-tag read that failed at the file itself, named by what was being
-    /// done to it: `file_tags("open", path, error)` reads "failed to open
-    /// <path>: <error>".
-    pub(crate) fn file_tags(
-        action: &str,
-        path: &std::path::Path,
-        error: impl std::fmt::Display,
-    ) -> Self {
-        Self::FileTags { detail: format!("failed to {action} {}: {error}", path.display()) }
-    }
-}
-
-#[cfg(desktop)]
-impl ImportError {
     /// The failure a catalog answered with, which is a lookup that failed, or
     /// `None` for an error bae met on its own side — a request it could not
     /// build, an answer it could not parse, a store read.

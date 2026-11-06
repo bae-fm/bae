@@ -25,7 +25,33 @@ pub(crate) struct FileTagRead {
 }
 
 pub(crate) trait FileTagReader: Send + Sync {
-    fn read(&self, path: &Path) -> Result<FileTagRead, ImportError>;
+    fn read(&self, path: &Path) -> Result<FileTagRead, TagReadFailure>;
+}
+
+/// Why one file's tags were not read.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum TagReadFailure {
+    /// Its bytes hold no tags that parse, for this reason: a fact of the file
+    /// at the size and modification time it was read at, which another read
+    /// of the same bytes finds again.
+    Unparseable(String),
+    /// The file could not be read: a fault of reading it then, such as a
+    /// share that went away, which says nothing of the file. The text names
+    /// the file.
+    Fault(String),
+}
+
+impl TagReadFailure {
+    /// The failure as an error naming the file at `path`, for a caller that
+    /// can't go on without its tags.
+    pub(crate) fn into_error(self, path: &Path) -> ImportError {
+        match self {
+            Self::Unparseable(reason) => {
+                ImportError::FileTags { detail: format!("{}: {reason}", path.display()) }
+            }
+            Self::Fault(detail) => ImportError::FileTags { detail },
+        }
+    }
 }
 
 pub(crate) struct LoftyFileTagReader;
@@ -40,9 +66,11 @@ impl FileTagReader for LoftyFileTagReader {
     /// Opens and parses `path` once: the concrete format's own reading, for
     /// the ID3v2 frames and MP4 atoms only it keeps, is the one the generic
     /// tag is taken from.
-    fn read(&self, path: &Path) -> Result<FileTagRead, ImportError> {
+    fn read(&self, path: &Path) -> Result<FileTagRead, TagReadFailure> {
         let file_type = FileType::from_path(path);
-        let file = File::open(path).map_err(|error| ImportError::file_tags("open", path, error))?;
+        let file = File::open(path).map_err(|error| {
+            TagReadFailure::Fault(format!("failed to open {}: {error}", path.display()))
+        })?;
         let mut reader = BufReader::new(file);
         let parsed = parse(&mut reader, path, file_type)?;
         let tag = primary_tag(&parsed.tagged);
@@ -58,20 +86,15 @@ impl FileTagReader for LoftyFileTagReader {
             TagType::Id3v2 => match parsed.id3v2 {
                 Id3v2Frames::Kept(Some(legacy)) => legacy,
                 Id3v2Frames::Kept(None) => {
-                    return Err(ImportError::FileTags {
-                        detail: format!(
-                            "{} was reported as ID3v2-tagged but its concrete tag was absent",
-                            path.display()
-                        ),
-                    })
+                    return Err(TagReadFailure::Unparseable(
+                        "it reads as ID3v2-tagged but holds no ID3v2 tag".to_string(),
+                    ))
                 }
                 Id3v2Frames::Unkept => {
-                    return Err(ImportError::FileTags {
-                        detail: format!(
-                            "{} exposed an ID3v2 tag through an audio format that cannot preserve its frame encoding",
-                            path.display()
-                        ),
-                    })
+                    return Err(TagReadFailure::Unparseable(
+                        "it holds an ID3v2 tag in an audio format that cannot keep its frames' encoding"
+                            .to_string(),
+                    ))
                 }
             },
             TagType::Id3v1 => legacy_id3v1_text(&mut reader, path)?,
@@ -131,7 +154,7 @@ fn parse(
     reader: &mut BufReader<File>,
     path: &Path,
     file_type: Option<FileType>,
-) -> Result<ParsedFile, ImportError> {
+) -> Result<ParsedFile, TagReadFailure> {
     use lofty::mp4::{AtomIdent, Mp4File};
     let options = ParseOptions::new().read_properties(false);
     let parsed = match file_type {
@@ -162,7 +185,27 @@ fn parse(
             itunes_purchase: false,
         }),
     };
-    parsed.map_err(|error| ImportError::file_tags("read tags from", path, error))
+    parsed.map_err(|error| parse_failure(path, &error))
+}
+
+/// What lofty's failure to parse the file at `path` was: an I/O error below it
+/// other than the file's ending early is a fault of reading the file, and
+/// anything else is the bytes'.
+fn parse_failure(path: &Path, error: &lofty::error::FileParseError) -> TagReadFailure {
+    let chain = bae_util::error_text::CauseChain(error);
+    let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(error) = cause {
+        if let Some(io) = error.downcast_ref::<std::io::Error>() {
+            if io.kind() != std::io::ErrorKind::UnexpectedEof {
+                return TagReadFailure::Fault(format!(
+                    "failed to read tags from {}: {chain}",
+                    path.display()
+                ));
+            }
+        }
+        cause = error.source();
+    }
+    TagReadFailure::Unparseable(chain.to_string())
 }
 
 /// The file parsed as the format `F`, which keeps its ID3v2 frames, with the
@@ -264,21 +307,27 @@ fn legacy_id3v2_text(tag: &Id3v2Tag) -> LegacyTagText {
 fn legacy_id3v1_text(
     reader: &mut BufReader<File>,
     path: &Path,
-) -> Result<LegacyTagText, ImportError> {
-    reader
-        .seek(SeekFrom::End(-128))
-        .map_err(|error| ImportError::file_tags("seek to the ID3v1 tag in", path, error))?;
+) -> Result<LegacyTagText, TagReadFailure> {
+    let fault = |action: &str, error: std::io::Error| {
+        TagReadFailure::Fault(format!("failed to {action} {}: {error}", path.display()))
+    };
+    reader.seek(SeekFrom::End(-128)).map_err(|error| match error.kind() {
+        std::io::ErrorKind::InvalidInput => TagReadFailure::Unparseable(
+            "it reads as ID3v1-tagged but is shorter than an ID3v1 tag".to_string(),
+        ),
+        _ => fault("seek to the ID3v1 tag in", error),
+    })?;
     let mut tag = [0_u8; 128];
-    reader
-        .read_exact(&mut tag)
-        .map_err(|error| ImportError::file_tags("read the ID3v1 tag from", path, error))?;
+    reader.read_exact(&mut tag).map_err(|error| match error.kind() {
+        std::io::ErrorKind::UnexpectedEof => TagReadFailure::Unparseable(
+            "it reads as ID3v1-tagged but ends inside the ID3v1 tag".to_string(),
+        ),
+        _ => fault("read the ID3v1 tag from", error),
+    })?;
     if tag[..3] != *b"TAG" {
-        return Err(ImportError::FileTags {
-            detail: format!(
-                "{} was reported as ID3v1-tagged but its tag footer was absent",
-                path.display()
-            ),
-        });
+        return Err(TagReadFailure::Unparseable(
+            "it reads as ID3v1-tagged but holds no ID3v1 footer".to_string(),
+        ));
     }
     Ok(LegacyTagText {
         title: decoded_id3v1_field(&tag[3..33]),

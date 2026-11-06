@@ -411,7 +411,7 @@ fn copy_with_picture(
 /// The cover a file's tag read carries.
 fn embedded_cover(
     path: &std::path::Path,
-) -> Result<Option<(Vec<u8>, ContentType)>, crate::ImportError> {
+) -> Result<Option<(Vec<u8>, ContentType)>, crate::file_tag_reader::TagReadFailure> {
     use crate::file_tag_reader::FileTagReader;
     crate::file_tag_reader::LoftyFileTagReader.read(path).map(|read| read.embedded_cover)
 }
@@ -563,4 +563,23 @@ fn image_content_type_maps_known_and_rejects_non_images() {
     );
     // A non-image known variant is rejected too.
     assert_eq!(image_content_type(&MimeType::Tiff), None);
+}
+
+/// Bytes that hold no tags lofty parses are a fact of the file; a file that
+/// can't be opened is a fault of reading it, and names the file.
+#[test]
+fn a_read_tells_tags_that_do_not_parse_from_a_file_that_cannot_be_read() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let garbage = dir.path().join("01.flac");
+    fs::write(&garbage, vec![7u8; 4096]).unwrap();
+    let missing = dir.path().join("02.flac");
+
+    let garbage_read = LoftyFileTagReader.read(&garbage).map(|_| ());
+    let missing_read = LoftyFileTagReader.read(&missing).map(|_| ());
+
+    assert!(matches!(garbage_read, Err(TagReadFailure::Unparseable(_))), "{garbage_read:?}");
+    assert!(
+        matches!(&missing_read, Err(TagReadFailure::Fault(detail)) if detail.contains("02.flac")),
+        "{missing_read:?}"
+    );
 }

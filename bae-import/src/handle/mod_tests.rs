@@ -650,7 +650,7 @@ impl crate::file_tag_reader::FileTagReader for CountingFileTagReader {
     fn read(
         &self,
         _path: &std::path::Path,
-    ) -> Result<crate::file_tag_reader::FileTagRead, crate::ImportError> {
+    ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         let index = self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if index == 0 {
             if let Some(first_read) = &self.first_read {
@@ -658,9 +658,9 @@ impl crate::file_tag_reader::FileTagReader for CountingFileTagReader {
             }
         }
         if self.fail_on_read == Some(index) {
-            return Err(crate::ImportError::FileTags {
-                detail: format!("fixture tag read {index} failed"),
-            });
+            return Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
+                "fixture tag read {index} failed"
+            )));
         }
         Ok(crate::file_tag_reader::FileTagRead {
             tags: crate::file_tag_snapshot::FileTags {
