@@ -57,6 +57,44 @@ pub async fn stored_image_version(records: &crate::Records, table: &str, id: &st
     }
 }
 
+/// A breaking change to the records' schema, as an update of the app brings
+/// one: an index on a synced table.
+pub const WORKS_BY_TITLE: &str = "CREATE INDEX works_by_title ON works(title)";
+
+/// The album `album_id`, titled `title`, holding `releases` in that order,
+/// none with a track.
+pub async fn album_with_releases(
+    records: &crate::Records,
+    album_id: &str,
+    title: &str,
+    releases: &[&str],
+) {
+    let album = crate::DbAlbum { id: album_id.to_string(), ..crate::DbAlbum::new_test(title) };
+    records.insert_album(&album).await.unwrap();
+    for release in releases {
+        records.insert_release(&crate::DbRelease::new_test(album_id, release)).await.unwrap();
+    }
+}
+
+/// The album `album_id`, titled `title`, holding the one release
+/// `release_id`, whose one CD holds `tracks` (each an id and a title) in
+/// order.
+pub async fn album_with_tracks(
+    records: &crate::Records,
+    (album_id, title): (&str, &str),
+    release_id: &str,
+    tracks: &[(&str, &str)],
+) {
+    album_with_releases(records, album_id, title, &[release_id]).await;
+    records.insert_release_medium(&crate::DbReleaseMedium::new_test(release_id)).await.unwrap();
+    for ((track_id, title), number) in tracks.iter().zip(1..) {
+        records
+            .insert_track(&crate::DbTrack::new_test(release_id, track_id, title, number))
+            .await
+            .unwrap();
+    }
+}
+
 /// Delete `release_id` as the library deletes a release: its tracks, files
 /// and credits go with it in one write.
 pub async fn delete_release(records: &crate::Records, release_id: &str) {

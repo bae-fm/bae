@@ -109,6 +109,12 @@ struct CreditedLibrary {
 }
 
 async fn credited_library() -> CreditedLibrary {
+    credited_library_holding(None).await
+}
+
+/// The credited library with Artist A and Artist B each holding
+/// `discogs_artist_id`, as two devices apart can leave two artists.
+async fn credited_library_holding(discogs_artist_id: Option<&str>) -> CreditedLibrary {
     let (manager, temp_dir, album, release) = manager_with_release().await;
     for (id, name) in [(CREDIT_ARTIST_A, "Artist A"), (CREDIT_ARTIST_B, "Artist B")] {
         manager
@@ -117,7 +123,7 @@ async fn credited_library() -> CreditedLibrary {
                 id: id.to_string(),
                 name: name.to_string(),
                 sort_name: None,
-                discogs_artist_id: None,
+                discogs_artist_id: discogs_artist_id.map(str::to_string),
                 musicbrainz_artist_id: None,
                 created_at: Utc::now(),
             })
@@ -247,19 +253,22 @@ async fn a_printed_name_shows_in_place_of_the_artists_while_the_link_names_the_a
 }
 
 /// Artist B merged into Artist A: a credit with no printed name of its own
-/// prints the survivor's name, one with a printed name keeps it.
+/// prints the survivor's name, one with a printed name keeps it. The merge is
+/// a write meeting the Discogs id both hold, which merges them into the
+/// smaller id.
 #[tokio::test]
 async fn a_merged_artists_credit_prints_the_survivor_unless_a_printed_name_was_stored() {
-    let library = credited_library().await;
-    library
-        .manager
-        .store
-        .execute_local_sql_for_test(&format!(
-            "INSERT INTO artist_merges (id, into_artist_id, created_at) \
-             VALUES ('{CREDIT_ARTIST_B}', '{CREDIT_ARTIST_A}', '2026-01-01T00:00:00Z')"
-        ))
-        .await
-        .unwrap();
+    let library = credited_library_holding(Some("credited-discogs-id")).await;
+    let credit = DbArtist {
+        id: Uuid::new_v4().to_string(),
+        name: "Artist A".to_string(),
+        sort_name: None,
+        discogs_artist_id: Some("credited-discogs-id".to_string()),
+        musicbrainz_artist_id: None,
+        created_at: Utc::now(),
+    };
+    let resolved = library.manager.records.find_or_create_artists(&[credit]).await.unwrap();
+    assert_eq!(resolved, [CREDIT_ARTIST_A]);
 
     let lines = printed_lines(&library).await;
 

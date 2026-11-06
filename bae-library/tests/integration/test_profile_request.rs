@@ -24,9 +24,19 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     library.stop_sync().await.unwrap();
     let track = bae_util::test_ids::test_uuid("waiting-track");
     let release = bae_util::test_ids::test_uuid("waiting-release");
-    let medium = bae_util::test_ids::test_uuid("waiting-medium");
     let play = bae_util::test_ids::test_uuid("waiting-play");
-    db.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('waiting-album','Album Title','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','waiting-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{track}','{release}','Track Title','{medium}',1,1,0,180000,'2026-01-01'); INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{play}', '{track}', '2026-10-18T16:00:00Z', 30000);")).await.unwrap();
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&bae_util::test_ids::test_uuid("waiting-album"), "Album Title"),
+        &release,
+        &[(&track, "Track Title")],
+    )
+    .await;
+    // A play before any profile stays on this device.
+    let started = "2026-10-18T16:00:00Z".parse().unwrap();
+    let mut played = people.begin_play(play.parse().unwrap(), &track, None, started).await.unwrap();
+    played.set_played(std::time::Duration::from_secs(30));
+    assert!(people.record_play(&played).await.unwrap());
 
     library.create_profile("Robin").await.unwrap();
     assert!(people.profiles().await.unwrap().is_empty());

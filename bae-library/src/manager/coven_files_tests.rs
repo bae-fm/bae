@@ -74,7 +74,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         raised.push(coven::Migration::breaking(
             2,
             "index works by title",
-            "CREATE INDEX works_by_title ON works(title)",
+            bae_records::test_fixtures::WORKS_BY_TITLE,
             coven::OldWrites::Drop,
         ));
         devices.a_mut().reopen_with(raised.clone()).await;

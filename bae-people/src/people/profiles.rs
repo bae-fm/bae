@@ -210,6 +210,28 @@ impl People {
         Ok(())
     }
 
+    /// Rename `person`'s profile whoever's it is, as no surface asks: coven
+    /// refuses the write on a profile this device's person doesn't own.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn rename_profile_of_for_test(
+        &self,
+        person: coven::MemberId,
+        name: &str,
+    ) -> Result<(), coven::CovenError> {
+        let name = name.to_string();
+        self.inner
+            .store
+            .write(move |sql| {
+                update_profile(
+                    &sql,
+                    "UPDATE people SET name = ? WHERE id = ?",
+                    params![name, person.to_string()],
+                )?;
+                Ok(())
+            })
+            .await
+    }
+
     pub async fn set_history_sharing(&self, sharing: Sharing) -> Result<(), ProfileError> {
         let person = self.own_profile().await?.id;
         self.inner

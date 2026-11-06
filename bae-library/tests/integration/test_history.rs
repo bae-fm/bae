@@ -17,8 +17,13 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     let people = bae_people::People::new(store.clone());
     let release = test_uuid("history-release");
     let track = test_uuid("history-track");
-    let medium = test_uuid("history-medium");
-    store.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('history-album','Listening','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','history-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{track}','{release}','Interlude','{medium}',1,1,0,40000,'2026-01-01');")).await.unwrap();
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("history-album"), "Listening"),
+        &release,
+        &[(&track, "Interlude")],
+    )
+    .await;
     let started = "2026-10-18T16:30:00Z".parse().unwrap();
     let mut local = people
         .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(40)), started)
@@ -72,13 +77,53 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert!(!people.record_play(&unknown).await.unwrap());
     unknown.finish_at(Duration::from_secs(8));
     assert!(people.record_play(&unknown).await.unwrap());
-    // A profile can arrive from another device while this device still has
-    // listening from before registration. Retrying profile setup adopts it too.
-    let awaiting_profile = uuid::Uuid::new_v4();
-    store.execute_local_sql_for_test(&format!("INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{awaiting_profile}', '{track}', '2026-10-18T16:00:00Z', 30000)")).await.unwrap();
-    library.create_profile("Robin").await.unwrap();
-    let rows = people.history().await.unwrap();
-    assert_eq!(rows.iter().find(|row| row.id == awaiting_profile).unwrap().audience, private);
-    assert!(store.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
     library.close().await.unwrap();
+}
+
+/// A profile can arrive from another device while this device still has
+/// listening from before registration. Retrying profile setup adopts it too.
+#[test]
+fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
+    bae_library::test_libraries::run_two_device_test(async |devices| {
+        let release = test_uuid("arriving-release");
+        let track = test_uuid("arriving-track");
+        bae_records::test_fixtures::album_with_tracks(
+            devices.a().records(),
+            (&test_uuid("arriving-album"), "Listening"),
+            &release,
+            &[(&track, "Interlude")],
+        )
+        .await;
+        devices.converge("SELECT id FROM tracks").await;
+        devices.b().stop_sync().await;
+        let people = devices.b().people_owner();
+        let started = "2026-10-18T16:00:00Z".parse().unwrap();
+        let mut awaiting_profile = people
+            .begin_play(uuid::Uuid::new_v4(), &track, Some(Duration::from_secs(40)), started)
+            .await
+            .unwrap();
+        awaiting_profile.set_played(Duration::from_secs(30));
+        assert!(people.record_play(&awaiting_profile).await.unwrap());
+
+        let person =
+            bae_library::test_libraries::made_profile(devices.a().manager(), "Robin").await;
+        devices.b().store().start_sync().await.unwrap();
+        devices
+            .settle("the profile on both devices", async |_, store| {
+                !bae_people::People::new(store.clone()).profiles().await.unwrap().is_empty()
+            })
+            .await;
+        let b = devices.b().store();
+        assert!(!b.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
+
+        devices.b().manager().create_profile("Robin").await.unwrap();
+        let rows = people.history().await.unwrap();
+        let private = HistoryAudience::Person {
+            person: person.id,
+            audience: coven::Audience::Circle(person.private_circle),
+        };
+        let adopted = rows.iter().find(|row| row.id == awaiting_profile.entry().id).unwrap();
+        assert_eq!(adopted.audience, private);
+        assert!(b.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
+    });
 }

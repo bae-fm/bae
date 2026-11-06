@@ -501,13 +501,13 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     manager.retry_downloads().await.unwrap();
     assert_eq!(ascending().await, second_pinning, "retried");
 
-    // Rewriting the release's listing row reads the queue again.
+    // Rewriting the release's listing row, as renaming its album does, reads
+    // the queue again.
     manager
-        .store
-        .execute_for_test(
-            "UPDATE releases SET created_at = created_at WHERE id = ?1",
-            vec![second.clone()],
-        )
+        .records
+        .save_release_metadata_for_test(&second, |rows| {
+            rows.album.title = "Album Title B Renamed".to_string()
+        })
         .await
         .unwrap();
     assert_eq!(ascending().await, second_pinning, "refreshed");
@@ -557,7 +557,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     assert_eq!(listed_queues(&manager).await, idle);
 
     manager.set_sync_paused(true).await.unwrap();
-    insert_release_with_queued_uploads(
+    let uploading = insert_release_with_queued_uploads(
         &manager,
         &temp_dir.path().join("upload"),
         "Album Title B",
@@ -577,15 +577,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     );
 
     assert!(activate_download(&manager, &pinning).await.unwrap());
-    manager
-        .store
-        .execute_for_test(
-            "INSERT INTO output_queue (release_id, created_at, state, target_dir, kind) \
-             VALUES (?1, 0, 'queued', CAST('/exports' AS BLOB), 'export')",
-            vec![pinning.clone()],
-        )
-        .await
-        .unwrap();
+    manager.enqueue_export(&uploading.id, std::path::PathBuf::from("/exports")).await.unwrap();
     let outputs = Some(ReleaseQueueRun { paused: false, active: None });
     assert_eq!(
         listed_queues(&manager).await,

@@ -487,16 +487,11 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let members = guest.circles().members(profile.private_circle).await.unwrap();
         assert_eq!(members.len(), 1);
         assert_eq!(members[0].member, profile.id);
-        let error = guest
-            .write(move |sql| {
-                sql.execute(
-                    "UPDATE people SET name = 'Impersonated' WHERE id = ?",
-                    [owner_profile.id.to_string()],
-                )?;
-                Ok(())
-            })
-            .await
-            .expect_err("only the profile's owner may rename it");
+        let error =
+            bae_people::People::new(bae_store::Store::new(guest.clone(), household.clock.clone()))
+                .rename_profile_of_for_test(owner_profile.id, "Impersonated")
+                .await
+                .expect_err("only the profile's owner may rename it");
         assert!(
             matches!(error, coven::CovenError::Database(coven::DbError::NotOwner { .. })),
             "{error:?}"

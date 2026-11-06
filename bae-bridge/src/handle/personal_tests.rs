@@ -18,6 +18,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     runtime.block_on(bae_library::test_libraries::connect_storage(&library, &storage));
     let made = runtime.block_on(bae_library::test_libraries::made_profile(&library, "Robin"));
     let store = library.store().clone();
+    let records = library.records().clone();
     let people = bae_people::People::new(store.clone());
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
@@ -71,16 +72,10 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
                 .history_sharing,
             bae_people::people::Sharing::Household
         );
-        store.execute_local_sql_for_test(
-            "INSERT INTO albums(id,title,created_at) VALUES('bridge-album','Album','2026-01-01');",
-        )
-        .await
-        .unwrap();
+        let album = bae_records::DbAlbum::new_test("Album");
+        records.insert_album(&album).await.unwrap();
         app.clone()
-            .set_rating(
-                BridgeRatingTarget::Album { id: "bridge-album".into() },
-                Some(BridgeStars::Four),
-            )
+            .set_rating(BridgeRatingTarget::Album { id: album.id.clone() }, Some(BridgeStars::Four))
             .await
             .unwrap();
         let ratings = app.clone().ratings().await.unwrap();
@@ -88,7 +83,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert_eq!(ratings[0].stars, BridgeStars::Four);
         assert_eq!(ratings[0].person, profile.id);
         app.clone()
-            .set_rating(BridgeRatingTarget::Album { id: "bridge-album".into() }, None)
+            .set_rating(BridgeRatingTarget::Album { id: album.id.clone() }, None)
             .await
             .unwrap();
         assert!(app.clone().ratings().await.unwrap().is_empty());

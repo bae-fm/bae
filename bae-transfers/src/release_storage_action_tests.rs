@@ -5,17 +5,11 @@ use super::*;
 use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::*;
 
-const LIBRARY: &str = "
-    INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-        ('4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', 'Album Title A', 0, '2026-01-01T00:00:00Z');
-    INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-        ('0252dedb-ee39-4547-8803-438dbeb57a64', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 0),
-        ('64e79a1f-404a-4c34-809a-a3cb44bf1942', '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d', '2026-01-01T00:00:00Z', 1);
-";
-
+/// One album holding `RELEASE_A` and `RELEASE_B`.
 async fn library() -> (Store, tempfile::TempDir) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
-    db.call(|sql| sql.execute_batch(LIBRARY).map_err(DbError::from)).await.unwrap();
+    album_with_releases(&test_records(&db), ALBUM_A, "Album Title A", &[RELEASE_A, RELEASE_B])
+        .await;
     (db, tmp)
 }
 

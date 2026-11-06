@@ -19,8 +19,14 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let release = test_uuid("collection-release");
     let first = test_uuid("collection-first");
     let second = test_uuid("collection-second");
-    let medium = test_uuid("collection-medium");
-    store.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('collection-album','Collection','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','collection-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{first}','{release}','First','{medium}',1,1,0,180000,'2026-01-01'), ('{second}','{release}','Second','{medium}',1,2,1,180000,'2026-01-01');")).await.unwrap();
+    let album = test_uuid("collection-album");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&album, "Collection"),
+        &release,
+        &[(&first, "First"), (&second, "Second")],
+    )
+    .await;
     let target = RatingTarget::Track(first.clone());
     people.set_rating(target.clone(), Some(Stars::Three)).await.unwrap();
     people.set_rating(target.clone(), Some(Stars::Five)).await.unwrap();
@@ -30,10 +36,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     assert_eq!(ratings[0].stars, Stars::Five);
     people.set_rating(target, None).await.unwrap();
     assert!(people.ratings().await.unwrap().is_empty());
-    people
-        .set_rating(RatingTarget::Album("collection-album".into()), Some(Stars::Two))
-        .await
-        .unwrap();
+    people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Two)).await.unwrap();
 
     let id = uuid::Uuid::new_v4();
     let playlist = people.create_playlist(id, "Evening", Sharing::Private).await.unwrap();

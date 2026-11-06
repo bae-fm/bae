@@ -153,29 +153,35 @@ impl Records {
 }
 
 impl Records {
-    /// Rename `track_id` as a person's metadata edit of its release does,
-    /// writing the album, the release and the track's credits back as they
-    /// stand.
-    pub async fn rename_track_for_test(
+    /// Save `release_id`'s metadata as a person's edit of it does: the
+    /// album, the release, its tracks and their credits as they stand, with
+    /// what `edit` changes of them.
+    pub async fn save_release_metadata_for_test(
         &self,
-        track_id: &str,
-        title: &str,
+        release_id: &str,
+        edit: impl FnOnce(&mut ReleaseMetadataRows),
     ) -> Result<(), IdentityWriteError> {
-        let track = self.find_track_by_id(track_id).await?.expect("the track to rename");
-        let release = self.find_release_by_id(&track.release_id).await?.expect("its release");
+        let release = self.find_release_by_id(release_id).await?.expect("the release");
         let album = self.find_album_by_id(&release.album_id).await?.expect("its album");
-        let (album_id, track_id) = (album.id.clone(), track.id.clone());
+        let tracks = self.get_tracks_for_release(release_id).await?;
+        let album_id = album.id.clone();
+        let track_ids: Vec<String> = tracks.iter().map(|track| track.id.clone()).collect();
         let (album_credits, track_credits) = self
             .store
             .read(move |sql| {
-                Ok((
-                    credits_for_test(&sql, "album_artists", "album_id", &album_id)?,
-                    credits_for_test(&sql, "track_artists", "track_id", &track_id)?,
-                ))
+                let mut track_credits = Vec::new();
+                for track_id in &track_ids {
+                    track_credits.push((
+                        track_id.clone(),
+                        credits_for_test(&sql, "track_artists", "track_id", track_id)?,
+                    ));
+                }
+                Ok((credits_for_test(&sql, "album_artists", "album_id", &album_id)?, track_credits))
             })
             .await?;
         let mut credits = Vec::new();
-        for (artist_id, ..) in album_credits.iter().chain(&track_credits) {
+        let credited = album_credits.iter().chain(track_credits.iter().flat_map(|(_, list)| list));
+        for (artist_id, ..) in credited {
             credits.push(self.find_artist_by_id(artist_id).await?.expect("a credited artist"));
         }
         let now = self.store.now_utc();
@@ -189,21 +195,43 @@ impl Records {
             .collect();
         let track_artists = track_credits
             .into_iter()
-            .map(|(artist_id, position, credit, join_phrase)| DbTrackArtist {
-                credit,
-                join_phrase,
-                ..DbTrackArtist::new(&track.id, &artist_id, position, now)
+            .flat_map(|(track_id, list)| {
+                list.into_iter().map(move |(artist_id, position, credit, join_phrase)| {
+                    DbTrackArtist {
+                        credit,
+                        join_phrase,
+                        ..DbTrackArtist::new(&track_id, &artist_id, position, now)
+                    }
+                })
             })
             .collect();
-        let renamed = DbTrack { title: title.to_string(), ..track };
-        self.update_release_metadata_user_edit(ReleaseMetadataRows {
+        let track_updates = tracks.into_iter().map(|track| (track.id.clone(), track)).collect();
+        let mut rows = ReleaseMetadataRows {
             album,
             release,
-            track_updates: vec![(renamed.id.clone(), renamed)],
+            track_updates,
             picked: credits.iter().map(|artist| artist.id.clone()).collect(),
             credits,
             album_artists,
             track_artists,
+        };
+        edit(&mut rows);
+        self.update_release_metadata_user_edit(rows).await
+    }
+
+    /// Rename `track_id` as a person's metadata edit of its release does.
+    pub async fn rename_track_for_test(
+        &self,
+        track_id: &str,
+        title: &str,
+    ) -> Result<(), IdentityWriteError> {
+        let track = self.find_track_by_id(track_id).await?.expect("the track to rename");
+        self.save_release_metadata_for_test(&track.release_id, |rows| {
+            for (id, track) in &mut rows.track_updates {
+                if id == track_id {
+                    track.title = title.to_string();
+                }
+            }
         })
         .await
     }

@@ -279,16 +279,7 @@ async fn opening_leaves_the_queues_empty_and_running() {
 #[tokio::test]
 async fn opening_ends_every_transition() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(
-        &db,
-        &format!(
-            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-                 ('{ALBUM_A}', 'Album Title A', 0, '2026-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-                 ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00Z', 0);"
-        ),
-    )
-    .await;
+    album_with_releases(&test_records(&db), ALBUM_A, "Album Title A", &[RELEASE_A]).await;
     crate::release_storage_action::begin_release_storage_action(
         &db,
         RELEASE_A,

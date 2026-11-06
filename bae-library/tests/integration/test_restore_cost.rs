@@ -156,16 +156,22 @@ async fn restore_cost(library: Library) {
         opened.write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
         pass(&handle, &clock).await;
     }
+    let edited: String = opened
+        .store()
+        .read(|sql| {
+            Ok(sql.query_row(
+                "SELECT id FROM releases WHERE album_id = (SELECT id FROM albums ORDER BY id LIMIT 1)",
+                [],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
     for edit in 0..library.edits {
         let title = format!("Renamed {edit}");
-        handle
-            .write(move |sql| {
-                sql.execute(
-                    "UPDATE albums SET title = ?1 WHERE id = (SELECT id FROM albums ORDER BY id LIMIT 1)",
-                    [title],
-                )?;
-                Ok(())
-            })
+        opened
+            .records()
+            .save_release_metadata_for_test(&edited, |rows| rows.album.title = title)
             .await
             .unwrap();
         pass(&handle, &clock).await;

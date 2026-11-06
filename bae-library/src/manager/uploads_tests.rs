@@ -458,16 +458,12 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     }
 }
 
-/// Deleting the row of a file still uploading deletes the file with its last
-/// reference: its upload leaves the queue and nothing is left pending.
+/// Deleting the release of a file still uploading deletes the file with its
+/// last reference: its upload leaves the queue and nothing is left pending.
 #[tokio::test]
-async fn an_upload_whose_row_is_deleted_leaves_the_queue() {
-    let (manager, _temp, _release, file_id) = queued_upload_fixture("changed").await;
-    manager
-        .store
-        .execute_for_test("DELETE FROM release_files WHERE id = ?1", vec![file_id])
-        .await
-        .unwrap();
+async fn an_upload_whose_release_is_deleted_leaves_the_queue() {
+    let (manager, _temp, release, _file_id) = queued_upload_fixture("changed").await;
+    manager.delete_release(&release.id).await.unwrap();
     assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.pending().await.unwrap().is_empty());
 }
