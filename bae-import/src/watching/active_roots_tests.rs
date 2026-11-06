@@ -470,3 +470,70 @@ async fn a_failed_takeover_restores_the_inner_folders() {
     }
     harness.shutdown().await;
 }
+
+/// What the coordinator holds of `root`'s scan, once it holds `expected`.
+async fn wait_for_in_memory(
+    harness: &CoordinatorHarness,
+    root: &Path,
+    expected: Option<crate::folder_scan_status::RootScanInMemory>,
+) {
+    let mut in_memory = harness.scans_in_memory.clone();
+    tokio::time::timeout(
+        HANG_GUARD,
+        in_memory.wait_for(|held| held.get(root) == expected.as_ref()),
+    )
+    .await
+    .expect("the coordinator publishes what it holds of the root")
+    .expect("the coordinator is running");
+}
+
+/// A root reads as running while its whole-root pass runs. A failure that
+/// pass could not store is held as the root's once it ends, published before
+/// whoever waited on the pass hears it ended, and the root's next pass clears
+/// it.
+#[tokio::test]
+async fn a_pass_failure_the_store_refused_is_held_until_the_next_pass() {
+    use crate::folder_scan_status::RootScanInMemory;
+    let harness = CoordinatorHarness::new().await;
+    let root = root_path("/music");
+    let refreshed = request_refresh(&harness, "/music");
+    harness.scans.wait_for_count(1).await;
+    wait_for_in_memory(&harness, &root, Some(RootScanInMemory::Running)).await;
+
+    harness.scans.fail_unstored(0, "the disk is full");
+    assert_eq!(refreshed.await.unwrap(), Ok(()));
+    assert_eq!(
+        harness.scans_in_memory.borrow().get(&root),
+        Some(&RootScanInMemory::UnstoredFailure { error: "the disk is full".to_string() })
+    );
+
+    assert_next_pass_reads_only_a_later_change(&harness, 1).await;
+    wait_for_in_memory(&harness, &root, None).await;
+    harness.shutdown().await;
+}
+
+/// A whole-root pass a folder decision cancels is owed again behind it, so
+/// the root reads as running through the decision's pass, until the owed
+/// pass ends.
+#[tokio::test]
+async fn a_root_whose_whole_pass_is_owed_reads_as_running() {
+    use crate::folder_scan_status::RootScanInMemory;
+    let harness = CoordinatorHarness::new().await;
+    let root = rescan_and_wait(&harness, "/music").await;
+    let decided = request_group_decision(&harness, &root);
+    harness.scans.wait_for_cancellation(0).await;
+    harness.scans.complete(0);
+    harness.scans.wait_for_count(2).await;
+    assert!(harness.scans.reading(1).is_some(), "the decision's pass runs next");
+    wait_for_in_memory(&harness, &root, Some(RootScanInMemory::Running)).await;
+
+    harness.scans.complete(1);
+    assert!(decided.await.unwrap().is_ok());
+    harness.scans.wait_for_count(3).await;
+    assert_eq!(harness.scans.reading(2), None, "the owed whole-root pass runs last");
+    wait_for_in_memory(&harness, &root, Some(RootScanInMemory::Running)).await;
+
+    harness.scans.complete(2);
+    wait_for_in_memory(&harness, &root, None).await;
+    harness.shutdown().await;
+}

@@ -31,9 +31,13 @@ pub(crate) struct TestScan {
 }
 
 impl TestScan {
-    /// Read `root` and reconcile what it holds against what is stored.
-    pub(crate) async fn rescan(&self, root: &Path) -> Result<(), crate::ImportError> {
-        rescan_and_reconcile(root, &self.services, &self.cancellation).await
+    /// Read `root` and reconcile what it holds against what is stored; a
+    /// scan that did not finish is the error, as it ended.
+    pub(crate) async fn rescan(&self, root: &Path) -> Result<(), ScanEnded> {
+        match rescan_and_reconcile(root, &self.services, &self.cancellation).await {
+            ScanEnded::Finished => Ok(()),
+            failed => Err(failed),
+        }
     }
 }
 

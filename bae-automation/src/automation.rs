@@ -81,7 +81,7 @@ impl Automation {
                         }
                         bae_import::FolderScanStatus::Scanning { .. } => {
                             return Err(AutomationError::import(format!(
-                                "{}: its read ended with no outcome stored",
+                                "{}: another read of it began before this one was over",
                                 coven::path_text(&status.watched_folder_path)
                             )));
                         }

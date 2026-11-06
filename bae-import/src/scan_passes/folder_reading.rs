@@ -70,20 +70,21 @@ pub(super) async fn change_folder_reading(
 }
 
 /// Read again each folder directly under `root` whose contents changed
-/// on disk, storing each in a write of its own.
+/// on disk, storing each in a write of its own, and answer with the last
+/// failure the store would not take, for the coordinator to hold.
 ///
-/// A folder that cannot be read or stored is said so — as the root's
-/// status, and on the event stream — and the others are read regardless:
-/// each one's write stands on its own.
+/// A folder that cannot be read or stored is stored as the root's status,
+/// and the others are read regardless: each one's write stands on its own.
 pub(super) async fn read_changed_folders(
     root: &Path,
     folders: &std::collections::BTreeSet<OsString>,
     scan: &ScanServices,
     cancellation: &crate::folder_scanner::ScanCancellation,
-) {
+) -> Option<String> {
+    let mut unstored = None;
     for folder in folders {
         if cancellation.is_cancelled() {
-            return;
+            return unstored;
         }
         // A reading that panics fails that folder as an error does.
         let read = bae_util::task_failure::caught(
@@ -98,32 +99,65 @@ pub(super) async fn read_changed_folders(
             continue;
         };
         if cancellation.is_cancelled() {
-            return;
+            return unstored;
         }
         let message =
             format!("{} could not be read again: {error}", coven::path_text(Path::new(folder)));
         warn!("{}: {message}", coven::path_text(root));
-        match scan.services.tables.current_folder_scan_generation(root).await {
-            Ok(Some(generation)) => {
-                if let Err(status_error) =
-                    record_scan_failure(root, generation, message.clone(), &scan.services).await
-                {
-                    error!(
-                        "{}'s failed reading could not be stored: {status_error}",
-                        root.display()
-                    );
-                    announce_scan_failure(root, message, &scan.services).await;
-                }
-            }
-            Ok(None) => announce_scan_failure(root, message, &scan.services).await,
-            Err(status_error) => {
-                error!(
-                    "{}'s generation could not be read to store a failed reading: \
-                     {status_error}",
-                    root.display()
-                );
-                announce_scan_failure(root, message, &scan.services).await;
-            }
+        if let Some(message) = store_reading_failure(root, message, &scan.services).await {
+            unstored = Some(message);
+        }
+    }
+    unstored
+}
+
+/// Store `message` as the failure of `root`'s current generation, answering
+/// with it when the store would not take it. A refusal is reported as
+/// [`report_refused_scan_write`] says.
+async fn store_reading_failure(
+    root: &Path,
+    message: String,
+    services: &crate::ImportServices,
+) -> Option<String> {
+    let diagnostics = &services.diagnostics;
+    let generation = match services.tables.current_folder_scan_generation(root).await {
+        Ok(Some(generation)) => generation,
+        // A folder is read again only under a watch a whole-root scan
+        // installed, after that scan opened its generation.
+        Ok(None) => {
+            diagnostics.report_bug(
+                "store a failed reading of a watched folder",
+                &format_args!("{} has no scan generation", coven::path_text(root)),
+            );
+            return Some(message);
+        }
+        Err(error) => {
+            report_refused_scan_write(
+                root,
+                "read a watched folder's scan generation",
+                &error,
+                diagnostics,
+            );
+            return Some(message);
+        }
+    };
+    match record_scan_failure(root, generation, &message, services).await {
+        Ok(true) => None,
+        Ok(false) => {
+            debug!(
+                "{}'s failed reading was not stored: a newer scan owns the root",
+                root.display()
+            );
+            None
+        }
+        Err(error) => {
+            report_refused_scan_write(
+                root,
+                "store a watched folder's failed reading",
+                &error,
+                diagnostics,
+            );
+            Some(message)
         }
     }
 }

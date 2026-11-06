@@ -198,15 +198,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     fs::create_dir_all(&other).unwrap();
     let other_key = other.clone();
     f.handle.add_watched_folder(other_key.to_path_buf()).await.unwrap();
-    wait_for_scan_event(&mut scan_rx, "the still-watched folder's first read", |event| {
-        matches!(
-            event,
-            ScanEvent::FolderScanStatusChanged { status }
-                if status.watched_folder_path == other_key
-                    && matches!(status.status, bae_import::FolderScanStatus::Complete)
-        )
-    })
-    .await;
+    wait_for_reads(&f, "the still-watched folder's first read", &[&other_key]).await;
 
     f.handle.remove_watched_folder(collection_key.to_path_buf()).await.unwrap();
 
@@ -292,22 +284,23 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
         .plant_unscanned_folder_reading_for_test(std::path::Path::new(&invalid_folder))
         .await
         .unwrap();
-    let mut events = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
-    let error =
-        bae_util::test_channels::next_matching(&mut events, HANG_GUARD, |event| match event {
-            ScanEvent::FolderScanStatusChanged { status }
-                if status.watched_folder_path == root_key =>
-            {
-                match status.status {
-                    bae_import::FolderScanStatus::Failed { error } => Some(error),
-                    _ => None,
-                }
-            }
-            _ => None,
+    let scans = wait_for_folder_scans(&f, "unreadable decisions leave a failed scan", |scans| {
+        scans.statuses.iter().any(|status| {
+            status.watched_folder_path == root_key
+                && matches!(status.status, bae_import::FolderScanStatus::Failed { .. })
         })
-        .await
-        .expect("unreadable decisions leave a failed scan status");
+    })
+    .await;
+    let error = scans
+        .statuses
+        .into_iter()
+        .find_map(|status| match status.status {
+            bae_import::FolderScanStatus::Failed { error } => Some(error),
+            bae_import::FolderScanStatus::Scanning { .. }
+            | bae_import::FolderScanStatus::Complete => None,
+        })
+        .expect("the root's scan failed");
     assert!(
         error.contains(&invalid_folder),
         "the failed status carries what went wrong, got {error:?}"
@@ -326,27 +319,18 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     generate_album_files(&album, &["01 Track.flac"]);
     let root_key = root.to_path_buf();
 
+    // Every whole read of the root ends with `Finished`, in order: the second
+    // is the read the second add asked for.
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
-    wait_for_folder_scans(&f, "the first scan of the added root", |scans| {
-        scans.statuses.iter().any(|status| {
-            status.watched_folder_path == root_key
-                && matches!(status.status, bae_import::FolderScanStatus::Complete)
-        })
+    wait_for_scan_event(&mut scan_rx, "the first scan of the added root", |event| {
+        matches!(event, ScanEvent::Finished)
     })
     .await;
 
-    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     wait_for_scan_event(&mut scan_rx, "the re-added root is scanned again", |event| {
-        matches!(
-            event,
-            ScanEvent::FolderScanStatusChanged { status }
-                if status.watched_folder_path == root_key
-                    && matches!(
-                        status.status,
-                        bae_import::FolderScanStatus::Scanning { .. }
-                    )
-        )
+        matches!(event, ScanEvent::Finished)
     })
     .await;
     assert_eq!(f.handle.watched_folders().await.unwrap().len(), 1);
@@ -364,27 +348,18 @@ async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
     generate_album_files(&album, &["01 Track.flac"]);
     let root_key = root.to_path_buf();
 
+    // Every whole read of the root ends with `Finished`, in order: the second
+    // is the read adding the folder inside it asked for.
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
-    wait_for_folder_scans(&f, "the first scan of the added root", |scans| {
-        scans.statuses.iter().any(|status| {
-            status.watched_folder_path == root_key
-                && matches!(status.status, bae_import::FolderScanStatus::Complete)
-        })
+    wait_for_scan_event(&mut scan_rx, "the first scan of the added root", |event| {
+        matches!(event, ScanEvent::Finished)
     })
     .await;
 
-    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(album.to_path_buf()).await.unwrap();
     wait_for_scan_event(&mut scan_rx, "the covering root is scanned again", |event| {
-        matches!(
-            event,
-            ScanEvent::FolderScanStatusChanged { status }
-                if status.watched_folder_path == root_key
-                    && matches!(
-                        status.status,
-                        bae_import::FolderScanStatus::Scanning { .. }
-                    )
-        )
+        matches!(event, ScanEvent::Finished)
     })
     .await;
     let watched = f.handle.watched_folders().await.unwrap();

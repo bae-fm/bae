@@ -32,19 +32,18 @@ VALUES (1, 0);
 -- This device's last scan of each watched folder. A scan writes entries as it
 -- finds them; completing removes the ones it did not see, in the transaction
 -- that marks it complete. A failed or interrupted scan keeps old and new ones.
+-- `status` is how the current generation's scan ended, NULL until it stores
+-- that; whether a scan is reading the folder is never stored, since nothing
+-- stored could stop saying so when the process reading it ends.
 CREATE TABLE IF NOT EXISTS folder_scan_roots (
     watched_folder_path BLOB PRIMARY KEY,
     generation          INTEGER NOT NULL CHECK (generation >= 0),
-    status              TEXT NOT NULL CHECK (status IN ('scanning', 'complete', 'failed')),
+    status              TEXT CHECK (status IN ('complete', 'failed')),
     error               TEXT,
     -- The volume the folder was on when the scan began, asked once per scan so
     -- reading scan state never waits on a mount.
     volume              TEXT NOT NULL CHECK (volume IN ('local', 'network')),
-    CHECK (
-        (status = 'failed' AND error IS NOT NULL)
-        OR
-        (status != 'failed' AND error IS NULL)
-    ),
+    CHECK ((status IS 'failed') = (error IS NOT NULL)),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)
         ON DELETE CASCADE

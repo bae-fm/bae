@@ -54,11 +54,7 @@ fn subject(event: &ImportEvent) -> Option<crate::CandidateKey> {
             | ScanEvent::CandidateBindingChanged { candidate },
         ) => Some(candidate.key()),
         ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)) => Some(candidate.key()),
-        ImportEvent::Scan(
-            ScanEvent::WatchedFoldersChanged { .. }
-            | ScanEvent::FolderScanStatusChanged { .. }
-            | ScanEvent::Finished,
-        ) => None,
+        ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { .. } | ScanEvent::Finished) => None,
     }
 }
 

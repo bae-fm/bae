@@ -2,7 +2,6 @@
 //! recorded in the candidate runtime, then handed to every reader.
 
 use crate::candidate_runtime::CandidateRuntime;
-use crate::folder_scan_status::WatchedFolderScanStatus;
 use crate::folder_scanner::{FolderCandidate, InvalidCandidate};
 use crate::types::ImportProgress;
 use crate::watched_folder::WatchedFolder;
@@ -91,9 +90,6 @@ pub enum ScanEvent {
     /// changed.
     CandidateMetadataChanged {
         candidate_key: crate::CandidateKey,
-    },
-    FolderScanStatusChanged {
-        status: WatchedFolderScanStatus,
     },
     Finished,
 }

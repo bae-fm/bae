@@ -243,6 +243,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
         bae_diagnostics::Diagnostics::noop(),
         scan_completions,
         removal_completions,
+        tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new()).0,
     );
     let (checked_tx, mut checks) = tokio::sync::mpsc::unbounded_channel();
     let mut coordinator = crate::watching::coordinator::Coordinator::new(

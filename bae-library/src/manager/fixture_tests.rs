@@ -254,15 +254,14 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             .collect::<Vec<_>>(),
         [root.as_path()]
     );
-    let scans = tables.load_folder_scan_progress().await.unwrap();
-    assert_eq!(scans.activity, None, "no folder reads as being read");
+    let scans = tables.load_stored_folder_scans().await.unwrap();
     assert_eq!(
         scans
-            .statuses
             .iter()
-            .map(|status| (status.watched_folder_path.clone(), status.status.clone()))
+            .map(|scan| (scan.watched_folder_path.clone(), scan.outcome.clone()))
             .collect::<Vec<_>>(),
-        [(root, bae_import::FolderScanStatus::Complete)]
+        [(root, bae_import::StoredScanOutcome::Complete)],
+        "the fixture's folder stores a finished read"
     );
 }
 

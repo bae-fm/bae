@@ -96,8 +96,10 @@ impl ImportService {
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx, diagnostics.clone()));
 
         let watched = services.clone();
+        let (scans_in_memory_tx, scans_in_memory) =
+            tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
         let watcher = WorkerThread::spawn("folder scan coordinator", move |_, watcher_rx| {
-            start_watcher(watcher_rx, fs_rx, watched, folder_watcher)
+            start_watcher(watcher_rx, fs_rx, watched, folder_watcher, scans_in_memory_tx)
         });
 
         let worker = WorkerThread::spawn("import worker thread", move |_, commands_rx| {
@@ -133,7 +135,14 @@ impl ImportService {
             })
         });
 
-        ImportServiceHandle::new(worker, watcher, services, runtime, runtime_handle)
+        ImportServiceHandle::new(
+            worker,
+            watcher,
+            scans_in_memory,
+            services,
+            runtime,
+            runtime_handle,
+        )
     }
 }
 

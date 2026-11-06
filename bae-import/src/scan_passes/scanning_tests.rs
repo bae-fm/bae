@@ -75,12 +75,61 @@ impl crate::folder_scanner::DirectoryReader for ListingThatPanicsOnce {
     }
 }
 
-/// Where the stored scan of the only watched root stands.
-async fn root_scan_status(db: &Store) -> crate::FolderScanStatus {
+/// What the scan of the only watched root stored of how it ended.
+async fn stored_outcome(db: &Store) -> crate::StoredScanOutcome {
     let tables = crate::tables::ImportTables::new(db.clone());
-    let mut statuses = tables.load_folder_scan_progress().await.unwrap().statuses;
-    assert_eq!(statuses.len(), 1, "one root is watched");
-    statuses.remove(0).status
+    let mut scans = tables.load_stored_folder_scans().await.unwrap();
+    assert_eq!(scans.len(), 1, "one root is watched");
+    scans.remove(0).outcome
+}
+
+/// The folder scan coordinator over `scan`'s services, taking `command_rx`,
+/// and what it holds of each root's scan.
+fn start_coordinator(
+    scan: &TestScan,
+    command_rx: tokio::sync::mpsc::UnboundedReceiver<crate::watching::WatcherCommand>,
+) -> (
+    std::thread::JoinHandle<()>,
+    tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
+) {
+    let (_fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (in_memory_tx, in_memory) =
+        tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
+    let coordinator = crate::watching::start_watcher(
+        command_rx,
+        fs_rx,
+        scan.services.services.clone(),
+        scan.services.folder_watcher.clone(),
+        in_memory_tx,
+    );
+    (coordinator, in_memory)
+}
+
+/// Refresh `root` through `commands` and wait for the answer.
+async fn refresh(
+    commands: &tokio::sync::mpsc::UnboundedSender<crate::watching::WatcherCommand>,
+    root: &Path,
+) -> Result<(), String> {
+    let (completion, answered) = tokio::sync::oneshot::channel();
+    commands
+        .send(crate::watching::WatcherCommand::Refresh { path: root.to_path_buf(), completion })
+        .unwrap();
+    tokio::time::timeout(HANG_GUARD, answered).await.expect("the refresh is answered").unwrap()
+}
+
+/// Stop the coordinator and wait for its thread.
+async fn stop_coordinator(
+    commands: &tokio::sync::mpsc::UnboundedSender<crate::watching::WatcherCommand>,
+    coordinator: std::thread::JoinHandle<()>,
+) {
+    let (completion, stopped) = std::sync::mpsc::channel();
+    commands.send(crate::watching::WatcherCommand::Shutdown { completion }).unwrap();
+    tokio::task::spawn_blocking(move || {
+        stopped.recv().unwrap();
+        coordinator.join().unwrap();
+    })
+    .await
+    .unwrap();
 }
 
 /// A refresh whose pass panics partway through the walk is answered, the
@@ -104,29 +153,10 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         Arc::new(ListingThatPanicsOnce { panicked: std::sync::atomic::AtomicBool::new(false) }),
     );
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (_fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
-    let coordinator = crate::watching::start_watcher(
-        command_rx,
-        fs_rx,
-        scan.services.services.clone(),
-        scan.services.folder_watcher.clone(),
-    );
-    let refresh = || {
-        let (completion, answered) = tokio::sync::oneshot::channel();
-        commands
-            .send(crate::watching::WatcherCommand::Refresh { path: root.clone(), completion })
-            .unwrap();
-        answered
-    };
+    let (coordinator, _in_memory) = start_coordinator(&scan, command_rx);
 
-    assert_eq!(
-        tokio::time::timeout(HANG_GUARD, refresh())
-            .await
-            .expect("the refresh whose pass panicked is answered")
-            .unwrap(),
-        Ok(())
-    );
-    let crate::FolderScanStatus::Failed { error } = root_scan_status(&test.db).await else {
+    assert_eq!(refresh(&commands, &root).await, Ok(()));
+    let crate::StoredScanOutcome::Failed { error } = stored_outcome(&test.db).await else {
         panic!("the panicked pass is stored as failed");
     };
     assert!(error.contains("the listing broke"), "{error}");
@@ -138,23 +168,10 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         )]
     );
 
-    assert_eq!(
-        tokio::time::timeout(HANG_GUARD, refresh())
-            .await
-            .expect("the next refresh is answered")
-            .unwrap(),
-        Ok(())
-    );
-    assert!(matches!(root_scan_status(&test.db).await, crate::FolderScanStatus::Complete));
+    assert_eq!(refresh(&commands, &root).await, Ok(()));
+    assert_eq!(stored_outcome(&test.db).await, crate::StoredScanOutcome::Complete);
 
-    let (completion, stopped) = std::sync::mpsc::channel();
-    commands.send(crate::watching::WatcherCommand::Shutdown { completion }).unwrap();
-    tokio::task::spawn_blocking(move || {
-        stopped.recv().unwrap();
-        coordinator.join().unwrap();
-    })
-    .await
-    .unwrap();
+    stop_coordinator(&commands, coordinator).await;
 }
 
 /// Lists folders as the OS does, except that the second release folder the
@@ -308,7 +325,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
 async fn rescan_seeded_root(
     test: &TestService,
     root: &Path,
-) -> (crate::ImportEvents, Result<(), crate::ImportError>) {
+) -> (crate::ImportEvents, Result<(), ScanEnded>) {
     let tables = test.tables();
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
@@ -349,34 +366,94 @@ async fn stored_invalid_candidates(test: &TestService, root: &Path) -> usize {
         .count()
 }
 
+/// Fail if the pass removed any candidate.
+fn assert_nothing_removed(events: &mut crate::ImportEvents) {
+    while let Ok(event) = events.try_recv() {
+        if let crate::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) = event {
+            panic!("the failed pass removed {candidate_key}");
+        }
+    }
+}
+
 #[tokio::test]
 async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
     let test = setup_import_service().await;
     let root = test.temp.path().join("missing-root");
     let (mut events, result) = rescan_seeded_root(&test, &root).await;
-    assert!(result.is_err());
+    assert_eq!(result, Err(ScanEnded::Failed));
 
-    let failed = loop {
-        match events.try_recv().expect("the failed pass announced its failure") {
-            crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-                status:
-                    crate::WatchedFolderScanStatus {
-                        status: crate::FolderScanStatus::Failed { error },
-                        ..
-                    },
-            }) => break error,
-            crate::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
-                panic!("missing root removed {candidate_key}")
-            }
-            _ => {}
-        }
+    let crate::StoredScanOutcome::Failed { error } = stored_outcome(&test.db).await else {
+        panic!("the failed pass stored its failure");
     };
-    // The reported failure names the root that could not be read. Its reason is
+    // The stored failure names the root that could not be read. Its reason is
     // the OS's own wording for an absent path ("No such file or directory" on
     // Unix, "The system cannot find the path specified" on Windows), so the
     // root — the part core promises — is what this asserts on.
-    assert!(failed.contains(&root.to_string_lossy().into_owned()), "{failed}");
+    assert!(error.contains(&root.to_string_lossy().into_owned()), "{error}");
+    assert_nothing_removed(&mut events);
     assert_eq!(stored_invalid_candidates(&test, &root).await, 1);
+}
+
+/// A failed scan the store refuses to take is a write nothing should refuse,
+/// so it is reported as the bug it is, and the failure is handed back for
+/// the coordinator to hold.
+#[tokio::test]
+async fn a_failure_the_store_refuses_is_reported_as_a_bug() {
+    let mut test = setup_import_service().await;
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    test.report_bugs_to(bugs.clone());
+    let root = test.temp.path().join("missing-root");
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    crate::tables::ImportTables::fail_failed_scan_writes_for_test(test.temp.path()).await;
+
+    let (scan, _events) = test.scan();
+    let Err(ScanEnded::FailedUnstored { error }) = scan.rescan(&root).await else {
+        panic!("a missing root fails its scan, and the failure is not stored");
+    };
+    assert!(error.contains(&root.to_string_lossy().into_owned()), "{error}");
+
+    let reports = bugs.reports();
+    assert_eq!(reports.len(), 1, "{reports:?}");
+    let (operation, report) = &reports[0];
+    assert_eq!(operation, "store a watched folder's failed scan");
+    assert!(report.contains("the failed scan was refused"), "{report}");
+}
+
+/// The failure of a scan the store would not take is the root's status, from
+/// the coordinator's memory, until the root's next pass starts; the stored
+/// scan holds no outcome meanwhile.
+#[tokio::test]
+async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
+    let test = setup_import_service().await;
+    let root = test.temp.path().join("missing-root");
+    test.tables().add_watched_import_folder(&root).await.unwrap();
+    crate::tables::ImportTables::fail_failed_scan_writes_for_test(test.temp.path()).await;
+    let (scan, _events) = test.scan();
+    let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (coordinator, in_memory) = start_coordinator(&scan, command_rx);
+    let progress = || async {
+        let held = in_memory.borrow().clone();
+        let stored = test.tables().load_stored_folder_scans().await.unwrap();
+        let progress = crate::FolderScanProgress::of(stored, &held);
+        let [status] = <[_; 1]>::try_from(progress.statuses).expect("one root is watched");
+        status.status
+    };
+
+    assert_eq!(refresh(&commands, &root).await, Ok(()));
+    assert_eq!(
+        stored_outcome(&test.db).await,
+        crate::StoredScanOutcome::Unfinished { found_count: 0 }
+    );
+    let crate::FolderScanStatus::Failed { error } = progress().await else {
+        panic!("the unstored failure is the root's status");
+    };
+    assert!(error.contains(&root.to_string_lossy().into_owned()), "{error}");
+
+    std::fs::create_dir(&root).unwrap();
+    assert_eq!(refresh(&commands, &root).await, Ok(()));
+    assert_eq!(progress().await, crate::FolderScanStatus::Complete);
+
+    stop_coordinator(&commands, coordinator).await;
 }
 
 #[tokio::test]
@@ -385,24 +462,13 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     let root = test.temp.path().join("not-a-directory");
     std::fs::write(&root, b"not a directory").unwrap();
     let (mut events, result) = rescan_seeded_root(&test, &root).await;
-    assert!(result.is_err(), "a non-directory root must fail its scan");
+    assert_eq!(result, Err(ScanEnded::Failed), "a non-directory root must fail its scan");
 
-    loop {
-        match events.try_recv().expect("the failed pass announced its failure") {
-            crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-                status:
-                    crate::WatchedFolderScanStatus {
-                        status: crate::FolderScanStatus::Failed { error },
-                        ..
-                    },
-            }) => {
-                assert!(error.to_lowercase().contains("not a directory"), "got: {error}");
-                break;
-            }
-            crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged { .. }) => {}
-            event => panic!("expected scan status, got {event:?}"),
-        }
-    }
+    let crate::StoredScanOutcome::Failed { error } = stored_outcome(&test.db).await else {
+        panic!("the failed pass stored its failure");
+    };
+    assert!(error.to_lowercase().contains("not a directory"), "got: {error}");
+    assert_nothing_removed(&mut events);
     assert_eq!(stored_invalid_candidates(&test, &root).await, 1);
 }
 
@@ -443,4 +509,26 @@ async fn a_pass_records_the_directories_it_read() {
     // that directory and nowhere else.
     std::fs::write(album.join("02.flac"), flac()).unwrap();
     assert_eq!(crate::volume::changed_directories(&recorded), Some(vec![album.clone()]));
+}
+
+/// A refused write of a scan's state is a bug unless the disk under the
+/// store failed, the store failed as a whole, or the library is closing.
+#[test]
+fn a_refused_scan_write_is_a_bug_unless_the_disk_or_the_store_failed() {
+    let sqlite = |code| {
+        bae_store::DbError::Sqlite(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(code),
+            None,
+        ))
+    };
+    let coven = |error| bae_store::DbError::Coven(coven::CovenError::Database(error));
+    assert!(!refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_FULL)));
+    assert!(!refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_IOERR)));
+    assert!(!refusal_is_a_bug(&coven(coven::DbError::StoreClosed)));
+    assert!(!refusal_is_a_bug(&coven(coven::DbError::RollbackFailed)));
+    assert!(!refusal_is_a_bug(&coven(coven::DbError::DamagedDatabase)));
+    assert!(refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_CONSTRAINT_TRIGGER)));
+    assert!(refusal_is_a_bug(&coven(coven::DbError::Invariant { what: "a rule" })));
+    assert!(refusal_is_a_bug(&coven(coven::DbError::StatementFailed)));
+    assert!(refusal_is_a_bug(&bae_store::DbError::Message("a newer scan took the root".into())));
 }

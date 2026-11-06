@@ -35,13 +35,17 @@ impl ImportServiceHandle {
     }
 
     /// Where each watched folder's scan stands: the first value at once, then
-    /// a value only when the scans changed, which the live query tests on the
-    /// processed progress. Closing the library ends it.
+    /// a value only when it changed, by what a scan stored or by what the
+    /// folder scan coordinator holds of the scans. Closing the library ends
+    /// it.
     pub fn subscribe_folder_scans(
         &self,
     ) -> bae_store::live_query::LiveValues<crate::FolderScanProgress> {
         bae_store::live_query::LiveValues::new(
-            self.tables.subscribe_folder_scan_progress(),
+            crate::folder_scan_status::FolderScansLive::new(
+                self.tables.clone(),
+                self.scans_in_memory.clone(),
+            ),
             self.closing.child_token(),
         )
     }

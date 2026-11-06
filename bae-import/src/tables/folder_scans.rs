@@ -181,7 +181,8 @@ impl ImportTables {
     }
 
     /// Open a new scan generation for `watched_folder_path`, recording the
-    /// volume the folder is on.
+    /// volume the folder is on. The generation has no outcome until
+    /// [`Self::finish_folder_scan`] stores one.
     pub async fn begin_folder_scan(
         &self,
         watched_folder_path: &Path,
@@ -195,9 +196,9 @@ impl ImportTables {
                 sql.execute(
                     "INSERT INTO folder_scan_roots \
                      (watched_folder_path, generation, status, error, volume) \
-                 VALUES (?, ?, 'scanning', NULL, ?) \
+                 VALUES (?, ?, NULL, NULL, ?) \
                  ON CONFLICT(watched_folder_path) DO UPDATE SET \
-                     generation = excluded.generation, status = 'scanning', error = NULL, \
+                     generation = excluded.generation, status = NULL, error = NULL, \
                      volume = excluded.volume",
                     params![watched_folder_path, generation, volume],
                 )?;
@@ -763,6 +764,24 @@ impl ImportTables {
                 &directory,
                 "folder_scan_directory",
                 "DROP TABLE folder_scan_directory;",
+            )
+        })
+        .await
+        .unwrap();
+    }
+
+    /// Plant damage for a test: every write that stores a scan as failed, in
+    /// the library under `directory`, fails as a statement nothing should
+    /// refuse.
+    pub(crate) async fn fail_failed_scan_writes_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "folder_scan_roots",
+                "CREATE TRIGGER fail_failed_scan_writes BEFORE UPDATE ON folder_scan_roots \
+                 WHEN NEW.status = 'failed' \
+                 BEGIN SELECT RAISE(ABORT, 'the failed scan was refused'); END;",
             )
         })
         .await

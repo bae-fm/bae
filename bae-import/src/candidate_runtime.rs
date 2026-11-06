@@ -400,7 +400,6 @@ impl CandidateRuntime {
                 ScanEvent::WatchedFoldersChanged { .. }
                 | ScanEvent::CandidateSkipChanged { .. }
                 | ScanEvent::CandidateMetadataChanged { .. }
-                | ScanEvent::FolderScanStatusChanged { .. }
                 | ScanEvent::Finished,
             ) => {}
         }

@@ -63,7 +63,11 @@ impl FakeScanStarter {
                 reading,
                 folders,
                 cancellation: cancellation.clone(),
-                completion: Some((finish, completion, RootScanCompletion { id, path })),
+                completion: Some((
+                    finish,
+                    completion,
+                    RootScanCompletion { id, path, unstored_failure: None },
+                )),
             });
             captured.started.notify_one();
             RootScanTask::new(cancellation, task)
@@ -97,10 +101,21 @@ impl FakeScanStarter {
         if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
             reading.answer(Ok(Vec::new()));
         }
-        let (finish, completions, completion) = self.scans.lock().unwrap()[index]
+        self.end(index, None);
+    }
+
+    /// End the scan at `index` as one that failed with `error` and could not
+    /// store the failure. The same ordering as [`Self::complete`] holds.
+    pub(crate) fn fail_unstored(&self, index: usize, error: &str) {
+        self.end(index, Some(error.to_string()));
+    }
+
+    fn end(&self, index: usize, unstored_failure: Option<String>) {
+        let (finish, completions, mut completion) = self.scans.lock().unwrap()[index]
             .completion
             .take()
             .expect("fake scan has not completed");
+        completion.unstored_failure = unstored_failure;
         finish.send(()).expect("the fake scan's task is still running");
         completions.send(completion).expect("coordinator still receives completions");
     }
@@ -250,6 +265,9 @@ pub(crate) struct CoordinatorHarness {
     pub(crate) coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
     /// The directory the coordinator's library is stored under.
     pub(crate) library: TempDir,
+    /// What the coordinator holds of each root's scan that no table does.
+    pub(crate) scans_in_memory:
+        tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
 }
 
 impl CoordinatorHarness {
@@ -299,6 +317,8 @@ impl CoordinatorHarness {
         let (scans, starter) = FakeScanStarter::new();
         let removal_backend = Arc::new(FakeRemovalBackend::default());
         let events = tokio::sync::Mutex::new(test.event_tx().every_event());
+        let (scans_in_memory_tx, scans_in_memory) =
+            tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
         let coordinator_thread = coordinator::start_watcher_with_starter(
             command_rx,
             fs_rx,
@@ -310,6 +330,7 @@ impl CoordinatorHarness {
             ),
             starter,
             removal_backend.clone(),
+            scans_in_memory_tx,
         );
         let TestService { db, temp, .. } = test;
         Self {
@@ -323,6 +344,7 @@ impl CoordinatorHarness {
             events,
             coordinator_thread: Mutex::new(Some(coordinator_thread)),
             library: temp,
+            scans_in_memory,
         }
     }
 

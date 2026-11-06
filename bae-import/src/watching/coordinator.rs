@@ -50,12 +50,14 @@ pub(crate) enum WatcherCommand {
 
 /// The folder-watch coordinator. The store is the one authority on what
 /// is watched, so events from a watch left on a removed folder match
-/// nothing.
+/// nothing. What it holds of each root's scan that no table does goes out on
+/// `in_memory`.
 pub(crate) fn start_watcher(
     cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
     fs_rx: mpsc::UnboundedReceiver<WatchReport>,
     services: crate::ImportServices,
     folder_watcher: Arc<FolderWatcher>,
+    in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
 ) -> std::thread::JoinHandle<()> {
     let removal_backend = Arc::new(ServiceRootRemovalBackend::new(
         folder_watcher.clone(),
@@ -66,7 +68,7 @@ pub(crate) fn start_watcher(
     let starter: RootScanStarter = Arc::new(move |id, path, pass, completion_tx| {
         spawn_root_pass(id, path, pass, scan.clone(), completion_tx)
     });
-    start_watcher_with_starter(cmd_rx, fs_rx, services, starter, removal_backend)
+    start_watcher_with_starter(cmd_rx, fs_rx, services, starter, removal_backend, in_memory)
 }
 
 pub(super) fn start_watcher_with_starter(
@@ -75,6 +77,7 @@ pub(super) fn start_watcher_with_starter(
     services: crate::ImportServices,
     starter: RootScanStarter,
     removal_backend: Arc<dyn RootRemovalBackend>,
+    in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
 ) -> std::thread::JoinHandle<()> {
     let crate::ImportServices { event_tx, tables, folder_state_commit, diagnostics, .. } = services;
     std::thread::spawn(move || {
@@ -93,6 +96,7 @@ pub(super) fn start_watcher_with_starter(
                 diagnostics.clone(),
                 scan_completions,
                 removal_completions,
+                in_memory,
             );
             let mut coordinator =
                 Coordinator::new(active_roots, event_tx, tables, diagnostics, checked_tx);

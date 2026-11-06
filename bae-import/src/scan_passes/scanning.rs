@@ -4,45 +4,78 @@ use bae_util::task_failure::TaskFailed;
 /// The blocking walk of a watched root, as its failure names it.
 const FOLDER_WALK: &str = "walk a watched folder";
 
-/// Mark `root`'s scan generation failed and say so. The stored status is
-/// what the import list's live query reads for the folder's mark; the
-/// event is the moment it happened, which the desktops raise as an alert.
+/// Store that `root`'s scan generation failed with `message`: what the
+/// folder's mark reads back.
 ///
 /// Returns `false` when the generation is no longer the root's — a newer
 /// scan owns the status and this one's failure is not the root's state.
 pub(super) async fn record_scan_failure(
     root: &Path,
     generation: u64,
-    message: String,
+    message: &str,
     services: &crate::ImportServices,
-) -> Result<bool, crate::ImportError> {
+) -> Result<bool, bae_store::DbError> {
     let _commit = services.folder_state_commit.lock("store a failed scan").await;
-    if services.tables.finish_folder_scan(root, generation, Some(&message)).await?.is_none() {
-        return Ok(false);
-    }
-    announce_scan_failure(root, message, services).await;
-    Ok(true)
+    Ok(services.tables.finish_folder_scan(root, generation, Some(message)).await?.is_some())
 }
 
-/// Say a scan of `root` failed, without a stored status behind it — the
-/// generation row could not be opened, or the status write on top of it
-/// failed. The user still has to hear that the folder they just added was
-/// not read, so the event goes out even when nothing durable can.
-pub(super) async fn announce_scan_failure(
+/// Say that a write of `root`'s scan state, `operation`, was refused with
+/// `error`. A refusal that is a bug is reported as one. One that is the
+/// disk's — full, failing or damaged — or the store's as a whole is not a
+/// bug: the failure it kept from being stored reaches the person through the
+/// coordinator, which holds it as the root's status, and a store that failed
+/// as a whole fails every later read too.
+pub(super) fn report_refused_scan_write(
     root: &Path,
-    message: String,
-    services: &crate::ImportServices,
+    operation: &str,
+    error: &bae_store::DbError,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) {
-    let on_network_volume = volume_kind(root, &services.diagnostics).await == VolumeKind::Network;
-    let watched_folder = crate::WatchedFolder::from_path(root.to_path_buf());
-    services.event_tx.send(crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-        status: crate::WatchedFolderScanStatus {
-            watched_folder_path: watched_folder.path,
-            watched_folder_name: watched_folder.name,
-            status: crate::FolderScanStatus::Failed { error: message },
-            on_network_volume,
+    if refusal_is_a_bug(error) {
+        diagnostics.report_bug(operation, &bae_util::error_text::CauseChain(error));
+    } else {
+        warn!("{}: could not {operation}: {error}", coven::path_text(root));
+    }
+}
+
+/// Whether a refused write of a scan's state is a bug: anything but the disk
+/// failing under the store, the store failing as a whole (coven then fails
+/// every later call on its handle) or closing with the library.
+fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
+    use bae_store::DbError as E;
+    match error {
+        E::Io(_) | E::FileRead(_) => false,
+        E::Sqlite(error) => !sqlite_is_the_disk(error),
+        E::Coven(coven::CovenError::Rollback { .. } | coven::CovenError::Shutdown(_)) => false,
+        E::Coven(coven::CovenError::Database(error)) => match error {
+            coven::DbError::StoreClosed
+            | coven::DbError::Shutdown(_)
+            | coven::DbError::RollbackFailed
+            | coven::DbError::StatePersistence(_)
+            | coven::DbError::CheckpointFailed(_)
+            | coven::DbError::WallTimer(_)
+            | coven::DbError::DamagedDatabase => false,
+            coven::DbError::Sqlite(error) => !sqlite_is_the_disk(error),
+            _ => true,
         },
-    }));
+        E::Coven(_) | E::Creation(_) | E::Unreadable { .. } | E::Message(_) => true,
+    }
+}
+
+/// Whether SQLite failed because of the disk under it: full, failing, gone
+/// read-only, or damaged.
+fn sqlite_is_the_disk(error: &rusqlite::Error) -> bool {
+    matches!(
+        error.sqlite_error_code(),
+        Some(
+            rusqlite::ErrorCode::DiskFull
+                | rusqlite::ErrorCode::SystemIoFailure
+                | rusqlite::ErrorCode::CannotOpen
+                | rusqlite::ErrorCode::ReadOnly
+                | rusqlite::ErrorCode::DatabaseCorrupt
+                | rusqlite::ErrorCode::NotADatabase
+        )
+    )
 }
 
 pub(super) async fn cancel_and_join_folder_walk(
@@ -66,6 +99,28 @@ pub(super) async fn cancel_and_join_folder_walk(
     }
 }
 
+/// How a whole-root scan ended.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum ScanEnded {
+    /// It completed, or a newer pass or a removal took the root from it.
+    Finished,
+    /// It failed, and the root's stored status says so.
+    Failed,
+    /// It failed with `error`, and the store would not take the failure:
+    /// the coordinator holds it as the root's status instead.
+    FailedUnstored { error: String },
+}
+
+impl ScanEnded {
+    /// The failure the store would not take, which the coordinator holds.
+    pub(crate) fn unstored_failure(self) -> Option<String> {
+        match self {
+            Self::FailedUnstored { error } => Some(error),
+            Self::Finished | Self::Failed => None,
+        }
+    }
+}
+
 /// Re-scan `root` and reconcile against the candidate keys last emitted for
 /// it: emit every current candidate (the reducer keeps in-progress state for
 /// the ones it already holds) plus a `CandidateRemoved` for any that vanished.
@@ -82,74 +137,71 @@ pub(super) async fn cancel_and_join_folder_walk(
 ///
 /// Every way this can fail lands in the root's stored status: the walk
 /// runs in [`walk_and_reconcile`] and this records whatever error it
-/// returns, so no failure between opening a generation and finishing it
-/// can leave the root reading `scanning` forever with only a log line to
-/// say otherwise.
+/// returns. A failure the store will not take is handed back for the
+/// coordinator to hold, and reported when the refusal is a bug.
 pub(super) async fn rescan_and_reconcile(
     root: &Path,
     scan: &ScanServices,
     cancellation: &crate::folder_scanner::ScanCancellation,
-) -> Result<(), crate::ImportError> {
+) -> ScanEnded {
     let services = &scan.services;
-    let (generation, volume) = match begin_scan(root, services).await {
-        Ok(begun) => begun,
+    let generation = match begin_scan(root, services).await {
+        Ok(generation) => generation,
         Err(error) => {
-            error!("folder scan of {} could not start: {error}", root.display());
-            announce_scan_failure(root, error.to_string(), services).await;
-            return Err(error);
+            report_refused_scan_write(
+                root,
+                "open a watched folder's scan",
+                &error,
+                &services.diagnostics,
+            );
+            return ScanEnded::FailedUnstored { error: error.to_string() };
         }
     };
     // A walk that panics fails the scan as an error does, so the root's
     // stored status says it failed.
     let outcome = bae_util::task_failure::caught(
         "scan a watched folder",
-        walk_and_reconcile(root, generation, volume, scan, cancellation),
+        walk_and_reconcile(root, generation, scan, cancellation),
     )
     .await
     .unwrap_or_else(|bug| Err(TaskFailed::Panicked(services.diagnostics.panicked(bug)).into()));
     let Err(error) = outcome else {
-        return Ok(());
+        return ScanEnded::Finished;
     };
     // A cancelled scan is the coordinator taking the root away — a newer
     // scan or a removal — not a failure of this one.
     if cancellation.is_cancelled() {
-        return Ok(());
+        return ScanEnded::Finished;
     }
     warn!("scan of {} failed ({error}); keeping previous candidates", root.display());
-    // Reported whether or not it can be stored. The stored status is what
-    // the folder's mark reads back; the event is what raises the alert, and
-    // a database that will not take the status is one more reason the user
-    // needs to hear that their folder was not read.
-    if let Err(status_error) =
-        record_scan_failure(root, generation, error.to_string(), services).await
-    {
-        error!("{}'s failed scan could not be stored: {status_error}", root.display());
-        announce_scan_failure(root, error.to_string(), services).await;
+    let error = error.to_string();
+    match record_scan_failure(root, generation, &error, services).await {
+        Ok(true) => ScanEnded::Failed,
+        Ok(false) => {
+            debug!("{}'s failed scan was not stored: a newer scan owns the root", root.display());
+            ScanEnded::Failed
+        }
+        Err(status_error) => {
+            report_refused_scan_write(
+                root,
+                "store a watched folder's failed scan",
+                &status_error,
+                &services.diagnostics,
+            );
+            ScanEnded::FailedUnstored { error }
+        }
     }
-    Err(error)
 }
 
-/// Open a durable scan generation for `root` and say the walk has started,
-/// returning the generation and the volume the root was found on.
+/// Open a durable scan generation for `root`, recording the volume the root
+/// was found on.
 async fn begin_scan(
     root: &Path,
     services: &crate::ImportServices,
-) -> Result<(u64, VolumeKind), crate::ImportError> {
-    let event_tx = &services.event_tx;
+) -> Result<u64, bae_store::DbError> {
     let volume = volume_kind(root, &services.diagnostics).await;
-    let on_network_volume = volume == VolumeKind::Network;
     let _commit = services.folder_state_commit.lock("begin a scan").await;
-    let generation = services.tables.begin_folder_scan(root, volume).await?;
-    let watched_folder = crate::WatchedFolder::from_path(root.to_path_buf());
-    event_tx.send(crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-        status: crate::WatchedFolderScanStatus {
-            watched_folder_path: watched_folder.path,
-            watched_folder_name: watched_folder.name,
-            status: crate::FolderScanStatus::Scanning { found_count: 0 },
-            on_network_volume,
-        },
-    }));
-    Ok((generation, volume))
+    services.tables.begin_folder_scan(root, volume).await
 }
 
 /// The walk itself, under an open generation. Every error it returns is
@@ -158,14 +210,12 @@ async fn begin_scan(
 async fn walk_and_reconcile(
     root: &Path,
     generation: u64,
-    volume: VolumeKind,
     scan: &ScanServices,
     cancellation: &crate::folder_scanner::ScanCancellation,
 ) -> Result<(), crate::ImportError> {
     let services = &scan.services;
     let event_tx = &services.event_tx;
     let tables = &services.tables;
-    let on_network_volume = volume == VolumeKind::Network;
     // What the user has decided about each candidate's files — which audio
     // each sheet describes, and which files are the release's tracks — read
     // once for the whole walk. A folder's roles are only what its filenames
@@ -376,16 +426,6 @@ async fn walk_and_reconcile(
     for candidate_key in pruned {
         event_tx.send(crate::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
     }
-    let watched_folder = crate::WatchedFolder::from_path(root.to_path_buf());
-    event_tx.send(crate::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-        status: crate::WatchedFolderScanStatus {
-            watched_folder_path: watched_folder.path,
-            watched_folder_name: watched_folder.name,
-            status: crate::FolderScanStatus::Complete,
-            on_network_volume,
-        },
-    }));
-
     event_tx.send(crate::ImportEvent::Scan(ScanEvent::Finished));
     drop(commit);
     Ok(())

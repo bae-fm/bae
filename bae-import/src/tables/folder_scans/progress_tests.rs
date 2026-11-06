@@ -1,13 +1,19 @@
-//! Where each watched folder's scan stands, as its live query reads it.
+//! What each watched folder's scan stored, as its live query reads it.
 
 use crate::tables::tests::*;
 use bae_records::test_fixtures::live_query::live_db;
 use bae_util::test_channels::HANG_GUARD;
 
-/// The scan progress counts the folders the walk in flight has reached, and
-/// is gone once the walk finishes.
+/// The only root's stored outcome.
+fn only_outcome(scans: Vec<crate::StoredRootScan>) -> crate::StoredScanOutcome {
+    let [scan] = <[_; 1]>::try_from(scans).expect("one root is watched");
+    scan.outcome
+}
+
+/// An open generation counts the folders its walk has stored, and stores
+/// its outcome once the walk finishes.
 #[tokio::test]
-async fn folder_scan_progress_follows_the_walk_in_flight() {
+async fn stored_scans_follow_the_walk_in_flight() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
@@ -15,36 +21,25 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
-    let mut live = tables.subscribe_folder_scan_progress();
-    let initial = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .unwrap()
-        .activity
-        .expect("the open generation projects scan activity");
-    assert_eq!(initial.found_count, 1);
-    assert_eq!(initial.folders[0].found_count, 1);
+    let mut live = tables.subscribe_stored_folder_scans();
+    let initial = live.next().await.expect("the query stays open").unwrap();
+    assert_eq!(only_outcome(initial), crate::StoredScanOutcome::Unfinished { found_count: 1 });
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
     let grown = tokio::time::timeout(HANG_GUARD, live.next())
         .await
-        .expect("a scan item wakes the scan progress")
+        .expect("a scan item wakes the stored scans")
         .expect("the query stays open")
-        .unwrap()
-        .activity
-        .expect("the scan activity updates with the current generation");
-    assert_eq!(grown.found_count, 2);
-    assert_eq!(grown.folders[0].found_count, 2);
+        .unwrap();
+    assert_eq!(only_outcome(grown), crate::StoredScanOutcome::Unfinished { found_count: 2 });
 
     tables.finish_folder_scan(root, generation, None).await.unwrap();
     let complete = tokio::time::timeout(HANG_GUARD, live.next())
         .await
-        .expect("finishing the scan wakes the scan progress")
+        .expect("finishing the scan wakes the stored scans")
         .expect("the query stays open")
         .unwrap();
-    assert_eq!(complete.activity, None);
-    assert!(matches!(complete.statuses[0].status, crate::FolderScanStatus::Complete));
+    assert_eq!(only_outcome(complete), crate::StoredScanOutcome::Complete);
 }
 
 /// Whether a watched folder is on a network volume is what its scan recorded
@@ -52,7 +47,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
 /// which for a share that stopped answering would wait as long as the mount.
 /// A folder on this machine's disk recorded as network reads as network.
 #[tokio::test]
-async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
+async fn stored_scans_read_the_volume_their_scan_recorded() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
@@ -60,20 +55,16 @@ async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Network).await.unwrap();
     tables.finish_folder_scan(root, generation, None).await.unwrap();
 
-    let progress = tables
-        .subscribe_folder_scan_progress()
-        .next()
-        .await
-        .expect("the query stays open")
-        .unwrap();
+    let scans = tables.load_stored_folder_scans().await.unwrap();
 
-    assert!(progress.statuses[0].on_network_volume);
+    assert!(scans[0].on_network_volume);
 }
 
 /// A rescan retains the previous generation until the new walk succeeds, but
-/// progress counts only the entries encountered by the generation in flight.
+/// the found count is only the entries encountered by the generation in
+/// flight.
 #[tokio::test]
-async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
+async fn stored_scans_count_only_the_generation_in_flight() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
@@ -94,23 +85,17 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
         .await
         .unwrap();
 
-    let activity = tables
-        .subscribe_folder_scan_progress()
-        .next()
-        .await
-        .expect("the query stays open")
-        .unwrap()
-        .activity
-        .expect("the rescan projects activity");
-    assert_eq!(activity.found_count, 1);
-    assert_eq!(activity.folders[0].found_count, 1);
+    assert_eq!(
+        only_outcome(tables.load_stored_folder_scans().await.unwrap()),
+        crate::StoredScanOutcome::Unfinished { found_count: 1 }
+    );
 }
 
-/// The scan progress lists the watched folders in the order they are
-/// listed, read in that order from their positions' index: the folder added
-/// first comes first, whatever its path.
+/// The stored scans list the watched folders in the order they are listed,
+/// read in that order from their positions' index: the folder added first
+/// comes first, whatever its path.
 #[tokio::test]
-async fn folder_scan_progress_lists_the_folders_in_their_order() {
+async fn stored_scans_list_the_folders_in_their_order() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let roots = [
@@ -124,19 +109,10 @@ async fn folder_scan_progress_lists_the_folders_in_their_order() {
         tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     }
 
-    let progress = tables
-        .subscribe_folder_scan_progress()
-        .next()
-        .await
-        .expect("the query stays open")
-        .unwrap();
+    let scans = tables.load_stored_folder_scans().await.unwrap();
     assert_eq!(
-        progress
-            .statuses
-            .iter()
-            .map(|status| status.watched_folder_name.as_str())
-            .collect::<Vec<_>>(),
-        ["zeta", "alpha"]
+        scans.iter().map(|scan| scan.watched_folder_path.clone()).collect::<Vec<_>>(),
+        roots
     );
 
     let plan = db

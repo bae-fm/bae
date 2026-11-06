@@ -90,6 +90,9 @@ pub struct ImportServiceHandle {
     folder_state_commit: crate::FolderStateCommit,
     import_cancels: crate::import_cancel::ImportCancels,
     watcher: WorkerThread<WatcherCommand>,
+    /// What the folder scan coordinator holds of each root's scan that no
+    /// table does, which the scan progress puts beside the stored scans.
+    scans_in_memory: tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
     runtime_handle: tokio::runtime::Handle,
     /// Where a panic in work the handle starts and nobody awaits is reported.
     diagnostics: bae_diagnostics::Diagnostics,
@@ -128,6 +131,9 @@ impl ImportServiceHandle {
     pub(super) fn new(
         worker: WorkerThread<crate::service::ImportWorkerMessage>,
         watcher: WorkerThread<WatcherCommand>,
+        scans_in_memory: tokio::sync::watch::Receiver<
+            crate::folder_scan_status::FolderScansInMemory,
+        >,
         services: crate::ImportServices,
         runtime: CandidateRuntime,
         runtime_handle: tokio::runtime::Handle,
@@ -186,6 +192,7 @@ impl ImportServiceHandle {
             folder_state_commit,
             import_cancels,
             watcher,
+            scans_in_memory,
             runtime_handle,
             diagnostics,
             closing,

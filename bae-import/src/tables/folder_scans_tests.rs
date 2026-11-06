@@ -38,7 +38,7 @@ fn load_folder_scan_snapshots_on(
             Ok((
                 path_column::get(row, 0)?,
                 row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<String>>(3)?,
                 row.get::<_, i64>(4)?,
             ))
@@ -53,12 +53,12 @@ fn load_folder_scan_snapshots_on(
                 coven::path_text(&watched_folder_path)
             ))
         })?;
-        let status = match (status.as_str(), error) {
-            ("scanning", None) => crate::FolderScanStatus::Scanning {
+        let status = match (status.as_deref(), error) {
+            (None, None) => crate::StoredScanOutcome::Unfinished {
                 found_count: to_u64(found_count, "current folder-scan candidate count")?,
             },
-            ("complete", None) => crate::FolderScanStatus::Complete,
-            ("failed", Some(error)) => crate::FolderScanStatus::Failed { error },
+            (Some("complete"), None) => crate::StoredScanOutcome::Complete,
+            (Some("failed"), Some(error)) => crate::StoredScanOutcome::Failed { error },
             (status, error) => {
                 return Err(DbError::Message(format!(
                     "folder scan root {} has invalid status {status:?} and error {error:?}",
@@ -204,7 +204,7 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     assert_eq!(failed[0].items.len(), 2);
     assert!(matches!(
         &failed[0].status,
-        crate::FolderScanStatus::Failed { error }
+        crate::StoredScanOutcome::Failed { error }
             if error == "directory unreadable"
     ));
 
@@ -214,7 +214,7 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     let complete = tables.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(complete[0].items.len(), 1);
     assert_eq!(complete[0].items[0].key(), second.key());
-    assert_eq!(complete[0].status, crate::FolderScanStatus::Complete);
+    assert_eq!(complete[0].status, crate::StoredScanOutcome::Complete);
 
     assert!(
         tables.save_folder_scan_item(root, generation - 1, &first).await.unwrap().is_none(),
@@ -744,6 +744,6 @@ pub(crate) fn key_of(root: &std::path::Path, name: &str) -> crate::CandidateKey 
 pub struct DbFolderScanSnapshot {
     pub watched_folder_path: std::path::PathBuf,
     pub generation: u64,
-    pub status: crate::FolderScanStatus,
+    pub status: crate::StoredScanOutcome,
     pub items: Vec<crate::folder_scanner::ScanItem>,
 }

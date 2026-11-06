@@ -138,21 +138,23 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         }
     });
 
-    let progress = Arc::new(services.subscribe_folder_scans());
-    let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(0_u64);
-    let reading = progress.clone();
+    // The stored scans' query, which is what reruns the screen's progress,
+    // each found count beside how often the query had run when it returned
+    // it: this scan is written straight to the tables, with no coordinator
+    // reading the root, so the progress itself would not show it running.
+    let mut progress = tables.subscribe_stored_folder_scans();
+    let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
     let progress_reader = tokio::spawn(async move {
-        let progress = reading;
-        loop {
-            let found = match progress.next().await {
-                Ok(read) => read,
-                Err(bae_store::live_query::LiveQueryError::Cancelled) => break,
-                Err(error) => panic!("the progress reads: {error}"),
-            }
-            .activity
-            .expect("the scan is running")
-            .found_count;
-            progress_tx.send_replace(found);
+        while let Some(read) = progress.next().await {
+            let scans = read.expect("the stored scans read");
+            let [bae_import::StoredRootScan {
+                outcome: bae_import::StoredScanOutcome::Unfinished { found_count },
+                ..
+            }] = scans.as_slice()
+            else {
+                panic!("the scan is running: {scans:?}");
+            };
+            progress_tx.send_replace(Some((*found_count, Counted::of(&progress.runs()))));
         }
     });
 
@@ -171,10 +173,10 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     });
 
     settle(&mut list_seen, "the list", |total| *total == 1).await;
-    settle(&mut progress_seen, "the progress", |found| *found == 1).await;
+    settle(&mut progress_seen, "the progress", |seen| matches!(seen, Some((1, _)))).await;
     settle(&mut pane_seen, "the pane", |shown| matches!(shown, Some((false, _)))).await;
     let list_before = Counted::of(&list.runs_for_test());
-    let progress_before = Counted::of(&progress.runs());
+    let progress_before = progress_seen.borrow().expect("the progress showed the seed").1;
     let pane_before = pane_seen.borrow().expect("the pane showed the candidate").1;
 
     for n in 1..=WRITES {
@@ -188,9 +190,15 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
             .unwrap();
     }
     settle(&mut list_seen, "the list", |total| *total == WRITES + 1).await;
-    settle(&mut progress_seen, "the progress", |found| *found == WRITES + 1).await;
+    settle(
+        &mut progress_seen,
+        "the progress",
+        |seen| matches!(seen, Some((found, _)) if *found == WRITES + 1),
+    )
+    .await;
     let list_counted = Counted::of(&list.runs_for_test()).since(list_before);
-    let progress_counted = Counted::of(&progress.runs()).since(progress_before);
+    let progress_counted =
+        progress_seen.borrow().expect("the progress showed the writes").1.since(progress_before);
 
     // The pane has nothing to show for the scan's writes, so a write it does
     // show closes them: once the pane shows it, it has run for everything

@@ -84,9 +84,10 @@ class ImportStore {
     ///
     /// The failure arrives on the folder scans rather than as a transient
     /// event because that is where it lives: the scan writes it to
-    /// `folder_scan_roots` and the scans' live query reads it back, so it is
-    /// delivered whenever the UI subscribes rather than only to whoever was
-    /// already listening. A scan that failed during launch, before any of this
+    /// `folder_scan_roots`, or core's scan coordinator holds one the store
+    /// would not take, and the folder scans read it back, so it is delivered
+    /// whenever the UI subscribes rather than only to whoever was already
+    /// listening. A scan that failed during launch, before any of this
     /// existed, is in the first delivery.
     @ObservationIgnored
     var onScanFailure:

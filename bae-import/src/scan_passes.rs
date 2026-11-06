@@ -4,14 +4,14 @@
 //! a person decided; each stores what it read and announces what changed.
 
 use crate::folder_scanner::{FolderEntry, ScanItem};
-use crate::volume::{directory_modified_at, volume_kind, VolumeKind};
+use crate::volume::{directory_modified_at, volume_kind};
 use crate::watching::{FolderReadingRequest, FolderWatcher, RootPass};
 use crate::ScanEvent;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 mod folder_reading;
 mod scan_items;
@@ -22,7 +22,9 @@ pub(crate) use scan_items::scan_item_seed;
 #[cfg(any(test, feature = "test-utils"))]
 pub use scan_items::store_scan_item;
 use scan_items::{announce_regrouped, announce_scan_write, store_scan_items};
-use scanning::{announce_scan_failure, record_scan_failure, rescan_and_reconcile};
+#[cfg(test)]
+use scanning::ScanEnded;
+use scanning::{record_scan_failure, report_refused_scan_write, rescan_and_reconcile};
 
 /// What the blocking folder walk returns: whether it read the tree, every
 /// directory it visited, and their mtimes when it could read all of them.
@@ -65,15 +67,18 @@ impl RootScanTask {
     }
 }
 
-/// One scan pass has ended. It carries no result because a scan records and
-/// announces its own failure; this only frees the root and ends the wait.
+/// One scan pass has ended: the root is free, and the wait for it ends. A
+/// pass stores its own failure; what it carries is the failure the store
+/// would not take, which the coordinator holds as the root's status.
 pub(crate) struct RootScanCompletion {
     pub(crate) id: u64,
     pub(crate) path: PathBuf,
+    pub(crate) unstored_failure: Option<String>,
 }
 
 /// Run one pass over the root at `path` as `name`, sending its completion on
-/// `completion_tx` when `pass` ends. A pass that panics is reported, and its
+/// `completion_tx` when `pass` ends, with the failure it answers with that
+/// the store would not take. A pass that panics is reported, and its
 /// completion is sent all the same, so the root is freed and its waiters are
 /// answered.
 fn spawn_pass(
@@ -82,7 +87,7 @@ fn spawn_pass(
     path: PathBuf,
     diagnostics: &bae_diagnostics::Diagnostics,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
-    pass: impl std::future::Future<Output = ()> + Send + 'static,
+    pass: impl std::future::Future<Output = Option<String>> + Send + 'static,
 ) -> bae_diagnostics::ReportedTask {
     let panicked_tx = completion_tx.clone();
     let panicked_path = path.clone();
@@ -90,13 +95,14 @@ fn spawn_pass(
         &tokio::runtime::Handle::current(),
         name,
         async move {
-            pass.await;
-            if completion_tx.send(RootScanCompletion { id, path }).is_err() {
+            let unstored_failure = pass.await;
+            if completion_tx.send(RootScanCompletion { id, path, unstored_failure }).is_err() {
                 debug!("folder scan coordinator ended before a pass completed");
             }
         },
         move |_| {
-            if panicked_tx.send(RootScanCompletion { id, path: panicked_path }).is_err() {
+            let completion = RootScanCompletion { id, path: panicked_path, unstored_failure: None };
+            if panicked_tx.send(completion).is_err() {
                 debug!("folder scan coordinator ended before a panicked pass completed");
             }
         },
@@ -180,6 +186,9 @@ fn spawn_folder_reading(
                 );
             }
             request.answer(result);
+            // A decision's failure goes to the person who asked; it stores
+            // no status.
+            None
         });
     RootScanTask::new(cancellation, task)
 }
@@ -202,9 +211,7 @@ fn spawn_changed_folders(
         path,
         &diagnostics,
         completion_tx,
-        async move {
-            read_changed_folders(&pass_path, &folders, &scan, &reading_cancellation).await;
-        },
+        async move { read_changed_folders(&pass_path, &folders, &scan, &reading_cancellation).await },
     );
     RootScanTask::new(cancellation, task)
 }
@@ -221,15 +228,10 @@ fn spawn_root_scan(
     let pass_path = path.clone();
     let task =
         spawn_pass("scan a watched folder", id, path, &diagnostics, completion_tx, async move {
-            if !scan_cancellation.is_cancelled() {
-                // `rescan_and_reconcile` already recorded and announced any
-                // error; passing it on would show it twice.
-                #[expect(
-                    clippy::let_underscore_must_use,
-                    reason = "the rescan records and announces its own error"
-                )]
-                let _ = rescan_and_reconcile(&pass_path, &scan, &scan_cancellation).await;
+            if scan_cancellation.is_cancelled() {
+                return None;
             }
+            rescan_and_reconcile(&pass_path, &scan, &scan_cancellation).await.unstored_failure()
         });
     RootScanTask::new(cancellation, task)
 }

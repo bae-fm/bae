@@ -103,7 +103,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
     assert_eq!(row_generation(&db, root, "Other").await, sibling_generation);
     let snapshot = &tables.load_folder_scan_snapshots().await.unwrap()[0];
     assert!(snapshot.generation > scanned);
-    assert_eq!(snapshot.status, crate::FolderScanStatus::Complete);
+    assert_eq!(snapshot.status, crate::StoredScanOutcome::Complete);
 
     let separated = commit_reading(
         &db,
