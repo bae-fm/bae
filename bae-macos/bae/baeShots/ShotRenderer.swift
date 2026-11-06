@@ -44,7 +44,7 @@ enum ShotRenderer {
             window.close()
         }
 
-        await settle(host: captured)
+        try await settle(host: captured)
 
         switch scene.frame {
         case .content:
@@ -63,24 +63,34 @@ enum ShotRenderer {
     }
 
     /// Wait for `window` to be the key window of the active app, asking for
-    /// that again as it waits: the window server draws a title bar and
-    /// toolbar as inactive otherwise, which the app never shows in use. Fails
-    /// when another app keeps the focus.
+    /// that again whenever the app or the window loses it: the window server
+    /// draws a title bar and toolbar as inactive otherwise, which the app
+    /// never shows in use. Fails when another app keeps the focus.
     private static func becomeKey(
         _ window: NSWindow,
         scene: ShotScene
     ) async throws {
-        for _ in 0..<50 {
-            if NSApp.isActive, window.isKeyWindow {
-                // One more pass for the frame to redraw as active.
-                try? await Task.sleep(nanoseconds: 200_000_000)
-                return
+        let changes = [
+            NSWindow.didBecomeKeyNotification,
+            NSWindow.didResignKeyNotification,
+            NSApplication.didBecomeActiveNotification,
+            NSApplication.didResignActiveNotification,
+        ]
+        .map { Wait.Notice($0, of: nil) }
+        do {
+            try await Wait.until(notices: changes) {
+                if NSApp.isActive, window.isKeyWindow { return true }
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+                return false
             }
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-            try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        throw ShotError.windowNotKey(scene.id)
+        catch is Wait.TimedOut {
+            throw ShotError.windowNotKey(scene.id)
+        }
+        // Draw the frame as active and hand it to the window server.
+        window.displayIfNeeded()
+        CATransaction.flush()
     }
 
     /// The whole window as the window server composes it, as PNG bytes: a
@@ -202,15 +212,19 @@ enum ShotRenderer {
     /// Suspend the capturing task so SwiftUI commits layout and any
     /// `.task`-driven or eager-load work (the album grid's first page, seeded
     /// release details) runs to completion on the main actor before the
-    /// capture. Blocking the main thread here would starve those cooperative
-    /// tasks — the awaits are what let them run.
-    private static func settle(host: NSView) async {
-        host.layoutSubtreeIfNeeded()
-        for _ in 0..<20 {
-            await Task.yield()
+    /// capture, until the frames of every view stop moving. Blocking the main
+    /// thread here would starve those cooperative tasks — the awaits are what
+    /// let them run.
+    private static func settle(host: NSView) async throws {
+        try await Wait.untilSteady {
+            host.layoutSubtreeIfNeeded()
+            return frames(below: host)
         }
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
-        host.layoutSubtreeIfNeeded()
+    }
+
+    /// The frames of every view below `view`, depth first.
+    private static func frames(below view: NSView) -> [CGRect] {
+        view.subviews.flatMap { [$0.frame] + frames(below: $0) }
     }
 }
 
