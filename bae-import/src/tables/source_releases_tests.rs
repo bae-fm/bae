@@ -3,15 +3,18 @@
 //! stored only while a row names it: stored in the write that writes the first
 //! such row, and deleted in the write that drops the last.
 
+use crate::tables::import_list::tests::*;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::IdentifyRunId;
+use crate::MetadataProvenance;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::payloads::ReleasePayloads;
 use bae_catalogs::records::LookupRef;
 use bae_catalogs::records::{MetadataRef, PayloadSource, SourcePayload};
+use bae_catalogs::search::MetadataResult;
 use bae_catalogs::source_release::{SourceRelease, UnfetchedDocument, UnfetchedReason};
 use bae_catalogs::test_documents::{
     linked_discogs_master, linked_discogs_release, linked_musicbrainz_release,
@@ -20,7 +23,6 @@ use bae_catalogs::test_documents::{
 };
 use bae_identify::{RunOutcome, TerminalVerdict};
 use bae_store::test_fixtures::empty_db;
-use bae_store::test_fixtures::{exec, exec_batch};
 use bae_store::Store;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
@@ -613,45 +615,78 @@ async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetc
     assert_eq!(tables.load_source_release(later.release()).await.unwrap(), Some(later));
 }
 
-/// Candidate `a` with a draft, and MusicBrainz releases `rel-1` and `rel-2`
-/// stored with a barcode each, which nothing names yet.
-const SETUP: &str = "
-    INSERT INTO import_candidate_state (content_hash, candidate_key)
-    VALUES ('a', CAST('/music/a' AS BLOB));
-    INSERT INTO import_candidate_edit
-        (content_hash, album_title, album_year, year, author, draft_blank, draft_valid)
-    VALUES ('a', 'Album Title', '', '', 'person', 0, 1);
-    INSERT INTO source_release (catalog, release_id, album_title, album_links)
-    VALUES ('musicbrainz', 'rel-1', 'Album Title', 'read'),
-           ('musicbrainz', 'rel-2', 'Album Title', 'read');
-    INSERT INTO source_release_barcode (catalog, release_id, position, barcode)
-    VALUES ('musicbrainz', 'rel-1', 0, '0123456789012'),
-           ('musicbrainz', 'rel-2', 0, '0123456789029');";
-
-/// A verdict of candidate `owner` whose one match names `release`.
-fn match_naming(owner: &str, release: &str) -> String {
-    format!(
-        "INSERT INTO import_candidate_verdict (content_hash, kind, kept_own_draft)
-         VALUES ('{owner}', 'not_found', 0);
-         INSERT INTO import_candidate_match
-             (content_hash, position, listing, source, release_id, title, media_kind,
-              album_links)
-         VALUES ('{owner}', 0, 'unlisted', 'musicbrainz', '{release}', 'Album Title',
-                 'undescribed', 'not_asked');"
-    )
+/// `key` of `catalog` as a fetch hands it over, printed with `barcode`: one
+/// row hangs off it once stored.
+fn barcoded(catalog: LookupCatalog, key: &str, barcode: &str) -> SourceRelease {
+    let mut release = SourceRelease::for_test(LookupRef::new(catalog, key));
+    release.metadata.pressing.barcodes = vec![barcode.to_string()];
+    release
 }
 
-/// Whether MusicBrainz release `release` is stored, and how many rows hang
-/// off it.
-async fn stored(db: &Store, release: &str) -> (bool, i64) {
-    let release = release.to_string();
-    db.call(move |sql| {
+/// The releases the writes below carry: MusicBrainz `rel-1` and `rel-2`, and
+/// Discogs `dg-1`, which pairs with `rel-2` as one pressing.
+fn carried() -> Vec<SourceRelease> {
+    vec![
+        barcoded(LookupCatalog::MusicBrainz, "rel-1", "0123456789012"),
+        barcoded(LookupCatalog::MusicBrainz, "rel-2", "0123456789029"),
+        barcoded(LookupCatalog::Discogs, "dg-1", "0123456789036"),
+    ]
+}
+
+/// MusicBrainz release `key`.
+fn musicbrainz(key: &str) -> LookupRef {
+    LookupRef::new(LookupCatalog::MusicBrainz, key)
+}
+
+impl Library {
+    /// A lookup of the release at `display_path` stored, its one match
+    /// naming MusicBrainz release `release`.
+    fn match_naming(&self, display_path: &str, release: &str) -> Write {
+        let found = MetadataResult { release_id: release.to_string(), ..found_release(0, FITS) };
+        self.concluded_carrying(display_path, found_verdict(11, [(found, 0)]), carried())
+    }
+
+    /// The release's draft applied from `provenance`.
+    fn sourced(&self, display_path: &str, provenance: Option<MetadataProvenance>) -> Write {
+        self.metadata_carrying(
+            display_path,
+            metadata_draft("Album Title", "Artist"),
+            provenance,
+            carried(),
+        )
+    }
+
+    /// The release linked to MusicBrainz pressing `release`, with Discogs
+    /// `partners`, or to nothing.
+    fn pressing(&self, display_path: &str, release: Option<&str>, partners: &[&str]) -> Write {
+        let link = release.map(|release| {
+            crate::ReleaseLink::Pressing(bae_identify::PressingLink {
+                record: musicbrainz(release),
+                partners: partners
+                    .iter()
+                    .map(|partner| LookupRef::new(LookupCatalog::Discogs, *partner))
+                    .collect(),
+            })
+        });
+        self.link_carrying(display_path, link, carried())
+    }
+}
+
+/// A draft read from MusicBrainz release `key`.
+fn read_from(key: &str) -> Option<MetadataProvenance> {
+    Some(MetadataProvenance::ExternalRelease { record: musicbrainz(key) })
+}
+
+/// Whether `release` is stored, and how many rows hang off it.
+async fn stored(db: &Store, release: &LookupRef) -> (bool, i64) {
+    let (catalog, key) = (release.catalog.as_str(), release.key.clone());
+    db.read(move |sql| {
         Ok(sql.query_row(
             "SELECT EXISTS (SELECT 1 FROM source_release \
-                            WHERE catalog = 'musicbrainz' AND release_id = ?1), \
+                            WHERE catalog = ?1 AND release_id = ?2), \
                     (SELECT COUNT(*) FROM source_release_barcode \
-                     WHERE catalog = 'musicbrainz' AND release_id = ?1)",
-            [&release],
+                     WHERE catalog = ?1 AND release_id = ?2)",
+            [catalog, key.as_str()],
             |row| Ok((row.get::<_, bool>(0)?, row.get::<_, i64>(1)?)),
         )?)
     })
@@ -659,93 +694,87 @@ async fn stored(db: &Store, release: &str) -> (bool, i64) {
     .unwrap()
 }
 
-/// Each kind of row that names a release keeps it, and deleting that row, or
-/// changing it to name another release or none, deletes the release and the
-/// rows under it in the same write. A candidate's whole state going — as an
-/// import or a removed folder takes it — takes every release only it named.
+/// A write a case makes of the release at `a`.
+type CaseWrite = fn(&Library) -> Write;
+
+/// Each kind of row that names a release keeps it, and the write that drops
+/// that row, or changes it to name another release or none, deletes the
+/// release and the rows under it in the same write. A candidate's whole state
+/// going — as a removed folder takes it — takes every release only it named.
 #[tokio::test]
 async fn the_last_row_naming_a_catalog_release_takes_it_with_it() {
-    let cases: [(&str, String, &str); 9] = [
+    let rel_1 = musicbrainz("rel-1");
+    let dg_1 = LookupRef::new(LookupCatalog::Discogs, "dg-1");
+    let cases: [(&str, CaseWrite, CaseWrite, &LookupRef); 9] = [
         (
             "a match whose verdict goes",
-            match_naming("a", "rel-1"),
-            "DELETE FROM import_candidate_verdict WHERE content_hash = 'a'",
+            |lib| lib.match_naming("a", "rel-1"),
+            |lib| lib.file_decision("a"),
+            &rel_1,
         ),
         (
             "a match that names another release",
-            match_naming("a", "rel-1"),
-            "UPDATE import_candidate_match SET release_id = 'rel-2'",
+            |lib| lib.match_naming("a", "rel-1"),
+            |lib| lib.match_naming("a", "rel-2"),
+            &rel_1,
         ),
         (
-            "a draft's provenance that goes",
-            "INSERT INTO import_candidate_draft_provenance (content_hash, kind, source, release_id)
-             VALUES ('a', 'external_release', 'musicbrainz', 'rel-1');"
-                .to_string(),
-            "DELETE FROM import_candidate_draft_provenance",
+            "a draft's source that goes",
+            |lib| lib.sourced("a", read_from("rel-1")),
+            |lib| lib.sourced("a", None),
+            &rel_1,
         ),
         (
-            "a draft's provenance that turns to the files' tags",
-            "INSERT INTO import_candidate_draft_provenance (content_hash, kind, source, release_id)
-             VALUES ('a', 'external_release', 'musicbrainz', 'rel-1');"
-                .to_string(),
-            "UPDATE import_candidate_draft_provenance
-             SET kind = 'file_tags', source = NULL, release_id = NULL",
+            "a draft's source that turns to the files' tags",
+            |lib| lib.sourced("a", read_from("rel-1")),
+            |lib| lib.sourced("a", Some(MetadataProvenance::FileMetadata)),
+            &rel_1,
         ),
         (
             "a link that goes",
-            "INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id)
-             VALUES ('a', 'pressing', 'musicbrainz', 'rel-1');"
-                .to_string(),
-            "DELETE FROM import_candidate_release_link",
+            |lib| lib.pressing("a", Some("rel-1"), &[]),
+            |lib| lib.pressing("a", None, &[]),
+            &rel_1,
         ),
         (
             "a link that names another release",
-            "INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id)
-             VALUES ('a', 'pressing', 'musicbrainz', 'rel-1');"
-                .to_string(),
-            "UPDATE import_candidate_release_link SET release_id = 'rel-2'",
+            |lib| lib.pressing("a", Some("rel-1"), &[]),
+            |lib| lib.pressing("a", Some("rel-2"), &[]),
+            &rel_1,
         ),
         (
             "a partner that goes",
-            "INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id)
-             VALUES ('a', 'pressing', 'musicbrainz', 'rel-2');
-             INSERT INTO import_candidate_release_link_partner
-                 (content_hash, kind, source, release_id)
-             VALUES ('a', 'pressing', 'musicbrainz', 'rel-1');"
-                .to_string(),
-            "DELETE FROM import_candidate_release_link_partner",
+            |lib| lib.pressing("a", Some("rel-2"), &["dg-1"]),
+            |lib| lib.pressing("a", Some("rel-2"), &[]),
+            &dg_1,
         ),
         (
             "a partner whose link goes",
-            "INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id)
-             VALUES ('a', 'pressing', 'musicbrainz', 'rel-2');
-             INSERT INTO import_candidate_release_link_partner
-                 (content_hash, kind, source, release_id)
-             VALUES ('a', 'pressing', 'musicbrainz', 'rel-1');"
-                .to_string(),
-            "DELETE FROM import_candidate_release_link",
+            |lib| lib.pressing("a", Some("rel-2"), &["dg-1"]),
+            |lib| lib.pressing("a", None, &[]),
+            &dg_1,
         ),
         (
             "every row of a candidate whose state goes",
-            format!(
-                "{}
-                 INSERT INTO import_candidate_draft_provenance
-                     (content_hash, kind, source, release_id)
-                 VALUES ('a', 'external_release', 'musicbrainz', 'rel-1');
-                 INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id)
-                 VALUES ('a', 'pressing', 'musicbrainz', 'rel-1');",
-                match_naming("a", "rel-1")
-            ),
-            "DELETE FROM import_candidate_state WHERE content_hash = 'a'",
+            |lib| {
+                lib.sourced("a", read_from("rel-1"))
+                    + lib.pressing("a", Some("rel-1"), &[])
+                    + lib.match_naming("a", "rel-1")
+            },
+            |lib| lib.unwatch(),
+            &rel_1,
         ),
     ];
-    for (case, naming, dropping) in cases {
-        let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
-        exec_batch(&db, SETUP).await;
-        exec_batch(&db, &naming).await;
-        assert_eq!(stored(&db, "rel-1").await, (true, 1), "{case}: named, so kept");
-        exec(&db, dropping, &[]).await;
-        assert_eq!(stored(&db, "rel-1").await, (false, 0), "{case}: no row names it, so it goes");
+    for (case, naming, dropping, release) in cases {
+        let lib = Library::new().await;
+        lib.run(lib.scan("a") + naming(&lib)).await;
+        assert_eq!(stored(&lib.db, release).await, (true, 1), "{case}: named, so kept");
+        lib.run(dropping(&lib)).await;
+        assert_eq!(
+            stored(&lib.db, release).await,
+            (false, 0),
+            "{case}: no row names it, so it goes"
+        );
     }
 }
 
@@ -753,24 +782,19 @@ async fn the_last_row_naming_a_catalog_release_takes_it_with_it() {
 /// the second.
 #[tokio::test]
 async fn a_release_two_candidates_name_stays_until_both_drop_it() {
-    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, SETUP).await;
-    exec_batch(
-        &db,
-        &format!(
-            "INSERT INTO import_candidate_state (content_hash, candidate_key)
-             VALUES ('b', CAST('/music/b' AS BLOB));
-             INSERT INTO import_candidate_release_link (content_hash, kind, source, release_id)
-             VALUES ('a', 'pressing', 'musicbrainz', 'rel-1');
-             {}",
-            match_naming("b", "rel-1")
-        ),
+    let lib = Library::new().await;
+    let rel_1 = musicbrainz("rel-1");
+    lib.run(
+        lib.scan("a")
+            + lib.scan("b")
+            + lib.pressing("a", Some("rel-1"), &[])
+            + lib.match_naming("b", "rel-1"),
     )
     .await;
-    exec(&db, "DELETE FROM import_candidate_release_link WHERE content_hash = 'a'", &[]).await;
-    assert_eq!(stored(&db, "rel-1").await, (true, 1), "b's match still names it");
-    exec(&db, "DELETE FROM import_candidate_verdict WHERE content_hash = 'b'", &[]).await;
-    assert_eq!(stored(&db, "rel-1").await, (false, 0), "nothing names it");
+    lib.run(lib.pressing("a", None, &[])).await;
+    assert_eq!(stored(&lib.db, &rel_1).await, (true, 1), "b's match still names it");
+    lib.run(lib.file_decision("b")).await;
+    assert_eq!(stored(&lib.db, &rel_1).await, (false, 0), "nothing names it");
 }
 
 /// `release` as a fetch hands it over, unstored.

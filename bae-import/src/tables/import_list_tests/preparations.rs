@@ -92,12 +92,24 @@ impl Library {
         draft: crate::RawReleaseEdit,
         provenance: Option<crate::MetadataProvenance>,
     ) -> Write {
+        self.metadata_carrying(display_path, draft, provenance, Vec::new())
+    }
+
+    /// [`Library::metadata`], the write carrying `releases` to store the one
+    /// its source names.
+    pub(crate) fn metadata_carrying(
+        &self,
+        display_path: &str,
+        draft: crate::RawReleaseEdit,
+        provenance: Option<crate::MetadataProvenance>,
+        releases: Vec<bae_catalogs::source_release::SourceRelease>,
+    ) -> Write {
         let preparations = self.preparations();
         let hash = self.hash(display_path);
         let key = self.key(display_path);
         Write::step(async move {
             preparations
-                .replace_metadata(&hash, &key, &draft, provenance.as_ref(), &[])
+                .replace_metadata(&hash, &key, &draft, provenance.as_ref(), &releases)
                 .await
                 .unwrap();
         })
@@ -131,10 +143,21 @@ impl Library {
 
     /// The release at `display_path` linked to `link`, or to nothing.
     pub(crate) fn link(&self, display_path: &str, link: Option<crate::ReleaseLink>) -> Write {
+        self.link_carrying(display_path, link, Vec::new())
+    }
+
+    /// [`Library::link`], the write carrying `releases` to store the ones the
+    /// link names.
+    pub(crate) fn link_carrying(
+        &self,
+        display_path: &str,
+        link: Option<crate::ReleaseLink>,
+        releases: Vec<bae_catalogs::source_release::SourceRelease>,
+    ) -> Write {
         let preparations = self.preparations();
         let hash = self.hash(display_path);
         Write::step(async move {
-            preparations.replace_link(&hash, link.as_ref(), &[]).await.unwrap();
+            preparations.replace_link(&hash, link.as_ref(), &releases).await.unwrap();
         })
     }
 
@@ -167,6 +190,30 @@ impl Library {
         verdict: TerminalVerdict,
         revision: u64,
     ) -> Write {
+        self.concluded_storing(display_path, verdict, revision, Vec::new())
+    }
+
+    /// [`Library::concluded`], the write carrying `releases` to store the
+    /// ones its matches name.
+    pub(crate) fn concluded_carrying(
+        &self,
+        display_path: &str,
+        verdict: TerminalVerdict,
+        releases: Vec<bae_catalogs::source_release::SourceRelease>,
+    ) -> Write {
+        self.concluded_storing(display_path, verdict, 0, releases)
+    }
+
+    /// The lookup of the release at `display_path`, run over its files'
+    /// decisions at `revision`, stored as concluding `verdict` with
+    /// `releases` carried.
+    fn concluded_storing(
+        &self,
+        display_path: &str,
+        verdict: TerminalVerdict,
+        revision: u64,
+        releases: Vec<bae_catalogs::source_release::SourceRelease>,
+    ) -> Write {
         let preparations = self.preparations();
         let row = NewImportCandidateVerdict {
             content_hash: self.hash(display_path),
@@ -175,7 +222,7 @@ impl Library {
             verdict,
             signals: crate::tables::import_state::tests::settled_signals(),
             pick: None,
-            releases: Vec::new(),
+            releases,
         };
         Write::step(async move {
             assert!(preparations.store_verdict(&row).await.unwrap(), "the verdict lands");
