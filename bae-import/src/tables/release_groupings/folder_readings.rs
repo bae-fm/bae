@@ -281,6 +281,28 @@ impl ImportTables {
             })
             .await
     }
+
+    /// Plant damage for a test: a folder reading anchored at `folder`, a
+    /// path no scan spells (one with a `.` part, say). Every reading is
+    /// stored at the folder a scan read, so no write stores one; a damaged
+    /// store holds one, and the readings' read checks for it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn plant_unscanned_folder_reading_for_test(
+        &self,
+        folder: &Path,
+    ) -> Result<(), DbError> {
+        let folder = coven::path_bytes(folder);
+        self.store
+            .call(move |sql| {
+                sql.execute(
+                    "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
+                     VALUES (CAST('grouping:damaged' AS BLOB), ?, 1, 'user')",
+                    [folder],
+                )?;
+                Ok(())
+            })
+            .await
+    }
 }
 
 #[cfg(test)]

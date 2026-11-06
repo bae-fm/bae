@@ -288,13 +288,8 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     let root_key = root.to_path_buf();
 
     let invalid_folder = format!("{}/a/./b", root_key.display());
-    f.library
-        .store()
-        .execute_local_sql_for_test(&format!(
-            "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-         VALUES (CAST('grouping:corrupt' AS BLOB), X'{}', 1, 'user')",
-            hex::encode(invalid_folder.as_bytes()),
-        ))
+    bae_import::tables::ImportTables::new(f.library.store().clone())
+        .plant_unscanned_folder_reading_for_test(std::path::Path::new(&invalid_folder))
         .await
         .unwrap();
     let mut events = f.handle.every_scan_event_for_test();
