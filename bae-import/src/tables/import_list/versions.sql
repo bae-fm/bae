@@ -27,11 +27,8 @@ BEGIN
     UPDATE import_list_versions SET version = version + 1 WHERE source = 'import_list_placement';
 END;
 
-CREATE TRIGGER IF NOT EXISTS import_list_placement_order_moved AFTER UPDATE OF watched_folder_path, item, key, root_position, tab, pending_state, holds_nested, own_date, group_date, folder, shown_title, shown_artists ON import_list_placement
-WHEN OLD.watched_folder_path IS NOT NEW.watched_folder_path
-  OR OLD.item IS NOT NEW.item
-  OR OLD.key IS NOT NEW.key
-  OR OLD.root_position IS NOT NEW.root_position
+CREATE TRIGGER IF NOT EXISTS import_list_placement_order_moved AFTER UPDATE OF root_position, tab, pending_state, holds_nested, own_date, group_date, folder, shown_title, shown_artists ON import_list_placement
+WHEN OLD.root_position IS NOT NEW.root_position
   OR OLD.tab IS NOT NEW.tab
   OR OLD.pending_entry IS NOT NEW.pending_entry
   OR OLD.group_folder IS NOT NEW.group_folder
@@ -81,9 +78,8 @@ BEGIN
     UPDATE import_list_versions SET version = version + 1 WHERE source = 'scan_candidate';
 END;
 
-CREATE TRIGGER IF NOT EXISTS scan_candidate_order_moved AFTER UPDATE OF path, content_hash ON scan_candidate
-WHEN OLD.path IS NOT NEW.path
-  OR OLD.content_hash IS NOT NEW.content_hash
+CREATE TRIGGER IF NOT EXISTS scan_candidate_order_moved AFTER UPDATE OF content_hash ON scan_candidate
+WHEN OLD.content_hash IS NOT NEW.content_hash
 BEGIN
     UPDATE import_list_versions SET version = version + 1 WHERE source = 'scan_candidate';
 END;

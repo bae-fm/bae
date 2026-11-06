@@ -137,26 +137,6 @@ async fn a_release_is_dated_by_its_folder() {
     );
 }
 
-/// The watched folders' order is the list's order after the date, so moving
-/// one moves every row under it, its group headers included.
-#[tokio::test]
-async fn reordering_the_watched_folders_moves_every_row_under_them() {
-    let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Artist/Album"), lib.scan_as("Broken", "invalid"))).await;
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE watched_import_folders SET position = 3 WHERE path = {};",
-            lib.sql_root()
-        ))
-        .await,
-        moves([
-            (lib.release("Artist/Album"), Some(found("Artist/Album").grouped("Artist").at_root(3))),
-            (lib.group("Artist"), Some(header("Artist", None).at_root(3))),
-            (lib.invalid("Broken"), Some(failed_validation("Broken").at_root(3))),
-        ])
-    );
-}
-
 /// Skipping a folder moves its release to Skipped, out of Found's states;
 /// restoring it brings it back.
 #[tokio::test]

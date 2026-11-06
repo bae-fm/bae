@@ -17,12 +17,11 @@ CREATE TABLE IF NOT EXISTS import_identify_run (
 CREATE INDEX IF NOT EXISTS idx_import_identify_run_key ON import_identify_run (candidate_key);
 
 CREATE TRIGGER IF NOT EXISTS import_identify_run_on_standing_moved
-AFTER UPDATE OF candidate_key, identify_run ON import_candidate_standing
-WHEN (OLD.candidate_key, OLD.identify_run) IS NOT (NEW.candidate_key, NEW.identify_run)
+AFTER UPDATE OF identify_run ON import_candidate_standing
+WHEN OLD.identify_run IS NOT NEW.identify_run
 BEGIN
     DELETE FROM import_identify_run
-    WHERE candidate_key = OLD.candidate_key
-      AND (candidate_key, identify_run) IS NOT (NEW.candidate_key, NEW.identify_run);
+    WHERE candidate_key = NEW.candidate_key AND identify_run IS NOT NEW.identify_run;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_identify_run_on_standing_removed

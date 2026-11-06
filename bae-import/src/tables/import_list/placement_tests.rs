@@ -112,10 +112,6 @@ impl Placed {
             ..self
         }
     }
-
-    pub(crate) fn at_root(self, root_position: i64) -> Self {
-        Self { root_position, ..self }
-    }
 }
 
 impl Library {

@@ -1,6 +1,5 @@
 -- The placement follows what the scan stores: each change to its releases,
--- their folders' dates, the watched folders' order, the folders the person
--- skipped and a failed folder's tags places again the releases it can move
+-- their folders' dates, the folders the person skipped and a failed folder's tags places again the releases it can move
 -- (`import_list_replace`). A change to a column the rules don't read places
 -- nothing.
 
@@ -15,22 +14,14 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_candidate_changed AFTER UPDATE OF
-    watched_folder_path, path, kind, name, relative_folder, folder, content_hash,
-    file_edit_revision, grouping_key, source_kind ON scan_candidate
-WHEN (OLD.watched_folder_path, OLD.path, OLD.kind, OLD.name, OLD.relative_folder, OLD.folder,
-      OLD.content_hash, OLD.file_edit_revision, OLD.grouping_key, OLD.source_kind)
-  IS NOT (NEW.watched_folder_path, NEW.path, NEW.kind, NEW.name, NEW.relative_folder, NEW.folder,
-          NEW.content_hash, NEW.file_edit_revision, NEW.grouping_key, NEW.source_kind)
+    kind, name, relative_folder, folder, content_hash, file_edit_revision, grouping_key,
+    source_kind ON scan_candidate
+WHEN (OLD.kind, OLD.name, OLD.relative_folder, OLD.folder, OLD.content_hash,
+      OLD.file_edit_revision, OLD.grouping_key, OLD.source_kind)
+  IS NOT (NEW.kind, NEW.name, NEW.relative_folder, NEW.folder, NEW.content_hash,
+          NEW.file_edit_revision, NEW.grouping_key, NEW.source_kind)
 BEGIN
-    INSERT INTO import_list_replace (key) SELECT OLD.path UNION SELECT NEW.path;
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_list_on_watched_folder_moved
-AFTER UPDATE OF position ON watched_import_folders
-WHEN OLD.position IS NOT NEW.position
-BEGIN
-    UPDATE import_list_placement SET root_position = NEW.position
-    WHERE watched_folder_path = NEW.path;
+    INSERT INTO import_list_replace (key) VALUES (NEW.path);
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_discovery_added AFTER INSERT ON folder_discovery
@@ -48,14 +39,12 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_discovery_changed
-AFTER UPDATE OF folder, first_seen_at, source_date ON folder_discovery
-WHEN (OLD.folder, OLD.first_seen_at, OLD.source_date)
-  IS NOT (NEW.folder, NEW.first_seen_at, NEW.source_date)
+AFTER UPDATE OF first_seen_at, source_date ON folder_discovery
+WHEN (OLD.first_seen_at, OLD.source_date) IS NOT (NEW.first_seen_at, NEW.source_date)
 BEGIN
     INSERT INTO import_list_replace (key)
-    SELECT path FROM scan_candidate WHERE folder IN (OLD.folder, NEW.folder)
-    UNION SELECT grouping_key FROM release_grouping_member
-          WHERE member_folder IN (OLD.folder, NEW.folder);
+    SELECT path FROM scan_candidate WHERE folder = NEW.folder
+    UNION SELECT grouping_key FROM release_grouping_member WHERE member_folder = NEW.folder;
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_skip_added AFTER INSERT ON skipped_import_candidates

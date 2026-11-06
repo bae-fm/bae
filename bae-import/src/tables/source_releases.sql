@@ -385,19 +385,3 @@ BEGIN
       AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
                       WHERE source = OLD.source AND release_id = OLD.release_id);
 END;
-
-CREATE TRIGGER IF NOT EXISTS source_release_renamed_by_link_partner
-AFTER UPDATE OF source, release_id ON import_candidate_release_link_partner
-WHEN OLD.source IS NOT NEW.source OR OLD.release_id IS NOT NEW.release_id
-BEGIN
-    DELETE FROM source_release
-    WHERE catalog = OLD.source AND release_id = OLD.release_id
-      AND NOT EXISTS (SELECT 1 FROM import_candidate_match
-                      WHERE source = OLD.source AND release_id = OLD.release_id)
-      AND NOT EXISTS (SELECT 1 FROM import_candidate_draft_provenance
-                      WHERE source = OLD.source AND release_id = OLD.release_id)
-      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link
-                      WHERE source = OLD.source AND release_id = OLD.release_id)
-      AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link_partner
-                      WHERE source = OLD.source AND release_id = OLD.release_id);
-END;

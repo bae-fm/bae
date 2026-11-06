@@ -11,10 +11,10 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_grouping_changed
-AFTER UPDATE OF key, skipped, blocked ON release_grouping
-WHEN (OLD.key, OLD.skipped, OLD.blocked) IS NOT (NEW.key, NEW.skipped, NEW.blocked)
+AFTER UPDATE OF skipped, blocked ON release_grouping
+WHEN (OLD.skipped, OLD.blocked) IS NOT (NEW.skipped, NEW.blocked)
 BEGIN
-    INSERT INTO import_list_replace (key) SELECT OLD.key UNION SELECT NEW.key;
+    INSERT INTO import_list_replace (key) VALUES (NEW.key);
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_grouping_member_added

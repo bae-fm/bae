@@ -127,16 +127,13 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_reading_changed
-AFTER UPDATE OF anchor_folder, combined ON release_grouping
-WHEN (OLD.anchor_folder, OLD.combined) IS NOT (NEW.anchor_folder, NEW.combined)
+AFTER UPDATE OF combined ON release_grouping
+WHEN NEW.anchor_folder IS NOT NULL AND OLD.combined IS NOT NEW.combined
 BEGIN
     INSERT INTO import_list_recombine (watched_folder_path, group_folder)
     SELECT r.root, CASE WHEN instr(r.folder, X'2F') > 0
                         THEN substr(r.folder, 1, instr(r.folder, X'2F') - 1) ELSE r.folder END
-    FROM (SELECT w.path AS root, bae_folder_relative(w.path, OLD.anchor_folder) AS folder
-          FROM watched_import_folders AS w
-          UNION
-          SELECT w.path, bae_folder_relative(w.path, NEW.anchor_folder)
+    FROM (SELECT w.path AS root, bae_folder_relative(w.path, NEW.anchor_folder) AS folder
           FROM watched_import_folders AS w) AS r
     WHERE r.folder <> X'';
 END;
