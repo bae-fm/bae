@@ -1,6 +1,5 @@
-use bae_store::live_query::{CancellableLiveQuery, LiveQueryError};
+use bae_store::live_query::LiveRead;
 use bae_store::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
-use std::sync::Arc;
 
 /// One artist's group in the album grid grouped by artist. Its range includes
 /// unloaded rows, so clients can lay out every section without fetching every
@@ -39,60 +38,19 @@ pub struct AlbumBrowseSnapshot {
     pub row_count: u64,
 }
 
-pub type LiveAlbumBrowse = LiveLibraryBrowse<crate::AlbumBrowseProjection, AlbumBrowseSnapshot>;
-pub type LiveArtistBrowse = LiveLibraryBrowse<
-    crate::ArtistBrowseProjection,
-    LibraryBrowseSnapshot<crate::album_detail::ArtistSummary>,
->;
-pub type LiveComposerBrowse = LiveLibraryBrowse<
-    crate::ComposerBrowseProjection,
-    LibraryBrowseSnapshot<crate::album_detail::ComposerSummary>,
->;
+/// A windowed list read live: the windows it reads move in place, and each
+/// read resolves to the snapshot its screen takes.
+pub type LiveLibraryBrowse<Snapshot> = LiveRead<LibraryPageWindows, Snapshot>;
+
+pub type LiveAlbumBrowse = LiveLibraryBrowse<AlbumBrowseSnapshot>;
+pub type LiveArtistBrowse =
+    LiveLibraryBrowse<LibraryBrowseSnapshot<crate::album_detail::ArtistSummary>>;
+pub type LiveComposerBrowse =
+    LiveLibraryBrowse<LibraryBrowseSnapshot<crate::album_detail::ComposerSummary>>;
 /// A composer's page's rows, in the windows its screen shows.
-pub type LiveComposerDetailRows = LiveLibraryBrowse<
-    crate::ComposerDetailRowsProjection,
-    LibraryBrowseSnapshot<crate::album_detail::ComposerDetailRow>,
->;
+pub type LiveComposerDetailRows =
+    LiveLibraryBrowse<LibraryBrowseSnapshot<crate::album_detail::ComposerDetailRow>>;
 
 /// The download queue as the Downloads pane draws it: its windows, each row
 /// an entry beside its release.
-pub type LiveDownloadBrowse = LiveLibraryBrowse<
-    bae_transfers::ReleaseQueueWindows<()>,
-    LibraryBrowseSnapshot<bae_transfers::DownloadRow>,
->;
-
-/// A windowed list read live: the windows it reads move in place, and each
-/// read resolves to the `Snapshot` its screen takes.
-pub struct LiveLibraryBrowse<Projection, Snapshot> {
-    query: CancellableLiveQuery<LibraryPageWindows, Projection>,
-    resolve: Arc<dyn Fn(Projection, u64, coven::LiveQueryCause) -> Snapshot + Send + Sync>,
-}
-
-impl<Projection, Snapshot> LiveLibraryBrowse<Projection, Snapshot>
-where
-    Projection: Clone + PartialEq + Send + 'static,
-    Snapshot: Send + 'static,
-{
-    pub fn new(
-        query: CancellableLiveQuery<LibraryPageWindows, Projection>,
-        resolve: impl Fn(Projection, u64, coven::LiveQueryCause) -> Snapshot + Send + Sync + 'static,
-    ) -> Self {
-        Self { query, resolve: Arc::new(resolve) }
-    }
-
-    pub fn set_windows(&self, windows: LibraryPageWindows) -> Result<(), LiveQueryError> {
-        self.query.set(windows).map(|_| ()).map_err(LiveQueryError::from)
-    }
-
-    pub async fn next(&self) -> Result<Snapshot, LiveQueryError> {
-        let event = self.query.next().await.map_err(LiveQueryError::from)?;
-        let revision = event.revision.0;
-        let cause = event.cause;
-        let projection = event.result?;
-        Ok((self.resolve)(projection, revision, cause))
-    }
-
-    pub async fn cancel(&self) {
-        self.query.close().await;
-    }
-}
+pub type LiveDownloadBrowse = LiveLibraryBrowse<LibraryBrowseSnapshot<bae_transfers::DownloadRow>>;

@@ -243,7 +243,9 @@ impl AppServices {
             group_by_artist,
             std::collections::BTreeSet::new(),
         ));
-        bae_views::LiveLibraryBrowse::new(query, bae_views::album::resolve_album_browse)
+        bae_views::LiveAlbumBrowse::new(query, |read, projection| {
+            Some(bae_views::album::resolve_album_browse(projection, read.revision, read.cause))
+        })
     }
 
     /// Which of the albums the grid has selected are gone from the library,
@@ -304,7 +306,9 @@ impl AppServices {
         let query = manager.until_closed(
             self.inner.views.subscribe_artist_browse(sort, std::collections::BTreeSet::new()),
         );
-        bae_views::LiveLibraryBrowse::new(query, bae_views::artist::resolve_artist_browse)
+        bae_views::LiveArtistBrowse::new(query, |read, projection| {
+            Some(bae_views::artist::resolve_artist_browse(projection, read.revision, read.cause))
+        })
     }
 
     pub fn subscribe_composer_browse(
@@ -315,7 +319,13 @@ impl AppServices {
         let query = manager.until_closed(
             self.inner.views.subscribe_composer_browse(sort, std::collections::BTreeSet::new()),
         );
-        bae_views::LiveLibraryBrowse::new(query, bae_views::composer::resolve_composer_browse)
+        bae_views::LiveComposerBrowse::new(query, |read, projection| {
+            Some(bae_views::composer::resolve_composer_browse(
+                projection,
+                read.revision,
+                read.cause,
+            ))
+        })
     }
 
     /// The rows of `artist_id`'s composer page, reading no windows until
@@ -330,10 +340,13 @@ impl AppServices {
                 .views
                 .subscribe_composer_detail_rows(artist_id, std::collections::BTreeSet::new()),
         );
-        bae_views::LiveLibraryBrowse::new(
-            query,
-            bae_views::composer_detail::resolve_composer_detail_rows,
-        )
+        bae_views::LiveComposerDetailRows::new(query, |read, projection| {
+            Some(bae_views::composer_detail::resolve_composer_detail_rows(
+                projection,
+                read.revision,
+                read.cause,
+            ))
+        })
     }
 
     pub fn subscribe_playback_progress(&self) -> bae_playback::PlaybackProgressFeed {

@@ -1,5 +1,7 @@
-//! One coven live query, held so it can be reconfigured and cancelled, and
-//! [`LiveValues`], one a surface only pulls values from.
+//! One coven live query, held so it can be reconfigured and cancelled;
+//! [`LiveRead`], one whose request moves in place and whose reads resolve into
+//! what a screen takes; and [`LiveValues`], one a surface only pulls values
+//! from.
 //!
 //! A subscription hands a UI a stream of values and takes back requests for
 //! different ones. Three things make that work: the query, the handle that
@@ -18,7 +20,9 @@
 
 use tokio_util::sync::CancellationToken;
 
+mod read;
 mod values;
+pub use read::{LiveRead, LiveRequest, ReadFor};
 pub use values::{LiveSource, LiveValues};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
@@ -153,7 +157,7 @@ where
 impl<Request, Projection> CancellableLiveQuery<Request, Projection> {
     /// Refuse every later request and settle a waiting read. The query itself
     /// lives until [`Self::close`] takes it, or until this is dropped.
-    pub fn cancel(&self) {
+    pub(crate) fn cancel(&self) {
         self.cancellation.cancel();
         self.requests.lock().expect("live query request mutex poisoned").take();
     }

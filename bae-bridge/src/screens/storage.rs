@@ -1,7 +1,6 @@
 //! The Storage Manager's list as it pulls it: one live read for as long as
 //! the manager is open, whose view moves in place.
 
-use super::detail::live_read_error;
 use crate::types::{BridgeError, BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort};
 
 browse_window! {
@@ -127,6 +126,6 @@ impl StorageBrowseSubscription {
                 windows: super::core_windows(windows),
                 selected: selected.into_iter().collect(),
             })
-            .map_err(live_read_error)
+            .map_err(BridgeError::from)
     }
 }

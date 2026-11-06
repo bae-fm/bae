@@ -423,10 +423,10 @@ async fn closing_the_library_ends_a_held_live_read_before_its_store_closes() {
     loop {
         match tokio::time::timeout(HANG_GUARD, release.next()).await.expect("the live read ends") {
             Ok(_) => {}
-            Err(bae_library::LiveReadError::Query(error)) => {
+            Err(bae_store::live_query::LiveQueryError::Query(error)) => {
                 panic!("the live read heard from the closed store: {error}")
             }
-            Err(bae_library::LiveReadError::Cancelled) => break,
+            Err(bae_store::live_query::LiveQueryError::Cancelled) => break,
         }
     }
 }

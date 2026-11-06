@@ -51,8 +51,8 @@ macro_rules! live_query_read {
 
 live_query_read!(LiveValues<T> => T, over [T: Clone + PartialEq + Send + Sync + 'static]);
 live_query_read!(
-    bae_views::LiveLibraryBrowse<Projection, Snapshot> => Snapshot,
-    over [Projection: Clone + PartialEq + Send + Sync + 'static, Snapshot: Send + 'static]
+    bae_store::live_query::LiveRead<Request, Value> => Value,
+    over [Request: Send + Sync + 'static, Value: Send + 'static]
 );
 live_query_read!(bae_views::LiveLibrarySearch => bae_views::LibrarySearchSnapshot);
 live_query_read!(bae_views::LiveArtistSearch => bae_views::ArtistSearchSnapshot);
@@ -60,30 +60,8 @@ live_query_read!(bae_library::LiveAlbumSelection => bae_library::AlbumSelectionS
 #[cfg(desktop)]
 live_query_read!(bae_library::LiveLibraryStatus => bae_library::LibraryStatusSnapshot);
 
-/// A read over one live query whose request moves in place.
-macro_rules! live_read {
-    ($read:ty => $value:ty $(, over [$($generics:tt)*])?) => {
-        impl$(<$($generics)*>)? PulledRead for $read {
-            type Value = $value;
-
-            async fn next(&self) -> Result<$value, BridgeError> {
-                <$read>::next(self).await.map_err(detail::live_read_error)
-            }
-
-            async fn cancel(&self) -> Result<(), BridgeError> {
-                <$read>::cancel(self);
-                Ok(())
-            }
-        }
-    };
-}
-
-live_read!(
-    bae_library::LiveRead<Request, Value> => Value,
-    over [Request: Send + Sync + 'static, Value: Send + 'static]
-);
 #[cfg(desktop)]
-live_read!(
+live_query_read!(
     bae_app::live_reads::LiveImportCandidate
         => bae_library::DetailSnapshot<bae_import::ImportCandidateDetail, bae_import::CandidateKey>
 );

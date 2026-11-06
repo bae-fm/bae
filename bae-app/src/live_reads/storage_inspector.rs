@@ -31,12 +31,13 @@ pub fn subscribe_storage_inspector(
     let mut told_for: Option<u64> = None;
     bae_library::LiveDetail::new(
         library.until_closed(library_views.subscribe_storage_inspector(None)),
-        move |id: &Option<String>, revision, rows: Option<bae_views::DbStorageInspector>| {
-            if told_for != Some(revision) {
-                told_for = Some(revision);
+        move |read: bae_store::live_query::ReadFor<'_, Option<String>>,
+              rows: Option<bae_views::DbStorageInspector>| {
+            if told_for != Some(read.revision) {
+                told_for = Some(read.revision);
                 told = Told::Nothing;
             }
-            let release_id = id.clone()?;
+            let release_id = read.request.clone()?;
             // `rows` is the shown release as read: `None` once no such
             // release exists.
             let value = match rows {

@@ -12,7 +12,6 @@ pub mod followed;
 pub mod keys;
 pub mod library_name;
 mod library_status;
-mod live_read;
 mod local_lifecycle;
 pub(crate) mod make_local_transfers;
 pub mod manager;
@@ -45,7 +44,6 @@ pub use bae_store::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
 pub use file_transfers::{FileTransferChange, FileTransfersWatch};
 pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus};
-pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::{
     finish_deletion, finish_removals, remove_unopenable_library, unsent_before_removal,
     LibraryRemovalError, UnfinishedRemoval,

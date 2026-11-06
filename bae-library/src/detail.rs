@@ -11,6 +11,7 @@ pub struct DetailSnapshot<Value, Id = String> {
 }
 
 /// A detail view's live read. Its id changes in place through
-/// [`LiveRead::set`](super::LiveRead::set); `None` reads nothing. An import
+/// [`LiveRead::set`](bae_store::live_query::LiveRead::set); `None` reads nothing. An import
 /// candidate's pane is read by the candidate's key.
-pub type LiveDetail<Value, Id = String> = super::LiveRead<Option<Id>, DetailSnapshot<Value, Id>>;
+pub type LiveDetail<Value, Id = String> =
+    bae_store::live_query::LiveRead<Option<Id>, DetailSnapshot<Value, Id>>;

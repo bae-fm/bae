@@ -2,6 +2,7 @@
 //! windows move as the queue scrolls.
 
 use bae_playback::QueueItem;
+use bae_store::live_query::LiveRead;
 use bae_store::LibraryPageWindows;
 
 /// Every requested window as of one read. Offsets are into the
@@ -22,20 +23,18 @@ pub struct QueueUpcomingSnapshot {
 }
 
 /// A live read of the upcoming tail's requested windows. The windows change
-/// in place through [`super::LiveRead::set`], and a change to the queue reads
+/// in place through [`LiveRead::set`], and a change to the queue reads
 /// them again: neither opens another query.
-pub type LiveQueueUpcoming = super::LiveRead<LibraryPageWindows, QueueUpcomingSnapshot>;
+pub type LiveQueueUpcoming = LiveRead<LibraryPageWindows, QueueUpcomingSnapshot>;
 
 /// The context's upcoming tail, read in the windows the subscription is
 /// asked for — none until the first [`LiveRead::set`] — with the tail's
 /// length and the context lane's version. One query serves every window; a new window set
 /// points it at the new windows.
-///
-/// [`LiveRead::set`]: super::LiveRead::set
 pub fn subscribe_queue_upcoming(library: &crate::LibraryManager) -> crate::LiveQueueUpcoming {
     crate::LiveQueueUpcoming::new(
         library.until_closed(library.subscribe_queue_upcoming(LibraryPageWindows::new())),
-        |_, _, read| {
+        |_, read| {
             Some(crate::QueueUpcomingSnapshot {
                 upcoming_total: read.upcoming_total,
                 context_version: read.context_version,

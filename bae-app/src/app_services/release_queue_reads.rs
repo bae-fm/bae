@@ -10,22 +10,22 @@ use bae_library::LibraryError;
 impl AppServices {
     /// The download queue as the Downloads pane draws it: how many entries it
     /// holds, and the windows the pane asks for, none until the first
-    /// [`set_windows`](bae_views::LiveLibraryBrowse::set_windows).
+    /// [`set`](bae_store::live_query::LiveRead::set).
     /// One query serves every window, and reads them again as an entry
     /// comes, goes, starts or fails, or a release a window shows changes.
     pub fn subscribe_download_browse(&self) -> bae_views::LiveDownloadBrowse {
         let manager = &self.inner.manager;
         let query = manager
             .until_closed(manager.subscribe_download_windows(bae_store::LibraryPageWindows::new()));
-        bae_views::LiveLibraryBrowse::new(
+        bae_views::LiveDownloadBrowse::new(
             query,
-            |read: bae_transfers::ReleaseQueueWindows<()>, request_revision, cause| {
-                bae_views::LibraryBrowseSnapshot {
-                    windows: read.windows,
-                    total_count: read.total_count,
-                    request_revision,
-                    cause,
-                }
+            |read, queue: bae_transfers::ReleaseQueueWindows<()>| {
+                Some(bae_views::LibraryBrowseSnapshot {
+                    windows: queue.windows,
+                    total_count: queue.total_count,
+                    request_revision: read.revision,
+                    cause: read.cause,
+                })
             },
         )
     }

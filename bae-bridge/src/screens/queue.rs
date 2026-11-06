@@ -1,6 +1,5 @@
 //! The queue's upcoming tail as the queue screen pulls it.
 
-use super::detail::live_read_error;
 use crate::types::BridgeError;
 
 browse_window! {
@@ -38,7 +37,7 @@ impl QueueUpcomingSubscription {
         &self,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<(), BridgeError> {
-        self.inner.set(super::core_windows(windows)).map_err(live_read_error)
+        self.inner.set(super::core_windows(windows)).map_err(BridgeError::from)
     }
 }
 

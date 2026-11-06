@@ -71,7 +71,7 @@ macro_rules! detail_subscription {
             /// Show `id` from now on. A view that stops showing anything
             /// cancels the read rather than pointing it at nothing.
             pub fn set_id(&self, id: $id) -> Result<(), BridgeError> {
-                self.inner.set(Some(<$core_id>::from(id))).map_err(live_read_error)
+                self.inner.set(Some(<$core_id>::from(id))).map_err(BridgeError::from)
             }
         }
     };
@@ -178,12 +178,4 @@ detail_subscription! {
     built by work_detail,
     snapshot: BridgeWorkDetailSnapshot,
     value: crate::types::BridgeWorkDetail,
-}
-
-/// A live read's failure as the bridge reports it.
-pub(super) fn live_read_error(error: bae_library::LiveReadError) -> BridgeError {
-    match error {
-        bae_library::LiveReadError::Cancelled => BridgeError::Cancelled,
-        bae_library::LiveReadError::Query(error) => BridgeError::database_query(error),
-    }
 }

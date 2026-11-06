@@ -30,7 +30,7 @@ macro_rules! browse_subscription {
                 &self,
                 windows: Vec<crate::types::BridgeLibraryPageWindow>,
             ) -> Result<(), BridgeError> {
-                self.inner.set_windows(super::core_windows(windows)).map_err(BridgeError::from)
+                self.inner.set(super::core_windows(windows)).map_err(BridgeError::from)
             }
         }
     };

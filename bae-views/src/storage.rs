@@ -714,6 +714,18 @@ pub struct StorageBrowseRequest {
     pub selected: BTreeSet<String>,
 }
 
+/// Each window a read names holds that window's rows of the list it was read
+/// under, so a read for other windows still answers; one under another
+/// sort, filter, search or selection reads another list.
+impl bae_store::live_query::LiveRequest for StorageBrowseRequest {
+    fn still_answers(&self, current: &Self) -> bool {
+        self.sort == current.sort
+            && self.filter == current.filter
+            && self.search == current.search
+            && self.selected == current.selected
+    }
+}
+
 /// Every requested window of the Storage Manager list under the sort, filter
 /// and search text it was read for, the filtered set's count and total size,
 /// and the rows of the selected releases the filtered set holds, by release

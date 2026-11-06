@@ -320,12 +320,15 @@ impl AppServices {
         >,
     ) -> crate::live_reads::LiveImportCandidate {
         crate::live_reads::LiveImportCandidate::new(
-            bae_library::LiveRead::new(self.inner.manager.until_closed(query), |key, _, read| {
-                Some(bae_library::DetailSnapshot {
-                    id: key.clone(),
-                    value: read.map(bae_import::ImportCandidateDetailProjection::resolve),
-                })
-            }),
+            bae_store::live_query::LiveRead::new(
+                self.inner.manager.until_closed(query),
+                |read, rows| {
+                    Some(bae_library::DetailSnapshot {
+                        id: read.request.clone(),
+                        value: rows.map(bae_import::ImportCandidateDetailProjection::resolve),
+                    })
+                },
+            ),
             self.inner.identification.shown_candidate(),
         )
     }

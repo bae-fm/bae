@@ -256,6 +256,6 @@ async fn the_candidate_the_pane_shows_runs_ahead_of_waiting_requests() {
     library.provider.wait_for_request(&shown_barcode, 1).await;
     assert!(library.is_queued(first_waiting).await, "the request ahead of it keeps waiting");
 
-    pane.cancel();
+    pane.cancel().await;
     library.provider.release();
 }

@@ -1,6 +1,5 @@
 //! A release's files as the Storage sheet's file table pulls them.
 
-use super::detail::live_read_error;
 use crate::types::{BridgeError, BridgeFile};
 
 mirror_enum! {
@@ -63,6 +62,6 @@ impl ReleaseFilesSubscription {
     ) -> Result<(), BridgeError> {
         self.inner
             .set(request.map(crate::types::BridgeReleaseFilesRequest::into_core))
-            .map_err(live_read_error)
+            .map_err(BridgeError::from)
     }
 }

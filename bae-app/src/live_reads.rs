@@ -22,6 +22,7 @@ pub use storage::*;
 pub use storage_inspector::*;
 
 use bae_library::LibraryManager;
+use bae_store::live_query::LiveRead;
 use bae_views::LibraryViews;
 
 /// A live read that follows the request set on it: `query` starts with no
@@ -31,28 +32,28 @@ pub(crate) fn follow_request<Request, Projection, Snapshot>(
     library: &LibraryManager,
     query: coven::ReconfigurableLiveQuery<Option<Request>, Projection, coven::CovenError>,
     snapshot: impl Fn(&Option<Request>, Projection) -> Snapshot + Send + 'static,
-) -> bae_library::LiveRead<Option<Request>, Snapshot>
+) -> LiveRead<Option<Request>, Snapshot>
 where
     Projection: Clone + PartialEq + Send + 'static,
     Snapshot: Send + 'static,
     Request: Clone + PartialEq + Send + Sync + 'static,
 {
-    bae_library::LiveRead::new(library.until_closed(query), move |request, _, projection| {
-        Some(snapshot(request, projection))
+    LiveRead::new(library.until_closed(query), move |read, projection| {
+        Some(snapshot(read.request, projection))
     })
 }
 
 /// A live read of the Storage Manager list. The view changes in place
-/// through [`LiveRead::set`](bae_library::LiveRead::set); the upload
+/// through [`LiveRead::set`]; the upload
 /// queue, pin markers, and sync state the rows are resolved against move the
 /// same read.
 pub type LiveStorageBrowse =
-    bae_library::LiveRead<bae_views::StorageBrowseRequest, bae_views::StorageBrowseSnapshot>;
+    LiveRead<bae_views::StorageBrowseRequest, bae_views::StorageBrowseSnapshot>;
 
 /// A live read of one release's files in one order. The release and order
 /// change in place through
-/// [`LiveRead::set`](bae_library::LiveRead::set); `None` reads
+/// [`LiveRead::set`]; `None` reads
 /// nothing.
 #[cfg(desktop)]
 pub type LiveReleaseFiles =
-    bae_library::LiveRead<Option<bae_views::ReleaseFilesRequest>, bae_views::ReleaseFilesSnapshot>;
+    LiveRead<Option<bae_views::ReleaseFilesRequest>, bae_views::ReleaseFilesSnapshot>;

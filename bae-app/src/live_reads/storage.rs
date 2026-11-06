@@ -16,6 +16,6 @@ pub fn subscribe_storage_browse(
 ) -> crate::live_reads::LiveStorageBrowse {
     crate::live_reads::LiveStorageBrowse::new(
         library.until_closed(library_views.subscribe_storage_browse(initial)),
-        |_, _, projection| Some(bae_views::storage::resolve_storage_browse(projection)),
+        |_, projection| Some(bae_views::storage::resolve_storage_browse(projection)),
     )
 }

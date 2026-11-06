@@ -6,7 +6,7 @@
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
-use crate::LiveReadError;
+use bae_store::live_query::LiveQueryError;
 use coven::MemoryStorage;
 use tempfile::TempDir;
 
@@ -447,10 +447,10 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
         .await
         .expect("the waiting read ends")
         .unwrap();
-    assert!(matches!(ended, Err(LiveReadError::Cancelled)), "{ended:?}");
+    assert!(matches!(ended, Err(LiveQueryError::Cancelled)), "{ended:?}");
     assert!(matches!(
         read.set([bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into()),
-        Err(LiveReadError::Cancelled)
+        Err(LiveQueryError::Cancelled)
     ));
 }
 
