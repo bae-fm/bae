@@ -187,9 +187,12 @@ debug = "line-tables-only"
 # under lldb is what this gives up.
 [profile.dev]
 debug = "line-tables-only"
-# Every compile goes through sccache, which cannot cache an incremental
-# compile, and incremental state only grows the checkout's target dir.
-incremental = false
+# Measured 2x-2.4x less CPU per edit-and-check (bae: 20/10 s off, 10/4 s on).
+# sccache never caches workspace crates' clippy runs anyway, and cargo applies
+# incremental only to workspace members, so dependencies still go through
+# sccache. Set it here, never via CARGO_INCREMENTAL, which makes sccache refuse
+# every compile.
+incremental = true
 
 # Keep dependency implementations optimized in Debug builds while bae's
 # workspace crates retain debug assertions. Several
