@@ -23,6 +23,8 @@ extension SnapshotTestSupport {
         _ body: (NSWindow, NSHostingView<V>) async throws -> Value
     ) async throws -> Value {
         weak var released: NSWindow?
+        HostedInput.closeSettledWindows()
+        var retired = false
         let result: Value
         do {
             let (window, host) = autoreleasepool {
@@ -33,22 +35,26 @@ extension SnapshotTestSupport {
             result = try await body(window, host)
             // A click on a view with a double-tap gesture leaves a timer
             // that settles the gesture once a second click can no longer
-            // come, and it reaches the view without owning it: a tree let go
-            // before it fires takes the process down with it. The window
-            // stays until that time has passed.
+            // come, and it reaches the view without owning it: a window and
+            // tree let go before it fires take the process down with it. Such
+            // a window stays open until that time has passed, which a later
+            // hosted window checks, so no test waits for it.
             if let settled = HostedInput.gesturesSettle(in: window) {
-                try await Wait.until(file: file, line: line) {
-                    ContinuousClock.now >= settled
+                retired = true
+                HostedInput.retire(until: settled) {
+                    autoreleasepool { close(window) }
                 }
             }
-            autoreleasepool { close(window) }
+            else {
+                autoreleasepool { close(window) }
+            }
         }
         // Closed is not gone: a window something still holds lives on in
         // the process. XCTest drains an autorelease pool after each test,
         // which lets go of whatever that test's own AppKit calls kept;
         // Swift Testing drains none until the run ends, so under it a window
         // not let go here would stay for the rest of the run.
-        if Test.current != nil {
+        if Test.current != nil, !retired {
             try await Wait.until(file: file, line: line) { released == nil }
         }
         return result

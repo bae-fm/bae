@@ -26,6 +26,29 @@ enum HostedInput {
             )
     }
 
+    /// Windows closed once the timer of a gesture that was sent to them can
+    /// no longer fire, with when that is.
+    private static var retired:
+        [(until: ContinuousClock.Instant, close: @MainActor () -> Void)] = []
+
+    /// Close a window, with the tree it hosts let go, once `until` has
+    /// passed: the next hosted window looks.
+    static func retire(
+        until: ContinuousClock.Instant,
+        closing close: @escaping @MainActor () -> Void
+    ) {
+        retired.append((until, close))
+    }
+
+    /// Close the retired windows whose time has passed.
+    @MainActor
+    static func closeSettledWindows() {
+        let now = ContinuousClock.now
+        let due = retired.filter { $0.until <= now }
+        retired.removeAll { $0.until <= now }
+        for window in due { window.close() }
+    }
+
     private static func pressed(_ window: NSWindow) {
         lastPress[ObjectIdentifier(window)] = .now
     }
