@@ -194,3 +194,26 @@ fn push_silence_frames_blocking_zero_channels_is_noop() {
     let (mut sink, _source, _ready) = create_track_stream_pair_with_capacity(44100, 0, 100);
     assert_eq!(sink.push_silence_frames_blocking(50), 0);
 }
+
+/// A producer parked on a full ring returns once the consumer is dropped:
+/// nothing can drain the ring any more, and the drop is what wakes it.
+#[test]
+fn push_samples_blocking_returns_when_the_stream_is_dropped() {
+    use std::sync::mpsc;
+    use std::thread;
+
+    let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 8);
+    let (pushed_tx, pushed_rx) = mpsc::channel();
+    let producer = thread::spawn(move || {
+        pushed_tx.send(sink.push_samples_blocking(&[1.0f32; 100])).unwrap();
+    });
+
+    source.wait_until_producer_parked();
+    drop(source);
+
+    let pushed = pushed_rx
+        .recv_timeout(bae_util::test_channels::HANG_GUARD)
+        .expect("the parked producer never woke after the stream was dropped");
+    producer.join().unwrap();
+    assert!(pushed < 100, "the push stops with samples left over");
+}

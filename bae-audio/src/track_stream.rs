@@ -151,14 +151,18 @@ impl TrackSink {
 
     /// Push every sample, blocking until they all land or the stream is
     /// cancelled. Writes in bulk (memcpy) rather than per-sample. On a full ring
-    /// it parks until the audio callback drains and unparks it, so a paused
-    /// player wakes it zero times. Signals ready at 50% capacity.
+    /// it parks until the consumer drains, cancels or drops the stream, so a
+    /// paused player wakes it zero times. Signals ready at 50% capacity.
     pub fn push_samples_blocking(&mut self, samples: &[f32]) -> usize {
         #[expect(
             clippy::let_underscore_must_use,
             reason = "the first push records the decoder thread; later pushes come from it"
         )]
         let _ = self.state.decoder_thread.set(std::thread::current());
+        // Pairs with the fence in `TrackStream::cancel`: either this thread's
+        // cancelled check below sees the cancel, or the canceller sees this
+        // thread recorded and unparks it.
+        std::sync::atomic::fence(Ordering::SeqCst);
 
         let mut offset = 0;
         while offset < samples.len() {
@@ -170,12 +174,12 @@ impl TrackSink {
             let (pushed, _) = self.producer.push_partial_slice(remaining);
             let n = pushed.len();
             if n == 0 {
-                // Full ring: park until the audio callback drains. The timeout is
-                // the safety net for null audio devices (CI), whose callback may
-                // never fire to unpark us.
+                // Full ring: park until the consumer frees space, cancels, or
+                // drops. Each of those unparks this thread, and an unpark that
+                // lands before the park makes it return at once.
                 #[cfg(any(test, feature = "test-instrumentation"))]
                 self.state.note(|activity| activity.parks += 1);
-                std::thread::park_timeout(std::time::Duration::from_millis(100));
+                std::thread::park();
                 continue;
             }
 
@@ -289,6 +293,8 @@ impl TrackStream {
     /// Stop the decoder: set the flag and unpark it if it's parked on a full ring.
     pub fn cancel(&self) {
         self.state.cancelled.store(true, Ordering::Release);
+        // Pairs with the fence after `push_samples_blocking` records its thread.
+        std::sync::atomic::fence(Ordering::SeqCst);
         self.state.unpark_decoder();
     }
 
@@ -355,6 +361,13 @@ impl TrackStream {
 
     pub fn channels(&self) -> u32 {
         self.state.channels()
+    }
+}
+
+/// Nothing drains the ring once the consumer is gone, so the producer stops.
+impl Drop for TrackStream {
+    fn drop(&mut self) {
+        self.cancel();
     }
 }
 
