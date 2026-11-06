@@ -79,6 +79,8 @@ pub(super) use seed_rows::{
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
+#[cfg(test)]
+pub(crate) use standing_rows::StandingColumn;
 pub use verdict_rows::{DbCandidateIdentifyResult, NewImportCandidateVerdict, VerdictPick};
 // The source releases' tests store a run's releases as a release run does.
 #[cfg(test)]

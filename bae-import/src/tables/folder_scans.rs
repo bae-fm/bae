@@ -752,5 +752,24 @@ pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, D
 }
 
 #[cfg(test)]
+impl ImportTables {
+    /// Plant damage for a test: the table of the directories each walk read
+    /// is gone from the library under `directory`, so every read of what
+    /// the last scan saw fails.
+    pub(crate) async fn lose_scan_directories_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "folder_scan_directory",
+                "DROP TABLE folder_scan_directory;",
+            )
+        })
+        .await
+        .unwrap();
+    }
+}
+
+#[cfg(test)]
 #[path = "folder_scans_tests.rs"]
 pub(crate) mod tests;

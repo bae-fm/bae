@@ -22,9 +22,9 @@ pub use catalog_availability::{
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
 pub use presentation::LookupCatalogSetting;
-#[cfg(any(test, feature = "test-utils"))]
-pub use row::plant_unknown_replay_gain_mode_for_test;
 pub use row::{carry_preferences, edit_preferences, preferences, subscribe_preferences};
+#[cfg(any(test, feature = "test-utils"))]
+pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};
 pub use save::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SaveFormat, SaveLevel, SavePregapPlacement,
     SavePreset,

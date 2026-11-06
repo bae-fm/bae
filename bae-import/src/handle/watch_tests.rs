@@ -194,16 +194,7 @@ async fn an_add_that_fails_leaves_nothing_watched() {
     std::fs::create_dir_all(&root).unwrap();
     // A row inside each added folder, which every read of the watched
     // folders refuses as overlapping.
-    crate::candidate_runtime::tests::add_to_library_schema(
-        tmp.path(),
-        "watched_import_folders",
-        "CREATE TRIGGER overlap_each_added_folder AFTER INSERT ON watched_import_folders \
-         WHEN NEW.position <> 99 BEGIN \
-         INSERT INTO watched_import_folders (path, position) \
-         VALUES (CAST(CAST(NEW.path AS TEXT) || '/inner' AS BLOB), 99); END;"
-            .to_string(),
-    )
-    .await;
+    crate::tables::ImportTables::plant_overlap_in_every_add_for_test(tmp.path()).await;
     let import_handle = parts.start().await.unwrap();
 
     import_handle.add_watched_folder(root).await.unwrap_err();

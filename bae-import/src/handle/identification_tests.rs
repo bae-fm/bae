@@ -267,12 +267,10 @@ async fn a_cancel_whose_end_cannot_be_written_fails_and_ends_nothing() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     admit(&handle, &key).await;
     start_run(&handle, &key, crate::IdentifyRunId::for_test(1)).await;
-    crate::candidate_runtime::tests::fail_standing_writes(
+    crate::tables::ImportTables::fail_standing_writes_leaving_for_test(
         tmp.path(),
-        &[
-            ("DELETE", "OLD.identification = 'running'"),
-            ("UPDATE", "OLD.identification = 'running'"),
-        ],
+        crate::tables::import_state::StandingColumn::Identification,
+        "running",
     )
     .await;
 

@@ -332,7 +332,7 @@ async fn a_rescan_that_cannot_tell_if_its_folder_is_watched_reports_the_failure(
 #[tokio::test]
 async fn a_network_check_that_cannot_read_the_last_scan_reports_the_failure() {
     let harness = CoordinatorHarness::new().await;
-    harness.drop_table("folder_scan_directory").await;
+    crate::tables::ImportTables::lose_scan_directories_for_test(harness.library.path()).await;
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let tables = crate::tables::ImportTables::new(harness.db.clone());

@@ -698,14 +698,7 @@ async fn album_links_a_run_cannot_keep_are_reported() {
         bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
     )
     .await;
-    crate::candidate_runtime::tests::add_to_library_schema(
-        tmp.path(),
-        "release_group_album_link",
-        "CREATE TRIGGER fail_album_link_write BEFORE INSERT ON release_group_album_link \
-         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END;"
-            .to_string(),
-    )
-    .await;
+    crate::tables::ImportTables::fail_album_link_writes_for_test(tmp.path()).await;
     let (event_tx, _event_rx) = mpsc::unbounded_channel();
 
     dispatch_effect(

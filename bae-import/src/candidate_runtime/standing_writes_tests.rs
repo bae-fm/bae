@@ -593,10 +593,10 @@ async fn a_release_re_identified_in_its_own_sheet_is_not_counted() {
 /// Make every write that would store `stage` as a candidate's identification
 /// fail, as a full disk fails it.
 async fn fail_writes_of(runtime: &CandidateRuntime, stage: &str) {
-    let when = format!("NEW.identification = '{stage}'");
-    fail_standing_writes(
+    crate::tables::ImportTables::fail_standing_writes_storing_for_test(
         runtime._test_directory.as_ref().expect("a test runtime keeps its directory").path(),
-        &[("INSERT", when.as_str()), ("UPDATE", when.as_str())],
+        crate::tables::import_state::StandingColumn::Identification,
+        stage,
     )
     .await;
 }

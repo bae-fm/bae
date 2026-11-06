@@ -65,6 +65,7 @@ pub async fn exec_batch(db: &crate::Store, sql: &str) {
 }
 
 pub mod live_query;
+pub mod planted_damage;
 pub mod schema_checks;
 pub mod trigger_order;
 pub mod window_cost;

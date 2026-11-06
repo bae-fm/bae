@@ -600,6 +600,84 @@ impl ImportTables {
     }
 }
 
+/// A column of a candidate's standing a planted write failure keys on.
+#[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum StandingColumn {
+    Identification,
+    ImportStep,
+}
+
+#[cfg(test)]
+impl StandingColumn {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Identification => "identification",
+            Self::ImportStep => "import_step",
+        }
+    }
+}
+
+#[cfg(test)]
+impl ImportTables {
+    /// Plant damage for a test: every write of a candidate's standing, in
+    /// the library under `directory`, that stores `value` in `column` (an
+    /// insert or update whose new row holds it) fails, as a full disk fails
+    /// it.
+    pub(crate) async fn fail_standing_writes_storing_for_test(
+        directory: &std::path::Path,
+        column: StandingColumn,
+        value: &str,
+    ) {
+        Self::fail_standing_writes_for_test(directory, column, value, "NEW", ["INSERT", "UPDATE"])
+            .await;
+    }
+
+    /// Plant damage for a test: every write of a candidate's standing, in
+    /// the library under `directory`, that leaves `value` in `column` (a
+    /// delete or update of a row that held it) fails, as a full disk fails
+    /// it.
+    pub(crate) async fn fail_standing_writes_leaving_for_test(
+        directory: &std::path::Path,
+        column: StandingColumn,
+        value: &str,
+    ) {
+        Self::fail_standing_writes_for_test(directory, column, value, "OLD", ["DELETE", "UPDATE"])
+            .await;
+    }
+
+    async fn fail_standing_writes_for_test(
+        directory: &std::path::Path,
+        column: StandingColumn,
+        value: &str,
+        row: &str,
+        statements: [&str; 2],
+    ) {
+        let column = column.name();
+        let triggers: String = statements
+            .iter()
+            .map(|statement| {
+                format!(
+                    "CREATE TRIGGER fail_standing_{statement}_{row}_{column}_{value} \
+                     BEFORE {statement} ON import_candidate_standing \
+                     WHEN {row}.{column} = '{value}' \
+                     BEGIN SELECT RAISE(ABORT, 'the disk is full'); END;"
+                )
+            })
+            .collect();
+        let directory = directory.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "import_candidate_standing",
+                &triggers,
+            )
+        })
+        .await
+        .unwrap();
+    }
+}
+
 #[cfg(test)]
 #[path = "standing_rows_tests.rs"]
 mod tests;

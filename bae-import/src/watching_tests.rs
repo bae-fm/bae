@@ -248,7 +248,8 @@ pub(crate) struct CoordinatorHarness {
     /// Every event the coordinator sent.
     pub(crate) events: tokio::sync::Mutex<crate::ImportEvents>,
     pub(crate) coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
-    pub(crate) _temp: TempDir,
+    /// The directory the coordinator's library is stored under.
+    pub(crate) library: TempDir,
 }
 
 impl CoordinatorHarness {
@@ -321,7 +322,7 @@ impl CoordinatorHarness {
             removal_backend,
             events,
             coordinator_thread: Mutex::new(Some(coordinator_thread)),
-            _temp: temp,
+            library: temp,
         }
     }
 
@@ -332,16 +333,6 @@ impl CoordinatorHarness {
             .plant_overlapping_watched_folder_for_test(&root_path("/music").join("artist"))
             .await
             .unwrap();
-    }
-
-    /// Drop `table`, so every read of it fails from here on.
-    pub(crate) async fn drop_table(&self, table: &'static str) {
-        crate::candidate_runtime::tests::add_to_library_schema(
-            self._temp.path(),
-            table,
-            format!("DROP TABLE {table};"),
-        )
-        .await;
     }
 
     /// Hand the coordinator `report` as its watch would, and wait until it

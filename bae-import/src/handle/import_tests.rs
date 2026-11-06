@@ -205,9 +205,10 @@ async fn an_import_whose_claim_cannot_be_written_fails_and_claims_nothing() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     let before = handle.candidate_runtime(&key).await.unwrap();
     let mut events = handle.every_event();
-    crate::candidate_runtime::tests::fail_standing_writes(
+    crate::tables::ImportTables::fail_standing_writes_storing_for_test(
         tmp.path(),
-        &[("INSERT", "NEW.import_step = 'queued'"), ("UPDATE", "NEW.import_step = 'queued'")],
+        crate::tables::import_state::StandingColumn::ImportStep,
+        "queued",
     )
     .await;
 

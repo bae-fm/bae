@@ -213,14 +213,12 @@ async fn a_signal_that_cannot_be_recorded_is_reported() {
     sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
     let session = sessions.session().await.unwrap();
     host.route("/masters/", 401, REJECTED);
-    crate::candidate_runtime::tests::add_to_library_schema(
-        temp_dir.path(),
-        "preferences",
-        "CREATE TRIGGER fail_preferences_write BEFORE UPDATE ON preferences \
-         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END;"
-            .to_string(),
-    )
-    .await;
+    let directory = temp_dir.path().to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        bae_preferences::fail_preferences_writes_for_test(&directory)
+    })
+    .await
+    .unwrap();
 
     session.master_covers("909", CallPriority::Interactive).await.unwrap_err();
     sessions.signals_recorded().await;

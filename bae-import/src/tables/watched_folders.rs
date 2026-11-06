@@ -238,5 +238,27 @@ impl ImportTables {
 }
 
 #[cfg(test)]
+impl ImportTables {
+    /// Plant damage for a test: inside the write of every folder added to
+    /// the library under `directory`, a folder inside it is stored as
+    /// watched too, which every read of the watched folders refuses.
+    pub(crate) async fn plant_overlap_in_every_add_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "watched_import_folders",
+                "CREATE TRIGGER overlap_each_added_folder AFTER INSERT ON watched_import_folders \
+                 WHEN NEW.position <> 99 BEGIN \
+                 INSERT INTO watched_import_folders (path, position) \
+                 VALUES (CAST(CAST(NEW.path AS TEXT) || '/inner' AS BLOB), 99); END;",
+            )
+        })
+        .await
+        .unwrap();
+    }
+}
+
+#[cfg(test)]
 #[path = "watched_folders_tests.rs"]
 mod tests;
