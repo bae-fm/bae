@@ -16,7 +16,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex as StdMutex;
-use std::time::Duration;
 use tempfile::TempDir;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -484,22 +483,26 @@ impl ArtworkAnalyzer for ConcurrencyAnalyzer {
 }
 
 /// Wait until `IMAGES_IN_FLIGHT` reads have entered the held analyzer, and
-/// check that no other read starts while they are held.
+/// check that no other read can start while they are held: a read starts
+/// only with a permit of `image_reads`, and every one is held.
 async fn bound_reached_and_held(
     entries: std::sync::mpsc::Receiver<()>,
+    image_reads: &tokio::sync::Semaphore,
 ) -> std::sync::mpsc::Receiver<()> {
-    tokio::task::spawn_blocking(move || {
+    let entries = tokio::task::spawn_blocking(move || {
         for _ in 0..IMAGES_IN_FLIGHT {
             entries.recv_timeout(HANG_GUARD).expect("the bound's worth of images are read at once");
         }
-        assert!(
-            entries.recv_timeout(Duration::from_millis(200)).is_err(),
-            "no image starts while the bound's worth are being read"
-        );
         entries
     })
     .await
-    .unwrap()
+    .unwrap();
+    assert_eq!(
+        image_reads.available_permits(),
+        0,
+        "no image starts while the bound's worth are being read"
+    );
+    entries
 }
 
 fn concurrency_analyzer(gate: crate::tests::gate::Held) -> Arc<ConcurrencyAnalyzer> {
@@ -520,9 +523,9 @@ async fn no_more_than_the_bound_are_read_at_once() {
     let folder = folder_with(&tmp, &images);
     let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer = concurrency_analyzer(held);
-    let (_handle, mut rx, mut run, _lib_tmp) = start_signals(folder, analyzer.clone()).await;
+    let (handle, mut rx, mut run, _lib_tmp) = start_signals(folder, analyzer.clone()).await;
 
-    let entries = bound_reached_and_held(entries).await;
+    let entries = bound_reached_and_held(entries, &handle.inner.image_reads).await;
     gate.open();
     let snapshots = collect_snapshots(&mut rx, images.len() + 1).await;
     run_ended(&mut run).await;
@@ -562,7 +565,7 @@ async fn passes_running_at_once_share_the_bound() {
         CallPriority::Interactive,
     );
 
-    let entries = bound_reached_and_held(entries).await;
+    let entries = bound_reached_and_held(entries, &handle.inner.image_reads).await;
     gate.open();
     let snapshots = collect_snapshots(&mut rx, 2 * (images.len() + 1)).await;
     run_ended(&mut first_run).await;

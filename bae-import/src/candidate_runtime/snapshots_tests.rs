@@ -243,11 +243,9 @@ async fn a_key_s_runtime_query_hears_only_its_key() {
 
     claim(&runtime, second).await;
     measuring(&runtime, second, 40).await;
-    assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(100), query.next()).await.is_err(),
-        "another key's writes tell this key's query nothing"
-    );
 
+    // The next value is the sentinel: a write of the other key that this key's
+    // query read would have changed what it delivers before its own write's.
     measuring(&runtime, first, 40).await;
     assert_eq!(
         import_step(&next_runtime(&mut query).await),
@@ -277,10 +275,8 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
     runtime.record_event(&progress(key, 41));
     percents_reach(percents.wait_for(|percents| percents.get(key) == Some(&41))).await;
     assert!(!percents.percents().contains_key(other), "a claim no report moved has no percent");
-    assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(100), query.next()).await.is_err(),
-        "a percent at the same step tells the runtime query nothing"
-    );
+    // A percent tick writes no row, so the runtime query's next value is the
+    // one the import's move below produces.
 
     runtime.move_import(key, "imp-1", None).await.unwrap();
     runtime.record_event(&ImportEvent::ImportProgress {

@@ -14,7 +14,6 @@ use bae_identify::IdentifyState;
 use bae_identify::TerminalVerdict;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
-use std::time::Duration;
 
 async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     setup_inner_reporting_to(bae_diagnostics::Diagnostics::noop()).await
@@ -101,12 +100,12 @@ pub(super) async fn drivers_ended(inner: &Arc<IdentifyServiceInner>) {
         .expect("every driver returns");
 }
 
-/// Read `k`'s states until `wanted` answers one, or the wait runs out.
+/// Read `k`'s states until `wanted` answers one, or the events end.
 async fn await_state<T>(
     events: &mut crate::ImportEvents,
     wanted: impl Fn(&IdentifyState) -> Option<T>,
 ) -> Option<T> {
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(HANG_GUARD, async {
         while let Some(event) = events.recv().await {
             if let ImportEvent::IdentifyStateChanged { candidate_key, state, .. } = event {
                 if candidate_key == crate::CandidateKey::test("k") {
@@ -269,8 +268,16 @@ async fn an_extraction_ending_does_not_end_the_run() {
     snapshots.send_replace(Some(scanning_snapshot()));
     drop(snapshots);
 
+    // The scanning snapshot is the run's last input; its state is the last
+    // thing anything feeds the driver, and the extraction closing is not a
+    // verdict.
+    await_state(&mut bus_rx, |state| {
+        matches!(state, IdentifyState::Triangulating { .. }).then_some(())
+    })
+    .await
+    .expect("the scanning snapshot puts the run in flight");
     assert!(
-        await_state(&mut bus_rx, |state| state.is_terminal().then_some(())).await.is_none(),
+        reported_states(&mut bus_rx).iter().all(|state| !state.is_terminal()),
         "no verdict comes of an extraction that said nothing settled"
     );
     assert!(handle.is_running(&crate::CandidateKey::test("k")), "the run is still in flight");
