@@ -357,6 +357,7 @@ impl ImportTables {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
         Option<ImportCandidateDetailProjection>,
+        coven::CovenError,
     > {
         self.store
             .subscribe_reconfigurable(initial, |key, sql| match key {
@@ -381,6 +382,7 @@ impl ImportTables {
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CandidateKey>,
         Option<crate::InvalidCandidateDetail>,
+        coven::CovenError,
     > {
         self.store.subscribe_reconfigurable(initial, |key, sql| match key {
             None => Ok(None),

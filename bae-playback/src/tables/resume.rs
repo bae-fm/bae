@@ -48,7 +48,9 @@ pub async fn load_playback_state(store: &Store) -> Result<Option<PlaybackResumeR
 /// Follow the device-local `playback_state` row as `load_playback_state`
 /// reads it.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn subscribe_playback_state(store: &Store) -> coven::LiveQuery<Option<PlaybackResumeRow>> {
+pub fn subscribe_playback_state(
+    store: &Store,
+) -> coven::LiveQuery<Option<PlaybackResumeRow>, coven::CovenError> {
     store.subscribe(|sql| playback_state_on(&sql).map_err(CovenError::from))
 }
 

@@ -10,7 +10,6 @@ import_when_identified = true
 endpoint = "https://storage.example.test"
 region = "region-1"
 bucket = "bucket-name"
-key_prefix = "prefix/path"
 access_key_id = "access-key-id"
 secret_access_key = "secret-access-key"
 
@@ -37,7 +36,6 @@ fn a_private_profile_reads_into_the_library_it_describes() {
     assert_eq!(profile.s3.bucket, "bucket-name");
     assert_eq!(profile.s3.region, "region-1");
     assert_eq!(profile.s3.endpoint.as_deref(), Some("https://storage.example.test"));
-    assert_eq!(profile.s3.key_prefix.as_str(), "prefix/path");
     assert_eq!(profile.s3.access_key, "access-key-id");
     assert_eq!(profile.s3.secret_key, "secret-access-key");
     assert!(profile.s3.profile.is_none());
@@ -64,60 +62,20 @@ fn an_empty_credential_is_refused_by_name() {
     assert!(matches!(error, DevResetProfileError::Empty { field: "s3.secret_access_key", .. }));
 }
 
-/// The key prefix goes through storage setup's parse: slashes at its ends
-/// mean nothing.
+/// A dev library takes a whole bucket, so a profile still naming a key
+/// prefix is refused before the reset removes anything.
 #[test]
-fn a_key_prefix_with_slashes_at_its_ends_reads_as_its_folder_path() {
+fn a_profile_naming_a_key_prefix_is_refused() {
     let dir = tempfile::tempdir().unwrap();
-    for typed in ["bae-dima/", "/bae-dima", "/bae-dima/"] {
-        let text = PROFILE.replace("\"prefix/path\"", &format!("\"{typed}\""));
-        let profile = DevResetProfile::read(&write(&dir, &text, 0o600)).unwrap();
+    let text = PROFILE
+        .replace("bucket = \"bucket-name\"\n", "bucket = \"bucket-name\"\nkey_prefix = \"dev\"\n");
+    let error =
+        DevResetProfile::read(&write(&dir, &text, 0o600)).err().expect("a key prefix is refused");
 
-        assert_eq!(profile.s3.key_prefix.as_str(), "bae-dima", "{typed}");
-    }
-}
-
-/// A prefix that can't be a folder path fails while the profile is read,
-/// naming the field and the folder at fault, before the reset removes
-/// anything.
-#[test]
-fn a_key_prefix_that_is_no_folder_path_is_refused_by_name() {
-    let dir = tempfile::tempdir().unwrap();
-    for (typed, refusal) in [
-        ("prefix//path", coven::S3PrefixError::EmptySegment),
-        (
-            "prefix/pa.th",
-            coven::S3PrefixError::InvalidCharacter { segment: "pa.th".into(), character: '.' },
-        ),
-    ] {
-        let text = PROFILE.replace("\"prefix/path\"", &format!("\"{typed}\""));
-        let error = DevResetProfile::read(&write(&dir, &text, 0o600))
-            .err()
-            .expect("a prefix that is no folder path is refused");
-
-        let DevResetProfileError::Prefix { field: "s3.key_prefix", error: parsed, .. } = &error
-        else {
-            panic!("expected a refused key prefix, got {error}");
-        };
-        assert_eq!(*parsed, refusal, "{typed}");
-        assert!(error.to_string().contains("s3.key_prefix"), "{error}");
-    }
-}
-
-/// A prefix of only slashes is the bucket's root, which the reset would empty
-/// whole.
-#[test]
-fn a_key_prefix_of_only_slashes_is_refused_as_the_whole_bucket() {
-    let dir = tempfile::tempdir().unwrap();
-    let text = PROFILE.replace("\"prefix/path\"", "\"/\"");
-    let error = DevResetProfile::read(&write(&dir, &text, 0o600))
-        .err()
-        .expect("the bucket's root is refused");
-
-    assert!(
-        matches!(error, DevResetProfileError::WholeBucket { field: "s3.key_prefix", .. }),
-        "{error}"
-    );
+    let DevResetProfileError::Malformed { message, .. } = &error else {
+        panic!("expected a malformed profile, got {error}");
+    };
+    assert!(message.contains("key_prefix"), "{message}");
 }
 
 /// toml's own message quotes the offending line; the profile's error must
@@ -136,7 +94,7 @@ fn a_malformed_profile_names_the_line_without_repeating_it() {
     let DevResetProfileError::Malformed { line, .. } = &error else {
         panic!("expected a malformed profile, got {error}");
     };
-    assert_eq!(*line, Some(12));
+    assert_eq!(*line, Some(11));
     assert!(!error.to_string().contains("secret-access-key"));
 }
 

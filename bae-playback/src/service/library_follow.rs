@@ -30,7 +30,7 @@ where
     /// follow that panics is reported through `diagnostics` and reads nothing
     /// more either.
     pub(super) fn new(
-        mut query: coven::ReconfigurableLiveQuery<Request, Value>,
+        mut query: coven::ReconfigurableLiveQuery<Request, Value, coven::CovenError>,
         request: Request,
         what: &'static str,
         diagnostics: &bae_diagnostics::Diagnostics,

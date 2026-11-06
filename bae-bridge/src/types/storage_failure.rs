@@ -5,6 +5,7 @@ pub enum BridgeStorageFailure {
     AccessNotGranted { required: crate::BridgeOAuthAccess },
     DropboxAppFolderNotShareable,
     Network,
+    Corrupted,
     Authentication,
     PermissionDenied,
     NotFound,
@@ -12,7 +13,7 @@ pub enum BridgeStorageFailure {
     Conflict,
     ContainerNotFound,
     RegionMismatch,
-    OwnBucketRequired { reason: BridgeOwnBucketReason },
+    OwnLocationRequired,
     StoreExists,
     ClockSkew,
     QuotaExceeded,
@@ -36,6 +37,7 @@ pub enum BridgeStorageFailure {
     File,
     MemberKeysMissing,
     CatchUpRequired,
+    Bug,
 }
 
 mirror_enum! {
@@ -47,6 +49,7 @@ AccessNotRegistered { required: (crate::BridgeOAuthAccess) },
 AccessNotGranted { required: (crate::BridgeOAuthAccess) },
 DropboxAppFolderNotShareable,
 Network,
+Corrupted,
 Authentication,
 PermissionDenied,
 NotFound,
@@ -54,7 +57,7 @@ AlreadyExists,
 Conflict,
 ContainerNotFound,
 RegionMismatch,
-OwnBucketRequired { reason: (BridgeOwnBucketReason) },
+OwnLocationRequired,
 StoreExists,
 ClockSkew,
 QuotaExceeded,
@@ -84,18 +87,8 @@ Encoding,
 File,
 MemberKeysMissing,
 CatchUpRequired,
+Bug,
  },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeOwnBucketReason {
-    Prefix,
-    Occupied,
-}
-mirror_enum! {
- BridgeOwnBucketReason = coven::OwnBucketReason,
- from_core: fn,
- variants: { Prefix, Occupied },
 }
 
 pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str {
@@ -109,6 +102,9 @@ pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str
             "core.error.storage.dropbox_app_folder_not_shareable"
         }
         BridgeStorageFailure::Network => "core.error.category.network",
+        // Sentinel: the Corrupted string commit gives a read that changed
+        // on its way to this device a line of its own.
+        BridgeStorageFailure::Corrupted => "core.error.storage.invalid_response",
         BridgeStorageFailure::Authentication => "core.error.category.credentials",
         BridgeStorageFailure::PermissionDenied => "core.error.cloud_setup.permission_denied",
         BridgeStorageFailure::NotFound => "core.error.storage.not_found",
@@ -116,7 +112,7 @@ pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str
         BridgeStorageFailure::Conflict => "core.error.storage.conflict",
         BridgeStorageFailure::ContainerNotFound => "core.error.cloud_setup.container_not_found",
         BridgeStorageFailure::RegionMismatch => "core.error.cloud_setup.region_mismatch",
-        BridgeStorageFailure::OwnBucketRequired { .. } => "core.error.storage.own_bucket_required",
+        BridgeStorageFailure::OwnLocationRequired => "core.error.storage.own_bucket_required",
         BridgeStorageFailure::StoreExists => "core.error.cloud_setup.location_occupied",
         BridgeStorageFailure::ClockSkew => "core.error.storage.clock_skew",
         BridgeStorageFailure::QuotaExceeded => "core.error.cloud_setup.quota_exceeded",
@@ -146,5 +142,7 @@ pub(crate) fn storage_failure_key(failure: BridgeStorageFailure) -> &'static str
         BridgeStorageFailure::File => "core.error.storage.file",
         BridgeStorageFailure::MemberKeysMissing => "core.error.storage.member_keys_missing",
         BridgeStorageFailure::CatchUpRequired => "core.pending.reason.waits",
+        // A bug in coven's storage work, which the person can only report.
+        BridgeStorageFailure::Bug => "core.error.category.internal",
     }
 }

@@ -583,6 +583,7 @@ pub(super) async fn rows_until(
     rows: &mut coven::ReconfigurableLiveQuery<
         Option<String>,
         Option<bae_views::DbStorageInspector>,
+        coven::CovenError,
     >,
     accept: impl Fn(&bae_views::DbStorageInspector) -> bool,
 ) -> bae_views::DbStorageInspector {

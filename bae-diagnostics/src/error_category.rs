@@ -17,11 +17,7 @@ pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
     use coven::StorageSetupError as E;
     match error {
         E::Storage(error) => cloud_home_category(error),
-        E::ProviderCheck { check, source } => {
-            C::StorageCheck { check: *check, failure: source.failure() }
-        }
-        E::S3VersioningUnknown { source } => C::S3VersioningUnknown(source.failure()),
-        E::S3VersioningUnsupported { state } => C::S3VersioningUnsupported(*state),
+        E::Check(error) => storage_check_category(error),
         E::LocationChangeUnsupported => C::StorageLocationChangeUnsupported,
         E::OAuth(_) => C::Credentials,
         E::SecureStorage(error) => key_category(error),
@@ -29,10 +25,26 @@ pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
         E::StoreOwner => C::StoreOwnerAccount,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Internal(_) => C::Internal,
+        // bae never cancels a setup it started, and starts none while one
+        // finishes: either means bae went wrong.
+        E::Cancelled | E::SetupRunning => C::Internal,
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic
         // in coven's work is a bug the person can only report.
         E::Shutdown(_) | E::Bug(_) => C::Internal,
+    }
+}
+
+/// The check of a provider or of S3's settings that refused a location.
+fn storage_check_category(error: &coven::StorageCheckError) -> C {
+    use coven::StorageCheckError as E;
+    match error {
+        E::ProviderCheck { check, source } => {
+            C::StorageCheck { check: *check, failure: source.failure() }
+        }
+        E::S3VersioningUnknown { source } => C::S3VersioningUnknown(source.failure()),
+        E::S3VersioningUnsupported { state } => C::S3VersioningUnsupported(*state),
+        E::Storage(error) => cloud_home_category(error),
     }
 }
 
@@ -99,6 +111,9 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         E::SecureStorage(error) => key_category(error),
         E::Database(_) => C::Database,
         E::NoStorage => C::Config,
+        // A code that can't be used here, such as one for another library:
+        // the person's state, as a refused code is in a bootstrap.
+        E::Code(_) => C::Config,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::Removed => C::DeviceRemoved,
         // Another copy uses this device's id: only a reset answers it.
@@ -122,9 +137,7 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         | E::SequenceExhausted
         | E::Crypto(_)
         | E::Format(_)
-        | E::KeyAlreadyUsed(_)
-        | E::Damaged(_)
-        | E::WrongStore { .. } => C::Internal,
+        | E::Damaged(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic
         // in coven's work is a bug the person can only report.
@@ -162,7 +175,6 @@ pub fn key_category(error: &coven::KeyError) -> C {
         | E::PassphraseParameters
         | E::Unavailable(_)
         | E::Keychain(_)
-        | E::UnsupportedKeyringPlatform
         | E::Unsupported
         | E::RestoreCodeStoreId => C::Keyring,
         // The custody's handle closed under the call, or bae named an
@@ -205,9 +217,13 @@ pub fn creation_category(error: &coven::StoreCreationError) -> C {
 pub fn deletion_category(error: &coven::StoreDeletionError) -> C {
     use coven::StoreDeletionError as E;
     match error {
-        E::Sync(error) | E::Closing(error) => sync_category(error),
+        E::Sync(error) | E::Closing(error) | E::Unfinished(error) => sync_category(error),
+        // This device holds no credentials for the library's storage: the
+        // person signs in to it again, then deletes.
+        E::SignInRequired(_) => C::Credentials,
+        E::Open(error) => write_category(error),
         E::Key(error) => key_category(error),
-        E::Lock(_) | E::Unsent(_) => C::Config,
+        E::Lock(_) | E::Unsent(_) | E::NoUnfinishedDeletion(_) => C::Config,
         E::File(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic
@@ -220,8 +236,14 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
     use coven::BootstrapError as E;
     match error {
         // A stale resume, or a cancel that came after the request may have
-        // been sent: the person's state, not a bug.
-        E::Code(_) | E::NoUnfinishedJoin(_) | E::JoinRequestSent => C::Config,
+        // been sent or the restoring device registered: the person's state,
+        // not a bug.
+        E::Code(_)
+        | E::NoUnfinishedJoin(_)
+        | E::NoUnfinishedRestore(_)
+        | E::NoUnfinishedReplacement(_)
+        | E::JoinRequestSent
+        | E::RestoreRegistered => C::Config,
         E::Store(coven::CovenError::Key(error)) | E::SecureStorage(error) => key_category(error),
         // The platform refused coven's watch of the network: the app's
         // packaging or the platform, which the person can't fix; or coven's
@@ -257,6 +279,7 @@ fn write_category(error: &coven::CovenError) -> C {
         E::Key(error) => key_category(error),
         E::Rollback { operation, .. } => write_category(operation),
         E::FileCleanup { write, .. } => write_category(write),
+        E::Sync(error) => sync_category(error),
         E::Database(_)
         | E::Migration(_)
         | E::CovenMigration(_)
@@ -283,10 +306,11 @@ pub fn device_only_category(error: &coven::DeviceOnlyError) -> C {
     use coven::DeviceOnlyError as E;
     match error {
         E::Download { error, .. } => file_read_category(error),
-        E::Write(error) => write_category(error),
         E::Database(_) => C::Database,
         E::Cleanup { error, .. } => device_only_category(error),
         E::RepeatedFile { .. } | E::Path(_) | E::Disk(_) | E::Cancelled => C::Internal,
+        // A panic in coven's work is a bug the person can only report.
+        E::Bug(_) => C::Internal,
     }
 }
 
@@ -294,7 +318,7 @@ pub fn file_read_category(error: &coven::FileReadError) -> C {
     use coven::FileReadError as E;
     match error {
         E::Storage(error) => cloud_home_category(error),
-        E::Write(error) => write_category(error),
+        E::Sync(error) => sync_category(error),
         E::Database(_) => C::Database,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
         E::NoStorage => C::Config,
@@ -306,5 +330,7 @@ pub fn file_read_category(error: &coven::FileReadError) -> C {
         | E::RangeOutOfBounds { .. }
         | E::Disk(_)
         | E::Lock(_) => C::Internal,
+        // A panic in coven's work is a bug the person can only report.
+        E::Bug(_) => C::Internal,
     }
 }

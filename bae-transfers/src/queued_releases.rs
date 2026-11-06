@@ -214,7 +214,9 @@ where
     /// Follow every entry of the queue, for a test that waits on the whole
     /// queue.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe(&self) -> coven::LiveQuery<ReleaseQueueSnapshot<Extra, ()>> {
+    pub fn subscribe(
+        &self,
+    ) -> coven::LiveQuery<ReleaseQueueSnapshot<Extra, ()>, coven::CovenError> {
         self.store.subscribe(|sql| {
             tables::release_queue_on::<Extra>(&sql).map_err(coven::CovenError::from)
         })
@@ -228,6 +230,7 @@ where
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         crate::release_queue::ReleaseQueueWindows<Extra>,
+        coven::CovenError,
     > {
         let places = bae_store::list_windows::KnownPlaces::new();
         self.store
@@ -244,7 +247,7 @@ where
     }
 
     /// Follow how many entries are in each phase, and whether it is paused.
-    pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts> {
+    pub fn subscribe_counts(&self) -> coven::LiveQuery<ReleaseQueueCounts, coven::CovenError> {
         self.store.subscribe(|sql| {
             tables::release_queue_counts_on::<Extra>(&sql).map_err(coven::CovenError::from)
         })

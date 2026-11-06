@@ -18,7 +18,7 @@ async fn set(db: &Store, edit: impl FnOnce(&mut Preferences) + Send + 'static) {
 }
 
 /// The next value `values` delivers, failing the test if none ever comes.
-async fn next(values: &mut coven::LiveQuery<Preferences>) -> Preferences {
+async fn next(values: &mut coven::LiveQuery<Preferences, coven::CovenError>) -> Preferences {
     tokio::time::timeout(HANG_GUARD, values.next())
         .await
         .expect("the live query delivers")

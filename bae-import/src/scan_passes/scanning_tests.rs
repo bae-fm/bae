@@ -561,7 +561,7 @@ fn a_refused_scan_write_is_a_bug_unless_the_disk_or_the_store_failed() {
             None,
         ))
     };
-    let coven = |error| bae_store::DbError::Coven(coven::CovenError::Database(error));
+    let coven = |error| bae_store::DbError::Coven(Box::new(coven::CovenError::Database(error)));
     assert!(!refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_FULL)));
     assert!(!refusal_is_a_bug(&sqlite(rusqlite::ffi::SQLITE_IOERR)));
     assert!(!refusal_is_a_bug(&coven(coven::DbError::StoreClosed)));

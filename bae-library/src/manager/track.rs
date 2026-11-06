@@ -39,14 +39,16 @@ impl LibraryManager {
     }
 
     /// Follow the queue as its screens show it.
-    pub fn subscribe_queue_value(&self) -> coven::LiveQuery<bae_playback::ResolvedQueueSnapshot> {
+    pub fn subscribe_queue_value(
+        &self,
+    ) -> coven::LiveQuery<bae_playback::ResolvedQueueSnapshot, coven::CovenError> {
         bae_playback::tables::subscribe_queue_value(&self.store)
     }
 
     /// Follow the queue's last addition to Up Next.
     pub fn subscribe_queue_addition(
         &self,
-    ) -> coven::LiveQuery<Option<bae_playback::QueueAddition>> {
+    ) -> coven::LiveQuery<Option<bae_playback::QueueAddition>, coven::CovenError> {
         bae_playback::tables::subscribe_queue_addition(&self.store)
     }
 
@@ -57,6 +59,7 @@ impl LibraryManager {
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         bae_playback::tables::QueueUpcomingRead,
+        coven::CovenError,
     > {
         bae_playback::tables::subscribe_queue_upcoming(&self.store, initial)
     }
@@ -110,7 +113,9 @@ impl LibraryManager {
 
     /// Follow where playback is, as the surfaces that move the position on
     /// themselves read it.
-    pub fn subscribe_playback_timeline(&self) -> coven::LiveQuery<bae_playback::PlaybackTimeline> {
+    pub fn subscribe_playback_timeline(
+        &self,
+    ) -> coven::LiveQuery<bae_playback::PlaybackTimeline, coven::CovenError> {
         bae_playback::tables::subscribe_playback_timeline(&self.store)
     }
 
@@ -118,7 +123,7 @@ impl LibraryManager {
     /// names a track the library no longer holds.
     pub fn subscribe_now_playing(
         &self,
-    ) -> coven::LiveQuery<Option<bae_playback::NowPlayingValues>> {
+    ) -> coven::LiveQuery<Option<bae_playback::NowPlayingValues>, coven::CovenError> {
         bae_playback::tables::subscribe_now_playing(&self.store)
     }
 }

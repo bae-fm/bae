@@ -32,12 +32,6 @@ fn every_failure_class_reads_back_as_itself() {
         C::S3VersioningUnsupported(coven::S3BucketVersioning::Enabled),
         C::S3VersioningUnknown(F::PermissionDenied),
         C::StorageLocationChangeUnsupported,
-        C::S3Prefix(coven::S3PrefixError::EmptySegment),
-        C::S3Prefix(coven::S3PrefixError::InvalidCharacter {
-            segment: "bae.lib".into(),
-            character: '.',
-        }),
-        C::S3Prefix(coven::S3PrefixError::SegmentTooLong { segment: "b".repeat(256) }),
         C::Storage(F::Authentication),
         C::Storage(F::PermissionDenied),
         C::Storage(F::ContainerNotFound),

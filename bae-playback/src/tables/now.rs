@@ -33,7 +33,9 @@ impl PlaybackNowRow {
 /// Follow what playback is doing as its screens show it. `None` while the
 /// row names a track the library no longer holds: the track was deleted, and
 /// playback has yet to move off it.
-pub fn subscribe_now_playing(store: &Store) -> coven::LiveQuery<Option<NowPlayingValues>> {
+pub fn subscribe_now_playing(
+    store: &Store,
+) -> coven::LiveQuery<Option<NowPlayingValues>, coven::CovenError> {
     store.subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
 }
 

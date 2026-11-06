@@ -205,7 +205,7 @@ pub(crate) type FolderScansInMemory = BTreeMap<PathBuf, RootScanInMemory>;
 /// own live query only says when they change.
 pub(crate) struct FolderScansLive {
     tables: crate::tables::ImportTables,
-    changes: coven::LiveQuery<Vec<StoredRootScan>>,
+    changes: coven::LiveQuery<Vec<StoredRootScan>, coven::CovenError>,
     in_memory: tokio::sync::watch::Receiver<FolderScansInMemory>,
     /// Whether the coordinator still holds the memory's sender. Once it has
     /// stopped, the memory says what it last said and only the table moves.

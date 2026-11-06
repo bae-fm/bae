@@ -43,8 +43,11 @@ impl LibraryViews {
         &self,
         initial: Option<crate::LibrarySearchQuery>,
         limit: usize,
-    ) -> coven::ReconfigurableLiveQuery<Option<crate::LibrarySearchQuery>, LibrarySearchProjection>
-    {
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::LibrarySearchQuery>,
+        LibrarySearchProjection,
+        coven::CovenError,
+    > {
         let limit_i64 = limit as i64;
         self.store
             .subscribe_reconfigurable(initial, move |request, sql| {
@@ -117,7 +120,11 @@ impl LibraryViews {
         sort: &[AlbumSortCriterion],
         group_by_artist: bool,
         initial_windows: bae_store::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, AlbumBrowseProjection> {
+    ) -> coven::ReconfigurableLiveQuery<
+        bae_store::LibraryPageWindows,
+        AlbumBrowseProjection,
+        coven::CovenError,
+    > {
         let (relation, order) = album_browse_order(sort, group_by_artist);
         let sources = album_browse_sources(group_by_artist);
         let places = KnownPlaces::new();
@@ -194,7 +201,7 @@ impl LibraryViews {
     pub fn subscribe_album_selection(
         &self,
         initial: BTreeSet<String>,
-    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>> {
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>, coven::CovenError> {
         self.store.subscribe_reconfigurable(initial, move |requested, sql| {
             let requested = serde_json::to_string(requested).expect("album ids serialize as JSON");
             let query = format!(
@@ -299,7 +306,8 @@ impl LibraryViews {
     pub fn subscribe_album_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection> {
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection, coven::CovenError>
+    {
         self.store
             .subscribe_reconfigurable(initial, |album_id, sql| {
                 let has_cloud_home = cloud_home_on(&sql)?;

@@ -90,7 +90,7 @@ impl<Request, T> Drop for ReconfigurableLiveQueryEvents<Request, T> {
 /// subscription's own task does.
 pub fn reconfigurable_live_query_events<Request, T>(
     manager: &crate::LibraryManager,
-    mut query: coven::ReconfigurableLiveQuery<Request, T>,
+    mut query: coven::ReconfigurableLiveQuery<Request, T, coven::CovenError>,
     reader: impl crate::SubscriptionReader,
 ) -> ReconfigurableLiveQueryEvents<Request, T>
 where

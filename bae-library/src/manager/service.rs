@@ -229,7 +229,7 @@ impl LibraryManager {
     /// start.
     pub fn until_closed<Request, Projection>(
         &self,
-        query: coven::ReconfigurableLiveQuery<Request, Projection>,
+        query: coven::ReconfigurableLiveQuery<Request, Projection, coven::CovenError>,
     ) -> bae_store::live_query::CancellableLiveQuery<Request, Projection>
     where
         Request: Clone + PartialEq + Send + Sync + 'static,
@@ -459,7 +459,9 @@ impl LibraryManager {
     /// Follow every entry of the download queue, for a test that waits on
     /// the whole queue.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_download_snapshot(&self) -> coven::LiveQuery<bae_transfers::DownloadSnapshot> {
+    pub fn subscribe_download_snapshot(
+        &self,
+    ) -> coven::LiveQuery<bae_transfers::DownloadSnapshot, coven::CovenError> {
         self.downloads.subscribe()
     }
 
@@ -471,6 +473,7 @@ impl LibraryManager {
     ) -> coven::ReconfigurableLiveQuery<
         bae_store::LibraryPageWindows,
         bae_transfers::ReleaseQueueWindows<()>,
+        coven::CovenError,
     > {
         self.downloads.subscribe_windows(initial)
     }
@@ -483,7 +486,9 @@ impl LibraryManager {
 
     /// Follow how many downloads are in each phase, and whether the queue is
     /// paused: what the Downloads pane's controls show of them.
-    pub fn subscribe_download_counts(&self) -> coven::LiveQuery<bae_transfers::ReleaseQueueCounts> {
+    pub fn subscribe_download_counts(
+        &self,
+    ) -> coven::LiveQuery<bae_transfers::ReleaseQueueCounts, coven::CovenError> {
         self.downloads.subscribe_counts()
     }
 
@@ -520,7 +525,7 @@ impl LibraryManager {
     #[cfg(all(desktop, test))]
     pub(crate) fn subscribe_output_snapshot(
         &self,
-    ) -> coven::LiveQuery<bae_transfers::OutputPhaseSnapshot> {
+    ) -> coven::LiveQuery<bae_transfers::OutputPhaseSnapshot, coven::CovenError> {
         self.outputs.subscribe()
     }
 

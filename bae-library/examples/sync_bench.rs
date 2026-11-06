@@ -6,7 +6,7 @@
 //! environment names (`bench_library`), writes a release of `--tracks`
 //! tracks into it before its storage is set up, sets the storage up, and
 //! waits at most `--seconds` for the sync loop to upload every write. At the
-//! end, also when a step fails, the library's folder on storage is emptied.
+//! end, also when a step fails, the library's bucket is emptied.
 //!
 //! Usage: sync_bench [--tracks 5000] [--seconds 120]
 
@@ -46,7 +46,7 @@ fn main() {
         .with_writer(std::io::stderr)
         .init();
     let started = Instant::now();
-    let ran = bench_library::run("sync-bench", "Sync bench", tracks, async |library| {
+    let ran = bench_library::run("Sync bench", tracks, async |library| {
         eprintln!("created the library and set its storage up in {:?}", started.elapsed());
         let uploading = Instant::now();
         tokio::time::timeout(Duration::from_secs(seconds), bench_library::uploaded(library))

@@ -114,7 +114,14 @@ impl AppDir {
     /// a keychain coven can't reach fails the start, and held while the
     /// process runs.
     pub fn coven(&self) -> Result<coven::Coven, coven::KeyError> {
-        coven::Coven::new(self.path.clone(), KEYRING_SERVICE)
+        // Sentinel: the bug sink commit passes bae's crash reporter. Until
+        // then coven's bugs in work nobody waits for are logged, as they
+        // were while bae named no sink.
+        coven::Coven::new(
+            self.path.clone(),
+            KEYRING_SERVICE,
+            std::sync::Arc::new(coven::task::LoggedBugs),
+        )
     }
 
     /// The app directory coven keeps this device's stores under, which a
@@ -172,16 +179,32 @@ impl AppDir {
     ) -> Result<Vec<LibraryInfo>, AppDirError> {
         let active_id = self.active_library_id()?;
         let mut libraries = Vec::new();
-        for store in coven.stores().await? {
-            let state = match store.unfinished_replacement {
+        for listed in coven.stores().await? {
+            // Sentinel: S-2's bae half lists an unreadable library beside the
+            // others once the person settles what its row's title shows; until
+            // then one fails the listing, as it did before coven listed it.
+            let store = match listed {
+                coven::ListedStore::Readable(store) => store,
+                coven::ListedStore::Unreadable { id, reason } => {
+                    return Err(AppDirError::UnreadableStore {
+                        store: id,
+                        reason: Box::new(reason),
+                    });
+                }
+            };
+            let state = match store.unfinished {
                 // Whatever its settings say, only finishing the call opens it.
-                Some(by) => LibraryState::ReplacementUnfinished(by),
+                Some(coven::Unfinished::Replacement(by)) => LibraryState::ReplacementUnfinished(by),
+                // Sentinel: the deletion work of this pin bump lists a library
+                // being deleted and offers finishing its deletion. Until then
+                // it is left out, as coven left it out while it deleted it.
+                Some(coven::Unfinished::Deletion) => continue,
                 None => match coven::Coven::storage_config(&coven.store_dir(&store.id)).await {
                     Ok(storage) => LibraryState::Openable(storage),
                     Err(error) => {
                         tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
                         LibraryState::Unreadable(bae_diagnostics::UiError::diagnostic(
-                            bae_diagnostics::cloud_home_category(&error),
+                            bae_diagnostics::sync_category(&error),
                             format_args!("Cloud home error: {error}"),
                         ))
                     }
@@ -298,10 +321,20 @@ pub enum AppDirError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     File(#[from] coven::FileError),
+    // Boxed, as the store listing's error and coven's are each larger than
+    // the rest of this enum: every Result carrying it stays small.
     #[error(transparent)]
-    Stores(#[from] coven::StoreListError),
+    Stores(Box<coven::StoreListError>),
     #[error(transparent)]
     Storage(#[from] coven::StorageError),
+    #[error("library {store} can't be read: {reason}")]
+    UnreadableStore { store: coven::StoreId, reason: Box<coven::CovenError> },
+}
+
+impl From<coven::StoreListError> for AppDirError {
+    fn from(error: coven::StoreListError) -> Self {
+        Self::Stores(Box::new(error))
+    }
 }
 
 impl AppDirError {

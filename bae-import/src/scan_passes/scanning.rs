@@ -47,19 +47,22 @@ fn refusal_is_a_bug(error: &bae_store::DbError) -> bool {
     match error {
         E::Io(_) | E::FileRead(_) => false,
         E::Sqlite(error) => !sqlite_is_the_disk(error),
-        E::Coven(coven::CovenError::Rollback { .. } | coven::CovenError::Shutdown(_)) => false,
-        E::Coven(coven::CovenError::Database(error)) => match error {
-            coven::DbError::StoreClosed
-            | coven::DbError::Shutdown(_)
-            | coven::DbError::RollbackFailed
-            | coven::DbError::StatePersistence(_)
-            | coven::DbError::CheckpointFailed(_)
-            | coven::DbError::WallTimer(_)
-            | coven::DbError::DamagedDatabase => false,
-            coven::DbError::Sqlite(error) => !sqlite_is_the_disk(error),
+        E::Coven(error) => match error.as_ref() {
+            coven::CovenError::Rollback { .. } | coven::CovenError::Shutdown(_) => false,
+            coven::CovenError::Database(error) => match error {
+                coven::DbError::StoreClosed
+                | coven::DbError::Shutdown(_)
+                | coven::DbError::RollbackFailed
+                | coven::DbError::StatePersistence(_)
+                | coven::DbError::CheckpointFailed(_)
+                | coven::DbError::WallTimer(_)
+                | coven::DbError::DamagedDatabase => false,
+                coven::DbError::Sqlite(error) => !sqlite_is_the_disk(error),
+                _ => true,
+            },
             _ => true,
         },
-        E::Coven(_) | E::Creation(_) | E::Unreadable { .. } | E::Message(_) => true,
+        E::Creation(_) | E::Unreadable { .. } | E::Message(_) => true,
     }
 }
 

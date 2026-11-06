@@ -27,7 +27,10 @@ use bae_views::LibraryViews;
 pub(crate) fn follow_request<Request, Projection, Snapshot>(
     library: &LibraryManager,
     task_name: &'static str,
-    open: impl FnOnce(Option<Request>) -> coven::ReconfigurableLiveQuery<Option<Request>, Projection>
+    open: impl FnOnce(
+            Option<Request>,
+        )
+            -> coven::ReconfigurableLiveQuery<Option<Request>, Projection, coven::CovenError>
         + Send
         + 'static,
     snapshot: impl Fn(&Option<Request>, Projection) -> Snapshot + Send + 'static,

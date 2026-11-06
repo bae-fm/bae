@@ -9,6 +9,9 @@ pub enum BridgeStorageLocation {
         region: String,
         endpoint: Option<String>,
         profile: Option<BridgeS3Profile>,
+        // Sentinel: the S3 bucket-of-its-own commit removes the field with
+        // the apps' key prefix inputs. Until then it is empty on the way out
+        // and refused when typed.
         prefix: String,
     },
     Dropbox {
@@ -30,7 +33,9 @@ pub enum BridgeStorageLocation {
     },
 }
 
-/// Why coven refused a typed S3 key prefix. Mirrors `coven::S3PrefixError`.
+/// Why a typed S3 key prefix was refused.
+// Sentinel: coven has no key prefixes, so nothing makes this. The S3
+// bucket-of-its-own commit removes it with the apps' lines for it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeS3PrefixProblem {
     /// Two slashes in a row leave a folder with no name.
@@ -42,36 +47,28 @@ pub enum BridgeS3PrefixProblem {
     SegmentTooLong { segment: String },
 }
 
-mirror_enum! {
-    BridgeS3PrefixProblem = coven::S3PrefixError,
-    from_core: pub(crate) fn,
-    variants: {
-        EmptySegment,
-        InvalidCharacter { segment, character: (into) },
-        SegmentTooLong { segment },
-    },
-}
-
-/// A typed key prefix coven refused crosses in its own class, so the line
-/// names the folder at fault.
-impl From<coven::S3PrefixError> for BridgeError {
-    fn from(error: coven::S3PrefixError) -> Self {
-        BridgeError::from_core(bae_diagnostics::UiError::diagnostic(
-            bae_diagnostics::UiErrorCategory::S3Prefix(error.clone()),
-            &error,
-        ))
+/// Every S3 library has its bucket to itself, so a key prefix the person
+/// typed is refused as the location needing a bucket of its own; slashes
+/// alone are the bucket's root, which is no prefix.
+pub(crate) fn refuse_key_prefix(typed: &str) -> Result<(), BridgeError> {
+    if typed.trim_matches('/').is_empty() {
+        return Ok(());
     }
+    Err(BridgeError::from_core(bae_diagnostics::UiError::diagnostic(
+        bae_diagnostics::UiErrorCategory::Storage(coven::StorageFailure::OwnLocationRequired),
+        format_args!("key prefix {typed:?}: every S3 library takes a bucket of its own"),
+    )))
 }
 
 impl BridgeStorageLocation {
     pub(crate) fn from_core(value: coven::StorageConfig) -> Self {
         match value {
-            coven::StorageConfig::S3 { bucket, region, endpoint, profile, prefix } => Self::S3 {
+            coven::StorageConfig::S3 { bucket, region, endpoint, profile } => Self::S3 {
                 bucket,
                 region,
                 endpoint: endpoint.map(Into::into),
                 profile: profile.map(BridgeS3Profile::from_core),
-                prefix: prefix.into(),
+                prefix: String::new(),
             },
             coven::StorageConfig::Dropbox { location, account_label } => Self::Dropbox {
                 location: BridgeDropboxLocation::from_core(location),
@@ -88,13 +85,18 @@ impl BridgeStorageLocation {
 
     pub(crate) fn into_core(self) -> Result<coven::StorageConfig, BridgeError> {
         Ok(match self {
-            Self::S3 { bucket, region, endpoint, profile, prefix } => coven::StorageConfig::S3 {
-                bucket,
-                region,
-                endpoint: endpoint.map(|s| s.parse()).transpose().map_err(BridgeError::config)?,
-                profile: profile.map(BridgeS3Profile::into_core),
-                prefix: coven::S3Prefix::parse(&prefix)?,
-            },
+            Self::S3 { bucket, region, endpoint, profile, prefix } => {
+                refuse_key_prefix(&prefix)?;
+                coven::StorageConfig::S3 {
+                    bucket,
+                    region,
+                    endpoint: endpoint
+                        .map(|s| s.parse())
+                        .transpose()
+                        .map_err(BridgeError::config)?,
+                    profile: profile.map(BridgeS3Profile::into_core),
+                }
+            }
             Self::Dropbox { location, account_label } => {
                 coven::StorageConfig::Dropbox { location: location.into_core(), account_label }
             }
@@ -222,7 +224,7 @@ impl BridgeStorageSetupProgress {
         use coven::StorageSetupStep as Step;
         Self {
             step: match value.step {
-                Step::CheckingBucket => BridgeStorageSetupStep::CheckingBucket,
+                Step::CheckingLocation => BridgeStorageSetupStep::CheckingBucket,
                 Step::DetectingSettings => BridgeStorageSetupStep::DetectingSettings,
                 Step::PreparingZone => BridgeStorageSetupStep::PreparingZone,
                 Step::ReadingAccount => BridgeStorageSetupStep::ReadingAccount,

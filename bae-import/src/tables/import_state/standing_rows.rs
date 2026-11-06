@@ -522,7 +522,7 @@ impl ImportTables {
     #[cfg(test)]
     pub(crate) fn subscribe_candidate_facts(
         &self,
-    ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>> {
+    ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>, coven::CovenError> {
         self.store.subscribe(|sql| {
             load_standings_on(&sql)
                 .map(|standings| {
@@ -541,7 +541,9 @@ impl ImportTables {
 
     /// How far the identification batch has got and how many imports are in
     /// flight, live.
-    pub(crate) fn subscribe_import_counts(&self) -> coven::LiveQuery<ImportCounts> {
+    pub(crate) fn subscribe_import_counts(
+        &self,
+    ) -> coven::LiveQuery<ImportCounts, coven::CovenError> {
         self.store.subscribe(|sql| load_import_counts_on(&sql).map_err(CovenError::from))
     }
 

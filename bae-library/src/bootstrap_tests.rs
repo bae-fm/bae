@@ -324,7 +324,7 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
             .await
             .unwrap()
             .into_iter()
-            .map(|listed| listed.id)
+            .map(|listed| listed.id())
             .collect::<Vec<_>>(),
         vec![replaced.store]
     );
@@ -346,7 +346,15 @@ async fn stop_at_swap<T>(
         .await;
         assert!(step.is_pending(), "the replacement finished before its swap was seen");
         let listed = installation.stores().await.unwrap();
-        if listed.iter().any(|listed| listed.unfinished_replacement.is_some()) {
+        if listed.iter().any(|listed| {
+            matches!(
+                listed,
+                coven::ListedStore::Readable(coven::StoreInfo {
+                    unfinished: Some(coven::Unfinished::Replacement(_)),
+                    ..
+                })
+            )
+        }) {
             return;
         }
         tokio::task::yield_now().await;

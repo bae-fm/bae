@@ -308,6 +308,7 @@ impl AppServices {
     ) -> coven::ReconfigurableLiveQuery<
         Option<bae_import::CandidateKey>,
         Option<bae_import::ImportCandidateDetailProjection>,
+        coven::CovenError,
     > {
         self.inner.import.subscribe_candidate(None)
     }
@@ -318,6 +319,7 @@ impl AppServices {
         query: coven::ReconfigurableLiveQuery<
             Option<bae_import::CandidateKey>,
             Option<bae_import::ImportCandidateDetailProjection>,
+            coven::CovenError,
         >,
     ) -> bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
         let (key_tx, mut keys) = tokio::sync::watch::channel(None::<bae_import::CandidateKey>);

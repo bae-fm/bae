@@ -249,6 +249,7 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
 type PaneQuery = coven::ReconfigurableLiveQuery<
     Option<bae_import::CandidateKey>,
     Option<bae_import::ImportCandidateDetailProjection>,
+    coven::CovenError,
 >;
 
 /// A watched folder of tagged files, scanned and read as its own tags, whose

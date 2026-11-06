@@ -22,10 +22,9 @@ fn a_two_device_test_closes_both_devices_before_its_runtime_ends() {
         let read = runtime.block_on(db.unsent_writes_for_test());
         assert!(
             matches!(
-                read,
-                Err(bae_store::DbError::Coven(coven::CovenError::Database(
-                    coven::DbError::StoreClosed
-                )))
+                &read,
+                Err(bae_store::DbError::Coven(error))
+                    if matches!(**error, coven::CovenError::Database(coven::DbError::StoreClosed))
             ),
             "the device's store is closed: {read:?}"
         );

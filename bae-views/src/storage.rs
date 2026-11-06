@@ -75,7 +75,11 @@ impl LibraryViews {
     pub fn subscribe_storage_browse(
         &self,
         initial: StorageBrowseRequest,
-    ) -> coven::ReconfigurableLiveQuery<StorageBrowseRequest, StorageBrowseProjection> {
+    ) -> coven::ReconfigurableLiveQuery<
+        StorageBrowseRequest,
+        StorageBrowseProjection,
+        coven::CovenError,
+    > {
         let places = KnownPlaces::new();
         self.store
             .subscribe_reconfigurable(initial, move |request, sql| {

@@ -7,7 +7,7 @@ impl Records {
         &self,
         table: &str,
         row_id: &str,
-    ) -> coven::LiveQuery<bool> {
+    ) -> coven::LiveQuery<bool, coven::CovenError> {
         let statement = format!(
             "SELECT EXISTS (SELECT 1 FROM {table} AS t \
              JOIN coven_uploads AS upload ON upload.file = t.{column} WHERE t.id = ?1)",

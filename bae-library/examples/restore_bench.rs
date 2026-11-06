@@ -7,8 +7,8 @@
 //! restores the code the library's Add Device QR code carries
 //! (`restore_code_for_transfer`) into a new temporary app directory with an
 //! in-memory keychain, and removes the new device through the library again,
-//! timing that too. At the end, also when a step fails, the library's folder
-//! on storage is emptied.
+//! timing that too. At the end, also when a step fails, the library's bucket
+//! is emptied.
 //!
 //! With `--downloads <n>`, each new device restores reading the library's
 //! history from storage `n` requests at a time. Without it, the new device
@@ -52,7 +52,7 @@ fn main() {
         )
         .with_writer(std::io::stderr)
         .init();
-    let ran = bench_library::run("restore-bench", "Restore bench", tracks, async |library| {
+    let ran = bench_library::run("Restore bench", tracks, async |library| {
         bench_library::uploaded(library).await?;
         let code = library
             .restore_code_for_transfer()
@@ -123,7 +123,11 @@ async fn restore_runs(
         let restoring = started.elapsed();
         let tracks = restored
             .read(|sql| {
-                Ok(sql.query_row("SELECT COUNT(*) FROM tracks", [], |row| row.get::<_, i64>(0))?)
+                Ok::<_, coven::CovenError>(sql.query_row(
+                    "SELECT COUNT(*) FROM tracks",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )?)
             })
             .await
             .map_err(|error| error.to_string());
@@ -165,7 +169,7 @@ async fn remove_device(source: &coven::CovenHandle, device: coven::DeviceId) -> 
             return Err(format!("the removal was refused: {reason:?}"));
         }
         source
-            .write(move |sql| Ok(sql.acknowledge_operation(removal)?))
+            .write(move |sql| Ok::<_, coven::CovenError>(sql.acknowledge_operation(removal)?))
             .await
             .map_err(|error| format!("acknowledging the removal: {error}"))?;
     }

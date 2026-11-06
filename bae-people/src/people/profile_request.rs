@@ -44,6 +44,12 @@ impl ProfileRequest {
                 "making a circle claims a slot, but operation {:?} claimed none",
                 self.operation
             ))),
+            Some(outcome @ (coven::OperationOutcome::Cancelled | coven::OperationOutcome::Undone(_))) => {
+                Err(DbError::Message(format!(
+                    "only storage setup is cancelled or undone, but making a circle in operation {:?} ended {outcome:?}",
+                    self.operation
+                )))
+            }
         }
     }
 }
@@ -123,7 +129,7 @@ impl People {
     /// live.
     pub fn subscribe_requested_profile(
         &self,
-    ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>> {
+    ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>, coven::CovenError> {
         self.inner
             .store
             .subscribe(|sql| Ok(profile_request_on(&sql)?.map(requested_profile).transpose()?))
@@ -131,7 +137,9 @@ impl People {
 
     /// The profile request, live: it reruns as the request is made or ends
     /// and as its circle's operation ends.
-    pub(crate) fn subscribe_profile_request(&self) -> coven::LiveQuery<Option<ProfileRequest>> {
+    pub(crate) fn subscribe_profile_request(
+        &self,
+    ) -> coven::LiveQuery<Option<ProfileRequest>, coven::CovenError> {
         self.inner.store.subscribe(|sql| Ok(profile_request_on(&sql)?))
     }
 }

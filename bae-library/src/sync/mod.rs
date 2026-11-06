@@ -16,10 +16,6 @@ pub struct S3ConfigData {
     pub bucket: String,
     pub region: String,
     pub endpoint: Option<String>,
-    /// The folder in the bucket the library lives under, parsed from what the
-    /// person typed; slashes at its ends mean nothing, and empty is the
-    /// bucket's root.
-    pub key_prefix: coven::S3Prefix,
     pub access_key: String,
     pub secret_key: String,
     pub profile: Option<coven::S3Profile>,
@@ -36,7 +32,6 @@ impl S3ConfigData {
                 bucket: self.bucket,
                 region: self.region,
                 endpoint,
-                prefix: self.key_prefix,
                 profile: self.profile,
             },
             coven::S3Credentials {

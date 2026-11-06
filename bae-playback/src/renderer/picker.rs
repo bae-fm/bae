@@ -92,7 +92,7 @@ impl CastPicker {
     }
 
     /// Follow the receivers the picker lists.
-    pub fn subscribe(&self) -> coven::LiveQuery<Vec<CastDevice>> {
+    pub fn subscribe(&self) -> coven::LiveQuery<Vec<CastDevice>, coven::CovenError> {
         self.store.subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
     }
 

@@ -300,6 +300,7 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::AccessNotGranted { required: crate::BridgeOAuthAccess::OneDrive },
         BridgeStorageFailure::DropboxAppFolderNotShareable,
         BridgeStorageFailure::Network,
+        BridgeStorageFailure::Corrupted,
         BridgeStorageFailure::Authentication,
         BridgeStorageFailure::PermissionDenied,
         BridgeStorageFailure::NotFound,
@@ -307,7 +308,7 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::Conflict,
         BridgeStorageFailure::ContainerNotFound,
         BridgeStorageFailure::RegionMismatch,
-        BridgeStorageFailure::OwnBucketRequired { reason: BridgeOwnBucketReason::Prefix },
+        BridgeStorageFailure::OwnLocationRequired,
         BridgeStorageFailure::StoreExists,
         BridgeStorageFailure::ClockSkew,
         BridgeStorageFailure::QuotaExceeded,
@@ -331,6 +332,7 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::File,
         BridgeStorageFailure::MemberKeysMissing,
         BridgeStorageFailure::CatchUpRequired,
+        BridgeStorageFailure::Bug,
     ] {
         keys.push(bridge_error_category_key(BridgeErrorCategory::Storage { failure }));
     }
@@ -558,6 +560,7 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         O::Invite,
         O::RevokeAccess,
         O::ReplaceMemberKeys,
+        O::StorageSetup,
     ];
     [
         S::ReleaseFile { file_name: "01 Track.flac".into(), album_title: "Album Title".into() },
@@ -573,7 +576,6 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         S::Retention,
         S::LibraryData,
         S::CircleData,
-        S::JoinRequest,
         S::Connection,
     ]
     .into_iter()

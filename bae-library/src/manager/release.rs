@@ -152,6 +152,7 @@ impl LibraryManager {
     ) -> coven::ReconfigurableLiveQuery<
         std::collections::BTreeSet<bae_records::LibraryCheck>,
         Vec<bae_records::LibraryStatus>,
+        coven::CovenError,
     > {
         self.records.subscribe_library_statuses(initial)
     }

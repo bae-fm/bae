@@ -219,7 +219,8 @@ impl LibraryViews {
     pub fn subscribe_storage_inspector(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<DbStorageInspector>> {
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<DbStorageInspector>, coven::CovenError>
+    {
         self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let Some(release_id) = release_id else {

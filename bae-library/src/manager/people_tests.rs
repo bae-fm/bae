@@ -156,8 +156,11 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
 
         manager.acknowledge_admin_change(operation).await.unwrap();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
-        let listed =
-            laptop.store().query_texts_for_test("SELECT kind FROM coven_operations").await.unwrap();
+        let listed = laptop
+            .store()
+            .query_texts_for_test("SELECT kind FROM coven_operations WHERE kind = 'RenameStore'")
+            .await
+            .unwrap();
         assert!(listed.is_empty(), "{listed:?}");
     });
 }

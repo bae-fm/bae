@@ -30,7 +30,7 @@ pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, Bri
             bucket: s3.bucket,
             region: s3.region,
             endpoint: s3.endpoint,
-            key_prefix: s3.key_prefix.into(),
+            key_prefix: String::new(),
             access_key: s3.access_key,
             secret_key: s3.secret_key,
             profile: s3.profile.map(BridgeS3Profile::from_core),
@@ -41,24 +41,9 @@ pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, Bri
     })
 }
 
-/// A refused key prefix keeps its own class, so the line names the folder at
-/// fault; the detail names the profile and its `s3.key_prefix` field. Any
-/// other profile failure is a configuration error.
+/// Every profile failure is a configuration error.
 fn profile_error(error: bae_library::dev_reset::DevResetProfileError) -> BridgeError {
-    use bae_library::dev_reset::DevResetProfileError as E;
-    match &error {
-        E::Prefix { error: refusal, .. } => {
-            BridgeError::from_core(bae_diagnostics::UiError::diagnostic(
-                bae_diagnostics::UiErrorCategory::S3Prefix(refusal.clone()),
-                &error,
-            ))
-        }
-        E::Read { .. }
-        | E::Exposed { .. }
-        | E::Malformed { .. }
-        | E::Empty { .. }
-        | E::WholeBucket { .. } => BridgeError::config(&error),
-    }
+    BridgeError::config(&error)
 }
 
 #[cfg(test)]

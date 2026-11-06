@@ -73,7 +73,9 @@ async fn the_live_query_delivers_each_addition() {
 }
 
 /// The query's next value.
-async fn next(additions: &mut coven::LiveQuery<Option<QueueAddition>>) -> Option<QueueAddition> {
+async fn next(
+    additions: &mut coven::LiveQuery<Option<QueueAddition>, coven::CovenError>,
+) -> Option<QueueAddition> {
     tokio::time::timeout(HANG_GUARD, additions.next())
         .await
         .expect("a value in time")

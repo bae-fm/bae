@@ -28,7 +28,7 @@ pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
 
 /// Follow this device's preferences: the first value at once, then one
 /// after each write that changes them.
-pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences> {
+pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences, coven::CovenError> {
     store.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
 }
 

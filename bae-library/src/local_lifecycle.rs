@@ -309,7 +309,13 @@ pub(crate) mod removal_lock_waits {
 }
 
 async fn listed_stores(coven: &coven::Coven) -> Result<HashSet<coven::StoreId>, LibraryError> {
-    Ok(coven.stores().await.map_err(AppDirError::from)?.into_iter().map(|store| store.id).collect())
+    Ok(coven
+        .stores()
+        .await
+        .map_err(AppDirError::from)?
+        .into_iter()
+        .map(|store| store.id())
+        .collect())
 }
 
 /// Write the record, synced along with the directories naming it.

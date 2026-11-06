@@ -98,6 +98,16 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
             }
             Some(coven::OperationOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
             Some(coven::OperationOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
+            // Only storage setup is cancelled or undone, never an admin change.
+            Some(
+                outcome @ (coven::OperationOutcome::Cancelled | coven::OperationOutcome::Undone(_)),
+            ) => {
+                return Err(bae_store::read::column_conversion_error(
+                    row,
+                    3,
+                    format!("an admin change that ended {outcome:?}"),
+                ))
+            }
         };
         Ok(AdminChange { operation, change, state })
     })
@@ -141,7 +151,7 @@ impl Membership {
             + 'static,
     ) -> Result<R, coven::SyncError> {
         self.store
-            .write(move |sql| {
+            .write_as(move |sql| {
                 let (operation, value) = change(&sql)?;
                 if let Some(operation) = operation {
                     insert_admin_operation(&sql, operation, &target)?;
@@ -149,12 +159,11 @@ impl Membership {
                 Ok(value)
             })
             .await
-            .map_err(coven::SyncError::from)
     }
 
     /// The admin changes this device asked for, live: each until its outcome
     /// is acknowledged.
-    pub fn subscribe_admin_changes(&self) -> coven::LiveQuery<Vec<AdminChange>> {
+    pub fn subscribe_admin_changes(&self) -> coven::LiveQuery<Vec<AdminChange>, coven::CovenError> {
         self.store.subscribe(|sql| Ok(admin_changes_on(&sql)?))
     }
 

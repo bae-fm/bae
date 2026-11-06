@@ -7,7 +7,8 @@ fn point(sample: u64, byte: u64, exact_from: u64) -> ScrubPoint {
 fn is_damaged(result: Result<Vec<ScrubPoint>, DbError>) -> bool {
     matches!(
         result,
-        Err(DbError::Coven(coven::CovenError::Database(coven::DbError::DamagedDatabase)))
+        Err(DbError::Coven(error))
+            if matches!(*error, coven::CovenError::Database(coven::DbError::DamagedDatabase))
     )
 }
 

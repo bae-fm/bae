@@ -4,14 +4,13 @@
 
 use super::*;
 use bae_diagnostics::{UiError, UiErrorCategory, UiErrorClass};
-use coven::{DropboxAccess, OAuthAccess, OwnBucketReason, StorageFailure};
+use coven::{DropboxAccess, OAuthAccess, StorageFailure};
 
 /// A failed start's class in `sync_start_failure`'s columns.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct FailureColumns {
     category: &'static str,
     storage_failure: Option<&'static str>,
-    own_bucket_reason: Option<&'static str>,
     required_access: Option<&'static str>,
     size_bytes: Option<i64>,
     limit_bytes: Option<i64>,
@@ -22,7 +21,6 @@ impl FailureColumns {
         Self {
             category,
             storage_failure: None,
-            own_bucket_reason: None,
             required_access: None,
             size_bytes: None,
             limit_bytes: None,
@@ -67,7 +65,6 @@ impl FailureColumns {
             | K::S3VersioningUnknown
             | K::S3VersioningUnsupported
             | K::StorageLocationChangeUnsupported
-            | K::S3Prefix
             | K::Credentials
             | K::Network
             | K::InviteJoining
@@ -98,6 +95,7 @@ impl FailureColumns {
             F::DropboxAppFolderNotShareable => "dropbox_app_folder_not_shareable",
             F::CatchUpRequired => "catch_up_required",
             F::Network => "network",
+            F::Corrupted => "corrupted",
             F::Authentication => "authentication",
             F::PermissionDenied => "permission_denied",
             F::NotFound => "not_found",
@@ -107,13 +105,7 @@ impl FailureColumns {
             F::RegionMismatch => "region_mismatch",
             F::StoreExists => "store_exists",
             F::ClockSkew => "clock_skew",
-            F::OwnBucketRequired { reason } => {
-                columns.own_bucket_reason = Some(match reason {
-                    OwnBucketReason::Prefix => "prefix",
-                    OwnBucketReason::Occupied => "occupied",
-                });
-                "own_bucket_required"
-            }
+            F::OwnLocationRequired => "own_location_required",
             F::QuotaExceeded => "quota_exceeded",
             F::RateLimited => "rate_limited",
             F::InvalidConfiguration => "invalid_configuration",
@@ -140,6 +132,7 @@ impl FailureColumns {
             F::Encoding => "encoding",
             F::File => "file",
             F::MemberKeysMissing => "member_keys_missing",
+            F::Bug => "bug",
         };
         columns.storage_failure = Some(name);
         Ok(columns)
@@ -170,7 +163,6 @@ fn unnamed(column: &str, value: &str) -> DbError {
 struct StoredColumns {
     category: String,
     storage_failure: Option<String>,
-    own_bucket_reason: Option<String>,
     required_access: Option<String>,
     size_bytes: Option<i64>,
     limit_bytes: Option<i64>,
@@ -197,6 +189,7 @@ impl StoredColumns {
             "dropbox_app_folder_not_shareable" => F::DropboxAppFolderNotShareable,
             "catch_up_required" => F::CatchUpRequired,
             "network" => F::Network,
+            "corrupted" => F::Corrupted,
             "authentication" => F::Authentication,
             "permission_denied" => F::PermissionDenied,
             "not_found" => F::NotFound,
@@ -206,13 +199,7 @@ impl StoredColumns {
             "region_mismatch" => F::RegionMismatch,
             "store_exists" => F::StoreExists,
             "clock_skew" => F::ClockSkew,
-            "own_bucket_required" => F::OwnBucketRequired {
-                reason: match self.own_bucket_reason.as_deref() {
-                    Some("prefix") => OwnBucketReason::Prefix,
-                    Some("occupied") => OwnBucketReason::Occupied,
-                    other => return Err(unnamed("own_bucket_reason", &format!("{other:?}"))),
-                },
-            },
+            "own_location_required" => F::OwnLocationRequired,
             "quota_exceeded" => F::QuotaExceeded,
             "rate_limited" => F::RateLimited,
             "invalid_configuration" => F::InvalidConfiguration,
@@ -239,6 +226,7 @@ impl StoredColumns {
             "encoding" => F::Encoding,
             "file" => F::File,
             "member_keys_missing" => F::MemberKeysMissing,
+            "bug" => F::Bug,
             other => return Err(unnamed("storage_failure", other)),
         })
     }
@@ -266,7 +254,7 @@ impl StoredColumns {
 pub(super) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiError>, DbError> {
     let row = sql
         .query_row(
-            "SELECT category, storage_failure, own_bucket_reason, required_access, \
+            "SELECT category, storage_failure, required_access, \
              size_bytes, limit_bytes, detail FROM sync_start_failure",
             [],
             |row| {
@@ -274,12 +262,11 @@ pub(super) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiErro
                     StoredColumns {
                         category: row.get(0)?,
                         storage_failure: row.get(1)?,
-                        own_bucket_reason: row.get(2)?,
-                        required_access: row.get(3)?,
-                        size_bytes: row.get(4)?,
-                        limit_bytes: row.get(5)?,
+                        required_access: row.get(2)?,
+                        size_bytes: row.get(3)?,
+                        limit_bytes: row.get(4)?,
                     },
-                    row.get::<_, String>(6)?,
+                    row.get::<_, String>(5)?,
                 ))
             },
         )
@@ -302,18 +289,16 @@ impl SyncStatus {
                 match &row {
                     Some((columns, detail)) => sql.execute(
                         "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
-                     own_bucket_reason, required_access, size_bytes, limit_bytes, detail) \
-                     VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7) \
+                     required_access, size_bytes, limit_bytes, detail) \
+                     VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6) \
                      ON CONFLICT (singleton) DO UPDATE SET \
                      category = excluded.category, storage_failure = excluded.storage_failure, \
-                     own_bucket_reason = excluded.own_bucket_reason, \
                      required_access = excluded.required_access, \
                      size_bytes = excluded.size_bytes, limit_bytes = excluded.limit_bytes, \
                      detail = excluded.detail",
                         params![
                             columns.category,
                             columns.storage_failure,
-                            columns.own_bucket_reason,
                             columns.required_access,
                             columns.size_bytes,
                             columns.limit_bytes,

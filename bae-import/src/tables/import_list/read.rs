@@ -128,7 +128,8 @@ impl ImportTables {
     pub(crate) fn subscribe_import_list(
         &self,
         initial: ImportListRequest,
-    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection> {
+    ) -> coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection, coven::CovenError>
+    {
         let places = KnownPlaces::new();
         self.store
             .subscribe_reconfigurable(initial, move |request, sql| {

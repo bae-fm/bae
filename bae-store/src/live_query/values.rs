@@ -20,7 +20,9 @@ pub trait LiveSource<T>: Send {
     fn runs(&self) -> coven::LiveQueryRuns;
 }
 
-impl<T: Clone + PartialEq + Send + 'static> LiveSource<T> for coven::LiveQuery<T> {
+impl<T: Clone + PartialEq + Send + 'static> LiveSource<T>
+    for coven::LiveQuery<T, coven::CovenError>
+{
     fn next(
         &mut self,
     ) -> std::pin::Pin<

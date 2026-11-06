@@ -242,7 +242,6 @@ pub(crate) fn subject_message(subject: bae_sync_status::PendingSubjectName) -> B
         S::Retention => "core.pending.subject.retention",
         S::LibraryData => "core.pending.subject.library_data",
         S::CircleData => "core.pending.subject.circle_data",
-        S::JoinRequest => "core.pending.subject.join_request",
         S::Connection => "core.pending.subject.connection",
         S::Operation(kind) => match kind {
             O::CreateStore => "core.pending.operation.create_store",
@@ -268,6 +267,7 @@ pub(crate) fn subject_message(subject: bae_sync_status::PendingSubjectName) -> B
             O::Invite => "core.pending.operation.invite",
             O::RevokeAccess => "core.pending.operation.revoke_access",
             O::ReplaceMemberKeys => "core.pending.operation.replace_member_keys",
+            O::StorageSetup => "core.pending.operation.storage_setup",
         },
     };
     BridgeMessage { key: key.to_string(), args: Vec::new() }

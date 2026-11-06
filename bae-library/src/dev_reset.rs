@@ -20,8 +20,7 @@ pub struct DevResetProfile {
 }
 
 /// Why a profile couldn't be read. None of these carries a value from the
-/// file, since any of them could be a credential, except the folder of a
-/// refused key prefix: that names a place in the bucket, never a secret.
+/// file, since any of them could be a credential.
 #[derive(Debug, thiserror::Error)]
 pub enum DevResetProfileError {
     #[error("read dev profile {path}: {error}")]
@@ -46,20 +45,6 @@ pub enum DevResetProfileError {
     },
     #[error("dev profile {path}: {field} is empty")]
     Empty { path: PathBuf, field: &'static str },
-    /// The key prefix isn't a folder path coven can use.
-    #[error("dev profile {path}: {field}: {error}")]
-    Prefix {
-        path: PathBuf,
-        field: &'static str,
-        #[source]
-        error: coven::S3PrefixError,
-    },
-    /// The key prefix is only slashes, which is the bucket's root: the reset
-    /// would empty the whole bucket.
-    #[error(
-        "dev profile {path}: {field} is the bucket's root; the reset would empty the whole bucket"
-    )]
-    WholeBucket { path: PathBuf, field: &'static str },
 }
 
 #[derive(Deserialize)]
@@ -78,7 +63,6 @@ struct S3Section {
     endpoint: String,
     region: String,
     bucket: String,
-    key_prefix: String,
     access_key_id: String,
     secret_access_key: String,
 }
@@ -118,22 +102,6 @@ impl DevResetProfile {
                 Ok(value)
             }
         };
-        // The same parse storage setup uses: slashes at the prefix's ends
-        // mean nothing, and what can't be a folder path fails here, before
-        // the reset removes anything.
-        const KEY_PREFIX: &str = "s3.key_prefix";
-        let key_prefix = coven::S3Prefix::parse(&required(KEY_PREFIX, file.s3.key_prefix)?)
-            .map_err(|error| DevResetProfileError::Prefix {
-                path: path.to_path_buf(),
-                field: KEY_PREFIX,
-                error,
-            })?;
-        if key_prefix.is_empty() {
-            return Err(DevResetProfileError::WholeBucket {
-                path: path.to_path_buf(),
-                field: KEY_PREFIX,
-            });
-        }
         // The refusal carries nothing beyond the field being empty.
         let library_name =
             bae_store::EnteredName::parse(&file.library_name).map_err(|bae_store::BlankName| {
@@ -145,7 +113,6 @@ impl DevResetProfile {
                 bucket: required("s3.bucket", file.s3.bucket)?,
                 region: required("s3.region", file.s3.region)?,
                 endpoint: Some(required("s3.endpoint", file.s3.endpoint)?),
-                key_prefix,
                 access_key: required("s3.access_key_id", file.s3.access_key_id)?,
                 secret_key: required("s3.secret_access_key", file.s3.secret_access_key)?,
                 profile: None,

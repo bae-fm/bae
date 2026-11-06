@@ -30,7 +30,8 @@ impl LibraryViews {
     pub fn subscribe_composer_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection> {
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection, coven::CovenError>
+    {
         self.store.subscribe_reconfigurable(initial, |artist_id, sql| {
             let Some(artist_id) = artist_id else {
                 return Ok(ComposerDetailProjection { detail: None });
@@ -75,8 +76,11 @@ impl LibraryViews {
         &self,
         artist_id: &str,
         initial_windows: bae_store::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, ComposerDetailRowsProjection>
-    {
+    ) -> coven::ReconfigurableLiveQuery<
+        bae_store::LibraryPageWindows,
+        ComposerDetailRowsProjection,
+        coven::CovenError,
+    > {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
         let places = KnownPlaces::new();

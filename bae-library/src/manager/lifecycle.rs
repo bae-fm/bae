@@ -14,7 +14,7 @@ impl LibraryManager {
         Ok(self.store.store_name().await?)
     }
 
-    pub fn subscribe_library_name(&self) -> coven::LiveQuery<String> {
+    pub fn subscribe_library_name(&self) -> coven::LiveQuery<String, coven::CovenError> {
         self.store.subscribe_store_name()
     }
 

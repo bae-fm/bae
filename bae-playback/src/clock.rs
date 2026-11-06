@@ -44,7 +44,7 @@ impl PlaybackClock for WallPlaybackClock {
 
     fn sleep_until(&self, deadline: DateTime<Utc>) -> PlaybackSleep {
         let remaining = (deadline - self.now()).to_std().unwrap_or(std::time::Duration::ZERO);
-        self.wall.sleep(remaining)
+        self.wall.deadline(remaining)
     }
 }
 

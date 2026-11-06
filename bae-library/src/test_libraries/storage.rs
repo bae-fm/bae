@@ -32,8 +32,7 @@ pub async fn storage_library(
 /// uploads while the caller seeds its queue. Sync stays started: coven
 /// uploads only while it is.
 pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) {
-    let coven::StorageConfig::S3 { bucket, region, endpoint, prefix, profile } = storage.config()
-    else {
+    let coven::StorageConfig::S3 { bucket, region, endpoint, profile } = storage.config() else {
         panic!("the memory provider uses S3 configuration");
     };
     manager
@@ -42,7 +41,6 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
                 bucket,
                 region,
                 endpoint: endpoint.map(|url| url.to_string()),
-                key_prefix: prefix,
                 profile,
                 access_key: "test-access".into(),
                 secret_key: "test-secret".into(),

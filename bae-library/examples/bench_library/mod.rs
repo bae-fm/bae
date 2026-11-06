@@ -10,15 +10,12 @@
 //!   `BAE_BENCH_S3_PROFILE`, the service's name as coven's `S3ProfileName`
 //!   spells it (`RustFs`, `SeaweedFs`, `CephRgw`, `VersityGw`), for a
 //!   self-hosted one;
-//! - `BAE_BENCH_S3_PREFIX`, the folder each run's library gets a new folder
-//!   of its own under;
 //! - `BAE_BENCH_S3_ACCESS_KEY_ID` and `BAE_BENCH_S3_SECRET_ACCESS_KEY`, a key
-//!   that may do under that folder what a library's member key does.
+//!   that may do in that bucket what a library's member key does.
 //!
-//! The service must be one whose keys coven limits to a folder (§20.7 of
-//! coven's spec): Amazon S3, Google Cloud Storage or a self-hosted one. On
-//! R2, or a service coven detects, a library has a bucket of its own, which a
-//! bench can't empty, and setting the library's storage up fails.
+//! Every S3 library has its bucket to itself (§20.3 of coven's spec), so the
+//! bucket must be empty when a run starts, and the run empties it again when
+//! it ends. Runs on one bucket go one at a time.
 
 use std::panic::AssertUnwindSafe;
 
@@ -26,18 +23,14 @@ use std::panic::AssertUnwindSafe;
 struct BenchStorage {
     location: coven::StorageConfig,
     credentials: coven::S3Credentials,
-    /// The run's folder, as `<bucket>/<prefix>`.
-    folder: String,
+    /// The run's bucket.
+    bucket: String,
 }
 
 impl BenchStorage {
-    /// The storage the environment names, at a new folder `<bench>-<uuid>`
-    /// under its base prefix, which only this run's library uses.
-    fn from_environment(bench: &str) -> Result<Self, String> {
-        let base = variable("BAE_BENCH_S3_PREFIX")?;
-        let folder = format!("{base}/{bench}-{}", uuid::Uuid::new_v4());
-        let prefix = coven::S3Prefix::parse(&folder)
-            .map_err(|error| format!("BAE_BENCH_S3_PREFIX: {error}"))?;
+    /// The storage the environment names: a bucket only this run's library
+    /// uses.
+    fn from_environment() -> Result<Self, String> {
         let endpoint = optional_variable("BAE_BENCH_S3_ENDPOINT")?
             .map(|endpoint| endpoint.parse())
             .transpose()
@@ -49,14 +42,13 @@ impl BenchStorage {
             .map(coven::S3Profile::Named);
         let bucket = variable("BAE_BENCH_S3_BUCKET")?;
         Ok(Self {
-            folder: format!("{bucket}/{prefix}"),
             location: coven::StorageConfig::S3 {
-                bucket,
+                bucket: bucket.clone(),
                 region: variable("BAE_BENCH_S3_REGION")?,
                 endpoint,
-                prefix,
                 profile,
             },
+            bucket,
             credentials: coven::S3Credentials {
                 access_key_id: variable("BAE_BENCH_S3_ACCESS_KEY_ID")?,
                 secret_access_key: coven::SecretText::new(variable(
@@ -128,7 +120,9 @@ impl BenchLibrary {
         let track_ids = bae_records::test_fixtures::chunked_tracks::track_ids(tracks);
         self.handle
             .write(move |sql| {
-                Ok(bae_records::test_fixtures::chunked_tracks::seed_release(&sql, &track_ids)?)
+                Ok::<_, coven::CovenError>(
+                    bae_records::test_fixtures::chunked_tracks::seed_release(&sql, &track_ids)?,
+                )
             })
             .await
             .map_err(|error| format!("writing the library's tracks failed: {error}"))?;
@@ -151,19 +145,18 @@ impl BenchLibrary {
     }
 }
 
-/// Create a library named `name` holding a release of `tracks` tracks on
-/// the storage the environment names, at a new folder for the bench `bench`,
-/// run `body` over its open store, and close it. Then empty that folder on
-/// storage, whether creating, `body` or closing failed or panicked. A panic
-/// in them unwinds on once the folder is emptied.
+/// Create a library named `name` holding a release of `tracks` tracks in
+/// the bucket the environment names, run `body` over its open store, and
+/// close it. Then empty the bucket, whether creating, `body` or closing
+/// failed or panicked. A panic in them unwinds on once the bucket is
+/// emptied.
 pub(crate) fn run(
-    bench: &str,
     name: &str,
     tracks: usize,
     body: impl AsyncFnOnce(&coven::CovenHandle) -> Result<(), String>,
 ) -> Result<(), String> {
-    let storage = BenchStorage::from_environment(bench)?;
-    eprintln!("bench library at {}", storage.folder);
+    let storage = BenchStorage::from_environment()?;
+    eprintln!("bench library in bucket {}", storage.bucket);
     let runtime = tokio::runtime::Runtime::new().map_err(|error| error.to_string())?;
     let ran = std::panic::catch_unwind(AssertUnwindSafe(|| {
         runtime.block_on(async {
@@ -179,17 +172,17 @@ pub(crate) fn run(
         })
     }));
     let emptied = match runtime
-        .block_on(coven::empty_s3_prefix(storage.location.clone(), storage.credentials.clone()))
+        .block_on(coven::empty_s3_bucket(storage.location.clone(), storage.credentials.clone()))
     {
         Ok(emptied) => {
             eprintln!(
                 "emptied {}: {} objects deleted, {} unfinished uploads aborted",
-                storage.folder, emptied.objects, emptied.uploads
+                storage.bucket, emptied.objects, emptied.uploads
             );
             Ok(())
         }
         Err(error) => {
-            Err(format!("emptying {} failed, so storage still holds it: {error}", storage.folder))
+            Err(format!("emptying {} failed, so storage still holds it: {error}", storage.bucket))
         }
     };
     match ran {

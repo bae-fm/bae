@@ -243,7 +243,7 @@ impl Records {
     pub fn subscribe_release_file_pins(
         &self,
         release_id: &str,
-    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>> {
+    ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>, coven::CovenError> {
         let release_id = release_id.to_string();
         self.store.subscribe(move |sql| Ok(release_file_pins_on(&sql, &release_id)?))
     }

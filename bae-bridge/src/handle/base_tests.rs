@@ -90,7 +90,7 @@ fn setting_up_s3_storage_writes_its_steps() {
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     ));
-    let coven::StorageConfig::S3 { bucket, region, endpoint, profile, prefix } =
+    let coven::StorageConfig::S3 { bucket, region, endpoint, profile } =
         coven::Storage::config(storage.as_ref())
     else {
         panic!("the memory provider uses S3 configuration");
@@ -122,7 +122,7 @@ fn setting_up_s3_storage_writes_its_steps() {
                 bucket,
                 region,
                 endpoint: endpoint.map(|url| url.to_string()),
-                key_prefix: prefix.to_string(),
+                key_prefix: String::new(),
                 access_key: "test-access".into(),
                 secret_key: "test-secret".into(),
                 profile: profile.map(crate::types::BridgeS3Profile::from_core),

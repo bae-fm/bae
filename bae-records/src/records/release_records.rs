@@ -125,7 +125,8 @@ impl Records {
     pub fn subscribe_library_statuses(
         &self,
         initial: BTreeSet<LibraryCheck>,
-    ) -> coven::ReconfigurableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>> {
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>, coven::CovenError>
+    {
         self.store
             .subscribe_reconfigurable(initial, |checks, sql| {
                 let checks: Vec<LibraryCheck> = checks.iter().cloned().collect();

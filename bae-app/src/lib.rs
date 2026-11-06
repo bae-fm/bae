@@ -147,26 +147,27 @@ impl BootstrapError {
 }
 
 fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
-    match error {
-        bae_store::DbError::Coven(coven::CovenError::Key(key)) => {
-            match BootstrapError::from_keychain_refusal(key) {
-                Ok(refusal) => refusal,
-                Err(key) => {
-                    let error = bae_store::DbError::Coven(coven::CovenError::Key(key));
-                    BootstrapError::Database(format!("Failed to open database: {error}"))
-                }
+    let bae_store::DbError::Coven(coven_error) = error else {
+        return BootstrapError::Database(format!("Failed to open database: {error}"));
+    };
+    match *coven_error {
+        coven::CovenError::Key(key) => match BootstrapError::from_keychain_refusal(key) {
+            Ok(refusal) => refusal,
+            Err(key) => {
+                let error = bae_store::DbError::from(coven::CovenError::Key(key));
+                BootstrapError::Database(format!("Failed to open database: {error}"))
             }
+        },
+        error @ coven::CovenError::Database(coven::DbError::DamagedDatabase) => {
+            BootstrapError::DeviceResetRequired(error.to_string())
         }
-        error @ bae_store::DbError::Coven(coven::CovenError::Database(
-            coven::DbError::DamagedDatabase,
-        )) => BootstrapError::DeviceResetRequired(error.to_string()),
-        bae_store::DbError::Coven(coven::CovenError::Lock(
-            coven::StoreLockError::ReplacementUnfinished { by, .. },
-        )) => BootstrapError::ReplacementUnfinished(by),
+        coven::CovenError::Lock(coven::StoreLockError::ReplacementUnfinished { by, .. }) => {
+            BootstrapError::ReplacementUnfinished(by)
+        }
         // The platform refused coven's watch of the network, as an Android
         // app packaged without coven's network library is: no retry or
         // setting fixes it.
-        error @ bae_store::DbError::Coven(coven::CovenError::NetworkWatch(_)) => {
+        error @ coven::CovenError::NetworkWatch(_) => {
             BootstrapError::Internal(format!("Failed to open database: {error}"))
         }
         error => BootstrapError::Database(format!("Failed to open database: {error}")),

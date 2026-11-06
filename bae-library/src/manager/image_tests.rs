@@ -227,9 +227,8 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
     assert_ne!(first.id(), second.id());
     assert!(matches!(
         manager.store.file_ref(first.id()).await,
-        Err(bae_store::DbError::Coven(coven::CovenError::Database(
-            coven::DbError::FileAbsent { .. }
-        )))
+        Err(bae_store::DbError::Coven(error))
+            if matches!(*error, coven::CovenError::Database(coven::DbError::FileAbsent { .. }))
     ));
     assert_eq!(manager.store.read_file(&second).await.unwrap(), b"second cover");
 }

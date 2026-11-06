@@ -84,7 +84,11 @@ impl LibraryViews {
     pub fn subscribe_release_files(
         &self,
         initial: Option<ReleaseFilesRequest>,
-    ) -> coven::ReconfigurableLiveQuery<Option<ReleaseFilesRequest>, Option<Vec<DbFile>>> {
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<ReleaseFilesRequest>,
+        Option<Vec<DbFile>>,
+        coven::CovenError,
+    > {
         self.store
             .subscribe_reconfigurable(initial, |request, sql| {
                 let Some(request) = request else {

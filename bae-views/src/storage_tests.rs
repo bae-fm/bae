@@ -512,7 +512,11 @@ async fn every_search_read_finds_the_same_releases() {
 /// The ids in each window of the Storage Manager list `request` reads, as
 /// the next value of `query` once it is pointed there.
 async fn read_storage(
-    query: &mut coven::ReconfigurableLiveQuery<StorageBrowseRequest, StorageBrowseProjection>,
+    query: &mut coven::ReconfigurableLiveQuery<
+        StorageBrowseRequest,
+        StorageBrowseProjection,
+        coven::CovenError,
+    >,
     request: StorageBrowseRequest,
 ) -> (u64, Vec<Vec<String>>) {
     query.requests().set(request.clone()).unwrap();

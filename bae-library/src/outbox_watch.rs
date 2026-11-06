@@ -109,7 +109,7 @@ pub enum OutboxTransferChange {
 /// The transfers each delivery of the files being sent, or each move of
 /// their bytes, measures.
 struct SendingTransfers {
-    sending: coven::LiveQuery<DbSendingUploads>,
+    sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
     /// The files being sent as the query last read them; `None` until it
     /// first does.
     read: Option<DbSendingUploads>,
@@ -122,7 +122,7 @@ struct SendingTransfers {
 
 impl SendingTransfers {
     fn of(
-        sending: coven::LiveQuery<DbSendingUploads>,
+        sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
@@ -173,7 +173,7 @@ pub struct OutboxTransfersWatch {
 
 impl OutboxTransfersWatch {
     pub(crate) fn of(
-        sending: coven::LiveQuery<DbSendingUploads>,
+        sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
@@ -223,7 +223,7 @@ pub struct OutboxTotalTransferWatch {
 
 impl OutboxTotalTransferWatch {
     pub(crate) fn of(
-        sending: coven::LiveQuery<DbSendingUploads>,
+        sending: coven::LiveQuery<DbSendingUploads, coven::CovenError>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {

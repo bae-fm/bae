@@ -1823,6 +1823,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
+name = "const-random"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87e00182fe74b066627d63b85fd550ac2998d4b0bd86bfed477a0ae4c7c71359"
+dependencies = [
+ "const-random-macro",
+]
+
+[[package]]
+name = "const-random-macro"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9d839f2a20b0aee515dc581a6172f2321f96cab76c1a38a4c584a194955390e"
+dependencies = [
+ "getrandom 0.2.17",
+ "once_cell",
+ "tiny-keccak",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1855,7 +1875,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "coven-crypto",
  "coven-database",
@@ -1872,7 +1892,7 @@ dependencies = [
 [[package]]
 name = "coven-crypto"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1904,7 +1924,7 @@ dependencies = [
 [[package]]
 name = "coven-database"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "coven-crypto",
  "coven-format",
@@ -1923,7 +1943,7 @@ dependencies = [
 [[package]]
 name = "coven-format"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "coven-crypto",
  "coven-foundation",
@@ -1937,7 +1957,7 @@ dependencies = [
 [[package]]
 name = "coven-foundation"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "block2",
  "futures-lite",
@@ -1964,7 +1984,7 @@ dependencies = [
 [[package]]
 name = "coven-merge"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "coven-foundation",
  "rusqlite",
@@ -1974,7 +1994,7 @@ dependencies = [
 [[package]]
 name = "coven-storage"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "async-trait",
  "aws-credential-types",
@@ -2013,9 +2033,10 @@ dependencies = [
 [[package]]
 name = "coven-sync"
 version = "0.1.0"
-source = "git+https://github.com/bae-fm/coven?rev=e30593771799f852f81a47a7543f3cbbf0287a76#e30593771799f852f81a47a7543f3cbbf0287a76"
+source = "git+https://github.com/bae-fm/coven?rev=d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab#d4da6b75dc20b5a2dbd9a8dab1bbd7e35d61d3ab"
 dependencies = [
  "async-trait",
+ "const-random",
  "coven-crypto",
  "coven-database",
  "coven-format",
@@ -2122,6 +2143,12 @@ name = "crossbeam-utils"
 version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
+
+[[package]]
+name = "crunchy"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "crypto-common"
@@ -5782,6 +5809,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tiny-keccak"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
+dependencies = [
+ "crunchy",
+]
+
+[[package]]
 name = "tinystr"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6528,7 +6564,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

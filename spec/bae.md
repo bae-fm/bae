@@ -2696,15 +2696,15 @@ the browser, listing the provider's folders, and making a new OneDrive folder
 each say so while they run, on both apps. The dev reset connects its
 storage without such a stream: it reports connecting storage as its own step.
 
-The key prefix is the folder in the bucket the library lives under. The app
-passes it as typed, and coven parses it once
+Every S3 library has its bucket to itself
 ([coven §20.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#203-where-a-store-lives)):
-slashes at its ends mean nothing, so Dan typing `music/bae/` or `/music/bae`
-gets `music/bae`, and only slashes is the bucket's root, as empty is. Settings
-then shows the prefix in that one spelling. A prefix that can't be a folder
-path is refused before any request, with a line naming the folder at fault:
-two slashes in a row, a character other than a–z, A–Z, a digit, `-` or `_`,
-or a folder name over 255 characters.
+coven can't tell how far an access key reaches, so it takes every key to
+reach the whole bucket, and a member of one library could otherwise delete
+another's objects. Setting a new library up refuses a bucket holding anything
+but that library's own folder and coven's marker naming it, with a line saying
+to use an empty bucket only this library uses. Reconnecting, restoring and
+joining read only the marker. A key prefix the person types is refused the
+same way.
 
 **Dropbox and OneDrive setup.** The person signs in through the browser, then
 picks the folder the library lives in. On Dropbox that is a shared folder, so
@@ -4819,7 +4819,6 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `S3VersioningUnknown`, `S3VersioningUnsupported` | uses a bucket whose versioning coven can read and work with |
 | `StorageLocationChangeUnsupported` | keeps the library's storage location; it can't move |
 | `StoreOwnerAccount` | signs in with the account that holds the library's storage: setting up its storage again or restoring it as the person whose account holds it, under another account, is refused, since their access can't move to another account ([coven §20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)) |
-| `S3Prefix` | changes the key prefix: it has two slashes in a row, or the folder the line names holds a character other than a–z, A–Z, a digit, `-` or `_`, or runs over 255 characters |
 | `Credentials` | fixes the storage settings |
 | `Network` | retries |
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |

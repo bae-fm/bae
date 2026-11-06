@@ -26,7 +26,7 @@ impl Store {
         self.inner.handle.store_name().await.map_err(DbError::from)
     }
 
-    pub fn subscribe_store_name(&self) -> coven::LiveQuery<String> {
+    pub fn subscribe_store_name(&self) -> coven::LiveQuery<String, coven::CovenError> {
         self.inner.handle.subscribe_store_name()
     }
 
@@ -40,8 +40,14 @@ impl Store {
     /// still waiting to upload to its storage. A store with no storage set up
     /// has nowhere it uploads to and loses its whole catalog instead, so
     /// nothing counts as unsent.
-    pub async fn unsent_before_removal(&self) -> Result<coven::UnsentWork, coven::SyncError> {
-        if self.inner.handle.storage_config().await?.is_none() {
+    pub async fn unsent_before_removal(&self) -> Result<coven::UnsentWork, DbError> {
+        let storage = self
+            .inner
+            .handle
+            .storage_config()
+            .await
+            .map_err(|error| DbError::from(coven::CovenError::Sync(error)))?;
+        if storage.is_none() {
             return Ok(coven::UnsentWork { writes: 0, files: 0 });
         }
         Ok(self.inner.handle.unsent_work().await?)
@@ -95,13 +101,14 @@ impl Store {
         )
     }
 
-    /// One read of the store, its failure as coven reports it.
-    pub async fn read_coven<R>(
+    /// One read of the store, failing with the closure's own error.
+    pub async fn read_coven<R, E>(
         &self,
-        read: impl FnOnce(SqlReadContext<'_>) -> Result<R, CovenError> + Send + 'static,
-    ) -> Result<R, CovenError>
+        read: impl FnOnce(SqlReadContext<'_>) -> Result<R, E> + Send + 'static,
+    ) -> Result<R, E>
     where
         R: Send + 'static,
+        E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
     {
         self.inner.handle.read(read).await
     }

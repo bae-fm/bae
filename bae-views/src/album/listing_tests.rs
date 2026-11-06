@@ -598,7 +598,11 @@ async fn albums_at(db: &Store, window: &LibraryPageWindow) -> Vec<String> {
 /// The next value of the album list's live query once `windows` are asked
 /// for, as each window's ids.
 async fn read_albums(
-    query: &mut coven::ReconfigurableLiveQuery<LibraryPageWindows, AlbumBrowseProjection>,
+    query: &mut coven::ReconfigurableLiveQuery<
+        LibraryPageWindows,
+        AlbumBrowseProjection,
+        coven::CovenError,
+    >,
     windows: LibraryPageWindows,
 ) -> Vec<Vec<String>> {
     query.requests().set(windows.clone()).unwrap();

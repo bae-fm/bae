@@ -110,7 +110,7 @@ impl Store {
 
     /// A live query: coven reruns `query` for each write that touches what it
     /// read.
-    pub fn subscribe<F, R>(&self, query: F) -> coven::LiveQuery<R>
+    pub fn subscribe<F, R>(&self, query: F) -> coven::LiveQuery<R, coven::CovenError>
     where
         F: Fn(SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,
         R: Send + 'static,
@@ -124,7 +124,7 @@ impl Store {
         &self,
         initial_request: Q,
         query: F,
-    ) -> coven::ReconfigurableLiveQuery<Q, R>
+    ) -> coven::ReconfigurableLiveQuery<Q, R, coven::CovenError>
     where
         Q: Clone + PartialEq + Send + Sync + 'static,
         F: Fn(&Q, SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,
@@ -153,6 +153,19 @@ impl Store {
     ) -> impl std::future::Future<Output = Result<R, CovenError>> + Send + '_
     where
         R: Send + 'static,
+    {
+        self.write_as(write)
+    }
+
+    /// [`Self::write`] failing with the closure's own error, such as sync's
+    /// for a write whose step is one of coven's sync operations.
+    pub fn write_as<R, E>(
+        &self,
+        write: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, E> + Send + 'static,
+    ) -> impl std::future::Future<Output = Result<R, E>> + Send + '_
+    where
+        R: Send + 'static,
+        E: coven::WriteFailure + Send + 'static,
     {
         Box::pin(self.inner.handle.write(write))
     }

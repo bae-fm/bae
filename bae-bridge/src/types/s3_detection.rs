@@ -71,8 +71,10 @@ impl BridgeS3Detection {
             .collect()
     }
     pub fn check(&self, settings: BridgeS3Settings) -> Result<(), BridgeError> {
-        self.detection
-            .check(&settings.into_core())
-            .map_err(|error| BridgeError::from(bae_library::LibraryError::from(error)))
+        self.detection.check(&settings.into_core()).map_err(|error| {
+            BridgeError::from(bae_library::LibraryError::CloudSetup(
+                coven::StorageSetupError::Check(error),
+            ))
+        })
     }
 }

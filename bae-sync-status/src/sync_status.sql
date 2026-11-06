@@ -21,19 +21,16 @@ CREATE TABLE IF NOT EXISTS sync_start_failure (
     storage_failure TEXT CHECK (storage_failure IN (
         'provider_unavailable', 'access_not_registered', 'access_not_granted',
         'dropbox_app_folder_not_shareable', 'catch_up_required', 'network',
-        'authentication', 'permission_denied', 'not_found', 'already_exists',
-        'conflict', 'container_not_found', 'region_mismatch', 'store_exists',
-        'clock_skew', 'own_bucket_required', 'quota_exceeded', 'rate_limited',
-        'invalid_configuration', 'refused', 'protocol', 'invalid_path',
-        'invalid_range', 'not_store_owner', 'invitee_is_store_owner',
-        'account_id_unavailable', 'invitation_mismatch', 'session_mismatch',
-        'session_expired', 'session_identity_unknown', 'invalid_part',
-        'single_request_too_large', 'copy_too_large', 'encoding', 'file',
-        'member_keys_missing'
+        'corrupted', 'authentication', 'permission_denied', 'not_found',
+        'already_exists', 'conflict', 'container_not_found', 'region_mismatch',
+        'store_exists', 'clock_skew', 'own_location_required',
+        'quota_exceeded', 'rate_limited', 'invalid_configuration', 'refused',
+        'protocol', 'invalid_path', 'invalid_range', 'not_store_owner',
+        'invitee_is_store_owner', 'account_id_unavailable',
+        'invitation_mismatch', 'session_mismatch', 'session_expired',
+        'session_identity_unknown', 'invalid_part', 'single_request_too_large',
+        'copy_too_large', 'encoding', 'file', 'member_keys_missing', 'bug'
     )),
-    -- For an S3 location that can't hold a store needing its own bucket:
-    -- whether it names a base prefix or the bucket holds other objects.
-    own_bucket_reason TEXT CHECK (own_bucket_reason IN ('prefix', 'occupied')),
     -- For a sign-in that lacks access: the access it must have.
     required_access TEXT CHECK (required_access IN (
         'dropbox_app_folder', 'dropbox_full', 'one_drive'
@@ -45,8 +42,6 @@ CREATE TABLE IF NOT EXISTS sync_start_failure (
     -- The failure's untranslated text, with every cause below it.
     detail TEXT NOT NULL,
     CHECK ((storage_failure IS NOT NULL) = (category = 'storage')),
-    CHECK ((own_bucket_reason IS NOT NULL)
-        = (storage_failure IS 'own_bucket_required')),
     CHECK ((required_access IS NOT NULL) = coalesce(
         storage_failure IN ('access_not_registered', 'access_not_granted'), 0
     )),

@@ -81,7 +81,9 @@ impl ImportTables {
     }
 
     /// What each watched folder's scan has stored, live.
-    pub fn subscribe_stored_folder_scans(&self) -> coven::LiveQuery<Vec<StoredRootScan>> {
+    pub fn subscribe_stored_folder_scans(
+        &self,
+    ) -> coven::LiveQuery<Vec<StoredRootScan>, coven::CovenError> {
         self.store.subscribe(move |sql| load_stored_folder_scans_on(&sql).map_err(CovenError::from))
     }
 }

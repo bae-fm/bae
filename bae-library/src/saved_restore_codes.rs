@@ -50,7 +50,7 @@ async fn restorable_codes(
     coven: &coven::Coven,
 ) -> Result<Vec<coven::SavedRestoreEntry>, SavedRestoreCodesError> {
     let here: std::collections::HashSet<_> =
-        coven.stores().await?.into_iter().map(|store| store.id).collect();
+        coven.stores().await?.into_iter().map(|store| store.id()).collect();
     Ok(codes.into_iter().filter(|code| !here.contains(&code.store_id())).collect())
 }
 

@@ -27,10 +27,10 @@ pub(crate) type RowsRead<R> =
 /// into one value each time either changes.
 pub struct WithSyncState<R, T> {
     store: crate::Store,
-    state: coven::LiveQuery<coven::SyncStatus>,
+    state: coven::LiveQuery<coven::SyncStatus, coven::CovenError>,
     /// The rows' own live query, which says when they change; each value's
     /// rows are read afresh, after the latest state.
-    changes: coven::LiveQuery<R>,
+    changes: coven::LiveQuery<R, coven::CovenError>,
     rows: RowsRead<R>,
     make: fn(coven::SyncStatus, R) -> T,
     latest_state: Option<coven::SyncStatus>,
@@ -45,8 +45,8 @@ where
 {
     pub(crate) fn new(
         store: crate::Store,
-        state: coven::LiveQuery<coven::SyncStatus>,
-        changes: coven::LiveQuery<R>,
+        state: coven::LiveQuery<coven::SyncStatus, coven::CovenError>,
+        changes: coven::LiveQuery<R, coven::CovenError>,
         rows: RowsRead<R>,
         make: fn(coven::SyncStatus, R) -> T,
     ) -> Self {

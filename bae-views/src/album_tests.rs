@@ -48,7 +48,11 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
 /// before the rename, would show in that page too.
 async fn next_album_page_is_only_a_rename(
     db: &Store,
-    live: &mut coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, AlbumBrowseProjection>,
+    live: &mut coven::ReconfigurableLiveQuery<
+        bae_store::LibraryPageWindows,
+        AlbumBrowseProjection,
+        coven::CovenError,
+    >,
     shown: AlbumBrowseProjection,
     title: &str,
 ) -> AlbumBrowseProjection {

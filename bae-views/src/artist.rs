@@ -39,7 +39,11 @@ impl LibraryViews {
         &self,
         sort: &[ArtistSortCriterion],
         initial_windows: bae_store::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, ArtistBrowseProjection> {
+    ) -> coven::ReconfigurableLiveQuery<
+        bae_store::LibraryPageWindows,
+        ArtistBrowseProjection,
+        coven::CovenError,
+    > {
         let order = artist_order(sort);
         let places = KnownPlaces::new();
         self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
@@ -90,7 +94,8 @@ impl LibraryViews {
     pub fn subscribe_artist_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection> {
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection, coven::CovenError>
+    {
         self.store
             .subscribe_reconfigurable(initial, |artist_id, sql| {
                 let Some(artist_id) = artist_id else {

@@ -9,7 +9,9 @@ struct Home {
     _temp: TempDir,
     app_dir: AppDir,
     installation: coven::Coven,
-    storage: Arc<coven::MemoryStorage>,
+    /// Each library's storage: every S3 library has its bucket to itself.
+    storages:
+        std::sync::Mutex<std::collections::HashMap<coven::StoreId, Arc<coven::MemoryStorage>>>,
 }
 
 impl Home {
@@ -20,12 +22,7 @@ impl Home {
             _temp: temp,
             installation: coven::Coven::in_memory(app_dir.coven_app_dir()),
             app_dir,
-            storage: Arc::new(
-                coven::MemoryStorage::builder()
-                    .clock(Arc::new(coven::SystemClock))
-                    .build()
-                    .unwrap(),
-            ),
+            storages: std::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 
@@ -47,11 +44,15 @@ impl Home {
     /// A library with bae's own directory for it, as one this device has
     /// opened.
     async fn library(&self, name: &str) -> coven::CovenHandle {
+        let storage = Arc::new(
+            coven::MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap(),
+        );
         let handle = bae_store::configure_store(self.installation.builder(), crate::SCHEMA)
-            .storage_connector(self.storage.clone())
+            .storage_connector(storage.clone())
             .create_store(name)
             .await
             .unwrap();
+        self.storages.lock().unwrap().insert(handle.store_id(), storage);
         std::fs::create_dir_all(self.directory(handle.store_id()).join("cache")).unwrap();
         handle
     }
@@ -61,7 +62,7 @@ impl Home {
     async fn connect(&self, handle: &coven::CovenHandle) {
         handle
             .setup_s3_storage(
-                self.storage.config(),
+                self.storage(handle.store_id()).config(),
                 "Device",
                 "key".into(),
                 coven::SecretText::new("secret".into()),
@@ -86,6 +87,11 @@ impl Home {
                 }
             })
             .collect()
+    }
+
+    /// The storage `id`'s library was created with.
+    fn storage(&self, id: coven::StoreId) -> Arc<coven::MemoryStorage> {
+        self.storages.lock().unwrap()[&id].clone()
     }
 
     fn directory(&self, id: coven::StoreId) -> std::path::PathBuf {
@@ -253,7 +259,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     home.connect(&handle).await;
     let id = handle.store_id();
     home.point_at(id);
-    home.storage.set_online(false);
+    home.storage(id).set_online(false);
     let error = home.remove(&handle).await.expect_err("leaving needs reachable storage");
     assert!(matches!(error, LibraryRemovalError::Store(_)), "{error}");
     assert_eq!(
@@ -265,7 +271,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    home.storage.set_online(true);
+    home.storage(id).set_online(true);
     home.remove(&handle).await.unwrap();
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());

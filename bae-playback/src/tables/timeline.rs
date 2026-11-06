@@ -25,7 +25,9 @@ impl PlaybackTimelineRow {
 
 /// Follow where playback is, as the surfaces that move the position on
 /// themselves read it.
-pub fn subscribe_playback_timeline(store: &Store) -> coven::LiveQuery<PlaybackTimeline> {
+pub fn subscribe_playback_timeline(
+    store: &Store,
+) -> coven::LiveQuery<PlaybackTimeline, coven::CovenError> {
     store.subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
 }
 

@@ -35,8 +35,11 @@ impl LibraryViews {
         &self,
         sort: &[ComposerSortCriterion],
         initial_windows: bae_store::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<bae_store::LibraryPageWindows, ComposerBrowseProjection>
-    {
+    ) -> coven::ReconfigurableLiveQuery<
+        bae_store::LibraryPageWindows,
+        ComposerBrowseProjection,
+        coven::CovenError,
+    > {
         let order = composer_order(sort);
         let places = KnownPlaces::new();
         self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
@@ -77,7 +80,8 @@ impl LibraryViews {
     pub fn subscribe_work_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection> {
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection, coven::CovenError>
+    {
         self.store.subscribe_reconfigurable(initial, |work_id, sql| {
             let Some(work_id) = work_id else {
                 return Ok(WorkDetailProjection { detail: None });

@@ -118,7 +118,11 @@ impl LibraryViews {
     pub fn subscribe_artist_search(
         &self,
         initial: crate::ArtistSearchView,
-    ) -> coven::ReconfigurableLiveQuery<crate::ArtistSearchView, ArtistSearchProjection> {
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::ArtistSearchView,
+        ArtistSearchProjection,
+        coven::CovenError,
+    > {
         self.store.subscribe_reconfigurable(initial, |view, sql| {
             let Some(query) = &view.query else {
                 return Ok(ArtistSearchProjection {

@@ -76,7 +76,10 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     assert!(db.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
     assert!(db.query_texts_for_test("SELECT name FROM profile_request").await.unwrap().is_empty());
     assert!(
-        db.query_texts_for_test("SELECT kind FROM coven_operations").await.unwrap().is_empty(),
+        db.query_texts_for_test("SELECT kind FROM coven_operations WHERE kind = 'CreateCircle'")
+            .await
+            .unwrap()
+            .is_empty(),
         "the profile's write acknowledged the circle's outcome"
     );
     library.close().await.unwrap();

@@ -45,7 +45,7 @@ impl People {
         self.inner.store.read(|sql| Ok(people_on(&sql, &everyone_sql())?)).await
     }
 
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>> {
+    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>, coven::CovenError> {
         self.inner.store.subscribe(|sql| Ok(profile_rows(&sql)?))
     }
 
@@ -153,7 +153,7 @@ impl People {
                 }
             }
         }
-        Err(DbError::Coven(coven::CovenError::Database(coven::DbError::StoreClosed)))
+        Err(DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)))
     }
 
     /// The write that creates the profile `request` asked for, from its
@@ -342,9 +342,10 @@ fn insert_profile(sql: &CovenWrite<'_>, profile: &PersonProfile) -> rusqlite::Re
 /// error it is, anything else as the database's.
 fn profile_write_error(error: DbError) -> ProfileError {
     match error {
-        DbError::Coven(error @ coven::CovenError::Database(coven::DbError::SyncStream(_))) => {
-            ProfileError::Sync(error.into())
-        }
+        DbError::Coven(error) => match *error {
+            coven::CovenError::Sync(error) => ProfileError::Sync(error),
+            error => DbError::Coven(Box::new(error)).into(),
+        },
         error => error.into(),
     }
 }

@@ -196,7 +196,11 @@ impl Drop for HeldImport<'_> {
 /// The next value the album detail view's read delivers, as the detail
 /// view shows it.
 async fn next_detail(
-    values: &mut coven::ReconfigurableLiveQuery<Option<String>, bae_views::AlbumDetailProjection>,
+    values: &mut coven::ReconfigurableLiveQuery<
+        Option<String>,
+        bae_views::AlbumDetailProjection,
+        coven::CovenError,
+    >,
     waiting_for: &str,
 ) -> bae_views::album_detail::AlbumDetail {
     let event = tokio::time::timeout(HANG_GUARD, values.next())

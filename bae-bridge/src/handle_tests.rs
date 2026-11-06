@@ -728,10 +728,9 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .block_on(db.unsent_writes_for_test());
     assert!(
         matches!(
-            read,
-            Err(bae_store::DbError::Coven(coven::CovenError::Database(
-                coven::DbError::StoreClosed
-            )))
+            &read,
+            Err(bae_store::DbError::Coven(error))
+                if matches!(**error, coven::CovenError::Database(coven::DbError::StoreClosed))
         ),
         "the library's store is closed: {read:?}"
     );
@@ -771,10 +770,9 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     let read = caller.block_on(services.library_name());
     assert!(
         matches!(
-            read,
-            Err(bae_library::LibraryError::Database(bae_store::DbError::Coven(
-                coven::CovenError::Database(coven::DbError::StoreClosed)
-            )))
+            &read,
+            Err(bae_library::LibraryError::Database(bae_store::DbError::Coven(error)))
+                if matches!(**error, coven::CovenError::Database(coven::DbError::StoreClosed))
         ),
         "the released handle's store is closed: {read:?}"
     );

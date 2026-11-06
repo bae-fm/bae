@@ -91,7 +91,9 @@ pub fn device_store(handle: coven::CovenHandle) -> Store {
 /// of the sequence, as coven's sync status row keeps them, live: a pass
 /// that ends synced moves the time, and one that fails changes how it
 /// ended.
-fn pass_ends(store: &Store) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>)> {
+fn pass_ends(
+    store: &Store,
+) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>), coven::CovenError> {
     store.subscribe(|sql| {
         Ok(sql.query_row("SELECT last_pass, last_synced FROM coven_sync_status", [], |row| {
             Ok((row.get(0)?, row.get(1)?))

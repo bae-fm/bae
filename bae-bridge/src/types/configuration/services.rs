@@ -302,8 +302,9 @@ pub struct BridgeSaveSyncConfig {
     pub bucket: String,
     pub region: String,
     pub endpoint: Option<String>,
-    /// The key prefix as the person typed it, empty for none. Slashes at its
-    /// ends mean nothing; coven parses it.
+    /// The key prefix as the person typed it, empty for none.
+    // Sentinel: the S3 bucket-of-its-own commit removes the field with the
+    // apps' key prefix inputs. Until then a typed prefix is refused.
     pub key_prefix: String,
     pub access_key: String,
     pub secret_key: String,
@@ -311,14 +312,13 @@ pub struct BridgeSaveSyncConfig {
 }
 
 impl BridgeSaveSyncConfig {
-    /// A key prefix coven can't parse fails in its own class, naming the
-    /// folder at fault.
+    /// A typed key prefix is refused: the library takes the whole bucket.
     pub(crate) fn into_core(self) -> Result<bae_library::sync::S3ConfigData, BridgeError> {
+        crate::types::storage::refuse_key_prefix(&self.key_prefix)?;
         Ok(bae_library::sync::S3ConfigData {
             bucket: self.bucket,
             region: self.region,
             endpoint: self.endpoint,
-            key_prefix: coven::S3Prefix::parse(&self.key_prefix)?,
             access_key: self.access_key,
             secret_key: self.secret_key,
             profile: self.profile.map(BridgeS3Profile::into_core),

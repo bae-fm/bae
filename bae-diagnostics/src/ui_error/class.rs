@@ -29,7 +29,6 @@ pub enum UiErrorClass {
     S3VersioningUnknown,
     S3VersioningUnsupported,
     StorageLocationChangeUnsupported,
-    S3Prefix,
     Credentials,
     Network,
     Keyring,
@@ -49,7 +48,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 38] = [
+    const ALL: [Self; 37] = [
         Self::Database,
         Self::Config,
         Self::Internal,
@@ -72,7 +71,6 @@ impl UiErrorClass {
         Self::S3VersioningUnknown,
         Self::S3VersioningUnsupported,
         Self::StorageLocationChangeUnsupported,
-        Self::S3Prefix,
         Self::Credentials,
         Self::Network,
         Self::Keyring,
@@ -115,7 +113,6 @@ impl UiErrorClass {
             Self::S3VersioningUnknown => "versioning_unknown",
             Self::S3VersioningUnsupported => "versioning_unsupported",
             Self::StorageLocationChangeUnsupported => "storage_location_change",
-            Self::S3Prefix => "s3_prefix",
             Self::Credentials => "credentials",
             Self::Network => "network",
             Self::Keyring => "keyring",
@@ -195,7 +192,6 @@ impl UiErrorClass {
             | Self::TiedMediums
             | Self::ReleaseChangedSinceOpened
             | Self::StorageLocationChangeUnsupported
-            | Self::S3Prefix
             | Self::KeychainEntitlementMissing
             | Self::SavedRestoreCodesFull
             | Self::SavedRestoreCodeTooLarge
@@ -233,7 +229,6 @@ impl UiErrorCategory {
             Self::S3VersioningUnknown(_) => K::S3VersioningUnknown,
             Self::S3VersioningUnsupported(_) => K::S3VersioningUnsupported,
             Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
-            Self::S3Prefix(_) => K::S3Prefix,
             Self::Credentials => K::Credentials,
             Self::Network => K::Network,
             Self::Keyring => K::Keyring,
@@ -293,7 +288,6 @@ impl UiErrorCategory {
             | K::StorageCheck
             | K::S3VersioningUnknown
             | K::S3VersioningUnsupported
-            | K::S3Prefix
             | K::ReplacementUnfinished => return None,
         })
     }

@@ -92,7 +92,9 @@ pub fn subscribe_work_detail(
 /// the same query at it.
 pub fn detail_read<Projection, Value, Id>(
     manager: LibraryManager,
-    open: impl FnOnce(Option<Id>) -> coven::ReconfigurableLiveQuery<Option<Id>, Projection>
+    open: impl FnOnce(
+            Option<Id>,
+        ) -> coven::ReconfigurableLiveQuery<Option<Id>, Projection, coven::CovenError>
         + Send
         + 'static,
     resolve: impl Fn(Projection) -> Option<Value> + Send + 'static,

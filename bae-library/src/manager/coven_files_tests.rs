@@ -185,10 +185,16 @@ async fn an_image_over_the_bound_limit_is_refused() {
         .store_library_image(&cover, &oversized)
         .await
         .expect_err("an image over the limit makes no cover");
-    match &error {
-        LibraryError::Database(bae_store::DbError::Coven(coven::CovenError::Database(
-            coven::DbError::BoundFileTooLarge { table, column, size, limit },
-        ))) => {
+    let LibraryError::Database(bae_store::DbError::Coven(coven_error)) = &error else {
+        panic!("expected BoundFileTooLarge, got {error:?}");
+    };
+    match coven_error.as_ref() {
+        coven::CovenError::Database(coven::DbError::BoundFileTooLarge {
+            table,
+            column,
+            size,
+            limit,
+        }) => {
             assert_eq!((table.as_str(), column.as_str()), ("covers", "file"));
             assert_eq!(*size, coven::BOUND_FILE_LIMIT + 1);
             assert_eq!(*limit, coven::BOUND_FILE_LIMIT);

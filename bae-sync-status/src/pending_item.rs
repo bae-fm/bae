@@ -34,8 +34,6 @@ pub enum PendingSubjectName {
     LibraryData,
     /// Data shared only within a circle of people.
     CircleData,
-    /// A request to join the library.
-    JoinRequest,
     /// This device's connection to the library's storage.
     Connection,
     /// One of coven's operations on the library, such as inviting a person.
@@ -141,7 +139,6 @@ impl PendingItem {
             S::Retention { .. } => PendingSubjectName::Retention,
             S::Audience(coven::Audience::Store) => PendingSubjectName::LibraryData,
             S::Audience(coven::Audience::Circle(_)) => PendingSubjectName::CircleData,
-            S::JoinRequest(_) => PendingSubjectName::JoinRequest,
             S::Connection => PendingSubjectName::Connection,
         };
         Self { subject, wait }

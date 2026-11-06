@@ -55,7 +55,8 @@ impl LibraryViews {
     pub fn subscribe_release_detail(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection> {
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection, coven::CovenError>
+    {
         self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let has_cloud_home = cloud_home_on(&sql)?;

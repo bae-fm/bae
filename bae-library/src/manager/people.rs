@@ -57,11 +57,13 @@ impl LibraryManager {
     /// The profile this person asked for, until it is written, live.
     pub fn subscribe_requested_profile(
         &self,
-    ) -> coven::LiveQuery<Option<bae_people::people::RequestedProfile>> {
+    ) -> coven::LiveQuery<Option<bae_people::people::RequestedProfile>, coven::CovenError> {
         self.people.subscribe_requested_profile()
     }
 
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<bae_people::people::PersonProfile>> {
+    pub fn subscribe_profiles(
+        &self,
+    ) -> coven::LiveQuery<Vec<bae_people::people::PersonProfile>, coven::CovenError> {
         self.people.subscribe_profiles()
     }
 
@@ -89,7 +91,9 @@ impl LibraryManager {
         Ok(self.membership.members().await?)
     }
 
-    pub fn subscribe_members(&self) -> coven::LiveQuery<bae_people::membership::Members> {
+    pub fn subscribe_members(
+        &self,
+    ) -> coven::LiveQuery<bae_people::membership::Members, coven::CovenError> {
         self.membership.subscribe_members()
     }
 
@@ -110,7 +114,7 @@ impl LibraryManager {
     pub fn subscribe_added_device(
         &self,
         watch: crate::sync::membership::AddedDeviceWatch,
-    ) -> coven::LiveQuery<Option<bae_people::membership::ActiveDevice>> {
+    ) -> coven::LiveQuery<Option<bae_people::membership::ActiveDevice>, coven::CovenError> {
         let sync_often = self.store.sync_often(ADD_DEVICE_SYNC_INTERVAL);
         self.subscribe_members().process(move |membership| {
             // The subscription owns the request; dropping it ends the request.
@@ -123,7 +127,7 @@ impl LibraryManager {
     /// dismisses its outcome, live (§5.6).
     pub fn subscribe_admin_changes(
         &self,
-    ) -> coven::LiveQuery<Vec<bae_people::admin_change::AdminChange>> {
+    ) -> coven::LiveQuery<Vec<bae_people::admin_change::AdminChange>, coven::CovenError> {
         self.membership.subscribe_admin_changes()
     }
 

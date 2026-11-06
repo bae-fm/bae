@@ -145,7 +145,7 @@ impl Records {
     pub fn subscribe_has_pending_uploads_for_release(
         &self,
         release_id: &str,
-    ) -> coven::LiveQuery<bool> {
+    ) -> coven::LiveQuery<bool, coven::CovenError> {
         let release_id = release_id.to_string();
         self.store.subscribe(move |sql| {
             Ok(sql.query_row(RELEASE_HAS_QUEUED_FILE, [&release_id], |row| row.get(0))?)
@@ -156,7 +156,9 @@ impl Records {
     /// to with the bytes of each stored, live: it reruns as files start and
     /// stop being sent or the person pauses uploads. How far each file has
     /// got is coven's upload watch.
-    pub fn subscribe_sending_uploads(&self) -> coven::LiveQuery<DbSendingUploads> {
+    pub fn subscribe_sending_uploads(
+        &self,
+    ) -> coven::LiveQuery<DbSendingUploads, coven::CovenError> {
         self.store.subscribe(|sql| {
             let files = sql.query(FILES_SENDING, [], sending_file_in_row)?;
             let releases = sql.query(RELEASES_SENDING_BYTES, [], sending_release_in_row)?;

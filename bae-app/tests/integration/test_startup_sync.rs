@@ -24,13 +24,15 @@ impl Clock for StorageClock {
     fn elapsed(&self) -> Duration {
         self.time.elapsed()
     }
-    fn sleep(
+    /// The memory provider's injected delay waits on this deadline, which
+    /// the test ends by moving the clock once it is armed.
+    fn deadline(
         &self,
         duration: Duration,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
-        let sleep = self.time.sleep(duration);
+        let deadline = self.time.deadline(duration);
         self.sleeping.notify_one();
-        sleep
+        deadline
     }
     fn sleep_until(
         &self,

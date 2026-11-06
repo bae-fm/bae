@@ -73,7 +73,7 @@ impl Clock for BenchClock {
                 let Ok(left) = at.duration_since(now) else { return Ok(()) };
                 tokio::select! {
                     () = tokio::time::sleep(left) => {}
-                    jumped = ahead.changed() => jumped.map_err(WallTimerError::new)?,
+                    jumped = ahead.changed() => jumped.map_err(WallTimerError::clock)?,
                 }
             }
         })
@@ -211,7 +211,7 @@ async fn restore_cost(library: Library) {
         .read(|sql| {
             let count =
                 sql.query_row("SELECT count(*) FROM tracks", [], |row| row.get::<_, i64>(0))?;
-            Ok(count)
+            Ok::<_, coven::CovenError>(count)
         })
         .await
         .unwrap();

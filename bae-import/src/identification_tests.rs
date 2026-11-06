@@ -126,7 +126,7 @@ pub(crate) fn fixed_now() -> chrono::DateTime<chrono::Utc> {
 /// Pull `query` until a value satisfies `wanted` and return it. A query that
 /// never reaches it is bounded by the hang guard.
 pub(crate) async fn live_until<T: Clone + PartialEq + Send + 'static>(
-    query: &mut coven::LiveQuery<T>,
+    query: &mut coven::LiveQuery<T, coven::CovenError>,
     wanted: impl Fn(&T) -> bool,
 ) -> T {
     tokio::time::timeout(HANG_GUARD, async {

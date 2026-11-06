@@ -166,6 +166,8 @@ pub enum BridgeErrorCategory {
     StorageLocationChangeUnsupported,
     /// The S3 key prefix the person typed is not a folder path coven can
     /// use; the line names the folder at fault.
+    // Sentinel: nothing makes it now that coven has no key prefixes; the S3
+    // bucket-of-its-own commit removes it with the apps' lines for it.
     S3Prefix {
         problem: BridgeS3PrefixProblem,
     },
@@ -491,7 +493,9 @@ impl BridgeErrorCategory {
             Self::S3VersioningUnknown { .. } => K::S3VersioningUnknown,
             Self::S3VersioningUnsupported { .. } => K::S3VersioningUnsupported,
             Self::StorageLocationChangeUnsupported => K::StorageLocationChangeUnsupported,
-            Self::S3Prefix { .. } => K::S3Prefix,
+            // Sentinel: nothing makes it now that coven has no key prefixes;
+            // the S3 bucket-of-its-own commit removes it.
+            Self::S3Prefix { .. } => K::Storage,
             Self::Credentials => K::Credentials,
             Self::Network => K::Network,
             Self::Keyring => K::Keyring,
@@ -596,7 +600,6 @@ mirror_enum! {
         S3VersioningUnknown(failure:(BridgeStorageFailure)),
         S3VersioningUnsupported(state:(BridgeS3BucketVersioning)),
         StorageLocationChangeUnsupported,
-        S3Prefix(problem: (BridgeS3PrefixProblem)),
         Credentials,
         Network,
         Keyring,

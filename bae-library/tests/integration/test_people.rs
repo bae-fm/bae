@@ -305,7 +305,8 @@ impl Household {
         ))
         .await
         .unwrap();
-        let mut invites = self.owner.subscribe(coven::Invite::list);
+        let mut invites =
+            self.owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
         let granted = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
             bae_library::people::InviteShown::Code { code, .. } if invite.id == id => Some(code),
             bae_library::people::InviteShown::Code { .. }
@@ -366,7 +367,8 @@ impl Household {
 
     /// Approve the first request among the owner's open invites.
     async fn approve(&self) {
-        let mut invites = self.owner.subscribe(coven::Invite::list);
+        let mut invites =
+            self.owner.subscribe(|sql| Ok::<_, coven::CovenError>(coven::Invite::list(sql)?));
         let deciding = |invite: &coven::Invite| match bae_library::people::invite_shown(invite) {
             bae_library::people::InviteShown::Code {
                 progress: bae_library::people::InviteProgress::Deciding(request),
@@ -419,7 +421,10 @@ async fn landed_circle(owner: &coven::CovenHandle, name: &str) -> coven::CircleI
         coven::OperationOutcome::Landed(_)
     ));
     owner.stop_sync().await.unwrap();
-    owner.write(move |sql| Ok(sql.acknowledge_operation(operation)?)).await.unwrap();
+    owner
+        .write(move |sql| Ok::<_, coven::CovenError>(sql.acknowledge_operation(operation)?))
+        .await
+        .unwrap();
     circle
 }
 

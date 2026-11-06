@@ -5,7 +5,7 @@
 use super::*;
 use bae_diagnostics::{UiError, UiErrorCategory as C};
 use bae_store::test_fixtures::temp_db;
-use coven::{DropboxAccess, OAuthAccess, OwnBucketReason, StorageFailure as F};
+use coven::{DropboxAccess, OAuthAccess, StorageFailure as F};
 
 fn failure(category: C) -> UiError {
     UiError::Diagnostic { category, detail: "the start failed".to_string() }
@@ -30,6 +30,7 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
         F::DropboxAppFolderNotShareable,
         F::CatchUpRequired,
         F::Network,
+        F::Corrupted,
         F::Authentication,
         F::PermissionDenied,
         F::NotFound,
@@ -39,8 +40,7 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
         F::RegionMismatch,
         F::StoreExists,
         F::ClockSkew,
-        F::OwnBucketRequired { reason: OwnBucketReason::Prefix },
-        F::OwnBucketRequired { reason: OwnBucketReason::Occupied },
+        F::OwnLocationRequired,
         F::QuotaExceeded,
         F::RateLimited,
         F::InvalidConfiguration,
@@ -61,6 +61,7 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
         F::Encoding,
         F::File,
         F::MemberKeysMissing,
+        F::Bug,
     ];
     let categories = [
         C::Database,
@@ -105,23 +106,21 @@ async fn a_row_whose_columns_disagree_is_refused() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     for columns in [
         // A storage failure with no reason.
-        "'storage', NULL, NULL, NULL, NULL, NULL",
+        "'storage', NULL, NULL, NULL, NULL",
         // A reason on a class that isn't storage.
-        "'keyring', 'network', NULL, NULL, NULL, NULL",
+        "'keyring', 'network', NULL, NULL, NULL",
         // An access failure naming no access.
-        "'storage', 'access_not_granted', NULL, NULL, NULL, NULL",
+        "'storage', 'access_not_granted', NULL, NULL, NULL",
         // An access on a reason that names none.
-        "'storage', 'network', NULL, 'one_drive', NULL, NULL",
-        // A required bucket with no reason for it.
-        "'storage', 'own_bucket_required', NULL, NULL, NULL, NULL",
+        "'storage', 'network', 'one_drive', NULL, NULL",
         // A size without its limit.
-        "'storage', 'copy_too_large', NULL, NULL, 10, NULL",
+        "'storage', 'copy_too_large', NULL, 10, NULL",
         // A size on a class that isn't storage.
-        "'internal', NULL, NULL, NULL, 10, 5",
+        "'internal', NULL, NULL, 10, 5",
     ] {
         let sql = format!(
             "INSERT INTO sync_start_failure (singleton, category, storage_failure, \
-             own_bucket_reason, required_access, size_bytes, limit_bytes, detail) \
+             required_access, size_bytes, limit_bytes, detail) \
              VALUES (1, {columns}, 'detail')"
         );
         let inserted = db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await;

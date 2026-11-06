@@ -100,8 +100,9 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         let read = devices.b().records().read_release_file(&file.id).await;
         assert!(
             matches!(
-                read,
-                Err(bae_store::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }))
+                &read,
+                Err(bae_store::DbError::FileRead(error))
+                    if matches!(**error, coven::FileReadError::DeviceOnly { .. })
             ),
             "{read:?}"
         );
@@ -138,7 +139,11 @@ async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
 
 /// The next value of a release's live read for which `wanted` holds.
 async fn next_playability(
-    live: &mut coven::ReconfigurableLiveQuery<Option<String>, bae_views::ReleaseDetailProjection>,
+    live: &mut coven::ReconfigurableLiveQuery<
+        Option<String>,
+        bae_views::ReleaseDetailProjection,
+        coven::CovenError,
+    >,
     release_id: &str,
     wanted: impl Fn(&ReleasePlayability) -> bool,
 ) -> ReleasePlayability {

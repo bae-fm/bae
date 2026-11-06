@@ -42,7 +42,9 @@ impl From<LiveQueryCancelled> for LiveQueryError {
 /// A reconfigurable live query and the cancellation that ends it.
 pub struct CancellableLiveQuery<Request, Projection> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<Request>>>,
-    query: tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<Request, Projection>>>,
+    query: tokio::sync::Mutex<
+        Option<coven::ReconfigurableLiveQuery<Request, Projection, coven::CovenError>>,
+    >,
     cancellation: CancellationToken,
     /// How often the query had run when it last returned an event, kept
     /// here because a waiting read holds the query itself.
@@ -57,7 +59,7 @@ where
 {
     /// `query`, ended by `cancel` or by `cancellation`.
     pub fn new(
-        query: coven::ReconfigurableLiveQuery<Request, Projection>,
+        query: coven::ReconfigurableLiveQuery<Request, Projection, coven::CovenError>,
         cancellation: CancellationToken,
     ) -> Self {
         Self {
@@ -101,7 +103,10 @@ where
     /// the subscription. Query errors are events, not the end.
     pub async fn next(
         &self,
-    ) -> Result<coven::ReconfigurableLiveQueryEvent<Request, Projection>, LiveQueryCancelled> {
+    ) -> Result<
+        coven::ReconfigurableLiveQueryEvent<Request, Projection, coven::CovenError>,
+        LiveQueryCancelled,
+    > {
         tokio::select! {
             biased;
             () = self.cancellation.cancelled() => Err(LiveQueryCancelled),

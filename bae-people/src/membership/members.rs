@@ -12,7 +12,7 @@ impl Membership {
         self.store.read(|sql| Ok(membership_on(&sql)?)).await
     }
 
-    pub fn subscribe_members(&self) -> coven::LiveQuery<Members> {
+    pub fn subscribe_members(&self) -> coven::LiveQuery<Members, coven::CovenError> {
         self.store.subscribe(|sql| Ok(membership_on(&sql)?))
     }
 }

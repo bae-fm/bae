@@ -665,8 +665,7 @@ async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
 async fn setting_up_s3_storage_tells_each_step_coven_reports() {
     use coven::StorageSetupStep::*;
     let (manager, _temp) = setup_test_manager().await;
-    let coven::StorageConfig::S3 { bucket, region, endpoint, prefix, profile } =
-        manager.storage.config()
+    let coven::StorageConfig::S3 { bucket, region, endpoint, profile } = manager.storage.config()
     else {
         panic!("the memory provider uses S3 configuration");
     };
@@ -678,7 +677,6 @@ async fn setting_up_s3_storage_tells_each_step_coven_reports() {
                 bucket,
                 region,
                 endpoint: endpoint.map(|url| url.to_string()),
-                key_prefix: prefix,
                 profile,
                 access_key: "test-key".into(),
                 secret_key: "test-secret".into(),
@@ -690,7 +688,7 @@ async fn setting_up_s3_storage_tells_each_step_coven_reports() {
         .unwrap();
 
     let told = told.into_inner().unwrap();
-    let order = [CheckingBucket, DetectingSettings, Connecting, CreatingStore];
+    let order = [CheckingLocation, DetectingSettings, Connecting, CreatingStore];
     let positions: Vec<usize> = told
         .iter()
         .map(|progress| {

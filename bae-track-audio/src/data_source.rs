@@ -252,13 +252,14 @@ async fn read_error_for_file_read(
     file_id: &str,
     error: bae_store::DbError,
 ) -> TrackReadError {
-    match error {
-        bae_store::DbError::FileRead(coven::FileReadError::NoStorage) => {
-            TrackReadError::SyncDisconnected
-        }
+    let bae_store::DbError::FileRead(read_error) = error else {
+        return TrackReadError::internal(error.to_string());
+    };
+    match *read_error {
+        coven::FileReadError::NoStorage => TrackReadError::SyncDisconnected,
         // Audio another device holds: a release nobody uploaded is on the
         // device that imported it, or made it local again.
-        bae_store::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
+        coven::FileReadError::DeviceOnly { .. } => {
             match records.release_file_other_device(file_id).await {
                 Ok(device) => TrackReadError::OnOtherDevice(device),
                 Err(error) => TrackReadError::internal(format!(
@@ -266,10 +267,8 @@ async fn read_error_for_file_read(
                 )),
             }
         }
-        bae_store::DbError::FileRead(
-            coven::FileReadError::UserFileMissing { .. }
-            | coven::FileReadError::UserFileChanged { .. },
-        ) => TrackReadError::OriginalMissing,
+        coven::FileReadError::UserFileMissing { .. }
+        | coven::FileReadError::UserFileChanged { .. } => TrackReadError::OriginalMissing,
         error => TrackReadError::internal(error.to_string()),
     }
 }
