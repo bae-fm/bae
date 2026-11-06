@@ -1406,7 +1406,12 @@ its files' blank draft, which nobody wrote, and the first write to its draft
 stores it whole, with the cover the folder came with. Every pane control is stored the moment it's
 used, under the candidate's hash, so the person can leave a candidate half
 done and come back to it, even after a restart. Where the pane was, such as a
-half-typed search, is stored too. Since each edit is written as it is made,
+half-typed search, is stored too. A folder this device imported holds no
+draft and no pane state: a control or pane command that reaches it after the
+import landed, such as one clicked on a pane still drawing the draft, writes
+nothing and is answered that this device already imported those files, naming
+the release they became, as a second Import is (§2.7). Since each edit is
+written as it is made,
 the pane has no reset and no undo: to start over, the person applies a source
 again (a catalog release, or the files' tags) or clears the metadata, and the
 file decisions stay as they are.

@@ -166,3 +166,96 @@ async fn automatic_with_no_stored_verdict_owes_a_run() {
         crate::MetadataPresentation::FindOnline
     );
 }
+
+/// Import the fixture's candidate, given the artist its draft lacks, and
+/// answer with the release it became.
+async fn imported(handle: &crate::ImportServiceHandle, key: &crate::CandidateKey) -> String {
+    handle
+        .set_candidate_album_artists(
+            key,
+            vec![crate::Credited::plain(crate::ArtistAssignment::named("Artist Name"))],
+        )
+        .await
+        .unwrap();
+    let mut events = handle.every_event();
+    let import_id = handle.start_import(key).await.unwrap().expect_queued();
+    let (release_id, _) = await_import_outcome(&mut events, &import_id)
+        .await
+        .unwrap_or_else(|error| panic!("the import lands: {error}"));
+    release_id
+}
+
+/// Whether `answer` says this device already imported the candidate's files,
+/// as `release_id`.
+fn already_imported<T: std::fmt::Debug>(answer: &Result<T, ImportError>, release_id: &str) -> bool {
+    matches!(
+        answer,
+        Err(ImportError::FilesAlreadyImported { release_id: imported }) if imported == release_id
+    )
+}
+
+/// A candidate this device imported holds no draft and no pane: a pane
+/// command or control that reaches it after the import landed, as one clicked
+/// on a pane still drawing the draft does, writes nothing and is answered that
+/// its files are in the library, naming the release they became.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_imported_candidate_s_pane_answers_that_its_files_are_imported() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let release_id = imported(&handle, &key).await;
+    let sessions = || async {
+        handle.store.every_row_for_test().await.unwrap().remove("import_candidate_session")
+    };
+    let before = sessions().await;
+
+    let moved = handle.move_candidate_pane(&key, PaneMove::FindOnline).await;
+    assert!(already_imported(&moved, &release_id), "{moved:?}");
+    let searched = handle.set_candidate_search_form(&key, SearchForm::default()).await;
+    assert!(already_imported(&searched, &release_id), "{searched:?}");
+    let automatic = handle.open_automatic(&key).await;
+    assert!(already_imported(&automatic, &release_id), "{automatic:?}");
+    let cleared = handle.clear_pane_failure(&key).await;
+    assert!(already_imported(&cleared, &release_id), "{cleared:?}");
+    let command = handle
+        .run_pane_command(&key, PaneCommand::LinkSharedAlbum, async { Ok::<_, ImportError>(()) })
+        .await;
+    assert!(already_imported(&command, &release_id), "{command:?}");
+
+    let album = handle.set_candidate_album(&key, None).await;
+    assert!(already_imported(&album, &release_id), "{album:?}");
+    let artists = handle
+        .set_candidate_album_artists(
+            &key,
+            vec![crate::Credited::plain(crate::ArtistAssignment::named("Other Artist"))],
+        )
+        .await;
+    assert!(already_imported(&artists, &release_id), "{artists:?}");
+    let tags = handle.select_candidate_file_tags(key.clone()).await;
+    assert!(already_imported(&tags, &release_id), "{tags:?}");
+    let again = handle.start_import(&key).await;
+    assert!(already_imported(&again, &release_id), "{again:?}");
+
+    assert_eq!(sessions().await, before, "nothing stored a pane for the imported candidate");
+    shut_down(handle).await;
+}
+
+/// A pane command whose candidate is imported while it runs has no pane to
+/// state its failure on: it is answered that the files are in the library.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_command_whose_candidate_is_imported_meanwhile_answers_that_its_files_are() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let importing = handle.clone();
+    let release = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let landed = release.clone();
+    let key_for_run = key.clone();
+
+    let answer = handle
+        .run_pane_command(&key, PaneCommand::KeepOwnDraft, async move {
+            *landed.lock().unwrap() = Some(imported(&importing, &key_for_run).await);
+            Err::<(), _>(ImportError::CandidateImportInProgress)
+        })
+        .await;
+
+    let release_id = release.lock().unwrap().clone().expect("the import landed");
+    assert!(already_imported(&answer, &release_id), "{answer:?}");
+    shut_down(handle).await;
+}

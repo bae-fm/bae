@@ -104,7 +104,7 @@ impl ImportServiceHandle {
                 runtime,
                 actionable,
                 skipped: standing.skipped,
-                is_added: standing.imported,
+                is_added: standing.imported.is_some(),
             }));
         }
         Ok(runtime

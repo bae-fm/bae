@@ -29,11 +29,7 @@ impl ImportServiceHandle {
     ) -> Result<crate::CandidateStanding, crate::ImportError> {
         Ok(crate::CandidateStanding {
             skipped: self.tables.is_release_candidate_skipped(candidate).await?,
-            imported: self
-                .tables
-                .release_imported_from(&candidate.files.content_hash())
-                .await?
-                .is_some(),
+            imported: self.tables.release_imported_from(&candidate.files.content_hash()).await?,
             claimed: self.runtime.import_claimed(key).await?,
         })
     }
@@ -87,12 +83,12 @@ impl ImportServiceHandle {
 /// device imported, and the standings table's import claims. Every gate that decides what
 /// may be done to a candidate reads this rather than composing the three
 /// on its own.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateStanding {
     /// The person set it aside.
     pub skipped: bool,
-    /// This device imported a release from its files.
-    pub imported: bool,
+    /// The release this device imported from its files, if it did.
+    pub imported: Option<String>,
     /// An import has claimed it and is running.
     pub claimed: bool,
 }
@@ -101,12 +97,18 @@ impl CandidateStanding {
     /// Whether identification may still answer for it: not set aside, not
     /// imported here, not being imported.
     pub fn answerable(&self) -> bool {
-        !self.skipped && !self.imported && !self.claimed
+        !self.skipped && self.imported.is_none() && !self.claimed
     }
 
     /// Whether its preparation may still be changed. A skipped candidate may
-    /// be: skipping sets it aside, it does not freeze it.
+    /// be: skipping sets it aside, it does not freeze it. An imported one
+    /// holds no preparation: its files are the release they became.
     pub fn editable(&self) -> Result<(), crate::ImportError> {
+        if let Some(release_id) = &self.imported {
+            return Err(crate::ImportError::FilesAlreadyImported {
+                release_id: release_id.clone(),
+            });
+        }
         if self.claimed {
             return Err(crate::ImportError::CandidateImportInProgress);
         }

@@ -153,11 +153,6 @@ impl ImportServiceHandle {
         // Refused for every request kind: an import owns it, or this device
         // already imported its files, and one folder hash is one release here.
         let candidate = self.editable_candidate_for_commit(candidate_key).await?;
-        if let Some(release_id) =
-            self.tables.release_imported_from(&candidate.files.content_hash()).await?
-        {
-            return Err(crate::ImportError::FilesAlreadyImported { release_id });
-        }
         // Asked under the lock the verdict write ends its answer under, so the
         // ask is on the answer that write carries out, or the write has ended
         // it and what follows imports the stored pick. Every request kind

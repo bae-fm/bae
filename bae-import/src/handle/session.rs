@@ -78,8 +78,10 @@ impl ImportServiceHandle {
     /// Run `run`, one of the pane's commands for this candidate: the failure
     /// the pane states for its last command is cleared first, and when this
     /// one fails its failure is stored in that place for the pane to state.
-    /// An error comes back only when the pane does not state it — the failure
-    /// could not be stored, or clearing the last one failed.
+    /// An error comes back only when the pane does not state it: the failure
+    /// could not be stored, or clearing the last one failed. A candidate this
+    /// device imported keeps no pane, so for it the answer is that its files
+    /// are in the library.
     pub async fn run_pane_command<T>(
         &self,
         candidate_key: &crate::CandidateKey,
@@ -97,6 +99,9 @@ impl ImportServiceHandle {
             .await
         {
             Ok(()) => Ok(PaneOutcome::Failed),
+            // Imported while the command ran: there is no pane to state its
+            // failure on, and the files being in the library is the answer.
+            Err(imported @ crate::ImportError::FilesAlreadyImported { .. }) => Err(imported),
             Err(store) => {
                 tracing::error!(
                     "{command:?} for {candidate_key} failed, and its failure could not be stored: {store}"
@@ -135,12 +140,16 @@ impl ImportServiceHandle {
                 }
             })?;
         let content_hash = projection.candidate.files.content_hash();
-        let mut session = projection
-            .draft()
-            .ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{candidate_key} was imported, and its pane keeps no session"),
-            })?
-            .session_or_initial(projection.verdict.is_some());
+        // An imported candidate holds no draft, so no pane is kept for it.
+        let draft = match &projection.stage {
+            crate::ProjectedStage::Drafting(draft) => draft,
+            crate::ProjectedStage::Imported { release, .. } => {
+                return Err(crate::ImportError::FilesAlreadyImported {
+                    release_id: release.release_id.clone(),
+                })
+            }
+        };
+        let mut session = draft.session_or_initial(projection.verdict.is_some());
         change(&mut session);
         self.tables.save_import_candidate_session(&content_hash, &session).await?;
         Ok(())
