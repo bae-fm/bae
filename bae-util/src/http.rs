@@ -151,7 +151,8 @@ pub fn client_builder() -> reqwest::ClientBuilder {
 
 /// How bae's outbound requests reach the network: one client with bae's user
 /// agent, timeouts and redirect policy, whose connection pool every provider
-/// shares. Built once when the app starts and handed to each provider.
+/// shares, and the clock the wait before a failed request is asked again
+/// passes on. Built once when the app starts and handed to each provider.
 ///
 /// Requests are always built against the real addresses. A test builds one
 /// whose requests go to local servers instead — `Http::for_test` sends every
@@ -161,6 +162,7 @@ pub fn client_builder() -> reqwest::ClientBuilder {
 #[derive(Clone)]
 pub struct Http {
     client: reqwest::Client,
+    clock: coven::ClockRef,
     #[cfg(any(test, feature = "test-utils"))]
     routes: Option<std::sync::Arc<TestRoutes>>,
 }
@@ -175,25 +177,35 @@ struct TestRoutes {
 }
 
 impl Http {
-    pub fn new() -> Result<Self, reqwest::Error> {
+    /// A transport whose waits before a repeat pass on `clock`.
+    pub fn new(clock: coven::ClockRef) -> Result<Self, reqwest::Error> {
         Ok(Self {
             client: client_builder().build()?,
+            clock,
             #[cfg(any(test, feature = "test-utils"))]
             routes: None,
         })
     }
 
     /// A transport whose every request goes to a port nothing listens on, so
-    /// it fails fast and locally until [`Self::serve`] routes its host.
+    /// it fails fast and locally until [`Self::serve`] routes its host. Its
+    /// waits before a repeat pass as they are armed, on a clock of its own.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test() -> Self {
+        let fixed = std::sync::Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
         Self {
             client: client_builder().build().expect("the test HTTP client builds"),
+            clock: std::sync::Arc::new(coven::PollingClock::new(fixed)),
             routes: Some(std::sync::Arc::new(TestRoutes {
                 by_host: std::collections::HashMap::new(),
                 unrouted: reqwest::Url::parse("http://127.0.0.1:9").expect("the dead port parses"),
             })),
         }
+    }
+
+    /// The clock the waits before a repeat pass on.
+    pub fn clock(&self) -> &coven::ClockRef {
+        &self.clock
     }
 
     /// This transport with requests for `host` sent to `origin`, a local

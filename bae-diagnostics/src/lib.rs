@@ -355,8 +355,8 @@ enum WorkerMessage {
 
 struct DiagnosticsWorker {
     config: DatadogDiagnosticsConfig,
-    /// What the periodic flush waits on: the injected clock, which a test
-    /// moves by hand.
+    /// What the periodic flush and the wait before a send is repeated pass
+    /// on: the injected clock, which a test moves by hand.
     clock: ClockRef,
     ids: IdSourceRef,
     transport: Arc<dyn DiagnosticsTransport>,
@@ -455,7 +455,7 @@ impl DiagnosticsWorker {
                 }
             };
 
-        match send_with_retry(self.transport.as_ref(), request).await {
+        match send_with_retry(self.clock.as_ref(), self.transport.as_ref(), request).await {
             Ok(()) => Ok(()),
             Err(e) => {
                 self.restore_front(batch);
@@ -581,6 +581,7 @@ impl DiagnosticsTransport for DatadogTransport {
 }
 
 async fn send_with_retry(
+    clock: &dyn coven::Clock,
     transport: &dyn DiagnosticsTransport,
     request: DatadogRequest,
 ) -> Result<(), DiagnosticsError> {
@@ -593,8 +594,10 @@ async fn send_with_retry(
             bae_util::retry::Repeat::Never
         }
     };
-    retry_with_backoff_if(RETRY, "diagnostics send", repeat, || transport.send(request.clone()))
-        .await
+    retry_with_backoff_if(clock, RETRY, "diagnostics send", repeat, || {
+        transport.send(request.clone())
+    })
+    .await
 }
 
 pub fn should_retry(error: &DiagnosticsError) -> bool {

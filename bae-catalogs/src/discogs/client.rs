@@ -41,16 +41,6 @@ const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_millis(1200);
 const RETRY: RetryPolicy =
     RetryPolicy::exponential(4, Duration::from_secs(2), Duration::from_secs(20));
 
-/// Wrap one request in the client's own retry policy — a caller shouldn't have to
-/// know which of these failures are worth repeating. (MusicBrainz does the same.)
-async fn discogs_retry<F, Fut, T>(label: &str, f: F) -> Result<T, DiscogsError>
-where
-    F: Fn() -> Fut,
-    Fut: std::future::Future<Output = Result<T, DiscogsError>>,
-{
-    retry_with_backoff_if(RETRY, label, repeat_discogs, f).await
-}
-
 /// Where every Discogs request goes.
 const API_BASE_URL: &str = "https://api.discogs.com";
 
@@ -353,6 +343,18 @@ impl DiscogsClient {
         Self { discogs, api_key, observer }
     }
 
+    /// Wrap one request in the client's own retry policy — a caller shouldn't
+    /// have to know which of these failures are worth repeating. (MusicBrainz
+    /// does the same.)
+    async fn retried<F, Fut, T>(&self, label: &str, f: F) -> Result<T, DiscogsError>
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = Result<T, DiscogsError>>,
+    {
+        retry_with_backoff_if(self.discogs.http.clock().as_ref(), RETRY, label, repeat_discogs, f)
+            .await
+    }
+
     /// A 401 is the only error that proves the key is bad, and a success confirms it.
     /// A network or server error must NOT reject a good key.
     fn observe<T>(&self, result: &Result<T, DiscogsError>) {
@@ -451,7 +453,7 @@ impl DiscogsClient {
         let url = format!("{API_BASE_URL}/database/search");
         let query_params = [("per_page", "1")];
 
-        discogs_retry("Discogs token validation", || async {
+        self.retried("Discogs token validation", || async {
             let request = self.get(&url).query(&query_params).build()?;
             let (response, told_wait) = self.send(request, class).await?;
             classify_discogs_response(response, told_wait).map(|_| ())
@@ -511,7 +513,7 @@ impl DiscogsClient {
                 if every_page {
                     query.push(("page", &page));
                 }
-                discogs_retry("Discogs search", || async {
+                self.retried("Discogs search", || async {
                     let body = self
                         .get_cached(self.get(url).query(&query), class)
                         .await
@@ -577,7 +579,7 @@ impl DiscogsClient {
         class: CallClass,
     ) -> Result<(DiscogsRelease, String), DiscogsError> {
         let url = release_url(id);
-        discogs_retry("Discogs release fetch", || async {
+        self.retried("Discogs release fetch", || async {
             let raw_json = self.get_cached(self.get(&url), class).await?;
             let release = parse_discogs_release_json(&raw_json)?;
             Ok((release, raw_json))
@@ -600,7 +602,7 @@ impl DiscogsClient {
         class: CallClass,
     ) -> Result<(DiscogsMaster, String), DiscogsError> {
         let url = master_url(master_id);
-        discogs_retry("Discogs master fetch", || async {
+        self.retried("Discogs master fetch", || async {
             let raw_json = self.get_cached(self.get(&url), class).await?;
             let master = parse_discogs_master_json(&raw_json)?;
             Ok((master, raw_json))
@@ -622,20 +624,21 @@ impl DiscogsClient {
         class: CallClass,
     ) -> Result<Option<String>, DiscogsError> {
         let url = artist_url(artist_id);
-        let Some(body) = discogs_retry("Discogs artist fetch", || async {
-            match self.get_cached(self.get(&url), class).await {
-                Ok(body) => Ok(Some(body)),
-                Err(DiscogsError::NotFound) => {
-                    warn!(
-                        discogs_artist_id = %artist_id,
-                        "Discogs artist image lookup returned not found"
-                    );
-                    Ok(None)
+        let Some(body) = self
+            .retried("Discogs artist fetch", || async {
+                match self.get_cached(self.get(&url), class).await {
+                    Ok(body) => Ok(Some(body)),
+                    Err(DiscogsError::NotFound) => {
+                        warn!(
+                            discogs_artist_id = %artist_id,
+                            "Discogs artist image lookup returned not found"
+                        );
+                        Ok(None)
+                    }
+                    Err(error) => Err(error),
                 }
-                Err(error) => Err(error),
-            }
-        })
-        .await?
+            })
+            .await?
         else {
             return Ok(None);
         };

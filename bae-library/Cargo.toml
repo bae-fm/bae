@@ -102,8 +102,7 @@ bae-transfers = { workspace = true, features = ["test-utils"] }
 bae-track-audio = { workspace = true, features = ["test-utils"] }
 # The bug reporter and telemetry transport that record what they are handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
-# The test transport and the retry that sleeps no real time, for bae-library's
-# own unit tests.
+# The test transport, for bae-library's own unit tests.
 bae-util = { workspace = true, features = ["test-utils"] }
 # The pressing values bae-library's unit tests build their fixtures from.
 bae-types = { workspace = true, features = ["test-utils"] }
@@ -171,7 +170,7 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # library's preferences without a library, bae-track-audio's so they read a
 # decode's windows back, bae-transfers' so they follow a whole queue and
 # start an entry without a worker, bae-util's so they get its test
-# transport and a retry that sleeps no real time, bae-audio's so they get its
+# transport, bae-audio's so they get its
 # test codec helpers, bae-import's so they get the fixture audio and the import
 # service's test seams, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'

@@ -294,6 +294,42 @@ async fn a_buffered_event_is_sent_once_the_flush_interval_passes() {
     assert_eq!(transport.event_names(), ["app_started"]);
 }
 
+/// A send the intake failed for the moment is repeated once the worker's
+/// injected clock reaches the retry's wait, and not before.
+#[tokio::test]
+async fn a_transient_send_failure_is_repeated_after_its_wait_on_the_clock() {
+    use bae_util::test_channels::HANG_GUARD;
+    let clock = fixed_clock();
+    let transport = Arc::new(RecordingTransport::new(vec![
+        Err(DiagnosticsError::Status(StatusCode::INTERNAL_SERVER_ERROR)),
+        Ok(()),
+    ]));
+    let diagnostics =
+        Diagnostics::with_transport(config(), clock.clone(), ids(), transport.clone(), None)
+            .expect("diagnostics starts");
+    tokio::time::timeout(HANG_GUARD, clock.sleep_begun_after(0))
+        .await
+        .expect("the worker arms its periodic flush");
+    diagnostics.event(TelemetryEvent::AppStarted {});
+
+    let driving = async {
+        tokio::time::timeout(HANG_GUARD, transport.sent_at_least(1))
+            .await
+            .expect("the flush sends the batch");
+        let (_, wait_ends) = tokio::time::timeout(HANG_GUARD, clock.sleep_begun_after(1))
+            .await
+            .expect("the failed send's repeat waits on the worker's clock");
+        // RETRY waits a quarter second before each repeat.
+        assert_eq!(wait_ends, Duration::from_millis(250));
+        assert_eq!(transport.requests().len(), 1, "the send was repeated before its wait");
+        clock.set(start() + wait_ends);
+    };
+    let (flushed, ()) = tokio::join!(diagnostics.flush(), driving);
+
+    flushed.expect("the repeated send lands");
+    assert_eq!(transport.requests().len(), 2);
+}
+
 #[tokio::test]
 async fn failed_flush_keeps_events_buffered_for_later_retry() {
     let transport = Arc::new(RecordingTransport::new(vec![

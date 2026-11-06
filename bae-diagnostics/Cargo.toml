@@ -34,7 +34,7 @@ async-trait = { workspace = true }
 [dev-dependencies]
 # coven's deterministic clock and id fakes.
 coven = { workspace = true, features = ["test-utils"] }
-# The retry that sleeps no real time.
+# The hang guard the tests bound their waits with.
 bae-util = { workspace = true, features = ["test-utils"] }
 # The local server the transport tests send to.
 tokio = { workspace = true, features = ["macros", "net", "io-util", "rt-multi-thread", "test-util"] }

@@ -122,15 +122,18 @@ fn repeat(error: &WikidataError) -> Repeat {
 const RETRY: RetryPolicy =
     RetryPolicy::exponential(4, Duration::from_secs(1), Duration::from_secs(10));
 
-/// Wrap one request in the client's own retry policy — a caller shouldn't have
-/// to know which of these failures are worth repeating. (MusicBrainz and
-/// Discogs do the same.)
-async fn wikidata_retry<F, Fut, T>(label: &str, f: F) -> Result<T, WikidataError>
-where
-    F: Fn() -> Fut,
-    Fut: std::future::Future<Output = Result<T, WikidataError>>,
-{
-    bae_util::retry::retry_with_backoff_if(RETRY, label, repeat, f).await
+impl Wikidata {
+    /// Wrap one request in the client's own retry policy — a caller shouldn't
+    /// have to know which of these failures are worth repeating. (MusicBrainz
+    /// and Discogs do the same.)
+    async fn retried<F, Fut, T>(&self, label: &str, f: F) -> Result<T, WikidataError>
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = Result<T, WikidataError>>,
+    {
+        let clock = self.http.clock().as_ref();
+        bae_util::retry::retry_with_backoff_if(clock, RETRY, label, repeat, f).await
+    }
 }
 
 /// The body on a success, and the error the status names otherwise, carrying
@@ -230,7 +233,7 @@ impl Wikidata {
         item: &str,
         class: CallClass,
     ) -> Result<String, WikidataError> {
-        wikidata_retry("Wikidata entity fetch", || self.fetch_entity_once(item, class)).await
+        self.retried("Wikidata entity fetch", || self.fetch_entity_once(item, class)).await
     }
 
     async fn fetch_entity_once(

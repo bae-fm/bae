@@ -111,7 +111,7 @@ fn archive_gallery_reads_the_older_copy_names_by_their_edges() {
 #[tokio::test]
 async fn gallery_interrupted_body_is_a_transport_failure() {
     let url = crate::remote_image::tests::truncated_body_url().await;
-    let http = Http::new().expect("the test HTTP client builds");
+    let http = crate::remote_image::tests::direct_http();
     let error = fetch_gallery(&http, &url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Transport { error, .. } if error.is_decode()),

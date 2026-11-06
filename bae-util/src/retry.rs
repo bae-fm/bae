@@ -7,12 +7,13 @@
 //! repeating, and how long to leave the provider alone before asking again,
 //! are the client's.
 //!
-//! The wait before a repeat is a plain `tokio::time::sleep` inside the
-//! request's own future, taken after the attempt has released its rate-limit
-//! slot. So a request waiting out a busy server holds nothing another request
-//! needs, and dropping its future — a cancelled identify run — ends the wait
-//! with it.
+//! The wait before a repeat is waited out on the clock the caller hands in,
+//! inside the request's own future, after the attempt has released its
+//! rate-limit slot. So a request waiting out a busy server holds nothing
+//! another request needs, and dropping its future — a cancelled identify run —
+//! ends the wait with it.
 
+use coven::Clock;
 use rand::Rng;
 use std::fmt::Display;
 use std::time::Duration;
@@ -73,22 +74,9 @@ impl RetryPolicy {
         span / 2 + span.mul_f64(draw.clamp(0.0, 1.0) / 2.0)
     }
 
-    /// How long the wait before repeat `retry` sleeps — see [`pause`].
-    fn pause(&self, retry: u32) -> Duration {
-        pause(self.wait(retry, rand::rng().random::<f64>()))
-    }
-}
-
-/// How long a wait actually sleeps. Zero in any test build, so a retry-path
-/// test spends no real time between attempts — gated on `test` (this crate's
-/// own unit tests) and `test-utils` (the tests of every crate built on this
-/// one, which compile it as a normal dependency).
-/// `test-utils` is dev/test-only, so a production build always waits for real.
-fn pause(wait: Duration) -> Duration {
-    if cfg!(any(test, feature = "test-utils")) {
-        Duration::ZERO
-    } else {
-        wait
+    /// The wait before repeat `retry`, drawn within its span.
+    fn drawn_wait(&self, retry: u32) -> Duration {
+        self.wait(retry, rand::rng().random::<f64>())
     }
 }
 
@@ -165,9 +153,11 @@ pub enum ClassifiedAttempt<T, E> {
 
 /// Try `attempt` as `policy` says, until it returns
 /// [`ClassifiedAttempt::Done`], a failure not worth repeating, or attempts
-/// run out. [`retry_with_backoff_if`] is this for callers that return
-/// `Result` and classify the error with a predicate.
+/// run out, waiting out each wait before a repeat on `clock`.
+/// [`retry_with_backoff_if`] is this for callers that return `Result` and
+/// classify the error with a predicate.
 pub async fn retry_classified<T, E, F, Fut>(
+    clock: &dyn Clock,
     policy: RetryPolicy,
     label: &str,
     mut attempt: F,
@@ -197,21 +187,23 @@ where
                 );
                 return Err(error);
             }
-            Repeat::AfterToldWait(told) => pause(told),
-            Repeat::AfterBackoff => policy.pause(attempt_index),
+            Repeat::AfterToldWait(told) => told,
+            Repeat::AfterBackoff => policy.drawn_wait(attempt_index),
         };
         warn!("{label} failed (attempt {attempt_index}/{max_attempts}): {error} — retrying in {wait:?}");
-        tokio::time::sleep(wait).await;
+        clock.wait_out(wait).await;
         attempt_index += 1;
     }
 }
 
-/// Try `f` as `policy` says, repeating a failure as `repeat` classifies it.
+/// Try `f` as `policy` says, repeating a failure as `repeat` classifies it
+/// and waiting out each wait before a repeat on `clock`.
 ///
 /// The classification is required: most of what an API client returns is an
 /// answer, not a fault, and a retry that can't tell the difference asks again
 /// only to be told "not found" again.
 pub async fn retry_with_backoff_if<F, Fut, T, E, Classify>(
+    clock: &dyn Clock,
     policy: RetryPolicy,
     label: &str,
     repeat: Classify,
@@ -223,7 +215,7 @@ where
     E: Display,
     Classify: Fn(&E) -> Repeat,
 {
-    retry_classified(policy, label, || async {
+    retry_classified(clock, policy, label, || async {
         match f().await {
             Ok(value) => ClassifiedAttempt::Done(value),
             Err(error) => {

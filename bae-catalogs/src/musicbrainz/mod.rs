@@ -23,7 +23,7 @@ use tracing::{debug, warn};
 pub mod pressing;
 mod rate;
 mod types;
-use rate::{mb_rate_answer, mb_retry, RATE_WINDOW, RATE_ZONE, REQUEST_INTERVAL};
+use rate::{mb_rate_answer, RATE_WINDOW, RATE_ZONE, REQUEST_INTERVAL};
 pub use types::*;
 
 /// Where every MusicBrainz web-service request goes.
@@ -383,7 +383,8 @@ impl MusicBrainz {
         discid: &str,
         class: CallClass,
     ) -> Result<Vec<(MbReleaseResponse, String)>, MusicBrainzError> {
-        mb_retry("MusicBrainz DiscID lookup", || self.lookup_by_discid_once(discid, class)).await
+        self.retried("MusicBrainz DiscID lookup", || self.lookup_by_discid_once(discid, class))
+            .await
     }
 
     async fn lookup_by_discid_once(
@@ -433,7 +434,7 @@ impl MusicBrainz {
         release_id: &str,
         class: CallClass,
     ) -> Result<(MbReleaseResponse, String), MusicBrainzError> {
-        mb_retry("MusicBrainz release fetch", || async {
+        self.retried("MusicBrainz release fetch", || async {
             let raw_json = match self.get(&release_url(release_id), class).await {
                 Ok(body) => body,
                 Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
@@ -458,7 +459,7 @@ impl MusicBrainz {
         let url = release_group_url(release_group_id);
         debug!("Fetching release-group JSON: {}", url);
 
-        mb_retry("MusicBrainz release-group fetch", || async {
+        self.retried("MusicBrainz release-group fetch", || async {
             let json = self.get(&url, class).await?;
             parse_release_group(&json).map_err(|error| {
                 MusicBrainzError::Other(format!("Failed to parse release-group JSON: {error}"))
@@ -481,7 +482,7 @@ impl MusicBrainz {
     ) -> Result<HashMap<DiscogsPage, Vec<String>>, MusicBrainzError> {
         let pages = asked_pages(pages);
         let url = discogs_lookup_url(&pages);
-        mb_retry("MusicBrainz URL lookup", || async {
+        self.retried("MusicBrainz URL lookup", || async {
             let body = match self.get(&url, class).await {
                 Ok(body) => body,
                 // The URL endpoint answers one address it has no document
@@ -517,10 +518,11 @@ impl MusicBrainz {
         let mut recordings = Vec::new();
         loop {
             let offset = recordings.len();
-            let page = mb_retry("MusicBrainz ISRC search", || {
-                self.search_recordings_once(&query, offset, class)
-            })
-            .await?;
+            let page = self
+                .retried("MusicBrainz ISRC search", || {
+                    self.search_recordings_once(&query, offset, class)
+                })
+                .await?;
             let total = page.count;
             let answered = page.recordings.len();
             recordings.extend(page.recordings);
@@ -566,7 +568,7 @@ impl MusicBrainz {
                 "At least one search field must be provided".to_string(),
             ));
         }
-        mb_retry("MusicBrainz search", || self.search_releases_with_params_once(params, class))
+        self.retried("MusicBrainz search", || self.search_releases_with_params_once(params, class))
             .await
     }
 

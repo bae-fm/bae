@@ -44,8 +44,10 @@ image = { workspace = true, features = ["png"], optional = true }
 rand = { workspace = true, optional = true }
 
 [dev-dependencies]
-# The test transport and the retry that sleeps no real time.
+# The test transport, whose waits before a repeat pass as they are armed.
 bae-util = { workspace = true, features = ["test-utils"] }
+# The clock a direct test transport's waits pass on.
+coven = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "net", "io-util", "rt-multi-thread", "test-util"] }
 # The local HTTP servers tests stand in for catalogs and cover archives with.

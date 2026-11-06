@@ -1,7 +1,7 @@
 //! How the client keeps to MusicBrainz's rate: the pace requests leave at,
 //! what a response says of the rate, and which failures are asked again.
 
-use super::MusicBrainzError;
+use super::{MusicBrainz, MusicBrainzError};
 use crate::rate_limiter::{RateAnswer, WindowCount};
 use bae_util::retry::{Repeat, RetryPolicy};
 use reqwest::header::HeaderMap;
@@ -55,14 +55,18 @@ pub(super) fn repeat_mb(error: &MusicBrainzError) -> Repeat {
 pub(super) const RETRY: RetryPolicy =
     RetryPolicy::exponential(5, Duration::from_secs(1), Duration::from_secs(10));
 
-/// Wrap one request in the client's own retry policy — a caller shouldn't have to
-/// know which of these failures are worth repeating. (Discogs does the same.)
-pub(super) async fn mb_retry<F, Fut, T>(label: &str, f: F) -> Result<T, MusicBrainzError>
-where
-    F: Fn() -> Fut,
-    Fut: std::future::Future<Output = Result<T, MusicBrainzError>>,
-{
-    bae_util::retry::retry_with_backoff_if(RETRY, label, repeat_mb, f).await
+impl MusicBrainz {
+    /// Wrap one request in the client's own retry policy — a caller shouldn't
+    /// have to know which of these failures are worth repeating. (Discogs
+    /// does the same.)
+    pub(super) async fn retried<F, Fut, T>(&self, label: &str, f: F) -> Result<T, MusicBrainzError>
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = Result<T, MusicBrainzError>>,
+    {
+        let clock = self.http.clock().as_ref();
+        bae_util::retry::retry_with_backoff_if(clock, RETRY, label, repeat_mb, f).await
+    }
 }
 
 /// The header MusicBrainz's rate limiter names the refusing zone in: `per-ip`
