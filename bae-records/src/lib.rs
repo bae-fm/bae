@@ -30,7 +30,9 @@ pub use records::RecordsChange;
 #[cfg(desktop)]
 pub use records::ReleaseEditWrite;
 pub use records::ReleaseMetadataRows;
-pub use records::{IdentityWriteError, LabelParts, Records, ReleaseDeletion};
+pub use records::{
+    Deleted, DeletionError, IdentityWriteError, LabelParts, Records, ReleaseDeletion,
+};
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use records::{SeededAlbum, SeededAudio};
 pub use resolved_track_audio::{

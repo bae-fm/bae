@@ -171,6 +171,10 @@ pub enum LibraryError {
         #[source]
         error: Box<coven::FileReadError>,
     },
+    /// A deletion did not commit: what it deletes changed after it was
+    /// planned, or the store failed.
+    #[error(transparent)]
+    Deletion(bae_records::DeletionError),
     /// A write ending a release's storage transition did not commit: the
     /// release was in no such transition, it held no files to move, or the
     /// store failed.
@@ -322,6 +326,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             LibraryError::FileRead { error, .. } => error.reported_bug(),
             LibraryError::MakeLocal(error) => error.reported_bug(),
             LibraryError::StorageTransition(error) => error.reported_bug(),
+            LibraryError::Deletion(error) => error.reported_bug(),
             LibraryError::Sync(error) | LibraryError::InviteJoining(error) => error.reported_bug(),
             LibraryError::Keyring(error) => error.bug(),
             LibraryError::AppDir(error) => error.bug(),
@@ -374,6 +379,7 @@ impl LibraryError {
             LibraryError::FileRead { error, .. } => file_read_category(error),
             LibraryError::MakeLocal(error) => device_only_category(error),
             LibraryError::StorageTransition(error) => storage_transition_category(error),
+            LibraryError::Deletion(error) => deletion_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
             #[cfg(desktop)]
             LibraryError::ReleaseEditLoad(_) => C::Internal,
@@ -399,6 +405,30 @@ impl From<bae_import::CatalogSessionError> for LibraryError {
         match error {
             bae_import::CatalogSessionError::Preferences(error) => Self::Database(error),
             bae_import::CatalogSessionError::Keyring(error) => Self::Keyring(error),
+        }
+    }
+}
+
+/// The class a surface words a deletion's failure in: one refused because
+/// what it deletes changed is the person's to ask for again, as an edit of
+/// a release that is gone is.
+fn deletion_category(error: &bae_records::DeletionError) -> bae_diagnostics::UiErrorCategory {
+    use bae_records::DeletionError as E;
+    match error {
+        E::Database(error) => bae_diagnostics::database_category(error),
+        E::Rollback { operation: failed, .. } | E::FileCleanup { write: failed, .. } => {
+            deletion_category(failed)
+        }
+        E::PlanChanged(_) => bae_diagnostics::UiErrorCategory::Import,
+    }
+}
+
+/// A deletion that failed in the store is the library's store failure.
+impl From<bae_records::DeletionError> for LibraryError {
+    fn from(error: bae_records::DeletionError) -> Self {
+        match error {
+            bae_records::DeletionError::Database(error) => Self::Database(error),
+            error => Self::Deletion(error),
         }
     }
 }

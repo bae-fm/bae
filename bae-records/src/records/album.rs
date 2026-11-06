@@ -89,10 +89,10 @@ impl Records {
         &self,
         album_id: &str,
         releases: Vec<ReleaseDeletion>,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), DeletionError> {
         let album_id = album_id.to_string();
         self.store
-            .call_sql(move |sql| {
+            .write(move |sql| {
                 let mut current: Vec<String> = sql.query(
                     "SELECT id FROM releases WHERE album_id = ? ORDER BY id",
                     params![album_id],
@@ -106,9 +106,7 @@ impl Records {
                     .collect();
                 planned.sort();
                 if current != planned || planned.len() != releases.len() {
-                    return Err(DbError::Message(format!(
-                        "delete plan for album {album_id} changed after planning"
-                    )));
+                    return Err(DeletionError::PlanChanged(Deleted::Album(album_id)));
                 }
                 for release in &releases {
                     release.apply_on(&sql)?;

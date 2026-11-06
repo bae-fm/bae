@@ -2176,7 +2176,11 @@ from wherever they are: the person's own path, the cache, or storage.
 **Edge cases.**
 
 - **Deleting a release or an album** deletes their rows and coven's copies of
-  their files. The person's own files are never deleted.
+  their files. The person's own files are never deleted. A deletion is
+  planned against the rows and files it deletes; when they change before its
+  write (a release moves, comes or goes, or its files or cover change), the
+  deletion is refused and writes nothing, and asking again deletes what now
+  stands.
 - **A device with no cloud home** has only local releases; moving to storage
   needs one.
 
@@ -4952,7 +4956,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library |
-| `Import`, `ImportData` | reads the detail: the source couldn't be read, or the candidate or the library's artists changed while its import was being written, and importing it again prepares from them as they now stand |
+| `Import`, `ImportData` | reads the detail: the source couldn't be read, or the candidate or the library's artists changed while its import was being written, and importing it again prepares from them as they now stand; or a release or album changed before its deletion was written, and deleting it again deletes what now stands |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |

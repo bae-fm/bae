@@ -65,7 +65,7 @@ mod release_detail;
 pub use release_detail::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 mod release_file;
 mod release_locality;
-pub use release_deletion::ReleaseDeletion;
+pub use release_deletion::{Deleted, DeletionError, ReleaseDeletion};
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]

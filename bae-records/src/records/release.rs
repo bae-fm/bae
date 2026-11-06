@@ -426,12 +426,12 @@ impl Records {
     pub async fn delete_release_with_cleanup(
         &self,
         plan: ReleaseDeletion,
-    ) -> Result<bool, DbError> {
+    ) -> Result<bool, DeletionError> {
         self.store
-            .call_sql(move |sql| {
+            .write(move |sql| {
                 plan.apply_on(&sql)?;
                 sql.execute("DELETE FROM releases WHERE id = ?", params![plan.release_id()])?;
-                vacate_album_on(&sql, plan.album_id())
+                Ok(vacate_album_on(&sql, plan.album_id())?)
             })
             .await
     }

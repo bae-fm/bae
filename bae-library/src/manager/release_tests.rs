@@ -237,7 +237,10 @@ async fn delete_release_refuses_a_plan_whose_cover_changed() {
         .await
         .expect_err("a stale delete plan is refused");
 
-    assert!(error.to_string().contains("changed after planning"));
+    assert!(
+        matches!(&error, bae_records::DeletionError::PlanChanged(bae_records::Deleted::Release(id)) if *id == release.id),
+        "{error:?}"
+    );
     assert!(find_release(manager.library.manager(), &release.id).await.is_some());
 }
 
