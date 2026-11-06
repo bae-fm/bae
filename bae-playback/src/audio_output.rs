@@ -156,46 +156,52 @@ pub(crate) enum DrainStatus {
     },
 }
 
-/// When a drain reports where its source has played to.
+/// When a drain reports where its source has played to: after each
+/// `interval` of the audio it pulled, counted in frames at the rate of the
+/// track playing, so the reports follow what played rather than how fast it
+/// was pulled.
 enum PositionReports {
-    /// Every `interval` of wall time, as a device that plays in real time
-    /// does: every `interval` of audio, at a pace a screen follows.
-    Wall { interval: std::time::Duration, last: std::time::Instant },
-    /// Every `interval` samples pulled, and no pull past the next report: a
-    /// test device whose audio time the test advances.
+    /// A device that plays in real time: each pull fills what the device
+    /// asked for, and a report goes out once the audio pulled since the last
+    /// one reaches `interval`.
+    Played { interval: std::time::Duration, since: std::time::Duration },
+    /// A test device whose audio time the test advances: every `interval`
+    /// samples pulled, and no pull past the next report.
     #[cfg(any(test, feature = "test-utils"))]
-    Played { interval: usize, since: usize },
+    Stepped { interval: usize, since: usize },
 }
 
 impl PositionReports {
     /// How many of `wanted` samples the next pull may take.
     fn pull_len(&self, wanted: usize) -> usize {
         match self {
-            PositionReports::Wall { .. } => wanted,
+            PositionReports::Played { .. } => wanted,
             #[cfg(any(test, feature = "test-utils"))]
-            PositionReports::Played { interval, since } => wanted.min(interval - since),
+            PositionReports::Stepped { interval, since } => wanted.min(interval - since),
         }
     }
 
-    /// Count a pull of `read` samples, and say whether a report is due.
-    fn pulled(
-        &mut self,
-        #[cfg_attr(
-            not(any(test, feature = "test-utils")),
-            expect(unused_variables, reason = "a wall-clock cadence counts no samples")
-        )]
-        read: usize,
-    ) -> bool {
+    /// Count a pull of `read` samples of a track playing `channels` channels
+    /// at `sample_rate`, and say whether a report is due.
+    fn pulled(&mut self, read: usize, sample_rate: u32, channels: u32) -> bool {
         match self {
-            PositionReports::Wall { interval, last } => {
-                let due = last.elapsed() >= *interval;
+            PositionReports::Played { interval, since } => {
+                let frames = read as u64 / u64::from(channels);
+                *since += bae_util::sample_time::frame_start(frames, sample_rate);
+                let due = *since >= *interval;
                 if due {
-                    *last = std::time::Instant::now();
+                    // One report a pull: what is past the last whole interval
+                    // counts toward the next, and a zero interval reports
+                    // every pull.
+                    let past = since.as_nanos().checked_rem(interval.as_nanos()).unwrap_or(0);
+                    *since = std::time::Duration::from_nanos(
+                        u64::try_from(past).expect("what is past an interval is under it"),
+                    );
                 }
                 due
             }
             #[cfg(any(test, feature = "test-utils"))]
-            PositionReports::Played { interval, since } => {
+            PositionReports::Stepped { interval, since } => {
                 *since += read;
                 let due = *since >= *interval;
                 if due {
@@ -244,17 +250,15 @@ pub(crate) struct AudioDrain {
 
 impl AudioDrain {
     /// A drain for a device that plays in real time, reporting the position
-    /// every `position_update_interval_ms` of wall time.
+    /// after every `position_update_interval_ms` of audio it pulls.
     pub(crate) fn new(
         controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Self {
-        let reports = PositionReports::Wall {
-            interval: std::time::Duration::from_millis(position_update_interval_ms as u64),
-            last: std::time::Instant::now(),
-        };
+        let interval = std::time::Duration::from_millis(u64::from(position_update_interval_ms));
+        let reports = PositionReports::Played { interval, since: std::time::Duration::ZERO };
         Self::reporting(controls, source, audio_events, reports)
     }
 
@@ -268,7 +272,7 @@ impl AudioDrain {
         interval: usize,
     ) -> Self {
         assert!(interval > 0, "a drain reports after some audio, never before any");
-        let reports = PositionReports::Played { interval, since: 0 };
+        let reports = PositionReports::Stepped { interval, since: 0 };
         Self::reporting(controls, source, audio_events, reports)
     }
 
@@ -360,11 +364,14 @@ impl AudioDrain {
             not(any(test, feature = "test-utils")),
             expect(unused_variables, reason = "only a test device stops at a report")
         )]
-        let reported = self.reports.pulled(read).then(|| {
-            let position = source_guard.position_event();
-            self.audio_events.push(AudioEvent::Position(position.clone()));
-            position
-        });
+        let reported = self
+            .reports
+            .pulled(read, source_guard.sample_rate(), source_guard.channels())
+            .then(|| {
+                let position = source_guard.position_event();
+                self.audio_events.push(AudioEvent::Position(position.clone()));
+                position
+            });
 
         DrainStatus::Samples {
             read,
@@ -701,3 +708,7 @@ impl AudioOutput for FailingAudioOutput {
         Err(AudioError::Unexpected("stream build failure".to_string()))
     }
 }
+
+#[cfg(test)]
+#[path = "audio_output_tests.rs"]
+mod tests;

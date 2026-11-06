@@ -169,3 +169,56 @@ async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
         "the collapsed load's TrackReady must not emit a second state"
     );
 }
+
+/// The resume point follows what plays: a Playing position saves it once the
+/// track has played a second past the position saved last, so reports at
+/// 0.4 s and 0.8 s leave the track change's 0 s, 1.2 s saves, 2.1 s does not, and
+/// 2.2 s does. Sabotage: save on every report, and 0.4 s is saved.
+#[tokio::test]
+async fn the_resume_point_is_saved_after_each_second_of_play() {
+    use bae_audio::track_stream::create_track_stream_pair_with_capacity;
+    use std::time::Duration;
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, _progress) = seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), Duration::ZERO);
+    // A sample is 10 ms.
+    prepared.sample_rate = 100;
+    prepared.channels = 1;
+    let fmt = prepared.track_fmt(StreamPosition::START);
+    let (mut sink, stream, _) = create_track_stream_pair_with_capacity(100, 1, 4000);
+    sink.push_samples(&vec![0.25; 4000]);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
+    let (mut audio_tx, audio_rx) = crate::audio_output::audio_event_channel().unwrap();
+    service.output = Some(test_output(source.clone(), audio_rx));
+    let generation = service.next_load_generation();
+    service.slot =
+        active_slot(prepared, TrackPhase::Loading { generation, target: PlayTarget::Playing });
+    service.resolve_track_ready(TRACK_T.to_string(), generation).await;
+    // What a track change saves before its first report.
+    service.persist_playback_state().await;
+    let store = service.store.clone();
+    let saved = async || {
+        crate::tables::load_playback_state(&store).await.unwrap().and_then(|row| row.position_ms)
+    };
+    assert_eq!(saved().await, Some(0));
+
+    let mut reported = Vec::new();
+    for samples in [40, 40, 40, 90, 10] {
+        source.lock().unwrap().pull_samples(&mut vec![0.0; samples], &mut audio_tx);
+        let (fmt, position) = source.lock().unwrap().position_event();
+        service.handle_position_event(fmt, position).await;
+        reported.push((position.as_millis(), saved().await));
+    }
+
+    assert_eq!(
+        reported,
+        [
+            (400, Some(0)),
+            (800, Some(0)),
+            (1_200, Some(1_200)),
+            (2_100, Some(1_200)),
+            (2_200, Some(2_200)),
+        ]
+    );
+}

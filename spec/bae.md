@@ -4001,7 +4001,9 @@ live query of it, a value after each write. Those surfaces show no time
 before a track's start, so a playing pregap is one line standing at the
 start, and the line that moves begins as the track does. The queue is a live
 subscription of its own. The playing track's position and
-a preview's, which move as audio plays, reach an app only in a
+a preview's, which move as audio plays, a value each time the output has
+played as much audio as the interval the app opened the library with, however
+fast the device takes it, reach an app only in a
 `KeyedValueStream` (§10.2): the track's under its id, with the seeks applied
 so far. So do the parts of the playing track its buffer holds (§7.6), as
 fractions of its length under its id, and the playing track's wait on
