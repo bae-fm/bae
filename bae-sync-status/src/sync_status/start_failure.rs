@@ -132,7 +132,13 @@ impl FailureColumns {
             F::Encoding => "encoding",
             F::File => "file",
             F::MemberKeysMissing => "member_keys_missing",
-            F::Bug => "bug",
+            // `storage_category` classes coven's storage bug `internal`, and
+            // the row keeps it as that class: never as a storage reason.
+            F::Bug => {
+                return Err(DbError::Message(
+                    "a storage failure that is coven's bug is kept as internal".into(),
+                ))
+            }
         };
         columns.storage_failure = Some(name);
         Ok(columns)
@@ -226,7 +232,6 @@ impl StoredColumns {
             "encoding" => F::Encoding,
             "file" => F::File,
             "member_keys_missing" => F::MemberKeysMissing,
-            "bug" => F::Bug,
             other => return Err(unnamed("storage_failure", other)),
         })
     }

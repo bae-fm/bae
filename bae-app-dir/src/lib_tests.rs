@@ -127,3 +127,17 @@ fn a_library_id_is_a_uuid_never_a_path() {
         assert!(matches!(parse_library_id(id), Err(AppDirError::Invalid(_))));
     }
 }
+
+#[test]
+fn a_panicking_store_listing_is_a_bug_not_a_configuration() {
+    use bae_diagnostics::UiErrorCategory as C;
+    let bug = || coven::task::Bug { operation: "list the stores", message: "boom".into() };
+    assert_eq!(AppDirError::from(coven::StoreListError::Bug(bug())).category(), C::Internal);
+    assert_eq!(AppDirError::File(coven::FileError::Bug(bug())).category(), C::Internal);
+    let unreadable = coven::FileError::Io {
+        operation: "list store directories",
+        path: "stores".into(),
+        source: "permission denied".into(),
+    };
+    assert_eq!(AppDirError::from(coven::StoreListError::from(unreadable)).category(), C::Config);
+}

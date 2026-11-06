@@ -31,7 +31,7 @@ pub use background::{lock_or_crash, ReportedTask, ReportedThread};
 pub use error_category::{
     bootstrap_category, cloud_home_category, cloud_setup_category, cloud_unlock_category,
     creation_category, deletion_category, device_only_category, file_read_category, key_category,
-    pending_reason_category, sync_category,
+    pending_reason_category, storage_category, store_list_category, sync_category,
 };
 pub use telemetry::*;
 pub use ui_error::{GroupingBlockReason, UiError, UiErrorCategory, UiErrorClass};

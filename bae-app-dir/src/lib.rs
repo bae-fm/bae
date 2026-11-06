@@ -319,8 +319,6 @@ pub enum AppDirError {
     // the rest of this enum: every Result carrying it stays small.
     #[error(transparent)]
     Stores(Box<coven::StoreListError>),
-    #[error(transparent)]
-    Storage(#[from] coven::StorageError),
     #[error("library {store} can't be read: {reason}")]
     UnreadableStore { store: coven::StoreId, reason: Box<coven::CovenError> },
 }
@@ -333,9 +331,21 @@ impl From<coven::StoreListError> for AppDirError {
 
 impl AppDirError {
     /// The class the person is shown: a file or a store listing that can't
-    /// be read or written is a configuration to fix.
+    /// be read or written is a configuration to fix; a panic in coven's work,
+    /// or its runtime shutting down under it, is nothing the person can
+    /// change but report.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
-        bae_diagnostics::UiErrorCategory::Config
+        use bae_diagnostics::UiErrorCategory as C;
+        use coven::task::CarriesBug;
+        match self {
+            Self::Stores(error) => bae_diagnostics::store_list_category(error),
+            Self::File(coven::FileError::Shutdown(_)) => C::Internal,
+            Self::File(error) if error.bug().is_some() => C::Internal,
+            Self::UnreadableStore { reason, .. } if reason.bug().is_some() => C::Internal,
+            Self::Invalid(_) | Self::Io(_) | Self::File(_) | Self::UnreadableStore { .. } => {
+                C::Config
+            }
+        }
     }
 }
 

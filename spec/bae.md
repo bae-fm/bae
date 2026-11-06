@@ -2996,7 +2996,9 @@ its control says so in core's words for that transfer.
   so the line words it as it words the same failure from a pass. A read
   whose bytes changed on their way to this device, which coven tells by two
   reads of one stored object disagreeing, is worded as data damaged on its
-  way here, not in storage. A start
+  way here, not in storage. A panic in coven's own storage work is a bug,
+  kept as `internal`, never as a storage reason; so is it anywhere else bae
+  words a storage failure, a pending write's or a pass's among them. A start
   fails only in the classes coven's sync errors map to, or as a bug; a class
   outside them is refused as a bug rather than kept.
 - **The network coming back.** Each attempt that finds no network backs off
@@ -3952,7 +3954,10 @@ starting, opening secure storage, reading sign-in settings, listing this
 device's libraries, or opening, resetting, closing or removing one. Each app
 titles the failure by its step and says what to do next for that step, above
 the category's line and the detail, so a keychain that won't open never reads
-as a library that failed to open.
+as a library that failed to open. A listing fails as a configuration to fix
+when a folder or a file under it can't be read, as deleting fails when it
+finishes a library's recorded deletion, and as a bug, "Something went wrong",
+when coven's work for it panicked.
 
 What launch finds wrong without stopping the app is kept apart from those
 failures for the whole run: sign-in settings bae can't read. It shows beside

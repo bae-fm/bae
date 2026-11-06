@@ -61,7 +61,6 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
         F::Encoding,
         F::File,
         F::MemberKeysMissing,
-        F::Bug,
     ];
     let categories = [
         C::Database,
@@ -88,19 +87,22 @@ async fn every_class_a_start_fails_in_reads_back_as_written() {
 }
 
 /// A class no start fails in is a caller's bug: refused, and the failure
-/// already standing is left as it was.
+/// already standing is left as it was. So is coven's storage bug kept as a
+/// storage reason, which is `internal`.
 #[tokio::test]
 async fn a_class_no_start_fails_in_is_refused() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let sync_status = crate::test_fixtures::test_sync_status(&db);
     sync_status.record_sync_start_failure(Some(failure(C::KeyringLocked))).await.unwrap();
-    let refused =
-        sync_status.record_sync_start_failure(Some(failure(C::ReleaseChangedSinceOpened))).await;
-    assert!(refused.is_err(), "{refused:?}");
-    assert_eq!(read_back(&db).await, Some(failure(C::KeyringLocked)));
+    for category in [C::ReleaseChangedSinceOpened, C::Storage(F::Bug)] {
+        let refused = sync_status.record_sync_start_failure(Some(failure(category))).await;
+        assert!(refused.is_err(), "{refused:?}");
+        assert_eq!(read_back(&db).await, Some(failure(C::KeyringLocked)));
+    }
 }
 
-/// The table's CHECKs keep each column to the reason that uses it.
+/// The table's CHECKs keep each column to the reason that uses it, and the
+/// storage reason to one a start can fail with.
 #[tokio::test]
 async fn a_row_whose_columns_disagree_is_refused() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
@@ -117,6 +119,8 @@ async fn a_row_whose_columns_disagree_is_refused() {
         "'storage', 'copy_too_large', NULL, 10, NULL",
         // A size on a class that isn't storage.
         "'internal', NULL, NULL, 10, 5",
+        // coven's storage bug as a storage reason: it is kept as internal.
+        "'storage', 'bug', NULL, NULL, NULL",
     ] {
         let sql = format!(
             "INSERT INTO sync_start_failure (singleton, category, storage_failure, \

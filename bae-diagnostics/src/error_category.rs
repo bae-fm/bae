@@ -10,7 +10,55 @@ use super::UiErrorCategory as C;
 /// A storage failure keeps coven's exact reason: the line says the storage is
 /// full, this device's clock is off, the provider refused the credentials.
 pub fn cloud_home_category(error: &coven::StorageError) -> C {
-    C::Storage(error.failure())
+    storage_category(error.failure())
+}
+
+/// A storage failure's class: coven's reason, which the line names; or, for a
+/// panic in coven's own storage work, a bug the person can only report. Every
+/// class made from a `StorageFailure` comes from here, so a storage bug is
+/// never shown or kept as a storage reason.
+pub fn storage_category(failure: coven::StorageFailure) -> C {
+    use coven::StorageFailure as F;
+    match failure {
+        F::Bug => C::Internal,
+        failure @ (F::ProviderUnavailable
+        | F::AccessNotRegistered { .. }
+        | F::AccessNotGranted { .. }
+        | F::DropboxAppFolderNotShareable
+        | F::CatchUpRequired
+        | F::Network
+        | F::Corrupted
+        | F::Authentication
+        | F::PermissionDenied
+        | F::NotFound
+        | F::AlreadyExists
+        | F::Conflict
+        | F::ContainerNotFound
+        | F::RegionMismatch
+        | F::StoreExists
+        | F::ClockSkew
+        | F::OwnLocationRequired
+        | F::QuotaExceeded
+        | F::RateLimited
+        | F::InvalidConfiguration
+        | F::Refused
+        | F::Protocol
+        | F::InvalidPath
+        | F::InvalidRange
+        | F::NotStoreOwner
+        | F::InviteeIsStoreOwner
+        | F::AccountIdUnavailable
+        | F::InvitationMismatch
+        | F::SessionMismatch
+        | F::SessionExpired
+        | F::SessionIdentityUnknown
+        | F::InvalidPart
+        | F::SingleRequestTooLarge { .. }
+        | F::CopyTooLarge { .. }
+        | F::Encoding
+        | F::File
+        | F::MemberKeysMissing) => C::Storage(failure),
+    }
 }
 
 pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
@@ -39,6 +87,14 @@ pub fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
 fn storage_check_category(error: &coven::StorageCheckError) -> C {
     use coven::StorageCheckError as E;
     match error {
+        // A check whose own work panicked found nothing about the location:
+        // a bug the person can only report.
+        E::ProviderCheck { source, .. } if source.failure() == coven::StorageFailure::Bug => {
+            C::Internal
+        }
+        E::S3VersioningUnknown { source } if source.failure() == coven::StorageFailure::Bug => {
+            C::Internal
+        }
         E::ProviderCheck { check, source } => {
             C::StorageCheck { check: *check, failure: source.failure() }
         }
@@ -68,7 +124,7 @@ pub fn cloud_unlock_category(error: &coven::StoreKeyUnlockError) -> C {
 pub fn pending_reason_category(reason: &coven::PendingReason) -> C {
     use coven::PendingReason as R;
     match reason {
-        R::Storage { failure, .. } => C::Storage(*failure),
+        R::Storage { failure, .. } => storage_category(*failure),
         R::NoStorage => C::Config,
         R::UpdateRequired(_) | R::Refused(_) => C::SyncUpdateRequired,
         R::Removed => C::DeviceRemoved,
@@ -332,5 +388,23 @@ pub fn file_read_category(error: &coven::FileReadError) -> C {
         | E::Lock(_) => C::Internal,
         // A panic in coven's work is a bug the person can only report.
         E::Bug(_) => C::Internal,
+    }
+}
+
+/// Listing this device's libraries failed: a folder or an identity settings
+/// file that can't be read is a configuration to fix; a deletion the listing
+/// finishes fails as deleting fails; a panic in coven's listing is a bug the
+/// person can only report.
+pub fn store_list_category(error: &coven::StoreListError) -> C {
+    use coven::StoreListError as E;
+    match error {
+        // coven lifts a file error's bug or shutdown to the listing's own
+        // variant, so this one holds neither.
+        E::File(_) => C::Config,
+        E::Deletion { source, .. } => deletion_category(source),
+        // The runtime is shutting down under the work: the process is
+        // ending it, which no line the person reads can help with. A panic
+        // in coven's work is a bug the person can only report.
+        E::Shutdown(_) | E::Bug(_) => C::Internal,
     }
 }

@@ -90,7 +90,7 @@ fn status_failure_category(failure: &coven::StatusFailure) -> bae_diagnostics::U
         coven::StatusFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::StatusFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
         coven::StatusFailure::Removed => C::DeviceRemoved,
-        coven::StatusFailure::Storage(failure) => C::Storage(*failure),
+        coven::StatusFailure::Storage(failure) => bae_diagnostics::storage_category(*failure),
         coven::StatusFailure::Operation(_) | coven::StatusFailure::Other => C::Internal,
     }
 }

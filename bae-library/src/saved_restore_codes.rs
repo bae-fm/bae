@@ -33,7 +33,7 @@ impl SavedRestoreCodesError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
             Self::Keychain(error) => bae_diagnostics::bootstrap_category(error),
-            Self::Stores(_) => bae_diagnostics::UiErrorCategory::Config,
+            Self::Stores(error) => bae_diagnostics::store_list_category(error),
         }
     }
 }

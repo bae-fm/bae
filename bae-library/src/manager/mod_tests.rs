@@ -626,6 +626,7 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
             keyring_core::Error::BadStoreFormat("errSecMissingEntitlement".into()).into(),
         )
     };
+    let bug = || coven::task::Bug { operation: "test", message: "boom".into() };
     let cases: Vec<(LibraryError, C)> = vec![
         (coven::StorageError::from(F::Authentication).into(), C::Storage(F::Authentication)),
         (coven::StorageError::from(F::ContainerNotFound).into(), C::Storage(F::ContainerNotFound)),
@@ -672,6 +673,20 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
         ),
         (LibraryError::Storage("pin ended without completion".into()), C::Internal),
         (LibraryError::Validation("library name cannot be empty".into()), C::Config),
+        // A panic in coven's own storage work is a bug, never a storage
+        // reason, even under a cleanup that failed for a reason of its own.
+        (coven::StorageError::Bug(bug()).into(), C::Internal),
+        (
+            coven::SyncError::Storage(coven::StorageError::Cleanup {
+                operation: Box::new(coven::StorageError::Bug(bug())),
+                cleanup: Box::new(F::Network.into()),
+            })
+            .into(),
+            C::Internal,
+        ),
+        (coven::SyncError::Code(coven::CodeError::Invalid).into(), C::Config),
+        (LibraryError::file_read("read a cover", coven::FileReadError::Bug(bug())), C::Internal),
+        (LibraryError::MakeLocal(Box::new(coven::DeviceOnlyError::Bug(bug()))), C::Internal),
     ];
     for (error, expected) in cases {
         assert_eq!(error.category(), expected, "{error}");
