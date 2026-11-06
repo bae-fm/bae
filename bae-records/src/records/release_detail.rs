@@ -124,7 +124,7 @@ fn get_tracks_with_artists_for_release_on(
 /// lists exactly this device's originals, lists it; otherwise the device it
 /// is on, from `coven_devices`, and whether that device or its person was
 /// removed from the library. The disk is not asked.
-fn unstored_audio_on(
+pub fn unstored_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
@@ -271,17 +271,6 @@ fn other_device(name: String, state: &str, member_removed: bool) -> Option<crate
         "active" => OtherDevice::Active { name },
         _ => return None,
     })
-}
-
-/// What this device holds for each of `release_id`'s audio files on one
-/// device only, as a release's detail reads it, for a row mapper reading a
-/// release's summary: its failure is carried as the mapper's error.
-pub fn unstored_audio_in_row(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> rusqlite::Result<Vec<DbUnstoredAudio>> {
-    unstored_audio_on(sql, release_id)
-        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
 }
 
 #[cfg(test)]

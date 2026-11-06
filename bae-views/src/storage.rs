@@ -240,9 +240,9 @@ pub(crate) type StorageRowParts = (
     DateTime<Utc>,
 );
 
-fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
+fn storage_row_parts(row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
     Ok((
-        row_to_release_summary(sql, row)?,
+        row_to_release_summary(row)?,
         row.get("release_cover_version")?,
         AlbumSummaryRow::read(row)?,
         storage_place(row)?,
@@ -250,13 +250,11 @@ fn storage_row_parts(sql: &SqlReadContext<'_>, row: &Row<'_>) -> rusqlite::Resul
     ))
 }
 
-fn row_to_release_summary(
-    sql: &SqlReadContext<'_>,
-    row: &Row<'_>,
-) -> rusqlite::Result<DbReleaseSummary> {
+fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
     let id: String = row.get("release_id")?;
     Ok(DbReleaseSummary {
-        unstored_audio: unstored_audio_in_row(sql, &id)?,
+        // Read once the query has returned: the row mapper reads columns only.
+        unstored_audio: Vec::new(),
         id,
         album_id: row.get("album_id")?,
         media: read_media(row, "release_media")?,
@@ -572,15 +570,19 @@ pub(crate) fn storage_rows_on(
 ) -> Result<Vec<Keyed<StorageRowParts>>, DbError> {
     let rows = search.map_or(StorageRows::Listed, |search| search.rows(limit, offset));
     let statement = storage_window_query(order, filter, rows, seek);
-    Ok(seek.bound(limit, offset, |params| {
+    let mut rows = seek.bound(limit, offset, |params| {
         let mut params = params.to_vec();
         if let Some(search) = search {
             params.push((":search", &search.pattern));
         }
         sql.query(&statement, params.as_slice(), |row| {
-            Ok((storage_row_parts(sql, row)?, order.key_of(row)?))
+            Ok((storage_row_parts(row)?, order.key_of(row)?))
         })
-    })?)
+    })?;
+    for ((release, ..), _key) in &mut rows {
+        release.unstored_audio = unstored_audio_on(sql, &release.id)?;
+    }
+    Ok(rows)
 }
 
 pub(crate) fn process_storage_rows(
@@ -648,7 +650,11 @@ pub(crate) fn storage_selected_on(
     if let Some(search) = search {
         params.push((":search", &search.pattern));
     }
-    Ok(sql.query(&query, params.as_slice(), |row| storage_row_parts(sql, row))?)
+    let mut rows = sql.query(&query, params.as_slice(), storage_row_parts)?;
+    for (release, ..) in &mut rows {
+        release.unstored_audio = unstored_audio_on(sql, &release.id)?;
+    }
+    Ok(rows)
 }
 
 /// The Storage Manager list's order over `release_listing listing`. Every
@@ -748,3 +754,7 @@ pub struct StorageBrowseProjection {
 #[cfg(test)]
 #[path = "storage_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "storage_audio_tests.rs"]
+mod audio_tests;

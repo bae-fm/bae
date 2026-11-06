@@ -78,7 +78,7 @@ use bae_records::records::files::{artist_image_version_sql, cover_version_sql};
 use bae_records::records::pressing_columns::{read_media, release_media_sql};
 use bae_records::records::query::*;
 use bae_records::records::read::*;
-use bae_records::records::{release_detail_rows_on, unstored_audio_in_row, DbReleaseDetailRows};
+use bae_records::records::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 use bae_records::*;
 use bae_store::cloud_home_on;
 use bae_store::list_windows::{
