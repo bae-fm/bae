@@ -1,7 +1,7 @@
 name: Linux
 
-# The Rust lint and test suite, on Linux runners, and the Avalonia skeleton's
-# build and smoke test.
+# The Rust lint and test suite, on Linux runners, the Avalonia skeleton's
+# build and smoke test, and a release check of the bridge.
 
 on:
   workflow_call:
@@ -220,7 +220,8 @@ jobs:
         exit $status
 
   avalonia:
-    # The Avalonia skeleton on Linux, in its own job for the disk.
+    # The Avalonia skeleton on Linux, in its own job for the disk, and the
+    # bridge checked as a release build.
     name: Avalonia skeleton
     runs-on: ubuntu-latest
 
@@ -256,3 +257,12 @@ jobs:
       run: |
         export LD_LIBRARY_PATH="$PWD/target-linux/x86_64-unknown-linux-gnu/debug:$LD_LIBRARY_PATH"
         dotnet test bae-avalonia/bae-avalonia.Tests -c Debug
+
+    - name: Check the bridge as a release build (full edition, OAuth + desktop)
+      # Every other build on a push is a debug one, and code only a debug
+      # build's callers use (debug_assertions) is dead in a release build,
+      # which the workspace's dead_code deny fails. The release apps are built
+      # only on dispatch, so this is where a push finds it. The desktop cfg is
+      # the macOS build's too.
+      if: ${{ !cancelled() }}
+      run: cargo check --release -p bae-bridge --features oauth-providers,cast
