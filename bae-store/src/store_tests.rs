@@ -12,7 +12,7 @@ async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
         .process(move |(value, reader)| {
             assert_eq!(value, 42);
             assert_ne!(runtime_thread, std::thread::current().id());
-            Ok(reader)
+            Ok::<_, DbError>(reader)
         })
         .await
         .unwrap();

@@ -768,6 +768,34 @@ impl ImportTables {
         .unwrap();
     }
 
+    /// Plant damage for a test: each file named `name` a sidecar in the
+    /// library under `directory` holds is stored as the file named `as_name`
+    /// beside it. A sidecar and a scanned release holding one file replace
+    /// each other in every write, so where a release holds `as_name` the store
+    /// says two things about that file.
+    pub(crate) async fn store_sidecar_file_as_for_test(
+        directory: &Path,
+        name: &str,
+        as_name: &str,
+    ) {
+        let directory = directory.to_path_buf();
+        let damage = format!(
+            "UPDATE scan_sidecar_file SET \
+             absolute_path = CAST(REPLACE(CAST(absolute_path AS TEXT), '{name}', '{as_name}') AS BLOB), \
+             relative_path = REPLACE(relative_path, '{name}', '{as_name}') \
+             WHERE relative_path LIKE '%{name}';"
+        );
+        tokio::task::spawn_blocking(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "scan_sidecar_file",
+                &damage,
+            )
+        })
+        .await
+        .unwrap();
+    }
+
     /// Plant damage for a test: every scan that would open a watched folder's
     /// first generation, in the library under `directory`, fails as a
     /// statement nothing should refuse.

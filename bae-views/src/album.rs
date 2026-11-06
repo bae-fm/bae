@@ -292,7 +292,7 @@ impl LibraryViews {
         let Some(raw) = self
             .store
             .read(move |sql| find_album_detail_on(&sql, &album_id))
-            .process(|rows| Ok(rows.map(AlbumDetailRows::process)))
+            .process(|rows| Ok::<_, DbError>(rows.map(AlbumDetailRows::process)))
             .await?
         else {
             return Ok(None);

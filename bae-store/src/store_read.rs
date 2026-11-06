@@ -21,13 +21,20 @@ where
         Self { read, bugs }
     }
 
-    pub async fn process<P, T>(self, process: P) -> Result<T, DbError>
+    /// Process what the read returned on another worker, once its
+    /// connection is released. The processing fails with its own error, of
+    /// which a failed read is one.
+    pub async fn process<P, T, E>(self, process: P) -> Result<T, E>
     where
-        P: FnOnce(R) -> Result<T, DbError> + Send + 'static,
+        P: FnOnce(R) -> Result<T, E> + Send + 'static,
         T: Send + 'static,
+        E: From<DbError> + Send + 'static,
     {
         let bugs = self.bugs;
-        self.read.process(process).await.map_err(|error| coven::task::reported(bugs, error))
+        match self.read.process(move |rows| Ok(process(rows))).await {
+            Ok(processed) => processed,
+            Err(error) => Err(coven::task::reported(bugs, error).into()),
+        }
     }
 }
 
