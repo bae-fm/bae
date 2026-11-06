@@ -194,7 +194,7 @@ async fn each_part_of_the_page_opens_its_heading() {
 }
 
 #[tokio::test]
-async fn the_page_keeps_its_order_as_titles_parts_and_credits_change() {
+async fn the_page_keeps_its_order_as_titles_and_credits_change() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     exec_batch(&db, PAGE).await;
 
@@ -210,28 +210,11 @@ async fn the_page_keeps_its_order_as_titles_parts_and_credits_change() {
     expected[0].0 = true;
     assert_eq!(page(&db, COMPOSER).await, expected);
 
-    // A part leaving the only work it is part of heads a group of its own.
-    exec_batch(&db, "DELETE FROM work_parts WHERE id = '7c8d3a0e-6b7d-4c9e-8f0a-2b3c4d5e6a01';")
-        .await;
-    assert_eq!(
-        page(&db, COMPOSER).await[..7],
-        [
-            (true, Work(BETA_PARENT, false)),
-            (false, Work(MOVEMENT_ONE, true)),
-            (false, Work(DELTA_SOLO, false)),
-            (false, Work(GAMMA_WORK, false)),
-            (false, Work(PART_OF_GAMMA, true)),
-            (false, Work(MOVEMENT_TWO, false)),
-            (false, Work(ALPHA_PARENT, false)),
-        ]
-    );
-
-    // A retitled album and a track moving move the credits; credits a work
-    // comes to link leave the page.
+    // A retitled album moves its release's credits; credits a work comes to
+    // link leave the page.
     exec_batch(
         &db,
-        "UPDATE albums SET title = 'album Third' WHERE id = '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01';
-         UPDATE tracks SET position = 7 WHERE id = '5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e01';",
+        "UPDATE albums SET title = 'album Third' WHERE id = '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01';",
     )
     .await;
     assert_eq!(
@@ -239,8 +222,8 @@ async fn the_page_keeps_its_order_as_titles_parts_and_credits_change() {
         [
             (true, Credit(CREDIT_ON_SECOND)),
             (false, Credit(CREDIT_ON_FIRST)),
-            (true, Credit(CREDIT_ON_TRACK_ONE)),
-            (false, Credit(CREDIT_ON_TRACK_ZERO)),
+            (true, Credit(CREDIT_ON_TRACK_ZERO)),
+            (false, Credit(CREDIT_ON_TRACK_ONE)),
         ]
     );
     exec_batch(
@@ -252,24 +235,6 @@ async fn the_page_keeps_its_order_as_titles_parts_and_credits_change() {
     assert_eq!(
         page(&db, COMPOSER).await[8..],
         [(true, Credit(CREDIT_ON_SECOND)), (true, Credit(CREDIT_ON_TRACK_ZERO))]
-    );
-
-    // A composer no longer credited on a part leaves it, and a parent heading
-    // only that part goes with it.
-    exec_batch(
-        &db,
-        "DELETE FROM work_artists WHERE id IN ('8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b02', '8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b04');",
-    )
-    .await;
-    assert_eq!(
-        page(&db, COMPOSER).await,
-        vec![
-            (true, Work(DELTA_SOLO, false)),
-            (false, Work(GAMMA_WORK, false)),
-            (false, Work(MOVEMENT_TWO, false)),
-            (true, Credit(CREDIT_ON_SECOND)),
-            (true, Credit(CREDIT_ON_TRACK_ZERO)),
-        ]
     );
 }
 

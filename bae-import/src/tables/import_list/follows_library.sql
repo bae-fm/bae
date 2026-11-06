@@ -159,12 +159,3 @@ BEGIN
     WHERE r.album_id IN (SELECT album_id FROM album_artists WHERE artist_id = NEW.artist_id);
 END;
 
--- The time an imported release was written orders it on Done.
-CREATE TRIGGER IF NOT EXISTS import_list_on_release_dated AFTER UPDATE OF created_at ON releases
-WHEN OLD.created_at IS NOT NEW.created_at
-BEGIN
-    INSERT INTO import_list_replace (key)
-    SELECT c.path FROM local_release_origin AS o
-    JOIN scan_candidate AS c ON c.content_hash = o.content_hash
-    WHERE o.release_id = NEW.id;
-END;

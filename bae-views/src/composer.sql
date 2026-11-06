@@ -231,25 +231,13 @@ BEGIN
     UPDATE composer_listing SET name = NEW.name WHERE artist_id = NEW.id;
 END;
 
--- A work's credited artists change its rows and those of every release
--- performing it.
+-- A work's credited artist arriving changes its rows and those of every
+-- release performing it. No write takes an artist off a work or changes the
+-- credit: its row's id is made of the work, the artist and the place.
 CREATE TRIGGER IF NOT EXISTS work_artist_added AFTER INSERT ON work_artists
 BEGIN
     INSERT INTO composer_work_refresh (work_id) VALUES (NEW.work_id);
     INSERT INTO composer_release_refresh (release_id) SELECT release_id FROM work_releases WHERE work_id = NEW.work_id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS work_artist_changed AFTER UPDATE OF work_id, artist_id ON work_artists
-BEGIN
-    INSERT INTO composer_work_refresh (work_id) VALUES (OLD.work_id);
-    INSERT INTO composer_work_refresh (work_id) VALUES (NEW.work_id);
-    INSERT INTO composer_release_refresh (release_id) SELECT DISTINCT release_id FROM work_releases WHERE work_id IN (OLD.work_id, NEW.work_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS work_artist_removed AFTER DELETE ON work_artists
-BEGIN
-    INSERT INTO composer_work_refresh (work_id) VALUES (OLD.work_id);
-    INSERT INTO composer_release_refresh (release_id) SELECT release_id FROM work_releases WHERE work_id = OLD.work_id;
 END;
 
 -- What a track performs changes its release's rows. Deleting a track deletes
@@ -257,12 +245,6 @@ END;
 -- track's own trigger rewrites the release.
 CREATE TRIGGER IF NOT EXISTS track_work_added AFTER INSERT ON track_works
 BEGIN
-    INSERT INTO composer_release_refresh (release_id) SELECT release_id FROM tracks WHERE id = NEW.track_id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS track_work_changed AFTER UPDATE OF track_id, work_id ON track_works
-BEGIN
-    INSERT INTO composer_release_refresh (release_id) SELECT release_id FROM tracks WHERE id = OLD.track_id;
     INSERT INTO composer_release_refresh (release_id) SELECT release_id FROM tracks WHERE id = NEW.track_id;
 END;
 
@@ -280,12 +262,6 @@ BEGIN
     INSERT INTO composer_release_refresh (release_id) VALUES (NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS track_moved AFTER UPDATE OF release_id ON tracks
-BEGIN
-    INSERT INTO composer_release_refresh (release_id) VALUES (OLD.release_id);
-    INSERT INTO composer_release_refresh (release_id) VALUES (NEW.release_id);
-END;
-
 CREATE TRIGGER IF NOT EXISTS track_removed AFTER DELETE ON tracks
 BEGIN
     INSERT INTO composer_release_refresh (release_id) VALUES (OLD.release_id);
@@ -299,13 +275,6 @@ BEGIN
     SELECT credit_id, artist_id, release_id FROM unlinked_composer_credits WHERE credit_id = NEW.id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_role_changed AFTER UPDATE OF id, release_id, artist_id ON release_artist_roles
-BEGIN
-    DELETE FROM composer_unlinked_credit WHERE credit_id = OLD.id;
-    INSERT INTO composer_unlinked_credit (credit_id, artist_id, release_id)
-    SELECT credit_id, artist_id, release_id FROM unlinked_composer_credits WHERE credit_id = NEW.id;
-END;
-
 CREATE TRIGGER IF NOT EXISTS release_role_removed AFTER DELETE ON release_artist_roles
 BEGIN
     DELETE FROM composer_unlinked_credit WHERE credit_id = OLD.id;
@@ -313,13 +282,6 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS track_role_added AFTER INSERT ON track_artist_roles
 BEGIN
-    INSERT INTO composer_unlinked_credit (credit_id, artist_id, release_id)
-    SELECT credit_id, artist_id, release_id FROM unlinked_composer_credits WHERE credit_id = NEW.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS track_role_changed AFTER UPDATE OF id, track_id, artist_id ON track_artist_roles
-BEGIN
-    DELETE FROM composer_unlinked_credit WHERE credit_id = OLD.id;
     INSERT INTO composer_unlinked_credit (credit_id, artist_id, release_id)
     SELECT credit_id, artist_id, release_id FROM unlinked_composer_credits WHERE credit_id = NEW.id;
 END;

@@ -7,7 +7,9 @@
 -- kind of result is ordered by, so a search orders its matches without
 -- reading the rows they stand for. An FTS5 row is found by an integer, which
 -- each `_entry` table pairs with the searched row's key for the triggers that
--- keep it: SQLite's own rowid of a synced row is no part of it.
+-- keep it: SQLite's own rowid of a synced row is no part of it. No write
+-- deletes an album, an artist or a work (§2.1), so the triggers follow
+-- inserts and updates only.
 
 -- Album titles.
 CREATE TABLE IF NOT EXISTS album_search_entry (
@@ -28,16 +30,9 @@ BEGIN
     VALUES ((SELECT entry FROM album_search_entry WHERE album_id = NEW.id), bae_fold_case(NEW.title), NEW.id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS album_search_changed AFTER UPDATE OF id, title ON albums
+CREATE TRIGGER IF NOT EXISTS album_search_changed AFTER UPDATE OF title ON albums
 BEGIN
-    UPDATE album_search_entry SET album_id = NEW.id WHERE album_id = OLD.id;
-    UPDATE album_search SET title = bae_fold_case(NEW.title), album_id = NEW.id WHERE rowid = (SELECT entry FROM album_search_entry WHERE album_id = NEW.id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS album_search_removed AFTER DELETE ON albums
-BEGIN
-    DELETE FROM album_search WHERE rowid = (SELECT entry FROM album_search_entry WHERE album_id = OLD.id);
-    DELETE FROM album_search_entry WHERE album_id = OLD.id;
+    UPDATE album_search SET title = bae_fold_case(NEW.title) WHERE rowid = (SELECT entry FROM album_search_entry WHERE album_id = NEW.id);
 END;
 
 -- Track titles, each with its own title to order by.
@@ -59,10 +54,9 @@ BEGIN
     VALUES ((SELECT entry FROM track_search_entry WHERE track_id = NEW.id), bae_fold_case(NEW.title), NEW.id, NEW.title);
 END;
 
-CREATE TRIGGER IF NOT EXISTS track_search_changed AFTER UPDATE OF id, title ON tracks
+CREATE TRIGGER IF NOT EXISTS track_search_changed AFTER UPDATE OF title ON tracks
 BEGIN
-    UPDATE track_search_entry SET track_id = NEW.id WHERE track_id = OLD.id;
-    UPDATE track_search SET title = bae_fold_case(NEW.title), track_id = NEW.id, sort_title = NEW.title WHERE rowid = (SELECT entry FROM track_search_entry WHERE track_id = NEW.id);
+    UPDATE track_search SET title = bae_fold_case(NEW.title), sort_title = NEW.title WHERE rowid = (SELECT entry FROM track_search_entry WHERE track_id = NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS track_search_removed AFTER DELETE ON tracks
@@ -90,16 +84,9 @@ BEGIN
     VALUES ((SELECT entry FROM work_search_entry WHERE work_id = NEW.id), bae_fold_case(NEW.title), NEW.id, NEW.title);
 END;
 
-CREATE TRIGGER IF NOT EXISTS work_search_changed AFTER UPDATE OF id, title ON works
+CREATE TRIGGER IF NOT EXISTS work_search_changed AFTER UPDATE OF title ON works
 BEGIN
-    UPDATE work_search_entry SET work_id = NEW.id WHERE work_id = OLD.id;
-    UPDATE work_search SET title = bae_fold_case(NEW.title), work_id = NEW.id, sort_title = NEW.title WHERE rowid = (SELECT entry FROM work_search_entry WHERE work_id = NEW.id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS work_search_removed AFTER DELETE ON works
-BEGIN
-    DELETE FROM work_search WHERE rowid = (SELECT entry FROM work_search_entry WHERE work_id = OLD.id);
-    DELETE FROM work_search_entry WHERE work_id = OLD.id;
+    UPDATE work_search SET title = bae_fold_case(NEW.title), sort_title = NEW.title WHERE rowid = (SELECT entry FROM work_search_entry WHERE work_id = NEW.id);
 END;
 
 -- Artists' names and sort names.
@@ -121,16 +108,9 @@ BEGIN
     VALUES ((SELECT entry FROM artist_search_entry WHERE artist_id = NEW.id), bae_fold_case(NEW.name), bae_fold_case(NEW.sort_name), NEW.id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS artist_search_changed AFTER UPDATE OF id, name, sort_name ON artists
+CREATE TRIGGER IF NOT EXISTS artist_search_changed AFTER UPDATE OF name, sort_name ON artists
 BEGIN
-    UPDATE artist_search_entry SET artist_id = NEW.id WHERE artist_id = OLD.id;
-    UPDATE artist_search SET name = bae_fold_case(NEW.name), sort_name = bae_fold_case(NEW.sort_name), artist_id = NEW.id WHERE rowid = (SELECT entry FROM artist_search_entry WHERE artist_id = NEW.id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS artist_search_removed AFTER DELETE ON artists
-BEGIN
-    DELETE FROM artist_search WHERE rowid = (SELECT entry FROM artist_search_entry WHERE artist_id = OLD.id);
-    DELETE FROM artist_search_entry WHERE artist_id = OLD.id;
+    UPDATE artist_search SET name = bae_fold_case(NEW.name), sort_name = bae_fold_case(NEW.sort_name) WHERE rowid = (SELECT entry FROM artist_search_entry WHERE artist_id = NEW.id);
 END;
 
 -- Artists' other printed names.

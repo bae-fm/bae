@@ -181,11 +181,11 @@ END;
 
 -- A release moving to another album lists the album it left and the one it
 -- joined first. An album listed just now lists every release it holds, this
--- one with them, so its row then names that album; otherwise, and for a change
--- to what the release states itself, the release is refreshed by itself. Its
--- row is refreshed once either way, in one trigger for the same reason as
--- `release_added`.
-CREATE TRIGGER IF NOT EXISTS release_changed AFTER UPDATE OF album_id, created_at ON releases
+-- one with them, so its row then names that album; otherwise the release is
+-- refreshed by itself. Its row is refreshed once either way, in one trigger
+-- for the same reason as `release_added`. A release's `created_at` is written
+-- once, with the row.
+CREATE TRIGGER IF NOT EXISTS release_changed AFTER UPDATE OF album_id ON releases
 BEGIN
     INSERT INTO album_listing_refresh (album_id)
     SELECT OLD.album_id WHERE OLD.album_id IS NOT NEW.album_id

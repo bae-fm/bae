@@ -840,11 +840,11 @@ fn a_release_arriving_refreshes_its_listing_once() {
     }
 }
 
-/// A release changing writes its listing row with one refresh: moving to an
-/// album the same write adds, which lists that album and its releases;
-/// moving to an album already listed; and changing what it states itself.
+/// A release moving writes its listing row with one refresh: to an album the
+/// same write adds, which lists that album and its releases, and to an album
+/// already listed.
 #[test]
-fn a_release_changing_refreshes_its_listing_once() {
+fn a_release_moving_refreshes_its_listing_once() {
     for first in FirstOnArrival::BOTH {
         let mut conn = counting_refreshes(first);
         write(
@@ -875,15 +875,6 @@ fn a_release_changing_refreshes_its_listing_once() {
         );
         assert_eq!(listed_album(&conn, RELEASE_LATE).as_deref(), Some(ALBUM_A), "{first:?} first");
         assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
-
-        write(
-            &mut conn,
-            "DELETE FROM refreshed;
-             UPDATE releases SET created_at = '2026-01-04T00:00:00Z'
-             WHERE id = 'af4421de-5174-45a9-81fc-74110bc5f85d';",
-        );
-        assert_eq!(refreshes(&conn, RELEASE_LATE), 1, "{first:?} first");
-        assert_eq!(refreshes(&conn, RELEASE_EARLY), 0, "{first:?} first");
     }
 }
 

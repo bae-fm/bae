@@ -62,9 +62,8 @@ impl ImportService {
 
         let album_title = db_album.title.clone();
 
-        // The album the person picked, else the one the records name. A
-        // picked album deleted since fails the commit on the release's
-        // foreign key.
+        // The album the person picked, else the one the records name. No
+        // write deletes an album, so a picked one is still here, if emptied.
         let existing_album_id = match picked_album {
             Some(album_id) => Some(album_id),
             None => self.records.album_records_name(&records, &[]).await?,

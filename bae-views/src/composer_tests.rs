@@ -284,16 +284,6 @@ async fn composer_list_counts_a_merged_composer_under_its_survivor() {
         .await
         .unwrap()
         .is_none());
-
-    exec_listed(
-        &db,
-        "DELETE FROM artist_merges WHERE id = 'cc0b10bd-7e72-4e7a-85f6-6c6d5d5dc691';",
-    )
-    .await;
-    assert_eq!(
-        listed_composers(&db).await,
-        vec![(LISTED_ABSORBED.to_string(), 1, 1, 0), (LISTED_SURVIVOR.to_string(), 1, 1, 0),]
-    );
 }
 
 /// Each composer listing row: its artist and its work, linked release and
@@ -416,14 +406,6 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
     exec_listed(&db, "DELETE FROM releases WHERE id = 'c4325183-800c-41da-9082-5d998f9a7ecd';")
         .await;
     assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 0, 0)]);
-
-    exec_listed(&db, "DELETE FROM works WHERE id = '65c7e99f-2638-4086-aac4-9dceab1ae6ef';").await;
-    assert!(listed_composers(&db).await.is_empty());
-    assert!(crate::LibraryViews::new(db.clone())
-        .find_composer_detail(LISTED_CREDITED)
-        .await
-        .unwrap()
-        .is_none());
 }
 
 #[tokio::test]
@@ -618,11 +600,6 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     let inserted = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(inserted.total_count, 3);
     assert!(inserted.windows.is_empty());
-
-    exec(&db, "DELETE FROM work_artists WHERE id = ?1", &[INSERTED_COMPOSER_LINK_ID]).await;
-    let deleted = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(deleted.total_count, 2);
-    assert!(deleted.windows.is_empty());
 }
 
 /// The composer list on B is a local table B's triggers keep from the synced

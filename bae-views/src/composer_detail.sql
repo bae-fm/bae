@@ -174,8 +174,9 @@ BEGIN
     SELECT OLD.artist_id, parent_work_id FROM work_parts WHERE child_work_id = OLD.work_id;
 END;
 
--- A part joining or leaving a work moves the part on every page it is
--- credited on, and the work's heading there.
+-- A part joining a work moves the part on every page it is credited on, and
+-- the work's heading there. No write takes a part out of a work or changes
+-- which work it is part of: its row's id is made of the two works.
 CREATE TRIGGER IF NOT EXISTS composer_detail_part_added AFTER INSERT ON work_parts
 BEGIN
     INSERT INTO composer_detail_work_refresh (artist_id, work_id)
@@ -184,27 +185,7 @@ BEGIN
     SELECT artist_id, NEW.parent_work_id FROM composer_work WHERE work_id = NEW.child_work_id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS composer_detail_part_changed AFTER UPDATE OF parent_work_id, child_work_id ON work_parts
-BEGIN
-    INSERT INTO composer_detail_work_refresh (artist_id, work_id)
-    SELECT artist_id, OLD.child_work_id FROM composer_work WHERE work_id = OLD.child_work_id
-    UNION ALL
-    SELECT artist_id, OLD.parent_work_id FROM composer_work WHERE work_id = OLD.child_work_id
-    UNION ALL
-    SELECT artist_id, NEW.child_work_id FROM composer_work WHERE work_id = NEW.child_work_id
-    UNION ALL
-    SELECT artist_id, NEW.parent_work_id FROM composer_work WHERE work_id = NEW.child_work_id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS composer_detail_part_removed AFTER DELETE ON work_parts
-BEGIN
-    INSERT INTO composer_detail_work_refresh (artist_id, work_id)
-    SELECT artist_id, OLD.child_work_id FROM composer_work WHERE work_id = OLD.child_work_id
-    UNION ALL
-    SELECT artist_id, OLD.parent_work_id FROM composer_work WHERE work_id = OLD.child_work_id;
-END;
-
--- A work arriving, retitled or gone changes every row that shows its title:
+-- A work arriving or retitled changes every row that shows its title:
 -- its own on the pages it is credited on or heads a group on, and its parts'
 -- on theirs, which it heads, or which headed their own while it was missing.
 CREATE VIEW IF NOT EXISTS composer_detail_title_refresh AS SELECT NULL AS work_id WHERE 0;
@@ -234,11 +215,6 @@ BEGIN
     INSERT INTO composer_detail_title_refresh (work_id) VALUES (NEW.id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS composer_detail_work_removed AFTER DELETE ON works
-BEGIN
-    INSERT INTO composer_detail_title_refresh (work_id) VALUES (OLD.id);
-END;
-
 -- An unlinked credit counted in or out lists or unlists it.
 CREATE TRIGGER IF NOT EXISTS composer_detail_credit_added AFTER INSERT ON composer_unlinked_credit
 BEGIN
@@ -251,8 +227,9 @@ BEGIN
 END;
 
 -- What a credit sorts by changing moves it: its album arriving or retitled,
--- its release arriving, moving to another album or to another place among
--- its album's, its track moving, or its own position.
+-- or its release arriving, moving to another album or to another place
+-- among its album's. A track's place and a credit's own position are written
+-- once, with the row.
 CREATE TRIGGER IF NOT EXISTS composer_detail_album_added AFTER INSERT ON albums
 BEGIN
     INSERT INTO composer_detail_credit_refresh (credit_id)
@@ -283,23 +260,3 @@ BEGIN
     SELECT credit_id FROM composer_unlinked_credit WHERE release_id = NEW.id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS composer_detail_track_moved AFTER UPDATE OF position ON tracks
-WHEN OLD.position IS NOT NEW.position
-BEGIN
-    INSERT INTO composer_detail_credit_refresh (credit_id)
-    SELECT unlinked.credit_id FROM track_artist_roles tar
-    JOIN composer_unlinked_credit unlinked ON unlinked.credit_id = tar.id
-    WHERE tar.track_id = NEW.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS composer_detail_release_role_moved AFTER UPDATE OF position ON release_artist_roles
-WHEN OLD.position IS NOT NEW.position
-BEGIN
-    INSERT INTO composer_detail_credit_refresh (credit_id) VALUES (NEW.id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS composer_detail_track_role_moved AFTER UPDATE OF position ON track_artist_roles
-WHEN OLD.position IS NOT NEW.position
-BEGIN
-    INSERT INTO composer_detail_credit_refresh (credit_id) VALUES (NEW.id);
-END;

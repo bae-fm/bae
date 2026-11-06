@@ -612,6 +612,7 @@ const SEARCHED_ARTIST: &str = "0373bb67-3abb-48e7-8a5b-6d29ef24308e";
 const SEARCHED_ALBUM: &str = "e307f0f5-e518-4d5e-bea8-83e439780ca0";
 const SEARCHED_TRACK: &str = "b2140894-e938-4143-9c9a-5e054c2d7dde";
 const SEARCHED_WORK: &str = "cef1d7ca-5e1b-4144-9e95-3ece6a68725e";
+const SEARCHED_RELEASE: &str = "45397b28-ee0e-4e87-921e-4fd7f9f07478";
 
 /// One album by one artist, on one release of one track performing one work
 /// the artist wrote; every title and name starts with a letter outside ASCII.
@@ -710,12 +711,10 @@ async fn search_library_follows_names_as_they_change() {
     .await;
     assert_eq!(found(&db, "printed näme").await[0], vec![SEARCHED_ALBUM.to_string()]);
 
-    exec_searched(
-        &db,
-        "DELETE FROM albums WHERE id = 'e307f0f5-e518-4d5e-bea8-83e439780ca0';
-         DELETE FROM works WHERE id = 'cef1d7ca-5e1b-4144-9e95-3ece6a68725e';",
-    )
-    .await;
+    // Deleting the album's one release takes its track; the album, empty, and
+    // the work stay, and search finds no album that holds no release.
+    delete_release(&test_records(&db), SEARCHED_RELEASE).await;
     let after = found(&db, "title").await;
-    assert!(after[0].is_empty() && after[1].is_empty() && after[4].is_empty());
+    assert!(after[0].is_empty() && after[1].is_empty());
+    assert_eq!(after[4], vec![SEARCHED_WORK.to_string()]);
 }

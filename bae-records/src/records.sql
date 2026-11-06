@@ -106,8 +106,8 @@ END;
 
 -- Inserting a merge's two artists into `artist_merge_refresh` sets the shown
 -- artist of every artist joined to either. The view holds no rows: it names
--- the statement its INSTEAD OF trigger runs, which the three triggers on
--- `artist_merges` share.
+-- the statement its INSTEAD OF trigger runs, which the two triggers on
+-- `artist_merges` share. No write deletes a merge, so none follows a delete.
 CREATE VIEW IF NOT EXISTS artist_merge_refresh AS SELECT NULL AS artist_id, NULL AS into_artist_id WHERE 0;
 
 CREATE TRIGGER IF NOT EXISTS artist_merge_refresh INSTEAD OF INSERT ON artist_merge_refresh
@@ -125,15 +125,10 @@ BEGIN
     INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (NEW.id, NEW.into_artist_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS artist_merge_changed AFTER UPDATE OF id, into_artist_id ON artist_merges
+CREATE TRIGGER IF NOT EXISTS artist_merge_changed AFTER UPDATE OF into_artist_id ON artist_merges
 BEGIN
     INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (OLD.id, OLD.into_artist_id);
     INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (NEW.id, NEW.into_artist_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS artist_merge_removed AFTER DELETE ON artist_merges
-BEGIN
-    INSERT INTO artist_merge_refresh (artist_id, into_artist_id) VALUES (OLD.id, OLD.into_artist_id);
 END;
 
 -- One stored picture per artist; `id` is the artist's id. `file` is the
@@ -459,7 +454,6 @@ CREATE INDEX IF NOT EXISTS idx_release_files_file ON release_files (file);
 -- coven files' sizes, with no index.
 CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
     ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
-
 
 -- Who is credited on a release, and in what role, as the catalog stated it.
 CREATE TABLE IF NOT EXISTS release_artist_roles (

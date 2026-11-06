@@ -145,12 +145,7 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
-CREATE TRIGGER IF NOT EXISTS library_search_album_changed AFTER UPDATE OF id, title ON albums
-BEGIN
-    UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
-END;
-
-CREATE TRIGGER IF NOT EXISTS library_search_album_removed AFTER DELETE ON albums
+CREATE TRIGGER IF NOT EXISTS library_search_album_changed AFTER UPDATE OF title ON albums
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
@@ -160,12 +155,7 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
-CREATE TRIGGER IF NOT EXISTS library_search_artist_changed AFTER UPDATE OF id, name ON artists
-BEGIN
-    UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
-END;
-
-CREATE TRIGGER IF NOT EXISTS library_search_artist_removed AFTER DELETE ON artists
+CREATE TRIGGER IF NOT EXISTS library_search_artist_changed AFTER UPDATE OF name ON artists
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;

@@ -362,7 +362,8 @@ shows the survivor. A chain of merges shows its last artist, and a loop, left by
 two devices merging a pair in opposite directions, shows the artist with the
 smallest id. The artist each artist shows as is kept on the device
 (`artist_shown_as`), written in the same write as the artist or the merge that
-decides it, whichever device made that write.
+decides it, whichever device made that write. No write deletes an artist or a
+merge.
 
 **Which artist a credit names.** One rule decides, inside the transaction that
 writes the credit, so nothing landing in between can make it wrong:
@@ -435,6 +436,8 @@ label.
 Works are compositions. Tracks link to them, in the order a track performs
 them, and they nest: a movement is part of a symphony, in the symphony's order.
 Works come from MusicBrainz, which names them; a work's artists come with it.
+No write deletes a work: one no track performs any more stays, as an album
+with no release does (§2.1).
 
 **The composer list** shows every artist credited on a work, and every artist
 holding a catalog role credit that none of their works links: a release's
@@ -1471,14 +1474,14 @@ Ana clicks Import. bae:
    library holds it, else the oldest. With neither, the album is new and
    takes its id from its group (§2.6). The pane shows which: "New album", the
    album the records name, or the one picked, and its album picker lists any
-   library album to pick instead; a picked album deleted meanwhile takes its
-   pick with it. Re-identifying a library release files it the same way.
-   The "already in your library" banner names every album holding the
-   release, or another release of its album: those holding the release
-   first, then oldest first. One read answers it for every release the
-   pane offers, and follows the library while the pane is open; an identify
-   verdict or search result, in flight or stored, holds no library status of
-   its own.
+   library album to pick instead; a picked album emptied meanwhile stays
+   picked, and the import fills it again (§2.1). Re-identifying a library
+   release files it the same way. The "already in your library" banner
+   names every album holding the release, or another release of its album:
+   those holding the release first, then oldest first. One read answers it
+   for every release the pane offers, and follows the library while the pane
+   is open; an identify verdict or search result, in flight or stored, holds
+   no library status of its own.
 7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id, and
    this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,

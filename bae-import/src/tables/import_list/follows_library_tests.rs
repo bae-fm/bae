@@ -49,30 +49,6 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         )])
     );
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE releases SET created_at = '2026-01-01T02:00:01+02:00' WHERE id = '{RELEASE_A}';"
-        ))
-        .await,
-        moves([(
-            lib.release("Album"),
-            Some(
-                found("Album").on("done").dated(imported_at + 1_000).shown("Album Title", Some(""))
-            )
-        )])
-    );
-    assert_eq!(
-        lib.moved(&format!(
-            "UPDATE releases SET created_at = '2026-01-01T00:00:02Z' WHERE id = '{RELEASE_A}';"
-        ))
-        .await,
-        moves([(
-            lib.release("Album"),
-            Some(
-                found("Album").on("done").dated(imported_at + 2_000).shown("Album Title", Some(""))
-            )
-        )])
-    );
-    assert_eq!(
         lib.moved(&format!("DELETE FROM local_release_origin WHERE release_id = '{RELEASE_A}';"))
             .await,
         moves([(lib.release("Album"), Some(found("Album").on("skipped").dated(100)))])
