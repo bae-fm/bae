@@ -106,7 +106,11 @@ struct StorageContentsInspector: View {
 #if DEBUG
     /// A release uploading, its audio file selected.
     #Preview("File selected") {
-        let library = PreviewData.storageLibrary(downloads: [], outputs: [])
+        let library = PreviewData.storageLibrary(
+            answers: FixedAnswers(),
+            downloads: [],
+            outputs: []
+        )
         StorageContentsInspector(
             releaseId: "rel-row-1",
             initialSelectedFileId: "rel-row-1-audio"
@@ -124,7 +128,11 @@ struct StorageContentsInspector: View {
 
     /// A release pinning: its cover kept, its audio waiting.
     #Preview("Pinning") {
-        let library = PreviewData.storageLibrary(outputs: [], uploads: [])
+        let library = PreviewData.storageLibrary(
+            answers: FixedAnswers(),
+            outputs: [],
+            uploads: []
+        )
         StorageContentsInspector(releaseId: "rel-row-1")
             .frame(width: 440, height: 614)
             .environment(library)

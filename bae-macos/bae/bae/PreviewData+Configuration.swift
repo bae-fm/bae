@@ -329,7 +329,8 @@
                         image: nil,
                         creditNames: []
                     ),
-                ]
+                ],
+                answers: FixedAnswers()
             )
         }
     }

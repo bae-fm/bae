@@ -29,7 +29,9 @@ struct CoverPickerTests {
     func persistedArtworkUsesLibraryIdentity() async throws {
         let release = persistedRelease()
         let recorder = CoverRecorder()
-        let library = Library(releaseDetail: { .fixed { _ in release } })
+        let library = Library(releaseDetail: {
+            .fixed(answers: FixedAnswers()) { _ in release }
+        })
         let png = try imageBytes()
         let images = ImageStore(fetchReleaseImageBytes: { releaseId, source in
             await recorder.read(releaseId, source)

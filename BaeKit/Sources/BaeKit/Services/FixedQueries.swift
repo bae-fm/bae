@@ -1,5 +1,6 @@
 #if DEBUG
     import Foundation
+    import Observation
 
     // Reads over fixed rows, for previews and tests: each answers every
     // request with its slice of rows given already in order, which only core
@@ -9,9 +10,10 @@
         /// A read over fixed details, for previews and tests: every id is
         /// answered with what `lookup` finds for it.
         public static func fixed(
+            answers: FixedAnswers,
             _ lookup: @escaping @Sendable (Id) -> Value?
         ) -> KeyedDetailQuery<Value, Id> {
-            let requests = FixedRequests<Id>()
+            let requests = FixedRequests<Id>(answers: answers)
             return KeyedDetailQuery(
                 setId: { requests.request($0) },
                 values: PulledValues(
@@ -28,8 +30,13 @@
     extension LibraryBrowseQuery {
         /// A query over a fixed, already-sorted list, for previews and tests:
         /// every window request is answered with its slice.
-        public static func fixed(_ rows: [Row]) -> LibraryBrowseQuery<Row> {
-            let requests = FixedRequests<[BridgeLibraryPageWindow]>()
+        public static func fixed(
+            _ rows: [Row],
+            answers: FixedAnswers
+        ) -> LibraryBrowseQuery<Row> {
+            let requests = FixedRequests<[BridgeLibraryPageWindow]>(
+                answers: answers
+            )
             return LibraryBrowseQuery(
                 setWindows: { requests.request($0) },
                 values: PulledValues(
@@ -56,34 +63,82 @@
         }
     }
 
+    /// How many reads a fixture's fixed queries were asked and have not yet
+    /// answered, for a test that waits until a hosted view has what it asked
+    /// for. A fixed query answers off the main thread; an answer counts once
+    /// the screen reading it has taken it up and asked for its next value.
+    public final class FixedAnswers: Observable, @unchecked Sendable {
+        private let registrar = ObservationRegistrar()
+        private let lock = NSLock()
+        private var count = 0
+
+        public init() {}
+
+        /// Reads asked and not yet answered.
+        public var unanswered: Int {
+            registrar.access(self, keyPath: \.unanswered)
+            return lock.withLock { count }
+        }
+
+        fileprivate func change(by delta: Int) {
+            guard delta != 0 else { return }
+            registrar.withMutation(of: self, keyPath: \.unanswered) {
+                lock.withLock { count += delta }
+            }
+        }
+    }
+
     /// The requests a fixed query answers: the latest one not yet answered,
-    /// handed to the one reader waiting for it.
+    /// handed to the one reader waiting for it. A request counts in `answers`
+    /// from when it is made until its reader asks for the next one, or the
+    /// query closes; one replacing a request no reader has taken yet is the
+    /// same read asked again.
     final class FixedRequests<Request: Sendable>: @unchecked Sendable {
+        private let answers: FixedAnswers
         private let lock = NSLock()
         private var pending: Request?
         private var waiter: CheckedContinuation<Request, any Error>?
+        /// A request handed to the reader whose answer it has not taken up.
+        private var handedOut = false
         private var closed = false
 
+        init(answers: FixedAnswers) {
+            self.answers = answers
+        }
+
         func request(_ request: Request) {
-            let waiter: CheckedContinuation<Request, any Error>? = lock.withLock
-            {
-                if let waiter = self.waiter {
-                    self.waiter = nil
-                    return waiter
-                }
-                pending = request
-                return nil
-            }
+            let (waiter, asked):
+                (CheckedContinuation<Request, any Error>?, Int) =
+                    lock.withLock {
+                        // A closed query answers nothing more.
+                        if closed { return (nil, 0) }
+                        if let waiter = self.waiter {
+                            self.waiter = nil
+                            handedOut = true
+                            return (waiter, 1)
+                        }
+                        let asked = pending == nil ? 1 : 0
+                        pending = request
+                        return (nil, asked)
+                    }
+            answers.change(by: asked)
             waiter?.resume(returning: request)
         }
 
-        /// The next request, once there is one.
+        /// The next request, once there is one. Asking again means the
+        /// reader took up the answer to the last.
         func take() async throws -> Request {
-            try await withCheckedThrowingContinuation { continuation in
+            let answered = lock.withLock {
+                defer { handedOut = false }
+                return handedOut ? 1 : 0
+            }
+            answers.change(by: -answered)
+            return try await withCheckedThrowingContinuation { continuation in
                 let result: Result<Request, any Error>? = lock.withLock {
                     if closed { return .failure(CancellationError()) }
                     if let pending {
                         self.pending = nil
+                        handedOut = true
                         return .success(pending)
                     }
                     waiter = continuation
@@ -94,13 +149,19 @@
         }
 
         func close() {
-            let waiter: CheckedContinuation<Request, any Error>? = lock.withLock
-            {
-                closed = true
-                let waiter = self.waiter
-                self.waiter = nil
-                return waiter
-            }
+            let (waiter, open):
+                (CheckedContinuation<Request, any Error>?, Int) =
+                    lock.withLock {
+                        closed = true
+                        let waiter = self.waiter
+                        self.waiter = nil
+                        let open =
+                            (handedOut ? 1 : 0) + (pending == nil ? 0 : 1)
+                        handedOut = false
+                        pending = nil
+                        return (waiter, open)
+                    }
+            answers.change(by: -open)
             waiter?.resume(throwing: CancellationError())
         }
     }
@@ -111,9 +172,10 @@
         /// the sort, filter and search, beside `queues`.
         public static func fixed(
             _ rows: [BridgeStorageRow],
-            queues: BridgeStorageQueues
+            queues: BridgeStorageQueues,
+            answers: FixedAnswers
         ) -> StorageBrowseQuery {
-            let requests = FixedRequests<StorageBrowseView>()
+            let requests = FixedRequests<StorageBrowseView>(answers: answers)
             return StorageBrowseQuery(
                 setView: { requests.request($0) },
                 values: PulledValues(
@@ -175,10 +237,13 @@
         /// A search over a fixed, already-ordered list, for previews and tests:
         /// every view is answered with its windows' slices of `results`, whatever
         /// the text.
-        public static func fixed(_ results: [BridgeArtistSearchResult])
-            -> ArtistSearchQuery
-        {
-            let requests = FixedRequests<(UInt64, [BridgeLibraryPageWindow])>()
+        public static func fixed(
+            _ results: [BridgeArtistSearchResult],
+            answers: FixedAnswers
+        ) -> ArtistSearchQuery {
+            let requests = FixedRequests<(UInt64, [BridgeLibraryPageWindow])>(
+                answers: answers
+            )
             let revisions = FixedRevisions()
             return ArtistSearchQuery(
                 setView: { _, windows in
@@ -289,8 +354,13 @@
     extension ReleaseFilesQuery {
         /// A read over fixed files, for previews and tests: every request is
         /// answered with `files` as given, whatever order it asks for.
-        public static func fixed(_ files: [BridgeFile]) -> ReleaseFilesQuery {
-            let requests = FixedRequests<BridgeReleaseFilesRequest?>()
+        public static func fixed(
+            _ files: [BridgeFile],
+            answers: FixedAnswers
+        ) -> ReleaseFilesQuery {
+            let requests = FixedRequests<BridgeReleaseFilesRequest?>(
+                answers: answers
+            )
             return ReleaseFilesQuery(
                 setRequest: { requests.request($0) },
                 values: PulledValues(

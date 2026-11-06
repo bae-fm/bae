@@ -20,7 +20,8 @@ private final class RecordingBrowse: @unchecked Sendable {
     }
 
     func query() -> LibraryBrowseQuery<BridgeAlbum> {
-        let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed(rows)
+        let fixed = LibraryBrowseQuery<BridgeAlbum>
+            .fixed(rows, answers: FixedAnswers())
         return LibraryBrowseQuery(
             setWindows: { [self] windows in
                 lock.withLock { requests.append(windows) }
@@ -37,7 +38,8 @@ struct LibraryBrowsePageSourceTests {
     @Test("repeated album rows preserve the distinct library count")
     func distinctCount() async {
         let album = makeBridgeAlbum(id: "shared")
-        let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed([album, album])
+        let fixed = LibraryBrowseQuery<BridgeAlbum>
+            .fixed([album, album], answers: FixedAnswers())
         let query = LibraryBrowseQuery<BridgeAlbum>(
             setWindows: fixed.setWindows,
             values: PulledValues(fixed.values) { page in
@@ -80,7 +82,8 @@ struct LibraryBrowsePageSourceTests {
                 window: .init(offset: 75, limit: 45)
             ),
         ]
-        let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed(rows)
+        let fixed = LibraryBrowseQuery<BridgeAlbum>
+            .fixed(rows, answers: FixedAnswers())
         let query = LibraryBrowseQuery<BridgeAlbum>(
             setWindows: fixed.setWindows,
             values: PulledValues(fixed.values) { page in

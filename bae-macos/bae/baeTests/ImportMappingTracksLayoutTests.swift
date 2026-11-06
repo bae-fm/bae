@@ -29,7 +29,7 @@ struct ImportMappingTracksLayoutTests {
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: MappingTrackActionRecorder()),
-                artistSearch: { .fixed([]) }
+                artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
@@ -85,7 +85,7 @@ struct ImportMappingTracksLayoutTests {
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: recorder),
-                artistSearch: { .fixed([]) }
+                artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
@@ -187,7 +187,7 @@ struct ImportMappingTracksLayoutTests {
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: MappingTrackActionRecorder()),
-                artistSearch: { .fixed([]) }
+                artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
             .frame(width: size.width, height: size.height, alignment: .leading)
             .environment(UiStore()),
@@ -479,7 +479,7 @@ extension ImportMappingTracksLayoutTests {
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: recorder),
-                artistSearch: { .fixed([]) }
+                artistSearch: { .fixed([], answers: FixedAnswers()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)

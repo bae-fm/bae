@@ -86,7 +86,7 @@ struct ArtistAssignmentsFieldTests {
                 values: values,
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
                 editingCommands: EditingCommitCommands(),
-                artistSearch: { .fixed([]) },
+                artistSearch: { .fixed([], answers: FixedAnswers()) },
                 cover: { Color.clear },
                 audioFacts: { EmptyView() }
             )

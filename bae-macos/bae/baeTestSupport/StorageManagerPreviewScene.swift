@@ -30,6 +30,12 @@ struct StorageManagerPreviewScene: View {
         )
     }
 
+    /// The scene's reads not yet answered.
+    var answers: FixedAnswers { fixture.answers }
+
+    /// The manager's store, which holds the list once its first page lands.
+    var store: StorageManagerStore { fixture.storageManagerStore }
+
     var body: some View {
         StorageManagerView(
             initialSearch: fixture.initialSearch,

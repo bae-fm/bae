@@ -510,7 +510,8 @@
             rows: [BridgeStorageRow] = storageRows
         ) -> StorageList {
             let list = StorageList(
-                pageSource: storageLibrary(rows: rows).storagePageSource,
+                pageSource: storageLibrary(answers: FixedAnswers(), rows: rows)
+                    .storagePageSource,
                 onError: { _ in }
             )
             list.preloadForPreview(
@@ -523,7 +524,10 @@
         /// else — enough for `StorageManagerView`'s own `rebuildList()` to
         /// populate the table — and whose inspector shows each row's release
         /// with its entry in `downloads`, `outputs` and `uploads`.
+        /// The fixture's library, its reads answered off the main thread and
+        /// counted in `answers`.
         static func storageLibrary(
+            answers: FixedAnswers,
             rows: [BridgeStorageRow] = storageRows,
             downloads: [BridgeDownloadOp] = downloadOps,
             outputs: [BridgeOutputOp] = outputOps,
@@ -561,9 +565,13 @@
                 uploads: uploads
             )
             return Library(
-                releaseDetail: { .fixed { details[$0] } },
-                storageBrowse: { _, _ in .fixed(rows, queues: queues) },
-                storageInspector: { .fixed { inspectors[$0] } }
+                releaseDetail: { .fixed(answers: answers) { details[$0] } },
+                storageBrowse: { _, _ in
+                    .fixed(rows, queues: queues, answers: answers)
+                },
+                storageInspector: {
+                    .fixed(answers: answers) { inspectors[$0] }
+                }
             )
         }
 

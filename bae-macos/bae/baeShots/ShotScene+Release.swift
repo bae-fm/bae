@@ -49,9 +49,14 @@ extension ShotScene {
                 .background(Theme.background)
                 .environment(
                     Library(
-                        releaseDetail: { .fixed { _ in release } },
+                        releaseDetail: {
+                            .fixed(answers: FixedAnswers()) { _ in release }
+                        },
                         releaseFiles: {
-                            .fixed(PreviewData.previewReleaseFiles)
+                            .fixed(
+                                PreviewData.previewReleaseFiles,
+                                answers: FixedAnswers()
+                            )
                         }
                     )
                 )

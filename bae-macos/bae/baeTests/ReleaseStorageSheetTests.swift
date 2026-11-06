@@ -42,7 +42,7 @@ struct ReleaseStorageSheetTests {
                     values: PulledValues(read: { try await delivered.next() })
                 )
             },
-            releaseFiles: { .fixed([]) }
+            releaseFiles: { .fixed([], answers: FixedAnswers()) }
         )
         let size = NSSize(width: 640, height: 600)
         try await SnapshotTestSupport.withHostedWindow(

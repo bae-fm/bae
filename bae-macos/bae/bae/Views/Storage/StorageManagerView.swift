@@ -199,6 +199,8 @@ struct StorageManagerView: View {
     @MainActor
     struct StorageManagerPreviewFixture {
         let library: Library
+        /// The library's reads not yet answered.
+        let answers: FixedAnswers
         let storageManagerStore: StorageManagerStore
         let uiStore: UiStore
         let downloadStore: DownloadStore
@@ -221,7 +223,10 @@ struct StorageManagerView: View {
             uploads: [PreviewData.PreviewReleaseUpload] =
                 PreviewData.defaultUploads
         ) {
+            let answers = FixedAnswers()
+            self.answers = answers
             let library = PreviewData.storageLibrary(
+                answers: answers,
                 rows: rows,
                 downloads: downloads,
                 outputs: outputs,

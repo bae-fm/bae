@@ -236,7 +236,7 @@ struct LibraryProjectionStoreDetailTests {
                 composerDetail: { feed.query() },
                 composerDetailRows: { artistId in
                     rowReads.opened(artistId)
-                    return .fixed([])
+                    return .fixed([], answers: FixedAnswers())
                 }
             )
         )

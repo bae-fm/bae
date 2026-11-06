@@ -16,13 +16,14 @@ final class StorageManagerLayoutTests: XCTestCase {
 
     func testCompactActivityLeavesReleaseTableUsable() async throws {
         let size = NSSize(width: 700, height: 400)
+        let scene = StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
 
             XCTAssertGreaterThanOrEqual(tableScrollView.frame.height, 220)
@@ -33,13 +34,14 @@ final class StorageManagerLayoutTests: XCTestCase {
     /// its row's chip, with no bar or rate beside it.
     func testStorageTableDrawsUploadsInTheirChipsWithoutBars() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene()
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene()
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let row = try XCTUnwrap(
                 PreviewData.storageRows(
                     PreviewData.storageRows,
@@ -63,17 +65,18 @@ final class StorageManagerLayoutTests: XCTestCase {
     func testSelectingReleaseWithoutTransferKeepsAvailableHeight() async throws
     {
         let size = NSSize(width: 700, height: 400)
+        let scene = StorageManagerPreviewScene(
+            downloads: [],
+            outputs: [],
+            uploads: []
+        )
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene(
-                downloads: [],
-                outputs: [],
-                uploads: []
-            )
-            .frame(width: size.width, height: size.height),
+            scene
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -84,7 +87,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 IndexSet(integer: 3),
                 byExtendingSelection: false
             )
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await SnapshotTestSupport.settle(host, answering: scene.answers)
 
             let heightAfterSelection = tableScrollView.frame.height
             XCTAssertGreaterThanOrEqual(
@@ -96,13 +99,14 @@ final class StorageManagerLayoutTests: XCTestCase {
 
     func testSelectingReleaseDoesNotPresentTransferInspector() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene()
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene()
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -113,7 +117,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 IndexSet(integer: 0),
                 byExtendingSelection: false
             )
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await SnapshotTestSupport.settle(host, answering: scene.answers)
 
             XCTAssertEqual(
                 tableScrollView.frame.width,
@@ -125,13 +129,14 @@ final class StorageManagerLayoutTests: XCTestCase {
 
     func testReleaseListUsesFlatTable() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene()
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene()
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -143,19 +148,20 @@ final class StorageManagerLayoutTests: XCTestCase {
 
     func testInspectorFilesStartAtTopWithoutTabsOrTitleBar() async throws {
         let size = NSSize(width: 1_440, height: 900)
+        let scene = StorageManagerPreviewScene(
+            selectedReleaseId: "rel-row-4",
+            inspectorPresented: true,
+            downloads: [],
+            outputs: [],
+            uploads: []
+        )
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene(
-                selectedReleaseId: "rel-row-4",
-                inspectorPresented: true,
-                downloads: [],
-                outputs: [],
-                uploads: []
-            )
-            .frame(width: size.width, height: size.height),
+            scene
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let descendants = SnapshotTestSupport.descendants(of: host)
             XCTAssertFalse(
                 descendants.compactMap { $0 as? NSSegmentedControl }
@@ -174,16 +180,17 @@ final class StorageManagerLayoutTests: XCTestCase {
 
     func testInspectorSplitOccupiesFullWindowHeight() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene(
+            selectedReleaseId: "rel-row-1",
+            inspectorPresented: true
+        )
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene(
-                selectedReleaseId: "rel-row-1",
-                inspectorPresented: true
-            )
-            .frame(width: size.width, height: size.height),
+            scene
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let splitView = try XCTUnwrap(
                 SnapshotTestSupport.descendants(of: host)
                     .compactMap { $0 as? NSSplitView }
@@ -199,18 +206,19 @@ final class StorageManagerLayoutTests: XCTestCase {
     /// progress drawn once above them and none on any row.
     func testInspectorShowsEachFileOnOneLine() async throws {
         let size = NSSize(width: 940, height: 700)
+        let scene = StorageManagerPreviewScene(
+            selectedReleaseId: "rel-row-1",
+            inspectorPresented: true,
+            downloads: [],
+            outputs: []
+        )
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene(
-                selectedReleaseId: "rel-row-1",
-                inspectorPresented: true,
-                downloads: [],
-                outputs: []
-            )
-            .frame(width: size.width, height: size.height),
+            scene
+                .frame(width: size.width, height: size.height),
             size: size
         ) { window, host in
             window.appearance = NSAppearance(named: .darkAqua)
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
 
             let descendants = SnapshotTestSupport.descendants(of: host)
             let fileList = try XCTUnwrap(
@@ -242,13 +250,14 @@ final class StorageManagerLayoutTests: XCTestCase {
 
     func testTableUsesIntentionalColumnSizing() async throws {
         let size = NSSize(width: 1_440, height: 900)
+        let scene = StorageManagerPreviewScene()
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene()
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let scrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 scrollView.documentView as? NSTableView
@@ -262,6 +271,17 @@ final class StorageManagerLayoutTests: XCTestCase {
         }
     }
 
+    /// Settle the manager once its list holds its first page. Its read is
+    /// asked from the view's task, so until the list is there an idle tree
+    /// with no read unanswered may be one that has not asked yet.
+    private func settleFirstPage(
+        of scene: StorageManagerPreviewScene,
+        in host: NSView
+    ) async throws {
+        try await Wait.until { scene.store.list != nil }
+        try await SnapshotTestSupport.settle(host, answering: scene.answers)
+    }
+
     private func storageTable(in host: NSView) -> NSScrollView? {
         SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSScrollView }
@@ -273,13 +293,14 @@ final class StorageManagerLayoutTests: XCTestCase {
 extension StorageManagerLayoutTests {
     func testInspectorOpensWithoutSelection() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene(inspectorPresented: true)
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene(inspectorPresented: true)
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
 
             XCTAssertLessThan(tableScrollView.frame.width, size.width - 100)
@@ -288,16 +309,17 @@ extension StorageManagerLayoutTests {
 
     func testClearingSelectionKeepsInspectorOpen() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene(
+            selectedReleaseId: "rel-row-1",
+            inspectorPresented: true
+        )
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene(
-                selectedReleaseId: "rel-row-1",
-                inspectorPresented: true
-            )
-            .frame(width: size.width, height: size.height),
+            scene
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -305,7 +327,7 @@ extension StorageManagerLayoutTests {
             let widthWithSelection = tableScrollView.frame.width
 
             tableView.deselectAll(nil)
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await SnapshotTestSupport.settle(host, answering: scene.answers)
 
             XCTAssertEqual(
                 tableScrollView.frame.width,
@@ -317,13 +339,14 @@ extension StorageManagerLayoutTests {
 
     func testDoubleClickingReleaseTogglesInspector() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene()
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene()
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView
@@ -338,7 +361,7 @@ extension StorageManagerLayoutTests {
             XCTAssertTrue(
                 NSApp.sendAction(action, to: tableView.target, from: tableView)
             )
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await SnapshotTestSupport.settle(host, answering: scene.answers)
 
             XCTAssertLessThan(
                 tableScrollView.frame.width,
@@ -348,7 +371,7 @@ extension StorageManagerLayoutTests {
             XCTAssertTrue(
                 NSApp.sendAction(action, to: tableView.target, from: tableView)
             )
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await SnapshotTestSupport.settle(host, answering: scene.answers)
             XCTAssertEqual(
                 tableScrollView.frame.width,
                 widthBeforeOpening,
@@ -359,13 +382,14 @@ extension StorageManagerLayoutTests {
 
     func testReleaseContextMenuOffersInspect() async throws {
         let size = NSSize(width: 940, height: 600)
+        let scene = StorageManagerPreviewScene()
         try await SnapshotTestSupport.withHostedWindow(
-            StorageManagerPreviewScene()
+            scene
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
-            try await SnapshotTestSupport.settleUnmoved(host)
+            try await settleFirstPage(of: scene, in: host)
             let tableScrollView = try XCTUnwrap(storageTable(in: host))
             let tableView = try XCTUnwrap(
                 tableScrollView.documentView as? NSTableView

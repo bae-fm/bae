@@ -12,6 +12,8 @@ struct HostedAlbumGrid {
     let window: NSWindow
     let host: NSView
     let uiStore: UiStore
+    /// The grid's page reads not yet answered.
+    let answers: FixedAnswers
 
     /// Six hundred albums, `grid-0` to `grid-599`.
     static let albums: [BridgeAlbum] = (0..<600)
@@ -34,9 +36,14 @@ struct HostedAlbumGrid {
     ) async throws -> HostedAlbumGrid {
         let uiStore = UiStore()
         let albums = Self.albums
+        let answers = FixedAnswers()
         let list = AlbumList(
             pageSource: LibraryAlbumPageSource(
-                query: query(albums: albums, sections: sections)
+                query: query(
+                    albums: albums,
+                    sections: sections,
+                    answers: answers
+                )
             ),
             onError: { error in
                 preconditionFailure("Hosted grid failed: \(error)")
@@ -71,7 +78,8 @@ struct HostedAlbumGrid {
         let hosted = HostedAlbumGrid(
             window: window,
             host: host,
-            uiStore: uiStore
+            uiStore: uiStore,
+            answers: answers
         )
         try await hosted.settle()
         return hosted
@@ -79,9 +87,14 @@ struct HostedAlbumGrid {
 
     private static func query(
         albums: [BridgeAlbum],
-        sections: [BridgeLibraryBrowseSection]
+        sections: [BridgeLibraryBrowseSection],
+        answers: FixedAnswers
     ) -> LibraryBrowseQuery<BridgeAlbum> {
-        let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed(albums)
+        let fixed = LibraryBrowseQuery<BridgeAlbum>
+            .fixed(
+                albums,
+                answers: answers
+            )
         return LibraryBrowseQuery(
             setWindows: fixed.setWindows,
             values: PulledValues(fixed.values) { page in
@@ -108,14 +121,20 @@ struct HostedAlbumGrid {
         )
     }
 
-    /// Return once the grid's views and its scroll position have stopped
-    /// moving. With a `change` to make, it is made first and the grid must
-    /// have moved from where it stood before it counts as at rest, since a
-    /// grid that has not started to move reads as steady.
+    /// Return once every page the grid asked for has come back and its views
+    /// and scroll position have stopped moving, asking again if coming to
+    /// rest asked for more pages. With a `change` to make, it is made first
+    /// and the grid must have moved from where it stood before it counts as
+    /// at rest, since a grid that has not started to move reads as steady.
     func settle(after change: (() -> Void)? = nil) async throws {
-        let before = change.map { _ in geometry() }
+        var before = change.map { _ in geometry() }
         change?()
-        try await Wait.untilUnmoved(changedFrom: before) { geometry() }
+        while true {
+            try await Wait.until { answers.unanswered == 0 }
+            try await Wait.untilSteady(changedFrom: before) { geometry() }
+            if answers.unanswered == 0 { return }
+            before = nil
+        }
     }
 
     /// Return once the grid is scrolled away from its top.

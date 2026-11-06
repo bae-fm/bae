@@ -13,14 +13,18 @@
         /// album of that id, so `AlbumDetailView` runs its real read.
         static func albumDetailLibrary() -> Library {
             Library(
-                albumDetail: { .fixed { albumDetails[$0] } },
+                albumDetail: {
+                    .fixed(answers: FixedAnswers()) { albumDetails[$0] }
+                },
                 releaseDetail: {
-                    .fixed { id in
+                    .fixed(answers: FixedAnswers()) { id in
                         albumDetails.values.lazy.flatMap(\.releases)
                             .first { $0.id == id }
                     }
                 },
-                releaseFiles: { .fixed(previewReleaseFiles) }
+                releaseFiles: {
+                    .fixed(previewReleaseFiles, answers: FixedAnswers())
+                }
             )
         }
 

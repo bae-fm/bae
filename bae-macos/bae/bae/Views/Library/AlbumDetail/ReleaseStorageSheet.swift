@@ -236,8 +236,15 @@ struct ReleaseStorageSheet: View {
         .background(Theme.background)
         .environment(
             Library(
-                releaseDetail: { .fixed { _ in release } },
-                releaseFiles: { .fixed(PreviewData.previewReleaseFiles) }
+                releaseDetail: {
+                    .fixed(answers: FixedAnswers()) { _ in release }
+                },
+                releaseFiles: {
+                    .fixed(
+                        PreviewData.previewReleaseFiles,
+                        answers: FixedAnswers()
+                    )
+                }
             )
         )
         .environment(OutboxStore(uploadsPaused: false))

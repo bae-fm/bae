@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// Shared AppKit hosting helpers for the view tests: a view hosted in a
@@ -27,9 +28,28 @@ enum SnapshotTestSupport {
         }
     }
 
+    /// [`settle`] for a tree reading fixed queries, which answer off the
+    /// main thread: wait until `answers` has answered every read, then for
+    /// the tree to come to rest, and again if resting asked for more.
+    @MainActor
+    static func settle(
+        _ host: NSView,
+        answering answers: FixedAnswers,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        while true {
+            try await Wait.until(file: file, line: line) {
+                answers.unanswered == 0
+            }
+            try await settle(host, file: file, line: line)
+            if answers.unanswered == 0 { return }
+        }
+    }
+
     /// [`settle`] for a tree whose work runs off the main thread and tells
     /// no one when it ends: a lightbox decoding its image and reading its
-    /// text, or a fixed query answering the reads of the storage manager.
+    /// text.
     /// Its tree is read until no frame has moved for `Wait.steadiness`.
     @MainActor
     static func settleUnmoved(
