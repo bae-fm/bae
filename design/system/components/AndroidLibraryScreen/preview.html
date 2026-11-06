@@ -1,0 +1,15 @@
+<!-- @dsCard group="Android library" height=940 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidLibraryScreen</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="padding: 0;">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.AndroidLibraryScreen, { trackTitle: 'Harvest Moon', trackArtist: 'Neil Young', trackAlbum: 'Harvest Moon', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, h(B.AndroidAlbumGrid, null, h(B.AndroidAlbumTile, { title: 'Harvest Moon', line: 'Neil Young' }), h(B.AndroidAlbumTile, { title: 'Blue', line: 'Joni Mitchell' })))));
+</script>
+</body>
+</html>

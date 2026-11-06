@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS library" height=330 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacTrackRow</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacTrackRow, { position: '1', title: 'Unknown Legend', duration: '4:32' })), W('Hover', h(B.MacTrackRow, { position: '2', title: 'From Hank to Hendrix', duration: '5:12', hover: true })), W('Current', h(B.MacTrackRow, { position: '3', title: 'You and Me', duration: '3:45', current: true, playing: true })), W('Compilation', h(B.MacTrackRow, { position: '4', title: 'Harvest Moon', artist: 'Neil Young', duration: '5:03' }))));
+</script>
+</body>
+</html>

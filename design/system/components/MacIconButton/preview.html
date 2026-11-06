@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS library" height=110 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacIconButton</title></head>
+<body class="bae-preview" style="flex-direction: row; align-items: center; flex-wrap: wrap;">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Resting', h(B.MacIconButton, { icon: 'shuffle', label: 'Shuffle' })), N('Active', h(B.MacIconButton, { icon: 'repeat', label: 'Repeat', active: true }))));
+</script>
+</body>
+</html>

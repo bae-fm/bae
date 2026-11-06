@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS library" height=260 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacNowPlayingBar</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Playing', h(B.MacNowPlayingBar, { title: 'Harvest Moon', artist: 'Neil Young', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' })), W('Waiting on storage', h(B.MacNowPlayingBar, { title: 'Harvest Moon', artist: 'Neil Young', waiting: true, position: 0.02, held: 0.04, elapsed: '0:05', duration: '5:03' })), W('Nothing played', h(B.MacNowPlayingBar, {}))));
+</script>
+</body>
+</html>

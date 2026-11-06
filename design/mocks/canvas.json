@@ -80,7 +80,7 @@
       "title": "Home: \u22ee menu with Libraries",
       "w": 412,
       "x": 0,
-      "y": 1316
+      "y": 4796
     },
     "InviteForm.dc.html": {
       "h": 916,
@@ -104,7 +104,7 @@
       "title": "Libraries (from \u22ee)",
       "w": 412,
       "x": 492,
-      "y": 1316
+      "y": 4796
     },
     "Library.dc.html": {
       "h": 916,
@@ -1113,7 +1113,7 @@
       "title": "Grouped by artist: today",
       "w": 412,
       "x": 1968,
-      "y": 0
+      "y": 3480
     },
     "home/GroupedHeader.dc.html": {
       "h": 916,
@@ -1121,7 +1121,7 @@
       "title": "Grouped: artist header over a grid",
       "w": 412,
       "x": 2460,
-      "y": 0
+      "y": 3480
     },
     "home/GroupedSticky.dc.html": {
       "h": 916,
@@ -1129,7 +1129,7 @@
       "title": "Grouped: scrolled, artist pinned",
       "w": 412,
       "x": 2952,
-      "y": 0
+      "y": 3480
     },
     "home/HeadingFull.dc.html": {
       "h": 916,
@@ -1137,7 +1137,7 @@
       "title": "Like macOS: top of the list",
       "w": 412,
       "x": 492,
-      "y": 0
+      "y": 3480
     },
     "home/HeadingMenu.dc.html": {
       "h": 916,
@@ -1145,7 +1145,7 @@
       "title": "The \u22ee menu open",
       "w": 412,
       "x": 1476,
-      "y": 0
+      "y": 3480
     },
     "home/HeadingScrolled.dc.html": {
       "h": 916,
@@ -1153,7 +1153,7 @@
       "title": "Like macOS: scrolled",
       "w": 412,
       "x": 984,
-      "y": 0
+      "y": 3480
     },
     "home/Main.dc.html": {
       "h": 916,
@@ -1161,7 +1161,7 @@
       "title": "Today",
       "w": 412,
       "x": 0,
-      "y": 0
+      "y": 3480
     },
     "loading/Main.dc.html": {
       "h": 960,
@@ -1676,6 +1676,54 @@
       "w": 690,
       "x": 2246,
       "y": 5444
+    },
+    "LibAndroidAlbums.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Albums",
+      "w": 412,
+      "x": 0,
+      "y": 240
+    },
+    "LibAndroidAlbum.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Album",
+      "w": 412,
+      "x": 492,
+      "y": 240
+    },
+    "LibAndroidArtist.dc.html": {
+      "h": 916,
+      "page": "home",
+      "title": "Artist",
+      "w": 412,
+      "x": 984,
+      "y": 240
+    },
+    "LibMacAlbums.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: Albums",
+      "w": 1200,
+      "x": 0,
+      "y": 1636
+    },
+    "LibMacAlbumOpen.dc.html": {
+      "h": 1000,
+      "page": "home",
+      "title": "macOS: Album, opened in the grid",
+      "w": 1200,
+      "x": 1280,
+      "y": 1636
+    },
+    "LibMacArtist.dc.html": {
+      "h": 760,
+      "page": "home",
+      "title": "macOS: Artists",
+      "w": 1200,
+      "x": 2560,
+      "y": 1636
     }
   },
   "createdOnFiles": {
@@ -1762,7 +1810,10 @@
     "code-rename",
     "code-switch",
     "row-home-heading",
-    "row-loading-track"
+    "row-loading-track",
+    "row-lib-flow-android",
+    "row-lib-flow-mac",
+    "lib-today"
   ],
   "notes": {
     "canvas-key-library": {
@@ -2097,7 +2148,7 @@
       "text": "macOS keeps switching libraries from the main window's menu.",
       "w": 380,
       "x": 984,
-      "y": 1316
+      "y": 4796
     },
     "sync-rules": {
       "fill": "blue",
@@ -2286,7 +2337,7 @@
       "text": "Switch library",
       "w": 240,
       "x": 0,
-      "y": 1076
+      "y": 4556
     },
     "code-casting": {
       "page": "settings",
@@ -2333,7 +2384,7 @@
       "size": 24,
       "w": 420,
       "x": 1424,
-      "y": 1316,
+      "y": 4796,
       "text": "What the code needs for these boards:\n- Android switches libraries from the home screen's \u22ee menu: Libraries opens the list of this device's libraries, each with Remove. Today it is \u201cSwitch to another library on this device\u201d in Library settings (SettingsLibrarySection.kt:111), and the \u22ee menu holds Sort by, Shuffle library and Settings (decisions.md 2026-11-01). The list is the one the welcome screen shows (code-welcome). bae change, Android."
     },
     "row-home-heading": {
@@ -2343,7 +2394,7 @@
       "text": "Android: the home heading (plans/android-home-header.md)",
       "w": 240,
       "x": 0,
-      "y": -240
+      "y": 3240
     },
     "row-loading-track": {
       "kind": "title1",
@@ -2353,6 +2404,33 @@
       "w": 240,
       "x": 0,
       "y": -240
+    },
+    "row-lib-flow-android": {
+      "kind": "title1",
+      "maxW": 1396,
+      "page": "home",
+      "text": "Albums \u2192 album \u2192 artist: Android (today)",
+      "w": 240,
+      "x": 0,
+      "y": 0
+    },
+    "row-lib-flow-mac": {
+      "kind": "title1",
+      "maxW": 3760,
+      "page": "home",
+      "text": "Albums \u2192 album \u2192 artist: macOS (today)",
+      "w": 240,
+      "x": 0,
+      "y": 1396
+    },
+    "lib-today": {
+      "page": "home",
+      "size": 24,
+      "w": 460,
+      "x": 3840,
+      "y": 1636,
+      "fill": "blue",
+      "text": "These two rows draw the apps as the code has them today, from the design system's library parts (each part's page names its file). Next: redraw the rows below on the same parts, then iterate."
     }
   },
   "order": [
@@ -2563,7 +2641,13 @@
     "CastingOn.dc.html",
     "MacCastingOn.dc.html",
     "CastingLooking.dc.html",
-    "MacCastingLooking.dc.html"
+    "MacCastingLooking.dc.html",
+    "LibAndroidAlbums.dc.html",
+    "LibAndroidAlbum.dc.html",
+    "LibAndroidArtist.dc.html",
+    "LibMacAlbums.dc.html",
+    "LibMacAlbumOpen.dc.html",
+    "LibMacArtist.dc.html"
   ],
   "pages": [
     {

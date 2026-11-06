@@ -168,3 +168,62 @@ export declare function AndroidScanCode(props: AndroidScanCodeProps): React.Reac
 /** A message on its tone's tint. */
 export interface NoticeProps { tone?: StatusTone; children?: React.ReactNode }
 export declare function Notice(props: NoticeProps): React.ReactElement;
+
+/** A cover or picture. Boards give each title its own stand-in colors; `missing` is a plain tile. */
+export interface ArtworkProps { title?: string; seed?: string; size?: number; radius?: number; round?: boolean; missing?: boolean; shadow?: 'tile' | 'bar'; label?: string; children?: React.ReactNode }
+export declare function Artwork(props: ArtworkProps): React.ReactElement;
+export interface NowPlayingProps { trackTitle?: string; trackArtist?: string; trackAlbum?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; casting?: string }
+export interface MacMainWindowProps extends NowPlayingProps { section?: 'Library' | 'Import'; search?: string; searchFocused?: boolean; sync?: 'moving' | 'attention'; shuffle?: boolean; queueOpen?: boolean; width?: number; height?: number; children?: React.ReactNode }
+export declare function MacMainWindow(props: MacMainWindowProps): React.ReactElement;
+export interface MacNowPlayingBarProps { title?: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; shuffle?: boolean; repeat?: boolean; casting?: string; queueOpen?: boolean; volume?: number; noCover?: boolean }
+export declare function MacNowPlayingBar(props: MacNowPlayingBarProps): React.ReactElement;
+export interface SeekBarProps { position?: number; held?: number | string; elapsed?: string; duration?: string; off?: boolean }
+export declare function MacSeekBar(props: SeekBarProps): React.ReactElement;
+export declare function AndroidSeekBar(props: SeekBarProps): React.ReactElement;
+export interface MacPlayPauseProps { playing?: boolean; waiting?: boolean }
+export declare function MacPlayPause(props: MacPlayPauseProps): React.ReactElement;
+export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; size?: number }
+export declare function MacIconButton(props: MacIconButtonProps): React.ReactElement;
+export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; children?: React.ReactNode }
+export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
+export interface MacAlbumGridProps { columns?: number; children?: React.ReactNode }
+export declare function MacAlbumGrid(props: MacAlbumGridProps): React.ReactElement;
+export interface MacAlbumTileProps { title: string; artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
+export declare function MacAlbumTile(props: MacAlbumTileProps): React.ReactElement;
+export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean }
+export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement;
+export declare function MacEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
+export interface MacBrowseRowProps { name?: string; count?: string; noImage?: boolean; hover?: boolean; selected?: boolean; loading?: boolean }
+export declare function MacBrowseRow(props: MacBrowseRowProps): React.ReactElement;
+export interface MacDetailHeaderProps { name: string; count?: string; noImage?: boolean }
+export declare function MacDetailHeader(props: MacDetailHeaderProps): React.ReactElement;
+export interface MacQueueRowProps { title: string; artist?: string; album?: string; duration?: string; hover?: boolean }
+export declare function MacQueueRow(props: MacQueueRowProps): React.ReactElement;
+export interface AndroidLibraryScreenProps extends NowPlayingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; searching?: boolean; search?: string; sync?: 'moving' | 'attention'; width?: number; height?: number; children?: React.ReactNode }
+export declare function AndroidLibraryScreen(props: AndroidLibraryScreenProps): React.ReactElement;
+export interface AndroidDetailScreenProps extends NowPlayingProps { back?: string; menu?: boolean; flush?: boolean; width?: number; height?: number; children?: React.ReactNode }
+export declare function AndroidDetailScreen(props: AndroidDetailScreenProps): React.ReactElement;
+export interface AndroidNowPlayingBarProps { title?: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; casting?: string; castOff?: boolean }
+export declare function AndroidNowPlayingBar(props: AndroidNowPlayingBarProps): React.ReactElement;
+export interface AndroidPlayPauseProps { playing?: boolean; waiting?: boolean; size?: number }
+export declare function AndroidPlayPause(props: AndroidPlayPauseProps): React.ReactElement;
+export declare function AndroidAlbumGrid(props: { children?: React.ReactNode }): React.ReactElement;
+export interface AndroidAlbumTileProps { title: string; line?: string; noCover?: boolean }
+export declare function AndroidAlbumTile(props: AndroidAlbumTileProps): React.ReactElement;
+export interface AndroidArtistHeadingProps { name: string; count?: string; pinned?: boolean; noImage?: boolean }
+export declare function AndroidArtistHeading(props: AndroidArtistHeadingProps): React.ReactElement;
+export interface AndroidTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean }
+export declare function AndroidTrackRow(props: AndroidTrackRowProps): React.ReactElement;
+export declare function AndroidEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
+export interface AndroidBrowseRowProps { name: string; count?: string; noImage?: boolean }
+export declare function AndroidBrowseRow(props: AndroidBrowseRowProps): React.ReactElement;
+export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; pressing?: string; labels?: string; noCover?: boolean }
+export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
+export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; error?: string; where?: string }
+export declare function AndroidDownloadControl(props: AndroidDownloadControlProps): React.ReactElement;
+export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; noCover?: boolean; coverSize?: number; children?: React.ReactNode }
+export declare function MacAlbumPanel(props: MacAlbumPanelProps): React.ReactElement;
+export declare function MacTrackColumns(props: { children?: React.ReactNode }): React.ReactElement;
+export declare function MacBrowseSplit(props: { children?: React.ReactNode }): React.ReactElement;
+export interface MacArtistAlbumTileProps { title: string; year?: string; noCover?: boolean }
+export declare function MacArtistAlbumTile(props: MacArtistAlbumTileProps): React.ReactElement;

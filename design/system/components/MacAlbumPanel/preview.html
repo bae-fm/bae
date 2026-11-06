@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS library" height=520 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacAlbumPanel</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacAlbumPanel, { title: 'Harvest Moon', artist: 'Neil Young', year: '1992', releases: 'CD, LP', pressing: 'CD · Reprise 9362-45057-2 · 1992', labels: 'Reprise', coverSize: 240 }, h(B.MacEyebrow, null, 'Side A'), h(B.MacTrackRow, { position: 'A1', title: 'Unknown Legend', duration: '4:32', current: true, playing: true }), h(B.MacTrackRow, { position: 'A2', title: 'From Hank to Hendrix', duration: '5:12' }))));
+</script>
+</body>
+</html>

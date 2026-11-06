@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS library" height=150 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSeekBar</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Playing', h(B.MacSeekBar, { position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' })), W('Holes', h(B.MacSeekBar, { position: 0.2, held: '0-0.3,0.55-0.7', elapsed: '1:01', duration: '5:03' }))));
+</script>
+</body>
+</html>
