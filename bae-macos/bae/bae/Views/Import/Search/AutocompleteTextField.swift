@@ -13,25 +13,35 @@ struct AutocompleteTextField: View {
     var text: String
     let placeholder: String
     let suggestions: [String]
-    /// A request for the field to take the keyboard. Each new request (any
-    /// value the field has not served yet; `0` is no request) moves the
-    /// responder once, so the same request asked again after the person
-    /// clicked elsewhere is honoured while a redraw with an old one is not.
+    /// A request for the field to take the keyboard. A pending request
+    /// (nonzero) is served when the field shows, and each new value once, so
+    /// the same request asked again after the person clicked elsewhere is
+    /// honoured while a redraw with an old one is not; `0` is no request.
     var focusRequest: Int = 0
     var onSubmit: (() -> Void)?
     /// The field gave the keyboard up — Tab, a click elsewhere, Enter. What
     /// it holds is what the person left in it.
     var onEditingEnded: (() -> Void)?
 
+    @State
+    private var focus = FieldFocus()
+
     var body: some View {
         InlineCompletionTextFieldNS(
             text: $text,
             placeholder: placeholder,
             suggestions: suggestions,
-            focusRequest: focusRequest,
+            focus: focus,
             onSubmit: onSubmit,
             onEditingEnded: onEditingEnded,
         )
+        // Served from here rather than from the update pass: taking the
+        // keyboard ends another field's editing, whose handler writes state.
+        .onChange(of: focusRequest, initial: true) { _, request in
+            if request != 0 {
+                focus.request()
+            }
+        }
     }
 
     nonisolated static func completionSelectionRange(
@@ -52,12 +62,13 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     var text: String
     let placeholder: String
     let suggestions: [String]
-    let focusRequest: Int
+    let focus: FieldFocus
     var onSubmit: (() -> Void)?
     var onEditingEnded: (() -> Void)?
 
     func makeNSView(context: Context) -> NSTextField {
-        let field = NSTextField()
+        let field = FocusingTextField()
+        field.focus = focus
         field.placeholderString = placeholder
         field.bezelStyle = .roundedBezel
         field.isBordered = true
@@ -79,18 +90,6 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
             field.stringValue = text
             context.coordinator.userTypedPrefix = text
         }
-        // A request moves the responder once: holding the same one through
-        // redraws must not drag focus back every time the pane redraws.
-        if focusRequest != 0,
-            focusRequest != context.coordinator.servedFocusRequest
-        {
-            context.coordinator.servedFocusRequest = focusRequest
-            // The field has no window during the update pass that installs
-            // it, so ask on the next turn.
-            DispatchQueue.main.async {
-                field.window?.makeFirstResponder(field)
-            }
-        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -107,9 +106,6 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
         /// mid-text resets this and suppresses further completion until
         /// the user types forward again.
         fileprivate var userTypedPrefix: String = ""
-        /// The focus request already honoured, so focus moves on a new one
-        /// rather than on every redraw.
-        fileprivate var servedFocusRequest = 0
 
         init(parent: InlineCompletionTextFieldNS) {
             self.parent = parent

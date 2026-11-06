@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import SwiftUI
 import os.log
@@ -176,8 +177,6 @@ struct DiscogsSettingsContent: View {
     let onSave: () -> Void
     let onRecheck: () -> Void
     let onRemove: () -> Void
-    @FocusState
-    private var keyFieldIsFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -226,20 +225,15 @@ struct DiscogsSettingsContent: View {
         }
     }
 
-    /// Key field and Save, for the not-configured and rejected states.
+    /// Key field and Save, for the not-configured and rejected states. The
+    /// field takes the keyboard as it shows.
     private var keyInput: some View {
         HStack(spacing: ThemeSpace.compact) {
-            TextField(
-                "API key",
+            KeyTextField(
                 text: $draft,
-                prompt: Text("Paste your key here")
+                label: String(localized: "API key"),
+                prompt: String(localized: "Paste your key here")
             )
-            .labelsHidden()
-            .focused($keyFieldIsFocused)
-            .task {
-                await Task.yield()
-                keyFieldIsFocused = true
-            }
             Button("Save", action: onSave)
                 .disabled(draft.isEmpty || isValidating)
         }
@@ -266,6 +260,59 @@ struct DiscogsSettingsContent: View {
             Button("Re-check", action: onRecheck)
                 .disabled(isValidating)
             Button("Remove", action: onRemove)
+        }
+    }
+}
+
+/// The Discogs key's field: plain text, which takes the keyboard as soon as
+/// it is in a window.
+private struct KeyTextField: NSViewRepresentable {
+    @Binding
+    var text: String
+    let label: String
+    let prompt: String
+
+    func makeNSView(context: Context) -> FocusingTextField {
+        let field = FocusingTextField()
+        field.placeholderString = prompt
+        field.setAccessibilityLabel(label)
+        field.bezelStyle = .roundedBezel
+        field.isBezeled = true
+        field.delegate = context.coordinator
+        field.cell?.usesSingleLineMode = true
+        field.cell?.wraps = false
+        field.cell?.isScrollable = true
+        field.stringValue = text
+        field.focus = context.coordinator.focus
+        context.coordinator.focus.request()
+        return field
+    }
+
+    func updateNSView(_ field: FocusingTextField, context: Context) {
+        context.coordinator.text = $text
+        if field.stringValue != text {
+            field.stringValue = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var text: Binding<String>
+        let focus = FieldFocus()
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else {
+                return
+            }
+            text.wrappedValue = field.stringValue
         }
     }
 }
