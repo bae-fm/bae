@@ -51,7 +51,7 @@ export interface MacPopUpButtonProps { value?: string; width?: number; off?: boo
 export declare function MacPopUpButton(props: MacPopUpButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
-export interface MacSwitchProps { on?: boolean; label: string }
+export interface MacSwitchProps { on?: boolean; label: string; off?: boolean }
 export declare function MacSwitch(props: MacSwitchProps): React.ReactElement;
 
 /** The eight accent swatches in the order the appearance settings offer them; selected names the chosen one. */
@@ -273,3 +273,49 @@ export declare function MacSectionHeader(props: MacSectionHeaderProps): React.Re
 export declare function MacWorkDetail(props: { title: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacHairline(props: {}): React.ReactElement;
 export declare function MacContentUnavailable(props: { title: string; description?: string }): React.ReactElement;
+export declare function Sym(props: { name: string; size?: number; weight?: number }): React.ReactElement;
+export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'Cloud'; search?: string; inspector?: boolean; width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
+export declare function MacTable(props: { columns: string; empty?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacTableRow(props: { selected?: boolean; placeholder?: boolean; children?: React.ReactNode }): React.ReactElement;
+export declare function MacReleaseCell(props: { title: string }): React.ReactElement;
+export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'transfer' | 'uploading' | 'pinning' | 'detaching'; label?: string; progress?: number }): React.ReactElement;
+export declare function MacStorageFooter(props: { releases?: string; total?: string; uploads?: string; pins?: string; exports?: string }): React.ReactElement;
+export declare function MacTransferSummary(props: { kind?: 'upload' | 'pin'; counts?: string; bytes?: string; rate?: string; progress?: number; cancel?: boolean }): React.ReactElement;
+export declare function MacTransferReadout(props: { kind?: 'upload' | 'pin'; bytes?: string; rate?: string; progress?: number }): React.ReactElement;
+export declare function MacFileRow(props: { name: string; size?: string; state?: 'rest' | 'queued' | 'sending' | 'pinning'; progress?: number; selected?: boolean }): React.ReactElement;
+export declare function MacFileDetails(props: { name: string; folder?: string; kind?: string; format?: string; size?: string }): React.ReactElement;
+export declare function MacErrorDisclosure(props: { message: string; fault?: string; tone?: 'danger' | 'warning' | 'neutral'; icon?: boolean; open?: boolean; excerpt?: string }): React.ReactElement;
+export declare function MacPopover(props: { width?: number; top?: number; right?: number; children?: React.ReactNode }): React.ReactElement;
+export declare function MacSyncActivity(props: { attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
+export declare function AndroidErrorDisclosure(props: { message: string; fault?: string; tone?: 'danger' | 'warning' | 'neutral' }): React.ReactElement;
+export declare function AndroidSyncActivity(props: { attention?: string; fault?: string; record?: string; reason?: string; syncing?: boolean; uploads?: string; uploadBytes?: string; downloads?: string; error?: string; errorFault?: string; retry?: boolean }): React.ReactElement;
+export declare function AndroidSegmentedButtons(props: { options: string; selected?: string }): React.ReactElement;
+export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
+export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string; error?: string }): React.ReactElement;
+export declare function AndroidSnackbar(props: { message: string; action?: string; close?: boolean }): React.ReactElement;
+export declare function AndroidErrorBanner(props: { message: string; fault?: string }): React.ReactElement;
+export declare function MacWindowNotice(props: { title: string; message?: string; fault?: string; advice?: string; fill?: boolean }): React.ReactElement;
+export declare function MacLoadFailure(props: { message: string; fault?: string }): React.ReactElement;
+export declare function MacImportSidebar(props: { tab?: 'Found' | 'Imported' | 'Skipped'; found?: string; imported?: string; skipped?: string; filter?: string; narrowed?: string; identifying?: number; importing?: boolean; scanning?: boolean; filtered?: boolean; empty?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacImportGroupHeader(props: { name: string; closed?: boolean }): React.ReactElement;
+export declare function MacImportRow(props: { title?: string; artist?: string; folder?: string; cover?: string; noCover?: boolean; record?: boolean; badge?: string; badgeTone?: 'warning' | 'danger'; state?: 'identifyQueued' | 'identifying' | 'importQueued' | 'importing' | 'uploading'; step?: string; progress?: number; error?: string; grouped?: boolean; selected?: boolean }): React.ReactElement;
+export declare function MacImportFolderLine(props: { tab?: string; folder: string }): React.ReactElement;
+export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; cover?: string; fields?: string; records?: string; check?: string; cloud?: boolean; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
+export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
+export declare function MacImportTrackRow(props: { file: string; entry?: boolean; evidence?: string; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
+export declare function MacImportSideHeader(props: { title: string }): React.ReactElement;
+export declare function MacImportSheetCaption(props: { disc?: string; sheet: string; bound?: string; unbound?: boolean }): React.ReactElement;
+export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; autoStatus?: 'working' | 'failed'; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
+export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacPressingRow(props: { year?: string; labels?: string; catalog?: string; badges?: string; summary?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
+export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string }): React.ReactElement;
+export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
+export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
+export declare function MacCoverGallery(props: { title?: string; selected?: string; source?: string; current?: string; remote?: 'unlinked'; remoteNames?: string; files?: string }): React.ReactElement;
+export declare function MacLightbox(props: { title?: string; label?: string; source?: string; browse?: boolean; state?: 'loading' | 'failed' }): React.ReactElement;
+export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading'; why?: string; actions?: string }): React.ReactElement;
+export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
+export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
+export declare function MacListRow(props: { lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean }): React.ReactElement;
+export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean }): React.ReactElement;

@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS import" height=420 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacImportSidebar</title></head>
+<body class="bae-preview" style="padding: 0;">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { height: 360, display: 'flex' } }, h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', identifying: 0.4 }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true })))));
+</script>
+</body>
+</html>

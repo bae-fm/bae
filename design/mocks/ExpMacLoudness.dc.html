@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exploration: macOS: loudness in Playback settings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Playback" title="Playback"><x-import component-from-global-scope="Bae.MacSection" title="Loudness"><x-import component-from-global-scope="Bae.MacBox"><x-import component-from-global-scope="Bae.MacRow" label="Even out loudness"><x-import component-from-global-scope="Bae.MacPopUpButton" value="Per album"></x-import></x-import></x-import></x-import><x-import component-from-global-scope="Bae.MacNote">Per album keeps an album’s quiet and loud songs as the artist set them and evens out one album against another. Per track evens out every track; use it for shuffle and playlists. Off plays every file as it is.</x-import></x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

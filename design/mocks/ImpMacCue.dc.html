@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: CUE sheets, one still needing its audio</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacMainWindow" section="Import" height="900" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.35" held="0.6" elapsed="1:42" duration="5:03"><div class="bae-m-isplit"><x-import component-from-global-scope="Bae.MacImportSidebar" tab="Found" found="14" imported="31" skipped="2" identifying="0.4"><x-import component-from-global-scope="Bae.MacImportGroupHeader" name="Mara Quill — Field Recordings (1979)"></x-import><x-import component-from-global-scope="Bae.MacImportRow" grouped="{{yes}}" title="Field Recordings" selected="{{yes}}" artist="Mara Quill" record="{{yes}}" cover="Field Recordings"></x-import><x-import component-from-global-scope="Bae.MacImportRow" grouped="{{yes}}" folder="Disc 2" no-cover="{{yes}}" state="identifying"></x-import><x-import component-from-global-scope="Bae.MacImportRow" title="Low Tide Hours" artist="Mara Quill" badge="3 matches" record="{{yes}}" cover="Low Tide Hours"></x-import><x-import component-from-global-scope="Bae.MacImportRow" title="Copper Sky" artist="Odile Fen" badge="Medium mismatch" cover="Copper Sky"></x-import><x-import component-from-global-scope="Bae.MacImportRow" folder="2024-rips/untitled 07" no-cover="{{yes}}" badge="Nothing to look up"></x-import><x-import component-from-global-scope="Bae.MacImportRow" title="Small Hours" artist="Tomas Brell" state="identifyQueued" cover="Small Hours"></x-import><x-import component-from-global-scope="Bae.MacImportRow" title="Winter Kitchen" artist="Odile Fen" badge="Not found" badge-tone="warning" cover="Winter Kitchen"></x-import><x-import component-from-global-scope="Bae.MacImportRow" title="Northbound" artist="Mara Quill" state="importing" step="Measuring loudness..." progress="0.6" record="{{yes}}" cover="Northbound"></x-import><x-import component-from-global-scope="Bae.MacImportRow" title="Salt and Cedar" artist="The Slow Orchards" state="importQueued" record="{{yes}}" cover="Salt and Cedar"></x-import><x-import component-from-global-scope="Bae.MacImportRow" title="Paper Lanterns" artist="The Slow Orchards" badge="Import error" badge-tone="danger" error="Couldn’t read 03 Second Floor.flac" cover="Paper Lanterns"></x-import></x-import><div class="bae-m-ipane"><x-import component-from-global-scope="Bae.MacImportFolderLine" folder="Mara Quill - Field Recordings (1979)"></x-import><x-import component-from-global-scope="Bae.MacImportDraft" title="Field Recordings" artist="Mara Quill" year="1979" cover="Field Recordings" check="The release lists no tracks" fields="Year:1979,Media:2×CD,Label:Harbor Records — HR-0779,Country:US,Barcode:—,Status:Official,Packaging:Jewel case,Details:—"></x-import><x-import component-from-global-scope="Bae.MacImportTable"><x-import component-from-global-scope="Bae.MacImportSheetCaption" disc="Disc 1" sheet="Field Recordings CD1.cue" bound="Field Recordings CD1.flac"></x-import><x-import component-from-global-scope="Bae.MacImportTrackRow" file="Slow Morning" entry="{{yes}}" position="1" title="Slow Morning" inherited="{{yes}}" length="10:22" evidence="Disc ID"></x-import><x-import component-from-global-scope="Bae.MacImportTrackRow" file="Weather Report Card" entry="{{yes}}" position="2" title="Weather Report Card" inherited="{{yes}}" length="4:36"></x-import><x-import component-from-global-scope="Bae.MacImportTrackRow" file="Night Ferry" entry="{{yes}}" position="3" title="Night Ferry" inherited="{{yes}}" length="4:36"></x-import><x-import component-from-global-scope="Bae.MacImportSheetCaption" disc="Disc 2" sheet="Field Recordings CD2.cue" unbound="{{yes}}"></x-import></x-import></div></div></x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1400,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

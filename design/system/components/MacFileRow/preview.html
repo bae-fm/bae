@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS storage" height=180 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacFileRow</title></head>
+<body class="bae-preview" style="padding: 0;">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', null, h(B.MacFileRow, { name: '01 Harbor Lights.flac', size: '34.1 MB', state: 'sending', progress: 0.7 }), h(B.MacFileRow, { name: '02 The Long Way Home.flac', size: '38.9 MB', state: 'queued' }), h(B.MacFileRow, { name: 'cover.jpg', size: '1.2 MB' }))));
+</script>
+</body>
+</html>

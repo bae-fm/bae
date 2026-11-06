@@ -80,7 +80,7 @@
    "title": "Home: ⋮ menu with Libraries",
    "w": 412,
    "x": 0,
-   "y": 14416
+   "y": 19928
   },
   "InviteForm.dc.html": {
    "h": 916,
@@ -104,7 +104,7 @@
    "title": "Libraries (from ⋮)",
    "w": 412,
    "x": 492,
-   "y": 14416
+   "y": 19928
   },
   "Library.dc.html": {
    "h": 916,
@@ -1114,7 +1114,7 @@
    "title": "Today",
    "w": 440,
    "x": 0,
-   "y": 0
+   "y": 6552
   },
   "storage/PanelFile.dc.html": {
    "h": 614,
@@ -1123,7 +1123,7 @@
    "title": "Proposed, file selected",
    "w": 440,
    "x": 1040,
-   "y": 0
+   "y": 6552
   },
   "storage/PanelPin.dc.html": {
    "h": 614,
@@ -1132,7 +1132,7 @@
    "title": "Proposed, pinning",
    "w": 440,
    "x": 1560,
-   "y": 0
+   "y": 6552
   },
   "storage/Proposed.dc.html": {
    "h": 900,
@@ -1141,7 +1141,7 @@
    "title": "Proposed",
    "w": 440,
    "x": 520,
-   "y": 0
+   "y": 6552
   },
   "storage/Window.dc.html": {
    "h": 654,
@@ -1150,7 +1150,7 @@
    "title": "Window today",
    "w": 1040,
    "x": 0,
-   "y": 1340
+   "y": 7892
   },
   "storage/WindowBoth.dc.html": {
    "h": 654,
@@ -1159,7 +1159,7 @@
    "title": "Uploads and downloads",
    "w": 1040,
    "x": 1120,
-   "y": 2114
+   "y": 8666
   },
   "storage/WindowFilter.dc.html": {
    "h": 654,
@@ -1168,7 +1168,7 @@
    "title": "All / Local / Cloud, sorted by Storage",
    "w": 1040,
    "x": 0,
-   "y": 2114
+   "y": 8666
   },
   "storage/WindowProposed.dc.html": {
    "h": 654,
@@ -1177,7 +1177,7 @@
    "title": "Window proposed",
    "w": 1040,
    "x": 1120,
-   "y": 1340
+   "y": 7892
   },
   "MacSetupS3KeyNotAccepted.dc.html": {
    "h": 600,
@@ -2082,6 +2082,1022 @@
    "w": 1200,
    "x": 3840,
    "y": 12576
+  },
+  "StoreMacWindow.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: Storage Manager",
+   "w": 1100,
+   "x": 0,
+   "y": 240
+  },
+  "StoreMacInspector.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release uploading, in the inspector",
+   "w": 1100,
+   "x": 1180,
+   "y": 240
+  },
+  "StoreMacFile.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a file selected",
+   "w": 1100,
+   "x": 2360,
+   "y": 240
+  },
+  "StoreMacPinning.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release pinning",
+   "w": 1100,
+   "x": 3540,
+   "y": 240
+  },
+  "StoreMacMenu.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release’s menu",
+   "w": 1100,
+   "x": 0,
+   "y": 1380
+  },
+  "StoreMacMoveToCloud.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: Move to Cloud",
+   "w": 1100,
+   "x": 1180,
+   "y": 1380
+  },
+  "StoreMacNoMatch.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: Filter finds nothing",
+   "w": 1100,
+   "x": 2360,
+   "y": 1380
+  },
+  "StoreMacLoading.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: rows still loading",
+   "w": 1100,
+   "x": 3540,
+   "y": 1380
+  },
+  "StoreMacCloud.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: Cloud only",
+   "w": 1100,
+   "x": 4720,
+   "y": 1380
+  },
+  "StoreMacNoLibrary.dc.html": {
+   "h": 200,
+   "page": "storage",
+   "title": "macOS: no library open",
+   "w": 300,
+   "x": 5900,
+   "y": 1380
+  },
+  "SyncMacMoving.dc.html": {
+   "h": 760,
+   "page": "storage",
+   "title": "macOS: sync activity, moving",
+   "w": 1200,
+   "x": 0,
+   "y": 2520
+  },
+  "SyncMacAttention.dc.html": {
+   "h": 760,
+   "page": "storage",
+   "title": "macOS: needs attention",
+   "w": 1200,
+   "x": 1280,
+   "y": 2520
+  },
+  "SyncMacFailed.dc.html": {
+   "h": 760,
+   "page": "storage",
+   "title": "macOS: sync failed, Retry Now",
+   "w": 1200,
+   "x": 2560,
+   "y": 2520
+  },
+  "SyncMacIdle.dc.html": {
+   "h": 760,
+   "page": "storage",
+   "title": "macOS: up to date (button hidden; popover as it would show)",
+   "w": 1200,
+   "x": 3840,
+   "y": 2520
+  },
+  "SyncAndroidMoving.dc.html": {
+   "h": 916,
+   "page": "storage",
+   "title": "Sync activity, moving",
+   "w": 412,
+   "x": 0,
+   "y": 3760
+  },
+  "SyncAndroidAttention.dc.html": {
+   "h": 916,
+   "page": "storage",
+   "title": "Needs attention",
+   "w": 412,
+   "x": 492,
+   "y": 3760
+  },
+  "SyncAndroidFailed.dc.html": {
+   "h": 916,
+   "page": "storage",
+   "title": "Sync failed, Retry Now",
+   "w": 412,
+   "x": 984,
+   "y": 3760
+  },
+  "DownloadsAndroid.dc.html": {
+   "h": 916,
+   "page": "storage",
+   "title": "Downloads",
+   "w": 412,
+   "x": 0,
+   "y": 5156
+  },
+  "DownloadsAndroidFailed.dc.html": {
+   "h": 916,
+   "page": "storage",
+   "title": "Downloads: one failed",
+   "w": 412,
+   "x": 492,
+   "y": 5156
+  },
+  "DownloadsAndroidEmpty.dc.html": {
+   "h": 916,
+   "page": "storage",
+   "title": "Downloads: none",
+   "w": 412,
+   "x": 984,
+   "y": 5156
+  },
+  "SetMacImport.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Import, no Discogs key",
+   "w": 690,
+   "x": 0,
+   "y": 8136
+  },
+  "SetMacImportChecking.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Import, checking the key",
+   "w": 690,
+   "x": 770,
+   "y": 8136
+  },
+  "SetMacImportRejected.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Import, key rejected",
+   "w": 690,
+   "x": 1540,
+   "y": 8136
+  },
+  "SetMacImportConnected.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Import, Discogs connected",
+   "w": 690,
+   "x": 2310,
+   "y": 8136
+  },
+  "SetMacImportUnvalidated.dc.html": {
+   "h": 760,
+   "page": "settings",
+   "title": "macOS: Import, key saved offline",
+   "w": 690,
+   "x": 3080,
+   "y": 8136
+  },
+  "SetMacFormats.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Formats",
+   "w": 690,
+   "x": 0,
+   "y": 9376
+  },
+  "SetMacFormatEditor.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Formats, editing a format",
+   "w": 690,
+   "x": 770,
+   "y": 9376
+  },
+  "SetMacFormatDelete.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Formats, delete a format",
+   "w": 690,
+   "x": 1540,
+   "y": 9376
+  },
+  "SetMacFormatRefused.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Formats, core refuses (the shared alert)",
+   "w": 690,
+   "x": 2310,
+   "y": 9376
+  },
+  "SetMacSubsonic.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, off",
+   "w": 690,
+   "x": 0,
+   "y": 10456
+  },
+  "SetMacSubsonicOn.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, running on the network",
+   "w": 690,
+   "x": 770,
+   "y": 10456
+  },
+  "SetMacSubsonicRefused.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Subsonic, turned on with no username",
+   "w": 690,
+   "x": 1540,
+   "y": 10456
+  },
+  "SetMacAutomation.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Automation, off",
+   "w": 690,
+   "x": 0,
+   "y": 11536
+  },
+  "SetMacAutomationOn.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Automation, on, token copied",
+   "w": 690,
+   "x": 770,
+   "y": 11536
+  },
+  "SetMacAutomationFailed.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Automation, server could not start",
+   "w": 690,
+   "x": 1540,
+   "y": 11536
+  },
+  "OpenAndroidFinding.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Finding your libraries",
+   "w": 412,
+   "x": 0,
+   "y": 4448
+  },
+  "OpenAndroidSteps.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Opening, rebuilding indexes",
+   "w": 412,
+   "x": 492,
+   "y": 4448
+  },
+  "OpenAndroidFailed.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "The library didn’t open: no way out",
+   "w": 412,
+   "x": 984,
+   "y": 4448
+  },
+  "OpenAndroidStartFailed.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "bae couldn’t start",
+   "w": 412,
+   "x": 1476,
+   "y": 4448
+  },
+  "OpenMacFinding.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: finding your libraries",
+   "w": 900,
+   "x": 0,
+   "y": 5844
+  },
+  "OpenMacSteps.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: opening, updating the library",
+   "w": 900,
+   "x": 980,
+   "y": 5844
+  },
+  "OpenMacKeychain.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Library Locked",
+   "w": 900,
+   "x": 1960,
+   "y": 5844
+  },
+  "CodeAndroidEnter.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Enter a code",
+   "w": 412,
+   "x": 0,
+   "y": 6924
+  },
+  "CodeAndroidScan.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Scanning a code",
+   "w": 412,
+   "x": 492,
+   "y": 6924
+  },
+  "CodeAndroidS3.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "The code read, S3 key needed",
+   "w": 412,
+   "x": 984,
+   "y": 6924
+  },
+  "CodeAndroidRunning.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Adding this device",
+   "w": 412,
+   "x": 1476,
+   "y": 6924
+  },
+  "CodeMacEmpty.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Add device, before a code",
+   "w": 900,
+   "x": 0,
+   "y": 8320
+  },
+  "CodeMacTyping.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: a code half typed",
+   "w": 900,
+   "x": 980,
+   "y": 8320
+  },
+  "CodeMacS3.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: the code read, S3 key needed",
+   "w": 900,
+   "x": 1960,
+   "y": 8320
+  },
+  "CodeMacScan.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: scanning a code",
+   "w": 900,
+   "x": 2940,
+   "y": 8320
+  },
+  "CodeMacRunning.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: adding, downloading the library",
+   "w": 900,
+   "x": 3920,
+   "y": 8320
+  },
+  "CodeMacJoin.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Join library",
+   "w": 900,
+   "x": 4900,
+   "y": 8320
+  },
+  "ResetAndroidOffered.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Reset offered: no Back",
+   "w": 412,
+   "x": 0,
+   "y": 9400
+  },
+  "ResetAndroidDialog.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Reset this device?",
+   "w": 412,
+   "x": 492,
+   "y": 9400
+  },
+  "ResetAndroidWorking.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Resetting",
+   "w": 412,
+   "x": 984,
+   "y": 9400
+  },
+  "ResetAndroidUnfinished.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Finish resetting",
+   "w": 412,
+   "x": 1476,
+   "y": 9400
+  },
+  "ResetMacOffered.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Reset this device?",
+   "w": 900,
+   "x": 0,
+   "y": 10796
+  },
+  "ResetMacWorking.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: resetting",
+   "w": 900,
+   "x": 980,
+   "y": 10796
+  },
+  "ResetMacFailed.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: reset failed",
+   "w": 900,
+   "x": 1960,
+   "y": 10796
+  },
+  "ResetMacUnfinished.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: finish resetting",
+   "w": 900,
+   "x": 2940,
+   "y": 10796
+  },
+  "AlbAndroidMenu.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album options: one item",
+   "w": 412,
+   "x": 0,
+   "y": 14416
+  },
+  "AlbAndroidDelete.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Delete this album?",
+   "w": 412,
+   "x": 492,
+   "y": 14416
+  },
+  "AlbAndroidDeleteFailed.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Delete failed",
+   "w": 412,
+   "x": 984,
+   "y": 14416
+  },
+  "AlbAndroidGallery.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "The gallery",
+   "w": 412,
+   "x": 1476,
+   "y": 14416
+  },
+  "AlbAndroidGalleryLoading.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "The gallery, loading",
+   "w": 412,
+   "x": 1968,
+   "y": 14416
+  },
+  "AlbMacEditor.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Edit…",
+   "w": 1200,
+   "x": 0,
+   "y": 15812
+  },
+  "AlbMacStorage.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Storage…",
+   "w": 1200,
+   "x": 1280,
+   "y": 15812
+  },
+  "AlbMacStorageUploading.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Storage…, uploading",
+   "w": 1200,
+   "x": 2560,
+   "y": 15812
+  },
+  "AlbMacStorageElsewhere.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Storage…, on another Mac",
+   "w": 1200,
+   "x": 3840,
+   "y": 15812
+  },
+  "AlbMacDeleteAlbum.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Delete Album…",
+   "w": 1200,
+   "x": 5120,
+   "y": 15812
+  },
+  "AlbMacDeleteRelease.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Delete Release",
+   "w": 1200,
+   "x": 6400,
+   "y": 15812
+  },
+  "AlbMacCovers.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Change Cover",
+   "w": 1200,
+   "x": 7680,
+   "y": 15812
+  },
+  "AlbMacCoversUnlinked.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Change Cover, no linked release",
+   "w": 1200,
+   "x": 8960,
+   "y": 15812
+  },
+  "AlbMacLightbox.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: the cover in the lightbox",
+   "w": 1200,
+   "x": 10240,
+   "y": 15812
+  },
+  "AlbMacLightboxFailed.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: lightbox, image failed",
+   "w": 1200,
+   "x": 11520,
+   "y": 15812
+  },
+  "AlbMacSaveAs.dc.html": {
+   "h": 1000,
+   "page": "home",
+   "title": "macOS: Save As… on a track",
+   "w": 1200,
+   "x": 12800,
+   "y": 15812
+  },
+  "ErrAndroidSnackRetry.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Snackbar: a failed action, Retry",
+   "w": 412,
+   "x": 0,
+   "y": 17292
+  },
+  "ErrAndroidSnackPlay.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Snackbar: a failed play (line only, no details)",
+   "w": 412,
+   "x": 492,
+   "y": 17292
+  },
+  "ErrAndroidSnackBug.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Snackbar: Something went wrong.",
+   "w": 412,
+   "x": 984,
+   "y": 17292
+  },
+  "ErrAndroidBanner.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Banner: a later page of albums failed",
+   "w": 412,
+   "x": 1476,
+   "y": 17292
+  },
+  "ErrAndroidBar.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Now-playing bar: playback values failed to read",
+   "w": 412,
+   "x": 1968,
+   "y": 17292
+  },
+  "ErrAndroidQueue.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Queue: a failed command, and the tail stopped reading",
+   "w": 412,
+   "x": 2460,
+   "y": 17292
+  },
+  "ErrAndroidLaunch.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Launch problem banner, above every screen",
+   "w": 412,
+   "x": 2952,
+   "y": 17292
+  },
+  "ErrMacAlert.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: the Error alert (one slot; a second error replaces the first)",
+   "w": 1200,
+   "x": 0,
+   "y": 18688
+  },
+  "ErrMacAlertNotError.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: a play outcome, titled Error",
+   "w": 1200,
+   "x": 1280,
+   "y": 18688
+  },
+  "ErrMacAlertTitled.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: the album page’s own titles",
+   "w": 1200,
+   "x": 2560,
+   "y": 18688
+  },
+  "ErrMacNotices.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: notices at the window’s bottom (the load error has no fill)",
+   "w": 1200,
+   "x": 3840,
+   "y": 18688
+  },
+  "ErrMacLoadFailure.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: a view that failed to load",
+   "w": 1200,
+   "x": 5120,
+   "y": 18688
+  },
+  "ErrMacQueueTail.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: the queue’s tail stopped reading",
+   "w": 1200,
+   "x": 6400,
+   "y": 18688
+  },
+  "ImpMacEmpty.dc.html": {
+   "h": 760,
+   "page": "import",
+   "title": "macOS: Import, no folders yet",
+   "w": 1200,
+   "x": 0,
+   "y": 240
+  },
+  "ImpMacFound.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Found, nothing selected",
+   "w": 1400,
+   "x": 1280,
+   "y": 240
+  },
+  "ImpMacDraft.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: a release identified, ready to import",
+   "w": 1400,
+   "x": 2760,
+   "y": 240
+  },
+  "ImpMacBlank.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: a folder with nothing read",
+   "w": 1400,
+   "x": 4240,
+   "y": 240
+  },
+  "ImpMacListFailed.dc.html": {
+   "h": 760,
+   "page": "import",
+   "title": "macOS: the import list couldn’t be read",
+   "w": 1200,
+   "x": 5720,
+   "y": 240
+  },
+  "ImpMacFindAuto.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Identify, Automatic found several",
+   "w": 1400,
+   "x": 0,
+   "y": 1620
+  },
+  "ImpMacFindDiscogs.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Identify, no Discogs key, nothing found",
+   "w": 1400,
+   "x": 1480,
+   "y": 1620
+  },
+  "ImpMacFindSearch.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Identify, Search",
+   "w": 1400,
+   "x": 2960,
+   "y": 1620
+  },
+  "ImpMacBanners.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: already in the library, and an artist conflict",
+   "w": 1400,
+   "x": 4440,
+   "y": 1620
+  },
+  "ImpMacCue.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: CUE sheets, one still needing its audio",
+   "w": 1400,
+   "x": 5920,
+   "y": 1620
+  },
+  "ImpMacBulk.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: several selected",
+   "w": 1400,
+   "x": 0,
+   "y": 3000
+  },
+  "ImpMacBulkRunning.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: several selected, identifying",
+   "w": 1400,
+   "x": 1480,
+   "y": 3000
+  },
+  "ImpMacImporting.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: importing",
+   "w": 1400,
+   "x": 2960,
+   "y": 3000
+  },
+  "ImpMacDone.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Imported, uploading",
+   "w": 1400,
+   "x": 4440,
+   "y": 3000
+  },
+  "ImpMacSkipped.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Skipped",
+   "w": 1400,
+   "x": 5920,
+   "y": 3000
+  },
+  "ExpMacRating.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: rating an album and its tracks",
+   "w": 1200,
+   "x": 0,
+   "y": 240
+  },
+  "ExpMacRateMenu.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: a track’s menu, Rate",
+   "w": 1200,
+   "x": 1280,
+   "y": 240
+  },
+  "ExpAndroidRating.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: rating an album",
+   "w": 412,
+   "x": 2560,
+   "y": 240
+  },
+  "ExpMacPlaylists.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: Playlists, one open",
+   "w": 1200,
+   "x": 0,
+   "y": 1720
+  },
+  "ExpMacAddToPlaylist.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: Add to Playlist",
+   "w": 1200,
+   "x": 1280,
+   "y": 1720
+  },
+  "ExpMacNewPlaylist.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: New Playlist",
+   "w": 1200,
+   "x": 2560,
+   "y": 1720
+  },
+  "ExpAndroidPlaylists.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Playlists",
+   "w": 412,
+   "x": 3840,
+   "y": 1720
+  },
+  "ExpAndroidPlaylist.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: A playlist",
+   "w": 412,
+   "x": 4332,
+   "y": 1720
+  },
+  "ExpMacHistory.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: History, the household’s plays",
+   "w": 1200,
+   "x": 0,
+   "y": 3200
+  },
+  "ExpAndroidHistory.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: History",
+   "w": 412,
+   "x": 1280,
+   "y": 3200
+  },
+  "ExpMacPlayTracks.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: three tracks picked, played together",
+   "w": 1200,
+   "x": 0,
+   "y": 4596
+  },
+  "ExpMacTheseTracks.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: the queue, These tracks",
+   "w": 1200,
+   "x": 1280,
+   "y": 4596
+  },
+  "ExpMacLoudness.dc.html": {
+   "h": 600,
+   "page": "explore",
+   "title": "Exploration: macOS: loudness in Playback settings",
+   "w": 690,
+   "x": 0,
+   "y": 6076
+  },
+  "ExpAndroidLoudness.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Loudness in Playback settings",
+   "w": 412,
+   "x": 770,
+   "y": 6076
+  },
+  "ExpMacProfile.dc.html": {
+   "h": 600,
+   "page": "explore",
+   "title": "Exploration: macOS: your picture and name",
+   "w": 690,
+   "x": 0,
+   "y": 7472
+  },
+  "ExpAndroidProfile.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Your picture and name",
+   "w": 412,
+   "x": 770,
+   "y": 7472
+  },
+  "ExpMacCredits.dc.html": {
+   "h": 1200,
+   "page": "explore",
+   "title": "Exploration: macOS: who did what, and the works, on the album",
+   "w": 1200,
+   "x": 0,
+   "y": 8868
+  },
+  "ExpAndroidCredits.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Who did what, and the works",
+   "w": 412,
+   "x": 1280,
+   "y": 8868
+  },
+  "ExpAndroidLinksFiles.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Catalog links and the release’s files",
+   "w": 412,
+   "x": 0,
+   "y": 10548
+  },
+  "ExpAndroidPrimary.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Set as primary release",
+   "w": 412,
+   "x": 492,
+   "y": 10548
+  },
+  "ExpAndroidArtistNames.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: An artist’s other printed names",
+   "w": 412,
+   "x": 984,
+   "y": 10548
+  },
+  "ExpAndroidMultiSelect.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Several albums picked",
+   "w": 412,
+   "x": 1476,
+   "y": 10548
+  },
+  "ExpAndroidStorage.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Storage on this phone",
+   "w": 412,
+   "x": 1968,
+   "y": 10548
   }
  },
  "createdOnFiles": {
@@ -2186,7 +3202,50 @@
   "row-composers-android",
   "row-composers-mac",
   "composers-today",
-  "code-ratings-playlists"
+  "code-ratings-playlists",
+  "row-store-mac",
+  "row-store-mac-states",
+  "row-sync-mac",
+  "row-sync-android",
+  "row-downloads-android",
+  "row-store-earlier",
+  "store-today",
+  "row-set-import",
+  "row-set-import-note",
+  "row-set-formats",
+  "row-set-formats-note",
+  "row-set-subsonic",
+  "row-set-subsonic-note",
+  "row-set-automation",
+  "row-set-automation-note",
+  "row-open-android",
+  "row-open-android-note",
+  "row-open-mac",
+  "row-code-android",
+  "row-code-mac",
+  "row-code-mac-note",
+  "row-reset-android",
+  "row-reset-android-note",
+  "row-reset-mac",
+  "row-albact-android",
+  "row-albact-mac",
+  "row-errors-android",
+  "row-errors-android-note",
+  "row-errors-mac",
+  "row-errors-mac-note",
+  "row-imp-list",
+  "row-imp-identify",
+  "row-imp-states",
+  "imp-today",
+  "row-exp-ratings",
+  "row-exp-playlists",
+  "row-exp-history",
+  "row-exp-tracks",
+  "row-exp-loudness",
+  "row-exp-profile",
+  "row-exp-credits",
+  "row-exp-android",
+  "exp-key"
  ],
  "notes": {
   "canvas-key-library": {
@@ -2504,7 +3563,7 @@
    "text": "Proposed: the panel is this release only: its upload summary with Cancel, then one line per file. A dashed circle marks a queued file, a filling ring an uploading one; stored files show nothing. Pause for the whole sync queue moves to the window's footer.",
    "w": 440,
    "x": 520,
-   "y": 960
+   "y": 7512
   },
   "storage-today": {
    "fill": "orange",
@@ -2512,7 +3571,7 @@
    "text": "Today: Pause floats mid-header (a hidden Cancel All still holds its space). Bytes read Zero kB of Zero kB while 3 upload. A file with no audio format keeps an empty second line. A status chip adds a third line plus an invisible bar's height, so rows jump between three heights.",
    "w": 440,
    "x": 0,
-   "y": 960
+   "y": 7512
   },
   "switch-rules": {
    "fill": "blue",
@@ -2521,7 +3580,7 @@
    "text": "macOS keeps switching libraries from the main window's menu.",
    "w": 380,
    "x": 984,
-   "y": 14416
+   "y": 19928
   },
   "sync-rules": {
    "fill": "blue",
@@ -2710,7 +3769,7 @@
    "text": "Switch library (Android, proposed)",
    "w": 240,
    "x": 0,
-   "y": 14176
+   "y": 19688
   },
   "code-casting": {
    "page": "settings",
@@ -2757,7 +3816,7 @@
    "size": 24,
    "w": 420,
    "x": 1424,
-   "y": 14416,
+   "y": 19928,
    "text": "What the code needs for these boards:\n- Android switches libraries from the home screen's ⋮ menu: Libraries opens the list of this device's libraries, each with Remove. Today it is “Switch to another library on this device” in Library settings (SettingsLibrarySection.kt:111), and the ⋮ menu holds Sort by, Shuffle library and Settings (decisions.md 2026-11-01). The list is the one the welcome screen shows (code-welcome). bae change, Android."
   },
   "row-lib-flow-android": {
@@ -2938,6 +3997,393 @@
    "x": 4380,
    "y": 1636,
    "text": "What the code needs for ratings and playlists (no screen yet):\n- The bridge reads ratings, playlists and a playlist's entries once (`ratings()`, `playlists()`, `playlist_entries()` in bae-bridge/src/handle/personal.rs), so a screen would miss a change from another device. They become subscriptions, as `subscribe_profiles` is, with the screens that show them.\n- spec/bae.md §10.2 (line 3846) already lists them as subscriptions; until then that line is wrong."
+  },
+  "row-store-mac": {
+   "kind": "title1",
+   "maxW": "4600",
+   "page": "storage",
+   "text": "Storage Manager: macOS (today)",
+   "w": "240",
+   "x": "0",
+   "y": "0"
+  },
+  "row-store-mac-states": {
+   "kind": "title1",
+   "maxW": "5000",
+   "page": "storage",
+   "text": "Storage Manager states: macOS (today)",
+   "w": "240",
+   "x": "0",
+   "y": "1140"
+  },
+  "row-sync-mac": {
+   "kind": "title1",
+   "maxW": "5000",
+   "page": "storage",
+   "text": "Sync activity: macOS (today)",
+   "w": "240",
+   "x": "0",
+   "y": "2280"
+  },
+  "row-sync-android": {
+   "kind": "title1",
+   "maxW": "1400",
+   "page": "storage",
+   "text": "Sync activity: Android (today)",
+   "w": "240",
+   "x": "0",
+   "y": "3520"
+  },
+  "row-downloads-android": {
+   "kind": "title1",
+   "maxW": "1400",
+   "page": "storage",
+   "text": "Downloads: Android (today)",
+   "w": "240",
+   "x": "0",
+   "y": "4916"
+  },
+  "row-store-earlier": {
+   "kind": "title1",
+   "maxW": "2200",
+   "page": "storage",
+   "text": "Earlier drawings (before the design system)",
+   "w": "240",
+   "x": "0",
+   "y": "6312"
+  },
+  "store-today": {
+   "page": "storage",
+   "size": 24,
+   "w": 460,
+   "x": 1520,
+   "y": 3760,
+   "fill": "blue",
+   "text": "What today's code does that looks unintended:\n- The Storage column's upload chip says Uploading; the catalog's word for that transfer is Attaching Audio….\n- macOS's sync popover has no way to the downloads; on Android the sync sheet's downloads line is the only way to the Downloads screen.\n- The Needs Attention rows keep a hidden action button: no action is wired."
+  },
+  "row-set-import": {
+   "page": "settings",
+   "x": "0",
+   "y": "7896",
+   "text": "Import: macOS only (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "4350"
+  },
+  "row-set-import-note": {
+   "page": "settings",
+   "x": 3850,
+   "y": 8136,
+   "text": "What today's code does that looks unintended:\n- A key already rejected when the pane opens fills the field with no word that it was rejected.\n- “…paste it above” stays when Connected, where there is no field.\n- “Couldn't validate yet (offline)” shows for any failed check.\n- Opening the pane re-checks the key every time.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-set-formats": {
+   "page": "settings",
+   "x": "0",
+   "y": "9136",
+   "text": "Formats: macOS only (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "3580"
+  },
+  "row-set-formats-note": {
+   "page": "settings",
+   "x": 3080,
+   "y": 9376,
+   "text": "What looks unintended:\n- Deleting a default format, or turning off what a default needs, is refused only after the fact, in the generic Error alert.\n- Done is greyed for a blank name or a bad bitrate with nothing saying why.\n- Defaults say Release and Tracks; the toggles say Track and Release.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-set-subsonic": {
+   "page": "settings",
+   "x": "0",
+   "y": "10216",
+   "text": "Subsonic: macOS only (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2810"
+  },
+  "row-set-subsonic-note": {
+   "page": "settings",
+   "x": 2310,
+   "y": 10456,
+   "text": "What looks unintended:\n- A switch core refuses stays on.\n- On the network, Status shows http://0.0.0.0:4533, which no other device can use.\n- Port and Username each have a Save that saves both; Password saved shows above the password.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-set-automation": {
+   "page": "settings",
+   "x": "0",
+   "y": "11296",
+   "text": "Automation: macOS only (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2810"
+  },
+  "row-set-automation-note": {
+   "page": "settings",
+   "x": 2310,
+   "y": 11536,
+   "text": "What looks unintended:\n- Nothing says what MCP is or how to connect.\n- Rotate token breaks connected tools with no confirmation.\n- A refused switch stays on, as in Subsonic.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-open-android": {
+   "page": "welcome",
+   "x": "0",
+   "y": "4208",
+   "text": "Opening: Android (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2468"
+  },
+  "row-open-android-note": {
+   "page": "welcome",
+   "x": 1968,
+   "y": 4448,
+   "text": "What looks unintended:\n- A library that won't open leaves Android on this screen with no button: no way to other libraries or to restore.\n- Android has no way to create a library.\n- A step with nothing to count draws an empty bar, both apps.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-open-mac": {
+   "page": "welcome",
+   "x": "0",
+   "y": "5604",
+   "text": "Opening: macOS (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "3440"
+  },
+  "row-code-android": {
+   "page": "welcome",
+   "x": "0",
+   "y": "6684",
+   "text": "Entering a code: Android (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2468"
+  },
+  "row-code-mac": {
+   "page": "welcome",
+   "x": "0",
+   "y": "8080",
+   "text": "Entering a code: macOS (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "6380"
+  },
+  "row-code-mac-note": {
+   "page": "welcome",
+   "x": 5880,
+   "y": 8320,
+   "text": "What looks unintended:\n- A half-typed code shows “Something went wrong with your settings.” while you type.\n- File ▸ Restore from Code… opens a screen titled Add device.\n- After a menu-opened Join or Restore, Back and a failed open land on that screen with the failure hidden.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-reset-android": {
+   "page": "welcome",
+   "x": "0",
+   "y": "9160",
+   "text": "Resetting this device: Android (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2468"
+  },
+  "row-reset-android-note": {
+   "page": "welcome",
+   "x": 1968,
+   "y": 9400,
+   "text": "What looks unintended:\n- Reset offered has no Cancel and no Back.\n- Reset is started inside a tap with nothing catching a refused library id.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-reset-mac": {
+   "page": "welcome",
+   "x": "0",
+   "y": "10556",
+   "text": "Resetting this device: macOS (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "4420"
+  },
+  "row-albact-android": {
+   "page": "home",
+   "x": "0",
+   "y": "14176",
+   "text": "Album actions: Android (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2960"
+  },
+  "row-albact-mac": {
+   "page": "home",
+   "x": "0",
+   "y": "15572",
+   "text": "Album actions: macOS (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "14580"
+  },
+  "row-errors-android": {
+   "page": "home",
+   "x": "0",
+   "y": "17052",
+   "text": "Errors: Android (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "3944"
+  },
+  "row-errors-android-note": {
+   "page": "home",
+   "x": 3444,
+   "y": 17292,
+   "text": "What looks unintended:\n- Snackbars show the line only: no fault, no copy, no Details. “Something went wrong.” can't be reported.\n- Android's queue shows a failed command inline; macOS sends the same failure to the window's alert.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-errors-mac": {
+   "page": "home",
+   "x": "0",
+   "y": "18448",
+   "text": "Errors: macOS (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "8180"
+  },
+  "row-errors-mac-note": {
+   "page": "home",
+   "x": 7680,
+   "y": 18688,
+   "text": "What looks unintended:\n- One error slot: a second error replaces the first, even while its alert is up.\n- With Settings or Storage Manager open, one error raises an alert in each window.\n- “There are no tracks to play.” is titled Error.\n- The load-error notice at the window's bottom has no fill, over the grid.",
+   "size": 24,
+   "w": 460,
+   "fill": "blue"
+  },
+  "row-imp-list": {
+   "page": "import",
+   "x": "0",
+   "y": "0",
+   "text": "Import, the list: macOS only (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "7500"
+  },
+  "row-imp-identify": {
+   "page": "import",
+   "x": "0",
+   "y": "1380",
+   "text": "Identify: macOS (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "7900"
+  },
+  "row-imp-states": {
+   "page": "import",
+   "x": "0",
+   "y": "2760",
+   "text": "Several selected, importing, done, skipped: macOS (today)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "7900"
+  },
+  "imp-today": {
+   "page": "import",
+   "x": 0,
+   "y": -320,
+   "text": "Import is macOS only. These boards draw the import window as the code has it, from the design system's Import parts; the examples are made up. The preview scenes and baeShots list more states than are drawn here (PreviewData+ImportSearch.swift, ShotScene+FindOnline.swift).",
+   "size": 24,
+   "w": 900,
+   "fill": "blue"
+  },
+  "row-exp-ratings": {
+   "page": "explore",
+   "x": "0",
+   "y": "0",
+   "text": "Exploration: ratings (built in core and bridge; no screen)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "3552"
+  },
+  "row-exp-playlists": {
+   "page": "explore",
+   "x": "0",
+   "y": "1480",
+   "text": "Exploration: playlists (built in core and bridge; no screen)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "5324"
+  },
+  "row-exp-history": {
+   "page": "explore",
+   "x": "0",
+   "y": "2960",
+   "text": "Exploration: listening history (recorded, nothing reads it)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2272"
+  },
+  "row-exp-tracks": {
+   "page": "explore",
+   "x": "0",
+   "y": "4356",
+   "text": "Exploration: playing a list of tracks (bridge call, no caller)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "3060"
+  },
+  "row-exp-loudness": {
+   "page": "explore",
+   "x": "0",
+   "y": "5836",
+   "text": "Exploration: loudness (core applies it; no control anywhere)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "1762"
+  },
+  "row-exp-profile": {
+   "page": "explore",
+   "x": "0",
+   "y": "7232",
+   "text": "Exploration: your picture and name (bridge calls, no caller)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "1762"
+  },
+  "row-exp-credits": {
+   "page": "explore",
+   "x": "0",
+   "y": "8628",
+   "text": "Exploration: who did what, and the works, on the album (not in the bridge)",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2272"
+  },
+  "row-exp-android": {
+   "page": "explore",
+   "x": "0",
+   "y": "10308",
+   "text": "Exploration: what macOS has and Android doesn’t",
+   "kind": "title1",
+   "w": "240",
+   "maxW": "2960"
+  },
+  "exp-key": {
+   "page": "explore",
+   "x": 0,
+   "y": -360,
+   "text": "Explorations: screens for what spec/bae.md describes and the apps don't show. Nothing here is decided; each row's title says what exists underneath today. Ratings, playlists and a playlist's entries are read once by the bridge today, so a screen needs them as subscriptions (the yellow note on the Library page).",
+   "size": 24,
+   "w": 1000,
+   "fill": "purple"
   }
  },
  "order": [
@@ -3199,7 +4645,134 @@
   "LibMacComposerNone.dc.html",
   "LibMacComposer.dc.html",
   "LibMacWork.dc.html",
-  "LibMacComposersEmpty.dc.html"
+  "LibMacComposersEmpty.dc.html",
+  "StoreMacWindow.dc.html",
+  "StoreMacInspector.dc.html",
+  "StoreMacFile.dc.html",
+  "StoreMacPinning.dc.html",
+  "StoreMacMenu.dc.html",
+  "StoreMacMoveToCloud.dc.html",
+  "StoreMacNoMatch.dc.html",
+  "StoreMacLoading.dc.html",
+  "StoreMacCloud.dc.html",
+  "StoreMacNoLibrary.dc.html",
+  "SyncMacMoving.dc.html",
+  "SyncMacAttention.dc.html",
+  "SyncMacFailed.dc.html",
+  "SyncMacIdle.dc.html",
+  "SyncAndroidMoving.dc.html",
+  "SyncAndroidAttention.dc.html",
+  "SyncAndroidFailed.dc.html",
+  "DownloadsAndroid.dc.html",
+  "DownloadsAndroidFailed.dc.html",
+  "DownloadsAndroidEmpty.dc.html",
+  "SetMacImport.dc.html",
+  "SetMacImportChecking.dc.html",
+  "SetMacImportRejected.dc.html",
+  "SetMacImportConnected.dc.html",
+  "SetMacImportUnvalidated.dc.html",
+  "SetMacFormats.dc.html",
+  "SetMacFormatEditor.dc.html",
+  "SetMacFormatDelete.dc.html",
+  "SetMacFormatRefused.dc.html",
+  "SetMacSubsonic.dc.html",
+  "SetMacSubsonicOn.dc.html",
+  "SetMacSubsonicRefused.dc.html",
+  "SetMacAutomation.dc.html",
+  "SetMacAutomationOn.dc.html",
+  "SetMacAutomationFailed.dc.html",
+  "OpenAndroidFinding.dc.html",
+  "OpenAndroidSteps.dc.html",
+  "OpenAndroidFailed.dc.html",
+  "OpenAndroidStartFailed.dc.html",
+  "OpenMacFinding.dc.html",
+  "OpenMacSteps.dc.html",
+  "OpenMacKeychain.dc.html",
+  "CodeAndroidEnter.dc.html",
+  "CodeAndroidScan.dc.html",
+  "CodeAndroidS3.dc.html",
+  "CodeAndroidRunning.dc.html",
+  "CodeMacEmpty.dc.html",
+  "CodeMacTyping.dc.html",
+  "CodeMacS3.dc.html",
+  "CodeMacScan.dc.html",
+  "CodeMacRunning.dc.html",
+  "CodeMacJoin.dc.html",
+  "ResetAndroidOffered.dc.html",
+  "ResetAndroidDialog.dc.html",
+  "ResetAndroidWorking.dc.html",
+  "ResetAndroidUnfinished.dc.html",
+  "ResetMacOffered.dc.html",
+  "ResetMacWorking.dc.html",
+  "ResetMacFailed.dc.html",
+  "ResetMacUnfinished.dc.html",
+  "AlbAndroidMenu.dc.html",
+  "AlbAndroidDelete.dc.html",
+  "AlbAndroidDeleteFailed.dc.html",
+  "AlbAndroidGallery.dc.html",
+  "AlbAndroidGalleryLoading.dc.html",
+  "AlbMacEditor.dc.html",
+  "AlbMacStorage.dc.html",
+  "AlbMacStorageUploading.dc.html",
+  "AlbMacStorageElsewhere.dc.html",
+  "AlbMacDeleteAlbum.dc.html",
+  "AlbMacDeleteRelease.dc.html",
+  "AlbMacCovers.dc.html",
+  "AlbMacCoversUnlinked.dc.html",
+  "AlbMacLightbox.dc.html",
+  "AlbMacLightboxFailed.dc.html",
+  "AlbMacSaveAs.dc.html",
+  "ErrAndroidSnackRetry.dc.html",
+  "ErrAndroidSnackPlay.dc.html",
+  "ErrAndroidSnackBug.dc.html",
+  "ErrAndroidBanner.dc.html",
+  "ErrAndroidBar.dc.html",
+  "ErrAndroidQueue.dc.html",
+  "ErrAndroidLaunch.dc.html",
+  "ErrMacAlert.dc.html",
+  "ErrMacAlertNotError.dc.html",
+  "ErrMacAlertTitled.dc.html",
+  "ErrMacNotices.dc.html",
+  "ErrMacLoadFailure.dc.html",
+  "ErrMacQueueTail.dc.html",
+  "ImpMacEmpty.dc.html",
+  "ImpMacFound.dc.html",
+  "ImpMacDraft.dc.html",
+  "ImpMacBlank.dc.html",
+  "ImpMacListFailed.dc.html",
+  "ImpMacFindAuto.dc.html",
+  "ImpMacFindDiscogs.dc.html",
+  "ImpMacFindSearch.dc.html",
+  "ImpMacBanners.dc.html",
+  "ImpMacCue.dc.html",
+  "ImpMacBulk.dc.html",
+  "ImpMacBulkRunning.dc.html",
+  "ImpMacImporting.dc.html",
+  "ImpMacDone.dc.html",
+  "ImpMacSkipped.dc.html",
+  "ExpMacRating.dc.html",
+  "ExpMacRateMenu.dc.html",
+  "ExpAndroidRating.dc.html",
+  "ExpMacPlaylists.dc.html",
+  "ExpMacAddToPlaylist.dc.html",
+  "ExpMacNewPlaylist.dc.html",
+  "ExpAndroidPlaylists.dc.html",
+  "ExpAndroidPlaylist.dc.html",
+  "ExpMacHistory.dc.html",
+  "ExpAndroidHistory.dc.html",
+  "ExpMacPlayTracks.dc.html",
+  "ExpMacTheseTracks.dc.html",
+  "ExpMacLoudness.dc.html",
+  "ExpAndroidLoudness.dc.html",
+  "ExpMacProfile.dc.html",
+  "ExpAndroidProfile.dc.html",
+  "ExpMacCredits.dc.html",
+  "ExpAndroidCredits.dc.html",
+  "ExpAndroidLinksFiles.dc.html",
+  "ExpAndroidPrimary.dc.html",
+  "ExpAndroidArtistNames.dc.html",
+  "ExpAndroidMultiSelect.dc.html",
+  "ExpAndroidStorage.dc.html"
  ],
  "pages": [
   {
@@ -3232,7 +4805,15 @@
   },
   {
    "id": "storage",
-   "name": "Storage inspector"
+   "name": "Storage"
+  },
+  {
+   "id": "import",
+   "name": "Import"
+  },
+  {
+   "id": "explore",
+   "name": "Explorations"
   }
  ],
  "title": "bae mocks"

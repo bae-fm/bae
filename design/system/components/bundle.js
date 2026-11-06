@@ -254,7 +254,7 @@
   function MacSwitch(props) {
     var s = React.useState(!!props.on);
     var on = s[0];
-    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': props.label, className: cx('bae-m-switch', on && 'bae-m-switch-on'), onClick: function () { s[1](!on); } },
+    return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': props.label, className: cx('bae-m-switch', on && 'bae-m-switch-on', props.off && 'bae-m-switch-off'), disabled: !!props.off, onClick: function () { s[1](!on); } },
       h('span', { className: 'bae-m-switch-knob' }));
   }
 
@@ -693,10 +693,10 @@
   }
 
   function AndroidNowPlayingBar(props) {
-    if (!props.title) return null;
+    if (!props.title && !props.error) return null;
     return h('div', { className: 'bae-a-npbar' },
       h('div', { className: 'bae-a-np-row' },
-        h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
+        props.error ? h('div', { className: 'bae-a-np-info bae-a-np-error' }, props.error) : h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
           h('div', { className: 'bae-a-np-text' }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist))),
         h(AndroidIcon, { icon: 'previous', label: 'Previous' }),
         h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting }),
@@ -719,7 +719,7 @@
           props.sync === 'attention' ? h(AndroidIcon, { icon: 'warning', label: 'Sync activity', className: 'bae-a-sync-warn' }) : null,
           h(AndroidIcon, { icon: 'more', label: 'More options' })),
       h('main', { className: 'bae-a-libbody' }, props.children),
-      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }));
+      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }));
   }
 
   function AndroidDetailScreen(props) {
@@ -910,6 +910,433 @@
     return h('div', { className: 'bae-m-cu' }, h('div', { className: 'bae-m-cu-title' }, props.title), props.description ? h('div', { className: 'bae-m-cu-desc' }, props.description) : null);
   }
 
+  // ==== part: storage ====
+
+  // ---- Stroke symbols for the parts below (SF Symbols and Material icons, drawn as lines) ----
+  var SYM = {
+    folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    pin: 'M9 3h6l-1 6 3 3H7l3-3zM12 12v9',
+    unpin: 'M9 3h6l-1 6 3 3H7l3-3zM12 12v9M4 4l16 16',
+    cloud: 'M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9z',
+    up: 'M12 20V5M6 11l6-6 6 6',
+    down: 'M12 4v15M6 13l6 6 6-6',
+    pause: 'M8 5v14M16 5v14',
+    play: 'M7 4l13 8-13 8z',
+    sidebar: 'M3 5h18v14H3zM15 5v14',
+    clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+    xcircle: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 9l6 6M15 9l-6 6',
+    copy: 'M8 8h12v12H8zM4 16V4h12',
+    left: 'M15 5l-7 7 7 7',
+    right: 'M9 5l7 7-7 7',
+    refresh: 'M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5',
+    photo: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15 9h.01',
+    globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+    sync: 'M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4',
+    octagon: 'M8 3h8l5 5v8l-5 5H8l-5-5V8zM12 8v5M12 16h.01',
+    warning: 'M12 3l10 18H2zM12 10v5M12 18h.01',
+    moveToCloud: 'M12 4v12M7 11l5 5 5-5M5 20h14',
+    makeLocal: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+    export: 'M12 15V3M7 8l5-5 5 5M5 12v8h14v-8',
+    saveAs: 'M12 3v12M7 10l5 5 5-5M5 12v8h14v-8',
+    grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+    expand: 'M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7',
+    close: 'M6 6l12 12M18 6L6 18',
+    back: 'M20 12H5M11 6l-6 6 6 6',
+    more: 'M12 5h.01M12 12h.01M12 19h.01',
+    check: 'M5 12l5 5 9-10',
+    trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+    edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
+  };
+  function Sym(props) {
+    var s = Number(props.size || 14);
+    return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: cx('bae-sym', props.className), fill: 'none', stroke: 'currentColor', strokeWidth: props.weight || 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: props.style }, h('path', { d: SYM[props.name] || '' }));
+  }
+  function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
+
+  // ---- Storage Manager (macOS) ----
+  // The window: title, Filter field, All / Local / Cloud, the Inspector toggle, then the release list and the inspector.
+  function MacStorageWindow(props) {
+    var k = kids(props.children);
+    return h('div', { className: 'bae-m-window bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
+      h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
+      h('header', { className: 'bae-m-storewin-bar' },
+        h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
+        h('span', { style: { flex: 1 } }),
+        h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All' }),
+        h('span', { style: { flex: 1 } }),
+        h('span', { className: 'bae-m-storewin-filter' }, h(Glyph, { set: 'mac', name: 'search', size: 12 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Filter')),
+        h('span', { className: cx('bae-m-iconbtn', props.inspector && 'bae-m-iconbtn-on'), title: 'Inspector' }, h(Sym, { name: 'sidebar', size: 15 }))),
+      h('div', { className: 'bae-m-storewin-body' },
+        h('div', { className: 'bae-m-storewin-list' }, k[0]),
+        props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, k.slice(1)) : null));
+  }
+  // An AppKit table: columns "Title:width[:right][:up|:down]", rows as MacTableRow.
+  function cols(s) { return list(s).map(function (c) { var p = c.split(':'); return { title: p[0], w: Number(p[1] || 100), right: p.indexOf('right') > 1, sort: p.indexOf('up') > 1 ? 'up' : p.indexOf('down') > 1 ? 'down' : null }; }); }
+  function MacTable(props) {
+    var cs = cols(props.columns);
+    var tmpl = cs.map(function (c, i) { return i === 0 ? 'minmax(' + c.w + 'px, 1fr)' : c.w + 'px'; }).join(' ');
+    return h('div', { className: 'bae-m-table', style: { '--bae-cols': tmpl } },
+      h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h('span', { key: i, className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 8, className: 'bae-muted' }) : null); })),
+      h('div', { className: 'bae-m-table-body' }, kids(props.children).map(function (r, i) { return h('div', { key: i, className: cx('bae-m-table-tr', i % 2 && 'bae-m-table-alt') }, r); })),
+      props.empty ? h('div', { className: 'bae-m-table-empty' }, h('div', { className: 'bae-m-cu-title' }, props.empty)) : null);
+  }
+  function MacTableRow(props) {
+    if (props.placeholder) return h('div', { className: 'bae-m-table-row' }, h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-ph', style: { width: 180, height: 14, borderRadius: 3 } })));
+    return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
+  }
+  function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
+  // The Storage column: Local, Pinned, Cloud; or a transfer: Uploading and Pinning fill as they go.
+  function MacStorageChip(props) {
+    var s = props.state || 'cloud';
+    if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
+      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Detaching Audio…';
+      return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
+    }
+    if (s === 'transfer') return h(StatusChip, { tone: 'activity' }, props.label || 'Pinning for offline');
+    var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
+    return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
+  }
+  // Under the list: how many releases, the total, then one rate and Pause per queue with work.
+  function MacStorageFooter(props) {
+    var q = function (kind, rate, label) { return h('span', { className: 'bae-m-storefoot-q' }, h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'uploads' ? 'bae-activity' : kind === 'pins' ? 'bae-pinning' : null }), rate ? h('span', { className: 'bae-num' }, rate) : null, h('span', { title: label }, h(Sym, { name: 'pause', size: 10 }))); };
+    return h('div', { className: 'bae-m-storefoot' },
+      h('span', null, props.releases || '8 releases', props.total ? ' · Total: ' + props.total : ''),
+      h('span', { style: { flex: 1 } }),
+      props.uploads ? q('uploads', props.uploads, 'Pause uploads') : null,
+      props.pins ? q('pins', props.pins, 'Pause pinning') : null,
+      props.exports ? q('exports', props.exports, 'Pause exports') : null);
+  }
+  // A release's upload or pin in the inspector: the counts line with Cancel, then bytes, rate and a bar.
+  function MacTransferSummary(props) {
+    var kind = props.kind || 'upload';
+    var parts = list(props.counts);
+    return h('div', { className: 'bae-m-tsum' },
+      h('div', { className: 'bae-m-tsum-line' },
+        h('span', { className: 'bae-m-tsum-counts' }, parts.map(function (p, i) { return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-muted' }, ' · ') : null, h('span', { className: i === 0 ? cx('bae-strong', kind === 'upload' ? 'bae-activity' : 'bae-pinning') : i === parts.length - 1 ? 'bae-muted' : null }, p)); })),
+        h('span', { style: { flex: 1 } }), props.cancel === false ? null : h(MacButton, { size: 'small' }, 'Cancel')),
+      props.bytes ? h(MacTransferReadout, { kind: kind, bytes: props.bytes, rate: props.rate, progress: props.progress }) : null);
+  }
+  function MacTransferReadout(props) {
+    return h('div', { className: 'bae-m-readout' },
+      h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
+      h('div', { className: 'bae-m-track' }, h('div', { className: props.kind === 'pin' ? 'bae-pinning-bg' : 'bae-activity-bg', style: { width: (Number(props.progress || 0.3) * 100) + '%' } })));
+  }
+  // One file in the inspector: a mark for queued (dashed), sending or pinning (a ring filling), its name and size.
+  function MacFileRow(props) {
+    var s = props.state || 'rest';
+    var p = Number(props.progress || 0.4), C = 2 * Math.PI * 6;
+    var mark = s === 'rest' ? h('span', { style: { width: 16 } }) :
+      s === 'queued' ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
+      h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: s === 'pinning' ? 'bae-pinning' : 'bae-activity' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--hairline)', strokeWidth: 2 }), h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeDasharray: (C * p) + ' ' + C, transform: 'rotate(-90 8 8)' }));
+    return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') }, mark,
+      h('span', { className: cx('bae-ellipsis', s === 'queued' && 'bae-muted', s === 'sending' && 'bae-activity', s === 'pinning' && 'bae-pinning'), style: { flex: 1 } }, props.name),
+      h('span', { className: 'bae-muted bae-num' }, props.size));
+  }
+  function MacFileDetails(props) {
+    var row = function (l, v) { return v ? [h('span', { key: l + 'l', className: 'bae-muted' }, l), h('span', { key: l + 'v', className: l === 'Size' ? 'bae-num' : null }, v)] : null; };
+    return h('div', { className: 'bae-m-filedet' },
+      h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h('span', { className: 'bae-muted', title: 'Close file details' }, h(Sym, { name: 'xcircle', size: 15 }))),
+      h('div', { className: 'bae-m-filedet-grid' }, row('Folder', props.folder), row('Kind', props.kind), row('Format', props.format), row('Size', props.size)));
+  }
+  // BaeKit's ErrorDetailDisclosure: the message in its tone, the fault with Copy details, then Details.
+  function MacErrorDisclosure(props) {
+    var tone = props.tone || 'danger';
+    return h('div', { className: 'bae-m-errdis' },
+      h('div', { className: cx('bae-m-errdis-msg', 'bae-tone-' + tone) }, props.icon === false ? null : h(Sym, { name: tone === 'warning' ? 'warning' : 'octagon', size: 13 }), h('span', null, props.message)),
+      props.fault ? h('div', { className: 'bae-m-errdis-fault' }, h('span', { className: 'bae-mono bae-muted' }, props.fault), h('span', { className: 'bae-m-errdis-copy', title: 'Copy details' }, h(Sym, { name: 'copy', size: 11 }))) : null,
+      props.fault ? h('div', { className: 'bae-m-errdis-more' }, h(Sym, { name: props.open ? 'down' : 'right', size: 9 }), 'Details') : null,
+      props.open && props.excerpt ? h('div', { className: 'bae-mono bae-muted', style: { whiteSpace: 'pre-wrap' } }, props.excerpt) : null);
+  }
+  // A popover hanging from a title-bar button, its arrow pointing up at it.
+  function MacPopover(props) {
+    return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), props.children);
+  }
+  // BaeKit's SyncActivityList: Needs Attention, Transfers, or up to date; then the store's error and Retry Now.
+  function MacSyncActivity(props) {
+    var sec = function (title, body) { return h(MacSection, { title: title }, h(MacBox, null, body)); };
+    var label = function (icon, text, sub) { return h('div', { className: 'bae-m-actrow' }, h(Sym, { name: icon, size: 15, className: 'bae-accent' }), h('div', null, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub bae-num' }, sub) : null)); };
+    var out = [];
+    if (props.attention) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', [
+      h('div', { key: 'f', className: 'bae-m-actpad' }, h(MacErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault })),
+      props.record ? h('div', { key: 'r', className: 'bae-m-actpad' }, h('div', { className: 'bae-strong' }, props.record), h(MacErrorDisclosure, { tone: 'neutral', icon: false, message: props.reason })) : null,
+      h('div', { key: 'b', className: 'bae-m-actpad' }, h(MacButton, null, 'Open Sync Settings'))].filter(Boolean))));
+    if (props.syncing || props.uploads || props.downloads) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
+      props.syncing ? h('div', { key: 's', className: 'bae-m-actpad' }, label('sync', 'Syncing library changes…')) : null,
+      props.uploads ? h('div', { key: 'u', className: 'bae-m-actpad' }, label('up', props.uploads, props.uploadBytes)) : null,
+      props.downloads ? h('div', { key: 'd', className: 'bae-m-actpad' }, label('down', props.downloads)) : null].filter(Boolean))));
+    if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, h('div', { className: 'bae-m-actpad bae-muted' }, 'Everything is up to date.'))));
+    if (props.error) out.push(h(React.Fragment, { key: 'e' }, sec(null, [h('div', { key: 'e', className: 'bae-m-actpad' }, h(MacErrorDisclosure, { message: props.error, fault: props.errorFault })), props.retry ? h('div', { key: 'r', className: 'bae-m-actpad' }, h(MacButton, null, 'Retry Now')) : null].filter(Boolean))));
+    return h('div', { className: 'bae-m-actlist' }, out);
+  }
+
+  // ---- Android: sync activity and Downloads ----
+  function AndroidErrorDisclosure(props) {
+    var tone = props.tone || 'danger';
+    return h('div', { className: 'bae-a-errdis' },
+      h('div', { className: cx('bae-a-errdis-msg', 'bae-tone-' + tone) }, props.message),
+      props.fault ? h('div', { className: 'bae-a-errdis-fault' }, h('span', { className: 'bae-mono bae-muted' }, props.fault), h(AndroidIconButton, { icon: 'copy', label: 'Copy details' })) : null);
+  }
+  // SyncActivity.kt's sheet: the title, Needs Attention, the transfers (the downloads line opens Downloads), or up to date.
+  function AndroidSyncActivity(props) {
+    var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
+    return h('div', { className: 'bae-a-act' },
+      h('div', { className: 'bae-a-act-title' }, 'Sync Activity'),
+      props.attention ? h('div', { className: 'bae-a-act-block' }, h('div', { className: 'bae-strong', style: { paddingTop: 4 } }, 'Needs Attention'), h(AndroidErrorDisclosure, { tone: 'warning', message: props.attention, fault: props.fault }),
+        props.record ? h('div', null, h('div', { className: 'bae-strong' }, props.record), h('div', { className: 'bae-muted' }, props.reason)) : null,
+        h(AndroidButton, { kind: 'text', alignTo: 'text' }, 'Open Sync Settings'), h('div', { className: 'bae-divider' })) : null,
+      props.syncing ? t('Syncing library changes…') : null,
+      props.uploads ? h('div', null, t(props.uploads), props.uploadBytes ? t(props.uploadBytes, 'bae-a-act-sub') : null) : null,
+      props.downloads ? h('div', { className: 'bae-a-act-tap' }, t(props.downloads)) : null,
+      !(props.attention || props.syncing || props.uploads || props.downloads) ? t('Everything is up to date.', 'bae-a-act-sub') : null,
+      props.error ? h(AndroidErrorDisclosure, { message: props.error, fault: props.errorFault }) : null,
+      props.retry ? h(AndroidButton, { kind: 'outlined' }, 'Retry Now') : null);
+  }
+  function AndroidSegmentedButtons(props) {
+    var o = list(props.options);
+    return h('div', { className: 'bae-a-seg', role: 'radiogroup' }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
+  }
+  // The Downloads screen's bar: Back, the title, Retry and Pause or Resume.
+  function AndroidDownloadsBar(props) {
+    return h('header', { className: 'bae-a-dlbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }), h('span', { className: 'bae-a-dlbar-title' }, 'Downloads'),
+      h(AndroidButton, { kind: 'text', off: !props.failed }, 'Retry'), h(AndroidButton, { kind: 'text', off: !!props.idle }, props.paused ? 'Resume' : 'Pause'));
+  }
+  function AndroidDownloadRow(props) {
+    var s = props.state || 'queued';
+    return h('div', { className: 'bae-a-dlrow2' },
+      h('div', { className: 'bae-a-dlrow2-text' },
+        h('div', { className: 'bae-a-browse-name' }, props.title || 'Release no longer in library'),
+        h('div', { className: 'bae-a-browse-count' }, props.detail),
+        s === 'queued' ? h('div', { className: 'bae-a-browse-count' }, 'Waiting to download') :
+        s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB')) :
+        h('div', { className: 'bae-a-error' }, props.error || 'Couldn’t reach your storage.')),
+      h(AndroidIcon, { icon: 'close', label: 'Cancel', className: 'bae-a-icon-muted' }));
+  }
+
+  // ==== part: errors ====
+  // Android's one snackbar host: the line, an optional action (Retry), the close X.
+  function AndroidSnackbar(props) {
+    return h('div', { className: 'bae-a-snack' }, h('span', { style: { flex: 1 } }, props.message), props.action ? h('span', { className: 'bae-a-snack-action' }, props.action) : null, props.close === false ? null : h('span', { className: 'bae-a-snack-x' }, h(Glyph, { name: 'close', size: 20 })));
+  }
+  // The danger banner above the album grid when a later page failed.
+  function AndroidErrorBanner(props) {
+    return h('div', { className: 'bae-a-errbanner' }, h(Glyph, { name: 'warning', size: 20, className: 'bae-a-errbanner-icon' }), h('div', { style: { flex: 1 } }, h(AndroidErrorDisclosure, { tone: 'neutral', message: props.message, fault: props.fault })), h(AndroidButton, { kind: 'text' }, 'Retry'));
+  }
+  // macOS's notice at the bottom of the main window: the step's title, the disclosure, the advice. fill is the launch-problem one.
+  function MacWindowNotice(props) {
+    return h('div', { className: cx('bae-m-winnotice', props.fill && 'bae-m-winnotice-fill') }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h(MacErrorDisclosure, { message: props.message, fault: props.fault, icon: props.fill ? false : undefined }), props.advice ? h('div', { className: 'bae-muted' }, props.advice) : null);
+  }
+  // BaeKit's LoadFailureView: the disclosure and Retry, centred in the view it replaces.
+  function MacLoadFailure(props) {
+    return h('div', { className: 'bae-m-loadfail' }, h(MacErrorDisclosure, { message: props.message, fault: props.fault }), h(MacButton, null, 'Retry'));
+  }
+
+  // ==== part: import ====
+  // ---- Import (macOS) ----
+  // The left column: Found / Imported / Skipped with counts, the filter row with its indicators, then the rows.
+  function MacImportSidebar(props) {
+    var tab = props.tab || 'Found';
+    var counts = { Found: props.found || '0', Imported: props.imported || '0', Skipped: props.skipped || '0' };
+    return h('div', { className: 'bae-m-isb' },
+      h('div', { className: 'bae-m-isb-tabs' }, ['Found', 'Imported', 'Skipped'].map(function (t) { var on = t === tab; return h('span', { key: t, className: cx('bae-m-isb-tab', on && 'bae-m-isb-tab-on') }, h('span', null, t), h(StatusChip, { tone: on ? 'accent' : 'neutral' }, counts[t])); })),
+      h('div', { className: 'bae-divider' }),
+      h('div', { className: 'bae-m-isb-filter' },
+        h(Glyph, { set: 'mac', name: 'search', size: 12, className: 'bae-m-tertiary' }), h('span', { className: props.filter ? null : 'bae-m-tertiary', style: { flex: 1 } }, props.filter || 'Filter…'),
+        props.narrowed ? h('span', { className: 'bae-muted bae-num', style: { fontSize: 11.5 } }, props.narrowed) : null,
+        props.identifying ? h('span', { className: 'bae-m-isb-ind', title: 'Identifying' }, h('svg', { width: 14, height: 14, viewBox: '0 0 16 16' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--hairline-strong)', strokeWidth: 2 }), h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--accent)', strokeWidth: 2, strokeDasharray: (Number(props.identifying) * 37.7) + ' 37.7', transform: 'rotate(-90 8 8)' }))) : null,
+        props.importing ? h('span', { className: 'bae-m-isb-ind bae-muted', title: 'Importing…' }, h(Sym, { name: 'saveAs', size: 14 })) : null,
+        props.scanning ? h('span', { className: 'bae-m-isb-ind', title: 'Scanning folders' }, h(MacSpinner, { size: 12 })) : null,
+        h('span', { className: 'bae-m-isb-ind bae-muted', title: 'Sorting, Filtering and Watched Folders' }, h(Glyph, { set: 'mac', name: 'ellipsis', size: 15 }), props.filtered ? h('span', { className: 'bae-m-isb-dot' }) : null)),
+      h('div', { className: 'bae-divider' }),
+      props.empty ? h('div', { className: 'bae-m-isb-empty' }, h('div', { className: 'bae-m-cu-title' }, props.empty)) : h('div', { className: 'bae-m-isb-list' }, props.children));
+  }
+  function MacImportGroupHeader(props) {
+    return h('div', { className: 'bae-m-igh' }, h(Glyph, { set: 'mac', name: 'down', size: 9, className: 'bae-m-tertiary', style: props.closed ? { transform: 'rotate(-90deg)' } : null }), h('span', { className: 'bae-ellipsis' }, props.name));
+  }
+  // One candidate: cover, title over artist (or the folder's name), the state line, the trailing badge or wait mark.
+  function MacImportRow(props) {
+    var trail = props.badge ? h(StatusChip, { tone: props.badgeTone || 'warning' }, props.badge)
+      : props.state === 'identifyQueued' || props.state === 'importQueued' ? h('span', { className: 'bae-muted', title: props.state === 'importQueued' ? 'Waiting to import' : 'Waiting to be identified' }, h(Sym, { name: 'clock', size: 12 }))
+      : props.state === 'identifying' ? h(MacSpinner, { size: 12 }) : null;
+    var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Sym, { name: 'folder', size: 13, className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis', style: { fontSize: 12 } }, props.folder))
+      : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', { style: { opacity: props.record ? 1 : 0 } }, h(Sym, { name: 'makeLocal', size: 10, className: 'bae-muted' })));
+    var line2 = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, props.step || 'Reading files...'), h('div', { className: 'bae-m-track', style: { height: 3 } }, h('div', { className: 'bae-accent-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
+      : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h('span', null, 'Uploading'), h('div', { className: 'bae-m-track', style: { height: 3 } }, h('div', { className: 'bae-activity-bg', style: { width: (Number(props.progress || 0.4) * 100) + '%' } })))
+      : props.error ? h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.error)
+      : props.folder ? null : h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.artist);
+    return h('div', { className: cx('bae-m-irow', props.grouped && 'bae-m-irow-grouped', props.selected && 'bae-m-irow-selected') },
+      props.grouped ? h('span', { className: 'bae-m-irow-rail' }) : null,
+      h(Artwork, { title: props.cover || props.title || props.folder, size: 44, radius: 6, missing: props.noCover }),
+      h('div', { className: 'bae-m-irow-text' }, line1, line2), h('span', { style: { flex: 'none', marginLeft: 'auto' } }, trail));
+  }
+  // Above the right pane: the tab chip, Reveal in Finder, the folder's name.
+  function MacImportFolderLine(props) {
+    return h('div', { className: 'bae-m-ifl' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found'), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h(Sym, { name: 'folder', size: 15, className: 'bae-muted' }), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 15 } }, props.folder));
+  }
+  // The draft card: Identify with Automatic, Search and ⋯; the folder checks, Cloud/Pinned and Import; the cover well and identity; the Release grid; the linked records.
+  function MacImportDraft(props) {
+    var rows = list(props.fields || 'Year:1992,Media:CD,Label:Harbor Records — HR-1042,Country:—,Barcode:—,Status:Official,Packaging:—,Details:—').map(function (r) { var i = r.indexOf(':'); return [r.slice(0, i), r.slice(i + 1)]; });
+    return h('div', { className: 'bae-m-card bae-m-idraft' },
+      h('div', { className: 'bae-m-idraft-actions' },
+        h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), props.editor ? null : h(MacButton, null, '⋯'),
+        h('span', { style: { flex: 1 } }),
+        props.check ? h('span', { className: 'bae-m-idraft-warn' }, props.check) : null,
+        props.cloud ? h(MacCheckbox, { label: 'Cloud', on: true }) : null, props.cloud ? h(MacCheckbox, { label: 'Pinned' }) : null,
+        props.editor ? [props.changed ? h(MacButton, { key: 'c' }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary' }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry Import' : 'Import')),
+      h('div', { className: 'bae-m-idraft-head' },
+        props.cover ? h(Artwork, { title: props.cover, size: 132, radius: 6 }) : h('div', { className: 'bae-m-idraft-well' }, h('div', { className: 'bae-strong' }, 'Add artwork'), h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, 'Drag an image here, or click to choose')),
+        h('div', { className: 'bae-m-idraft-id' },
+          h('div', { className: cx('bae-m-idraft-title', !props.title && 'bae-m-tertiary') }, props.title || 'Album title'),
+          h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, props.artist || 'Album artist', props.artistChip ? h(StatusChip, { tone: props.artistChip === 'New' ? 'accent' : 'neutral' }, props.artistChip) : null),
+          h('div', { className: 'bae-m-tertiary' }, props.year || 'Album year'),
+          h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.audio || 'FLAC · 16-bit · 44.1 kHz · 10 files'))),
+      h('div', { className: 'bae-m-formhead' }, 'Release'),
+      h('div', { className: 'bae-m-idraft-grid' }, rows.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: r[1] === '—' ? 'bae-m-tertiary' : null }, r[1])]; })),
+      props.records ? h('div', { className: 'bae-m-idraft-records' }, list(props.records).map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h(Sym, { name: 'makeLocal', size: 9 })); }), h('span', { style: { flex: 1 } }), h('span', { className: 'bae-accent' }, 'Unlink')) : null);
+  }
+  // The mapping table: Source | Track | Title | Artist | Length, a side's eyebrow, CUE captions and rows.
+  function MacImportTable(props) {
+    return h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), props.children);
+  }
+  function MacImportTrackRow(props) {
+    return h('div', { className: cx('bae-m-itable-row', 'bae-m-itable-track', props.playing && 'bae-m-itable-playing') },
+      h('span', { className: 'bae-m-isrc' }, h('span', { className: props.playing ? 'bae-accent' : 'bae-muted' }, h(Sym, { name: props.playing ? 'pause' : 'play', size: 10 })), h('span', { className: props.entry ? 'bae-ellipsis' : 'bae-mono bae-ellipsis' }, props.file), props.evidence ? h(StatusChip, { tone: 'accent' }, props.evidence) : null),
+      h('span', { className: 'bae-num' }, props.position),
+      h('span', { className: cx('bae-ellipsis', !props.title && 'bae-m-tertiary') }, props.title || 'Untitled'),
+      h('span', { className: cx('bae-ellipsis', props.inherited && 'bae-m-tertiary') }, props.artist || 'Album artist'),
+      h('span', { className: cx('bae-num', props.mismatch && 'bae-warning'), style: { textAlign: 'right' }, title: props.mismatch ? 'Lengths differ' : null }, props.length));
+  }
+  function MacImportSideHeader(props) { return h('div', { className: 'bae-m-eyebrowtxt', style: { padding: '12px 0 4px' } }, props.title); }
+  function MacImportSheetCaption(props) {
+    return h('div', { className: 'bae-m-icue' }, h('span', { className: 'bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc || 'Disc 1'), h(Glyph, { set: 'mac', name: 'down', size: 8 })), h(StatusChip, { tone: 'accent' }, 'CUE'), h('span', { className: 'bae-mono' }, props.sheet), h('span', { className: 'bae-m-tertiary' }, '→'), h('span', { className: cx('bae-mono', props.unbound ? 'bae-warning' : 'bae-muted') }, props.bound || 'Choose audio…'));
+  }
+  // Find online: Back and Identify, the Discogs bar, then Automatic and Search, one open at a time.
+  function MacFindOnline(props) {
+    var open = props.open || 'Automatic';
+    var head = function (t, status) { return h('div', { className: cx('bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 9, className: 'bae-m-tertiary', style: open === t ? null : { transform: 'rotate(-90deg)' } }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status); };
+    var k = kids(props.children);
+    return h('div', { className: 'bae-m-card bae-m-fo' },
+      h('div', { className: 'bae-m-fo-head' }, h('span', { className: 'bae-accent', style: { display: 'flex', alignItems: 'center', gap: 4 } }, h(Sym, { name: 'left', size: 12 }), 'Back'), h('span', { className: 'bae-strong', style: { position: 'absolute', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' } }, 'Identify')),
+      h('div', { className: 'bae-divider' }),
+      props.discogsBar ? h('div', { style: { padding: 12 } }, h(Notice, { tone: 'info' }, h('div', { style: { display: 'flex', gap: 10 } }, h('div', { style: { flex: 1 } }, h('div', { className: 'bae-strong' }, 'Add Discogs to find more pressings'), h('div', { className: 'bae-muted' }, 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.')), h(MacButton, { kind: 'primary', size: 'small' }, 'Open Settings'), h(Sym, { name: 'close', size: 11 })))) : null,
+      head('Automatic', props.autoStatus === 'working' ? h(MacSpinner, { size: 11 }) : props.autoStatus === 'failed' ? h(Sym, { name: 'warning', size: 12, className: 'bae-warning' }) : null),
+      open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, k) : null,
+      h('div', { className: 'bae-divider' }),
+      head('Search', null),
+      open === 'Search' ? h('div', { className: 'bae-m-fo-body' }, k) : null);
+  }
+  // The identifier chips: "Label:value[:state]" with state filled, outlined, struck or dash; capsules "Source=count".
+  function MacIdentifierBand(props) {
+    return h('div', { className: 'bae-m-band' }, list(props.chips).map(function (c, i) {
+      var p = c.split('|'); var lab = p[0], val = p[1] || '', st = p[2] || 'filled', cap = p[3];
+      return h('span', { key: i, className: cx('bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 10.5, fontWeight: 600 } }, lab), st === 'dash' ? h('span', { className: 'bae-m-idchip-dash' }) : h('span', { className: 'bae-mono' }, val),
+        cap ? cap.split('+').map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
+    }));
+  }
+  function MacReleaseCard(props) {
+    return h('div', { className: 'bae-m-rcard' },
+      h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), list(props.sources || 'Discogs,MusicBrainz').map(function (s) { return h('span', { key: s, className: 'bae-m-reclink' }, s, h(Sym, { name: 'makeLocal', size: 9 })); })),
+      h('div', { className: 'bae-m-rcard-rows' }, props.children));
+  }
+  function MacPressingRow(props) {
+    return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected'), style: props.inLibrary ? { opacity: 0.55 } : null },
+      h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 } },
+        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, props.year ? h('span', { className: 'bae-strong bae-num' }, props.year) : h('span', { className: 'bae-m-tertiary' }, 'Year unknown'), h('span', { className: 'bae-muted' }, props.labels), props.catalog ? h(StatusChip, null, props.catalog) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); })),
+        props.summary ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.summary) : null),
+      h('span', { style: { display: 'flex', alignItems: 'center', gap: 4, opacity: props.inLibrary ? 1 : 0, fontSize: 11.5 }, className: 'bae-m-tertiary' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library'),
+      h('span', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.sources || 'Discogs · MusicBrainz'),
+      h(Sym, { name: 'right', size: 11, className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
+  }
+  // Several rows selected: the count, then the actions in groups, each with how many it applies to.
+  function MacImportBulk(props) {
+    var row = function (icon, label, n, strong) { return h('div', { key: label, className: cx('bae-m-bulkrow', !n && 'bae-m-bulkrow-off') }, h(Sym, { name: icon, size: 15, className: strong ? 'bae-accent' : 'bae-muted' }), h('span', { className: strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, label), h(StatusChip, { tone: strong ? 'accent' : 'neutral' }, String(n || 0))); };
+    var grp = function (eyebrow, rows) { return h('div', { className: 'bae-m-bulkgrp' }, eyebrow ? h('div', { className: 'bae-m-eyebrowtxt', style: { padding: '8px 12px 2px' } }, eyebrow) : null, rows); };
+    var n = Number(props.count || 5);
+    return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 } },
+      h('div', { style: { font: '700 22px var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
+      h('div', { className: 'bae-m-bulklist' },
+        grp('Import', [row('saveAs', 'Import', props.ready || 3, true), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as One Release', 0, true), row('grid', 'Keep as Separate Releases', 0)]),
+        grp('Metadata', [row('refresh', 'Identify selected', n), row('xcircle', 'Stop identifying selected', 0), row('refresh', 'Retry failed identification', 1), row('edit', 'Reset to file metadata', n), row('trash', 'Clear metadata', n)]),
+        grp(null, [row('xcircle', 'Skip selected', n), row('left', 'Restore to Pending', 0)]),
+        grp(null, [row('folder', 'Reveal in Finder', n)]))),
+      props.running ? h('div', { style: { width: 440, display: 'flex', gap: 12, alignItems: 'flex-end' } }, h('div', { style: { flex: 1 } }, h(MacProgress, { label: props.running, value: 0.4 })), h(MacButton, null, 'Cancel')) : null);
+  }
+
+  // ==== part: album ====
+  // ---- Album actions (macOS) ----
+  // The modal host: a scrim over the window, the content clipped to the card radius.
+  function MacModal(props) {
+    return h('div', { className: 'bae-m-scrim', style: { alignItems: 'center' } }, h('div', { className: 'bae-m-modal', style: { width: Number(props.width || 760), height: props.height ? Number(props.height) : null } }, props.children));
+  }
+  // A modal's header: title, a second line, its buttons on the right.
+  function MacModalHeader(props) {
+    return h('div', { className: 'bae-m-modalhead' }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-strong', style: props.large ? null : { fontSize: 15 } }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 11.5 } }, props.subtitle) : null), props.children);
+  }
+  // The cover gallery: Source, sections of tiles, the preview with its count, Use This Cover.
+  function MacCoverGallery(props) {
+    var tiles = function (names, sel) { return h('div', { className: 'bae-m-cgrid' }, list(names).map(function (n, i) { return h('div', { key: i, className: 'bae-m-ctile' }, h('div', { className: cx('bae-m-ctile-img', n === sel && 'bae-m-ctile-sel') }, h(Artwork, { title: n, size: 118, radius: 6 })), h('div', { className: 'bae-ellipsis', style: { fontWeight: 500 } }, n), h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.source || 'Release Files')); })); };
+    var sec = function (icon, title, n, names) { return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } }, h('div', { className: 'bae-strong', style: { fontSize: 15, display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: icon, size: 15 }), title, h('span', { className: 'bae-muted', style: { fontWeight: 400 } }, n)), tiles(names, props.selected)); };
+    return h('div', { className: 'bae-m-cgal' },
+      h(MacModalHeader, { title: props.title || 'Change Cover', large: true }, h(MacButton, null, 'Refresh'), h(MacButton, null, 'Done')),
+      h('div', { className: 'bae-m-cgal-body' },
+        h('div', { className: 'bae-m-cgal-left' }, h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } }, 'Source', h(MacPopUpButton, { value: 'All' })),
+          sec('photo', 'Current Cover', '1', props.current || 'Low Tide Hours'),
+          props.remote === 'unlinked' ? h('div', null, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote Sources', '2', props.remoteNames || 'Low Tide Hours (Discogs),Low Tide Hours back (Discogs)'),
+          sec('folder', 'Release Files', '3', props.files || 'cover.jpg,back.jpg,disc.jpg')),
+        h('div', { className: 'bae-m-cgal-right' }, h(Artwork, { title: props.selected || 'Low Tide Hours', size: 300, radius: 6 }), h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.selected || 'Low Tide Hours'), h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.source || 'Release Files'), h('div', { style: { display: 'flex', gap: 10, alignItems: 'center' } }, h(Sym, { name: 'left', size: 12 }), '1 of 6', h(Sym, { name: 'right', size: 12 })))),
+      h('div', { className: 'bae-m-cgal-foot' }, h(MacButton, { kind: 'primary' }, 'Use This Cover')));
+  }
+  // The lightbox: the image on the backdrop, close, arrows, caption, the thumbnail strip.
+  function MacLightbox(props) {
+    return h('div', { className: 'bae-m-lightbox' },
+      h('div', { className: 'bae-m-lb-top' }, props.browse ? h('span', { className: 'bae-m-lb-pill' }, h(Sym, { name: 'grid', size: 12 }), 'Browse all images') : h('span'), h('span', { className: 'bae-m-lb-close' }, h(Sym, { name: 'close', size: 15 }))),
+      h('div', { className: 'bae-m-lb-stage' }, h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'left', size: 22 })), props.state === 'failed' ? h('div', { className: 'bae-m-lb-msg' }, h(Sym, { name: 'warning', size: 40 }), 'Couldn’t load image', h(MacButton, null, 'Try again')) : props.state === 'loading' ? h('div', { className: 'bae-m-lb-msg' }, h(MacSpinner, { size: 28 }), 'Loading the image…') : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'right', size: 22 }))),
+      h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 11.5 } }, props.source || 'Release Files')),
+      h('div', { className: 'bae-m-lb-strip' }, ['Low Tide Hours', 'Low Tide Hours back', 'Low Tide Hours disc', 'Low Tide Hours booklet'].map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', i === 0 && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 6 })); })));
+  }
+  // The release's Storage sheet: Storage and Done, the status band, the Files table.
+  function MacStorageBand(props) {
+    var s = props.state || 'cloud';
+    return h('div', { className: 'bae-m-sband' },
+      s === 'uploading' ? [h('div', { key: 'c' }, h(StatusChip, { tone: 'activity' }, h(Sym, { name: 'up', size: 10 }), 'Uploading')), h('div', { key: 'b', style: { display: 'flex', gap: 8, alignItems: 'center' } }, h('div', { className: 'bae-m-track', style: { flex: 1 } }, h('div', { className: 'bae-accent-bg', style: { width: '40%' } })), h('span', { className: 'bae-muted bae-num' }, '96 MB of 221.2 MB'))]
+        : h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]),
+      props.why ? h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.why) : null,
+      s === 'uploading' ? null : h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, list(props.actions || 'Pin,Make Local…,Export…,Save As…').map(function (a) { return h(MacButton, { key: a }, a); })));
+  }
+
+  // ==== part: explore ====
+  // ---- Explorations: parts for screens bae doesn't have yet ----
+  // 1–5 stars, filled up to value; empty draws all five faint. who adds a line of who else rated it.
+  function Stars(props) {
+    var v = Number(props.value || 0), s = Number(props.size || 14);
+    var star = 'M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z';
+    return h('span', { className: 'bae-stars', role: 'img', 'aria-label': v ? v + ' stars' : 'Not rated' },
+      [1, 2, 3, 4, 5].map(function (i) { return h('svg', { key: i, width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: star, fill: i <= v ? 'var(--accent)' : 'none', stroke: i <= v ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })); }),
+      props.who ? h('span', { className: 'bae-muted', style: { marginLeft: 6, fontSize: '0.85em' } }, props.who) : null);
+  }
+  // A person's picture: initials on a tint when there's no image.
+  function Avatar(props) {
+    var s = Number(props.size || 32), name = String(props.name || '?');
+    var ini = name.split(/\s+/).map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase();
+    return props.image ? h(Artwork, { title: props.image, size: s, round: true }) : h('span', { className: 'bae-avatar', style: { width: s, height: s, fontSize: s * 0.4 } }, ini);
+  }
+  // A row of a history or playlist list: when or position, cover, title, artist · album, who, length.
+  function MacListRow(props) {
+    return h('div', { className: cx('bae-m-lrow', props.selected && 'bae-m-lrow-selected') },
+      props.lead ? h('span', { className: 'bae-muted bae-num', style: { width: 56, flex: 'none', fontSize: 11.5 } }, props.lead) : null,
+      h(Artwork, { title: props.album || props.title, size: 32, radius: 4 }),
+      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-ellipsis', style: { fontWeight: 500 } }, props.title), h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 11.5 } }, props.sub)),
+      props.who ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 6 }, className: 'bae-muted' }, h(Avatar, { name: props.who, size: 18 }), h('span', { style: { fontSize: 11.5 } }, props.who)) : null,
+      props.stars ? h(Stars, { value: props.stars, size: 11 }) : null,
+      h('span', { className: 'bae-muted bae-num', style: { width: 40, textAlign: 'right', fontSize: 11.5 } }, props.duration));
+  }
+  function AndroidListRow(props) {
+    return h('div', { className: cx('bae-a-lrow', props.selected && 'bae-a-lrow-selected') },
+      h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
+      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-a-browse-name' }, props.title), h('div', { className: 'bae-a-browse-count' }, props.sub)),
+      props.who ? h(Avatar, { name: props.who, size: 24 }) : null,
+      props.trailing ? h('span', { className: 'bae-a-fine bae-muted' }, props.trailing) : null);
+  }
+
   window.Bae = Object.assign(window.Bae || {}, {
     MacSearchCard: MacSearchCard, MacSearchSection: MacSearchSection, MacSearchRow: MacSearchRow, AndroidSearchSection: AndroidSearchSection, AndroidSearchRow: AndroidSearchRow, MacQueuePanel: MacQueuePanel, MacQueueSection: MacQueueSection, MacQueuePlaceholderRow: MacQueuePlaceholderRow, MacQueueInsertLine: MacQueueInsertLine, MacSidePause: MacSidePause, MacCastPopover: MacCastPopover, AndroidSheet: AndroidSheet, AndroidQueueLabel: AndroidQueueLabel, AndroidQueueRow: AndroidQueueRow, AndroidFullPlayer: AndroidFullPlayer, AndroidCastRow: AndroidCastRow, AndroidCheckbox: AndroidCheckbox,
     Artwork: Artwork, MacMainWindow: MacMainWindow, MacNowPlayingBar: MacNowPlayingBar, MacSeekBar: MacSeekBar, MacPlayPause: MacPlayPause, MacIconButton: MacIconButton, MacLibraryHeading: MacLibraryHeading, MacAlbumGrid: MacAlbumGrid, MacAlbumTile: MacAlbumTile, MacTrackRow: MacTrackRow, MacEyebrow: MacEyebrow, MacBrowseRow: MacBrowseRow, MacDetailHeader: MacDetailHeader, MacQueueRow: MacQueueRow, MacAlbumPanel: MacAlbumPanel, MacTrackColumns: MacTrackColumns, MacBrowseSplit: MacBrowseSplit, MacArtistAlbumTile: MacArtistAlbumTile, MacSortCriteria: MacSortCriteria, MacCheckbox: MacCheckbox, MacArtistGroupHeading: MacArtistGroupHeading, AndroidMenu: AndroidMenu, AndroidMenuItem: AndroidMenuItem,
@@ -923,6 +1350,11 @@
     AndroidTextField: AndroidTextField, AndroidRadio: AndroidRadio, AndroidDialog: AndroidDialog,
     AndroidDialogActions: AndroidDialogActions, AndroidNote: AndroidNote, AndroidProgress: AndroidProgress, AndroidSpinner: AndroidSpinner,
     StatusChip: StatusChip, Notice: Notice, MacScanCode: MacScanCode, AndroidScanCode: AndroidScanCode,
-    MacDetailRow: MacDetailRow, MacSectionHeader: MacSectionHeader, MacWorkDetail: MacWorkDetail, MacHairline: MacHairline, MacContentUnavailable: MacContentUnavailable
+    MacDetailRow: MacDetailRow, MacSectionHeader: MacSectionHeader, MacWorkDetail: MacWorkDetail, MacHairline: MacHairline, MacContentUnavailable: MacContentUnavailable,
+    Sym: Sym, MacStorageWindow: MacStorageWindow, MacTable: MacTable, MacTableRow: MacTableRow, MacReleaseCell: MacReleaseCell, MacStorageChip: MacStorageChip, MacStorageFooter: MacStorageFooter, MacTransferSummary: MacTransferSummary, MacTransferReadout: MacTransferReadout, MacFileRow: MacFileRow, MacFileDetails: MacFileDetails, MacErrorDisclosure: MacErrorDisclosure, MacPopover: MacPopover, MacSyncActivity: MacSyncActivity, AndroidErrorDisclosure: AndroidErrorDisclosure, AndroidSyncActivity: AndroidSyncActivity, AndroidSegmentedButtons: AndroidSegmentedButtons, AndroidDownloadsBar: AndroidDownloadsBar, AndroidDownloadRow: AndroidDownloadRow,
+    AndroidSnackbar: AndroidSnackbar, AndroidErrorBanner: AndroidErrorBanner, MacWindowNotice: MacWindowNotice, MacLoadFailure: MacLoadFailure,
+    MacImportSidebar: MacImportSidebar, MacImportGroupHeader: MacImportGroupHeader, MacImportRow: MacImportRow, MacImportFolderLine: MacImportFolderLine, MacImportDraft: MacImportDraft, MacImportTable: MacImportTable, MacImportTrackRow: MacImportTrackRow, MacImportSideHeader: MacImportSideHeader, MacImportSheetCaption: MacImportSheetCaption, MacFindOnline: MacFindOnline, MacIdentifierBand: MacIdentifierBand, MacReleaseCard: MacReleaseCard, MacPressingRow: MacPressingRow, MacImportBulk: MacImportBulk,
+    MacModal: MacModal, MacModalHeader: MacModalHeader, MacCoverGallery: MacCoverGallery, MacLightbox: MacLightbox, MacStorageBand: MacStorageBand,
+    Stars: Stars, Avatar: Avatar, MacListRow: MacListRow, AndroidListRow: AndroidListRow
   });
 })();

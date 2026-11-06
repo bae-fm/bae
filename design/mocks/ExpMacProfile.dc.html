@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exploration: macOS: your picture and name</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Your profile" back="Library"><div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px"><x-import component-from-global-scope="Bae.Avatar" name="Mara Quill" size="96"></x-import><x-import component-from-global-scope="Bae.MacButton" size="small">Change Picture…</x-import></div><x-import component-from-global-scope="Bae.MacBox"><x-import component-from-global-scope="Bae.MacFieldRow" label="Name"><x-import component-from-global-scope="Bae.MacTextField" label="Name" label-hidden="{{yes}}" value="Mara Quill"></x-import></x-import></x-import><x-import component-from-global-scope="Bae.MacNote">Everyone in the library sees your picture and name beside what you rate, play and share.</x-import></x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>

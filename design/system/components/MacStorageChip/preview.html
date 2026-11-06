@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS storage" height=120 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacStorageChip</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name' }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('At rest', h('span', { style: { display: 'flex', gap: 6 } }, h(B.MacStorageChip, { state: 'local' }), h(B.MacStorageChip, { state: 'pinned' }), h(B.MacStorageChip, { state: 'cloud' }))), N('Moving', h('span', { style: { display: 'flex', gap: 6 } }, h(B.MacStorageChip, { state: 'uploading', progress: 0.6 }), h(B.MacStorageChip, { state: 'pinning', progress: 0.3 })))));
+</script>
+</body>
+</html>
