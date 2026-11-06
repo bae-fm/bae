@@ -1,6 +1,8 @@
 [advisories]
 # An ignore that matches nothing fails, so one is removed once its crate is gone.
 unused-ignored-advisory = "deny"
+# A yanked release fails the check; update the crate.
+yanked = "deny"
 ignore = [
     # rsa: phantom dep from sqlx-macros-core optional mysql backend, never compiled.
     # https://github.com/rust-lang/cargo/issues/10801
