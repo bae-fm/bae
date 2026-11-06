@@ -97,4 +97,5 @@ impl ImportTables {
 }
 
 #[cfg(test)]
+#[path = "tables_tests.rs"]
 pub(crate) mod tests;
