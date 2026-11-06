@@ -143,7 +143,11 @@ pub fn key_category(error: &coven::KeyError) -> C {
         // could fix, and no retry that helps.
         E::MissingKeychainEntitlement(_) => C::KeychainEntitlementMissing,
         // The person left the store, so coven refuses to write their saved
-        // restore code or S3 key again: the removal, not the keychain, failed it.
+        // restore code or S3 key again: the removal, not the keychain, failed
+        // it. Coven counts a person as left once their member's removal
+        // applies, by another admin or by themselves, and that removes every
+        // device of theirs, this one included: "this device was removed from
+        // the library" is true either way, so it shares that class.
         E::Left => C::DeviceRemoved,
         // Android's Block Store limits: the phone keeps no more saved codes,
         // or this one is too large to keep. Neither is a broken keyring.
