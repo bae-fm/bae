@@ -420,8 +420,14 @@ async fn a_track_that_cannot_be_read_fails_the_pass_and_is_read_again() {
     let (scan, _) =
         test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
 
-    let failed = scan.rescan(&root).await.expect_err("the pass fails");
-    assert!(failed.to_string().contains("the share went away"), "{failed}");
+    assert_eq!(scan.rescan(&root).await, Err(ScanEnded::Failed), "the pass fails");
+    let stored = test.tables().load_stored_folder_scans().await.unwrap();
+    let [crate::StoredRootScan { outcome: crate::StoredScanOutcome::Failed { error }, .. }] =
+        stored.as_slice()
+    else {
+        panic!("the failed pass is stored: {stored:?}");
+    };
+    assert!(error.contains("the share went away"), "{error}");
     tags.fault.store(false, Ordering::SeqCst);
     let before = tags.counted.reads_of(&faulting);
     scan.rescan(&root).await.unwrap();
