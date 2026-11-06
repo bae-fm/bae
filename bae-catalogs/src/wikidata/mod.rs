@@ -162,8 +162,8 @@ impl Wikidata {
 
     fn with_interval(http: Http, interval: Duration) -> Self {
         Self {
+            limiter: RateLimiter::new(interval, http.clock().clone()),
             http,
-            limiter: RateLimiter::new(interval),
             responses: SessionCache::new("Wikidata response cache", PROVIDER_RESPONSE_CAPACITY),
         }
     }

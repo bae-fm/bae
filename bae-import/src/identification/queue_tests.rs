@@ -109,11 +109,10 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
 /// limiter, a search the user typed is admitted next rather than after all of
 /// them. Each of eight candidates has its own barcode, so each queues a lookup.
 ///
-/// Order is read off the limiter's own admission record, not a clock: the
-/// typed search must go ahead of background tickets that were already waiting
-/// when it arrived. A single first-come queue admits every one of them first.
-/// Two tickets are awaited rather than one, because the oldest may be admitted
-/// the moment it is seen.
+/// Order is read off the limiter's own admission record, with the waits
+/// between requests held until the search is typed: it must go ahead of every
+/// background ticket already waiting when it arrived. A single first-come
+/// queue admits every one of them first.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_typed_search_is_not_delayed_by_automatic_identification() {
     let fixture = Fixture::new("interactive-not-delayed").await;
@@ -140,6 +139,7 @@ async fn a_typed_search_is_not_delayed_by_automatic_identification() {
     fixture.provider.route("/release?", 200, mb_search_json("mb-typed", "rg-typed"));
     fixture.scan(8).await;
 
+    fixture.hold_request_waits();
     let sweep = fixture.drain_automatic_task();
 
     let musicbrainz = &fixture.musicbrainz;
@@ -150,22 +150,29 @@ async fn a_typed_search_is_not_delayed_by_automatic_identification() {
     .await
     .expect("automatic identification queues background lookups on the limiter");
 
-    let typed = fixture
-        .parts
-        .catalogs()
-        .musicbrainz()
-        .search_musicbrainz(
-            bae_catalogs::musicbrainz::ReleaseSearchParams {
-                artist: Some("Artist".to_string()),
-                album: Some("Album".to_string()),
-                ..Default::default()
-            },
-            CallClass::AWAITED,
+    let session = fixture.parts.catalogs().musicbrainz();
+    let typing = session.search_musicbrainz(
+        bae_catalogs::musicbrainz::ReleaseSearchParams {
+            artist: Some("Artist".to_string()),
+            album: Some("Album".to_string()),
+            ..Default::default()
+        },
+        CallClass::AWAITED,
+    );
+    let passing = async {
+        tokio::time::timeout(
+            HANG_GUARD,
+            musicbrainz.queued_requests_reaching(CallPriority::Awaited, 1),
         )
         .await
-        .expect("the typed search succeeds");
+        .expect("the typed search waits its turn");
+        fixture.pass_armed_request_wait().await;
+    };
+    let (typed, ()) = tokio::join!(typing, passing);
+    let typed = typed.expect("the typed search succeeds");
     let admitted = musicbrainz.admitted_requests();
 
+    fixture.release_request_waits();
     fixture.identification().shut_down();
     tokio::time::timeout(HANG_GUARD, sweep)
         .await
@@ -182,9 +189,10 @@ async fn a_typed_search_is_not_delayed_by_automatic_identification() {
         .iter()
         .filter(|ticket| !ahead_of_typed.contains(&(CallPriority::Background, **ticket)))
         .count();
-    assert!(
-        overtaken >= 1,
-        "every background lookup waiting when the search was typed ({waiting:?}) \
+    assert_eq!(
+        overtaken,
+        waiting.len(),
+        "a background lookup waiting when the search was typed ({waiting:?}) \
          was admitted before it: {admitted:?}"
     );
 }
@@ -215,7 +223,9 @@ async fn an_open_candidate_runs_first_and_its_lookups_go_ahead() {
     fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
     let (first_waiting, opened) = (&keys[MAX_IN_FLIGHT], &keys[MAX_IN_FLIGHT + 1]);
 
-    // Requested calls queue on the limiter behind the lookups already sent.
+    // Requested calls queue on the limiter behind the lookups already sent,
+    // their waits held until the open candidate's lookup has queued.
+    fixture.hold_request_waits();
     let musicbrainz = &fixture.musicbrainz;
     for index in 0..4 {
         let session = fixture.parts.catalogs().musicbrainz();
@@ -253,6 +263,13 @@ async fn an_open_candidate_runs_first_and_its_lookups_go_ahead() {
     );
     let opened_barcode =
         bae_types::barcode::with_check_digit(&format!("01234567{:04}", MAX_IN_FLIGHT + 1));
+    tokio::time::timeout(
+        HANG_GUARD,
+        musicbrainz.queued_requests_reaching(CallPriority::Awaited, 1),
+    )
+    .await
+    .expect("the open candidate's lookup waits its turn");
+    fixture.pass_armed_request_wait().await;
     fixture.provider.wait_for_request(&opened_barcode, 1).await;
     let admitted = musicbrainz.admitted_requests();
     let opened_at = admitted
@@ -263,12 +280,14 @@ async fn an_open_candidate_runs_first_and_its_lookups_go_ahead() {
         .iter()
         .filter(|ticket| !admitted[..opened_at].contains(&(CallPriority::Requested, **ticket)))
         .count();
-    assert!(
-        overtaken >= 1,
-        "every requested call waiting when the pane opened ({requested:?}) was admitted \
+    assert_eq!(
+        overtaken,
+        requested.len(),
+        "a requested call waiting when the pane opened ({requested:?}) was admitted \
          before the open candidate's lookup: {admitted:?}"
     );
 
+    fixture.release_request_waits();
     drop(shown);
     fixture.identification().shut_down();
     fixture.provider.release();

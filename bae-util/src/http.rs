@@ -151,8 +151,9 @@ pub fn client_builder() -> reqwest::ClientBuilder {
 
 /// How bae's outbound requests reach the network: one client with bae's user
 /// agent, timeouts and redirect policy, whose connection pool every provider
-/// shares, and the clock the wait before a failed request is asked again
-/// passes on. Built once when the app starts and handed to each provider.
+/// shares, and the clock the time between requests passes on — the spacing a
+/// provider's rate asks for, and the wait before a failed request is asked
+/// again. Built once when the app starts and handed to each provider.
 ///
 /// Requests are always built against the real addresses. A test builds one
 /// whose requests go to local servers instead — `Http::for_test` sends every
@@ -177,7 +178,7 @@ struct TestRoutes {
 }
 
 impl Http {
-    /// A transport whose waits before a repeat pass on `clock`.
+    /// A transport whose waits between requests pass on `clock`.
     pub fn new(clock: coven::ClockRef) -> Result<Self, reqwest::Error> {
         Ok(Self {
             client: client_builder().build()?,
@@ -189,7 +190,8 @@ impl Http {
 
     /// A transport whose every request goes to a port nothing listens on, so
     /// it fails fast and locally until [`Self::serve`] routes its host. Its
-    /// waits before a repeat pass as they are armed, on a clock of its own.
+    /// waits between requests pass as they are armed, on a clock of its own;
+    /// [`Self::on_clock`] puts them on one the test reads or moves.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test() -> Self {
         let fixed = std::sync::Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
@@ -203,7 +205,15 @@ impl Http {
         }
     }
 
-    /// The clock the waits before a repeat pass on.
+    /// This test transport with its waits between requests on `clock`.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn on_clock(mut self, clock: coven::ClockRef) -> Self {
+        assert!(self.routes.is_some(), "only a test transport changes its clock");
+        self.clock = clock;
+        self
+    }
+
+    /// The clock the waits between requests pass on.
     pub fn clock(&self) -> &coven::ClockRef {
         &self.clock
     }

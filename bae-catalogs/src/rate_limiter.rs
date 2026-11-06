@@ -7,8 +7,8 @@ use std::collections::{BTreeSet, VecDeque};
 use std::sync::Mutex;
 use std::time::Duration;
 
+use coven::ClockRef;
 use tokio::sync::Notify;
-use tokio::time::Instant;
 
 mod ledger;
 use ledger::Ledger;
@@ -106,6 +106,10 @@ pub enum WindowCount {
 /// force; and the provider's last count of its window, less what was admitted
 /// since, has more than a reserve left.
 ///
+/// Time is the clock the limiter is built with: an admission is stamped with
+/// its monotonic `elapsed` reading, and a waiter waits out the time until its
+/// slot opens on it, raced against the queue moving.
+///
 /// Nobody drives admission but the waiters themselves: each holds a ticket in
 /// its class's queue and wakes to check whether the slot is its own. That is
 /// load-bearing, not incidental — a provider is asked from more than one
@@ -115,6 +119,7 @@ pub enum WindowCount {
 /// Here the state a waiter owns is torn down with the waiter's future.
 pub struct RateLimiter {
     interval: Duration,
+    clock: ClockRef,
     inner: Mutex<Inner>,
     /// Woken whenever a ticket leaves a queue — admitted, or given up by a
     /// dropped `wait` future — or moves to another, or an answer changes when
@@ -131,12 +136,13 @@ pub struct RateLimiter {
 }
 
 /// The bookkeeping the lock protects. Held only for the bookkeeping itself —
-/// never across a sleep, or a waiter blocked on the lock could not be overtaken.
+/// never across a wait, or a waiter blocked on the lock could not be overtaken.
+/// Every moment in it is a reading of the limiter's clock's `elapsed`.
 struct Inner {
     /// When the last admitted call was stamped; `None` until the first one.
-    last_call: Option<Instant>,
+    last_call: Option<Duration>,
     /// No call is admitted before this: the provider refused one for its rate.
-    held_until: Option<Instant>,
+    held_until: Option<Duration>,
     /// The provider's count of its window, for a provider that reports one.
     ledger: Option<Ledger>,
     /// Admissions so far; each admitted call is known by its number.
@@ -258,14 +264,14 @@ impl Inner {
     }
 
     /// When the next slot opens, or `None` when it is open now.
-    fn opens_at(&mut self, interval: Duration, now: Instant) -> Option<Instant> {
+    fn opens_at(&mut self, interval: Duration, now: Duration) -> Option<Duration> {
         let spaced = self.last_call.map(|last| last + interval);
         let counted = self.ledger.as_mut().and_then(|ledger| ledger.spent_until(now));
         [spaced, self.held_until, counted].into_iter().flatten().filter(|at| *at > now).max()
     }
 
     /// Stamp an admission and return its number.
-    fn admit(&mut self, now: Instant) -> u64 {
+    fn admit(&mut self, now: Duration) -> u64 {
         let admission = self.admissions;
         self.admissions += 1;
         self.last_call = Some(now);
@@ -279,28 +285,31 @@ impl Inner {
 /// What a queued waiter found when it last looked.
 enum Turn {
     Admitted(u64),
-    /// The next slot is this waiter's, and opens at this instant.
-    NotBefore(Instant),
+    /// The next slot is this waiter's, and opens at this reading of the
+    /// clock.
+    NotBefore(Duration),
     /// Someone is ahead of it; there is nothing to time, only the queue moving.
     Behind,
 }
 
 impl RateLimiter {
-    /// Calls spaced `interval` apart, for a provider that reports nothing
-    /// about its rate.
-    pub fn new(interval: Duration) -> Self {
-        Self::build(interval, None)
+    /// Calls spaced `interval` apart on `clock`, for a provider that reports
+    /// nothing about its rate.
+    pub fn new(interval: Duration, clock: ClockRef) -> Self {
+        Self::build(interval, None, clock)
     }
 
-    /// Calls spaced `interval` apart, for a provider whose responses report its
-    /// count of a `window` — the span it counts requests over.
-    pub fn counted(interval: Duration, window: Duration) -> Self {
-        Self::build(interval, Some(Ledger::new(window)))
+    /// Calls spaced `interval` apart on `clock`, for a provider whose
+    /// responses report its count of a `window` — the span it counts requests
+    /// over.
+    pub fn counted(interval: Duration, window: Duration, clock: ClockRef) -> Self {
+        Self::build(interval, Some(Ledger::new(window)), clock)
     }
 
-    fn build(interval: Duration, ledger: Option<Ledger>) -> Self {
+    fn build(interval: Duration, ledger: Option<Ledger>, clock: ClockRef) -> Self {
         Self {
             interval,
+            clock,
             inner: Mutex::new(Inner::new(ledger)),
             advanced: Notify::new(),
             #[cfg(any(test, feature = "test-instrumentation"))]
@@ -320,7 +329,7 @@ impl RateLimiter {
     }
 
     /// Wait for this call's admission slot, then stamp it. The first call, and
-    /// any call arriving after an idle interval, returns without sleeping.
+    /// any call arriving after an idle interval, returns without waiting.
     ///
     /// Dropping the returned future before it completes gives up the waiter's
     /// place and costs no slot — the interval budget is spent on calls that are
@@ -345,10 +354,11 @@ impl RateLimiter {
                     self.advanced.notify_waiters();
                     return Admitted::new(self, admission);
                 }
-                Turn::NotBefore(deadline) => {
+                Turn::NotBefore(opens) => {
+                    let wait = opens.saturating_sub(self.clock.elapsed());
                     tokio::select! {
                         _ = &mut advanced => {}
-                        _ = tokio::time::sleep_until(deadline) => {}
+                        _ = self.clock.wait_out(wait) => {}
                     }
                 }
                 Turn::Behind => advanced.await,
@@ -358,7 +368,7 @@ impl RateLimiter {
 
     fn admit_when_idle(&self) -> Option<u64> {
         let mut inner = self.lock();
-        let now = Instant::now();
+        let now = self.clock.elapsed();
         if inner.has_waiters() || inner.opens_at(self.interval, now).is_some() {
             return None;
         }
@@ -379,9 +389,9 @@ impl RateLimiter {
             Some((priority, next)) if next == id => priority,
             _ => return Turn::Behind,
         };
-        let now = Instant::now();
-        if let Some(deadline) = inner.opens_at(self.interval, now) {
-            return Turn::NotBefore(deadline);
+        let now = self.clock.elapsed();
+        if let Some(opens) = inner.opens_at(self.interval, now) {
+            return Turn::NotBefore(opens);
         }
         let admission = inner.admit(now);
         inner.queue_mut(priority).pop_front();
@@ -407,7 +417,7 @@ impl RateLimiter {
     /// Admission `admission` came back, carrying `answer` when it reached the
     /// provider and the provider answered.
     fn settle(&self, admission: u64, answer: RateAnswer) {
-        let now = Instant::now();
+        let now = self.clock.elapsed();
         let unread = {
             let mut inner = self.lock();
             if let Some(ledger) = &mut inner.ledger {
@@ -477,9 +487,10 @@ impl RateLimiter {
         self.lock().admitted.clone()
     }
 
-    /// The instant a refusal holds every call until, once one has settled.
+    /// The reading of the clock a refusal holds every call until, once one
+    /// has settled.
     #[cfg(test)]
-    pub(crate) async fn held_until(&self) -> Instant {
+    pub(crate) async fn held_until(&self) -> Duration {
         loop {
             let settled = self.settled.notified();
             tokio::pin!(settled);
@@ -498,8 +509,8 @@ impl RateLimiter {
 
     /// When the next slot opens, `None` when it is open now.
     #[cfg(test)]
-    pub(crate) fn opens_at(&self) -> Option<Instant> {
-        self.lock().opens_at(self.interval, Instant::now())
+    pub(crate) fn opens_at(&self) -> Option<Duration> {
+        self.lock().opens_at(self.interval, self.clock.elapsed())
     }
 
     #[cfg(test)]
@@ -568,6 +579,9 @@ impl Drop for Ticket<'_> {
 
 #[cfg(any(test, feature = "test-utils"))]
 pub mod load_model;
+
+#[cfg(test)]
+pub(crate) mod tokio_clock;
 
 #[cfg(test)]
 #[path = "rate_limiter_tests.rs"]

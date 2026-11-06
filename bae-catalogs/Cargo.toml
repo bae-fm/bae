@@ -28,9 +28,11 @@ serde = { workspace = true, features = ["derive"] }
 # `raw_value`: a MusicBrainz Disc ID answer lists whole release documents,
 # each kept as the bytes MusicBrainz sent for a read to start from.
 serde_json = { workspace = true, features = ["raw_value"] }
-# The rate limiter's waits and the image cache's disk work, which runs on the
+# The clock the rate limiter stamps admissions on and waits out its spacing on.
+coven = { workspace = true }
+# The rate limiter's wakeups and the image cache's disk work, which runs on the
 # blocking pool.
-tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 # The remote-image cache spools a download to a temporary file before an
@@ -44,9 +46,9 @@ image = { workspace = true, features = ["png"], optional = true }
 rand = { workspace = true, optional = true }
 
 [dev-dependencies]
-# The test transport, whose waits before a repeat pass as they are armed.
+# The test transport, whose waits between requests pass as they are armed.
 bae-util = { workspace = true, features = ["test-utils"] }
-# The clock a direct test transport's waits pass on.
+# The clocks the tests' transports wait on.
 coven = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "net", "io-util", "rt-multi-thread", "test-util"] }
@@ -67,7 +69,7 @@ default = []
 # rate limiter's load model a provider's window is tested under, for the
 # tests of every crate that builds on this one. Dev/test-only: a production
 # build never enables it.
-test-utils = ["bae-util/test-utils", "dep:axum", "dep:image", "dep:rand", "tokio/net"]
+test-utils = ["bae-util/test-utils", "dep:axum", "dep:image", "dep:rand", "tokio/net", "tokio/time"]
 # What bae-library's own unit tests read back: the MusicBrainz requests waiting
 # for a slot and the order the rate limiter admitted them in. It records as it
 # runs, so only bae-library's dev-dependency turns it on, never a build that ships

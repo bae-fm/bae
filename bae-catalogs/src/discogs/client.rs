@@ -61,14 +61,19 @@ pub struct Discogs {
 
 impl Discogs {
     pub fn new(http: Http) -> Self {
-        Self::with_limiter(http, RateLimiter::counted(DISCOGS_REQUEST_INTERVAL, DISCOGS_WINDOW))
+        let clock = http.clock().clone();
+        Self::with_limiter(
+            http,
+            RateLimiter::counted(DISCOGS_REQUEST_INTERVAL, DISCOGS_WINDOW, clock),
+        )
     }
 
     /// One whose requests are not spaced and whose window holds nothing: a
     /// test's fake service has no rate to keep to.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test(http: Http) -> Self {
-        Self::with_limiter(http, RateLimiter::counted(Duration::ZERO, Duration::ZERO))
+        let clock = http.clock().clone();
+        Self::with_limiter(http, RateLimiter::counted(Duration::ZERO, Duration::ZERO, clock))
     }
 
     fn with_limiter(http: Http, limiter: RateLimiter) -> Self {

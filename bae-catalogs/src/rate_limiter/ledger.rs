@@ -1,10 +1,9 @@
 //! The provider's own count of its window, kept current between responses
-//! with what the limiter knows of its own requests.
+//! with what the limiter knows of its own requests. Every moment in it is a
+//! reading of the limiter's clock's `elapsed`.
 
 use std::collections::VecDeque;
 use std::time::Duration;
-
-use tokio::time::Instant;
 
 use super::WindowCount;
 
@@ -28,10 +27,10 @@ pub(super) struct Ledger {
 /// One admitted request.
 struct Sent {
     admission: u64,
-    admitted: Instant,
+    admitted: Duration,
     /// When its response, or its failure, came back. The provider met it — if
     /// it met it at all — between `admitted` and this.
-    answered: Option<Instant>,
+    answered: Option<Duration>,
 }
 
 /// What one response said the provider's window had left.
@@ -39,12 +38,12 @@ struct Count {
     /// The admission whose response carried it.
     admission: u64,
     /// When that response came back: the provider counted no later than this.
-    answered: Instant,
+    answered: Duration,
     remaining: u32,
     /// When the count no longer describes the window: a fixed window's reset,
     /// or a moving window's length after the counted request — by then every
     /// request the count held has left it.
-    ends: Instant,
+    ends: Duration,
     /// Whether requests leave the count one at a time as they age out.
     rolling: bool,
 }
@@ -58,12 +57,12 @@ impl Ledger {
         self.window
     }
 
-    pub(super) fn admit(&mut self, admission: u64, now: Instant) {
+    pub(super) fn admit(&mut self, admission: u64, now: Duration) {
         self.prune(now);
         self.sent.push_back(Sent { admission, admitted: now, answered: None });
     }
 
-    pub(super) fn answer(&mut self, admission: u64, now: Instant) {
+    pub(super) fn answer(&mut self, admission: u64, now: Duration) {
         if let Some(sent) = self.sent.iter_mut().find(|sent| sent.admission == admission) {
             sent.answered = Some(now);
         }
@@ -71,7 +70,7 @@ impl Ledger {
 
     /// Take `count`, read off the response to `admission`, unless a response to
     /// a later admission has already said more.
-    pub(super) fn counted(&mut self, admission: u64, now: Instant, count: WindowCount) {
+    pub(super) fn counted(&mut self, admission: u64, now: Duration, count: WindowCount) {
         if self.count.as_ref().is_some_and(|newest| newest.admission > admission) {
             return;
         }
@@ -87,10 +86,10 @@ impl Ledger {
         self.count = None;
     }
 
-    /// When the count is spent down to the reserve: the next instant a request
+    /// When the count is spent down to the reserve: the next moment a request
     /// is certain to have left it. `None` while it has room, or when no count
     /// is current.
-    pub(super) fn spent_until(&mut self, now: Instant) -> Option<Instant> {
+    pub(super) fn spent_until(&mut self, now: Duration) -> Option<Duration> {
         self.prune(now);
         let count = self.count.as_ref()?;
         if now >= count.ends {
@@ -106,7 +105,7 @@ impl Ledger {
         // are someone else's, whose times nobody here knows, so they are taken
         // to stay until the count ends.
         let mut returned = 0i64;
-        let mut next_return: Option<Instant> = None;
+        let mut next_return: Option<Duration> = None;
         if count.rolling {
             for sent in &self.sent {
                 let held = sent.admission > count.admission
@@ -134,7 +133,7 @@ impl Ledger {
 
     /// Drop the requests no count can hold any more: answered two windows ago,
     /// so they left any window a count current now describes.
-    fn prune(&mut self, now: Instant) {
+    fn prune(&mut self, now: Duration) {
         let window = self.window;
         self.sent.retain(|sent| sent.answered.is_none_or(|answered| answered + window * 2 > now));
     }

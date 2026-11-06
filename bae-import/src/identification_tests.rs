@@ -104,6 +104,11 @@ pub(crate) struct Fixture {
     /// The MusicBrainz client those sessions ask, which a test seeds answers
     /// into and reads the waiting requests of.
     pub(crate) musicbrainz: Arc<bae_catalogs::musicbrainz::MusicBrainz>,
+    /// The clock the providers' waits between requests pass on: each passes
+    /// as it is armed until a test holds them.
+    request_waits: Arc<coven::PollingClock>,
+    /// The time `request_waits` moves, which a test moves past a held wait.
+    request_time: Arc<coven::FixedClock>,
     /// The services the queue runs on, for the tests that drive one step of it
     /// directly.
     pub(super) context: Context,
@@ -164,13 +169,17 @@ impl Fixture {
         .unwrap();
 
         let provider = bae_util::test_host::FakeHost::start().await;
+        let request_time = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
+        let request_waits = Arc::new(coven::PollingClock::new(request_time.clone()));
         // Discogs goes to the fake too, so no test reaches the real API.
         let http = bae_util::http::Http::for_test()
             .serve("musicbrainz.org", provider.base_url())
             .serve("coverartarchive.org", provider.base_url())
-            .serve("api.discogs.com", provider.base_url());
-        // Production request spacing: admission order is part of what these
-        // tests measure.
+            .serve("api.discogs.com", provider.base_url())
+            .on_clock(request_waits.clone());
+        // Production request spacing, on a clock that passes each wait as it
+        // is armed until a test holds the waits: admission order is part of
+        // what these tests measure.
         let musicbrainz = Arc::new(bae_catalogs::musicbrainz::MusicBrainz::new(http.clone()));
         let providers = bae_catalogs::providers::Providers::for_test(
             http.clone(),
@@ -207,12 +216,36 @@ impl Fixture {
             import,
             provider,
             musicbrainz,
+            request_waits,
+            request_time,
             context,
             identification: OnceLock::new(),
             bugs,
             root,
             _temp: temp,
         }
+    }
+
+    /// Hold every wait between provider requests armed from now on until the
+    /// test passes it, so calls queue behind the one whose turn is next.
+    pub(crate) fn hold_request_waits(&self) {
+        self.request_waits.hold_waits();
+    }
+
+    /// Move the requests' clock to the end of the latest wait armed on it.
+    pub(crate) async fn pass_armed_request_wait(&self) {
+        let (_, end) = tokio::time::timeout(HANG_GUARD, self.request_time.sleep_begun_after(0))
+            .await
+            .expect("a wait is armed on the requests' clock");
+        self.request_time.set(std::time::UNIX_EPOCH + end);
+    }
+
+    /// Pass every wait already armed, and each later one as it is armed.
+    pub(crate) fn release_request_waits(&self) {
+        self.request_waits.release_waits();
+        // An hour on is past any wait a lookup arms.
+        let now = coven::Clock::now(self.request_time.as_ref());
+        self.request_time.set(now + Duration::from_secs(3600));
     }
 
     /// Whether releases found from now on are identified on their own.

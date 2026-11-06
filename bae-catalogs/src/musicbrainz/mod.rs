@@ -252,15 +252,16 @@ fn quoted(value: &str) -> String {
 
 impl MusicBrainz {
     pub fn new(http: Http) -> Self {
-        Self::with_limiter(http, RateLimiter::counted(REQUEST_INTERVAL, RATE_WINDOW))
+        let clock = http.clock().clone();
+        Self::with_limiter(http, RateLimiter::counted(REQUEST_INTERVAL, RATE_WINDOW, clock))
     }
 
     /// One whose requests are not spaced and whose window holds nothing: a
-    /// test's fake service has no rate to keep to, and waiting between its
-    /// answers only slows the test.
+    /// test's fake service has no rate to keep to.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test(http: Http) -> Self {
-        Self::with_limiter(http, RateLimiter::counted(Duration::ZERO, Duration::ZERO))
+        let clock = http.clock().clone();
+        Self::with_limiter(http, RateLimiter::counted(Duration::ZERO, Duration::ZERO, clock))
     }
 
     /// The requests waiting in `priority`'s queue for a slot, oldest first.

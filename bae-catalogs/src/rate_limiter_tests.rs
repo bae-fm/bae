@@ -1,8 +1,14 @@
 use super::*;
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
+use tokio::time::Instant;
 
 const INTERVAL: Duration = Duration::from_secs(1);
+
+/// A limiter's clock on the test's paused tokio time.
+fn clock() -> ClockRef {
+    Arc::new(tokio_clock::TokioClock::new())
+}
 
 /// Spawned waiters reach the queue only when they run, so a test that cares
 /// about arrival order waits for them to get there first.
@@ -17,7 +23,7 @@ fn spawn_wait(limiter: &Arc<RateLimiter>, class: CallClass) -> tokio::task::Join
 
 #[tokio::test(start_paused = true)]
 async fn wait_spaces_calls_by_the_interval() {
-    let limiter = RateLimiter::new(INTERVAL);
+    let limiter = RateLimiter::new(INTERVAL, clock());
 
     // First call returns immediately — no previous stamp.
     let start = Instant::now();
@@ -34,7 +40,7 @@ async fn wait_spaces_calls_by_the_interval() {
 /// requested call is admitted 21 intervals in.
 #[tokio::test(start_paused = true)]
 async fn a_requested_call_overtakes_a_queued_background_flood() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
     // Spend the free first slot, so everything below has to queue.
     drop(limiter.wait(CallClass::BACKGROUND).await);
 
@@ -55,7 +61,7 @@ async fn a_requested_call_overtakes_a_queued_background_flood() {
 /// The guarantee that forbids giving background work its own limiter.
 #[tokio::test(start_paused = true)]
 async fn the_interval_bounds_both_classes_together() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
     let admissions: Arc<Mutex<Vec<Instant>>> = Arc::default();
 
     let mut handles = Vec::new();
@@ -86,7 +92,7 @@ async fn the_interval_bounds_both_classes_together() {
 
 #[tokio::test(start_paused = true)]
 async fn background_drains_in_arrival_order_once_requested_is_idle() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
     // Spend the free first slot, so every waiter below is queued.
     drop(limiter.wait(CallClass::REQUESTED).await);
 
@@ -114,7 +120,7 @@ async fn background_drains_in_arrival_order_once_requested_is_idle() {
 /// in.
 #[tokio::test(start_paused = true)]
 async fn an_awaited_call_goes_ahead_of_queued_requested_ones() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
     // Spend the free first slot, so everything below has to queue.
     drop(limiter.wait(CallClass::REQUESTED).await);
     for _ in 0..8 {
@@ -142,7 +148,7 @@ async fn an_awaited_call_goes_ahead_of_queued_requested_ones() {
 /// admitted as awaited too.
 #[tokio::test(start_paused = true)]
 async fn a_queued_call_moves_ahead_once_its_work_is_awaited() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
     let work = CallWork(7);
     // Spend the free first slot, so everything below has to queue.
     drop(limiter.wait(CallClass::REQUESTED).await);
@@ -175,7 +181,7 @@ async fn a_queued_call_moves_ahead_once_its_work_is_awaited() {
 /// returns behind the requested calls that arrived before it.
 #[tokio::test(start_paused = true)]
 async fn a_call_goes_back_behind_once_its_work_is_no_longer_awaited() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
     let work = CallWork(7);
     limiter.set_awaited_work(&BTreeSet::from([work]));
     // Spend the free first slot, so everything below has to queue.
@@ -202,7 +208,7 @@ async fn a_call_goes_back_behind_once_its_work_is_no_longer_awaited() {
 /// admitted at all rather than stuck behind an abandoned ticket.
 #[tokio::test(start_paused = true)]
 async fn a_cancelled_waiter_costs_no_slot() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
     // Spend the free first slot, so every waiter below is queued.
     drop(limiter.wait(CallClass::REQUESTED).await);
 
@@ -231,7 +237,7 @@ async fn a_cancelled_waiter_costs_no_slot() {
 
 #[tokio::test(start_paused = true)]
 async fn an_uncontended_wait_neither_sleeps_nor_spawns_a_task() {
-    let limiter = RateLimiter::new(INTERVAL);
+    let limiter = RateLimiter::new(INTERVAL, clock());
     let alive_before = tokio::runtime::Handle::current().metrics().num_alive_tasks();
 
     let start = Instant::now();
@@ -249,7 +255,7 @@ async fn an_uncontended_wait_neither_sleeps_nor_spawns_a_task() {
 /// task.
 #[test]
 fn a_dropped_runtime_leaves_the_limiter_usable() {
-    let limiter = Arc::new(RateLimiter::new(INTERVAL));
+    let limiter = Arc::new(RateLimiter::new(INTERVAL, clock()));
 
     fn runtime() -> tokio::runtime::Runtime {
         tokio::runtime::Builder::new_current_thread()
@@ -307,7 +313,7 @@ fn spawn_stamped(
 /// while the rest keep sending.
 #[tokio::test(start_paused = true)]
 async fn a_refusal_holds_every_waiter_until_its_wait_passes() {
-    let limiter = Arc::new(RateLimiter::counted(INTERVAL, WINDOW));
+    let limiter = Arc::new(RateLimiter::counted(INTERVAL, WINDOW, clock()));
     let admissions: Arc<Mutex<Vec<Instant>>> = Arc::default();
     let refused = limiter.wait(CallClass::REQUESTED).await;
 
@@ -339,7 +345,7 @@ async fn a_refusal_holds_every_waiter_until_its_wait_passes() {
 /// passed: every request the provider counted has left it by then.
 #[tokio::test(start_paused = true)]
 async fn a_refusal_without_a_wait_holds_one_window() {
-    let limiter = RateLimiter::counted(INTERVAL, WINDOW);
+    let limiter = RateLimiter::counted(INTERVAL, WINDOW, clock());
     let start = Instant::now();
     limiter.wait(CallClass::BACKGROUND).await.answered(RateAnswer::Refused { wait: None });
 
@@ -353,7 +359,7 @@ async fn a_refusal_without_a_wait_holds_one_window() {
 async fn a_spent_fixed_window_holds_until_it_resets() {
     let resets_in = Duration::from_millis(1500);
     for (remaining, expected) in [(3, resets_in), (10, INTERVAL)] {
-        let limiter = RateLimiter::counted(INTERVAL, Duration::from_secs(2));
+        let limiter = RateLimiter::counted(INTERVAL, Duration::from_secs(2), clock());
         let start = Instant::now();
         limiter
             .wait(CallClass::BACKGROUND)
@@ -371,7 +377,7 @@ async fn a_spent_fixed_window_holds_until_it_resets() {
 /// the count holds that are not its own may stay that long.
 #[tokio::test(start_paused = true)]
 async fn a_spent_rolling_window_waits_for_its_own_request_to_leave() {
-    let limiter = RateLimiter::counted(INTERVAL, WINDOW);
+    let limiter = RateLimiter::counted(INTERVAL, WINDOW, clock());
     let start = Instant::now();
     let answer_after = Duration::from_millis(100);
 
@@ -397,7 +403,7 @@ async fn a_spent_rolling_window_waits_for_its_own_request_to_leave() {
 /// already taken from a later request, and does not replace it.
 #[tokio::test(start_paused = true)]
 async fn a_late_count_does_not_replace_a_newer_one() {
-    let limiter = RateLimiter::counted(Duration::ZERO, WINDOW);
+    let limiter = RateLimiter::counted(Duration::ZERO, WINDOW, clock());
     let earlier = limiter.wait(CallClass::BACKGROUND).await;
     let later = limiter.wait(CallClass::BACKGROUND).await;
 
@@ -411,7 +417,7 @@ async fn a_late_count_does_not_replace_a_newer_one() {
 /// a long sweep does not grow it.
 #[tokio::test(start_paused = true)]
 async fn requests_no_count_can_hold_are_let_go() {
-    let limiter = RateLimiter::counted(INTERVAL, WINDOW);
+    let limiter = RateLimiter::counted(INTERVAL, WINDOW, clock());
     for _ in 0..500 {
         limiter
             .wait(CallClass::BACKGROUND)
@@ -427,7 +433,7 @@ async fn requests_no_count_can_hold_are_let_go() {
 /// whole and the next call is admitted as before.
 #[tokio::test(start_paused = true)]
 async fn a_count_the_limiter_cannot_read_panics_without_poisoning_it() {
-    let limiter = RateLimiter::new(INTERVAL);
+    let limiter = RateLimiter::new(INTERVAL, clock());
     let admitted = limiter.wait(CallClass::REQUESTED).await;
 
     let answered = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {

@@ -434,9 +434,12 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
     const RATE_LIMITED_HALF_A_MINUTE: &str =
         "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 30\r\nContent-Length: 0\r\n\r\n";
     let (url, request_count) = discogs_response_server(vec![RATE_LIMITED_HALF_A_MINUTE]).await;
-    let discogs = served_by(&url);
+    // A clock only the test moves, so the hold stays until the test ends.
+    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
+    let discogs = Arc::new(Discogs::for_test(
+        Http::for_test().serve("api.discogs.com", &url).on_clock(clock),
+    ));
     let client = DiscogsClient::new(discogs.clone(), "token".to_string());
-    let asked_at = tokio::time::Instant::now();
     let asked = tokio::spawn(async move {
         client.search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED).await
     });
@@ -445,13 +448,11 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, discogs.limiter.held_until())
             .await
             .expect("the refusal reaches the limiter");
-    let seen_at = tokio::time::Instant::now();
     asked.abort();
 
-    // The limiter held itself for the stated wait when the refusal settled,
-    // which was after the request was asked and before the hold was seen.
-    assert!(opens_at >= asked_at + Duration::from_secs(30));
-    assert!(opens_at <= seen_at + Duration::from_secs(30));
+    // The limiter held itself for the stated wait from the refusal, on a
+    // clock that had not moved since the request was asked.
+    assert_eq!(opens_at, Duration::from_secs(30));
     assert_eq!(request_count.load(Ordering::SeqCst), 1);
 }
 
@@ -782,7 +783,9 @@ fn discogs_load(others: Vec<Duration>) -> crate::rate_limiter::load_model::Load 
 /// window's own count does not slow a client that has it to itself.
 #[tokio::test(start_paused = true)]
 async fn sustained_load_stays_inside_discogs_minute() {
-    let discogs = Discogs::new(Http::for_test());
+    let discogs = Discogs::new(
+        Http::for_test().on_clock(Arc::new(crate::rate_limiter::tokio_clock::TokioClock::new())),
+    );
     let limiter = Arc::new(discogs.limiter);
     let load = discogs_load(Vec::new());
     let requests = load.requests as u32;
@@ -810,7 +813,9 @@ async fn sustained_load_stays_inside_discogs_minute() {
 /// it keeps at least the thirty a minute left over, less the reserve.
 #[tokio::test(start_paused = true)]
 async fn sustained_load_yields_discogs_minute_to_another_client() {
-    let discogs = Discogs::new(Http::for_test());
+    let discogs = Discogs::new(
+        Http::for_test().on_clock(Arc::new(crate::rate_limiter::tokio_clock::TokioClock::new())),
+    );
     let limiter = Arc::new(discogs.limiter);
     let others = (0..300).map(|second| Duration::from_secs(second * 2)).collect();
     let load = discogs_load(others);

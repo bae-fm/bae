@@ -58,6 +58,31 @@ async fn a_503_without_a_zone_is_a_failure() {
     assert_eq!(requests.load(Ordering::SeqCst), attempts);
 }
 
+/// Back-to-back lookups leave a request interval apart on the transport's
+/// clock: the first at once, each after it once the interval since the last
+/// has passed.
+#[tokio::test]
+async fn back_to_back_lookups_wait_the_request_interval_between_them() {
+    let ids = ["rg-1", "rg-2", "rg-3"];
+    let (url, requests) =
+        mb_response_server(ids.iter().map(|id| (200, format!(r#"{{"id":"{id}"}}"#))).collect())
+            .await;
+    let clock =
+        Arc::new(coven::PollingClock::new(Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH))));
+    let musicbrainz =
+        MusicBrainz::new(Http::for_test().serve("musicbrainz.org", &url).on_clock(clock.clone()));
+
+    for id in ids {
+        musicbrainz
+            .fetch_release_group_json(id, CallClass::REQUESTED)
+            .await
+            .expect("the lookup answers");
+    }
+
+    assert_eq!(requests.load(Ordering::SeqCst), 3);
+    assert_eq!(clock.waited(), [REQUEST_INTERVAL; 2]);
+}
+
 /// A rate refusal holds the whole limiter until the refusing window starts
 /// over, so every other MusicBrainz request waits with the refused one.
 #[tokio::test]
@@ -71,9 +96,12 @@ async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
         "Date: {DATE}\r\nx-ratelimit-reset: {reset}\r\n"
     ))])
     .await;
-    let musicbrainz = Arc::new(served_by(&url));
+    // A clock only the test moves, so the hold stays until the test ends.
+    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
+    let musicbrainz = Arc::new(MusicBrainz::for_test(
+        Http::for_test().serve("musicbrainz.org", &url).on_clock(clock),
+    ));
     let asking = Arc::clone(&musicbrainz);
-    let asked_at = tokio::time::Instant::now();
     let asked = tokio::spawn(async move {
         asking.fetch_release_group_json("rg-held", CallClass::REQUESTED).await
     });
@@ -82,13 +110,11 @@ async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, musicbrainz.limiter.held_until())
             .await
             .expect("the refusal reaches the limiter");
-    let seen_at = tokio::time::Instant::now();
     asked.abort();
 
-    // The limiter held itself for thirty seconds when the refusal settled,
-    // which was after the request was asked and before the hold was seen.
-    assert!(opens_at >= asked_at + Duration::from_secs(30));
-    assert!(opens_at <= seen_at + Duration::from_secs(30));
+    // The limiter held itself for thirty seconds from the refusal, on a
+    // clock that had not moved since the request was asked.
+    assert_eq!(opens_at, Duration::from_secs(30));
     assert_eq!(requests.load(Ordering::SeqCst), 1);
 }
 
@@ -132,7 +158,9 @@ impl crate::rate_limiter::load_model::Window for MusicBrainzSecond {
 /// servers' shared count does not slow them while it has room.
 #[tokio::test(start_paused = true)]
 async fn sustained_load_keeps_a_second_between_arrivals() {
-    let musicbrainz = MusicBrainz::new(Http::for_test());
+    let musicbrainz = MusicBrainz::new(
+        Http::for_test().on_clock(Arc::new(crate::rate_limiter::tokio_clock::TokioClock::new())),
+    );
     let limiter = Arc::new(musicbrainz.limiter);
     let requests = 200;
 
