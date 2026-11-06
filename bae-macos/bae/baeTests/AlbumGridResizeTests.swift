@@ -85,10 +85,7 @@ struct AlbumGridResizeTests {
                     stage.panelIn = $0
                 }
             )
-            .animation(
-                .spring(duration: 0.24, bounce: 0.12),
-                value: stage.showPanel
-            )
+            .animation(MainAppView.queuePanelSpring, value: stage.showPanel)
         }
     }
 

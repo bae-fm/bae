@@ -40,6 +40,10 @@ struct MainAppView: View {
     @State
     private var searchFieldFrame: CGRect?
 
+    /// How the queue panel springs in beside the active section and out
+    /// again.
+    static let queuePanelSpring = Animation.spring(duration: 0.24, bounce: 0.12)
+
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
@@ -83,10 +87,7 @@ struct MainAppView: View {
                         .transition(.move(edge: .trailing))
                     }
                 }
-                .animation(
-                    .spring(duration: 0.24, bounce: 0.12),
-                    value: uiStore.showQueue
-                )
+                .animation(Self.queuePanelSpring, value: uiStore.showQueue)
 
                 Divider()
                 NowPlayingBarContainer(
