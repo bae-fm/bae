@@ -3,11 +3,11 @@ use super::*;
 impl ImportServiceHandle {
     /// The watched folders as the store lists them.
     pub async fn watched_folders(&self) -> Result<Vec<WatchedFolder>, crate::ImportError> {
-        Ok(self.tables.load_watched_import_folders().await?)
+        Ok(self.services.tables.load_watched_import_folders().await?)
     }
 
     async fn is_watched(&self, path: &Path) -> Result<bool, crate::ImportError> {
-        Ok(self.tables.is_watched_import_folder(path).await?)
+        Ok(self.services.tables.is_watched_import_folder(path).await?)
     }
 
     /// Send a command to the folder-watch coordinator; a closed channel is an
@@ -45,7 +45,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let path = crate::tables::watched_path::canonical_absolute_root(&path)?;
         let shown = coven::path_text(&path);
-        if let Some(covering) = self.tables.watched_import_folder_above(&path).await? {
+        if let Some(covering) = self.services.tables.watched_import_folder_above(&path).await? {
             info!(
                 "{shown} is inside the watched folder {}; re-reading it",
                 coven::path_text(&covering)
@@ -56,7 +56,7 @@ impl ImportServiceHandle {
             );
         }
         let inner: Vec<std::path::PathBuf> =
-            self.tables.watched_import_folders_below(&path).await?;
+            self.services.tables.watched_import_folders_below(&path).await?;
         if !inner.is_empty() {
             info!(
                 "{shown} takes over the watched folders inside it: {:?}",
@@ -64,18 +64,18 @@ impl ImportServiceHandle {
             );
             return self.remove_watched_roots(inner, Some(path)).await;
         }
-        let _commit = self.folder_state_commit.lock("add a watched folder").await;
-        let added = self.tables.add_watched_import_folder(&path).await?;
+        let _commit = self.services.folder_state_commit.lock("add a watched folder").await;
+        let added = self.services.tables.add_watched_import_folder(&path).await?;
         let read = WatcherCommand::Rescan(path.clone());
         let Some(folders) = added else {
             info!("{shown} is already watched; re-reading it");
             return self.send_watcher_command(read, "Failed to start watching folder");
         };
         if let Err(error) = self.send_watcher_command(read, "Failed to start watching folder") {
-            self.tables.remove_watched_import_folders(vec![path], None).await?;
+            self.services.tables.remove_watched_import_folders(vec![path], None).await?;
             return Err(error);
         }
-        self.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }));
+        self.services.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }));
         Ok(())
     }
 
@@ -138,7 +138,7 @@ impl ImportServiceHandle {
         }
         while let Some(read) = reads.join_next().await {
             read.map_err(|error| {
-                self.diagnostics.bug(bae_util::task_failure::TaskFailed::of_join(
+                self.services.diagnostics.bug(bae_util::task_failure::TaskFailed::of_join(
                     "read a watched folder",
                     error,
                 ))
@@ -152,7 +152,7 @@ impl ImportServiceHandle {
     /// read puts them together.
     async fn folder_scan_progress(&self) -> Result<crate::FolderScanProgress, crate::ImportError> {
         let in_memory = self.scans_in_memory.borrow().clone();
-        let stored = self.tables.load_stored_folder_scans().await?;
+        let stored = self.services.tables.load_stored_folder_scans().await?;
         Ok(crate::FolderScanProgress::of(stored, &in_memory))
     }
 
@@ -216,7 +216,7 @@ impl ImportServiceHandle {
         mut accept: impl FnMut(&crate::FolderScanProgress) -> bool,
     ) -> crate::FolderScanProgress {
         let mut scans = crate::folder_scan_status::FolderScansLive::new(
-            self.tables.clone(),
+            self.services.tables.clone(),
             self.scans_in_memory.clone(),
         );
         loop {

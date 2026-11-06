@@ -27,26 +27,26 @@ impl ImportServiceHandle {
         candidate_key: crate::CandidateKey,
         skipped: bool,
     ) -> Result<(), crate::ImportError> {
-        let _commit = self.folder_state_commit.lock("skip a candidate").await;
+        let _commit = self.services.folder_state_commit.lock("skip a candidate").await;
         let candidate = self.require_release_candidate(&candidate_key).await?;
         if candidate.grouping.is_some() {
-            if self.tables.set_grouping_skipped(&candidate_key, skipped).await? {
+            if self.services.tables.set_grouping_skipped(&candidate_key, skipped).await? {
                 if skipped {
                     self.identification_ended(&candidate_key).await;
                 }
-                self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                self.services.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                     candidate_key,
                     skipped,
                 }));
             }
             return Ok(());
         }
-        let changed = self.tables.set_import_candidate_skipped(&candidate.path, skipped).await?;
+        let changed = self.services.tables.set_import_candidate_skipped(&candidate.path, skipped).await?;
         if changed {
             if skipped {
                 self.identification_ended(&candidate_key).await;
             }
-            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+            self.services.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
                 candidate_key,
                 skipped,
             }));

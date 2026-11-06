@@ -203,7 +203,7 @@ async fn an_imported_candidate_s_pane_answers_that_its_files_are_imported() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let release_id = imported(&handle, &key).await;
     let sessions = || async {
-        handle.store.every_row_for_test().await.unwrap().remove("import_candidate_session")
+        handle.services.store.every_row_for_test().await.unwrap().remove("import_candidate_session")
     };
     let before = sessions().await;
 

@@ -61,7 +61,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     let fakes = FakeCatalogs::offline();
     let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } =
         stored_candidate_with(fakes.providers(), bae_util::http::Http::for_test()).await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     seed_mb_release_with_works(
         &fakes,
         "edited-release",
@@ -87,6 +87,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         "edited-release",
     );
     let payloads = handle
+        .services
         .catalogs
         .session()
         .await
@@ -105,7 +106,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _album_id) =
         await_import_outcome(&mut events, &import_id).await.expect("the import completes");
-    let written = handle.records.track_sources_for_test(&release_id).await.unwrap();
+    let written = handle.services.records.track_sources_for_test(&release_id).await.unwrap();
     shut_down(handle).await;
 
     assert_eq!(
@@ -164,8 +165,9 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         let import_id = handle.start_import(&key).await.unwrap().expect_queued();
         let (release_id, album_id) =
             await_import_outcome(&mut events, &import_id).await.expect("the import completes");
-        let tracks = handle.records.get_tracks_for_release(&release_id).await.unwrap();
+        let tracks = handle.services.records.get_tracks_for_release(&release_id).await.unwrap();
         let album = handle
+            .services
             .records
             .find_album_by_id(&album_id)
             .await
@@ -227,7 +229,7 @@ async fn an_import_whose_claim_cannot_be_written_fails_and_claims_nothing() {
 
 /// Every release in the library.
 async fn release_count(handle: &ImportServiceHandle) -> usize {
-    bae_store::test_fixtures::row_count(&handle.store, "releases").await
+    bae_store::test_fixtures::row_count(&handle.services.store, "releases").await
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -305,10 +307,10 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
         .unwrap();
     let mut events = handle.every_event();
 
-    handle.import_cancels.hold_runs();
+    handle.services.import_cancels.hold_runs();
     let first = handle.start_import(&original_key).await.unwrap().expect_queued();
     let second = handle.start_import(&copy_key).await.unwrap().expect_queued();
-    handle.import_cancels.release_runs();
+    handle.services.import_cancels.release_runs();
 
     let (release_id, _) = await_import_outcome(&mut events, &first)
         .await
@@ -344,7 +346,7 @@ async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
 #[tokio::test(flavor = "multi_thread")]
 async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     let root = tmp.path().join("watched");
     let before = tables
         .load_candidate_file_tag_snapshot(&root, &key)
@@ -447,7 +449,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         )
         .await
         .unwrap();
-    let draft = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let draft = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .unwrap()
@@ -468,7 +470,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let tracks = handle.records.get_tracks_for_release(&release_id).await.unwrap();
+    let tracks = handle.services.records.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(
         tracks
             .iter()
@@ -488,6 +490,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let fakes = FakeCatalogs::over(http.clone());
     let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -522,6 +525,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     // another album on AllMusic: a pick references its releases rather than
     // copying them, so the import commits what the partner says now.
     handle
+        .services
         .tables
         .save_source_release(
             &bae_catalogs::payloads::ReleasePayloads::for_test(
@@ -544,7 +548,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let records = handle.records.get_release_records(&release_id).await.unwrap();
+    let records = handle.services.records.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
     assert_eq!(
         records

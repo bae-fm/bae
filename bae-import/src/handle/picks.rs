@@ -18,7 +18,7 @@ impl ImportServiceHandle {
         steps: &crate::CatalogApplySteps,
     ) -> Result<bae_catalogs::source_release::PreparedRelease, crate::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
-            self.tables.load_source_release(release).await?.ok_or_else(|| {
+            self.services.tables.load_source_release(release).await?.ok_or_else(|| {
                 crate::ImportError::Internal {
                     detail: format!(
                         "{candidate_key} settled on {} release {} but nothing stored it",
@@ -47,7 +47,7 @@ impl ImportServiceHandle {
             return Ok(false);
         };
         let Some(row) =
-            self.tables.load_import_candidate_state(&candidate.files.content_hash()).await?
+            self.services.tables.load_import_candidate_state(&candidate.files.content_hash()).await?
         else {
             return Ok(false);
         };
@@ -161,7 +161,7 @@ impl ImportServiceHandle {
         let image = steps
             .during(
                 crate::CatalogApplyStep::FetchingCover(remote.source),
-                self.remote_images.fetch(&remote.image.url),
+                self.services.remote_images.fetch(&remote.image.url),
             )
             .await
             .map_err(|error| CoverFetchFailure { source: remote.source, error })?;
@@ -183,7 +183,7 @@ impl ImportServiceHandle {
         loop {
             // Read tags before taking the commit lock: a network share can be
             // slow, and every pane control waits on this lock.
-            let read = self.read_file_tag_snapshot(&candidate_key, self.file_tags.clone()).await?;
+            let read = self.read_file_tag_snapshot(&candidate_key, self.services.file_tags.clone()).await?;
             let seed = crate::file_metadata_seed::FileMetadataSeed::project(
                 &read.candidate,
                 read.snapshot,
@@ -200,7 +200,7 @@ impl ImportServiceHandle {
             // A scan that stored the candidate while its tags were read gave it
             // a newer generation, and the write only accepts tags read at the
             // current one: read again.
-            let stored_generation = self
+            let stored_generation = self.services
                 .tables
                 .load_candidate_file_tag_snapshot(
                     &read.candidate.watched_folder_path,
@@ -212,7 +212,7 @@ impl ImportServiceHandle {
                 drop(commit);
                 continue;
             }
-            return self
+            return self.services
                 .preparations
                 .apply_file_metadata(
                     &read.candidate.watched_folder_path,
@@ -244,7 +244,7 @@ impl ImportServiceHandle {
         let release = &prepared.release;
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
-        self.tables
+        self.services.tables
             .land_candidate_search_pick(&candidate_key, release.release(), release.album_links())
             .await?;
         let audio = crate::audio_layout::read_audio(&candidate.files)?;
@@ -265,7 +265,7 @@ impl ImportServiceHandle {
             .partners(&link.record, &link.partners, CallClass::AWAITED, steps)
             .await?;
         for partner in &prepared_partners {
-            self.tables
+            self.services.tables
                 .land_candidate_search_pick(
                     &candidate_key,
                     partner.release.release(),
@@ -289,7 +289,7 @@ impl ImportServiceHandle {
         let records: Vec<bae_catalogs::search::MetadataResult> = std::iter::once(picked.clone())
             .chain(prepared_partners.iter().map(bae_catalogs::search::MetadataResult::of_release))
             .collect();
-        let state = self.tables.load_import_candidate_state(&content_hash).await?;
+        let state = self.services.tables.load_import_candidate_state(&content_hash).await?;
         let text = bae_identify::CandidateText::of_stored(
             state.as_ref().and_then(|state| state.signals.as_ref()),
             &state.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default(),
@@ -313,7 +313,7 @@ impl ImportServiceHandle {
                 current.file_edits.revision,
             )
             .await?;
-        self.preparations
+        self.services.preparations
             .apply_pick(
                 &candidate.watched_folder_path,
                 &crate::CandidateAsRead {

@@ -29,7 +29,7 @@ async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let title_before =
         pane(&handle, &key).await.draft().unwrap().metadata_draft.clone().album_title;
-    let commit = handle.folder_state_commit.lock("hold for a test").await;
+    let commit = handle.services.folder_state_commit.lock("hold for a test").await;
     let edit = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
@@ -45,7 +45,7 @@ async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
                 .await
         }
     });
-    tokio::time::timeout(HANG_GUARD, handle.folder_state_commit.waiting_reaches(1))
+    tokio::time::timeout(HANG_GUARD, handle.services.folder_state_commit.waiting_reaches(1))
         .await
         .expect("the edit parks on the commit lock");
     handle.runtime.claim_for_import(&key, "import-1", false).await.unwrap();

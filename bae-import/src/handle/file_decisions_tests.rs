@@ -188,7 +188,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
         .await
         .unwrap();
 
-    let preparation = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let preparation = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the reshaped candidate remains prepared");
@@ -216,7 +216,7 @@ async fn a_gained_track_whose_tags_do_not_parse_is_titled_by_its_name() {
     let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
         stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
-    handle.file_tags = std::sync::Arc::new(CountingFileTagReader::unparseable(1));
+    handle.services.file_tags = std::sync::Arc::new(CountingFileTagReader::unparseable(1));
 
     handle
         .set_sheet_disc(key, "Disc.cue".to_string(), crate::folder_scanner::SheetDisc::Ignored)
@@ -247,7 +247,7 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     ] {
         handle.set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
         let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
-        let preparation = crate::preparations::stored_preparation(&handle.tables, &hash)
+        let preparation = crate::preparations::stored_preparation(&handle.services.tables, &hash)
             .await
             .unwrap()
             .expect("the candidate remains prepared");

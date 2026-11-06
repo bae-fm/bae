@@ -8,7 +8,7 @@ use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::records::LookupRef;
 
 async fn link(handle: &ImportServiceHandle, hash: &str) -> Option<ReleaseLink> {
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     tables
         .load_import_candidate_state(hash)
         .await
@@ -90,7 +90,7 @@ async fn an_import_linked_to_an_album_stores_the_album() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let records = handle.records.get_release_records(&release_id).await.unwrap();
+    let records = handle.services.records.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
     assert_eq!(records, album().records());
     assert_eq!(records[0].url(), format!("https://musicbrainz.org/release-group/{ALBUM}"));

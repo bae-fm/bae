@@ -85,7 +85,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<ImportCandidateSnapshot>, crate::ImportError> {
-        let stored = self.tables.load_folder_scan_item(key).await?;
+        let stored = self.services.tables.load_folder_scan_item(key).await?;
         let candidate = match stored {
             Some(crate::folder_scanner::ScanItem::Valid(candidate)) => Some((candidate, true)),
             Some(crate::folder_scanner::ScanItem::Discovered(candidate)) => {

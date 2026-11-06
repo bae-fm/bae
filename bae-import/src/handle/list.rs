@@ -12,8 +12,8 @@ impl ImportServiceHandle {
         windows: bae_store::LibraryPageWindows,
     ) -> Result<crate::LiveImportList, crate::ImportError> {
         Ok(crate::LiveImportList::open(
-            self.tables.clone(),
-            self.closing.child_token(),
+            self.services.tables.clone(),
+            self.services.closing.child_token(),
             view,
             windows,
         )
@@ -27,10 +27,10 @@ impl ImportServiceHandle {
         view: crate::ImportListView,
         windows: bae_store::LibraryPageWindows,
     ) -> Result<crate::ImportListProjection, crate::ImportError> {
-        let list = self.tables.open_import_list(view).await?;
+        let list = self.services.tables.open_import_list(view).await?;
         let projection =
-            self.tables.load_import_list(crate::ImportListRequest { list, windows }).await;
-        self.tables.close_import_list(list).await?;
+            self.services.tables.load_import_list(crate::ImportListRequest { list, windows }).await;
+        self.services.tables.close_import_list(list).await?;
         Ok(projection?)
     }
 
@@ -43,10 +43,10 @@ impl ImportServiceHandle {
     ) -> bae_store::live_query::LiveValues<crate::FolderScanProgress> {
         bae_store::live_query::LiveValues::new(
             crate::folder_scan_status::FolderScansLive::new(
-                self.tables.clone(),
+                self.services.tables.clone(),
                 self.scans_in_memory.clone(),
             ),
-            self.closing.child_token(),
+            self.services.closing.child_token(),
         )
     }
 
@@ -55,8 +55,8 @@ impl ImportServiceHandle {
     /// Closing the library ends it.
     pub fn subscribe_counts(&self) -> bae_store::live_query::LiveValues<crate::ImportCounts> {
         bae_store::live_query::LiveValues::new(
-            self.tables.subscribe_import_counts(),
-            self.closing.child_token(),
+            self.services.tables.subscribe_import_counts(),
+            self.services.closing.child_token(),
         )
     }
 
@@ -68,8 +68,8 @@ impl ImportServiceHandle {
         key: &crate::CandidateKey,
     ) -> bae_store::live_query::LiveValues<Option<crate::CandidateRuntimeSnapshot>> {
         bae_store::live_query::LiveValues::new(
-            self.tables.subscribe_candidate_runtime(key),
-            self.closing.child_token(),
+            self.services.tables.subscribe_candidate_runtime(key),
+            self.services.closing.child_token(),
         )
     }
 
@@ -79,7 +79,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<crate::ImportCandidateDetail>, crate::ImportError> {
-        Ok(self
+        Ok(self.services
             .tables
             .load_import_candidate(key)
             .await?
@@ -97,7 +97,7 @@ impl ImportServiceHandle {
         Option<crate::ImportCandidateDetailProjection>,
         coven::CovenError,
     > {
-        self.tables.subscribe_import_candidate(initial)
+        self.services.tables.subscribe_import_candidate(initial)
     }
 
     /// The live read of the folder that failed validation the request names;
@@ -111,7 +111,7 @@ impl ImportServiceHandle {
         Option<crate::InvalidCandidateDetail>,
         coven::CovenError,
     > {
-        self.tables.subscribe_invalid_candidate(initial)
+        self.services.tables.subscribe_invalid_candidate(initial)
     }
 
     /// The import list for `view` as one window over every item, for a test

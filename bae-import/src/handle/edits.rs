@@ -35,7 +35,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let candidate = self.require_release_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        let revision = self
+        let revision = self.services
             .tables
             .load_import_candidate_state(&hash)
             .await?
@@ -45,7 +45,7 @@ impl ImportServiceHandle {
             .metadata_revision;
         let cover = match cover {
             crate::CoverSelection::Remote(image, source) => {
-                let fetched = self.remote_images.fetch_required(&image.url).await?;
+                let fetched = self.services.remote_images.fetch_required(&image.url).await?;
                 crate::cover_art::PreparedCover::Remote { image, source, fetched }
             }
             crate::CoverSelection::Local(file_id) => {
@@ -63,7 +63,7 @@ impl ImportServiceHandle {
                 candidate.file_edit_revision,
             )
             .await?;
-        self.preparations
+        self.services.preparations
             .set_prepared_cover(
                 &candidate.watched_folder_path,
                 &candidate.key(),
@@ -98,7 +98,7 @@ impl ImportServiceHandle {
                     candidate.file_edit_revision,
                 )
                 .await?;
-            Ok(this.tables.set_candidate_album_pick(&hash, album_id.as_deref()).await?)
+            Ok(this.services.tables.set_candidate_album_pick(&hash, album_id.as_deref()).await?)
         })
         .await
     }
@@ -132,7 +132,7 @@ impl ImportServiceHandle {
                 candidate.file_edit_revision,
             )
             .await?;
-        self.preparations
+        self.services.preparations
             .set_field_prepared(
                 &candidate.watched_folder_path,
                 &candidate.key(),
@@ -175,7 +175,7 @@ impl ImportServiceHandle {
                 base.candidate.file_edit_revision,
             )
             .await?;
-        self.preparations
+        self.services.preparations
             .set_album_artists_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,
@@ -215,7 +215,7 @@ impl ImportServiceHandle {
                 base.candidate.file_edit_revision,
             )
             .await?;
-        self.preparations
+        self.services.preparations
             .set_track_edit_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,
@@ -257,7 +257,7 @@ impl ImportServiceHandle {
                 base.candidate.file_edit_revision,
             )
             .await?;
-        self.preparations
+        self.services.preparations
             .set_track_artists_prepared(
                 &base.watched_folder_path,
                 &base.candidate_path,

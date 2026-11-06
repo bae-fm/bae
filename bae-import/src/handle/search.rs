@@ -23,9 +23,9 @@ impl ImportServiceHandle {
         candidate_key: crate::CandidateKey,
         query: SearchQuery,
     ) -> Result<(), crate::ImportError> {
-        let sources = bae_preferences::preferences(&self.store).await?.metadata_sources();
+        let sources = bae_preferences::preferences(&self.services.store).await?.metadata_sources();
         let search = CandidateSearch::started(query.clone(), &sources);
-        let run = self.tables.start_candidate_search(&candidate_key, &search).await?;
+        let run = self.services.tables.start_candidate_search(&candidate_key, &search).await?;
         for source in search.searching_sources() {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
@@ -41,7 +41,7 @@ impl ImportServiceHandle {
         candidate_key: crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
         let Some((run, query, sources)) =
-            self.tables.retry_candidate_search(&candidate_key).await?
+            self.services.tables.retry_candidate_search(&candidate_key).await?
         else {
             debug!("retry_candidate_search: {candidate_key} has no source to re-ask");
             return Ok(());
@@ -61,7 +61,7 @@ impl ImportServiceHandle {
         &self,
         source: LookupCatalog,
     ) -> Result<(), bae_store::DbError> {
-        self.tables.switch_search_source_off(source).await
+        self.services.tables.switch_search_source_off(source).await
     }
 
     /// Run one source's part of a search and land it on the search's run,
@@ -73,10 +73,10 @@ impl ImportServiceHandle {
         source: LookupCatalog,
         run: SearchRun,
     ) {
-        let catalogs = self.catalogs.clone();
-        let tables = self.tables.clone();
-        let diagnostics = self.diagnostics.clone();
-        self.diagnostics.spawn_reported(
+        let catalogs = self.services.catalogs.clone();
+        let tables = self.services.tables.clone();
+        let diagnostics = self.services.diagnostics.clone();
+        self.services.diagnostics.spawn_reported(
             &self.runtime_handle,
             "search one source",
             async move {
@@ -127,7 +127,7 @@ impl ImportServiceHandle {
         use bae_records::LibraryCheck;
 
         let results = bae_catalogs::search::search_provider(
-            &self.catalogs.search_session(source).await?,
+            &self.services.catalogs.search_session(source).await?,
             source,
             &query,
             CallClass::REQUESTED,
@@ -136,7 +136,7 @@ impl ImportServiceHandle {
 
         let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
 
-        let statuses = self.records.check_releases_in_library(&checks).await?;
+        let statuses = self.services.records.check_releases_in_library(&checks).await?;
 
         let status_map: HashMap<String, bae_records::LibraryStatus> =
             statuses.into_iter().map(|s| (s.release_id.clone(), s)).collect();

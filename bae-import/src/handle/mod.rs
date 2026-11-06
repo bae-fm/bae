@@ -44,7 +44,7 @@ pub(crate) use verdict_write::VerdictWrite;
 use super::candidate_runtime::CandidateRuntime;
 use crate::watching::WatcherCommand;
 use crate::CandidateRuntimeSnapshot;
-use crate::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
+use crate::{ImportEvent, ImportEvents, ScanEvent};
 #[cfg(any(test, feature = "test-utils"))]
 use crate::{ImportProgressFeed, ScanEvents};
 
@@ -58,28 +58,10 @@ pub struct ImportServiceHandle {
     /// The import worker. Its clone of the store holds coven's store-open
     /// lock, so teardown must not return before it is joined.
     worker: WorkerThread<crate::service::ImportWorkerMessage>,
-    /// The library's store, which the handle reads and writes directly.
-    store: bae_store::Store,
-    /// The library's records, which the handle reads.
-    records: bae_records::Records,
-    /// Import's own tables in that store.
-    tables: crate::tables::ImportTables,
-    /// The catalogs as this library may ask them.
-    catalogs: crate::CatalogSessions,
+    /// The import's shared dependencies, the same the folder scans hold.
+    services: crate::ImportServices,
     /// Where a catalog release is read from storage or fetched.
     release_reads: crate::ReleaseReads,
-    /// The provider images covers are fetched through.
-    remote_images: bae_catalogs::remote_image::RemoteImageCache,
-    /// The one writer of candidates' stored state.
-    preparations: crate::CandidatePreparations,
-    /// The clock a refused import's failure is stamped with.
-    clock: coven::ClockRef,
-    ids: coven::IdSourceRef,
-    /// Reads a folder's audio files for their embedded tags; the scan's
-    /// pre-fill uses the same reader.
-    file_tags: std::sync::Arc<dyn crate::file_tag_reader::FileTagReader>,
-    /// The import service's event channel.
-    event_tx: ImportEventBus,
     /// What the bus's events have said about every candidate.
     runtime: CandidateRuntime,
     /// The identify driver and the extraction feeding it, held here because
@@ -87,18 +69,11 @@ pub struct ImportServiceHandle {
     /// their own write.
     identify: crate::IdentifyService,
     extraction: crate::extraction::ExtractionService,
-    folder_state_commit: crate::FolderStateCommit,
-    import_cancels: crate::import_cancel::ImportCancels,
     watcher: WorkerThread<WatcherCommand>,
     /// What the folder scan coordinator holds of each root's scan that no
     /// table does, which the scan progress puts beside the stored scans.
     scans_in_memory: tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
     runtime_handle: tokio::runtime::Handle,
-    /// Where a panic in work the handle starts and nobody awaits is reported.
-    diagnostics: bae_diagnostics::Diagnostics,
-    /// Cancelled when the library closes, before its store does: every list
-    /// the handle opens ends with it.
-    closing: tokio_util::sync::CancellationToken,
 }
 
 impl ImportServiceHandle {
@@ -108,7 +83,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::CandidateKey,
     ) -> Result<Option<crate::folder_scanner::FolderCandidate>, crate::ImportError> {
-        self.tables
+        self.services.tables
             .load_release_candidate(key)
             .await?
             .map_err(|reason| crate::ImportError::GroupingBlocked { reason })
@@ -125,9 +100,7 @@ impl ImportServiceHandle {
         })
     }
 
-    /// The handle over the started workers. Starts the live read of every
-    /// candidate's runtime as one of the library's own tasks, which closing
-    /// the library ends; refused once the library is closing.
+    /// The handle over the started workers and the services they share.
     pub(super) fn new(
         worker: WorkerThread<crate::service::ImportWorkerMessage>,
         watcher: WorkerThread<WatcherCommand>,
@@ -136,67 +109,22 @@ impl ImportServiceHandle {
         >,
         services: crate::ImportServices,
         runtime: CandidateRuntime,
+        release_reads: crate::ReleaseReads,
+        identify: crate::IdentifyService,
+        extraction: crate::extraction::ExtractionService,
         runtime_handle: tokio::runtime::Handle,
-    ) -> Result<Self, crate::ImportError> {
-        let crate::ImportServices {
-            event_tx,
-            store,
-            records,
-            tables,
-            catalogs,
-            remote_images,
-            preparations,
-            clock,
-            ids,
-            file_tags,
-            directories: _,
-            folder_state_commit,
-            import_cancels,
-            diagnostics,
-            closing,
-        } = services;
-        let release_reads = crate::ReleaseReads::new(store.clone(), catalogs.clone());
-        let identify = crate::IdentifyService::new(
-            store.clone(),
-            catalogs.clone(),
-            release_reads.clone(),
-            runtime_handle.clone(),
-            event_tx.clone(),
-            runtime.clone(),
-            diagnostics.clone(),
-        );
-        let extraction = crate::extraction::ExtractionService::new(
-            runtime_handle.clone(),
-            event_tx.clone(),
-            runtime.clone(),
-            store.clone(),
-            records.clone(),
-            diagnostics.clone(),
-        );
-        Ok(Self {
+    ) -> Self {
+        Self {
             worker,
-            store,
-            records,
-            tables,
-            catalogs,
+            services,
             release_reads,
-            remote_images,
-            preparations,
-            clock,
-            ids,
-            file_tags,
-            event_tx,
             runtime,
             identify,
             extraction,
-            folder_state_commit,
-            import_cancels,
             watcher,
             scans_in_memory,
             runtime_handle,
-            diagnostics,
-            closing,
-        })
+        }
     }
 
     /// Stop and join both worker threads; later calls do nothing. Called from

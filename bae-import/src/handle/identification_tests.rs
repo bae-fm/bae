@@ -134,6 +134,7 @@ async fn a_pick_ends_identification_in_its_write() {
     let (handle, _tmp, key, _hash) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await

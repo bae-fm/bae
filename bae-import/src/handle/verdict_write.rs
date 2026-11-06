@@ -41,7 +41,7 @@ impl ImportServiceHandle {
         let candidate_key = candidate_key.clone();
         let row = row.clone();
         self.committed(async move {
-            let _commit = this.folder_state_commit.lock("store an identification verdict").await;
+            let _commit = this.services.folder_state_commit.lock("store an identification verdict").await;
             match this.save_candidate_verdict_if_current_write(&candidate_key, &row, run).await {
                 Ok(Some(import_asked)) => Ok(VerdictWrite::Stored { import_asked }),
                 Ok(None) => {
@@ -94,7 +94,7 @@ impl ImportServiceHandle {
         {
             return Ok(None);
         }
-        match self.preparations.store_run_verdict(row, candidate_key, run).await? {
+        match self.services.preparations.store_run_verdict(row, candidate_key, run).await? {
             // The verdict's write ended the answer, and what its run
             // published, inside it.
             Some(ended) => {

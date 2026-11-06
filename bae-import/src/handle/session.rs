@@ -26,7 +26,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
     ) -> Result<bool, crate::ImportError> {
         self.move_candidate_pane(candidate_key, PaneMove::Automatic).await?;
-        let stored = self
+        let stored = self.services
             .tables
             .load_import_candidate(candidate_key)
             .await?
@@ -45,8 +45,8 @@ impl ImportServiceHandle {
         &self,
         content_hashes: Vec<String>,
     ) -> Result<(), crate::ImportError> {
-        let _commit = self.folder_state_commit.lock("open panes on Find online").await;
-        self.tables.move_import_candidate_panes(content_hashes, PaneMove::Admitted).await?;
+        let _commit = self.services.folder_state_commit.lock("open panes on Find online").await;
+        self.services.tables.move_import_candidate_panes(content_hashes, PaneMove::Admitted).await?;
         Ok(())
     }
 
@@ -69,7 +69,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
-        if self.tables.load_import_candidate(candidate_key).await?.is_none() {
+        if self.services.tables.load_import_candidate(candidate_key).await?.is_none() {
             return Ok(());
         }
         self.update_candidate_session(candidate_key, |session| session.error = None).await
@@ -132,9 +132,9 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         change: impl FnOnce(&mut CandidateSession),
     ) -> Result<(), crate::ImportError> {
-        let _commit = self.folder_state_commit.lock("store a pane session").await;
+        let _commit = self.services.folder_state_commit.lock("store a pane session").await;
         let projection =
-            self.tables.load_import_candidate(candidate_key).await?.ok_or_else(|| {
+            self.services.tables.load_import_candidate(candidate_key).await?.ok_or_else(|| {
                 crate::ImportError::Internal {
                     detail: format!("{candidate_key} is not a scanned folder candidate"),
                 }
@@ -151,7 +151,7 @@ impl ImportServiceHandle {
         };
         let mut session = draft.session_or_initial(projection.verdict.is_some());
         change(&mut session);
-        self.tables.save_import_candidate_session(&content_hash, &session).await?;
+        self.services.tables.save_import_candidate_session(&content_hash, &session).await?;
         Ok(())
     }
 }

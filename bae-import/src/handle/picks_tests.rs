@@ -71,8 +71,9 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
     let fakes = FakeCatalogs::over(http.clone());
     let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers(), http).await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -124,7 +125,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
-        crate::preparations::stored_preparation(&handle.tables, &hash)
+        crate::preparations::stored_preparation(&handle.services.tables, &hash)
             .await
             .unwrap()
             .expect("the picked candidate is prepared")
@@ -145,7 +146,7 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
     let fakes = FakeCatalogs::offline();
     let (handle, _tmp, key, hash) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
 
     let mb_release_id = "unpaired-mb-rel-1";
     seed_two_track_mb_release(&fakes, mb_release_id, "unpaired-mb-group-1");
@@ -196,7 +197,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
     let fakes = FakeCatalogs::offline();
     let (handle, _tmp, key, hash) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
 
     let mb_release_id = "repeat-mb-rel-1";
     seed_two_track_mb_release(&fakes, mb_release_id, "repeat-mb-group-1");
@@ -257,6 +258,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let fakes = FakeCatalogs::over(http.clone());
     let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers(), http).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -291,6 +293,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .await
         .unwrap();
     let picked = handle
+        .services
         .tables
         .load_source_release(&release)
         .await
@@ -302,6 +305,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let (scratch, _scratch_tmp, _, _) =
         pane_fixture_with(scratch_fakes.providers(), bae_util::http::Http::for_test()).await;
     scratch
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -340,6 +344,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     let fakes = FakeCatalogs::over(http.clone());
     let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -347,6 +352,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     let group = "chain-mb-group";
     seed_two_track_discogs_release_in(&fakes, "70000012", Some("909"), None);
     handle
+        .services
         .tables
         .replace_group_album_links(vec![(
             group.to_string(),
@@ -371,6 +377,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .await
         .unwrap();
     let records = handle
+        .services
         .tables
         .load_source_release(&picked)
         .await
@@ -406,6 +413,7 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
     let fakes = FakeCatalogs::over(http.clone());
     let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await

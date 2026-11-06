@@ -15,11 +15,12 @@ use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 
 /// Store a verdict that found nothing for the fixture's candidate.
 async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
-    let prep = crate::preparations::stored_preparation(&handle.tables, hash)
+    let prep = crate::preparations::stored_preparation(&handle.services.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
     let stored = handle
+        .services
         .preparations
         .store_verdict(&crate::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),
@@ -98,7 +99,7 @@ async fn a_pick_after_keeping_the_draft_is_identified() {
     let fakes = FakeCatalogs::offline();
     let (handle, _tmp, key, hash) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     store_not_found(&handle, &hash).await;
     handle.keep_candidate_draft(key.clone()).await.unwrap();
     seed_mb_release_with_catalog(&fakes, "kept-then-picked", "CAT-1");
@@ -166,6 +167,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let (handle, _tmp, key, _hash) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -221,6 +223,7 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
     let (handle, _tmp, key, _hash) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -307,7 +310,7 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
             .collect::<Vec<_>>()
     };
     let before = rows(
-        &crate::preparations::stored_preparation(&handle.tables, &hash)
+        &crate::preparations::stored_preparation(&handle.services.tables, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -316,14 +319,14 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
     );
 
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let reapplied = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let reapplied = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the reapplied source remains prepared");
     assert_eq!(rows(&reapplied.metadata.draft), before);
 
     handle.clear_candidate_metadata(key).await.unwrap();
-    let cleared = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let cleared = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the cleared source remains prepared");
@@ -365,7 +368,7 @@ async fn file_tags_uses_the_conventional_folder_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
     let StoredCandidate { mut handle, parts, key, tmp: _tmp, .. } = stored_candidate().await;
-    handle.file_tags =
+    handle.services.file_tags =
         std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(vec![1, 2, 3, 4]));
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
 

@@ -28,8 +28,8 @@ impl ImportServiceHandle {
         candidate: &crate::folder_scanner::FolderCandidate,
     ) -> Result<crate::CandidateStanding, crate::ImportError> {
         Ok(crate::CandidateStanding {
-            skipped: self.tables.is_release_candidate_skipped(candidate).await?,
-            imported: self.tables.release_imported_from(&candidate.files.content_hash()).await?,
+            skipped: self.services.tables.is_release_candidate_skipped(candidate).await?,
+            imported: self.services.tables.release_imported_from(&candidate.files.content_hash()).await?,
             claimed: self.runtime.import_claimed(key).await?,
         })
     }
@@ -44,7 +44,7 @@ impl ImportServiceHandle {
         expected_content_hash: &str,
         expected_file_edit_revision: u64,
     ) -> Result<crate::FolderStateCommitGuard, crate::ImportError> {
-        let commit = self.folder_state_commit.lock(operation).await;
+        let commit = self.services.folder_state_commit.lock(operation).await;
         let candidate = self.editable_candidate_for_commit(key).await?;
         if candidate.files.content_hash() != expected_content_hash
             || candidate.file_edit_revision != expected_file_edit_revision
@@ -74,7 +74,7 @@ impl ImportServiceHandle {
     {
         bae_util::task_failure::joined("a candidate write", self.runtime_handle.spawn(write))
             .await
-            .map_err(|failed| self.diagnostics.bug(failed))?
+            .map_err(|failed| self.services.diagnostics.bug(failed))?
     }
 }
 

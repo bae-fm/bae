@@ -92,7 +92,7 @@ impl ImportServiceHandle {
                         error,
                         crate::ImportError::Internal { .. } | crate::ImportError::Database(_)
                     ) {
-                        this.diagnostics.report_bug(
+                        this.services.diagnostics.report_bug(
                             &format!("start the automatic import of {candidate_key}"),
                             error,
                         );
@@ -120,15 +120,15 @@ impl ImportServiceHandle {
                 return;
             }
             Err(read) => {
-                self.diagnostics.report_bug(
+                self.services.diagnostics.report_bug(
                     &format!("read {candidate_key} to record its refused import"),
                     &format!("the import was refused: {error}; reading it failed: {read}"),
                 );
                 return;
             }
         };
-        let failure = crate::ImportFailure::of(error, bae_store::utc_now(self.clock.as_ref()));
-        if let Err(write) = self
+        let failure = crate::ImportFailure::of(error, bae_store::utc_now(self.services.clock.as_ref()));
+        if let Err(write) = self.services
             .tables
             .save_import_candidate_failure(
                 &candidate.files.content_hash(),
@@ -137,7 +137,7 @@ impl ImportServiceHandle {
             )
             .await
         {
-            self.diagnostics.report_bug(
+            self.services.diagnostics.report_bug(
                 &format!("record the refused import of {candidate_key}"),
                 &format!("the import was refused: {error}; recording that failed: {write}"),
             );
@@ -149,7 +149,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         request: ImportRequest,
     ) -> Result<ImportStart, crate::ImportError> {
-        let commit = self.folder_state_commit.lock("start an import").await;
+        let commit = self.services.folder_state_commit.lock("start an import").await;
         // Refused for every request kind: an import owns it, or this device
         // already imported its files, and one folder hash is one release here.
         let candidate = self.editable_candidate_for_commit(candidate_key).await?;
@@ -171,7 +171,7 @@ impl ImportServiceHandle {
             }
         }
         let content_hash = candidate.files.content_hash();
-        let preparation = crate::preparations::stored_preparation(&self.tables, &content_hash)
+        let preparation = crate::preparations::stored_preparation(&self.services.tables, &content_hash)
             .await?
             .filter(|preparation| preparation.file_edits.revision == candidate.file_edit_revision)
             .ok_or_else(|| crate::ImportError::Internal {
@@ -187,7 +187,7 @@ impl ImportServiceHandle {
                     Some(crate::cover_art::PreparedCover::Embedded(_))
                 );
         let file_tag_snapshot = if needs_file_tag_snapshot {
-            let Some(stored) = self
+            let Some(stored) = self.services
                 .tables
                 .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
                 .await?
@@ -230,7 +230,7 @@ impl ImportServiceHandle {
         } else {
             None
         };
-        let import_id = self.ids.new_id().to_string();
+        let import_id = self.services.ids.new_id().to_string();
         let expectation = crate::service::ImportExpectation {
             candidate: crate::CandidateAsRead {
                 content_hash: content_hash.clone(),
@@ -246,8 +246,8 @@ impl ImportServiceHandle {
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
             destination: crate::ImportDestination::of(
-                bae_preferences::preferences(&self.store).await?.import_storage,
-                self.store.storage_config().await?.is_some(),
+                bae_preferences::preferences(&self.services.store).await?.import_storage,
+                self.services.store.storage_config().await?.is_some(),
             ),
             #[cfg(any(test, feature = "test-utils"))]
             pick: None,
@@ -294,9 +294,9 @@ impl ImportServiceHandle {
                     ),
                 }
             })?));
-        self.tables.add_watched_import_folder(&watched_folder).await?;
-        let volume = crate::volume::volume_kind(&watched_folder, &self.diagnostics).await;
-        let generation = self.tables.begin_folder_scan(&watched_folder, volume).await?;
+        self.services.tables.add_watched_import_folder(&watched_folder).await?;
+        let volume = crate::volume::volume_kind(&watched_folder, &self.services.diagnostics).await;
+        let generation = self.services.tables.begin_folder_scan(&watched_folder, volume).await?;
         let candidate = crate::folder_scanner::FolderCandidate {
             path: watched_folder.clone(),
             file_root: watched_folder.clone(),
@@ -310,14 +310,14 @@ impl ImportServiceHandle {
         };
         let item = crate::folder_scanner::ScanItem::Valid(candidate.clone());
         let seed = crate::scan_passes::scan_item_seed(
-            &self.tables,
-            &self.diagnostics,
+            &self.services.tables,
+            &self.services.diagnostics,
             &item,
             generation,
-            Arc::new(crate::folder_scanner::FileReads::new(self.file_tags.clone())),
+            Arc::new(crate::folder_scanner::FileReads::new(self.services.file_tags.clone())),
         )
         .await?;
-        if self
+        if self.services
             .tables
             .save_folder_scan_items(
                 &watched_folder,
@@ -335,7 +335,7 @@ impl ImportServiceHandle {
                 detail: format!("test import scan for {candidate_key} was superseded"),
             });
         }
-        if self.tables.finish_folder_scan(&watched_folder, generation, None).await?.is_none() {
+        if self.services.tables.finish_folder_scan(&watched_folder, generation, None).await?.is_none() {
             return Err(crate::ImportError::Internal {
                 detail: format!("test import scan for {candidate_key} was superseded"),
             });
@@ -354,7 +354,7 @@ impl ImportServiceHandle {
             self.read_candidate_file_tags_write(command.candidate_key.clone()).await?;
         }
         if let Some(edit) = command.user_edit.clone() {
-            let preparation = crate::preparations::stored_preparation(&self.tables, &content_hash)
+            let preparation = crate::preparations::stored_preparation(&self.services.tables, &content_hash)
                 .await?
                 .ok_or_else(|| crate::ImportError::Internal {
                     detail: "test import has no candidate state".into(),
@@ -363,7 +363,7 @@ impl ImportServiceHandle {
                 crate::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
                 &preparation.metadata.draft,
             )?;
-            self.preparations
+            self.services.preparations
                 .apply_source(
                     &candidate.watched_folder_path,
                     &crate::CandidateAsRead {
@@ -389,7 +389,7 @@ impl ImportServiceHandle {
         if let Some(cover) = command.selected_cover.clone() {
             self.set_candidate_cover(&command.candidate_key, cover).await?;
         }
-        let metadata_revision = self
+        let metadata_revision = self.services
             .tables
             .load_import_candidate_state(&content_hash)
             .await?
@@ -400,7 +400,7 @@ impl ImportServiceHandle {
         let file_tag_snapshot = if command.read_file_tags
             || matches!(command.selected_cover, Some(crate::CoverSelection::Embedded(_)))
         {
-            let snapshot = self
+            let snapshot = self.services
                 .tables
                 .load_candidate_file_tag_snapshot(
                     &candidate.watched_folder_path,
@@ -437,7 +437,7 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::ImportError> {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
-        let commit = self.folder_state_commit.lock("queue a test import").await;
+        let commit = self.services.folder_state_commit.lock("queue a test import").await;
         self.runtime.claim_for_import(&candidate_key, &import_id, false).await?;
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
@@ -453,13 +453,13 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let candidate_key = command.candidate_key.clone();
         let import_id = command.import_id.clone();
-        self.import_cancels.register(&candidate_key, &import_id);
+        self.services.import_cancels.register(&candidate_key, &import_id);
         if self
             .worker
             .send(crate::service::ImportWorkerMessage::Import { command, expectation })
             .is_err()
         {
-            self.import_cancels.forget(&candidate_key, &import_id);
+            self.services.import_cancels.forget(&candidate_key, &import_id);
             self.release_import_claim(&candidate_key, &import_id).await?;
             return Err(crate::ImportError::Stopped);
         }
@@ -471,7 +471,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         import_id: &str,
     ) -> Result<(), crate::ImportError> {
-        let _commit = self.folder_state_commit.lock("release an import claim").await;
+        let _commit = self.services.folder_state_commit.lock("release an import claim").await;
         Ok(self.runtime.move_import(candidate_key, import_id, None).await?)
     }
 
@@ -524,7 +524,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         import_id: &str,
     ) {
-        let _commit = self.folder_state_commit.lock("claim a candidate for a test").await;
+        let _commit = self.services.folder_state_commit.lock("claim a candidate for a test").await;
         self.runtime
             .claim_for_import(candidate_key, import_id, false)
             .await

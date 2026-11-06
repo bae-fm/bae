@@ -36,7 +36,7 @@ impl ImportServiceHandle {
         image: bae_catalogs::remote_image::RemoteImageSet,
         pixels: Option<u32>,
     ) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, crate::ImportError> {
-        Ok(self.remote_images.fetch(image.url_covering(pixels)).await?)
+        Ok(self.services.remote_images.fetch(image.url_covering(pixels)).await?)
     }
 
     /// Fetch complete artwork galleries when the picker opens. Dispatch on
@@ -58,7 +58,7 @@ impl ImportServiceHandle {
     ) -> Result<RemoteCoverGallery, crate::ImportError> {
         let candidate = self.require_release_candidate(key).await?;
         let state =
-            self.tables.load_import_candidate_state(&candidate.files.content_hash()).await?;
+            self.services.tables.load_import_candidate_state(&candidate.files.content_hash()).await?;
         let link = match state.and_then(|state| state.release_link) {
             None => return Ok(RemoteCoverGallery::Unlinked),
             // An album's artwork is what each catalog shows for the album.
@@ -71,7 +71,7 @@ impl ImportServiceHandle {
         };
         let mut claimed_releases = Vec::new();
         for claimed in link.claimed() {
-            claimed_releases.push(self.tables.load_source_release(claimed).await?.ok_or_else(
+            claimed_releases.push(self.services.tables.load_source_release(claimed).await?.ok_or_else(
                 || crate::ImportError::Internal {
                     detail: format!(
                         "{key} names {} release {} that is not stored",
@@ -84,7 +84,7 @@ impl ImportServiceHandle {
         let (primary, partners) =
             claimed_releases.split_first().expect("a pick claims at least its primary");
         Ok(RemoteCoverGallery::Linked(
-            self.catalogs.musicbrainz().pick_gallery_covers(primary, partners).await?,
+            self.services.catalogs.musicbrainz().pick_gallery_covers(primary, partners).await?,
         ))
     }
 
@@ -92,7 +92,7 @@ impl ImportServiceHandle {
         &self,
         release_id: &str,
     ) -> Result<RemoteCoverGallery, crate::ImportError> {
-        let records = self.records.get_release_records(release_id).await?;
+        let records = self.services.records.get_release_records(release_id).await?;
 
         if records.is_empty() {
             return Ok(RemoteCoverGallery::Unlinked);
@@ -117,23 +117,23 @@ impl ImportServiceHandle {
                     ReleaseRecord::Pressing { release, album_key, .. },
                     LookupCatalog::MusicBrainz,
                 ) => {
-                    self.catalogs
+                    self.services.catalogs
                         .musicbrainz()
                         .musicbrainz_gallery(&release.key, album_key.as_deref())
                         .await?
                 }
                 (ReleaseRecord::Pressing { release, .. }, LookupCatalog::Discogs) => {
-                    self.catalogs
+                    self.services.catalogs
                         .session()
                         .await?
                         .release_covers(&release.key, CallClass::AWAITED)
                         .await?
                 }
                 (ReleaseRecord::Album { album }, LookupCatalog::MusicBrainz) => {
-                    self.catalogs.musicbrainz().musicbrainz_group_gallery(&album.key).await?
+                    self.services.catalogs.musicbrainz().musicbrainz_group_gallery(&album.key).await?
                 }
                 (ReleaseRecord::Album { album }, LookupCatalog::Discogs) => {
-                    self.catalogs
+                    self.services.catalogs
                         .session()
                         .await?
                         .master_covers(&album.key, CallClass::AWAITED)

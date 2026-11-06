@@ -47,7 +47,7 @@ impl ImportServiceHandle {
     ) -> Result<FileTagSnapshotRead, crate::ImportError> {
         let candidate = self.require_release_candidate(candidate_key).await?;
         let watched_folder_path = candidate.watched_folder_path.clone();
-        let Some(stored) = self
+        let Some(stored) = self.services
             .tables
             .load_candidate_file_tag_snapshot(&watched_folder_path, candidate_key)
             .await?
@@ -84,7 +84,7 @@ impl ImportServiceHandle {
                 )
             })
             .await
-            .map_err(|failed| self.diagnostics.bug(failed))??;
+            .map_err(|failed| self.services.diagnostics.bug(failed))??;
         Ok(FileTagSnapshotRead { candidate, snapshot })
     }
 }

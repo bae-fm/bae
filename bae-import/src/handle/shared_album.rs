@@ -31,7 +31,7 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let state = self
+        let state = self.services
             .tables
             .load_import_candidate_state(&content_hash)
             .await?
@@ -86,7 +86,7 @@ impl ImportServiceHandle {
                 current.file_edits.revision,
             )
             .await?;
-        self.preparations
+        self.services.preparations
             .apply_shared_album(
                 &candidate.watched_folder_path,
                 &crate::CandidateAsRead {

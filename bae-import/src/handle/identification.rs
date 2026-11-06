@@ -11,10 +11,10 @@ impl ImportServiceHandle {
     pub fn start_identification_queue(&self) -> crate::IdentificationHandle {
         crate::identification::start(
             self.clone(),
-            self.store.clone(),
-            self.tables.clone(),
-            self.diagnostics.clone(),
-            self.catalogs.clone(),
+            self.services.store.clone(),
+            self.services.tables.clone(),
+            self.services.diagnostics.clone(),
+            self.services.catalogs.clone(),
         )
     }
 
@@ -193,7 +193,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         run: crate::IdentifyRunId,
     ) -> Result<Option<bae_identify::signals::Signals>, bae_store::DbError> {
-        self.tables.load_candidate_run_signals(candidate_key, run).await
+        self.services.tables.load_candidate_run_signals(candidate_key, run).await
     }
 }
 

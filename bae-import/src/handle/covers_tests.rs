@@ -91,12 +91,13 @@ async fn linking_the_album_offers_no_catalog_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_offers_what_it_holds_now() {
     let (handle, _tmp, key, _hash) = picked_with_front("refetched-release").await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     let record = bae_catalogs::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         "refetched-release".to_string(),
     );
     let mut stored = handle
+        .services
         .tables
         .load_source_release(&record)
         .await
@@ -180,6 +181,7 @@ async fn linked_cover_gallery_can_be_empty() {
     let (handle, _tmp, key, _) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
     handle
+        .services
         .catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await

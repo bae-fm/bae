@@ -12,7 +12,7 @@ async fn pick_file_tags(
     key: &crate::CandidateKey,
     reader: std::sync::Arc<CountingFileTagReader>,
 ) -> Result<u64, crate::ImportError> {
-    handle.file_tags = reader;
+    handle.services.file_tags = reader;
     handle.select_candidate_file_tags(key.clone()).await
 }
 
@@ -22,7 +22,7 @@ async fn stored_tags(
     candidate: &crate::folder_scanner::FolderCandidate,
     key: &crate::CandidateKey,
 ) -> Option<crate::file_tag_snapshot::FileTagSnapshot> {
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     tables
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, key)
         .await
@@ -132,7 +132,7 @@ async fn changed_file_observations_read_the_tags_again() {
         .file
         .version
         .size = std::fs::metadata(&second_audio).unwrap().len();
-    rescan_unread_into(&handle.tables, candidate).await;
+    rescan_unread_into(&handle.services.tables, candidate).await;
 
     let after_size = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
     assert_eq!(reader.read_count(), 6);
@@ -150,7 +150,7 @@ async fn a_file_decision_makes_the_tags_read_again() {
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
-    rescan_into(&handle.tables, candidate).await;
+    rescan_into(&handle.services.tables, candidate).await;
 
     let after_generation =
         handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
@@ -185,7 +185,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let stale = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let stale = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate starts prepared");
@@ -205,6 +205,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
     let root = tmp.path().join("watched");
 
     let error = handle
+        .services
         .preparations
         .apply_file_metadata(
             &root,
@@ -233,7 +234,7 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
         unread_stored_candidate().await;
     let (reader, reached, gate) = CountingFileTagReader::held();
     let reader = std::sync::Arc::new(reader);
-    handle.file_tags = reader.clone();
+    handle.services.file_tags = reader.clone();
     let operation = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
@@ -241,11 +242,12 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
     });
     reached.recv_timeout(HANG_GUARD).expect("the tag reader reached the first audio file");
 
-    rescan_into(&handle.tables, candidate.clone()).await;
+    rescan_into(&handle.services.tables, candidate.clone()).await;
     gate.open();
 
     operation.await.unwrap().expect("the pick reads the tags of the newer scan");
     let stored = handle
+        .services
         .tables
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
         .await

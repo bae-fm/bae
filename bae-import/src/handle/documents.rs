@@ -15,7 +15,7 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::ImportError> {
         use crate::folder_scanner::FileRole;
         let candidate =
-            self.tables.load_folder_candidate(candidate_key).await?.ok_or_else(|| {
+            self.services.tables.load_folder_candidate(candidate_key).await?.ok_or_else(|| {
                 crate::ImportError::Refused(format!("{candidate_key} is not a stored candidate"))
             })?;
         let entry = candidate
@@ -37,7 +37,7 @@ impl ImportServiceHandle {
                 .map_err(|error| crate::ImportError::DocumentRead { file, error })
         })
         .await
-        .map_err(|failed| self.diagnostics.bug(failed))?
+        .map_err(|failed| self.services.diagnostics.bug(failed))?
     }
 }
 

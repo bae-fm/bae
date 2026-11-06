@@ -192,7 +192,7 @@ pub(super) async fn stored_draft(
     handle: &ImportServiceHandle,
     hash: &str,
 ) -> crate::CandidateDraft {
-    crate::preparations::stored_preparation(&handle.tables, hash)
+    crate::preparations::stored_preparation(&handle.services.tables, hash)
         .await
         .unwrap()
         .expect("the candidate is prepared")
@@ -207,7 +207,7 @@ pub(super) async fn three_track_draft() -> (StoredCandidate, String) {
     let fakes = FakeCatalogs::offline();
     let mut fixture =
         stored_candidate_with(fakes.providers(), bae_util::http::Http::for_test()).await;
-    add_sheet(&fixture.handle.tables, &mut fixture.candidate, SECOND_FILE_IN_TWO).await;
+    add_sheet(&fixture.handle.services.tables, &mut fixture.candidate, SECOND_FILE_IN_TWO).await;
     fixture
         .handle
         .set_sheet_disc(
@@ -514,7 +514,7 @@ pub(super) async fn add_sheet(
 /// [`stored_candidate`] holding a `Disc.cue` of `cue`.
 pub(super) async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
     let mut fixture = stored_candidate().await;
-    add_sheet(&fixture.handle.tables, &mut fixture.candidate, cue).await;
+    add_sheet(&fixture.handle.services.tables, &mut fixture.candidate, cue).await;
     fixture
 }
 
@@ -778,11 +778,12 @@ pub(super) async fn store_two_pressings(
 ) {
     seed_mb_release_with_catalog(fakes, "mb-pressing-1", "CAT-100");
     seed_mb_release_with_catalog(fakes, "mb-pressing-2", "CAT-200");
-    let prep = crate::preparations::stored_preparation(&handle.tables, hash)
+    let prep = crate::preparations::stored_preparation(&handle.services.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
     let stored = handle
+        .services
         .preparations
         .store_verdict(&crate::tables::NewImportCandidateVerdict {
             content_hash: hash.to_string(),

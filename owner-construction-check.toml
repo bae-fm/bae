@@ -438,6 +438,13 @@ ImageHold = "RemoteImageHost"
     "PlaybackService::start_with_audio_device",
     "PlaybackService::start_inner",
 ]
+# Starts the import service's worker and watcher threads and builds the parts
+# its handle holds; its handle stops them.
+"bae-import/src/service/worker.rs" = [
+    "ImportService::start",
+    "ImportService::start_reading_tags_through",
+    "ImportService::start_with",
+]
 # Starts the identification queue's task; its handle stops it.
 "bae-import/src/handle/identification.rs" = [
     "ImportServiceHandle::start_identification_queue",

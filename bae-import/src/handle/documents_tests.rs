@@ -24,7 +24,7 @@ async fn a_document_written_in_latin1_reads_decoded() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    rescan_into(&handle.tables, candidate).await;
+    rescan_into(&handle.services.tables, candidate).await;
 
     let text = handle.read_candidate_document(&key, "notes.txt").await;
     shut_down(handle).await;

@@ -11,7 +11,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
-        match self.import_cancels.cancel(candidate_key) {
+        match self.services.import_cancels.cancel(candidate_key) {
             CancelOutcome::NotImporting | CancelOutcome::CancelledRunning => Ok(()),
             CancelOutcome::CancelledWaiting { import_id } => {
                 self.end_cancelled_import(candidate_key, import_id).await
@@ -25,7 +25,7 @@ impl ImportServiceHandle {
     /// written fails the cancel, after the rest have been tried.
     pub async fn cancel_all_imports(&self) -> Result<(), crate::ImportError> {
         let mut failed = Ok(());
-        for (candidate_key, import_id) in self.import_cancels.cancel_all() {
+        for (candidate_key, import_id) in self.services.import_cancels.cancel_all() {
             let ended = self.end_cancelled_import(&candidate_key, import_id).await;
             if failed.is_ok() {
                 failed = ended;
@@ -39,12 +39,12 @@ impl ImportServiceHandle {
     /// written has no one to fail to, so it is a bug, reported as one.
     pub fn cancel_all_imports_in_background(&self) {
         let this = self.clone();
-        self.diagnostics.spawn_reported(
+        self.services.diagnostics.spawn_reported(
             &self.runtime_handle,
             "cancel every waiting import",
             async move {
                 if let Err(error) = this.cancel_all_imports().await {
-                    this.diagnostics.report_bug("cancel every waiting import", &error);
+                    this.services.diagnostics.report_bug("cancel every waiting import", &error);
                 }
             },
             // Reported; no one waits to hear more.
@@ -61,7 +61,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         info!("Import of {candidate_key} was cancelled before it started");
         self.runtime.move_import(candidate_key, &import_id, None).await?;
-        self.event_tx.send(ImportEvent::ImportProgress {
+        self.services.event_tx.send(ImportEvent::ImportProgress {
             candidate_key: candidate_key.clone(),
             progress: ImportProgress::Cancelled { import_id },
         });

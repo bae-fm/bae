@@ -14,7 +14,7 @@ impl ImportServiceHandle {
         &self,
         token: &str,
     ) -> Result<DiscogsCheck, crate::ImportError> {
-        Ok(self.catalogs.save_discogs_key(token).await?)
+        Ok(self.services.catalogs.save_discogs_key(token).await?)
     }
 
     /// Check a stored `Unvalidated` key against Discogs again; any other
@@ -22,7 +22,7 @@ impl ImportServiceHandle {
     /// leaves the key unvalidated and fails with why, so the person who asked
     /// is told rather than shown the same state again.
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::ImportError> {
-        match self.catalogs.revalidate_discogs_key().await? {
+        match self.services.catalogs.revalidate_discogs_key().await? {
             None | Some(DiscogsCheck::Valid | DiscogsCheck::Rejected) => Ok(()),
             Some(DiscogsCheck::Unchecked(error)) => {
                 Err(bae_catalogs::CatalogError::from(error).into())
@@ -32,11 +32,11 @@ impl ImportServiceHandle {
 
     /// The library's stored Discogs key, as the settings screen shows it.
     pub async fn discogs_token(&self) -> Result<Option<String>, crate::ImportError> {
-        Ok(self.catalogs.stored_discogs_key().await?)
+        Ok(self.services.catalogs.stored_discogs_key().await?)
     }
 
     /// Remove the stored Discogs key and its validation.
     pub async fn remove_discogs_token(&self) -> Result<(), crate::ImportError> {
-        Ok(self.catalogs.clear_discogs_key().await?)
+        Ok(self.services.catalogs.clear_discogs_key().await?)
     }
 }

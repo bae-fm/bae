@@ -71,7 +71,7 @@ impl ImportService {
             diagnostics.clone(),
             closing,
         );
-        Self::start_with(runtime_handle, services, runtime, diagnostics)
+        Ok(Self::start_with(runtime_handle, services, runtime, diagnostics))
     }
 
     fn start_with(
@@ -79,7 +79,7 @@ impl ImportService {
         services: crate::ImportServices,
         runtime: CandidateRuntime,
         diagnostics: bae_diagnostics::Diagnostics,
-    ) -> Result<ImportServiceHandle, crate::ImportError> {
+    ) -> ImportServiceHandle {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();
         let runtime_for_worker = runtime.clone();
@@ -135,12 +135,35 @@ impl ImportService {
             })
         });
 
+        let release_reads =
+            crate::ReleaseReads::new(services.store.clone(), services.catalogs.clone());
+        let identify = crate::IdentifyService::new(
+            services.store.clone(),
+            services.catalogs.clone(),
+            release_reads.clone(),
+            runtime_handle.clone(),
+            services.event_tx.clone(),
+            runtime.clone(),
+            services.diagnostics.clone(),
+        );
+        let extraction = crate::extraction::ExtractionService::new(
+            runtime_handle.clone(),
+            services.event_tx.clone(),
+            runtime.clone(),
+            services.store.clone(),
+            services.records.clone(),
+            services.diagnostics.clone(),
+        );
+
         ImportServiceHandle::new(
             worker,
             watcher,
             scans_in_memory,
             services,
             runtime,
+            release_reads,
+            identify,
+            extraction,
             runtime_handle,
         )
     }

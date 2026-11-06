@@ -23,9 +23,9 @@ async fn a_picked_album_shows_over_what_the_records_name() {
     assert_eq!(pane(&handle, &key).await.draft().unwrap().album, crate::DraftAlbum::New);
 
     let artist = make_artist("Artist Name", None, None);
-    handle.records.insert_artist(&artist).await.unwrap();
+    handle.services.records.insert_artist(&artist).await.unwrap();
     let (album, _release) =
-        insert_library_release(&handle.store, &artist.id, "Library Album").await;
+        insert_library_release(&handle.services.store, &artist.id, "Library Album").await;
 
     handle.set_candidate_album(&key, Some(album.id.clone())).await.unwrap();
     assert_eq!(
@@ -323,7 +323,7 @@ async fn assert_every_mutation_refused(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_typed_field_lands_in_the_next_form_empty_included() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let tables = handle.tables.clone();
+    let tables = handle.services.tables.clone();
     let seeded = pane(&handle, &key).await;
     let seeded_artists = seeded.draft().unwrap().metadata_draft.clone().album_artist_assignments;
 
@@ -389,7 +389,7 @@ async fn an_edit_with_no_metadata_source_updates_the_draft() {
 async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let existing = make_artist("Existing Artist", Some("discogs-existing"), None);
-    handle.records.insert_artist(&existing).await.unwrap();
+    handle.services.records.insert_artist(&existing).await.unwrap();
     let assignments = vec![
         crate::ArtistAssignment::picked(existing.clone().into()),
         crate::ArtistAssignment::named("New Artist"),
@@ -414,7 +414,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     let stored =
-        crate::preparations::stored_preparation(&handle.tables, &hash).await.unwrap().unwrap();
+        crate::preparations::stored_preparation(&handle.services.tables, &hash).await.unwrap().unwrap();
 
     let error = handle
         .set_candidate_track_edit(
@@ -430,7 +430,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
 
     assert!(error.to_string().contains("audio"), "{error}");
     assert_eq!(
-        crate::preparations::stored_preparation(&handle.tables, &hash)
+        crate::preparations::stored_preparation(&handle.services.tables, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -481,7 +481,7 @@ async fn an_edited_track_row_redraws_alone() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let before = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let before = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate is prepared");
@@ -501,7 +501,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     })
     .await;
 
-    let after = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let after = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate remains prepared");
@@ -540,7 +540,7 @@ async fn track_artist_assignments_fill_across_named_rows() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cover_the_scan_did_not_store_is_refused() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let before = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let before = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate is prepared");
@@ -566,7 +566,7 @@ async fn a_cover_the_scan_did_not_store_is_refused() {
         );
     }
 
-    let after = crate::preparations::stored_preparation(&handle.tables, &hash)
+    let after = crate::preparations::stored_preparation(&handle.services.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate remains prepared");

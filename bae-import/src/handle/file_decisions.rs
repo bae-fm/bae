@@ -9,7 +9,7 @@ impl ImportServiceHandle {
         &self,
         candidate: crate::folder_scanner::FolderCandidate,
     ) {
-        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }));
+        self.services.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }));
     }
 
     /// For each FILE reference of the track sheet at `sheet_file_id`, the
@@ -27,7 +27,7 @@ impl ImportServiceHandle {
             files.sheet_binding_options(&sheet_file_id)
         })
         .await
-        .map_err(|failed| self.diagnostics.bug(failed).into())
+        .map_err(|failed| self.services.diagnostics.bug(failed).into())
     }
 
     /// Bind a FILE reference of one of a candidate's track sheets to an audio
@@ -75,7 +75,7 @@ impl ImportServiceHandle {
                 detail: format!("{sheet_file_id} has no FILE reference {file_reference}"),
             })?;
         if audio_file_id.is_some() && reference.file_id == audio_file_id {
-            let _commit = self.folder_state_commit.lock("check a sheet binding").await;
+            let _commit = self.services.folder_state_commit.lock("check a sheet binding").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             return Ok(());
         }
@@ -144,7 +144,7 @@ impl ImportServiceHandle {
         // The menu fires even when the current disc is picked again; writing
         // would clear the verdict of a folder whose shape did not change.
         if selected.disc == disc {
-            let _commit = self.folder_state_commit.lock("check a sheet disc").await;
+            let _commit = self.services.folder_state_commit.lock("check a sheet disc").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{sheet_file_id} is already disc {disc:?}; nothing to write");
             return Ok(());
@@ -205,7 +205,7 @@ impl ImportServiceHandle {
                 crate::preparations::CandidateWrite::FileDecisions,
             ));
         }
-        let preparation = crate::preparations::stored_preparation(&self.tables, &content_hash)
+        let preparation = crate::preparations::stored_preparation(&self.services.tables, &content_hash)
             .await?
             .filter(|preparation| preparation.file_edits.revision == expected_revision)
             .ok_or_else(|| crate::ImportError::Internal {
@@ -213,7 +213,7 @@ impl ImportServiceHandle {
                 "{candidate_key} has no complete preparation for file revision {expected_revision}"
             ),
             })?;
-        let mut edits = self.tables.load_candidate_file_edits(&content_hash).await?;
+        let mut edits = self.services.tables.load_candidate_file_edits(&content_hash).await?;
         if edits.revision != expected_revision {
             return Err(crate::ImportError::Internal {
                 detail: format!(
@@ -225,7 +225,7 @@ impl ImportServiceHandle {
 
         loop {
             let matching_files =
-                self.tables.load_releases_reading(&content_hash, expected_revision).await?;
+                self.services.tables.load_releases_reading(&content_hash, expected_revision).await?;
             let matching_keys = matching_files
                 .iter()
                 .map(|(key, _)| key.clone())
@@ -240,7 +240,7 @@ impl ImportServiceHandle {
                 Ok::<_, crate::folder_scanner::UnreadableAudio>(settled)
             })
             .await
-            .map_err(|failed| self.diagnostics.bug(failed))??;
+            .map_err(|failed| self.services.diagnostics.bug(failed))??;
 
             let settled_files = settled
                 .iter()
@@ -251,7 +251,7 @@ impl ImportServiceHandle {
                         "file decision produced no settled candidate for {candidate_key}"
                     ),
                 })?;
-            let stored = self
+            let stored = self.services
                 .tables
                 .load_candidate_file_tag_snapshot(
                     &current_candidate.watched_folder_path,
@@ -263,7 +263,7 @@ impl ImportServiceHandle {
                 })?;
             let mut replacement = current_candidate.clone();
             replacement.files = settled_files.clone();
-            let reads = crate::folder_scanner::FileReads::new(self.file_tags.clone());
+            let reads = crate::folder_scanner::FileReads::new(self.services.file_tags.clone());
             let initialized =
                 bae_util::task_failure::blocking("read the files' track metadata", move || {
                     crate::file_metadata_seed::FileMetadataSeed::read(
@@ -275,13 +275,13 @@ impl ImportServiceHandle {
                     .map(|seed| seed.draft)
                 })
                 .await
-                .map_err(|failed| self.diagnostics.bug(failed))??;
+                .map_err(|failed| self.services.diagnostics.bug(failed))??;
             let draft = crate::pane::redraw_draft_for_files(
                 current_files,
                 settled_files,
                 initialized,
                 &preparation.metadata.draft,
-                self.ids.as_ref(),
+                self.services.ids.as_ref(),
             );
 
             let commit = self
@@ -294,7 +294,7 @@ impl ImportServiceHandle {
                 .await?;
             // A scan may have added or dropped a folder with these files while
             // this was prepared; if so, prepare again.
-            let matching_now = self
+            let matching_now = self.services
                 .tables
                 .load_releases_reading(&content_hash, expected_revision)
                 .await?
@@ -308,7 +308,7 @@ impl ImportServiceHandle {
             // One write stores the decision and clears the verdict it
             // invalidates, and refuses a metadata revision that moved since it
             // was read.
-            let (_next_revision, candidates) = self
+            let (_next_revision, candidates) = self.services
                 .preparations
                 .store_file_decisions(
                     &crate::CandidateAsRead {

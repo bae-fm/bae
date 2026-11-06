@@ -32,9 +32,9 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         edit: LookupChoiceEdit,
     ) -> Result<ChoiceChange, crate::ImportError> {
-        let _commit = self.folder_state_commit.lock("store lookup choices").await;
+        let _commit = self.services.folder_state_commit.lock("store lookup choices").await;
         let projection =
-            self.tables.load_import_candidate(candidate_key).await?.ok_or_else(|| {
+            self.services.tables.load_import_candidate(candidate_key).await?.ok_or_else(|| {
                 crate::ImportError::Internal {
                     detail: format!("{candidate_key} is not a scanned folder candidate"),
                 }
@@ -51,7 +51,7 @@ impl ImportServiceHandle {
             true => ChoiceChange::Ranking,
             false => ChoiceChange::Lookups,
         };
-        self.tables.save_import_candidate_lookup_choices(&content_hash, &choices).await?;
+        self.services.tables.save_import_candidate_lookup_choices(&content_hash, &choices).await?;
         Ok(change)
     }
 }
