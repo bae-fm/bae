@@ -3,11 +3,10 @@
 use super::detail::live_read_error;
 use crate::types::BridgeError;
 
-/// One requested window of the context's upcoming tail, with its entries.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeQueueUpcomingWindow {
-    pub window: crate::types::BridgeLibraryPageWindow,
-    pub entries: Vec<crate::types::BridgeQueueEntry>,
+browse_window! {
+    /// One requested window of the context's upcoming tail, with its entries.
+    window: BridgeQueueUpcomingWindow,
+    row: bae_playback::QueueItem => crate::types::BridgeQueueEntry,
 }
 
 /// Every requested window of the upcoming tail as of one read.
@@ -51,14 +50,7 @@ impl BridgeQueueUpcomingSnapshot {
             windows: snapshot
                 .windows
                 .into_iter()
-                .map(|window| BridgeQueueUpcomingWindow {
-                    window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                    entries: window
-                        .items
-                        .into_iter()
-                        .map(crate::types::BridgeQueueEntry::from_core)
-                        .collect(),
-                })
+                .map(BridgeQueueUpcomingWindow::from_core)
                 .collect(),
         }
     }

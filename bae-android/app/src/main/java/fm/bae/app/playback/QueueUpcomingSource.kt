@@ -133,7 +133,7 @@ internal class QueueUpcomingWindows(
         val value = latest ?: return emptyMap()
         return value.windows
             .flatMap { window ->
-                window.entries.mapIndexed { i, entry -> window.window.offset.toInt() + i to entry }
+                window.rows.mapIndexed { i, entry -> window.window.offset.toInt() + i to entry }
             }.toMap()
     }
 

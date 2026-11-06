@@ -69,7 +69,7 @@
                     let end = min(start + Int(window.limit), rows.count)
                     return BridgeQueueUpcomingWindow(
                         window: window,
-                        entries: Array(rows[start..<end])
+                        rows: Array(rows[start..<end])
                     )
                 }
             )

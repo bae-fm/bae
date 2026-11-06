@@ -335,7 +335,7 @@ extension PlaybackStore {
     private func applyUpcoming(_ snapshot: BridgeQueueUpcomingSnapshot) {
         var rows: [Int: BridgeQueueEntry] = [:]
         for window in snapshot.windows {
-            for (i, entry) in window.entries.enumerated() {
+            for (i, entry) in window.rows.enumerated() {
                 rows[Int(window.window.offset) + i] = entry
             }
         }

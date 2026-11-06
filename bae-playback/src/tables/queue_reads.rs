@@ -6,7 +6,7 @@
 use super::queue::repeat_from_row;
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
-use crate::{ContextSource, QueueItem, QueueUpcomingWindow, RepeatMode};
+use crate::{ContextSource, QueueItem, RepeatMode};
 
 /// Follow the queue as its screens show it: Up Next whole, what the context
 /// lane plays from, and whether the transport can step either way.
@@ -45,7 +45,7 @@ pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
         limit: u64::MAX,
     }]);
     let read = store.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
-    Ok(read.windows.into_iter().flat_map(|window| window.items).collect())
+    Ok(read.windows.into_iter().flat_map(|window| window.rows).collect())
 }
 
 /// The context lane's version, as the upcoming windows' reads carry it.
@@ -228,7 +228,7 @@ fn queue_upcoming_on(
                     ],
                 )?,
             };
-            Ok(QueueUpcomingWindow { window: window.clone(), items })
+            Ok(bae_store::LibraryBrowseWindow { window: window.clone(), rows: items })
         })
         .collect::<Result<_, DbError>>()?;
     Ok(QueueUpcomingRead {
@@ -260,7 +260,7 @@ pub struct QueueUpcomingRead {
     /// another version may hold other rows.
     pub context_version: u64,
     pub upcoming_total: u64,
-    pub windows: Vec<QueueUpcomingWindow>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<QueueItem>>,
 }
 
 #[cfg(test)]

@@ -125,7 +125,7 @@ fn window_track_ids(snapshot: &bae_library::QueueUpcomingSnapshot) -> Vec<Vec<&s
     snapshot
         .windows
         .iter()
-        .map(|window| window.items.iter().map(|item| item.track_id.as_str()).collect())
+        .map(|window| window.rows.iter().map(|item| item.track_id.as_str()).collect())
         .collect()
 }
 
@@ -202,7 +202,7 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     let subscription = services.subscribe_queue_upcoming();
     subscription.set(windows(&[(2, 3)])).unwrap();
     let first = upcoming_until(&subscription, |value| value.windows.len() == 1).await;
-    let skip_to = first.windows[0].items[0].entry_id.parse().unwrap();
+    let skip_to = first.windows[0].rows[0].entry_id.parse().unwrap();
 
     services.playback_skip_to_entry(skip_to).await.unwrap();
     let moved =
@@ -210,14 +210,14 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     assert!(moved.context_version > first.context_version, "the queue changed under the windows");
     assert_eq!(moved.upcoming_total, 8, "track_ids[3] plays; track_ids[4..] follow");
     assert_eq!(
-        moved.windows[0].items.iter().map(|item| item.track_id.as_str()).collect::<Vec<_>>(),
+        moved.windows[0].rows.iter().map(|item| item.track_id.as_str()).collect::<Vec<_>>(),
         track_ids[6..9].iter().map(String::as_str).collect::<Vec<_>>()
     );
 
     // Dropping the context empties the tail the windows read.
     services.playback_clear_playing_from().await.unwrap();
     let cleared = upcoming_until(&subscription, |value| value.upcoming_total == 0).await;
-    assert!(cleared.windows.iter().all(|window| window.items.is_empty()));
+    assert!(cleared.windows.iter().all(|window| window.rows.is_empty()));
 }
 
 /// A library release's re-identify session keeps its choices in core: each

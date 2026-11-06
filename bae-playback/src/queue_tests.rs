@@ -573,11 +573,8 @@ async fn test_offset_windows_read_with_the_tail_length() {
     ]);
     let mut live = crate::tables::subscribe_queue_upcoming(&f.db, windows);
     let read = live.next().await.expect("the query stays open").result.unwrap();
-    let window_tracks: Vec<Vec<String>> = read
-        .windows
-        .iter()
-        .map(|w| w.items.iter().map(|i| f.name(&i.track_id)).collect())
-        .collect();
+    let window_tracks: Vec<Vec<String>> =
+        read.windows.iter().map(|w| w.rows.iter().map(|i| f.name(&i.track_id)).collect()).collect();
     assert_eq!(window_tracks[0], tracks[1..4].to_vec());
     assert_eq!(window_tracks[1], tracks[101..121].to_vec());
     assert_eq!(

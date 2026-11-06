@@ -1,7 +1,7 @@
 //! The context's upcoming tail, read through one live subscription whose
 //! windows move as the queue scrolls.
 
-use bae_playback::QueueUpcomingWindow;
+use bae_playback::QueueItem;
 use bae_store::LibraryPageWindows;
 
 /// Every requested window as of one read. Offsets are into the
@@ -18,7 +18,7 @@ pub struct QueueUpcomingSnapshot {
     /// shows the tables' order again once this reaches the version its move
     /// made.
     pub context_version: u64,
-    pub windows: Vec<QueueUpcomingWindow>,
+    pub windows: Vec<bae_store::LibraryBrowseWindow<QueueItem>>,
 }
 
 /// A live read of the upcoming tail's requested windows. The windows change

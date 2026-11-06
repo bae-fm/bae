@@ -72,7 +72,7 @@ async fn first_upcoming_until(
             if let Some(item) = value
                 .windows
                 .into_iter()
-                .flat_map(|window| window.items)
+                .flat_map(|window| window.rows)
                 .next()
                 .filter(|item| accept(item))
             {

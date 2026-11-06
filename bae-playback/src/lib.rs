@@ -84,9 +84,7 @@ pub use progress::{
     RemotePlayback, TimelinePoint,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
-pub use queue_values::{
-    QueueAddition, QueueItem, QueueUpcomingWindow, ResolvedContext, ResolvedQueueSnapshot,
-};
+pub use queue_values::{QueueAddition, QueueItem, ResolvedContext, ResolvedQueueSnapshot};
 pub use repeat_mode::RepeatMode;
 pub use replay_gain::replay_gain_linear;
 pub use service::{
