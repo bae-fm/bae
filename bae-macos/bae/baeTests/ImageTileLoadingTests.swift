@@ -13,8 +13,7 @@ struct ImageTileLoadingTests {
     func loadingDrawsNoSpinner() async throws {
         // Bytes that never arrive keep the tile on its load.
         let images = ImageStore(fetchRemoteImage: { _, _ in
-            try await Task.sleep(for: .seconds(3_600))
-            throw CancellationError()
+            try await Task.neverAnswers()
         })
         let side: CGFloat = 120
         let size = NSSize(width: side, height: side)

@@ -11,6 +11,13 @@ extension Task where Success == Never, Failure == Never {
             gate.open()
         }
     }
+
+    /// A wait that ends only by throwing `CancellationError` when its task is
+    /// cancelled, for a fake or preview of a call that never answers.
+    public static func neverAnswers() async throws -> Never {
+        await untilCancelled()
+        throw CancellationError()
+    }
 }
 
 /// Resumes the one waiter once opened, whichever of the two comes first.

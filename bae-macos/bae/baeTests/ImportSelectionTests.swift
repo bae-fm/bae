@@ -56,6 +56,7 @@ extension ImportSelectionOperations {
 }
 
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct ImportSelectionTests {
     @Test("A running action can be cancelled and rejects a second one")
     func cancelRunningAction() async throws {
@@ -63,8 +64,7 @@ struct ImportSelectionTests {
         let selection = ImportSelection(
             operations: .stub(run: { _, _ in
                 entered.continuation.yield(())
-                try await Task.sleep(for: .seconds(30))
-                return []
+                try await Task.neverAnswers()
             })
         )
         let uiStore = UiStore()

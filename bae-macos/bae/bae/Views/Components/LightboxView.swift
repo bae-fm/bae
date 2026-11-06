@@ -497,8 +497,7 @@ private struct LiveTextOverlay: NSViewRepresentable {
                 image: .remote(image)
             )
             let images = ImageStore(fetchRemoteImage: { _, _ in
-                try await Task.sleep(for: .seconds(3_600))
-                throw CancellationError()
+                try await Task.neverAnswers()
             })
             return Cursor(items: [item], preferring: "front")
                 .map { cursor in

@@ -52,15 +52,9 @@ struct ReleaseEditorWaitTests {
             setPressingFact: { _ in draft },
             setAlbumArtists: { _ in draft },
             setTrack: { _ in draft },
-            apply: { _, _ in
-                try await Task.sleep(for: .seconds(3_600))
-                throw CancellationError()
-            },
+            apply: { _, _ in try await Task.neverAnswers() },
             setAlbum: { _ in draft },
-            save: {
-                try await Task.sleep(for: .seconds(3_600))
-                throw CancellationError()
-            }
+            save: { try await Task.neverAnswers() }
         )
         let opened = OpenedReleaseEdit(draft: draft, session: held)
         return ReleaseMetadataEditSession(
