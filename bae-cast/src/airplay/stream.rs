@@ -16,7 +16,7 @@
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use bae_diagnostics::{Diagnostics, ReportedThread};
@@ -224,6 +224,9 @@ impl StreamSockets {
     }
 }
 
+/// How often RAOP sync packets go out.
+const SYNC_INTERVAL: Duration = Duration::from_secs(1);
+
 /// The audio latency in frames a session paces by when its receiver doesn't
 /// report one: the ~2 s buffer AirPort Express expects.
 pub(super) const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
@@ -258,7 +261,14 @@ pub(crate) struct RaopStream {
     /// What the audio sender waits on for frames: woken after `stop` is set,
     /// so a waiting sender sees it.
     wake: PcmWake,
+    /// Dropped to end the sync sender's wait between packets.
+    sync_stop: Option<mpsc::Sender<()>>,
+    /// Where a datagram wakes the timing responder from its blocking read,
+    /// once `stop` is set.
+    timing_wake: SocketAddr,
     threads: Vec<ReportedThread>,
+    /// Joined only once its read was woken; see `Drop`.
+    timing: Option<ReportedThread>,
 }
 
 /// The shared state a running stream is observed and steered through: how far the
@@ -362,53 +372,83 @@ impl RaopStream {
         let audio_dst = SocketAddr::new(endpoints.receiver, endpoints.audio_port);
         let control_dst = SocketAddr::new(endpoints.receiver, endpoints.control_port);
 
-        let stop = Arc::new(AtomicBool::new(false));
         let PcmFeed { source, wake } = feed;
-        let mut threads = vec![
-            spawn_audio_thread(
-                diagnostics,
-                AudioThread {
-                    source,
-                    wake: wake.clone(),
-                    packetizer: Packetizer::new(
-                        audio.ssrc,
-                        crypto,
-                        audio.channels,
-                        0,
-                        audio.initial_timestamp,
-                    ),
-                    pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
-                    sample_rate: audio.sample_rate,
-                    socket: audio_socket,
-                    dst: audio_dst,
-                    clock: clock.clone(),
-                    stop: stop.clone(),
-                    control: control.clone(),
-                },
-            )?,
-            spawn_timing_thread(diagnostics, sockets.timing, control.clone(), stop.clone())?,
-        ];
+        let (sync_stop, sync_stopped) = mpsc::channel();
+        // Built before any thread starts, so a thread that fails to start
+        // drops it, which stops the ones already running.
+        let mut stream = RaopStream {
+            stop: Arc::new(AtomicBool::new(false)),
+            wake: wake.clone(),
+            sync_stop: Some(sync_stop),
+            timing_wake: SocketAddr::new(
+                IpAddr::from([127, 0, 0, 1]),
+                sockets.timing.local_addr()?.port(),
+            ),
+            threads: Vec::new(),
+            timing: None,
+        };
+        let stop = stream.stop.clone();
+        stream.threads.push(spawn_audio_thread(
+            diagnostics,
+            AudioThread {
+                source,
+                wake: wake.clone(),
+                packetizer: Packetizer::new(
+                    audio.ssrc,
+                    crypto,
+                    audio.channels,
+                    0,
+                    audio.initial_timestamp,
+                ),
+                pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
+                sample_rate: audio.sample_rate,
+                socket: audio_socket,
+                dst: audio_dst,
+                clock: clock.clone(),
+                stop: stop.clone(),
+                control: control.clone(),
+            },
+        )?);
+        stream.timing =
+            Some(spawn_timing_thread(diagnostics, sockets.timing, control.clone(), stop)?);
         if send_sync {
-            threads.push(spawn_sync_thread(
+            stream.threads.push(spawn_sync_thread(
                 diagnostics,
                 sockets.control,
                 control_dst,
                 audio.initial_timestamp,
                 control,
-                stop.clone(),
+                sync_stopped,
             )?);
         }
 
-        Ok(RaopStream { stop, wake, threads })
+        Ok(stream)
     }
 }
 
 impl Drop for RaopStream {
+    /// Stop every thread and wait for each: the audio sender by its wake, the
+    /// sync sender by its channel closing, the timing responder by a datagram
+    /// to its socket.
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         self.wake.wake();
+        self.sync_stop.take();
+        let timing_woken = UdpSocket::bind((IpAddr::from([127, 0, 0, 1]), 0))
+            .and_then(|socket| socket.send_to(&[], self.timing_wake));
         for thread in self.threads.drain(..) {
             thread.join();
+        }
+        if let Some(timing) = self.timing.take() {
+            match timing_woken {
+                Ok(_) => timing.join(),
+                // Nothing would end its read but the receiver's next timing
+                // request, so it is left to exit on that rather than block
+                // the teardown.
+                Err(error) => {
+                    warn!("couldn't wake the airplay timing responder to stop it: {error}")
+                }
+            }
         }
     }
 }
@@ -506,15 +546,16 @@ fn spawn_audio_thread(
     )
 }
 
-/// Send a sync packet immediately (extension bit set) and then ~every second, so
-/// the receiver keeps its clock anchored to ours.
+/// Send a sync packet immediately (extension bit set) and then every second, so
+/// the receiver keeps its clock anchored to ours, until `stopped`'s sender is
+/// dropped.
 fn spawn_sync_thread(
     diagnostics: &Diagnostics,
     socket: UdpSocket,
     dst: SocketAddr,
     initial_timestamp: u32,
     control: RaopStreamControl,
-    stop: Arc<AtomicBool>,
+    stopped: mpsc::Receiver<()>,
 ) -> std::io::Result<ReportedThread> {
     let on_panic = control.clone();
     diagnostics.spawn_thread_reported(
@@ -522,62 +563,63 @@ fn spawn_sync_thread(
         move || {
             let latency_frames = control.latency_frames();
             let mut first = true;
-            let mut last_sent = Instant::now() - Duration::from_secs(1);
-            while !stop.load(Ordering::Acquire) {
-                if last_sent.elapsed() >= Duration::from_secs(1) {
-                    let now_ts = initial_timestamp
-                        .wrapping_add(control.frames_sent() as u32)
-                        .wrapping_add(latency_frames);
-                    let played = now_ts.wrapping_sub(latency_frames);
-                    let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
-                    if let Err(e) = socket.send_to(&packet, dst) {
-                        debug!("airplay sync send failed: {e}");
-                    }
-                    first = false;
-                    last_sent = Instant::now();
+            loop {
+                let now_ts = initial_timestamp
+                    .wrapping_add(control.frames_sent() as u32)
+                    .wrapping_add(latency_frames);
+                let played = now_ts.wrapping_sub(latency_frames);
+                let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
+                if let Err(e) = socket.send_to(&packet, dst) {
+                    debug!("airplay sync send failed: {e}");
                 }
-                std::thread::sleep(Duration::from_millis(100));
+                first = false;
+                match stopped.recv_timeout(SYNC_INTERVAL) {
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                }
             }
         },
         move |failed| on_panic.mark_panicked(failed),
     )
 }
 
-/// Answer the receiver's timing requests until stopped.
+/// Answer the receiver's timing requests until stopped. The read blocks until
+/// a datagram arrives; the stream's drop sends one once `stop` is set.
 fn spawn_timing_thread(
     diagnostics: &Diagnostics,
     socket: UdpSocket,
     control: RaopStreamControl,
     stop: Arc<AtomicBool>,
 ) -> std::io::Result<ReportedThread> {
-    diagnostics.spawn_thread_reported("airplay timing responder", move || {
-        // A read timeout lets the thread notice the stop flag between requests.
-        if let Err(error) = socket.set_read_timeout(Some(Duration::from_millis(200))) {
-            warn!("airplay timing socket has no read timeout, so stopping waits for a request: {error}");
-        }
-        let mut buf = [0u8; 64];
-        while !stop.load(Ordering::Acquire) {
-            match socket.recv_from(&mut buf) {
-                Ok((len, from)) => {
-                    let received = NtpTime::now();
-                    if let Some(response) =
-                        rtp::timing_response(&buf[..len], received, NtpTime::now())
-                    {
-                        if let Err(e) = socket.send_to(&response, from) {
-                            debug!("airplay timing reply failed: {e}");
-                        }
-                    }
-                }
-                Err(ref e)
-                    if e.kind() == std::io::ErrorKind::WouldBlock
-                        || e.kind() == std::io::ErrorKind::TimedOut => {}
-                Err(e) => {
-                    debug!("airplay timing socket error: {e}");
+    diagnostics.spawn_thread_reported(
+        "airplay timing responder",
+        move || {
+            let mut buf = [0u8; 64];
+            loop {
+                let received = socket.recv_from(&mut buf);
+                if stop.load(Ordering::Acquire) {
                     break;
                 }
+                match received {
+                    Ok((len, from)) => {
+                        let received = NtpTime::now();
+                        if let Some(response) =
+                            rtp::timing_response(&buf[..len], received, NtpTime::now())
+                        {
+                            if let Err(e) = socket.send_to(&response, from) {
+                                debug!("airplay timing reply failed: {e}");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!("airplay timing socket error: {e}");
+                        break;
+                    }
+                }
             }
-        }
-    }, move |failed| control.mark_panicked(failed))
+        },
+        move |failed| control.mark_panicked(failed),
+    )
 }
 
 #[cfg(test)]

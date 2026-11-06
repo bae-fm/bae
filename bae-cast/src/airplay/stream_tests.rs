@@ -228,3 +228,34 @@ fn reanchor_re_marks_the_next_packet() {
     let after = p.packet(&[0, 0, 0, 0]);
     assert_eq!(after[1], 0xE0, "the packet after a re-anchor is marked again");
 }
+
+/// Dropping a running stream stops all three threads: the sender waiting on
+/// an empty source, the sync sender between packets and the timing responder
+/// in its read. Sabotage: leave out the datagram to the timing socket, or
+/// keep the sync channel open, and the drop waits forever.
+#[test]
+fn dropping_the_stream_stops_every_thread() {
+    let (source, _packets, _drained) = FixedSource::holding(0);
+    let stream = RaopStream::spawn(
+        &Diagnostics::noop(),
+        PcmFeed::new(Box::new(source), PcmWake::unattached()),
+        PayloadCrypto::Raop(RaopCipher::none()),
+        StreamEndpoints { receiver: IpAddr::from([127, 0, 0, 1]), audio_port: 9, control_port: 9 },
+        RtpAudio { ssrc: 1, sample_rate: 44_100, channels: 2, initial_timestamp: 0 },
+        StreamSockets::bind().unwrap(),
+        Arc::new(FarAheadClock),
+        true,
+        RaopStreamControl::new(88_200),
+    )
+    .expect("the stream starts");
+
+    let (dropped_tx, dropped) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        drop(stream);
+        dropped_tx.send(()).unwrap();
+    });
+
+    dropped
+        .recv_timeout(bae_util::test_channels::HANG_GUARD)
+        .expect("dropping the stream never finished stopping its threads");
+}
