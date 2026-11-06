@@ -53,7 +53,8 @@ bae-import = { workspace = true, features = ["test-utils"] }
 # The catalog fakes and releases the import tests seed.
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
-bae-util = { workspace = true }
+# The hang guard bounding the scan waits.
+bae-util = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 

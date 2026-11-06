@@ -10,6 +10,11 @@ use bae_import::folder_scanner::{
 use bae_import::{ImportEvent, ImportProgress};
 use std::path::PathBuf;
 
+/// The scan wait's limit: only a read that never ends reaches it.
+fn hang_guard_ms() -> u64 {
+    u64::try_from(bae_util::test_channels::HANG_GUARD.as_millis()).unwrap()
+}
+
 /// An `Automation` over a real library in a temporary directory, keeping the
 /// import tables and services so tests can write the scan rows and runtime it
 /// reads.
@@ -388,7 +393,7 @@ async fn a_scan_waited_on_answers_with_what_every_folder_read_found() {
 
     let result = fixture
         .automation
-        .scan_watched_folders(ScanWait::UntilFinished { timeout_ms: 30_000 })
+        .scan_watched_folders(ScanWait::UntilFinished { timeout_ms: hang_guard_ms() })
         .await
         .expect("both reads end");
 
@@ -412,7 +417,7 @@ async fn a_scan_waited_on_names_a_folder_whose_read_failed() {
 
     let error = fixture
         .automation
-        .scan_watched_folders(ScanWait::UntilFinished { timeout_ms: 30_000 })
+        .scan_watched_folders(ScanWait::UntilFinished { timeout_ms: hang_guard_ms() })
         .await
         .expect_err("the read of a folder that is gone fails");
     assert!(error.message().contains(&path), "{}", error.message());

@@ -281,7 +281,7 @@ async fn reconnect_sync_runs_the_pass_a_backing_off_loop_was_waiting_for() {
     manager.reconnect_sync().await.unwrap();
     // A guard so a pass stuck behind the backoff fails instead of hanging.
     tokio::time::timeout(
-        std::time::Duration::from_secs(30),
+        bae_util::test_channels::HANG_GUARD,
         crate::followed::value_matching(&mut values, |value| {
             value.coven.state == coven::SyncState::Synced
         }),
