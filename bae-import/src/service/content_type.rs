@@ -49,13 +49,10 @@ pub(super) fn resolve_file_content_type(
         });
     }
 
+    if let Some(image) = hint.image_content_type() {
+        return Ok(image);
+    }
     Ok(match hint {
-        ContentTypeHint::Jpeg => ContentType::Jpeg,
-        ContentTypeHint::Png => ContentType::Png,
-        ContentTypeHint::Gif => ContentType::Gif,
-        ContentTypeHint::Webp => ContentType::Webp,
-        ContentTypeHint::Bmp => ContentType::Bmp,
-        ContentTypeHint::Svg => ContentType::Svg,
         ContentTypeHint::PlainText => ContentType::PlainText,
         ContentTypeHint::Pdf => ContentType::Pdf,
         // Audio hints were handled above; anything else is unknown binary.
