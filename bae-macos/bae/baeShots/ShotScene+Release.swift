@@ -12,7 +12,7 @@ extension ShotScene {
             id: "release-records-every-catalog",
             size: CGSize(width: 420, height: 120)
         ) {
-            AnyView(
+            ShotStage(
                 ReleaseRecordsRow(
                     records: PreviewData.releaseRecordsEveryCatalog
                 )
@@ -23,7 +23,7 @@ extension ShotScene {
             id: "release-records-card",
             size: CGSize(width: ReleaseRecordsCard.width, height: 96)
         ) {
-            AnyView(
+            ShotStage(
                 ReleaseRecordsCard(
                     records: PreviewData.identifiedFromBothCatalogs
                 )
@@ -38,7 +38,11 @@ extension ShotScene {
                 storageActions: [.unpin, .detachAudio],
                 playability: .playable
             )
-            return AnyView(
+            let answers = FixedAnswers()
+            // The sheet asks for the release and its files as it appears,
+            // a main-actor step after it is first drawn, which the tree's
+            // coming to rest spans.
+            return ShotStage(
                 ReleaseStorageSheet(
                     release: ReleaseDetail(bridge: release),
                     onAction: { _ in },
@@ -50,19 +54,19 @@ extension ShotScene {
                 .environment(
                     Library(
                         releaseDetail: {
-                            .fixed(answers: FixedAnswers()) { _ in release }
+                            .fixed(answers: answers) { _ in release }
                         },
                         releaseFiles: {
                             .fixed(
                                 PreviewData.previewReleaseFiles,
-                                answers: FixedAnswers()
+                                answers: answers
                             )
                         }
                     )
                 )
                 .environment(OutboxStore(uploadsPaused: false))
                 .environment(DownloadStore())
-            )
+            ) { answers.unanswered == 0 }
         },
     ]
 }

@@ -30,7 +30,8 @@ enum ShotRenderer {
         defaults.set(accent.rawValue, forKey: "appearance.accent")
         defaults.set(tone.rawValue, forKey: "appearance.tone")
         defer { defaults.removePersistentDomain(forName: suite) }
-        let rootView = scene.makeView().appAppearance()
+        let stage = scene.stage()
+        let rootView = stage.view.appAppearance()
             .defaultAppStorage(defaults)
         let (window, captured) = hostWindow(rootView, for: scene)
         window.appearance = NSAppearance(
@@ -51,7 +52,7 @@ enum ShotRenderer {
             window.close()
         }
 
-        try await settle(host: captured)
+        try await settle(host: captured, until: stage.isReady)
 
         switch scene.frame {
         case .content:
@@ -232,16 +233,27 @@ enum ShotRenderer {
         return data
     }
 
-    /// Suspend the capturing task so SwiftUI commits layout and any
-    /// `.task`-driven or eager-load work (the album grid's first page, seeded
-    /// release details) runs to completion on the main actor before the
-    /// capture, until the frames of every view stop moving. Blocking the main
-    /// thread here would starve those cooperative tasks — the awaits are what
-    /// let them run.
-    private static func settle(host: NSView) async throws {
-        try await Wait.untilUnmoved {
-            host.layoutSubtreeIfNeeded()
-            return frames(below: host)
+    /// Wait until the scene says what it shows has arrived, then until no
+    /// frame in `host` moves across an idle of the main run loop, and again
+    /// if coming to rest asked for more. The awaits are what let the
+    /// scene's main-actor work run; blocking the main thread would starve
+    /// it.
+    ///
+    /// An idle can come while main-actor work is still queued, so a tree
+    /// can read the same across one before a chain of main-actor steps that
+    /// moves no frame has done anything; a scene whose reads start that way
+    /// names in `isReady` what they bring, such as a store's list.
+    private static func settle(
+        host: NSView,
+        until isReady: @MainActor () -> Bool
+    ) async throws {
+        while true {
+            try await Wait.until { isReady() }
+            try await Wait.untilSteady {
+                host.layoutSubtreeIfNeeded()
+                return frames(below: host)
+            }
+            if isReady() { return }
         }
     }
 

@@ -252,6 +252,28 @@ struct ImageStoreCacheTests {
         )
         #expect(await fetchCount.read() == 2)
     }
+
+    /// What a screenshot waits on before it captures the art it shows.
+    @Test("an image counts as unanswered from its ask until it is handed back")
+    @MainActor
+    func unansweredImagesCountsLoadsUnderWay() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let gate = FetchGate()
+        let store = ImageStore(fetchLibraryImageBytes: { _ in
+            await gate.pass()
+            return bytes
+        })
+        let content = ImageContent.libraryImage(coverRef(version: "1"))
+        #expect(store.unansweredImages == 0)
+
+        let load = Task {
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        }
+        try await Wait.until { store.unansweredImages == 1 }
+        await gate.open()
+        #expect(try await load.value != nil)
+        #expect(store.unansweredImages == 0)
+    }
 }
 
 @Suite("ImageStore bucket isolation")

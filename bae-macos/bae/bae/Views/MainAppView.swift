@@ -280,6 +280,10 @@ struct MainAppView: View {
     /// The empty library's whole window (desktop story 3) — the same
     /// composition the shot harness renders.
     #Preview("Main app \u{2014} Empty") {
-        PreviewScenes.libraryEmpty()
+        let uiStore = UiStore()
+        PreviewScenes.libraryEmpty(
+            uiStore: uiStore,
+            backing: LibraryView.previewEmptyBacking(uiStore: uiStore)
+        )
     }
 #endif

@@ -11,7 +11,7 @@ extension ShotScene {
             id: "storage-manager-dense",
             size: CGSize(width: 1_440, height: 900)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
             )
         },
@@ -19,13 +19,13 @@ extension ShotScene {
             id: "storage-manager-empty",
             size: CGSize(width: 940, height: 600)
         ) {
-            AnyView(StorageManagerPreviewScene(rows: []))
+            .storageManager(StorageManagerPreviewScene(rows: []))
         },
         ShotScene(
             id: "storage-manager-empty-ish",
             size: CGSize(width: 940, height: 600)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     rows: Array(PreviewData.storageRows.prefix(2))
                 )
@@ -35,7 +35,7 @@ extension ShotScene {
             id: "storage-manager-empty-ish-inspector",
             size: CGSize(width: 940, height: 600)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     rows: Array(PreviewData.storageRows.prefix(2)),
                     inspectorPresented: true
@@ -46,7 +46,7 @@ extension ShotScene {
             id: "storage-manager-active-file-inspector",
             size: CGSize(width: 940, height: 700)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-1",
                     inspectorPresented: true,
@@ -59,7 +59,7 @@ extension ShotScene {
             id: "storage-manager-idle-file-inspector",
             size: CGSize(width: 940, height: 700)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-1",
                     inspectorPresented: true,
@@ -73,7 +73,7 @@ extension ShotScene {
             id: "storage-manager-one-sync-inspector",
             size: CGSize(width: 940, height: 600)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     rows: Array(PreviewData.storageRows.prefix(2)),
                     selectedReleaseId: "rel-row-2",
@@ -91,7 +91,7 @@ extension ShotScene {
             id: "storage-manager-pinning-inspector",
             size: CGSize(width: 1_040, height: 654)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-5",
                     inspectorPresented: true,
@@ -107,7 +107,7 @@ extension ShotScene {
             id: "storage-manager-pin-queued-inspector",
             size: CGSize(width: 1_040, height: 654)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-5",
                     inspectorPresented: true,
@@ -123,7 +123,7 @@ extension ShotScene {
             id: "storage-manager-uploads-and-pinning",
             size: CGSize(width: 1_440, height: 900)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-5",
                     inspectorPresented: true,
@@ -137,7 +137,7 @@ extension ShotScene {
             id: "storage-manager-file-details",
             size: CGSize(width: 1_040, height: 654)
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-1",
                     inspectorPresented: true,
@@ -154,7 +154,7 @@ extension ShotScene {
             size: CGSize(width: 1_040, height: 654),
             frame: .window(title: String(localized: "Storage manager"))
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(rows: [], search: "Album Title")
             )
         },
@@ -165,7 +165,7 @@ extension ShotScene {
             size: CGSize(width: 1_040, height: 654),
             frame: .window(title: String(localized: "Storage manager"))
         ) {
-            AnyView(
+            .storageManager(
                 StorageManagerPreviewScene(
                     selectedReleaseId: "rel-row-1",
                     inspectorPresented: true,
@@ -175,4 +175,18 @@ extension ShotScene {
             )
         },
     ]
+}
+
+extension ShotStage {
+    /// The Storage Manager over its fixture, ready once the list holds its
+    /// first page and the fixture has answered every read since: the
+    /// list's view and selection, and the inspector's release. The list is
+    /// asked for from the view's task, a few idles after the window opens,
+    /// so no read unanswered says nothing until it is there.
+    static func storageManager(_ scene: StorageManagerPreviewScene) -> ShotStage
+    {
+        ShotStage(scene) {
+            scene.store.list != nil && scene.answers.unanswered == 0
+        }
+    }
 }

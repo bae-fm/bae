@@ -12,18 +12,21 @@ extension ShotScene {
             id: "import-row-queued",
             size: CGSize(width: 340, height: 80)
         ) {
-            AnyView(
+            let images = ImageStore.stub()
+            return ShotStage(
                 row(queuedRow)
                     .candidateReaderPreviewEnvironment()
-                    .environment(ImageStore.stub())
-                    .background(Theme.background)
+                    .environment(images)
+                    .background(Theme.background),
+                images: images
             )
         },
         ShotScene(
             id: "import-rows-record-arrow",
             size: CGSize(width: 340, height: 240)
         ) {
-            AnyView(
+            let images = ImageStore.stub()
+            return ShotStage(
                 VStack(spacing: 0) {
                     row(PreviewData.triageRowReadFromRecord)
                     row(PreviewData.triageRowNotReadFromRecord)
@@ -32,8 +35,9 @@ extension ShotScene {
                         .background(Color.accentColor)
                 }
                 .candidateReaderPreviewEnvironment()
-                .environment(ImageStore.stub())
-                .background(Theme.background)
+                .environment(images)
+                .background(Theme.background),
+                images: images
             )
         },
     ]

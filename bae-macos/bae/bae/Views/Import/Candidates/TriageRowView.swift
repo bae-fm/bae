@@ -386,15 +386,17 @@ extension TriageRowView {
     // A Done row's line while its release uploads: the phase and a bar
     // while a file is being sent, the phase alone while its files wait.
     #Preview("Done rows uploading") {
-        PreviewScenes.importDoneRowsUploading()
+        PreviewScenes.importDoneRowsUploading(
+            images: PreviewData.artImageStore()
+        )
     }
 
     #Preview("Done rows, settled") {
-        PreviewScenes.importDoneRowsSettled()
+        PreviewScenes.importDoneRowsSettled(images: PreviewData.artImageStore())
     }
 
     #Preview("Failed row") {
-        PreviewScenes.importFailedRow()
+        PreviewScenes.importFailedRow(images: PreviewData.artImageStore())
     }
 
     #Preview("Where the draft was read from") {

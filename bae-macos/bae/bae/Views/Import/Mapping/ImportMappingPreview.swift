@@ -12,8 +12,14 @@
     /// reproduces the shell the panes are transparent over.
     extension View {
         func importPreviewEnvironment() -> some View {
+            importPreviewEnvironment(images: PreviewData.artImageStore())
+        }
+
+        /// [`importPreviewEnvironment()`] with its images from `images`, for
+        /// a screenshot that waits until they are there.
+        func importPreviewEnvironment(images: ImageStore) -> some View {
             self
-                .environment(PreviewData.artImageStore())
+                .environment(images)
                 .environment(UiStore())
                 .environment(ImportSelection())
                 .environment(OutboxStore(uploadsPaused: false))
@@ -102,6 +108,8 @@
     @MainActor
     struct ImportMappingCuePreviewScene: View {
         let width: CGFloat
+        /// Where the pane's images come from.
+        let images: ImageStore
 
         @State
         private var storageCloud = true
@@ -115,7 +123,7 @@
                 storagePinned: $storagePinned
             )
             .frame(width: width, height: 900)
-            .importPreviewEnvironment()
+            .importPreviewEnvironment(images: images)
         }
     }
 
@@ -238,11 +246,17 @@
     }
 
     #Preview("Mapping pane — a cue carving one container") {
-        ImportMappingCuePreviewScene(width: 1212)
+        ImportMappingCuePreviewScene(
+            width: 1212,
+            images: PreviewData.artImageStore()
+        )
     }
 
     #Preview("Mapping pane — a cue carving one container, narrow") {
-        ImportMappingCuePreviewScene(width: 760)
+        ImportMappingCuePreviewScene(
+            width: 760,
+            images: PreviewData.artImageStore()
+        )
     }
 
     #Preview("Mapping pane — CUE ignored") {

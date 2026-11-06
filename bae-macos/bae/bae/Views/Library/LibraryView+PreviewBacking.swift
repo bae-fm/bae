@@ -32,6 +32,9 @@
                 library: library,
                 uiStore: uiStore
             )
+            // The app starts its session as the library opens; nothing in the
+            // views does.
+            session.start()
             return (library, session)
         }
 
@@ -69,6 +72,7 @@
                 library: library,
                 uiStore: uiStore
             )
+            session.start()
             return (library, session)
         }
 

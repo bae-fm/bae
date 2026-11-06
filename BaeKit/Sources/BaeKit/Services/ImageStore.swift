@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Observation
 import os.log
 
 #if canImport(AppKit)
@@ -136,6 +137,24 @@ public final class ImageStore: Sendable, Observable {
         /// Posted after each image enters the decoded cache, for a test to
         /// wait on.
         public static let didStoreImage = DecodedImageCache.didStore
+
+        private let registrar = ObservationRegistrar()
+        private let asked = AskedImages()
+
+        /// How many images `image(_:pointSize:displayScale:)` was asked for
+        /// and has not yet handed back, decoded or failed, for a screenshot
+        /// that waits until the art it shows is there. Read under
+        /// observation tracking.
+        public var unansweredImages: Int {
+            registrar.access(self, keyPath: \.unansweredImages)
+            return asked.count
+        }
+
+        private func changeUnansweredImages(by delta: Int) {
+            registrar.withMutation(of: self, keyPath: \.unansweredImages) {
+                asked.change(by: delta)
+            }
+        }
     #endif
 
     public init(
@@ -222,6 +241,10 @@ public final class ImageStore: Sendable, Observable {
         pointSize: CGFloat,
         displayScale: CGFloat
     ) async throws -> PlatformImage? {
+        #if DEBUG
+            changeUnansweredImages(by: 1)
+            defer { changeUnansweredImages(by: -1) }
+        #endif
         let key = cacheKey(
             content,
             pointSize: pointSize,
@@ -494,6 +517,21 @@ private final class InFlightImageLoad: @unchecked Sendable {
         task = Task { try await operation() }
     }
 }
+
+#if DEBUG
+    /// The count behind `ImageStore.unansweredImages`, changed from whichever
+    /// thread a load runs on.
+    private final class AskedImages: @unchecked Sendable {
+        private let lock = NSLock()
+        private var asked = 0
+
+        var count: Int { lock.withLock { asked } }
+
+        func change(by delta: Int) {
+            lock.withLock { asked += delta }
+        }
+    }
+#endif
 
 /// Requests for one decoded cache entry share the same fetch and decode. The
 /// first waiter that observes completion removes the task; reference equality

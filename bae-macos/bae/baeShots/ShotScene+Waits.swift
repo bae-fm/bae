@@ -13,7 +13,8 @@ extension ShotScene {
             id: "import-search-searching",
             size: CGSize(width: 800, height: 520)
         ) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 FindOnlineSearchResults(
                     search: PreviewData.searchRunInFlight,
                     isImporting: false,
@@ -23,14 +24,15 @@ extension ShotScene {
                     onRetry: {},
                     onSelect: { _ in },
                 )
-                .importPreviewEnvironment()
+                .importPreviewEnvironment(images: images),
+                images: images
             )
         },
         ShotScene(
             id: "cast-picker-connecting",
             size: CGSize(width: 300, height: 160)
         ) {
-            AnyView(
+            ShotStage(
                 CastPickerPopover(
                     devices: [
                         BridgeCastDevice(
@@ -52,7 +54,7 @@ extension ShotScene {
             id: "settings-discogs-checking",
             size: CGSize(width: 500, height: 320)
         ) {
-            AnyView(
+            ShotStage(
                 DiscogsKeyPreview(
                     status: .unvalidated,
                     draft: "abcdef123456",
@@ -64,14 +66,15 @@ extension ShotScene {
             id: "artwork-lightbox-loading",
             size: CGSize(width: 640, height: 480)
         ) {
-            AnyView(LightboxView<LightboxItem>.loadingPreview())
+            ShotStage(LightboxView<LightboxItem>.loadingPreview())
         },
         ShotScene(
             id: "import-search-reading-pick",
             size: CGSize(width: 620, height: 120)
         ) {
             let pressing = PreviewData.searchGroupExact.pressings[0]
-            return AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 ImportSearchResultRow(
                     pressing: pressing,
                     isImporting: false,
@@ -84,14 +87,16 @@ extension ShotScene {
                     onSelect: { _ in }
                 )
                 .frame(width: 620, height: 120, alignment: .top)
-                .importPreviewEnvironment()
+                .importPreviewEnvironment(images: images),
+                images: images
             )
         },
         ShotScene(
             id: "import-pane-queued",
             size: CGSize(width: 560, height: 400)
         ) {
-            AnyView(
+            let images = ImageStore.stub()
+            return ShotStage(
                 ImportingCandidatePane(
                     candidate: PreviewData.folderCandidates[0],
                     step: .preparing(step: .queued),
@@ -103,7 +108,8 @@ extension ShotScene {
                     previewingTarget: nil
                 )
                 .candidateReaderPreviewEnvironment()
-                .environment(ImageStore.stub())
+                .environment(images),
+                images: images
             )
         },
     ]

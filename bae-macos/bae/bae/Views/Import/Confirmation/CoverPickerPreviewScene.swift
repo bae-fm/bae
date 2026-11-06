@@ -32,6 +32,8 @@
             ),
         ]
 
+        /// Where the gallery's images come from.
+        let images: ImageStore
         @State
         private var lightboxLoad = LightboxImageLoad()
 
@@ -47,15 +49,16 @@
                     onDone: {}
                 )
             }
-            .environment(PreviewData.artImageStore())
+            .environment(images)
             .background(Theme.background)
         }
 
         /// The gallery with its lookup in `remote`, saving the cover picked
-        /// when `isSaving`.
+        /// when `isSaving`, its images from `images`.
         static func lookup(
             _ remote: RemoteCoverItems,
-            isSaving: Bool = false
+            isSaving: Bool = false,
+            images: ImageStore
         ) -> some View {
             CoverPickerFrame {
                 CoverGalleryView(
@@ -69,12 +72,16 @@
                     onDone: {}
                 )
             }
-            .environment(PreviewData.artImageStore())
+            .environment(images)
             .background(Theme.background)
         }
 
-        /// The gallery open on its lightbox, its image loading in `load`.
-        static func lightbox(load: LightboxImageLoad) -> some View {
+        /// The gallery open on its lightbox, its image loading in `load` and
+        /// its strip's from `images`.
+        static func lightbox(
+            load: LightboxImageLoad,
+            images: ImageStore
+        ) -> some View {
             CoverGalleryView(
                 remoteItems: .linked(remoteItems),
                 releaseItems: releaseItems,
@@ -85,10 +92,12 @@
                 onSelect: { _ in },
                 onDone: {}
             )
-            .environment(PreviewData.artImageStore())
+            .environment(images)
         }
 
-        static func unlinked() -> some View {
+        /// The gallery of a release linked to no catalog release, its images
+        /// from `images`.
+        static func unlinked(images: ImageStore) -> some View {
             CoverPickerFrame {
                 CoverGalleryView(
                     remoteItems: .unlinked,
@@ -100,7 +109,7 @@
                     onDone: {}
                 )
             }
-            .environment(PreviewData.artImageStore())
+            .environment(images)
             .background(Theme.background)
         }
 
@@ -141,33 +150,42 @@
     }
 
     #Preview("Cover gallery") {
-        CoverPickerPreviewScene()
+        CoverPickerPreviewScene(images: PreviewData.artImageStore())
             .frame(width: 1_148, height: 868)
-            .environment(PreviewData.artImageStore())
     }
 
     #Preview("Cover gallery — short window") {
-        CoverPickerPreviewScene()
+        CoverPickerPreviewScene(images: PreviewData.artImageStore())
             .frame(width: 800, height: 520)
-            .environment(PreviewData.artImageStore())
     }
 
     #Preview("Artwork lightbox") {
-        CoverPickerPreviewScene.lightbox(load: LightboxImageLoad())
-            .frame(width: 1_148, height: 868)
+        CoverPickerPreviewScene.lightbox(
+            load: LightboxImageLoad(),
+            images: PreviewData.artImageStore()
+        )
+        .frame(width: 1_148, height: 868)
     }
 
     #Preview("Cover gallery — unlinked release") {
-        CoverPickerPreviewScene.unlinked().frame(width: 1_148, height: 868)
+        CoverPickerPreviewScene.unlinked(images: PreviewData.artImageStore())
+            .frame(width: 1_148, height: 868)
     }
 
     #Preview("Cover gallery — fetching covers") {
-        CoverPickerPreviewScene.lookup(.loading([]))
-            .frame(width: 1_148, height: 868)
+        CoverPickerPreviewScene.lookup(
+            .loading([]),
+            images: PreviewData.artImageStore()
+        )
+        .frame(width: 1_148, height: 868)
     }
 
     #Preview("Cover gallery — saving") {
-        CoverPickerPreviewScene.lookup(.linked([]), isSaving: true)
-            .frame(width: 1_148, height: 868)
+        CoverPickerPreviewScene.lookup(
+            .linked([]),
+            isSaving: true,
+            images: PreviewData.artImageStore()
+        )
+        .frame(width: 1_148, height: 868)
     }
 #endif

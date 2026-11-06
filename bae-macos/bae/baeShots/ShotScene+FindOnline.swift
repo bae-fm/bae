@@ -18,7 +18,8 @@ extension ShotScene {
             id: "import-search-discogs-bar",
             size: CGSize(width: 900, height: 600)
         ) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 ImportSearchPane.preview(state: PreviewData.searchStateIdle)
                     .environment(
                         PreviewData.makeConfigStore(
@@ -26,15 +27,17 @@ extension ShotScene {
                             discogsUsable: false
                         )
                     )
-                    .importPreviewEnvironment()
-                    .windowBackground()
+                    .importPreviewEnvironment(images: images)
+                    .windowBackground(),
+                images: images
             )
         },
         ShotScene(
             id: "identify-band-runs",
             size: CGSize(width: 660, height: 900)
         ) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(bandRuns.enumerated()), id: \.offset) {
                         _,
@@ -49,15 +52,17 @@ extension ShotScene {
                         Divider()
                     }
                 }
-                .importPreviewEnvironment()
-                .windowBackground()
+                .importPreviewEnvironment(images: images)
+                .windowBackground(),
+                images: images
             )
         },
         ShotScene(
             id: "import-search-no-source",
             size: CGSize(width: 900, height: 600)
         ) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 ImportSearchPane.preview(state: PreviewData.searchStateIdle)
                     .environment(
                         PreviewData.makeConfigStore(
@@ -66,8 +71,9 @@ extension ShotScene {
                             musicBrainz: .off
                         )
                     )
-                    .importPreviewEnvironment()
-                    .windowBackground()
+                    .importPreviewEnvironment(images: images)
+                    .windowBackground(),
+                images: images
             )
         },
         pane(
@@ -91,10 +97,12 @@ extension ShotScene {
             id: "import-search-card-links-unread",
             size: CGSize(width: 660, height: 160)
         ) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 ReleaseGroupCard(group: PreviewData.searchGroupLinksUnread)
-                    .importPreviewEnvironment()
-                    .windowBackground()
+                    .importPreviewEnvironment(images: images)
+                    .windowBackground(),
+                images: images
             )
         },
         pane(
@@ -105,7 +113,8 @@ extension ShotScene {
             id: "import-search-narrowed-out-open",
             size: CGSize(width: 660, height: 1_100)
         ) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 FindOnlineAutomaticSection(
                     state: PreviewData.searchStateNarrowedOut,
                     onOpenSettings: {},
@@ -120,19 +129,22 @@ extension ShotScene {
                     onLinkSharedAlbum: nil,
                     narrowedOutExpanded: .constant(true)
                 )
-                .importPreviewEnvironment()
-                .windowBackground()
+                .importPreviewEnvironment(images: images)
+                .windowBackground(),
+                images: images
             )
         },
         ShotScene(
             id: "import-search-row-failed",
             size: CGSize(width: 900, height: 160)
         ) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 failedRow
                     .frame(width: 900, height: 160, alignment: .top)
-                    .importPreviewEnvironment()
-                    .background(Theme.background)
+                    .importPreviewEnvironment(images: images)
+                    .background(Theme.background),
+                images: images
             )
         },
     ]
@@ -160,10 +172,12 @@ extension ShotScene {
         -> ShotScene
     {
         ShotScene(id: id, size: CGSize(width: 900, height: 600)) {
-            AnyView(
+            let images = PreviewData.artImageStore()
+            return ShotStage(
                 ImportSearchPane.preview(state: state)
-                    .importPreviewEnvironment()
-                    .windowBackground()
+                    .importPreviewEnvironment(images: images)
+                    .windowBackground(),
+                images: images
             )
         }
     }

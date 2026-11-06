@@ -10,10 +10,8 @@ import ObjectiveC
 /// wait resumes when anything the condition read changes. A recorder or a fake
 /// is test code: it calls `Wait.happened()` after each change it records, which
 /// resumes every wait to read its condition again. A hosted view tree is read
-/// each time the main run loop goes idle, the moment it has run everything
-/// queued for the main thread. The only timer is the deadline, which fails
-/// the wait loudly when the event never comes; `untilUnmoved` is the one
-/// exception, for work that tells no one when it ends.
+/// each time the main run loop goes idle, about to sleep. The only timer is
+/// the deadline, which fails the wait loudly when the event never comes.
 enum Wait {
     /// What a wait was given did not happen in time.
     struct TimedOut: LocalizedError, CustomStringConvertible {
@@ -31,11 +29,6 @@ enum Wait {
     /// How long any one wait holds out. Far past anything a passing test
     /// needs, so reaching it means the thing waited for is not coming.
     static let deadline: Duration = .seconds(10)
-
-    /// How long `untilUnmoved` needs a value to stay the same: several
-    /// run-loop passes, each of which may lay a view out or run the
-    /// main-actor work a view started.
-    static let steadiness: Duration = .milliseconds(40)
 
     /// Return once `condition` holds. It is read under observation tracking
     /// and again after every `happened()`, so it holds only things a store
@@ -343,11 +336,15 @@ extension Wait {
         }
     }
 
-    /// Return at the main run loop's next idle: once it has run everything
-    /// queued for the main thread, the main actor's tasks, timers that came
-    /// due, and SwiftUI's and Core Animation's updates, and is about to sleep.
-    /// Work running off the main thread is not waited for: what it brings
-    /// back wakes the run loop, and its own event is what a wait for it reads.
+    /// Return at the main run loop's next idle: once it has run SwiftUI's
+    /// and Core Animation's updates and is about to sleep.
+    ///
+    /// An idle is not the end of all main-actor work: one can come while
+    /// main-actor work is still queued, and the run loop wakes again at once
+    /// to run it: a storage manager's view asked for its list three idles
+    /// after its window opened, its tree unchanged across them. Work running
+    /// off the main thread is not waited for either: what it brings back
+    /// wakes the run loop, and its own event is what a wait for it reads.
     @MainActor
     static func nextIdle(
         before end: ContinuousClock.Instant,
@@ -380,8 +377,10 @@ extension Wait {
     /// ending at an idle of the run loop: a geometry reader publishes a
     /// width, the views under it measure again, work a view started on the
     /// main actor lands. A tree read the same across an idle has none of
-    /// that left. Work off the main thread, such as a page a query answers,
-    /// is waited for by its own event first.
+    /// that left, unless what is left is a chain of main-actor steps that
+    /// moves no frame, since an idle can come with main-actor work still
+    /// queued. Such a chain, and work off the main thread such as a page a
+    /// query answers, is waited for by its own event first.
     ///
     /// A tree that has not started moving yet also reads the same, so when
     /// the step before the wait must change the value — a scroll — the
@@ -410,45 +409,6 @@ extension Wait {
             if now == last, changed { return }
             last = now
             if let before, !changed { changed = before != now }
-        }
-    }
-
-    /// Return once `value` has read the same for `steadiness`.
-    ///
-    /// For a tree whose work runs off the main thread and tells no one when
-    /// it ends, so that a stretch of time is the only thing to go by: the
-    /// lightbox decodes its image and reads its text inside its own view,
-    /// and a fixed query answers its reads off the main thread. Everything
-    /// else is waited for by its event. `changedFrom` is
-    /// [`untilSteady`]'s.
-    @MainActor
-    static func untilUnmoved<Value: Equatable>(
-        changedFrom before: Value? = nil,
-        timeout: Duration = deadline,
-        file: StaticString = #filePath,
-        line: UInt = #line,
-        _ value: @MainActor () async throws -> Value
-    ) async throws {
-        let clock = ContinuousClock()
-        let end = clock.now.advanced(by: timeout)
-        var last = try await value()
-        var changed = true
-        if let before { changed = before != last }
-        var steadySince = clock.now
-        while true {
-            try await Task.sleep(for: .milliseconds(1))
-            let now = try await value()
-            if now != last {
-                last = now
-                if let before, !changed { changed = before != now }
-                steadySince = clock.now
-            }
-            else if changed, clock.now - steadySince >= steadiness {
-                return
-            }
-            guard clock.now < end else {
-                throw TimedOut(after: timeout, file: file, line: line)
-            }
         }
     }
 }

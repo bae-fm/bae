@@ -15,10 +15,10 @@ extension ShotScene {
             id: "album-detail-records",
             size: CGSize(width: 1100, height: 800)
         ) {
-            AnyView(PreviewData.albumExpansionScene(albumId: "a-01"))
+            ShotStage(PreviewData.albumExpansionScene(albumId: "a-01"))
         },
         ShotScene(id: "volume-slider", size: CGSize(width: 152, height: 52)) {
-            AnyView(
+            ShotStage(
                 SlimSlider(value: 0.6, onChange: { _ in })
                     .frame(width: 120)
                     .padding()
@@ -29,7 +29,7 @@ extension ShotScene {
             id: "album-track-list-wide-positions",
             size: CGSize(width: 800, height: 600)
         ) {
-            AnyView(
+            ShotStage(
                 AlbumTrackListView(
                     release: widePositionsRelease(),
                     isCompilation: false,
@@ -53,7 +53,7 @@ extension ShotScene {
         },
         ShotScene(id: "document-viewer", size: CGSize(width: 750, height: 600))
         {
-            AnyView(
+            ShotStage(
                 DocumentViewerView(
                     name: "rip.log",
                     text: "Extraction log",
@@ -63,14 +63,14 @@ extension ShotScene {
         },
         ShotScene(id: "add-device-code", size: CGSize(width: 400, height: 600))
         {
-            AnyView(
+            ShotStage(
                 AddDeviceSheetPreview(result: addingCode)
                     .environment(AddDeviceSheetPreview.members())
             )
         },
         ShotScene(id: "add-device-added", size: CGSize(width: 400, height: 600))
         {
-            AnyView(
+            ShotStage(
                 AddDeviceSheetPreview(result: addingCode)
                     .environment(
                         AddDeviceSheetPreview.members(

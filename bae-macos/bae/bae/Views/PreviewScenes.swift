@@ -50,10 +50,12 @@
         /// The full main window over a library with nothing in it — title bar,
         /// empty albums state, idle now-playing bar (desktop story 3). Same
         /// composition as `MainAppView`'s preview, over the shared empty
-        /// backing (`LibraryView.previewEmptyBacking`).
-        static func libraryEmpty() -> some View {
-            let uiStore = UiStore()
-            let backing = LibraryView.previewEmptyBacking(uiStore: uiStore)
+        /// backing (`LibraryView.previewEmptyBacking`) made with `uiStore`,
+        /// whose album count lands a read later.
+        static func libraryEmpty(
+            uiStore: UiStore,
+            backing: (library: Library, session: LibraryBrowseSession)
+        ) -> some View {
             let importScene = PreviewData.importTabScene()
             return MainAppView()
                 .environment(backing.library)
@@ -148,7 +150,8 @@
             scene: ImportPreviewFixture,
             tab: BridgeTriageTab,
             collapsePendingGroup: Bool,
-            refreshingWatchedFolderPath: Data?
+            refreshingWatchedFolderPath: Data?,
+            images: ImageStore
         ) -> some View {
             let uiStore = UiStore()
             uiStore.setImportCandidateTab(tab)
@@ -174,7 +177,7 @@
             )
             .environment(OutboxStore(uploadsPaused: false))
             .environment(ImportSelection())
-            .environment(PreviewData.artImageStore())
+            .environment(images)
             .environment(uiStore)
             .mainWindowPreviewEnvironment()
             .windowBackground()
@@ -183,26 +186,32 @@
         /// Done rows at the import list's row height: one at rest, one whose
         /// release's files wait to upload, and one whose release has a file
         /// being sent, its bar read from the release's upload stream.
-        static func importDoneRowsUploading() -> some View {
-            triageRows([
-                PreviewData.triageRowDoneFromTags,
-                PreviewData.triageRowDoneUploadQueued,
-                PreviewData.triageRowDoneUploading,
-            ])
+        static func importDoneRowsUploading(images: ImageStore) -> some View {
+            triageRows(
+                [
+                    PreviewData.triageRowDoneFromTags,
+                    PreviewData.triageRowDoneUploadQueued,
+                    PreviewData.triageRowDoneUploading,
+                ],
+                images: images
+            )
         }
 
         /// Done rows at rest at the import list's row height: one whose
         /// release was read from the catalog and one read from tags.
-        static func importDoneRowsSettled() -> some View {
-            triageRows([
-                PreviewData.triageRowDoneImported,
-                PreviewData.triageRowDoneFromTags,
-            ])
+        static func importDoneRowsSettled(images: ImageStore) -> some View {
+            triageRows(
+                [
+                    PreviewData.triageRowDoneImported,
+                    PreviewData.triageRowDoneFromTags,
+                ],
+                images: images
+            )
         }
 
         /// A failed row at the import list's row height, with why it failed.
-        static func importFailedRow() -> some View {
-            triageRows([PreviewData.triageRowFailed])
+        static func importFailedRow(images: ImageStore) -> some View {
+            triageRows([PreviewData.triageRowFailed], images: images)
         }
 
         /// The height a scene of `rowCount` rows from `triageRows` needs: the
@@ -214,7 +223,10 @@
 
         private static let triageRowsPadding: CGFloat = 16
 
-        private static func triageRows(_ rows: [BridgeTriageRow]) -> some View {
+        private static func triageRows(
+            _ rows: [BridgeTriageRow],
+            images: ImageStore
+        ) -> some View {
             let importStore = ImportStore()
             return VStack(alignment: .leading, spacing: 0) {
                 ForEach(rows, id: \.candidateKey) { row in
@@ -230,7 +242,7 @@
             .padding(triageRowsPadding)
             .frame(width: 360)
             .environment(PreviewData.doneRowOutboxStore())
-            .environment(PreviewData.artImageStore())
+            .environment(images)
             .candidateReaderPreviewEnvironment()
             .windowBackground()
         }
@@ -262,7 +274,8 @@
             scene: PreviewData.releaseQueueScene(),
             tab: .pending,
             collapsePendingGroup: false,
-            refreshingWatchedFolderPath: nil
+            refreshingWatchedFolderPath: nil,
+            images: PreviewData.artImageStore()
         )
     }
 
@@ -272,7 +285,8 @@
             tab: .pending,
             collapsePendingGroup: false,
             refreshingWatchedFolderPath:
-                PreviewData.releaseQueueWatchedFolder.path
+                PreviewData.releaseQueueWatchedFolder.path,
+            images: PreviewData.artImageStore()
         )
     }
 
@@ -285,7 +299,8 @@
             scene: PreviewData.releaseQueueResolvedScene(),
             tab: .pending,
             collapsePendingGroup: false,
-            refreshingWatchedFolderPath: nil
+            refreshingWatchedFolderPath: nil,
+            images: PreviewData.artImageStore()
         )
     }
 #endif

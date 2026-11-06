@@ -29,7 +29,8 @@ extension ShotScene {
         -> ShotScene
     {
         ShotScene(id: id, size: CGSize(width: 800, height: 520)) {
-            AnyView(
+            let images = ImageStore.stub()
+            return ShotStage(
                 CoverGalleryView(
                     remoteItems: remote,
                     releaseItems: [],
@@ -41,7 +42,8 @@ extension ShotScene {
                     onSelect: { _ in },
                     onDone: {}
                 )
-                .environment(ImageStore.stub())
+                .environment(images),
+                images: images
             )
         }
     }
@@ -52,8 +54,14 @@ extension ShotScene {
         isSaving: Bool = false
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 1_148, height: 868)) {
-            AnyView(
-                CoverPickerPreviewScene.lookup(remote, isSaving: isSaving)
+            let images = PreviewData.artImageStore()
+            return ShotStage(
+                CoverPickerPreviewScene.lookup(
+                    remote,
+                    isSaving: isSaving,
+                    images: images
+                ),
+                images: images
             )
         }
     }
