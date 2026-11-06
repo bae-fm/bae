@@ -7,6 +7,7 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
 use bae_import::{ArtistAssignment, ReleaseUserEdit};
 use bae_library::test_libraries::{run_two_device_test, TestDevice, TwoDevices};
+use bae_records::test_fixtures::library::LibraryRows;
 use bae_records::ExistingArtist;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 
@@ -210,7 +211,15 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 uuid::Uuid::new_v4().to_string(),
                 chrono::Utc::now(),
             );
-            device.records().insert_composition_fixture_rows(&[work], &[track_work]).await.unwrap();
+            device
+                .records()
+                .insert_library_rows_for_test(LibraryRows {
+                    works: vec![work],
+                    track_works: vec![track_work],
+                    ..LibraryRows::default()
+                })
+                .await
+                .unwrap();
             releases.push(release.id);
         }
         devices.resume().await;

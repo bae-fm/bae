@@ -5,8 +5,11 @@
 
 use crate::album_detail::{ComposerDetailItem, ComposerHeading};
 use crate::*;
+use bae_catalogs::catalog::Catalog;
+use bae_records::test_fixtures::library::RecordsFixture;
+use bae_records::test_fixtures::test_records;
 use bae_store::test_fixtures::live_query::first_page;
-use bae_store::test_fixtures::{exec_batch, temp_db};
+use bae_store::test_fixtures::temp_db;
 
 const COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01";
 const OTHER_COMPOSER: &str = "1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a02";
@@ -27,53 +30,53 @@ const CREDIT_ON_SECOND: &str = "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f02";
 const CREDIT_ON_TRACK_ZERO: &str = "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f03";
 const CREDIT_ON_TRACK_ONE: &str = "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f04";
 
+const RELEASE_FIRST: &str = "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d01";
+const RELEASE_SECOND: &str = "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d02";
+const ALBUM_FIRST: &str = "3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01";
+const ALBUM_SECOND: &str = "3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c02";
+const TRACK_ZERO: &str = "5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e01";
+const TRACK_ONE: &str = "5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e02";
+
 /// A composer credited on parts of two works it isn't credited on, one part
 /// of both, a work part of none heading a part of its own, and a lone work;
 /// and holding release credits on two albums and track credits on two tracks
 /// of the first, none linked by a work. Titles mix case, which the page's
 /// order ignores.
-const PAGE: &str = "
-    INSERT INTO artists (id, name, name_key, created_at) VALUES
-        ('1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 'Composer Name', 'composer name', '2026-01-01T00:00:00Z'),
-        ('1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a02', 'Composer Name Other', 'composer name other', '2026-01-01T00:00:00Z');
-    INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES
-        ('2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b01', 'Alpha Parent', 'work', 'mb-alpha', '2026-01-01T00:00:00Z'),
-        ('2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b02', 'beta Parent', 'work', 'mb-beta', '2026-01-01T00:00:00Z'),
-        ('2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b03', 'Movement Two', 'part', 'mb-two', '2026-01-01T00:00:00Z'),
-        ('2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b04', 'movement One', 'part', 'mb-one', '2026-01-01T00:00:00Z'),
-        ('2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b05', 'Gamma Work', 'work', 'mb-gamma', '2026-01-01T00:00:00Z'),
-        ('2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b06', 'Part Of Gamma', 'part', 'mb-gamma-part', '2026-01-01T00:00:00Z'),
-        ('2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b07', 'Delta Solo', 'work', 'mb-delta', '2026-01-01T00:00:00Z');
-    INSERT INTO work_parts (id, parent_work_id, child_work_id, position, source, created_at) VALUES
-        ('7c8d3a0e-6b7d-4c9e-8f0a-2b3c4d5e6a01', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b02', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b03', 1, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('7c8d3a0e-6b7d-4c9e-8f0a-2b3c4d5e6a02', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b02', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b04', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('7c8d3a0e-6b7d-4c9e-8f0a-2b3c4d5e6a03', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b01', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b04', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('7c8d3a0e-6b7d-4c9e-8f0a-2b3c4d5e6a04', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b05', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b06', 0, 'musicbrainz', '2026-01-01T00:00:00Z');
-    INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) VALUES
-        ('8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b01', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b03', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b02', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b04', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b03', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b05', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b04', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b06', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b05', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b07', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'musicbrainz', '2026-01-01T00:00:00Z'),
-        ('8d9e4b1f-7c8e-4d0f-9a1b-3c4d5e6f7b06', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b07', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a02', 0, 'musicbrainz', '2026-01-01T00:00:00Z');
-    INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-        ('3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01', 'Album First', 0, '2026-01-01T00:00:00Z'),
-        ('3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c02', 'album Second', 0, '2026-01-01T00:00:00Z');
-    INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-        ('4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d01', '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01', '2026-01-01T00:00:00Z', 0),
-        ('4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d02', '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c02', '2026-01-01T00:00:00Z', 0);
-    INSERT INTO release_mediums (id, release_id, position, side_count, created_at) VALUES
-        ('9e0f5c2a-8d9f-4e1a-8b2c-4d5e6f7a8c01', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d01', 1, 1, '2026-01-01T00:00:00Z');
-    INSERT INTO tracks (id, release_id, position, title, medium_id, side, track_number, duration_ms, created_at) VALUES
-        ('5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e01', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d01', 0, 'Track Title Zero', '9e0f5c2a-8d9f-4e1a-8b2c-4d5e6f7a8c01', 1, 1, 1000, '2026-01-01T00:00:00Z'),
-        ('5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e02', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d01', 1, 'Track Title One', '9e0f5c2a-8d9f-4e1a-8b2c-4d5e6f7a8c01', 1, 2, 1000, '2026-01-01T00:00:00Z');
-    INSERT INTO release_artist_roles (id, release_id, artist_id, position, source, source_credit, created_at) VALUES
-        ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f02', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d02', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'discogs', 'Written-By', '2026-01-01T00:00:00Z'),
-        ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f01', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d01', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'discogs', 'Written-By', '2026-01-01T00:00:00Z');
-    INSERT INTO track_artist_roles (id, track_id, artist_id, position, source, source_credit, created_at) VALUES
-        ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f04', '5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e02', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'musicbrainz', 'composer', '2026-01-01T00:00:00Z'),
-        ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f03', '5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e01', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'musicbrainz', 'composer', '2026-01-01T00:00:00Z');
-";
+async fn write_page(db: &Store) {
+    let written_by = (Catalog::Discogs, "Written-By");
+    let composer = (Catalog::MusicBrainz, "composer");
+    RecordsFixture::new()
+        .artist(COMPOSER, "Composer Name")
+        .artist(OTHER_COMPOSER, "Composer Name Other")
+        .work(ALPHA_PARENT, "Alpha Parent")
+        .work(BETA_PARENT, "beta Parent")
+        .work_of_type(MOVEMENT_TWO, "Movement Two", "part")
+        .work_of_type(MOVEMENT_ONE, "movement One", "part")
+        .work(GAMMA_WORK, "Gamma Work")
+        .work_of_type(PART_OF_GAMMA, "Part Of Gamma", "part")
+        .work(DELTA_SOLO, "Delta Solo")
+        .part(BETA_PARENT, MOVEMENT_ONE)
+        .part(BETA_PARENT, MOVEMENT_TWO)
+        .part(ALPHA_PARENT, MOVEMENT_ONE)
+        .part(GAMMA_WORK, PART_OF_GAMMA)
+        .composer(MOVEMENT_TWO, COMPOSER)
+        .composer(MOVEMENT_ONE, COMPOSER)
+        .composer(GAMMA_WORK, COMPOSER)
+        .composer(PART_OF_GAMMA, COMPOSER)
+        .composer(DELTA_SOLO, COMPOSER)
+        .composer(DELTA_SOLO, OTHER_COMPOSER)
+        .album(ALBUM_FIRST, "Album First", None, &[])
+        .album(ALBUM_SECOND, "album Second", None, &[])
+        .release(ALBUM_FIRST, RELEASE_FIRST)
+        .release(ALBUM_SECOND, RELEASE_SECOND)
+        .tracks(RELEASE_FIRST, &[(TRACK_ZERO, "Track Title Zero"), (TRACK_ONE, "Track Title One")])
+        .release_role(CREDIT_ON_SECOND, RELEASE_SECOND, COMPOSER, written_by)
+        .release_role(CREDIT_ON_FIRST, RELEASE_FIRST, COMPOSER, written_by)
+        .track_role(CREDIT_ON_TRACK_ONE, TRACK_ONE, COMPOSER, composer)
+        .track_role(CREDIT_ON_TRACK_ZERO, TRACK_ZERO, COMPOSER, composer)
+        .write(&test_records(db))
+        .await;
+}
 
 /// What a row of a page shows, as the tests read it.
 #[derive(Debug, PartialEq)]
@@ -120,7 +123,7 @@ async fn page(db: &Store, artist: &str) -> Vec<(bool, Shown)> {
         .collect()
 }
 
-/// The page [`PAGE`] makes for its composer.
+/// The page [`write_page`] makes for its composer.
 fn whole_page() -> Vec<(bool, Shown)> {
     vec![
         (true, Work(ALPHA_PARENT, false)),
@@ -141,7 +144,7 @@ fn whole_page() -> Vec<(bool, Shown)> {
 #[tokio::test]
 async fn a_composer_page_lists_each_work_under_every_work_it_is_part_of_then_its_credits() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, PAGE).await;
+    write_page(&db).await;
 
     // Movement One is part of both parents and shows under each; Gamma Work,
     // credited and heading a credited part, shows once.
@@ -159,7 +162,7 @@ async fn a_composer_page_lists_each_work_under_every_work_it_is_part_of_then_its
 #[tokio::test]
 async fn each_part_of_the_page_opens_its_heading() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, PAGE).await;
+    write_page(&db).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
         [bae_store::LibraryPageWindow { offset: 0, limit: 100 }].into_iter().collect(),
@@ -193,49 +196,68 @@ async fn each_part_of_the_page_opens_its_heading() {
     assert_eq!(parts, 4);
 }
 
-#[tokio::test]
-async fn the_page_keeps_its_order_as_titles_and_credits_change() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, PAGE).await;
+/// A heading work another device names otherwise moves its group, the rows
+/// it heads with it; a retitled album moves its release's credits; credits a
+/// work an edit comes to link leave the page.
+#[test]
+fn the_page_keeps_its_order_as_titles_and_credits_change() {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let db = devices.a();
+        let records = test_records(db);
+        devices.pause().await;
+        write_page(db).await;
+        RecordsFixture::new()
+            .work(ALPHA_PARENT, "Zeta Parent")
+            .write(&test_records(devices.b()))
+            .await;
+        devices.resume().await;
+        devices
+            .settle("the later title", async |_, db| {
+                db.read(|sql| {
+                    Ok(sql.query_row(
+                        "SELECT title FROM works WHERE id = ?1",
+                        [ALPHA_PARENT],
+                        |row| row.get::<_, String>(0),
+                    )?)
+                })
+                .await
+                .unwrap()
+                    == "Zeta Parent"
+            })
+            .await;
+        let mut expected = whole_page();
+        let alpha = expected.drain(0..2).collect::<Vec<_>>();
+        expected.splice(6..6, alpha.into_iter().map(|(_, shown)| (false, shown)));
+        expected[0].0 = true;
+        assert_eq!(page(db, COMPOSER).await, expected);
 
-    // A retitled heading work moves its group; the rows it heads move with it.
-    exec_batch(
-        &db,
-        "UPDATE works SET title = 'Zeta Parent' WHERE id = '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b01';",
-    )
-    .await;
-    let mut expected = whole_page();
-    let alpha = expected.drain(0..2).collect::<Vec<_>>();
-    expected.splice(6..6, alpha.into_iter().map(|(_, shown)| (false, shown)));
-    expected[0].0 = true;
-    assert_eq!(page(&db, COMPOSER).await, expected);
+        records.rename_album_for_test(ALBUM_FIRST, "album Third").await.unwrap();
+        assert_eq!(
+            page(db, COMPOSER).await[8..],
+            [
+                (true, Credit(CREDIT_ON_SECOND)),
+                (false, Credit(CREDIT_ON_FIRST)),
+                (true, Credit(CREDIT_ON_TRACK_ZERO)),
+                (false, Credit(CREDIT_ON_TRACK_ONE)),
+            ]
+        );
 
-    // A retitled album moves its release's credits; credits a work comes to
-    // link leave the page.
-    exec_batch(
-        &db,
-        "UPDATE albums SET title = 'album Third' WHERE id = '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01';",
-    )
-    .await;
-    assert_eq!(
-        page(&db, COMPOSER).await[8..],
-        [
-            (true, Credit(CREDIT_ON_SECOND)),
-            (false, Credit(CREDIT_ON_FIRST)),
-            (true, Credit(CREDIT_ON_TRACK_ZERO)),
-            (false, Credit(CREDIT_ON_TRACK_ONE)),
-        ]
-    );
-    exec_batch(
-        &db,
-        "INSERT INTO track_works (id, track_id, work_id, position, source, created_at) VALUES
-            ('0f1a6d3b-9e0a-4f2b-9c3d-5e6f7a8b9d01', '5a6b1e8c-4f5b-4a7c-8d9e-0f1a2b3c4e02', '2d3e8b5f-1c2e-4d4f-9a6b-7c8d9e0f1b07', 0, 'musicbrainz', '2026-01-01T00:00:00Z');",
-    )
-    .await;
-    assert_eq!(
-        page(&db, COMPOSER).await[8..],
-        [(true, Credit(CREDIT_ON_SECOND)), (true, Credit(CREDIT_ON_TRACK_ZERO))]
-    );
+        // An edit applying a catalog that names the same credits and links
+        // track one to the composer's lone work.
+        let written_by = (Catalog::Discogs, "Written-By");
+        let composer = (Catalog::MusicBrainz, "composer");
+        let links = RecordsFixture::new()
+            .release_role(CREDIT_ON_FIRST, RELEASE_FIRST, COMPOSER, written_by)
+            .track_role(CREDIT_ON_TRACK_ONE, TRACK_ONE, COMPOSER, composer)
+            .track_role(CREDIT_ON_TRACK_ZERO, TRACK_ZERO, COMPOSER, composer)
+            .performs(TRACK_ONE, DELTA_SOLO)
+            .rows();
+        records.apply_release_links_for_test(RELEASE_FIRST, links).await.unwrap();
+        assert_eq!(
+            page(db, COMPOSER).await[8..],
+            [(true, Credit(CREDIT_ON_SECOND)), (true, Credit(CREDIT_ON_TRACK_ZERO))]
+        );
+    });
 }
 
 /// The rows `conn` holds of the composer's page, in the page's order: each
@@ -313,7 +335,7 @@ fn rows_whose_titles_arrive_late_wait_for_them() {
 #[tokio::test]
 async fn the_page_rows_follow_writes_in_their_windows() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, PAGE).await;
+    write_page(&db).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
         [bae_store::LibraryPageWindow { offset: 8, limit: 4 }].into_iter().collect(),
@@ -322,11 +344,11 @@ async fn the_page_rows_follow_writes_in_their_windows() {
     assert_eq!(first.total_count, 12);
     assert_eq!(first.windows[0].rows.len(), 4);
 
-    exec_batch(
-        &db,
-        "DELETE FROM release_artist_roles WHERE id = '6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f02';",
-    )
-    .await;
+    // An edit applying a catalog that credits nobody on the second release.
+    test_records(&db)
+        .apply_release_links_for_test(RELEASE_SECOND, RecordsFixture::new().rows())
+        .await
+        .unwrap();
     let after = tokio::time::timeout(HANG_GUARD, live.next())
         .await
         .expect("a credit leaving the page wakes its rows")
@@ -353,7 +375,7 @@ async fn the_page_rows_follow_writes_in_their_windows() {
 #[tokio::test]
 async fn every_seek_of_the_page_reads_its_index() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, PAGE).await;
+    write_page(&db).await;
     let order = crate::composer_detail::composer_detail_order("listing");
     for at in 0..12 {
         let key = crate::tests::key_at(
@@ -404,7 +426,7 @@ async fn every_seek_of_the_page_reads_its_index() {
 #[tokio::test]
 async fn the_page_refreshes_read_one_work_or_one_credit() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, PAGE).await;
+    write_page(&db).await;
     for statement in [
         "SELECT * FROM composer_detail_works WHERE artist_id = 'a' AND item_id = 'w'",
         "SELECT * FROM composer_detail_credits WHERE item_id = 'c'",
@@ -433,19 +455,26 @@ async fn the_page_refreshes_read_one_work_or_one_credit() {
 #[tokio::test]
 async fn credits_on_albums_sharing_a_title_stay_by_album() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    exec_batch(&db, PAGE).await;
-    exec_batch(
-        &db,
-        "INSERT INTO albums (id, title, is_compilation, created_at) VALUES
-            ('3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03', 'album first', 0, '2026-01-01T00:00:00Z');
-         INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-            ('4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03', '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03', '2026-01-01T00:00:00Z', 0),
-            ('4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04', '3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c01', '2026-01-01T00:00:00Z', 1);
-         INSERT INTO release_artist_roles (id, release_id, artist_id, position, source, source_credit, created_at) VALUES
-            ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f05', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'discogs', 'Written-By', '2026-01-01T00:00:00Z'),
-            ('6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f06', '4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04', '1c2f7a4e-0b1d-4c3e-8f5a-6b7c8d9e0a01', 0, 'discogs', 'Written-By', '2026-01-01T00:00:00Z');",
-    )
-    .await;
+    write_page(&db).await;
+    let written_by = (Catalog::Discogs, "Written-By");
+    RecordsFixture::new()
+        .album("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "album first", None, &[])
+        .release("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03")
+        .release(ALBUM_FIRST, "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04")
+        .release_role(
+            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f05",
+            "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03",
+            COMPOSER,
+            written_by,
+        )
+        .release_role(
+            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f06",
+            "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04",
+            COMPOSER,
+            written_by,
+        )
+        .write(&test_records(&db))
+        .await;
 
     let credits = LibraryViews::new(db.clone())
         .get_composer_detail_rows(COMPOSER, 0, 100)

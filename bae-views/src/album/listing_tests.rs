@@ -6,9 +6,17 @@ use crate::album::album_browse_order;
 use crate::tests::{assert_seeks_search_sorting, both_ways, key_at, library};
 use crate::*;
 use bae_records::test_fixtures::album_listing::*;
-use bae_records::test_fixtures::{ARTIST_A, ARTIST_B, ARTIST_C};
-use bae_store::test_fixtures::{exec, exec_batch, temp_db};
+use bae_records::test_fixtures::artists_apart::{
+    meet_musicbrainz_artist, merge_apart, musicbrainz_artist,
+};
+use bae_records::test_fixtures::library::RecordsFixture;
+use bae_records::test_fixtures::{
+    credit, delete_release, test_records, ARTIST_A, ARTIST_B, ARTIST_C,
+};
+use bae_records::{DbArtist, DbRelease};
+use bae_store::test_fixtures::temp_db;
 use bae_store::{LibraryPageWindow, LibraryPageWindows};
+use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
 
 /// The grid's album ids in `field` order, `direction`.
@@ -60,11 +68,14 @@ async fn album_grid_sorts_by_credits_as_their_artists_change() {
         ids(&[ALBUM_TWO, ALBUM_ONE, ALBUM_THREE])
     );
 
-    exec_batch(
-        &db,
-        "UPDATE artists SET sort_name = 'Zulu Sort Name' WHERE id = '4309b580-a6bf-455e-92ea-ec58ee7129e7';",
-    )
-    .await;
+    // A credit naming Alpha with a sort name gives Alpha the one it lacks.
+    test_records(&db)
+        .find_or_create_artists(&[DbArtist {
+            sort_name: Some("Zulu Sort Name".to_string()),
+            ..credit("Artist Name Alpha")
+        }])
+        .await
+        .unwrap();
     assert_eq!(
         album_ids(&db, AlbumSortField::Artist, SortDirection::Ascending).await,
         ids(&[ALBUM_ONE, ALBUM_THREE, ALBUM_TWO])
@@ -95,8 +106,7 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
     assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 3);
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 
-    exec_batch(&db, "DELETE FROM releases WHERE id = '5a905d5d-d400-42f3-a9a8-b858f18dcbc3';")
-        .await;
+    delete_release(&test_records(&db), RELEASE_ONE).await;
     assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 2);
     assert!(!album_ids(&db, AlbumSortField::Title, SortDirection::Ascending)
         .await
@@ -105,98 +115,103 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
     assert_eq!(crate::LibraryViews::new(db.clone()).get_artist_count().await.unwrap(), 2);
 
     // A release arriving under the album lists it again.
-    exec_batch(
-        &db,
-        "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
-            ('24b929ff-1f01-4621-9891-81abea7fbe87', '07d22f7d-3980-4c81-9d27-8fcd50ee3464', '2026-01-01T00:00:00Z', 0);",
-    )
-    .await;
+    test_records(&db)
+        .insert_release(&DbRelease::new_test(ALBUM_ONE, "24b929ff-1f01-4621-9891-81abea7fbe87"))
+        .await
+        .unwrap();
     assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 3);
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 }
 
-#[tokio::test]
-async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
-    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
-    // Newest first under each artist; Alpha's section before Bravo's.
-    assert_eq!(
-        grouped(&db).await,
-        (
-            vec![(ALPHA.to_string(), 0, 2), (BRAVO.to_string(), 2, 2)],
-            vec![
-                ALBUM_THREE.to_string(),
-                ALBUM_TWO.to_string(),
-                ALBUM_THREE.to_string(),
-                ALBUM_ONE.to_string(),
-            ]
-        )
-    );
+/// Alpha and Bravo each take one Discogs id on a device of their own, as two
+/// devices apart do; the next write naming it merges Bravo into Alpha, the
+/// smaller id, and Bravo's albums move under Alpha.
+#[test]
+fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let db = devices.a();
+        write_listed(&test_records(db)).await;
+        devices
+            .settle("the library", async |_, db| {
+                test_records(db).find_album_by_id(ALBUM_THREE).await.unwrap().is_some()
+            })
+            .await;
+        // Newest first under each artist; Alpha's section before Bravo's.
+        assert_eq!(
+            grouped(db).await,
+            (
+                vec![(ALPHA.to_string(), 0, 2), (BRAVO.to_string(), 2, 2)],
+                vec![
+                    ALBUM_THREE.to_string(),
+                    ALBUM_TWO.to_string(),
+                    ALBUM_THREE.to_string(),
+                    ALBUM_ONE.to_string(),
+                ]
+            )
+        );
 
-    exec_batch(
-        &db,
-        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES
-            ('4309b580-a6bf-455e-92ea-ec58ee7129e7', 'f392a38b-f264-41a0-a225-c6935b8a8262', '2026-01-01T00:00:00Z');",
-    )
-    .await;
-    assert_eq!(
-        grouped(&db).await,
-        (
-            vec![(BRAVO.to_string(), 0, 3)],
-            vec![ALBUM_THREE.to_string(), ALBUM_TWO.to_string(), ALBUM_ONE.to_string(),]
-        ),
-        "the third album credits the survivor twice and lists once"
-    );
-    assert_eq!(artists(&db).await, vec![(BRAVO.to_string(), 3)]);
-    let survivor = crate::LibraryViews::new(db.clone())
-        .find_artist_detail(BRAVO)
-        .await
-        .unwrap()
-        .expect("listed");
-    assert_eq!(survivor.albums.len(), 3);
-    assert!(crate::LibraryViews::new(db.clone())
-        .find_artist_detail(ALPHA)
-        .await
-        .unwrap()
-        .is_none());
+        merge_apart(devices, ("Artist Name Alpha", "Artist Name Bravo"), "discogs-listed").await;
+        assert_eq!(
+            grouped(db).await,
+            (
+                vec![(ALPHA.to_string(), 0, 3)],
+                vec![ALBUM_THREE.to_string(), ALBUM_TWO.to_string(), ALBUM_ONE.to_string(),]
+            ),
+            "the third album credits the survivor twice and lists once"
+        );
+        assert_eq!(artists(db).await, vec![(ALPHA.to_string(), 3)]);
+        let survivor = crate::LibraryViews::new(db.clone())
+            .find_artist_detail(ALPHA)
+            .await
+            .unwrap()
+            .expect("listed");
+        assert_eq!(survivor.albums.len(), 3);
+        assert!(crate::LibraryViews::new(db.clone())
+            .find_artist_detail(BRAVO)
+            .await
+            .unwrap()
+            .is_none());
+    });
 }
 
-async fn grouped_library() -> (Store, tempfile::TempDir) {
-    let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
-    for (id, name, sort_name) in [
-        (ARTIST_A, "Artist Name A", "Same Sort Name"),
-        (ARTIST_B, "Artist Name B", "Same Sort Name"),
-        (ARTIST_C, "Artist Name C", "Last Artist"),
-    ] {
-        exec(
-            &db,
-            "INSERT INTO artists (id, name, name_key, sort_name, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
-            &[id, name, name, sort_name],
-        )
-        .await;
-    }
-    for (index, (artist, title)) in [
+/// Album `index` of [`write_grouped`]'s library.
+fn grouped_album(index: u32) -> String {
+    format!("00000000-0000-4000-8000-{index:012}")
+}
+
+/// Album `index`'s one release.
+fn grouped_release(index: u32) -> String {
+    format!("10000000-0000-4000-8000-{index:012}")
+}
+
+/// Artists A and B, sharing a sort name, and `third`, named "Artist Name C"
+/// and sorted first; A's albums A and C, B's B and D and the third artist's
+/// E, each on one release.
+async fn write_grouped(records: &bae_records::Records, third: &str) {
+    let mut library = RecordsFixture::new()
+        .sorted_artist(ARTIST_A, "Artist Name A", "Same Sort Name")
+        .sorted_artist(ARTIST_B, "Artist Name B", "Same Sort Name")
+        .sorted_artist(third, "Artist Name C", "Last Artist");
+    for ((artist, title), index) in [
         (ARTIST_A, "Album A"),
         (ARTIST_B, "Album B"),
         (ARTIST_A, "Album C"),
         (ARTIST_B, "Album D"),
-        (ARTIST_C, "Album E"),
+        (third, "Album E"),
     ]
     .into_iter()
-    .enumerate()
+    .zip(0..)
     {
-        let album = format!("00000000-0000-4000-8000-{index:012}");
-        let credit = format!("20000000-0000-4000-8000-{index:012}");
-        let release = format!("10000000-0000-4000-8000-{index:012}");
-        exec_batch(
-            &db,
-            &format!(
-            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{album}', '{title}', 0, '2026-01-01T00:00:00Z'); \
-             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('{credit}', '{album}', '{artist}', 0, '2026-01-01T00:00:00Z'); \
-             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}', '{album}', '2026-01-01T00:00:00Z', 0);"
-        ),
-        )
-        .await;
+        library = library
+            .album(&grouped_album(index), title, None, &[artist])
+            .release(&grouped_album(index), &grouped_release(index));
     }
+    library.write(records).await;
+}
+
+async fn grouped_library() -> (Store, tempfile::TempDir) {
+    let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
+    write_grouped(&test_records(&db), ARTIST_C).await;
     (db, dir)
 }
 
@@ -243,49 +258,74 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
     }
 }
 
-#[tokio::test]
-async fn artist_sections_follow_renames_and_disappearing_groups() {
-    let (db, _dir) = grouped_library().await;
-    let sort =
-        [AlbumSortCriterion { field: AlbumSortField::Artist, direction: SortDirection::Ascending }];
-    let mut browse =
-        LibraryViews::new(db.clone()).subscribe_album_browse(&sort, true, BTreeSet::new());
-    let initial = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(initial.sections[0].id, ARTIST_C);
-    exec(
-        &db,
-        "UPDATE artists SET name = 'Renamed Artist', sort_name = 'Z' WHERE id = ?",
-        &[ARTIST_C],
-    )
-    .await;
-    let renamed = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(renamed.sections[2].title, "Renamed Artist");
-    assert_eq!(renamed.sections[2].window.offset, 4);
-    exec(
-        &db,
-        "DELETE FROM releases WHERE album_id IN (SELECT album_id FROM album_artists WHERE artist_id = ?)",
-        &[ARTIST_C],
-    )
-    .await;
-    let removed = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(removed.total_count, 4);
-    assert_eq!(removed.sections.len(), 2);
-    assert!(!removed.sections.iter().any(|section| section.id == ARTIST_C));
-    let mut flat =
-        LibraryViews::new(db.clone()).subscribe_album_browse(&sort, false, BTreeSet::new());
-    assert!(flat.next().await.expect("the query stays open").result.unwrap().sections.is_empty());
+/// The MusicBrainz artist whose library artist is the renames test's third.
+const RENAMED_MUSICBRAINZ_ARTIST: &str = "mb-artist-c";
+
+/// Another device naming the third artist otherwise moves its section where
+/// its new sort name goes; its last release deleted, its section goes.
+#[test]
+fn artist_sections_follow_renames_and_disappearing_groups() {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let db = devices.a();
+        let third = musicbrainz_artist(RENAMED_MUSICBRAINZ_ARTIST);
+        devices.pause().await;
+        write_grouped(&test_records(db), &third).await;
+        let sort = [AlbumSortCriterion {
+            field: AlbumSortField::Artist,
+            direction: SortDirection::Ascending,
+        }];
+        let mut browse =
+            LibraryViews::new(db.clone()).subscribe_album_browse(&sort, true, BTreeSet::new());
+        let initial = browse.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(initial.sections[0].id, third);
+
+        meet_musicbrainz_artist(
+            &test_records(devices.b()),
+            RENAMED_MUSICBRAINZ_ARTIST,
+            "Renamed Artist",
+            Some("Z"),
+        )
+        .await;
+        devices.resume().await;
+        let renamed = loop {
+            let shown = tokio::time::timeout(HANG_GUARD, browse.next())
+                .await
+                .expect("the other device's name reaches the browse")
+                .expect("the query stays open")
+                .result
+                .unwrap();
+            if shown.sections.iter().any(|section| section.title == "Renamed Artist") {
+                break shown;
+            }
+        };
+        assert_eq!(renamed.sections[2].title, "Renamed Artist");
+        assert_eq!(renamed.sections[2].window.offset, 4);
+
+        delete_release(&test_records(db), &grouped_release(4)).await;
+        let removed = browse.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(removed.total_count, 4);
+        assert_eq!(removed.sections.len(), 2);
+        assert!(!removed.sections.iter().any(|section| section.id == third));
+        let mut flat =
+            LibraryViews::new(db.clone()).subscribe_album_browse(&sort, false, BTreeSet::new());
+        assert!(flat
+            .next()
+            .await
+            .expect("the query stays open")
+            .result
+            .unwrap()
+            .sections
+            .is_empty());
+    });
 }
 
 #[tokio::test]
 async fn collaborations_appear_under_each_credit_but_count_once() {
     let (db, _dir) = grouped_library().await;
-    let album_id = "00000000-0000-4000-8000-000000000000";
-    exec(
-        &db,
-        "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('extra', ?, ?, 1, '2026-01-01T00:00:00Z')",
-        &[album_id, ARTIST_B],
-    )
-    .await;
+    let album_id = grouped_album(0);
+    let album_id = album_id.as_str();
+    let records = test_records(&db);
+    records.credit_album_for_test(album_id, &[ARTIST_A, ARTIST_B]).await.unwrap();
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
     let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
@@ -321,42 +361,53 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     assert_eq!(flat.row_count, 5);
     assert!(flat.sections.is_empty());
     assert_eq!(flat.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
-    exec(&db, "DELETE FROM album_artists WHERE album_id = ? AND position = 1", &[album_id]).await;
+    records.credit_album_for_test(album_id, &[ARTIST_A]).await.unwrap();
     let removed = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(removed.row_count, 5);
     assert_eq!(removed.total_count, 5);
 }
 
-#[tokio::test]
-async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
-    let (db, _dir) = grouped_library().await;
-    let album_id = "00000000-0000-4000-8000-000000000000";
-    for (id, artist, position) in
-        [("primary-again", ARTIST_A, "1"), ("other-credit", ARTIST_B, "2")]
-    {
-        exec(&db,
-            "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
-            &[id, album_id, artist, position]).await;
-    }
-    let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
-        &[],
-        true,
-        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
-    );
-    let initial = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(initial.row_count, 6);
-    exec(
-        &db,
-        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?, ?, '2026-01-01T00:00:00Z')",
-        &[ARTIST_B, ARTIST_A],
-    )
-    .await;
-    let merged = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(merged.total_count, 5);
-    assert_eq!(merged.row_count, 5);
-    assert_eq!(merged.sections.len(), 2);
-    assert!(merged.sections.iter().all(|section| section.id != ARTIST_B));
-    assert_eq!(merged.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
+/// An album crediting A twice, then B, lists once under each; once A and B
+/// take one Discogs id on devices of their own and the next write naming it
+/// merges A into B, the smaller id, the album lists once under B.
+#[test]
+fn merged_and_repeated_credits_make_one_appearance_per_artist() {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let db = devices.a();
+        let records = test_records(db);
+        write_grouped(&records, ARTIST_C).await;
+        let album_id = grouped_album(0);
+        records.credit_album_for_test(&album_id, &[ARTIST_A, ARTIST_A, ARTIST_B]).await.unwrap();
+        devices
+            .settle("the library", async |_, db| {
+                test_records(db).find_album_by_id(&grouped_album(4)).await.unwrap().is_some()
+            })
+            .await;
+        let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
+            &[],
+            true,
+            [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+        );
+        let initial = browse.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(initial.row_count, 6);
+
+        merge_apart(devices, ("Artist Name A", "Artist Name B"), "discogs-grouped").await;
+        let merged = loop {
+            let shown = tokio::time::timeout(HANG_GUARD, browse.next())
+                .await
+                .expect("the merge reaches the browse")
+                .expect("the query stays open")
+                .result
+                .unwrap();
+            if shown.row_count == 5 {
+                break shown;
+            }
+        };
+        assert_eq!(merged.total_count, 5);
+        assert_eq!(merged.sections.len(), 2);
+        assert!(merged.sections.iter().all(|section| section.id != ARTIST_A));
+        assert_eq!(merged.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
+    });
 }
 
 /// The grid's selection comes back in the grid's order, whatever order its
@@ -365,7 +416,7 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
 #[tokio::test]
 async fn a_selection_is_read_in_the_grids_order() {
     let (db, _dir) = grouped_library().await;
-    let album = |index: u32| format!("00000000-0000-4000-8000-{index:012}");
+    let album = grouped_album;
     let picked = vec![album(3), album(0), "no-such-album".to_string(), album(4), album(1)];
     let titles = |albums: Vec<crate::album_detail::AlbumSummary>| {
         albums.into_iter().map(|album| album.title).collect::<Vec<_>>()
@@ -404,13 +455,10 @@ async fn a_selection_is_read_in_the_grids_order() {
 #[tokio::test]
 async fn a_grouped_row_names_the_albums_other_credits() {
     let (db, _dir) = grouped_library().await;
-    let album_id = "00000000-0000-4000-8000-000000000000";
-    exec(
-        &db,
-        "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('extra', ?, ?, 1, '2026-01-01T00:00:00Z')",
-        &[album_id, ARTIST_B],
-    )
-    .await;
+    test_records(&db)
+        .credit_album_for_test(&grouped_album(0), &[ARTIST_A, ARTIST_B])
+        .await
+        .unwrap();
     let windows = [LibraryPageWindow { offset: 0, limit: 20 }];
     let grouped = LibraryViews::new(db.clone())
         .subscribe_album_browse(&[], true, windows.clone().into())
@@ -591,18 +639,12 @@ async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
         );
     }
     // The newest album sorts first in the default order.
-    db.call(|conn| {
-        conn.execute_batch(
-            "INSERT INTO albums (id, title, created_at) VALUES \
-                 ('f0000000-0000-4000-8000-000000000001', 'Album Title', '2099-01-01T00:00:00Z');
-             INSERT INTO releases (id, album_id, album_order, created_at) VALUES \
-                 ('f0000000-0000-4000-8000-000000000002', 'f0000000-0000-4000-8000-000000000001', \
-                  0, '2099-01-01T00:00:00Z');",
-        )
-        .map_err(DbError::from)
-    })
-    .await
-    .unwrap();
+    RecordsFixture::new()
+        .at("2099-01-01T00:00:00Z")
+        .album("f0000000-0000-4000-8000-000000000001", "Album Title", None, &[])
+        .release("f0000000-0000-4000-8000-000000000001", "f0000000-0000-4000-8000-000000000002")
+        .write(&test_records(&db))
+        .await;
     for offset in [150, 50] {
         assert_eq!(
             read_albums(&mut query, LibraryPageWindows::from([window(offset)])).await,

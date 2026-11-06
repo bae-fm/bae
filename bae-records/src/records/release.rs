@@ -129,27 +129,6 @@ impl Records {
             .await
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn insert_composition_fixture_rows(
-        &self,
-        works: &[DbWork],
-        track_works: &[DbTrackWork],
-    ) -> Result<(), DbError> {
-        let (works, track_works) = (works.to_vec(), track_works.to_vec());
-        self.store
-            .call_sql(move |sql| {
-                let conn = &sql;
-                for work in &works {
-                    insert_work_row(conn, work)?;
-                }
-                for track_work in &track_works {
-                    insert_track_work_row(conn, track_work)?;
-                }
-                Ok(())
-            })
-            .await
-    }
-
     /// Test-only: insert an album with its credits, a release, its mediums,
     /// tracks and track-artist links in one transaction. The `artists` rows
     /// the credits name must already exist — insert them first.

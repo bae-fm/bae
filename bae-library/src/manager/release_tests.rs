@@ -4,6 +4,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_catalogs::catalog::Catalog;
+use bae_records::test_fixtures::library::LibraryRows;
 use bae_records::{DbRelease, DbTrackWork, DbWork, LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
@@ -39,7 +40,11 @@ async fn work_detail_release_rows_are_display_ready() {
     manager.records.insert_track(&track).await.unwrap();
     manager
         .records
-        .insert_composition_fixture_rows(std::slice::from_ref(&work), &[track_work])
+        .insert_library_rows_for_test(LibraryRows {
+            works: vec![work.clone()],
+            track_works: vec![track_work],
+            ..LibraryRows::default()
+        })
         .await
         .unwrap();
     store_test_cover(&manager, &release.id, b"cover").await;

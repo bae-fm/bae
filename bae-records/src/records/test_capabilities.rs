@@ -153,6 +153,68 @@ impl Records {
 }
 
 impl Records {
+    /// Write `rows` in one write through the records' own row inserts, each
+    /// kind in the order [`LibraryRows`] lists them.
+    ///
+    /// [`LibraryRows`]: crate::test_fixtures::library::LibraryRows
+    pub async fn insert_library_rows_for_test(
+        &self,
+        rows: crate::test_fixtures::library::LibraryRows,
+    ) -> Result<(), DbError> {
+        let now = self.store.now_utc();
+        let labels: Vec<LabelParts> = rows
+            .releases
+            .iter()
+            .map(|release| LabelParts::new(&*self.ids, now, &release.pressing.labels))
+            .collect();
+        self.store
+            .call_sql(move |sql| {
+                let conn = &sql;
+                for artist in &rows.artists {
+                    insert_artist_row(conn, artist)?;
+                }
+                for album in &rows.albums {
+                    insert_album_row(conn, album)?;
+                }
+                for credit in &rows.album_artists {
+                    insert_album_artist_row(conn, credit)?;
+                }
+                for (release, labels) in rows.releases.iter().zip(&labels) {
+                    insert_release_row(conn, release, &label_write(labels))
+                        .map_err(IdentityWriteError::into_db_error)?;
+                }
+                for medium in &rows.mediums {
+                    insert_release_medium_row(conn, medium)?;
+                }
+                for track in &rows.tracks {
+                    insert_track_row(conn, track)?;
+                }
+                for credit in &rows.track_artists {
+                    insert_track_artist_row(conn, credit)?;
+                }
+                for work in &rows.works {
+                    insert_work_row(conn, work)?;
+                }
+                for link in &rows.work_artists {
+                    insert_work_artist_row(conn, link)?;
+                }
+                for part in &rows.work_parts {
+                    insert_work_part_row(conn, part)?;
+                }
+                for link in &rows.track_works {
+                    insert_track_work_row(conn, link)?;
+                }
+                for role in &rows.release_artist_roles {
+                    insert_release_artist_role_row(conn, role)?;
+                }
+                for role in &rows.track_artist_roles {
+                    insert_track_artist_role_row(conn, role)?;
+                }
+                Ok(())
+            })
+            .await
+    }
+
     /// Save `release_id`'s metadata as a person's edit of it does: the
     /// album, the release, its tracks and their credits as they stand, with
     /// what `edit` changes of them.
@@ -161,6 +223,18 @@ impl Records {
         release_id: &str,
         edit: impl FnOnce(&mut ReleaseMetadataRows),
     ) -> Result<(), IdentityWriteError> {
+        let mut rows = self.release_metadata_for_test(release_id).await?;
+        edit(&mut rows);
+        self.update_release_metadata_user_edit(rows).await
+    }
+
+    /// `release_id`'s metadata as an edit of it starts from: the album, the
+    /// release, its tracks and their credits as they stand, every credited
+    /// artist picked.
+    async fn release_metadata_for_test(
+        &self,
+        release_id: &str,
+    ) -> Result<ReleaseMetadataRows, DbError> {
         let release = self.find_release_by_id(release_id).await?.expect("the release");
         let album = self.find_album_by_id(&release.album_id).await?.expect("its album");
         let tracks = self.get_tracks_for_release(release_id).await?;
@@ -206,7 +280,7 @@ impl Records {
             })
             .collect();
         let track_updates = tracks.into_iter().map(|track| (track.id.clone(), track)).collect();
-        let mut rows = ReleaseMetadataRows {
+        Ok(ReleaseMetadataRows {
             album,
             release,
             track_updates,
@@ -214,9 +288,117 @@ impl Records {
             credits,
             album_artists,
             track_artists,
+        })
+    }
+
+    /// Save an edit of `release_id` applying a catalog that credits the
+    /// roles and works `links` hold, as an edit session's save does: its
+    /// album, pressing, tracks and credits as they stand, and `links` in
+    /// place of every role credit and work link the release had.
+    #[cfg(desktop)]
+    pub async fn apply_release_links_for_test(
+        &self,
+        release_id: &str,
+        links: crate::test_fixtures::library::LibraryRows,
+    ) -> Result<(), IdentityWriteError> {
+        let metadata = self.release_metadata_for_test(release_id).await?;
+        let mediums = self.get_release_mediums(release_id).await?.0;
+        let mut artists = metadata.credits;
+        let linked = links
+            .release_artist_roles
+            .iter()
+            .map(|role| &role.artist_id)
+            .chain(links.track_artist_roles.iter().map(|role| &role.artist_id))
+            .chain(links.work_artists.iter().map(|link| &link.artist_id));
+        for artist_id in linked {
+            if !artists.iter().any(|artist| artist.id == *artist_id) {
+                artists.push(self.find_artist_by_id(artist_id).await?.expect("a linked artist"));
+            }
+        }
+        let picked = artists.iter().map(|artist| artist.id.clone()).collect();
+        let rows = ReleaseRows {
+            album: metadata.album,
+            release: metadata.release,
+            mediums,
+            tracks: metadata
+                .track_updates
+                .into_iter()
+                .map(|(_, track)| TrackRow {
+                    id: track.id,
+                    release_id: track.release_id,
+                    title: track.title,
+                    medium_id: track.medium_id,
+                    side: track.side,
+                    track_number: track.track_number,
+                    created_at: track.created_at,
+                })
+                .collect(),
+            artists,
+            album_artists: metadata.album_artists,
+            track_artists: metadata.track_artists,
+            work_graph: WorkGraphRows {
+                works: links.works,
+                work_artists: links.work_artists,
+                work_parts: links.work_parts,
+                track_works: links.track_works,
+            },
+            release_artist_roles: links.release_artist_roles,
+            track_artist_roles: links.track_artist_roles,
         };
-        edit(&mut rows);
-        self.update_release_metadata_user_edit(rows).await
+        self.save_release_edit_atomic(
+            None,
+            ReleaseEditWrite::Applied { rows, picked },
+            AlbumFields::Written,
+        )
+        .await
+    }
+
+    /// The release a person's metadata edit of `album_id` saves through: its
+    /// first.
+    async fn edited_release_of_for_test(&self, album_id: &str) -> Result<String, DbError> {
+        let releases = self.get_releases_for_album(album_id).await?;
+        Ok(releases.into_iter().next().expect("the album holds a release").id)
+    }
+
+    /// Rename `album_id` as a person's metadata edit of its first release
+    /// does.
+    pub async fn rename_album_for_test(
+        &self,
+        album_id: &str,
+        title: &str,
+    ) -> Result<(), IdentityWriteError> {
+        let release = self.edited_release_of_for_test(album_id).await?;
+        self.save_release_metadata_for_test(&release, |rows| rows.album.title = title.to_string())
+            .await
+    }
+
+    /// Credit `album_id` to the library artists `artists`, in that order, as
+    /// a person's metadata edit of its first release does, picking each.
+    pub async fn credit_album_for_test(
+        &self,
+        album_id: &str,
+        artists: &[&str],
+    ) -> Result<(), IdentityWriteError> {
+        let release = self.edited_release_of_for_test(album_id).await?;
+        let mut credited = Vec::new();
+        for artist in artists {
+            credited.push(self.find_artist_by_id(artist).await?.expect("a library artist"));
+        }
+        let now = self.store.now_utc();
+        self.save_release_metadata_for_test(&release, |rows| {
+            rows.album_artists = artists
+                .iter()
+                .zip(0..)
+                .map(|(artist, position)| DbAlbumArtist::new(album_id, artist, position, now))
+                .collect();
+            for artist in credited {
+                if !rows.picked.contains(&artist.id) {
+                    rows.picked.push(artist.id.clone());
+                    rows.credits.push(artist);
+                }
+            }
+        })
+        .await
     }
 
     /// Rename `track_id` as a person's metadata edit of its release does.

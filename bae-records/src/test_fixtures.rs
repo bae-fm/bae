@@ -95,6 +95,20 @@ pub async fn album_with_tracks(
     }
 }
 
+/// A credit as a catalog or a file names an artist: `name`, with no sort
+/// name or catalog id, for [`crate::Records::find_or_create_artists`] to
+/// resolve.
+pub fn credit(name: &str) -> crate::DbArtist {
+    crate::DbArtist {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: name.to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: chrono::Utc::now(),
+    }
+}
+
 /// Delete `release_id` as the library deletes a release: its tracks, files
 /// and credits go with it in one write.
 pub async fn delete_release(records: &crate::Records, release_id: &str) {
@@ -119,9 +133,11 @@ pub fn seed_artist_album_release(conn: &coven::CovenWrite<'_>) -> Result<(), bae
 
 pub mod aggregate_ordering;
 pub mod album_listing;
+pub mod artists_apart;
 pub mod bulk_tracks;
 pub mod chunked_tracks;
 pub mod composed_work;
 pub mod labels;
+pub mod library;
 pub mod live_query;
 pub mod storage_listing;

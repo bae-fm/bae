@@ -344,7 +344,7 @@ pub fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbErr
     .map_err(DbError::from)
 }
 
-#[cfg(desktop)]
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Result<(), DbError> {
     conn.execute(
         r#"
@@ -364,7 +364,7 @@ pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Res
     .map_err(DbError::from)
 }
 
-#[cfg(desktop)]
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub fn insert_work_part_row(conn: &CovenWrite<'_>, part: &DbWorkPart) -> Result<(), DbError> {
     conn.execute(
         r#"
@@ -405,7 +405,7 @@ pub fn insert_track_work_row(conn: &CovenWrite<'_>, link: &DbTrackWork) -> Resul
     .map_err(DbError::from)
 }
 
-#[cfg(desktop)]
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub fn insert_release_artist_role_row(
     conn: &CovenWrite<'_>,
     role: &DbReleaseArtistRole,
@@ -426,7 +426,7 @@ pub fn insert_release_artist_role_row(
     )
 }
 
-#[cfg(desktop)]
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub fn insert_track_artist_role_row(
     conn: &CovenWrite<'_>,
     role: &DbTrackArtistRole,
@@ -447,7 +447,7 @@ pub fn insert_track_artist_role_row(
     )
 }
 
-#[cfg(desktop)]
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub(super) fn insert_artist_role_row(
     conn: &CovenWrite<'_>,
     table: &'static str,
