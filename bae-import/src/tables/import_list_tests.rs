@@ -201,6 +201,17 @@ impl Library {
         }
     }
 
+    /// Run `write` alone, and return the SQLite steps its app writes ran,
+    /// their triggers' included: what a test of those triggers' cost
+    /// measures.
+    pub(crate) async fn write_steps(&self, write: Write) -> usize {
+        let counter = self.db.track_work_for_test().await.unwrap();
+        for step in write.0 {
+            step.await;
+        }
+        counter.take().app_write_steps
+    }
+
     /// Run `write`, and check the counts and the search index kept beside the
     /// placement still say what it holds: every write here moves placement
     /// rows, and each must move the counts and the searched text with them.

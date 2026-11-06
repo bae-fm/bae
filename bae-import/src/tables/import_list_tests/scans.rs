@@ -123,11 +123,6 @@ impl Library {
         })
     }
 
-    /// The generation of the pass open over the watched folder.
-    pub(crate) async fn generation(&self) -> u64 {
-        open_generation(&self.tables(), &self.root).await
-    }
-
     /// The scan reading the release at `display_path` as `kind`: `valid`, a
     /// release found before the folders around it were read (`tentative`),
     /// or a folder that failed validation (`invalid`).

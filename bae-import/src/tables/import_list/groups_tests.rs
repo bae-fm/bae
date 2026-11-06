@@ -115,11 +115,7 @@ async fn a_moved_release_changes_group() {
 /// group already holds, each newer than the last as a scan writing a
 /// copied-in collection finds them: only the header holds the group's date,
 /// and the newest member is read off the group's index. Counted in SQLite's
-/// own steps for the write of the release's scan row, its triggers' included.
-///
-/// The group, and when each folder was found, come from the scans' own writes;
-/// the measured scan row alone is written apart from its pass, by the folder
-/// scans' statement for it.
+/// own steps for the scan's write of the release, its triggers' included.
 #[tokio::test]
 async fn a_member_costs_the_same_however_large_its_group() {
     let lib = Library::new().await;
@@ -138,12 +134,8 @@ async fn a_member_costs_the_same_however_large_its_group() {
             + lib.begin_pass(),
     )
     .await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let place = async |n: usize| -> usize {
-        tables
-            .scan_row_write_steps_for_test(lib.generation().await, &lib.candidate(&display_path(n)))
-            .await
-    };
+    let place =
+        async |n: usize| -> usize { lib.write_steps(lib.scan_batch(dated(n..n + 1))).await };
     let early = place(19).await;
     lib.run(lib.scan_batch(dated(19..1_999)) + lib.finish_pass() + lib.begin_pass()).await;
     let late = place(1_999).await;
