@@ -451,7 +451,7 @@ impl ImportTables {
                     }
 
                     for (row, file) in rows_to_insert.iter().zip(original_file_ids) {
-                        insert_release_file_row(tx, row, file)?;
+                        insert_release_file_row(tx, row, file).map_err(identity_write_failure)?;
                     }
 
                     for af in &audio_formats {

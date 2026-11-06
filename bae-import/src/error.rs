@@ -170,6 +170,12 @@ pub enum ImportError {
     #[error(transparent)]
     WatchedFolder(crate::WatchedPathError),
 
+    /// A stored file or folder name of a release that names no file: the row
+    /// an import's write was for is unusable.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    StoredName(bae_records::stored_name::StoredNameError),
+
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a
     /// broken invariant.
@@ -284,7 +290,7 @@ impl From<bae_records::IdentityWriteError> for ImportError {
         use bae_records::IdentityWriteError as E;
         match error {
             E::Unresolvable(detail) => Self::Unresolvable { detail },
-            E::StoredName(error) => Self::Database(bae_store::DbError::cause(error)),
+            E::StoredName(error) => Self::StoredName(error),
             E::Db(error) => Self::Database(error),
         }
     }
@@ -342,6 +348,8 @@ impl ImportError {
             Self::Refused(_) | Self::Unresolvable { .. } | Self::LibraryChanged => C::Import,
             #[cfg(desktop)]
             Self::Database(error) => bae_diagnostics::database_category(error),
+            #[cfg(desktop)]
+            Self::StoredName(_) => C::Database,
             #[cfg(desktop)]
             Self::CatalogSession(crate::CatalogSessionError::Preferences(error)) => {
                 bae_diagnostics::database_category(error)

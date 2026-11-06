@@ -130,18 +130,6 @@ impl Records {
     }
 }
 
-impl IdentityWriteError {
-    /// This error as a database error, for a fixture's write, which no person
-    /// answers a conflict for.
-    pub(super) fn into_db_error(self) -> DbError {
-        match self {
-            Self::Db(error) => error,
-            Self::StoredName(error) => DbError::cause(error),
-            Self::Unresolvable(reason) => DbError::Message(reason),
-        }
-    }
-}
-
 impl From<rusqlite::Error> for IdentityWriteError {
     fn from(error: rusqlite::Error) -> Self {
         Self::Db(error.into())

@@ -112,7 +112,8 @@ impl Records {
                     // reading them.
                     for (rows, audio_formats, audio_segments) in &audios {
                         for file in rows {
-                            insert_release_file_row(tx, file, staged(files.next())?)?;
+                            insert_release_file_row(tx, file, staged(files.next())?)
+                                .map_err(identity_write_failure)?;
                         }
                         for format in audio_formats {
                             insert_audio_format_row(tx, format)?;

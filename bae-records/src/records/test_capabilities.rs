@@ -160,59 +160,57 @@ impl Records {
     pub async fn insert_library_rows_for_test(
         &self,
         rows: crate::test_fixtures::library::LibraryRows,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), IdentityWriteError> {
         let now = self.store.now_utc();
         let labels: Vec<LabelParts> = rows
             .releases
             .iter()
             .map(|release| LabelParts::new(&*self.ids, now, &release.pressing.labels))
             .collect();
-        self.store
-            .call_sql(move |sql| {
-                let conn = &sql;
-                for artist in &rows.artists {
-                    insert_artist_row(conn, artist)?;
-                }
-                for album in &rows.albums {
-                    insert_album_row(conn, album)?;
-                }
-                for credit in &rows.album_artists {
-                    insert_album_artist_row(conn, credit)?;
-                }
-                for (release, labels) in rows.releases.iter().zip(&labels) {
-                    insert_release_row(conn, release, &label_write(labels))
-                        .map_err(IdentityWriteError::into_db_error)?;
-                }
-                for medium in &rows.mediums {
-                    insert_release_medium_row(conn, medium)?;
-                }
-                for track in &rows.tracks {
-                    insert_track_row(conn, track)?;
-                }
-                for credit in &rows.track_artists {
-                    insert_track_artist_row(conn, credit)?;
-                }
-                for work in &rows.works {
-                    insert_work_row(conn, work)?;
-                }
-                for link in &rows.work_artists {
-                    insert_work_artist_row(conn, link)?;
-                }
-                for part in &rows.work_parts {
-                    insert_work_part_row(conn, part)?;
-                }
-                for link in &rows.track_works {
-                    insert_track_work_row(conn, link)?;
-                }
-                for role in &rows.release_artist_roles {
-                    insert_release_artist_role_row(conn, role)?;
-                }
-                for role in &rows.track_artist_roles {
-                    insert_track_artist_role_row(conn, role)?;
-                }
-                Ok(())
-            })
-            .await
+        super::artist_resolution::write_resolving_identities(&self.store, move |sql| {
+            let conn = &sql;
+            for artist in &rows.artists {
+                insert_artist_row(conn, artist)?;
+            }
+            for album in &rows.albums {
+                insert_album_row(conn, album)?;
+            }
+            for credit in &rows.album_artists {
+                insert_album_artist_row(conn, credit)?;
+            }
+            for (release, labels) in rows.releases.iter().zip(&labels) {
+                insert_release_row(conn, release, &label_write(labels))?;
+            }
+            for medium in &rows.mediums {
+                insert_release_medium_row(conn, medium)?;
+            }
+            for track in &rows.tracks {
+                insert_track_row(conn, track)?;
+            }
+            for credit in &rows.track_artists {
+                insert_track_artist_row(conn, credit)?;
+            }
+            for work in &rows.works {
+                insert_work_row(conn, work)?;
+            }
+            for link in &rows.work_artists {
+                insert_work_artist_row(conn, link)?;
+            }
+            for part in &rows.work_parts {
+                insert_work_part_row(conn, part)?;
+            }
+            for link in &rows.track_works {
+                insert_track_work_row(conn, link)?;
+            }
+            for role in &rows.release_artist_roles {
+                insert_release_artist_role_row(conn, role)?;
+            }
+            for role in &rows.track_artist_roles {
+                insert_track_artist_role_row(conn, role)?;
+            }
+            Ok(())
+        })
+        .await
     }
 
     /// Save `release_id`'s metadata as a person's edit of it does: the

@@ -490,9 +490,8 @@ pub fn insert_release_file_row(
     conn: &CovenWrite<'_>,
     file: &NewReleaseFile,
     coven_file: coven::FileId,
-) -> Result<(), DbError> {
-    crate::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)
-        .map_err(DbError::cause)?;
+) -> Result<(), IdentityWriteError> {
+    crate::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)?;
     let source_audio_layout =
         file.source_audio.as_ref().and_then(|audio| audio.layout).map(|layout| match layout {
             crate::source_audio::SourceAudioLayout::File => "file",
