@@ -241,6 +241,8 @@ extension ReleaseEditorTests {
     private actor CoreSession {
         private(set) var titles: [String] = []
         private var draft: BridgeReleaseEditDraft
+        private(set) var firstChangeArrived = false
+        private var heldFirstChange: CheckedContinuation<Void, Never>?
 
         init(draft: BridgeReleaseEditDraft) {
             self.draft = draft
@@ -248,14 +250,24 @@ extension ReleaseEditorTests {
 
         /// Take a title as core does: blank is not savable.
         func setTitle(_ title: String) async -> BridgeReleaseEditDraft {
-            // The first change takes longer, so a later one sent at once
-            // would land first if the editor didn't wait for it.
-            if titles.isEmpty { await Task.yield() }
+            // The first change is held until the test lets it go, so a later
+            // one would land first if the editor didn't wait for it.
+            if !firstChangeArrived {
+                firstChangeArrived = true
+                Wait.happened()
+                await withCheckedContinuation { heldFirstChange = $0 }
+            }
             titles.append(title)
             draft.edit.albumTitle = title
             draft.changed = true
             draft.invalid = title.isEmpty ? .emptyAlbumTitle : nil
             return draft
+        }
+
+        /// Let the first change take effect.
+        func releaseFirstChange() {
+            heldFirstChange?.resume()
+            heldFirstChange = nil
         }
     }
 
@@ -291,9 +303,11 @@ extension ReleaseEditorTests {
         let writer = session.fieldWriter
         let first = Task { @MainActor in await writer.setField(.albumTitle, "")
         }
+        try await Wait.until { await core.firstChangeArrived }
         let second = Task { @MainActor in
             await writer.setField(.albumTitle, "Album Title")
         }
+        await core.releaseFirstChange()
         await first.value
         await second.value
         #expect(await core.titles == ["", "Album Title"])
