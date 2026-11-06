@@ -4,7 +4,7 @@
 //! names only its first label, no lookup's answer lists the tracklist read
 //! against the folder's audio, and a result may leave out the barcode its
 //! document states. Every record of every offered row is read where a pick
-//! reads it (see `bae_import::service::prepare_release`), as far as what
+//! reads it (see `bae_import::ImportServiceHandle::read_pick`), as far as what
 //! is read here needs, and held with the run until the write of the rows
 //! naming it stores it: the release's own page, its album's page,
 //! and for a MusicBrainz release the Wikidata items and Discogs releases its
