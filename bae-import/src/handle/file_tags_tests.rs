@@ -1,5 +1,6 @@
 //! A candidate's file tags: the stored reading while its audio is unchanged,
-//! a new complete reading when the files, the scan or a file decision moved.
+//! a new complete reading when the files, the scan or a file decision moved,
+//! and the cover applying the tags selects.
 
 use super::*;
 use crate::handle::tests::*;
@@ -259,4 +260,67 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
         Some(stored.scan_generation)
     );
     shut_down(handle).await;
+}
+
+/// Folder artwork remains the effective cover when file metadata has no embedded
+/// image to select.
+#[tokio::test(flavor = "multi_thread")]
+async fn file_tags_uses_the_conventional_folder_cover() {
+    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } = stored_candidate().await;
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
+    let cover = pane(&handle, &key)
+        .await
+        .draft()
+        .unwrap()
+        .cover
+        .clone()
+        .expect("file metadata applies its deterministic default cover");
+    assert_eq!(cover.selection(), crate::CoverSelection::Local("cover.jpg".to_string()));
+    let scanned = candidate
+        .files
+        .files
+        .iter()
+        .find(|entry| entry.file.relative_path == "cover.jpg")
+        .expect("the fixture folder holds cover.jpg");
+    assert_eq!(
+        cover.into_image(),
+        crate::cover_art::CoverImageSource::Local { file: scanned.file.version.clone() },
+        "a folder image is drawn from disk at the version the scan read"
+    );
+
+    shut_down(handle).await;
+}
+
+/// A folder image named as the front cover ranks ahead of the tags' embedded
+/// artwork when file tags are applied, and the selection persists.
+#[tokio::test(flavor = "multi_thread")]
+async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
+    let StoredCandidate { mut handle, parts, key, tmp: _tmp, .. } = stored_candidate().await;
+    handle.services.file_tags =
+        std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(vec![1, 2, 3, 4]));
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
+
+    let cover = pane(&handle, &key)
+        .await
+        .draft()
+        .unwrap()
+        .cover
+        .clone()
+        .expect("applying tags that embed artwork selects a cover");
+    assert_eq!(cover.selection(), crate::CoverSelection::Local("cover.jpg".to_string()));
+    shut_down(handle).await;
+
+    let reopened = parts.start().await.unwrap();
+    assert_eq!(
+        pane(&reopened, &key)
+            .await
+            .draft()
+            .unwrap()
+            .cover
+            .clone()
+            .expect("the persisted selection survives a relaunch")
+            .selection(),
+        crate::CoverSelection::Local("cover.jpg".to_string())
+    );
+    shut_down(reopened).await;
 }

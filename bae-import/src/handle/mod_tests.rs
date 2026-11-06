@@ -716,6 +716,40 @@ pub(super) fn track_rows(table: &crate::MappingTable) -> Vec<crate::RawTrackEdit
     crate::mapping_tracks(table)
 }
 
+/// Store a verdict that found nothing for the fixture's candidate.
+pub(super) async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
+    let prep = crate::preparations::stored_preparation(&handle.services.tables, hash)
+        .await
+        .unwrap()
+        .expect("the fixture candidate is prepared");
+    let stored = handle
+        .services
+        .preparations
+        .store_verdict(&crate::tables::NewImportCandidateVerdict {
+            content_hash: hash.to_string(),
+            file_edit_revision: prep.file_edits.revision,
+            candidate_key: crate::CandidateKey::from(Vec::new()),
+            verdict: bae_identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
+            signals: bae_identify::signals::Signals {
+                origin: bae_catalogs::AudioOrigin::default(),
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
+                isrcs: Vec::new(),
+                track_titles: Vec::new(),
+            },
+            pick: None,
+            releases: Vec::new(),
+        })
+        .await
+        .unwrap();
+    assert!(stored, "the verdict lands on the fixture candidate");
+}
+
 pub(super) async fn standing(
     handle: &ImportServiceHandle,
     key: &crate::CandidateKey,

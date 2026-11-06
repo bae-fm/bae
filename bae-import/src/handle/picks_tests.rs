@@ -2,13 +2,18 @@
 //! release offline, a release a Disc ID answer named read in full, one outside
 //! the verdict archived), what a pick of a paired pressing stores and reads,
 //! the catalog reads it reports, a pick running to its end once asked for, and
-//! a picked release left for the person to import.
+//! a picked release left for the person to import, what a pick writes
+//! over the draft, and who the draft's author is after a pick.
 
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
+use crate::{MetadataAuthor, PendingStanding};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::rate_limiter::CallClass;
+use bae_catalogs::test_releases::seed_discogs_pressing;
+use bae_catalogs::test_releases::seed_discogs_pressing_printed_with;
+use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_catalogs::test_releases::seed_two_track_discogs_release;
 use bae_catalogs::test_releases::seed_two_track_discogs_release_in;
 use bae_catalogs::test_releases::seed_two_track_mb_release;
@@ -808,4 +813,151 @@ impl Fixture {
         });
         self.tables().save_source_release(&release).await.unwrap();
     }
+}
+
+/// Picking a release after keeping the draft answers the folder with it:
+/// Identified, and the kept draft stands no more.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_after_keeping_the_draft_is_identified() {
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
+    let tables = handle.services.tables.clone();
+    store_not_found(&handle, &hash).await;
+    handle.keep_candidate_draft(key.clone()).await.unwrap();
+    seed_mb_release_with_catalog(&fakes, "kept-then-picked", "CAT-1");
+
+    pick(&handle, &key, "kept-then-picked").await;
+
+    assert_eq!(standing(&handle, &key).await, PendingStanding::Identified);
+    let kept = tables
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .and_then(|state| state.identify)
+        .expect("the verdict stands")
+        .kept_own_draft;
+    assert!(!kept, "the pick answers the folder over the kept draft");
+    shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
+    handle
+        .services
+        .catalogs
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
+        .await
+        .unwrap();
+    handle
+        .set_candidate_edit_field(
+            &key,
+            crate::DraftFieldEdit::Barcodes(vec!["5099749".to_string()]),
+        )
+        .await
+        .unwrap();
+
+    let release_id = "70000101";
+    seed_discogs_pressing(&fakes, release_id, "Label Name", "CAT-1");
+    handle
+        .select_candidate_release(
+            key.clone(),
+            bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
+                    release_id.to_string(),
+                ),
+                partners: vec![],
+            },
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .unwrap();
+    let pane = pane(&handle, &key).await;
+    shut_down(handle).await;
+
+    assert_eq!(
+        pane.draft().unwrap().metadata_draft.pressing.labels,
+        vec![crate::RawLabelEdit {
+            name: "Label Name".to_string(),
+            catalog_number: "CAT-1".to_string(),
+            ..Default::default()
+        }]
+    );
+    assert_eq!(
+        pane.draft().unwrap().metadata_draft.pressing.barcodes,
+        Vec::<String>::new(),
+        "explicit application replaces typed values, including with absent metadata"
+    );
+}
+
+/// A Discogs release printed with an EAN and a UPC keeps both: applying it
+/// writes both barcode rows into the draft, and the edit the import writes
+/// states both.
+#[tokio::test(flavor = "multi_thread")]
+async fn applying_a_release_with_two_barcodes_keeps_both() {
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;
+    handle
+        .services
+        .catalogs
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
+        .await
+        .unwrap();
+    let release_id = "70000102";
+    seed_discogs_pressing_printed_with(
+        &fakes,
+        release_id,
+        "Label Name",
+        "CAT-1",
+        &["5 012345 678900", "0 12345 67890 5"],
+    );
+    handle
+        .select_candidate_release(
+            key.clone(),
+            bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
+                    release_id.to_string(),
+                ),
+                partners: vec![],
+            },
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .unwrap();
+    let pane = pane(&handle, &key).await;
+    shut_down(handle).await;
+
+    let both = ["5 012345 678900", "0 12345 67890 5"];
+    assert_eq!(pane.draft().unwrap().metadata_draft.pressing.barcodes, both);
+    let shaped = pane.draft().unwrap().metadata_draft.shape().expect("the applied draft shapes");
+    assert_eq!(shaped.pressing.barcodes, both);
+    assert_eq!(
+        crate::RawPressingEdit::from_pressing(&shaped.pressing).barcodes,
+        both,
+        "the editor's rows read both back"
+    );
+}
+
+/// Who wrote the draft travels on the pane's own value, so a surface reading
+/// the detail knows whether the pick in front of it is the person's or
+/// identification's without inferring it from anything else.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pick_the_person_made_names_them_as_the_author() {
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    assert_eq!(
+        pane(&handle, &key).await.draft().unwrap().metadata_author,
+        MetadataAuthor::Prefill,
+        "a candidate nobody has picked for carries the scan's draft"
+    );
+
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
+
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_author, MetadataAuthor::Person);
+    shut_down(handle).await;
 }
