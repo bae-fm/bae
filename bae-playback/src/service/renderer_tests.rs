@@ -384,7 +384,7 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
     let first_url = format!("http://renderer.local/stream?id={FIRST}");
     let second_url = format!("http://renderer.local/stream?id={SECOND}");
 
-    bae_records::test_fixtures::test_records(&library)
+    bae_records::test_fixtures::test_records(library.store())
         .rename_track_for_test(SECOND, "Renamed Track")
         .await
         .unwrap();
@@ -433,7 +433,7 @@ async fn served_whole_file_then_window(
     const IMAGE_WINDOW: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
     let (library, mut service, _rx) =
         seeded_playback_service(&[(RELEASE, &[WHOLE_FILE, IMAGE_WINDOW])]).await;
-    bae_preferences::PreferencesRow::new(library.clone())
+    bae_preferences::PreferencesRow::new(library.store().clone())
         .edit(move |prefs| {
             prefs.cast_transcode_format = transcode;
             Ok(())
@@ -574,7 +574,8 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     let store = seeded_store_with_track_length(&[(RELEASE, &[TRACK])], track_length_ms).await;
-    let (mut service, _rx) = playback_service_over(&store, bae_diagnostics::Diagnostics::noop());
+    let (mut service, _rx) =
+        playback_service_over(store.store(), bae_diagnostics::Diagnostics::noop());
     // Two seconds of generated silence at 44.1 kHz.
     seed_track_window(&store, RELEASE, TRACK, 0, None, Some(88_200)).await;
     fill_test_release(&mut service, RELEASE).await;

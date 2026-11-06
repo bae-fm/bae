@@ -167,9 +167,9 @@ pub(super) struct SeededStore {
     home: TempDir,
 }
 
-impl std::ops::Deref for SeededStore {
-    type Target = bae_store::Store;
-    fn deref(&self) -> &bae_store::Store {
+impl SeededStore {
+    /// The seeded store.
+    pub(super) fn store(&self) -> &bae_store::Store {
         &self.db
     }
 }
@@ -236,7 +236,7 @@ pub(super) async fn seeded_playback_service(
 ) -> (SeededStore, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let store = seeded_store(releases).await;
     let (service, progress_rx) =
-        playback_service_over(&store, bae_diagnostics::Diagnostics::noop());
+        playback_service_over(store.store(), bae_diagnostics::Diagnostics::noop());
     (store, service, progress_rx)
 }
 
@@ -579,7 +579,7 @@ async fn seed_track(
         duration_ms: 180_000,
     });
     bae_records::test_fixtures::aggregate_ordering::insert_file(
-        store,
+        store.store(),
         store.home.path(),
         file,
         4_096,

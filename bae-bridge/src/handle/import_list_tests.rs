@@ -61,15 +61,16 @@ fn separating_the_selection_selects_the_releases_it_returns() {
         .iter()
         .map(|part| coven::path_bytes(&music.join("Collection").join(part)))
         .collect();
-    handle.runtime.block_on(async {
+    handle.handle().runtime.block_on(async {
         // Nothing but the test acts on the candidates: a run going would hold
         // back combining them.
-        handle.services.set_identify_automatically(false).await.unwrap();
-        handle.services.import_add_watched_folder(music.clone()).await.unwrap();
+        handle.handle().services.set_identify_automatically(false).await.unwrap();
+        handle.handle().services.import_add_watched_folder(music.clone()).await.unwrap();
     });
     let list = handle
+        .handle()
         .runtime
-        .block_on(handle.subscribe_import_list(BridgeImportListView {
+        .block_on(handle.handle().subscribe_import_list(BridgeImportListView {
             tab: BridgeTriageTab::Pending,
             filter_text: String::new(),
             pending_filter: BridgePendingFilter::All,
@@ -77,28 +78,29 @@ fn separating_the_selection_selects_the_releases_it_returns() {
         }))
         .expect("the list opens");
     list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50 }]).unwrap();
-    until(&handle, &list, |snapshot| rows(snapshot).0 == parts);
+    until(handle.handle(), &list, |snapshot| rows(snapshot).0 == parts);
 
     let revision = handle
+        .handle()
         .runtime
         .block_on(
             list.clone().change_selection(BridgeSelectionChange::Replace { keys: parts.clone() }),
         )
         .unwrap();
-    until(&handle, &list, |snapshot| {
+    until(handle.handle(), &list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 2
     });
-    let combined = handle.runtime.block_on(list.clone().combine_selection()).unwrap();
-    until(&handle, &list, |snapshot| {
+    let combined = handle.handle().runtime.block_on(list.clone().combine_selection()).unwrap();
+    until(handle.handle(), &list, |snapshot| {
         rows(snapshot) == (vec![combined.clone()], vec![combined.clone()])
     });
 
-    let returned = handle.runtime.block_on(list.clone().separate_selection()).unwrap();
+    let returned = handle.handle().runtime.block_on(list.clone().separate_selection()).unwrap();
     assert_eq!(returned, parts);
     let separated =
-        until(&handle, &list, |snapshot| rows(snapshot) == (parts.clone(), parts.clone()));
+        until(handle.handle(), &list, |snapshot| rows(snapshot) == (parts.clone(), parts.clone()));
     assert_eq!(separated.selection.count, 2);
-    handle.runtime.block_on(list.clone().cancel()).expect("cancel the list");
+    handle.handle().runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }
 
 /// A bulk action writes its progress into the stream the app reads while it
@@ -114,13 +116,14 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     let music = std::fs::canonicalize(&music).unwrap();
     let key = coven::path_bytes(&music.join("Album"));
-    handle.runtime.block_on(async {
-        handle.services.set_identify_automatically(false).await.unwrap();
-        handle.services.import_add_watched_folder(music.clone()).await.unwrap();
+    handle.handle().runtime.block_on(async {
+        handle.handle().services.set_identify_automatically(false).await.unwrap();
+        handle.handle().services.import_add_watched_folder(music.clone()).await.unwrap();
     });
     let list = handle
+        .handle()
         .runtime
-        .block_on(handle.subscribe_import_list(BridgeImportListView {
+        .block_on(handle.handle().subscribe_import_list(BridgeImportListView {
             tab: BridgeTriageTab::Pending,
             filter_text: String::new(),
             pending_filter: BridgePendingFilter::All,
@@ -128,25 +131,27 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         }))
         .expect("the list opens");
     list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50 }]).unwrap();
-    until(&handle, &list, |snapshot| rows(snapshot).0 == [key.clone()]);
+    until(handle.handle(), &list, |snapshot| rows(snapshot).0 == [key.clone()]);
     let revision = handle
+        .handle()
         .runtime
         .block_on(
             list.clone()
                 .change_selection(BridgeSelectionChange::Replace { keys: vec![key.clone()] }),
         )
         .unwrap();
-    until(&handle, &list, |snapshot| {
+    until(handle.handle(), &list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 1
     });
 
     let progress = list.selection_action_progress();
     handle
+        .handle()
         .runtime
         .block_on(list.clone().run_selection_action(crate::types::BridgeCandidateAction::Skip))
         .unwrap();
     assert_eq!(
-        handle.runtime.block_on(progress.clone().next()),
+        handle.handle().runtime.block_on(progress.clone().next()),
         Ok(vec![Vec::<u8>::new()]),
         "the action's progress came and went"
     );
@@ -154,16 +159,17 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
 
     progress.cancel();
     handle
+        .handle()
         .runtime
         .block_on(list.clone().run_selection_action(crate::types::BridgeCandidateAction::Skip))
         .unwrap();
     assert_eq!(
-        handle.runtime.block_on(progress.clone().next()),
+        handle.handle().runtime.block_on(progress.clone().next()),
         Err(crate::types::BridgeError::Cancelled),
         "a cancelled stream hears no later action"
     );
     assert_eq!(progress.latest(Vec::new()), None);
-    handle.runtime.block_on(list.clone().cancel()).expect("cancel the list");
+    handle.handle().runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }
 
 /// A refusal of the import list's grouping calls crosses in the class core
@@ -172,8 +178,9 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
 fn a_grouping_refusal_crosses_in_the_class_core_gave_it() {
     let handle = crate::handle::tests::fresh_bridge_handle("grouping-refusal-class");
     let error = handle
+        .handle()
         .runtime
-        .block_on(handle.clone().candidate_source_folders(b"no-such-candidate".to_vec()))
+        .block_on(handle.handle().clone().candidate_source_folders(b"no-such-candidate".to_vec()))
         .unwrap_err();
     assert!(
         matches!(

@@ -5,20 +5,25 @@
 #[test]
 fn library_search_answers_each_query_on_one_subscription() {
     let handle = super::super::tests::fresh_bridge_handle("library-search-queries");
-    let subscription = handle.subscribe_library_search();
+    let subscription = handle.handle().subscribe_library_search();
 
-    let idle = handle.runtime.block_on(subscription.clone().next()).expect("idle search snapshot");
+    let idle = handle
+        .handle()
+        .runtime
+        .block_on(subscription.clone().next())
+        .expect("idle search snapshot");
     assert_eq!(idle.query, "");
     assert_eq!(idle.request_revision, 0);
     assert!(idle.results.albums.is_empty());
 
     let revision =
         subscription.set_query("  Placeholder Query  ".to_string()).expect("set the search query");
-    let searched = handle.runtime.block_on(subscription.clone().next()).expect("search snapshot");
+    let searched =
+        handle.handle().runtime.block_on(subscription.clone().next()).expect("search snapshot");
     assert_eq!(searched.query, "Placeholder Query");
     assert_eq!(searched.request_revision, revision);
 
-    handle.runtime.block_on(subscription.clone().cancel()).expect("cancel the search");
+    handle.handle().runtime.block_on(subscription.clone().cancel()).expect("cancel the search");
     assert!(matches!(
         subscription.set_query("Other Query".to_string()),
         Err(crate::types::BridgeError::Cancelled)

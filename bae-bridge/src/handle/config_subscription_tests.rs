@@ -28,9 +28,9 @@ fn pull_until(
 #[test]
 fn the_preferences_follow_each_write_until_cancelled() {
     let handle = super::super::tests::fresh_bridge_handle("config-pulls");
-    let values = handle.subscribe_config();
+    let values = handle.handle().subscribe_config();
 
-    let first = pull_until(&handle, &values, |_| true);
+    let first = pull_until(handle.handle(), &values, |_| true);
     assert!(!first.show_remaining_time);
     assert_eq!(first.max_concurrent_uploads, 3);
     assert_eq!(
@@ -40,15 +40,23 @@ fn the_preferences_follow_each_write_until_cancelled() {
     );
     assert_eq!(first.library_id.len(), 36, "{}", first.library_id);
 
-    handle.runtime.block_on(handle.clone().set_show_remaining_time(true)).unwrap();
-    pull_until(&handle, &values, |value| value.show_remaining_time);
-    handle.runtime.block_on(handle.clone().set_max_concurrent_uploads(5)).unwrap();
-    let changed = pull_until(&handle, &values, |value| value.max_concurrent_uploads == 5);
+    handle
+        .handle()
+        .runtime
+        .block_on(handle.handle().clone().set_show_remaining_time(true))
+        .unwrap();
+    pull_until(handle.handle(), &values, |value| value.show_remaining_time);
+    handle
+        .handle()
+        .runtime
+        .block_on(handle.handle().clone().set_max_concurrent_uploads(5))
+        .unwrap();
+    let changed = pull_until(handle.handle(), &values, |value| value.max_concurrent_uploads == 5);
     assert!(changed.show_remaining_time, "the earlier write stands");
 
-    handle.runtime.block_on(values.clone().cancel()).unwrap();
+    handle.handle().runtime.block_on(values.clone().cancel()).unwrap();
     assert!(matches!(
-        handle.runtime.block_on(values.clone().next()),
+        handle.handle().runtime.block_on(values.clone().next()),
         Err(crate::types::BridgeError::Cancelled)
     ));
 }

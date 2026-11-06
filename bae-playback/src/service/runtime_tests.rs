@@ -269,7 +269,7 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
         &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
     )])
     .await;
-    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
 
     // Queue the play command and a shutdown, then let the real loop drain both:
     // it emits the command telemetry, runs the play, then breaks on shutdown.
@@ -311,7 +311,7 @@ async fn previous_ships_track_started() {
         &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
     )])
     .await;
-    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
 
     // A two-track context playing from t1, so Previous steps back to t0.
     service
@@ -373,7 +373,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
-    let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
+    let (mut service, mut progress_rx) = playback_service_over(store.store(), diagnostics.clone());
     service.audio_output = crate::audio_output::PlayerOutput::new(
         Box::new(EndPanicsOutput { panicked: false }),
         AudioOutputControls::new(crate::Volume::FULL),
@@ -416,7 +416,7 @@ async fn a_playing_track_deleted_by_sync_stops_playback() {
     service.slot =
         active_slot(test_prepared_track(TRACK_A, create_sparse_buffer(1_024)), TrackPhase::Playing);
     let commands = service.command_tx.clone();
-    let db: bae_store::Store = (*store).clone();
+    let db = store.store().clone();
 
     let delete_then_watch = async move {
         let records = bae_records::test_fixtures::test_records(&db);

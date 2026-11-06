@@ -28,21 +28,21 @@ fn pull_until(
 #[test]
 fn playback_values_follow_playback_until_cancelled() {
     let handle = super::super::tests::fresh_bridge_handle("playback-values");
-    let values = handle.subscribe_playback_values();
+    let values = handle.handle().subscribe_playback_values();
 
-    let first = pull_until(&handle, &values, |_| true);
+    let first = pull_until(handle.handle(), &values, |_| true);
     assert!(matches!(first.state, BridgePlaybackValueState::Stopped));
     assert_eq!((first.volume, first.is_muted), (1.0, false));
     assert!(first.failure.is_none());
 
-    handle.set_volume(0.4);
-    pull_until(&handle, &values, |value| value.volume == 0.4);
-    handle.set_muted(true);
-    pull_until(&handle, &values, |value| value.is_muted);
+    handle.handle().set_volume(0.4);
+    pull_until(handle.handle(), &values, |value| value.volume == 0.4);
+    handle.handle().set_muted(true);
+    pull_until(handle.handle(), &values, |value| value.is_muted);
 
-    handle.runtime.block_on(values.clone().cancel()).unwrap();
+    handle.handle().runtime.block_on(values.clone().cancel()).unwrap();
     assert!(matches!(
-        handle.runtime.block_on(values.clone().next()),
+        handle.handle().runtime.block_on(values.clone().next()),
         Err(crate::types::BridgeError::Cancelled)
     ));
 }

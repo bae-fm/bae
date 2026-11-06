@@ -353,7 +353,7 @@ async fn an_output_that_stops_sending_stops_playback_and_reports_the_bug() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
-    let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
+    let (mut service, mut progress_rx) = playback_service_over(store.store(), diagnostics.clone());
     service.slot =
         active_slot(test_prepared_track("t", create_sparse_buffer(1_024)), TrackPhase::Playing);
 

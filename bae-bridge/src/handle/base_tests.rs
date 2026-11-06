@@ -32,7 +32,7 @@ fn delete_album_takes_the_album_out_of_the_grid() {
             playing: None,
         },
     );
-    let subscription = handle.subscribe_album_browse(Vec::new(), false);
+    let subscription = handle.handle().subscribe_album_browse(Vec::new(), false);
     subscription
         .set_windows(vec![crate::types::BridgeLibraryPageWindow { offset: 0, limit: 10 }])
         .expect("request the grid's window");
@@ -40,8 +40,11 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         rows.iter().map(|row| row.album.title.clone()).collect()
     };
     let listed = loop {
-        let snapshot =
-            handle.runtime.block_on(subscription.clone().next()).expect("album browse snapshot");
+        let snapshot = handle
+            .handle()
+            .runtime
+            .block_on(subscription.clone().next())
+            .expect("album browse snapshot");
         if !snapshot.windows.is_empty() {
             break snapshot;
         }
@@ -57,19 +60,23 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         .clone();
 
     handle
+        .handle()
         .runtime
-        .block_on(Arc::clone(&handle).delete_album(deleted.clone()))
+        .block_on(Arc::clone(handle.handle()).delete_album(deleted.clone()))
         .expect("delete the album");
 
     let after = loop {
-        let snapshot =
-            handle.runtime.block_on(subscription.clone().next()).expect("album browse snapshot");
+        let snapshot = handle
+            .handle()
+            .runtime
+            .block_on(subscription.clone().next())
+            .expect("album browse snapshot");
         if snapshot.total_count == 1 {
             break snapshot;
         }
     };
     assert_eq!(titles(&after.windows[0].rows), ["Kept Album"]);
-    let again = handle.runtime.block_on(Arc::clone(&handle).delete_album(deleted));
+    let again = handle.handle().runtime.block_on(Arc::clone(handle.handle()).delete_album(deleted));
     assert!(matches!(again, Err(crate::types::BridgeError::Diagnostic { .. })), "{again:?}");
 }
 

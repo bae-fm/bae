@@ -6,9 +6,13 @@
 #[test]
 fn artist_search_answers_each_view_on_one_subscription() {
     let handle = super::super::tests::fresh_bridge_handle("artist-search-views");
-    let subscription = handle.subscribe_artist_search();
+    let subscription = handle.handle().subscribe_artist_search();
 
-    let idle = handle.runtime.block_on(subscription.clone().next()).expect("idle search snapshot");
+    let idle = handle
+        .handle()
+        .runtime
+        .block_on(subscription.clone().next())
+        .expect("idle search snapshot");
     assert_eq!(idle.request_revision, 0);
     assert_eq!(idle.total_count, 0);
     assert!(idle.windows.is_empty());
@@ -17,13 +21,14 @@ fn artist_search_answers_each_view_on_one_subscription() {
     let revision = subscription
         .set_view("  Placeholder Query  ".to_string(), vec![window.clone()])
         .expect("set the search view");
-    let searched = handle.runtime.block_on(subscription.clone().next()).expect("search snapshot");
+    let searched =
+        handle.handle().runtime.block_on(subscription.clone().next()).expect("search snapshot");
     assert_eq!(searched.request_revision, revision);
     assert_eq!(searched.total_count, 0);
     assert_eq!(searched.windows.len(), 1);
     assert_eq!(searched.windows[0].window.limit, window.limit);
 
-    handle.runtime.block_on(subscription.clone().cancel()).expect("cancel the search");
+    handle.handle().runtime.block_on(subscription.clone().cancel()).expect("cancel the search");
     assert!(matches!(
         subscription.set_view("Other Query".to_string(), vec![window]),
         Err(crate::types::BridgeError::Cancelled)

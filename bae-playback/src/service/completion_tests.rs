@@ -11,7 +11,7 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
         &["08c80007-b56a-4fc9-8df6-af2967fa09b9"],
     )])
     .await;
-    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
 
     // A track must be active for the completion to mark its phase.
     let buffer = create_sparse_buffer(1_024);

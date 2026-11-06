@@ -8,9 +8,10 @@ use bae_util::test_channels::HANG_GUARD;
 #[test]
 fn the_timeline_starts_with_no_line_until_cancelled() {
     let handle = super::super::tests::fresh_bridge_handle("playback-timeline");
-    let timeline = handle.subscribe_playback_timeline();
+    let timeline = handle.handle().subscribe_playback_timeline();
 
     let first = handle
+        .handle()
         .runtime
         .block_on(async { tokio::time::timeout(HANG_GUARD, timeline.clone().next()).await })
         .expect("the first value in time")
@@ -20,9 +21,9 @@ fn the_timeline_starts_with_no_line_until_cancelled() {
         crate::types::BridgePlaybackTimeline { library: None, seek_revision: 0, preview: None }
     );
 
-    handle.runtime.block_on(timeline.clone().cancel()).unwrap();
+    handle.handle().runtime.block_on(timeline.clone().cancel()).unwrap();
     assert!(matches!(
-        handle.runtime.block_on(timeline.clone().next()),
+        handle.handle().runtime.block_on(timeline.clone().next()),
         Err(crate::types::BridgeError::Cancelled)
     ));
 }

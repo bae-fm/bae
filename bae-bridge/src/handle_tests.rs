@@ -128,17 +128,14 @@ pub(super) struct TestHandle {
 }
 
 impl TestHandle {
+    /// The started handle.
+    pub(super) fn handle(&self) -> &Arc<super::AppHandle> {
+        &self.handle
+    }
+
     /// The directory holding the handle's library and bae directory.
     pub(super) fn root(&self) -> &std::path::Path {
         self.root.path()
-    }
-}
-
-impl std::ops::Deref for TestHandle {
-    type Target = Arc<super::AppHandle>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.handle
     }
 }
 
@@ -212,10 +209,13 @@ pub(super) fn start_test_handle(
 #[test]
 fn album_browse_subscription_pulls_count_before_any_windows() {
     let handle = fresh_bridge_handle("album-browse-empty-windows");
-    let subscription = handle.subscribe_album_browse(Vec::new(), false);
+    let subscription = handle.handle().subscribe_album_browse(Vec::new(), false);
 
-    let snapshot =
-        handle.runtime.block_on(subscription.clone().next()).expect("album browse snapshot");
+    let snapshot = handle
+        .handle()
+        .runtime
+        .block_on(subscription.clone().next())
+        .expect("album browse snapshot");
 
     assert_eq!(snapshot.total_count, 0);
     assert!(snapshot.windows.is_empty());
@@ -226,6 +226,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
         .set_windows(vec![crate::types::BridgeLibraryPageWindow { offset: 0, limit: 50 }])
         .expect("request first album window");
     let requested = handle
+        .handle()
         .runtime
         .block_on(subscription.clone().next())
         .expect("requested album browse snapshot");
@@ -240,10 +241,14 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
 #[test]
 fn cancelling_album_browse_finishes_pending_next() {
     let handle = fresh_bridge_handle("album-browse-cancel");
-    let subscription = handle.subscribe_album_browse(Vec::new(), false);
-    handle.runtime.block_on(subscription.clone().next()).expect("initial album browse snapshot");
+    let subscription = handle.handle().subscribe_album_browse(Vec::new(), false);
+    handle
+        .handle()
+        .runtime
+        .block_on(subscription.clone().next())
+        .expect("initial album browse snapshot");
 
-    let result = handle.runtime.block_on(async {
+    let result = handle.handle().runtime.block_on(async {
         let pending = tokio::spawn({
             let subscription = subscription.clone();
             async move { subscription.next().await }
@@ -276,7 +281,7 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
             .stack_size(544 * 1024)
             .spawn(move || {
                 caller_runtime
-                    .block_on(Arc::clone(&handle).save_sync_config(
+                    .block_on(Arc::clone(handle.handle()).save_sync_config(
                         crate::types::BridgeSaveSyncConfig {
                             bucket: "bucket".to_string(),
                             region: "us-east-1".to_string(),
@@ -318,8 +323,8 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
 #[test]
 fn enqueue_export_missing_release_does_not_panic() {
     let handle = fresh_bridge_handle("enqueue-export-missing-release");
-    let result = handle.runtime.block_on(async {
-        Arc::clone(&handle)
+    let result = handle.handle().runtime.block_on(async {
+        Arc::clone(handle.handle())
             .enqueue_export(
                 "missing-release".to_string(),
                 coven::path_bytes(&handle.root().join("exports")),
@@ -701,14 +706,17 @@ mod candidate_runtime {
     fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
         let handle = fresh_bridge_handle("candidate-runtime-claim");
         let key = b"/watch/Album Title".to_vec();
-        let watching = handle.subscribe_candidate_runtime(key.clone());
-        assert!(pull_until(&handle, &watching, |_| true).is_none(), "nothing runs yet");
+        let watching = handle.handle().subscribe_candidate_runtime(key.clone());
+        assert!(pull_until(handle.handle(), &watching, |_| true).is_none(), "nothing runs yet");
 
-        handle.runtime.block_on(
-            handle.services.claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
+        handle.handle().runtime.block_on(
+            handle
+                .handle()
+                .services
+                .claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
         );
 
-        let claimed = pull_until(&handle, &watching, Option::is_some)
+        let claimed = pull_until(handle.handle(), &watching, Option::is_some)
             .expect("a claimed candidate is in flight");
         let import = claimed.import.clone().expect("a claimed candidate has an import in flight");
         assert!(
@@ -718,27 +726,29 @@ mod candidate_runtime {
         );
 
         // A subscriber opening mid-import reads what is running.
-        let joining = handle.subscribe_candidate_runtime(key.clone());
+        let joining = handle.handle().subscribe_candidate_runtime(key.clone());
         assert!(
-            pull_until(&handle, &joining, |_| true).and_then(|runtime| runtime.import).is_some(),
+            pull_until(handle.handle(), &joining, |_| true)
+                .and_then(|runtime| runtime.import)
+                .is_some(),
             "a late subscriber reads the running import"
         );
 
         // The import fails as the worker fails it: its failure ends the
         // claim, then announces it.
-        handle.runtime.block_on(
-            handle.services.end_candidate_import_for_test(&key.clone().into(), "import-1"),
+        handle.handle().runtime.block_on(
+            handle.handle().services.end_candidate_import_for_test(&key.clone().into(), "import-1"),
         );
 
         // A failed import is a row by the time it is announced, so the key
         // simply stops being in flight.
-        pull_until(&handle, &watching, Option::is_none);
+        pull_until(handle.handle(), &watching, Option::is_none);
 
         // Cancelling ends the pulls: a pull after it answers that it was
         // cancelled.
-        handle.runtime.block_on(watching.clone().cancel()).unwrap();
+        handle.handle().runtime.block_on(watching.clone().cancel()).unwrap();
         assert!(matches!(
-            handle.runtime.block_on(watching.clone().next()),
+            handle.handle().runtime.block_on(watching.clone().next()),
             Err(crate::types::BridgeError::Cancelled)
         ));
     }
@@ -853,8 +863,8 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
 #[test]
 fn a_library_refusal_crosses_in_the_class_core_gave_it() {
     let handle = fresh_bridge_handle("library-refusal-class");
-    let result = handle.runtime.block_on(async {
-        Arc::clone(&handle)
+    let result = handle.handle().runtime.block_on(async {
+        Arc::clone(handle.handle())
             .add_artist_credit_name("missing-artist".to_string(), "   ".to_string())
             .await
     });

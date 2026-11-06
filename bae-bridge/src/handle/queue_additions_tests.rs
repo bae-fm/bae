@@ -47,9 +47,9 @@ fn handle_over_one_album(
 #[test]
 fn each_addition_reaches_the_app_once() {
     let (handle, tracks) = handle_over_one_album("queue-additions", &["One", "Two"]);
-    let additions = handle.subscribe_queue_additions();
+    let additions = handle.handle().subscribe_queue_additions();
     let pull = || {
-        handle.runtime.block_on(async {
+        handle.handle().runtime.block_on(async {
             tokio::time::timeout(HANG_GUARD, additions.clone().next())
                 .await
                 .expect("an addition in time")
@@ -57,16 +57,16 @@ fn each_addition_reaches_the_app_once() {
         })
     };
 
-    handle.add_to_queue(tracks.clone());
+    handle.handle().add_to_queue(tracks.clone());
     assert_eq!(pull(), crate::types::BridgeQueueAddition { number: 1, tracks: 2 });
     for (number, track) in [(2, &tracks[0]), (3, &tracks[1])] {
-        handle.add_next(vec![track.clone()]);
+        handle.handle().add_next(vec![track.clone()]);
         assert_eq!(pull(), crate::types::BridgeQueueAddition { number, tracks: 1 });
     }
 
-    handle.runtime.block_on(additions.clone().cancel()).unwrap();
+    handle.handle().runtime.block_on(additions.clone().cancel()).unwrap();
     assert!(matches!(
-        handle.runtime.block_on(additions.clone().next()),
+        handle.handle().runtime.block_on(additions.clone().next()),
         Err(crate::types::BridgeError::Cancelled)
     ));
 }

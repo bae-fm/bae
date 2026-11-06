@@ -36,7 +36,7 @@ fn starvation_ended_event(track_id: &str) -> AudioEvent {
 async fn starvation_onset_reports_the_track_time_it_starved_at() {
     let (diagnostics, transport) = recording_diagnostics();
     let store = seeded_store(&[]).await;
-    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
     let mut prepared = test_prepared_track("t", create_sparse_buffer(1_024));
     prepared.timeline = TrackTimeline::new(
         Some(std::time::Duration::from_secs(10)),
