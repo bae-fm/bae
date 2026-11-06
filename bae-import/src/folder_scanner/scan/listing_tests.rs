@@ -136,11 +136,20 @@ fn bae_sidecar_hidden_from_scanner() {
 
 /// The folder lists its files the way a person reads them: natural order
 /// (`2` before `10`) and case-insensitive, so `cover.jpg` sits among the
-/// names starting with `c`, not after every capitalized one.
+/// names starting with `c`, not after every capitalized one; names alike but
+/// for spaces fall in byte order, as the library lists them.
 #[test]
 fn files_list_in_case_insensitive_natural_order() {
     let (_tmp, album) = album_dir();
-    for name in ["Track 10.flac", "cover.jpg", "Track 2.flac", "Back.jpg", "booklet.pdf"] {
+    for name in [
+        "Track 10.flac",
+        "cover.jpg",
+        "Track1.flac",
+        "Track 2.flac",
+        "Back.jpg",
+        "Track 1.flac",
+        "booklet.pdf",
+    ] {
         let bytes = if name.ends_with(".flac") {
             fake_flac()
         } else if name.ends_with(".jpg") {
@@ -156,6 +165,14 @@ fn files_list_in_case_insensitive_natural_order() {
         files.files.iter().map(|entry| entry.file.relative_path.as_str()).collect();
     assert_eq!(
         names,
-        vec!["Back.jpg", "booklet.pdf", "cover.jpg", "Track 2.flac", "Track 10.flac",]
+        vec![
+            "Back.jpg",
+            "booklet.pdf",
+            "cover.jpg",
+            "Track 1.flac",
+            "Track1.flac",
+            "Track 2.flac",
+            "Track 10.flac",
+        ]
     );
 }

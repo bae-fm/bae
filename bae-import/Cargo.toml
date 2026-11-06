@@ -52,9 +52,6 @@ hex = { workspace = true }
 tokio-util = { workspace = true, features = ["rt"] }
 tracing = { workspace = true }
 sha2 = { workspace = true }
-# Natural, case-insensitive file-name order, the order a scan lists a
-# folder's files in.
-natord = { workspace = true }
 base64 = { workspace = true }
 async-trait = { workspace = true }
 regex = { workspace = true }

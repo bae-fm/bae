@@ -152,7 +152,7 @@ pub(super) fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<Ski
             role: *role,
         })
         .collect();
-    files.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
+    files.sort_by(|a, b| bae_util::natural_order::compare(&a.relative_path, &b.relative_path));
     files
 }
 
@@ -172,7 +172,7 @@ fn skipped_tags(
     if playable.is_empty() {
         return Ok(None);
     }
-    playable.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
+    playable.sort_by(|a, b| bae_util::natural_order::compare(&a.relative_path, &b.relative_path));
     reads.skipped_tags(&playable, || {
         for file in &playable {
             let tags = match reads.tags(file)? {
@@ -278,7 +278,7 @@ pub(super) fn categorize_files_from_tree(
 
     // One order for everything downstream: the release's own file order.
     //
-    // Files sit in name order — natural and case-insensitive, not byte-wise, so
+    // Files sit in name order — bae's one natural order, the library's, so
     // `CD10` follows `CD9`, `10.flac` follows `9.flac`, and `cover.jpg` sits
     // with `Cover.jpg` rather than after every capitalized name — and the audio
     // among them in the order it plays (`lay_audio_in_play_order`). It has to
@@ -286,7 +286,8 @@ pub(super) fn categorize_files_from_tree(
     // track slots lay the audio down in this order, and the file-metadata
     // import reads embedded tags in it, so a second ordering rule anywhere
     // would pair a file's tags with a different file's samples.
-    proposed.sort_by(|a, b| natord::compare_ignore_case(&a.0.relative_path, &b.0.relative_path));
+    proposed
+        .sort_by(|a, b| bae_util::natural_order::compare(&a.0.relative_path, &b.0.relative_path));
     lay_audio_in_play_order(&mut proposed, &tagged, parts);
     // Of the pictures the tracks' tags embed, the release's draft takes the
     // first in this order.
@@ -407,7 +408,9 @@ pub(crate) fn categorize_library_files(
             Some(CandidateFile { file, role })
         })
         .collect();
-    files.sort_by(|a, b| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path));
+    files.sort_by(|a, b| {
+        bae_util::natural_order::compare(&a.file.relative_path, &b.file.relative_path)
+    });
     let mut categorized = CategorizedFiles { files, parts: Vec::new() };
     categorized
         .apply_candidate_file_edits(&CandidateFileEdits::default())

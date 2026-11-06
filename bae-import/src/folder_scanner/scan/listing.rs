@@ -103,7 +103,7 @@ impl DirectoryReader for OsDirectoryReader {
                     path.file_name().expect("a directory entry path has a file name"),
                 ))
             };
-            natord::compare_ignore_case(&shown(left), &shown(right))
+            bae_util::natural_order::compare(&shown(left), &shown(right))
         };
         files.sort_by(|left, right| compare(&left.path, &right.path));
         directories.sort_by(compare);

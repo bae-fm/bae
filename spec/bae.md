@@ -1313,7 +1313,9 @@ don't state comes from its name, read as `07 Title` (track 7) or `2-07 Title`
 (disc 2, track 7). Files go by disc, then track; a file stating no number goes
 after those that do, and files the numbers don't tell apart go in name order.
 A release read from several folders keeps each folder's files together, the
-folders in name order. Ben's download names its files by title alone, but tags
+folders in name order. Name order is the library's `natural_order` (Appendix
+A): "Disc 2" before "Disc 10", case aside, then by bytes, so the import lists
+a folder's files in the order the library lists the release's files in. Ben's download names its files by title alone, but tags
 `Track Title.mp3` as track 7, so it is the seventh unit: a draft read from the
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 

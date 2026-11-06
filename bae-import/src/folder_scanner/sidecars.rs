@@ -54,7 +54,9 @@ pub(super) fn categorize_sidecar(
         return Ok(SidecarFiles::Invalid(skipped_files(&proposed)));
     };
     // The release file order (see `categorize_files_from_tree`).
-    files.sort_by(|a, b| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path));
+    files.sort_by(|a, b| {
+        bae_util::natural_order::compare(&a.file.relative_path, &b.file.relative_path)
+    });
     Ok(SidecarFiles::Valid(files))
 }
 

@@ -276,7 +276,9 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
                 .map(SkippedFile::of_release_file)
                 .chain(parent_files)
                 .collect();
-            files.sort_by(|a, b| natord::compare_ignore_case(&a.relative_path, &b.relative_path));
+            files.sort_by(|a, b| {
+                bae_util::natural_order::compare(&a.relative_path, &b.relative_path)
+            });
             invalid(candidate, files)
         }
         // Its folders' names show escaped, so two of its files can show one

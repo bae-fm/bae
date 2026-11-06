@@ -407,6 +407,30 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
     assert_eq!(invalid.cover().map(|file| file.relative_path.as_str()), Some("front.jpg"));
 }
 
+/// A folder's files are in bae's one natural order, the order the library
+/// lists a release's files in: names alike but for case or spaces, which
+/// natural order alone counts as equal, fall in byte order, not in the order
+/// the folder happened to give them.
+#[test]
+fn files_alike_but_for_case_or_spaces_sort_as_the_library_sorts_them() {
+    let names = ["cover.jpg", "Cover.jpg", "Track1.flac", "Track 1.flac"];
+    let proposed: Vec<(ScannedFile, ProposedRole)> = names
+        .iter()
+        .map(|name| {
+            let file = ScannedFile::new(Path::new("/Album").join(name), name.to_string(), 1, 1);
+            (file, ProposedRole::Other)
+        })
+        .collect();
+
+    let listed: Vec<String> =
+        skipped_files(&proposed).into_iter().map(|file| file.relative_path).collect();
+
+    let mut shared = names.map(str::to_string);
+    shared.sort_by(|left, right| bae_util::natural_order::compare(left, right));
+    assert_eq!(listed, shared);
+    assert_eq!(listed, ["Cover.jpg", "cover.jpg", "Track 1.flac", "Track1.flac"]);
+}
+
 /// A release folder with a real FLAC and a zero-byte FLAC must be
 /// rejected. Mixing valid and zero-byte audio poisons the candidate.
 #[test]

@@ -991,7 +991,6 @@ dependencies = [
  "image",
  "libc",
  "lofty",
- "natord",
  "notify",
  "regex",
  "reqwest",

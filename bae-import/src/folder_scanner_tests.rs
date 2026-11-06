@@ -98,8 +98,8 @@ pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions
         }
     }
     let shown = |item: &ScanItem| item.relative_folder().text();
-    valid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
-    invalid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
+    valid.sort_by(|left, right| bae_util::natural_order::compare(&shown(left), &shown(right)));
+    invalid.sort_by(|left, right| bae_util::natural_order::compare(&shown(left), &shown(right)));
     valid.into_iter().chain(invalid).collect()
 }
 

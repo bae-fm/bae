@@ -156,7 +156,7 @@ pub(super) fn settle_sheet_bindings(
                 .collect();
             if beside.len() == references.len() {
                 beside.sort_by(|a, b| {
-                    natord::compare_ignore_case(&a.relative_path, &b.relative_path)
+                    bae_util::natural_order::compare(&a.relative_path, &b.relative_path)
                 });
                 info!(
                     "sheet {sheet_id} names no audio here; taking the {} audio files beside it \
